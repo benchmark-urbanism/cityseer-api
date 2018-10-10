@@ -5,6 +5,7 @@ from numba import njit
 
 cc = CC('mixed_uses')
 
+# TODO: refactor and document
 
 @cc.export('deduce_unique_species',
            'Tuple((Array(f8, 1, "C"), Array(i8, 1, "C"), Array(f8, 1, "C")))'
@@ -323,4 +324,3 @@ def hill_diversity_functional(classes_counts, class_weights, q):
                 FD += d_ij * (a_i * a_j / Q) ** q  # sum
         # once summed, apply q
         return FD ** (1 / (2 * (1 - q)))
-

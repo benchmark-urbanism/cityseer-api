@@ -5,6 +5,7 @@ from numba import njit
 
 cc = CC('networks')
 
+# TODO: refactor and document
 
 # below assumes running from the aot directory
 # NOTE -> this is ignored if compiling from setup.py script instead

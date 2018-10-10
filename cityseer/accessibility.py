@@ -5,6 +5,7 @@ from numba import njit
 
 cc = CC('accessibility')
 
+# TODO: refactor and document
 
 @cc.export('accessibility_osm_poi',
            'Array(i8, 1, "C")'
@@ -25,20 +26,6 @@ def accessibility_osm_poi(reachable_poi, poi_distances, poi_dimension, beta):
             poi_counts[np.int(poi_idx)] += np.exp(dist * beta)
 
     return poi_counts
-
-'''
-def accessibility_osm_poi(poi_frame, reachable_poi, poi_dist, netw_src_idx, beta):
-
-    if not beta < 0:
-        raise ValueError('NOTE -> aborting: beta should be in the negative form')
-
-    # poi should be mapped to simple integers corresponding to indexes from poi schema
-    for poi_idx, dist in zip(reachable_poi, poi_dist):
-        if np.isfinite(dist):
-            poi_frame[poi_idx][netw_src_idx] += np.exp(dist * beta)
-
-    return poi_frame
-'''
 
 
 @cc.export('accessibility_os_poi',

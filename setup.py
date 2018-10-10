@@ -5,10 +5,10 @@
 # python3 -m pip install --user --upgrade twine
 # /Users/gareth/Library/Python/3.7/bin/twine upload dist/*
 
-# TODO: install requires doesn't appear to be working
+# TODO: fix install requires
 
 from setuptools import setup
-from cityseer import networks, mixed_uses
+from cityseer import networks, mixed_uses, accessibility
 
 setup (
     name = 'cityseer',
@@ -30,6 +30,7 @@ setup (
       ],
     ext_modules = [
         networks.cc.distutils_extension(),
-        mixed_uses.cc.distutils_extension()
+        mixed_uses.cc.distutils_extension(),
+        accessibility.cc.distutils_extension()
     ])
 
