@@ -12,7 +12,7 @@ from cityseer import networks, mixed_uses, accessibility
 
 setup (
     name = 'cityseer',
-    version = '0.1.7',
+    version = '0.1.8',
     packages=['cityseer'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',

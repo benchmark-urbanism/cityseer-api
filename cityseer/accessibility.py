@@ -8,8 +8,8 @@ cc = CC('accessibility')
 # TODO: refactor and document
 
 @cc.export('accessibility_osm_poi',
-           'Array(i8, 1, "C")'
-           '(Array(f8, 1, "C"), Array(f8, 1, "C"), f8, f8)')
+           'Array(f8, 1, "C")'
+           '(Array(f8, 1, "C"), Array(f8, 1, "C"), i8, f8)')
 @njit
 def accessibility_osm_poi(reachable_poi, poi_distances, poi_dimension, beta):
 
