@@ -28,7 +28,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
 
     .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or `threshold_weight` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
 
-    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`
+    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.
 
     The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:
 
@@ -57,7 +57,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
               1600m            -0.0025
        ================= =================
 
-    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
+    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.
 
     '''
 
@@ -77,7 +77,8 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
     return np.log(threshold_weight) / -beta, threshold_weight
 
 
-def centrality(node_map, link_map, distances):
+def centrality(node_map, link_map, distances, threshold_weight=0.01831563888873418):
+
 
     if node_map.shape[0] != 4:
         raise ValueError('The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters')
@@ -88,13 +89,11 @@ def centrality(node_map, link_map, distances):
     if not isinstance(distances, (list, np.ndarray)):
         raise ValueError('Please provide a distance or an array of distances')
 
+    betas = []
+    for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
+        betas.append(np.log(1 / threshold_weight) / d)
 
-
-
-y = 0.01831563888873418
-betas = []
-for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
-    betas.append(np.log(1/y)/d)
+    return compute_centrality(node_map, link_map, distances, betas)
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
@@ -102,7 +101,7 @@ for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
            'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
            '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(boolean, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
-def compute_centrality(node_map, link_map, distances):
+def compute_centrality(node_map, link_map, distances, betas):
     '''
 
     :param node_map:
