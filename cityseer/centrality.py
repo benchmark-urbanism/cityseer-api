@@ -7,6 +7,7 @@
 '''
 
 import logging
+import networkx as nx
 import numpy as np
 from numba.pycc import CC
 from numba import njit
@@ -77,15 +78,37 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
     return np.log(threshold_weight) / -beta, threshold_weight
 
 
-def centrality(node_map, link_map, distances, threshold_weight=0.01831563888873418):
+def graph_from_networkx(network_x_graph:nx.Graph):
+    '''
 
+    :param network_x_graph:
+    :return:
+    '''
+    node_map = np.full((3, ))
+
+
+    return node_map, link_map
+
+
+def centrality(node_map, link_map, distances, threshold_weight=0.01831563888873418):
+    '''
+
+    :param node_map:
+    :param link_map:
+    :param distances:
+    :param threshold_weight:
+    :return:
+    '''
 
     if node_map.shape[0] != 4:
         raise ValueError('The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters')
-    if link_map.shape[0] != 3:
+
+    if link_map.shape[0] < 3:
         raise ValueError('The link map must have a dimensionality of 3, consisting of start, end, and distance parameters')
+
     if isinstance(distances, (int, float)):
         distances = [distances]
+
     if not isinstance(distances, (list, np.ndarray)):
         raise ValueError('Please provide a distance or an array of distances')
 
@@ -93,7 +116,7 @@ def centrality(node_map, link_map, distances, threshold_weight=0.018315638888734
     for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
         betas.append(np.log(1 / threshold_weight) / d)
 
-    return compute_centrality(node_map, link_map, distances, betas)
+    return compute_centrality(node_map, link_map, np.array(distances), np.array(betas))
 
 
 # NOTE -> didn't work with boolean so using unsigned int...

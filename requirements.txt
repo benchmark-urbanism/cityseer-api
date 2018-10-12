@@ -1,5 +1,6 @@
 numpy
 numba
+networkx
 pytest
 sphinx
 sphinx_rtd_theme
