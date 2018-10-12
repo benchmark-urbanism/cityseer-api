@@ -205,7 +205,7 @@
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Remember to pass both the <span class="math notranslate nohighlight">\(d_{max}\)</span> and <span class="math notranslate nohighlight">\(w_{min}\)</span> to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a></p>
+<p class="last">Remember to pass both the <span class="math notranslate nohighlight">\(d_{max}\)</span> and <span class="math notranslate nohighlight">\(w_{min}\)</span> to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a>.</p>
 </div>
 <p>The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:</p>
 <div class="math notranslate nohighlight">
@@ -236,7 +236,7 @@ For example, if <span class="math notranslate nohighlight">\(-\beta=0.005\)</spa
 </tr>
 </tbody>
 </table>
-<p>In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom <span class="math notranslate nohighlight">\(-\beta\)</span> or a different <span class="math notranslate nohighlight">\(w_{min}\)</span> threshold, then use this function to generate effective <span class="math notranslate nohighlight">\(d_{max}\)</span> values, which can then be passed to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a>.</p>
+<p>In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom <span class="math notranslate nohighlight">\(-\beta\)</span> or a different <span class="math notranslate nohighlight">\(w_{min}\)</span> threshold, then use this function to generate effective <span class="math notranslate nohighlight">\(d_{max}\)</span> values, which can then be passed to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a> at the specified <span class="math notranslate nohighlight">\(w_{min}\)</span>.</p>
 </dd></dl>
 
 </div>
