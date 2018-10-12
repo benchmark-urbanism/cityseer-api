@@ -169,7 +169,7 @@
 
 <span class="sd">    .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or `threshold_weight` parameters to the :meth:`cityseer.centrality.compute_centrality` method.</span>
 
-<span class="sd">    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`</span>
+<span class="sd">    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.</span>
 
 <span class="sd">    The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:</span>
 
@@ -198,13 +198,9 @@
 <span class="sd">              1600m            -0.0025</span>
 <span class="sd">       ================= =================</span>
 
-<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.</span>
+<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.</span>
 
 <span class="sd">    &#39;&#39;&#39;</span>
-
-    <span class="c1"># check for mistaken usage</span>
-    <span class="k">if</span> <span class="nb">round</span><span class="p">(</span><span class="n">threshold_weight</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.01831563888873418</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;The current min_weight parameter matches the default, simply pass your distances directly to the centrality method.&#39;</span><span class="p">)</span>
 
     <span class="c1"># cast to list form</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
@@ -222,7 +218,8 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">threshold_weight</span><span class="p">)</span> <span class="o">/</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="n">threshold_weight</span></div>
 
 
-<span class="k">def</span> <span class="nf">centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">threshold_weight</span><span class="o">=</span><span class="mf">0.01831563888873418</span><span class="p">):</span>
+
 
     <span class="k">if</span> <span class="n">node_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters&#39;</span><span class="p">)</span>
@@ -233,13 +230,11 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please provide a distance or an array of distances&#39;</span><span class="p">)</span>
 
+    <span class="n">betas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">1600</span><span class="p">]:</span>
+        <span class="n">betas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">threshold_weight</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">)</span>
 
-
-
-<span class="n">y</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>
-<span class="n">betas</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">1600</span><span class="p">]:</span>
-    <span class="n">betas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">y</span><span class="p">)</span><span class="o">/</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">betas</span><span class="p">)</span>
 
 
 <span class="c1"># NOTE -&gt; didn&#39;t work with boolean so using unsigned int...</span>
@@ -247,7 +242,7 @@
            <span class="s1">&#39;Tuple((Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;)))&#39;</span>
            <span class="s1">&#39;(Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(boolean, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;))&#39;</span><span class="p">)</span>
 <span class="nd">@njit</span>
-<span class="k">def</span> <span class="nf">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">betas</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 
 <span class="sd">    :param node_map:</span>
