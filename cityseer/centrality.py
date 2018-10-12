@@ -61,10 +61,6 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
 
     '''
 
-    # check for mistaken usage
-    if round(threshold_weight, 3) == round(0.01831563888873418, 3):
-        logger.warning('The current min_weight parameter matches the default, simply pass your distances directly to the centrality method.')
-
     # cast to list form
     if isinstance(beta, (int, float)):
         beta = [beta]
