@@ -1,0 +1,439 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>cityseer.centrality &mdash; Cityseer 0.1.8 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Cityseer
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cityseer</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>cityseer.centrality</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for cityseer.centrality</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">.. module:: centrality</span>
+<span class="sd">   :synopsis: Cityseer centrality methods</span>
+
+<span class="sd">.. moduleauthor:: Gareth Simons</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numba.pycc</span> <span class="k">import</span> <span class="n">CC</span>
+<span class="kn">from</span> <span class="nn">numba</span> <span class="k">import</span> <span class="n">njit</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">networks</span><span class="p">,</span> <span class="n">mixed_uses</span><span class="p">,</span> <span class="n">accessibility</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">cc</span> <span class="o">=</span> <span class="n">CC</span><span class="p">(</span><span class="s1">&#39;centrality&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="custom_decay_betas"><a class="viewcode-back" href="../../index.html#cityseer.centrality.custom_decay_betas">[docs]</a><span class="k">def</span> <span class="nf">custom_decay_betas</span><span class="p">(</span><span class="n">beta</span><span class="p">:(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span> <span class="n">threshold_weight</span><span class="p">:</span><span class="nb">float</span><span class="o">=</span><span class="mf">0.01831563888873418</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    A convenience function for mapping :math:`-\\beta` decay parameters to equivalent distance thresholds corresponding to a `threshold_weight` cutoff parameter.</span>
+
+<span class="sd">    :param beta: The :math:`-\\beta` that you wish to convert to distance thresholds.</span>
+<span class="sd">    :param threshold_weight: The :math:`w_{min}` threshold.</span>
+<span class="sd">    :return: A numpy array of effective :math:`d_{max}` distances at the corresponding :math:`w_{min}` threshold.</span>
+
+<span class="sd">    .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or `threshold_weight` parameters to the :meth:`cityseer.centrality.compute_centrality` method.</span>
+
+<span class="sd">    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`</span>
+
+<span class="sd">    The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">       weight = exp(-\\beta \cdot distance)</span>
+
+<span class="sd">    The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.</span>
+<span class="sd">    For example, if :math:`-\\beta=0.005` represents a person&#39;s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance threshold of :math:`d_{max}`.</span>
+
+<span class="sd">    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default `threshold_weight` of :math:`w_{min}=0.01831563888873418`.</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">       \\beta = \\frac{log\\big(\\frac{1}{w_{min}}\\big)}{d_{max}}</span>
+
+<span class="sd">    Therefore, :math:`-\\beta` weights corresponding to walking thresholds of 400m, 800m, and 1600m would give:</span>
+
+<span class="sd">    .. table::</span>
+<span class="sd">       :align: center</span>
+
+<span class="sd">       ================= =================</span>
+<span class="sd">        :math:`d_{max}`   :math:`-\\beta`</span>
+<span class="sd">       ----------------- -----------------</span>
+<span class="sd">              400m             -0.01</span>
+<span class="sd">              800m             -0.005</span>
+<span class="sd">              1600m            -0.0025</span>
+<span class="sd">       ================= =================</span>
+
+<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># check for mistaken usage</span>
+    <span class="k">if</span> <span class="nb">round</span><span class="p">(</span><span class="n">threshold_weight</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.01831563888873418</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;The current min_weight parameter matches the default, simply pass your distances directly to the centrality method.&#39;</span><span class="p">)</span>
+
+    <span class="c1"># cast to list form</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="p">[</span><span class="n">beta</span><span class="p">]</span>
+
+    <span class="c1"># check that the betas do not have leading negatives</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">beta</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please provide the beta/s without the leading negative&#39;</span><span class="p">)</span>
+
+    <span class="c1"># cast to numpy</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span>
+
+    <span class="c1"># deduce the effective distance thresholds</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">threshold_weight</span><span class="p">)</span> <span class="o">/</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="n">threshold_weight</span></div>
+
+
+<span class="k">def</span> <span class="nf">centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">node_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">link_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The link map must have a dimensionality of 3, consisting of start, end, and distance parameters&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="p">[</span><span class="n">distances</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please provide a distance or an array of distances&#39;</span><span class="p">)</span>
+
+
+
+
+<span class="n">y</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>
+<span class="n">betas</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">1600</span><span class="p">]:</span>
+    <span class="n">betas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">y</span><span class="p">)</span><span class="o">/</span><span class="n">d</span><span class="p">)</span>
+
+
+<span class="c1"># NOTE -&gt; didn&#39;t work with boolean so using unsigned int...</span>
+<div class="viewcode-block" id="compute_centrality"><a class="viewcode-back" href="../../index.html#cityseer.centrality.compute_centrality">[docs]</a><span class="nd">@cc</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s1">&#39;compute_centrality&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Tuple((Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;)))&#39;</span>
+           <span class="s1">&#39;(Array(f8, 2, &quot;C&quot;), Array(f8, 2, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(boolean, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;), Array(f8, 1, &quot;C&quot;))&#39;</span><span class="p">)</span>
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">    :param node_map:</span>
+<span class="sd">    :param link_map:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+
+    <span class="c1"># used for calculating a corresponding beta value</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>
+
+    <span class="n">max_dist</span> <span class="o">=</span> <span class="mi">800</span>
+    <span class="c1"># establish the number of nodes</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">node_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># create the distance map</span>
+    <span class="n">d_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">distances</span><span class="p">),</span> <span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">distances</span><span class="p">):</span>
+        <span class="n">d_map</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">]</span>
+
+    <span class="c1"># prepare data arrays</span>
+    <span class="n">closeness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+    <span class="n">gravity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+    <span class="n">betweenness_wt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+
+
+
+
+
+
+    <span class="c1"># prepare data arrays</span>
+    <span class="n">gravity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">total_count</span><span class="p">))</span>
+    <span class="n">betweenness_wt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">total_count</span><span class="p">))</span>
+    <span class="n">mixed_uses_wt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">total_count</span><span class="p">))</span>
+    <span class="n">pois</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">40</span><span class="p">,</span> <span class="n">total_count</span><span class="p">))</span>
+
+    <span class="n">beta_100</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.04</span>
+    <span class="n">beta_200</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.02</span>
+    <span class="n">beta_400</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.01</span>
+    <span class="n">beta_800</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.005</span>
+
+    <span class="n">data_assign_map</span><span class="p">,</span> <span class="n">data_assign_dist</span> <span class="o">=</span> <span class="n">networks</span><span class="o">.</span><span class="n">assign_accessibility_data</span><span class="p">(</span><span class="n">netw_x_arr</span><span class="p">,</span> <span class="n">netw_y_arr</span><span class="p">,</span> <span class="n">data_x_arr</span><span class="p">,</span> <span class="n">data_y_arr</span><span class="p">,</span> <span class="n">max_dist</span><span class="p">)</span>
+
+    <span class="c1"># iterate through each vert and calculate the shortest path tree</span>
+    <span class="k">for</span> <span class="n">netw_src_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">total_count</span><span class="p">):</span>
+
+        <span class="c1">#if netw_src_idx % 1000 == 0:</span>
+        <span class="c1">#    print(&#39;...progress&#39;)</span>
+        <span class="c1">#    print(round(netw_src_idx / total_count * 100, 2))</span>
+
+        <span class="c1"># only compute for nodes in current city</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">hot_node</span><span class="p">[</span><span class="n">netw_src_idx</span><span class="p">]:</span>
+            <span class="k">continue</span>
+
+        <span class="n">netw_src_idx_trim</span><span class="p">,</span> <span class="n">netw_trim_count</span><span class="p">,</span> <span class="n">netw_idx_map_trim_to_full</span><span class="p">,</span> <span class="n">nbs_trim</span><span class="p">,</span> <span class="n">lens_trim</span> <span class="o">=</span> \
+            <span class="n">networks</span><span class="o">.</span><span class="n">graph_window</span><span class="p">(</span><span class="n">netw_src_idx</span><span class="p">,</span> <span class="n">max_dist</span><span class="p">,</span> <span class="n">netw_x_arr</span><span class="p">,</span> <span class="n">netw_y_arr</span><span class="p">,</span> <span class="n">nbs</span><span class="p">,</span> <span class="n">lens</span><span class="p">)</span>
+
+        <span class="c1"># use np.inf for max distance for data POI mapping, which uses an overshoot and backtracking workflow</span>
+        <span class="c1"># not a huge penalty because graph is already windowed per above</span>
+        <span class="n">netw_dist_map_trim</span><span class="p">,</span> <span class="n">netw_pred_map_trim</span> <span class="o">=</span> <span class="n">networks</span><span class="o">.</span><span class="n">shortest_path_tree</span><span class="p">(</span><span class="n">nbs_trim</span><span class="p">,</span> <span class="n">lens_trim</span><span class="p">,</span> <span class="n">netw_src_idx_trim</span><span class="p">,</span> <span class="n">netw_trim_count</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+
+        <span class="c1"># calculate mixed uses</span>
+        <span class="c1"># generate the reachable classes and their respective distances</span>
+        <span class="n">reachable_classes</span><span class="p">,</span> <span class="n">reachable_classes_dist</span><span class="p">,</span> <span class="n">data_trim_to_full_idx_map</span> <span class="o">=</span> <span class="n">networks</span><span class="o">.</span><span class="n">accessibility_agg</span><span class="p">(</span><span class="n">netw_src_idx</span><span class="p">,</span> <span class="n">max_dist</span><span class="p">,</span>
+            <span class="n">netw_dist_map_trim</span><span class="p">,</span> <span class="n">netw_pred_map_trim</span><span class="p">,</span> <span class="n">netw_idx_map_trim_to_full</span><span class="p">,</span> <span class="n">netw_x_arr</span><span class="p">,</span> <span class="n">netw_y_arr</span><span class="p">,</span> <span class="n">data_classes</span><span class="p">,</span>
+                <span class="n">data_x_arr</span><span class="p">,</span> <span class="n">data_y_arr</span><span class="p">,</span> <span class="n">data_assign_map</span><span class="p">,</span> <span class="n">data_assign_dist</span><span class="p">)</span>
+
+        <span class="c1"># get unique classes, their counts, and nearest - use the default max distance of 1600m</span>
+        <span class="n">classes_unique</span><span class="p">,</span> <span class="n">classes_counts</span><span class="p">,</span> <span class="n">classes_nearest</span> <span class="o">=</span> <span class="n">mixed_uses</span><span class="o">.</span><span class="n">deduce_unique_species</span><span class="p">(</span><span class="n">reachable_classes</span><span class="p">,</span> <span class="n">reachable_classes_dist</span><span class="p">)</span>
+
+        <span class="c1"># compute mixed uses</span>
+        <span class="n">mixed_uses_wt</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">mixed_uses</span><span class="o">.</span><span class="n">hill_diversity_functional</span><span class="p">(</span><span class="n">classes_counts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_100</span> <span class="o">*</span> <span class="n">classes_nearest</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">mixed_uses_wt</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">mixed_uses</span><span class="o">.</span><span class="n">hill_diversity_functional</span><span class="p">(</span><span class="n">classes_counts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_200</span> <span class="o">*</span> <span class="n">classes_nearest</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">mixed_uses_wt</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">mixed_uses</span><span class="o">.</span><span class="n">hill_diversity_functional</span><span class="p">(</span><span class="n">classes_counts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_400</span> <span class="o">*</span> <span class="n">classes_nearest</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">mixed_uses_wt</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">mixed_uses</span><span class="o">.</span><span class="n">hill_diversity_functional</span><span class="p">(</span><span class="n">classes_counts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_800</span> <span class="o">*</span> <span class="n">classes_nearest</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># compute accessibilities</span>
+        <span class="c1"># reachable is same as for mixed uses, use the data_trim_to_full_idx_map array as an index</span>
+        <span class="n">poi_idx</span> <span class="o">=</span> <span class="n">data_trim_to_full_idx_map</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data_trim_to_full_idx_map</span><span class="p">)]</span>
+        <span class="c1"># throwing errors so setting int indices with loop</span>
+        <span class="c1"># some data_trim_to_full_idx_map values are np.nan, hence not int from get-go</span>
+        <span class="n">poi_idx_int</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">poi_idx</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">poi_idx</span><span class="p">):</span>
+            <span class="n">poi_idx_int</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="c1"># calculate accessibilities</span>
+        <span class="n">pois</span><span class="p">[:,</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">accessibility</span><span class="o">.</span><span class="n">accessibility_osm_poi</span><span class="p">(</span><span class="n">poi_cats</span><span class="p">[</span><span class="n">poi_idx_int</span><span class="p">],</span> <span class="n">reachable_classes_dist</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="n">beta_800</span><span class="p">)</span>
+
+        <span class="c1"># use corresponding indices for reachable verts</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">netw_dist_map_trim</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">trim_to_idx</span> <span class="ow">in</span> <span class="n">ind</span><span class="p">:</span>
+
+            <span class="c1"># skip self node</span>
+            <span class="k">if</span> <span class="n">trim_to_idx</span> <span class="o">==</span> <span class="n">netw_src_idx_trim</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">dist_m</span> <span class="o">=</span> <span class="n">netw_dist_map_trim</span><span class="p">[</span><span class="n">trim_to_idx</span><span class="p">]</span>
+
+            <span class="c1"># some crow-flies max distance nodes won&#39;t be reached within max distance threshold over the network</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">dist_m</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># remember that the shortest_path_tree is set to np.inf for mixed-uses purposes, so check here for distance</span>
+            <span class="k">if</span> <span class="n">dist_m</span> <span class="o">&gt;</span> <span class="n">max_dist</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># calculate gravity and betweenness</span>
+            <span class="c1"># the strength of the weight is based on the start and end vertices, not the intermediate locations</span>
+            <span class="n">netw_wt_100</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_100</span> <span class="o">*</span> <span class="n">dist_m</span><span class="p">)</span>
+            <span class="n">netw_wt_200</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_200</span> <span class="o">*</span> <span class="n">dist_m</span><span class="p">)</span>
+            <span class="n">netw_wt_400</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_400</span> <span class="o">*</span> <span class="n">dist_m</span><span class="p">)</span>
+            <span class="n">netw_wt_800</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">beta_800</span> <span class="o">*</span> <span class="n">dist_m</span><span class="p">)</span>
+
+            <span class="c1"># gravity -&gt; an accessibility measure, or effectively a closeness consisting of inverse distance weighted node count</span>
+            <span class="n">gravity</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_100</span>
+            <span class="n">gravity</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_200</span>
+            <span class="n">gravity</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_400</span>
+            <span class="n">gravity</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">netw_src_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_800</span>
+
+            <span class="c1"># betweenness - only counting truly between vertices, not starting and ending verts</span>
+            <span class="n">intermediary_idx_trim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">netw_pred_map_trim</span><span class="p">[</span><span class="n">trim_to_idx</span><span class="p">])</span>
+            <span class="n">intermediary_idx_mapped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">netw_idx_map_trim_to_full</span><span class="p">[</span><span class="n">intermediary_idx_trim</span><span class="p">])</span>  <span class="c1"># cast to int</span>
+            <span class="c1"># only counting betweenness in one &#39;direction&#39; since the graph is symmetrical (non-directed)</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="c1"># break out of while loop if the intermediary has reached the source node</span>
+                <span class="k">if</span> <span class="n">intermediary_idx_trim</span> <span class="o">==</span> <span class="n">netw_src_idx_trim</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># weighted variants - summed at all distances</span>
+                <span class="n">betweenness_wt</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">intermediary_idx_mapped</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_100</span>
+                <span class="n">betweenness_wt</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">intermediary_idx_mapped</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_200</span>
+                <span class="n">betweenness_wt</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">intermediary_idx_mapped</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_400</span>
+                <span class="n">betweenness_wt</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">intermediary_idx_mapped</span><span class="p">]</span> <span class="o">+=</span> <span class="n">netw_wt_800</span>
+
+                <span class="c1"># unlike the dist_map the pred_map contains all vertices, so no offset required</span>
+                <span class="n">intermediary_idx_trim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">netw_pred_map_trim</span><span class="p">[</span><span class="n">intermediary_idx_trim</span><span class="p">])</span>
+                <span class="n">intermediary_idx_mapped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">(</span><span class="n">netw_idx_map_trim_to_full</span><span class="p">[</span><span class="n">intermediary_idx_trim</span><span class="p">])</span>  <span class="c1"># cast to int</span>
+
+    <span class="k">return</span> <span class="n">gravity</span><span class="p">,</span> <span class="n">betweenness_wt</span><span class="p">,</span> <span class="n">mixed_uses_wt</span><span class="p">,</span> <span class="n">pois</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Gareth Simons
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
