@@ -137,13 +137,8 @@ def tutte_graph():
 
     G.add_edges_from(edges)
 
-    assert G.number_of_nodes() == 46
-
-    assert G.number_of_edges() == 69
-
     pos = {}
     for n, d in G.nodes(data=True):
-        print(n)
         pos[n] = (d['x'], d['y'])
 
     # import matplotlib.pyplot as plt

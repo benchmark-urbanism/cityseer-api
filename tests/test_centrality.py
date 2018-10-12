@@ -1,7 +1,8 @@
 import pytest
 import numpy as np
+import networkx as nx
 from cityseer import centrality
-
+from . import generate_graph
 
 def test_custom_decay_betas():
 
@@ -19,3 +20,16 @@ def test_custom_decay_betas():
 
     with pytest.raises(ValueError):
         centrality.custom_decay_betas(-0.04)
+
+
+def test_generate_graph():
+
+    G, pos = generate_graph.tutte_graph()
+
+    assert G.number_of_nodes() == 46
+
+    assert G.number_of_edges() == 69
+
+    assert nx.average_degree_connectivity(G) == { 3: 3.0 }
+
+    assert nx.average_shortest_path_length(G) == 4.356521739130435

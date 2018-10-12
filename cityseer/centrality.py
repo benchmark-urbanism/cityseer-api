@@ -34,7 +34,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
     The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:
 
     .. math::
-       weight = exp(-\\beta \cdot distance)
+       weight = exp(-\\beta \\cdot distance)
 
     The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
     For example, if :math:`-\\beta=0.005` represents a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance threshold of :math:`d_{max}`.
@@ -58,7 +58,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
               1600m            -0.0025
        ================= =================
 
-    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.
+    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` along with the specified :math:`w_{min}`.
 
     '''
 
@@ -84,8 +84,13 @@ def graph_from_networkx(network_x_graph:nx.Graph):
     :param network_x_graph:
     :return:
     '''
-    node_map = np.full((3, ))
 
+    n = network_x_graph.number_of_nodes()
+
+    # TODO: add logic for decomposition?
+
+    node_map = np.full((3, n), np.nan)
+    link_map = np.full((4, n), np.nan)
 
     return node_map, link_map
 

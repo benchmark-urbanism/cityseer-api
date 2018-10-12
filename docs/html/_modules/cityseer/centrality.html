@@ -148,6 +148,7 @@
 <span class="sd">&#39;&#39;&#39;</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">numba.pycc</span> <span class="k">import</span> <span class="n">CC</span>
 <span class="kn">from</span> <span class="nn">numba</span> <span class="k">import</span> <span class="n">njit</span>
@@ -174,7 +175,7 @@
 <span class="sd">    The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:</span>
 
 <span class="sd">    .. math::</span>
-<span class="sd">       weight = exp(-\\beta \cdot distance)</span>
+<span class="sd">       weight = exp(-\\beta \\cdot distance)</span>
 
 <span class="sd">    The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.</span>
 <span class="sd">    For example, if :math:`-\\beta=0.005` represents a person&#39;s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance threshold of :math:`d_{max}`.</span>
@@ -198,7 +199,7 @@
 <span class="sd">              1600m            -0.0025</span>
 <span class="sd">       ================= =================</span>
 
-<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. Therefore, if you wish to override the defaults, or simply want to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then use this function to generate effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.</span>
+<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.</span>
 
 <span class="sd">    &#39;&#39;&#39;</span>
 
@@ -218,15 +219,37 @@
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">threshold_weight</span><span class="p">)</span> <span class="o">/</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="n">threshold_weight</span></div>
 
 
-<span class="k">def</span> <span class="nf">centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">threshold_weight</span><span class="o">=</span><span class="mf">0.01831563888873418</span><span class="p">):</span>
+<div class="viewcode-block" id="graph_from_networkx"><a class="viewcode-back" href="../../index.html#cityseer.centrality.graph_from_networkx">[docs]</a><span class="k">def</span> <span class="nf">graph_from_networkx</span><span class="p">(</span><span class="n">network_x_graph</span><span class="p">:</span><span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
 
+<span class="sd">    :param network_x_graph:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">node_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="p">))</span>
+
+
+    <span class="k">return</span> <span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span></div>
+
+
+<div class="viewcode-block" id="centrality"><a class="viewcode-back" href="../../index.html#cityseer.centrality.centrality">[docs]</a><span class="k">def</span> <span class="nf">centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">threshold_weight</span><span class="o">=</span><span class="mf">0.01831563888873418</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">    :param node_map:</span>
+<span class="sd">    :param link_map:</span>
+<span class="sd">    :param distances:</span>
+<span class="sd">    :param threshold_weight:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="k">if</span> <span class="n">node_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">link_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="n">link_map</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The link map must have a dimensionality of 3, consisting of start, end, and distance parameters&#39;</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
         <span class="n">distances</span> <span class="o">=</span> <span class="p">[</span><span class="n">distances</span><span class="p">]</span>
+
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please provide a distance or an array of distances&#39;</span><span class="p">)</span>
 
@@ -234,7 +257,7 @@
     <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">1600</span><span class="p">]:</span>
         <span class="n">betas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">threshold_weight</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">distances</span><span class="p">,</span> <span class="n">betas</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">compute_centrality</span><span class="p">(</span><span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">distances</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">betas</span><span class="p">))</span></div>
 
 
 <span class="c1"># NOTE -&gt; didn&#39;t work with boolean so using unsigned int...</span>
