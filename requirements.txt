@@ -1,0 +1,5 @@
+numpy
+numba
+pytest
+sphinx
+sphinx_rtd_theme
