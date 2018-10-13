@@ -52,6 +52,6 @@ def test_graph_from_networkx():
 
     assert np.array_equal(node_map[21], np.array([1000, 870, 1, 63]))
 
-    assert np.array_equal(link_map[40].round(8), np.array([0, 1, 120.41594579]).round(8))
+    assert np.array_equal(link_map[0].round(8), np.array([0, 1, 120.41594579]).round(8))
 
     assert np.array_equal(link_map[40].round(8), np.array([13, 12, 116.6190379]).round(8))
