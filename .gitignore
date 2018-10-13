@@ -9,6 +9,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Sphinx
+docs/*
+!docs/source
+
 # Distribution / packaging
 .Python
 build/
