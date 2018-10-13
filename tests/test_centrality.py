@@ -10,7 +10,7 @@ def test_custom_decay_betas():
 
     assert centrality.custom_decay_betas(0.0025) == (np.array([1600.]), 0.01831563888873418)
 
-    arr, t_w = centrality.custom_decay_betas(0.04, threshold_weight=0.001)
+    arr, t_w = centrality.custom_decay_betas(0.04, min_threshold_wt=0.001)
     assert np.array_equal(arr.round(8), np.array([172.69388197]).round(8))
     assert t_w == 0.001
 

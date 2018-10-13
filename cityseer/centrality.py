@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
 cc = CC('centrality')
 
 
-def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.01831563888873418):
+def custom_decay_betas(beta:(float, list, np.ndarray), min_threshold_wt:float=0.01831563888873418):
     '''
-    A convenience function for mapping :math:`-\\beta` decay parameters to equivalent distance thresholds corresponding to a `threshold_weight` cutoff parameter.
+    A convenience function for mapping :math:`-\\beta` decay parameters to equivalent distance thresholds corresponding to a ``min_threshold_wt`` cutoff parameter.
 
     :param beta: The :math:`-\\beta` that you wish to convert to distance thresholds.
-    :param threshold_weight: The :math:`w_{min}` threshold.
+    :param min_threshold_wt: The :math:`w_{min}` threshold.
     :return: A numpy array of effective :math:`d_{max}` distances at the corresponding :math:`w_{min}` threshold.
 
-    .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or `threshold_weight` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
+    .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or ``min_threshold_wt`` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
 
     .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.
 
@@ -39,7 +39,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
     The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
     For example, if :math:`-\\beta=0.005` represents a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance of :math:`d_{max}`.
 
-    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default minimum `threshold_weight` of :math:`w_{min}=0.01831563888873418`.
+    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default ``min_threshold_wt`` of :math:`w_{min}=0.01831563888873418`.
 
     .. math::
 
@@ -58,7 +58,18 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
               1600m            -0.0025
        ================= =================
 
-    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` along with the specified :math:`w_{min}`.
+    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` along with the specified :math:`w_{min}`. For example, the following :math:`-\\beta` and :math:`w_{min}` thresholds yield these effective :math:`d_{max}` distances:
+
+    .. table::
+       :align: center
+
+       ================= ================= =================
+        :math:`-\\beta`   :math:`w_{min}`   :math:`d_{max}`
+       ----------------- ----------------- -----------------
+             -0.01            0.01              461m
+             -0.005           0.01              921m
+             -0.0025          0.01              1842m
+       ================= ================= =================
 
     '''
 
@@ -75,7 +86,7 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
     beta = np.array(beta)
 
     # deduce the effective distance thresholds
-    return np.log(threshold_weight) / -beta, threshold_weight
+    return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
 def graph_from_networkx(network_x_graph:nx.Graph):
@@ -95,13 +106,13 @@ def graph_from_networkx(network_x_graph:nx.Graph):
     return node_map, link_map
 
 
-def centrality(node_map, link_map, distances, threshold_weight=0.01831563888873418):
+def centrality(node_map, link_map, distances, min_threshold_wt=0.01831563888873418):
     '''
 
     :param node_map:
     :param link_map:
     :param distances:
-    :param threshold_weight:
+    :param min_threshold_wt:
     :return:
     '''
 
@@ -119,7 +130,7 @@ def centrality(node_map, link_map, distances, threshold_weight=0.018315638888734
 
     betas = []
     for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
-        betas.append(np.log(1 / threshold_weight) / d)
+        betas.append(np.log(1 / min_threshold_wt) / d)
 
     return compute_centrality(node_map, link_map, np.array(distances), np.array(betas))
 
