@@ -101,7 +101,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     :param pre_geom: An optional shapely geometry defining the original area of interest.
     :return: Returns 2d ``node_map`` and ``link_map`` numpy arrays, which can be passed to the :meth:`cityseer.centrality.compute_centrality` method.
 
-    .. note:: When calculating local network centralities, it is necessary for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents an edge roll-off effect, which provides misleading results. The ``pre_geom` geometry is used to determine which nodes fall within such an original non-buffered area of interest.
+    .. note:: When calculating local network centralities, it is necessary for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents an edge roll-off effect, which provides misleading results. The ``pre_geom`` geometry is used to determine which nodes fall within such an original non-buffered area of interest.
 
     .. warning:: Graph decomposition provides a more granular representation of variations along street lengths. However, setting the ``decompose`` parameter too small can increase the computation time unnecessarily for subsequent methods. It is generally not necessary to go smaller :math:`20m`, and :math:`50m` may already be sufficient for many cases.
 
