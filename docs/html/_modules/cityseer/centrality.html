@@ -178,15 +178,15 @@
 <span class="sd">       weight = exp(-\\beta \\cdot distance)</span>
 
 <span class="sd">    The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.</span>
-<span class="sd">    For example, if :math:`-\\beta=0.005` represents a person&#39;s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance threshold of :math:`d_{max}`.</span>
+<span class="sd">    For example, if :math:`-\\beta=0.005` represents a person&#39;s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance of :math:`d_{max}`.</span>
 
-<span class="sd">    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default `threshold_weight` of :math:`w_{min}=0.01831563888873418`.</span>
+<span class="sd">    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default minimum `threshold_weight` of :math:`w_{min}=0.01831563888873418`.</span>
 
 <span class="sd">    .. math::</span>
 
 <span class="sd">       \\beta = \\frac{log\\big(\\frac{1}{w_{min}}\\big)}{d_{max}}</span>
 
-<span class="sd">    Therefore, :math:`-\\beta` weights corresponding to walking thresholds of 400m, 800m, and 1600m would give:</span>
+<span class="sd">    Therefore, :math:`-\\beta` weights corresponding to :math:`d_{max}` walking thresholds of 400m, 800m, and 1600m would give:</span>
 
 <span class="sd">    .. table::</span>
 <span class="sd">       :align: center</span>
@@ -199,7 +199,7 @@
 <span class="sd">              1600m            -0.0025</span>
 <span class="sd">       ================= =================</span>
 
-<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` at the specified :math:`w_{min}`.</span>
+<span class="sd">    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` along with the specified :math:`w_{min}`.</span>
 
 <span class="sd">    &#39;&#39;&#39;</span>
 
@@ -225,8 +225,13 @@
 <span class="sd">    :param network_x_graph:</span>
 <span class="sd">    :return:</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">node_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="p">))</span>
 
+    <span class="n">n</span> <span class="o">=</span> <span class="n">network_x_graph</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span>
+
+    <span class="c1"># TODO: add logic for decomposition?</span>
+
+    <span class="n">node_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">link_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">node_map</span><span class="p">,</span> <span class="n">link_map</span></div>
 

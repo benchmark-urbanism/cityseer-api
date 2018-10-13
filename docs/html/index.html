@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Welcome to BOOO &mdash; Cityseer 0.1.8 documentation</title>
+  <title>Cityseer API Docs &mdash; Cityseer 0.1.8 documentation</title>
   
 
   
@@ -78,9 +78,9 @@
             
               <!-- Local TOC -->
               <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">Welcome to BOOO</a></li>
+<li><a class="reference internal" href="#">Cityseer API Docs</a></li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
-<li><a class="reference internal" href="#module-cityseer.centrality">Testing docs</a></li>
+<li><a class="reference internal" href="#module-cityseer.centrality">Docs</a></li>
 </ul>
 </div>
             
@@ -126,7 +126,7 @@
     
       <li><a href="#">Docs</a> &raquo;</li>
         
-      <li>Welcome to BOOO</li>
+      <li>Cityseer API Docs</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -145,8 +145,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="welcome-to-booo">
-<h1>Welcome to BOOO<a class="headerlink" href="#welcome-to-booo" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="cityseer-api-docs">
+<h1>Cityseer API Docs<a class="headerlink" href="#cityseer-api-docs" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 </div>
 </div>
@@ -159,7 +159,7 @@
 </ul>
 </div>
 <div class="section" id="module-cityseer.centrality">
-<span id="testing-docs"></span><h1>Testing docs<a class="headerlink" href="#module-cityseer.centrality" title="Permalink to this headline">¶</a></h1>
+<span id="docs"></span><h1>Docs<a class="headerlink" href="#module-cityseer.centrality" title="Permalink to this headline">¶</a></h1>
 <span class="target" id="module-centrality"></span><dl class="function">
 <dt id="cityseer.centrality.centrality">
 <code class="descclassname">cityseer.centrality.</code><code class="descname">centrality</code><span class="sig-paren">(</span><em>node_map</em>, <em>link_map</em>, <em>distances</em>, <em>threshold_weight=0.01831563888873418</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cityseer/centrality.html#centrality"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cityseer.centrality.centrality" title="Permalink to this definition">¶</a></dt>
@@ -233,11 +233,11 @@
 <div class="math notranslate nohighlight">
 \[weight = exp(-\beta \cdot distance)\]</div>
 <p>The strength of the decay is controlled by the <span class="math notranslate nohighlight">\(-\beta\)</span> parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
-For example, if <span class="math notranslate nohighlight">\(-\beta=0.005\)</span> represents a person’s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold <span class="math notranslate nohighlight">\(w_{min}\)</span> corresponding to a maximum distance threshold of <span class="math notranslate nohighlight">\(d_{max}\)</span>.</p>
-<p>The <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a> method computes the <span class="math notranslate nohighlight">\(-\beta\)</span> parameters automatically, using a default <cite>threshold_weight</cite> of <span class="math notranslate nohighlight">\(w_{min}=0.01831563888873418\)</span>.</p>
+For example, if <span class="math notranslate nohighlight">\(-\beta=0.005\)</span> represents a person’s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold <span class="math notranslate nohighlight">\(w_{min}\)</span> corresponding to a maximum distance of <span class="math notranslate nohighlight">\(d_{max}\)</span>.</p>
+<p>The <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a> method computes the <span class="math notranslate nohighlight">\(-\beta\)</span> parameters automatically, using a default minimum <cite>threshold_weight</cite> of <span class="math notranslate nohighlight">\(w_{min}=0.01831563888873418\)</span>.</p>
 <div class="math notranslate nohighlight">
 \[\beta = \frac{log\big(\frac{1}{w_{min}}\big)}{d_{max}}\]</div>
-<p>Therefore, <span class="math notranslate nohighlight">\(-\beta\)</span> weights corresponding to walking thresholds of 400m, 800m, and 1600m would give:</p>
+<p>Therefore, <span class="math notranslate nohighlight">\(-\beta\)</span> weights corresponding to <span class="math notranslate nohighlight">\(d_{max}\)</span> walking thresholds of 400m, 800m, and 1600m would give:</p>
 <table border="1" class="docutils align-center">
 <colgroup>
 <col width="50%" />
@@ -258,7 +258,7 @@ For example, if <span class="math notranslate nohighlight">\(-\beta=0.005\)</spa
 </tr>
 </tbody>
 </table>
-<p>In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom <span class="math notranslate nohighlight">\(-\beta\)</span> or a different <span class="math notranslate nohighlight">\(w_{min}\)</span> threshold, then this function can be used to generate the effective <span class="math notranslate nohighlight">\(d_{max}\)</span> values, which can then be passed to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a> at the specified <span class="math notranslate nohighlight">\(w_{min}\)</span>.</p>
+<p>In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom <span class="math notranslate nohighlight">\(-\beta\)</span> or a different <span class="math notranslate nohighlight">\(w_{min}\)</span> threshold, then this function can be used to generate the effective <span class="math notranslate nohighlight">\(d_{max}\)</span> values, which can then be passed to <a class="reference internal" href="#cityseer.centrality.compute_centrality" title="cityseer.centrality.compute_centrality"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cityseer.centrality.compute_centrality()</span></code></a> along with the specified <span class="math notranslate nohighlight">\(w_{min}\)</span>.</p>
 </dd></dl>
 
 <dl class="function">

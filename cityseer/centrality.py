@@ -37,15 +37,15 @@ def custom_decay_betas(beta:(float, list, np.ndarray), threshold_weight:float=0.
        weight = exp(-\\beta \\cdot distance)
 
     The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
-    For example, if :math:`-\\beta=0.005` represents a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, and this is what is meant by a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance threshold of :math:`d_{max}`.
+    For example, if :math:`-\\beta=0.005` represents a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance of :math:`d_{max}`.
 
-    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default `threshold_weight` of :math:`w_{min}=0.01831563888873418`.
+    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default minimum `threshold_weight` of :math:`w_{min}=0.01831563888873418`.
 
     .. math::
 
        \\beta = \\frac{log\\big(\\frac{1}{w_{min}}\\big)}{d_{max}}
 
-    Therefore, :math:`-\\beta` weights corresponding to walking thresholds of 400m, 800m, and 1600m would give:
+    Therefore, :math:`-\\beta` weights corresponding to :math:`d_{max}` walking thresholds of 400m, 800m, and 1600m would give:
 
     .. table::
        :align: center
