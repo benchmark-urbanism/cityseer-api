@@ -1,14 +1,12 @@
-os:
-- linux
-- osx
-
 language: python
-sudo: required
-dist: xenial
+sudo: required  # workaround prior to official 3.7 support
+dist: xenial  # workaround prior to official 3.7 support
 python: '3.7'
 
 install:
 - pip install -r requirements.txt
+
+script: pytest
 
 before_deploy:
 - sphinx-build -b html ./docs/source ./docs
@@ -22,6 +20,7 @@ deploy:
   user: 'shongololo'
   password:  # travis encrypt your-password-here
     secure: 't/WlDC1f5E0Y4xjshCRyv3QeLktlAg9iLpqjTXrUW7HklLJgRDGobnwW0m3j/6dbgaoq4zrGt2Rs7thBwoCKLg1lcqWO3LfbmIsgF6nViMohv7Ptjp3NFx+cKFqneKku04aoFyHofjS3XMO4H3r8lwfUxZFir/vSo0/3GIg5VvT/B3fnwNtjeR/AazJDK2tL/vt6j5da+TyXLSlPqZS/H48133b7KFLOvuPzwKdVDXLcRo0gx45gNI3vp01AgC0zc7DBW3cKDKfRmclWgYq/PxON+QgQ75B1gPMuA8xbraj/bpfXNpo8MkxJZVtnGxbzdfAg0rTa21o6Umf9/9F9CWZPMTNjkLji/BPJe9kIDgFpCVDWL0OOdxk7bWBho8Joi2Oqt47tgd4VGqOkwd/YXTRSo9ZDWs9x5FmazF+oAsFDBH0dD1EpB78aP5lysrK+109t/6vowX1K5ObsomH1LAuPTDXdRDoGiUHYWuI81W5Id0aRr8wS3UeC4UOrIJP1GmorukCPnPYhh6PL0+jxRFsUw81zmUn7dJllieuWuckw2uynyN3P4FCEeKEZXqmw3QhyUEnqX740CwOvpsuqHpzrHSNB5huUH5W5ipSyDoDnr6mdTFwHEzgApuavqydF1NgUPtjnH1ncUNh+nRc3NufctTNN8/m+hzUrOvs6qlc='
+  distributions: "sdist bdist_wheel"  # default is only sdist
 # for deploying docs
 - provider: pages
   on:
