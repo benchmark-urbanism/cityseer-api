@@ -141,8 +141,4 @@ def tutte_graph():
     for n, d in G.nodes(data=True):
         pos[n] = (d['x'], d['y'])
 
-    # import matplotlib.pyplot as plt
-    # nx.draw(G, pos=pos, with_labels=True)
-    # plt.show()
-
     return G, pos

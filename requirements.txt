@@ -1,6 +1,8 @@
 setuptools
 numpy
 numba
+shapely
+utm
 networkx
 pytest
 sphinx

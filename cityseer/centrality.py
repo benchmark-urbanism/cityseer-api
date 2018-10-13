@@ -7,11 +7,13 @@
 '''
 
 import logging
+import utm
+from shapely import geometry, ops
 import networkx as nx
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-from . import networks, mixed_uses, accessibility
+# from . import networks, mixed_uses, accessibility
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -89,23 +91,130 @@ def custom_decay_betas(beta:(float, list, np.ndarray), min_threshold_wt:float=0.
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
-def graph_from_networkx(network_x_graph:nx.Graph):
+def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, pre_geom:geometry.Polygon=None, ):
+    '''
+    A convenience function for generating a ``node_map`` and ``link_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph.
+
+    :param network_x_graph: A ``NetworkX`` undirected graph. The nodes must be provided with node attributes including ``x`` and ``y`` keys pointing to ``<float>`` values for the spatial coordinates. These should be in a suitable projected (flat) coordinate reference system in metres unless the ``wgs84_coords`` parameter is set to ``True``. The links can be provided with an optional link attribute of ``length`` key pointing to a ``<float>`` indicating the length of the link in metres. If not provided, the length will be computed using the pythagorean theorem, thus providing a crow-flies distance between the start and end nodes.
+    :param wgs84_coords: Set to ``True`` if the coordinate keys reference `WGS84 <https://epsg.io/4326>`_ longitudes and latitudes instead of a projected (flat) coordinate system.
+    :param decompose: The graph can be decomposed by setting ``decompose`` to a distance in metres. This will generate a decomposed version of the graph, wherein links are broken into smaller sections no longer than the specified distance.
+    :param pre_geom: An optional shapely geometry defining the original area of interest.
+    :return: Returns 2d ``node_map`` and ``link_map`` numpy arrays, which can be passed to the :meth:`cityseer.centrality.compute_centrality` method.
+
+    .. note:: When calculating local network centralities, it is necessary for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents an edge roll-off effect, which provides misleading results. The ``pre_geom` geometry is used to determine which nodes fall within such an original non-buffered area of interest.
+
+    .. warning:: Graph decomposition provides a more granular representation of variations along street lengths. However, setting the ``decompose`` parameter too small can increase the computation time unnecessarily for subsequent methods. It is generally not necessary to go smaller :math:`20m`, and :math:`50m` may already be sufficient for many cases.
+
     '''
 
-    :param network_x_graph:
-    :return:
-    '''
+    # copy the graph to avoid modifying the original
+    G = network_x_graph.copy()
 
-    n = network_x_graph.number_of_nodes()
+    # decided to not discard disconnected components to avoid unintended consequences
 
-    # TODO: add logic for decomposition?
+    # if the coords are WGS84, then convert to local UTM
+    if wgs84_coords:
+        for n, d in G.nodes(data=True):
+            # convert coords - flip from lat, lon order back to x, y order
+            x, y = utm.from_latlon(d['y'], d['x'])[:2][::-1]
+            G.node[n]['x'] = x
+            G.node[n]['y'] = y
 
-    node_map = np.full((3, n), np.nan)
-    link_map = np.full((4, n), np.nan)
+    if decompose:
+        for s, e, d in G.edges(data=True):
+            # get start coords
+            s_x = G.node[s]['x']
+            s_y = G.node[s]['y']
+            # get end coords
+            e_x = G.node[e]['x']
+            e_y = G.node[e]['y']
+            # generate the geometry
+            g = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+            # write length to edge if it doesn't exist
+            if 'length' not in d:
+                G[s][e]['length'] = g.length
+            # if both
+            # see how many segments are necessary so as not to exceed decomposition max distance
+            # note that a length less than the decompose threshold will result in a single 'sub'-string
+            l = G[s][e]['length']
+            n = np.ceil(l / decompose)
+            # create the sub-links
+            d_step = 0
+            prior_node_id = s
+            sub_node_counter = 0
+            # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
+            for i in range(int(n) - 1):
+                # create the new node ID
+                new_node_id = f'{s}_{sub_node_counter}_{e}'
+                sub_node_counter += 1
+                # create the split linestring geom for measuring the new length
+                s_g = ops.substring(g, d_step, d_step + l / n)
+                # get the x, y of the new end node
+                x = s_g.coords.xy[0][-1]
+                y = s_g.coords.xy[1][-1]
+                # add the new node and edge
+                G.add_node(new_node_id, x=x, y=y)
+                G.add_edge(prior_node_id, new_node_id, length=s_g.length)
+                # increment the step and node id
+                prior_node_id = new_node_id
+                d_step += l / n
+            # set the last link manually to avoid rounding errors at end of linestring
+            s_g = ops.substring(g, d_step, l)
+            # nodes already exist, so just add link
+            G.add_edge(prior_node_id, e, length=s_g.length)
+
+    # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
+    G = nx.convert_node_labels_to_integers(G, 0)
+
+    # set lengths if missing (if decomposition is not triggered)
+    if not decompose:
+        for s, e, d in G.edges(data=True):
+            if 'length' not in d:
+                # get start coords
+                s_x = G.node[s]['x']
+                s_y = G.node[s]['y']
+                # get end coords
+                e_x = G.node[e]['x']
+                e_y = G.node[e]['y']
+                # set length
+                G[s][e]['length'] = geometry.Point(s_x, s_y).distance(geometry.Point(e_x, e_y))
+
+    # set the live nodes and sum degrees
+    total_out_degrees = 0
+    for n, d in G.nodes(data=True):
+        total_out_degrees += nx.degree(G, n)
+        live = True
+        if pre_geom and not pre_geom.contains(geometry.Point(d['x'], d['y'])):
+            live = False
+        G.node[n]['live'] = live
+
+    # prepare the node and link maps
+    n = G.number_of_nodes()
+    node_map = np.full((n, 4), np.nan)
+    link_map = np.full((total_out_degrees, 3), np.nan)
+    link_idx = 0
+    # populate the nodes
+    for n, d in G.nodes(data=True):
+        idx = int(n)
+        node_map[idx][0] = d['x']
+        node_map[idx][1] = d['y']
+        node_map[idx][2] = d['live']
+        node_map[idx][3] = link_idx
+        # follow all out links and add
+        # this happens for both directions
+        for nb in G.neighbors(n):
+            # start node
+            link_map[link_idx][0] = idx
+            # end node
+            link_map[link_idx][1] = int(nb)
+            # length
+            link_map[link_idx][2] = G[idx][nb]['length']
+            # increment the link_idx
+            link_idx += 1
 
     return node_map, link_map
 
-
+"""
 def centrality(node_map, link_map, distances, min_threshold_wt=0.01831563888873418):
     '''
 
@@ -138,7 +247,7 @@ def centrality(node_map, link_map, distances, min_threshold_wt=0.018315638888734
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality',
            'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(boolean, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
+           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
 def compute_centrality(node_map, link_map, distances, betas):
     '''
@@ -161,9 +270,10 @@ def compute_centrality(node_map, link_map, distances, betas):
         d_map[i] = [d, ]
 
     # prepare data arrays
-    closeness = np.zeros((4, n))
-    gravity = np.zeros((4, n))
-    betweenness_wt = np.zeros((4, n))
+    closeness = np.full((4, n), 0.0)
+    gravity = np.full((4, n), 0.0)
+    betweenness_wt = np.full((4, n), 0.0)
+    betweenness_wt = np.full((4, n), 0.0)
 
 
 
@@ -278,3 +388,4 @@ def compute_centrality(node_map, link_map, distances, betas):
                 intermediary_idx_mapped = np.int(netw_idx_map_trim_to_full[intermediary_idx_trim])  # cast to int
 
     return gravity, betweenness_wt, mixed_uses_wt, pois
+"""
