@@ -110,38 +110,38 @@ def custom_decay_betas(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-    A convenience function for generating a ``node_map`` and ``link_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
+    A convenience function for generating a ``node_map`` and ``edge_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
 
     Parameters
     ----------
     network_x_graph
-        A NetworkX undirected ``Graph``. Requires node attributes ``x`` and ``y`` for spatial coordinates and accepts optional ``length`` and ``weight`` link attributes. See notes.
+        A NetworkX undirected ``Graph``. Requires node attributes ``x`` and ``y`` for spatial coordinates and accepts optional ``length`` and ``weight`` edge attributes. See notes.
     wgs84_coords
         Set to ``True`` if the ``x`` and ``y`` node attribute keys reference `WGS84 <https://epsg.io/4326>`_ lng, lat values instead of a projected coordinate system.
     decompose
-        Generates a decomposed version of the graph wherein links are broken into smaller sections no longer than the specified distance in metres.
+        Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres.
     geom
-        Shapely geometry defining the original area of interest. Recommended for avoidance of edge roll-off in computed metrics.
+        Shapely geometry defining the original area of interest. Recommended for avoidance of boundary roll-off in computed metrics.
 
     Returns
     -------
     node_map
         containing node data
-    link_map
-        containing link data
+    edge_map
+        containing edge data
 
     Notes
     -----
 
     The node attributes ``x`` and ``y`` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the ``wgs84_coords`` parameter is set to ``True``.
 
-    The optional edge attribute ``length`` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the links.
+    The optional edge attribute ``length`` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges.
 
     If provided, the optional edge attribute ``weight`` will be used by shortest path algorithms instead of distances in metres.
 
     Tip
     ---
-    When calculating local network centralities, it is best-practise for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents misleading results arising due to an edge roll-off effect. If provided, the ``geom`` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. (The algorithms still have access to the full buffered network.)
+    When calculating local network centralities, it is best-practise for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the ``geom`` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. (The algorithms still have access to the full buffered network.)
 
     Caution
     -------
@@ -237,7 +237,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     # prepare the node and link maps
     n = G.number_of_nodes()
     node_map = np.full((n, 4), np.nan)
-    link_map = np.full((total_out_degrees, 3), np.nan)
+    edge_map = np.full((total_out_degrees, 3), np.nan)
     link_idx = 0
     # populate the nodes
     for n, d in G.nodes(data=True):
@@ -250,22 +250,22 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         # this happens for both directions
         for nb in G.neighbors(n):
             # start node
-            link_map[link_idx][0] = idx
+            edge_map[link_idx][0] = idx
             # end node
-            link_map[link_idx][1] = int(nb)
+            edge_map[link_idx][1] = int(nb)
             # length
-            link_map[link_idx][2] = G[idx][nb]['length']
+            edge_map[link_idx][2] = G[idx][nb]['length']
             # increment the link_idx
             link_idx += 1
 
-    return node_map, link_map
+    return node_map, edge_map
 
 """
-def centrality(node_map, link_map, distances, min_threshold_wt=0.01831563888873418):
+def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
     '''
 
     :param node_map:
-    :param link_map:
+    :param edge_map:
     :param distances:
     :param min_threshold_wt:
     :return:
