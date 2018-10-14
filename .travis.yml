@@ -10,7 +10,6 @@ script: pytest
 
 before_deploy:
 - sphinx-build -b html ./docs/source ./docs
-- python setup.py sdist bdist_wheel
 
 deploy:
 # for deploying to pypi
