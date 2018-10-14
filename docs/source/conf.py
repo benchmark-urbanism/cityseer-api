@@ -47,7 +47,12 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx.ext.napoleon',
+    'sphinx_autodoc_typehints'
 ]
+
+# For compatibility between sphinx autodoc typehints and napoleon
+napoleon_use_param = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -186,4 +191,8 @@ epub_exclude_files = ['search.html']
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3.5', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference', None)
+}

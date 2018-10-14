@@ -3,6 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. https://sphinx-rtd-theme.readthedocs.io/en/latest/demo/demo.html
+
 Cityseer API Docs
 =================
 

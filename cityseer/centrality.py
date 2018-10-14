@@ -7,6 +7,7 @@
 '''
 
 import logging
+from typing import Union, Tuple
 import utm
 from shapely import geometry, ops
 import networkx as nx
@@ -21,18 +22,34 @@ logger = logging.getLogger(__name__)
 cc = CC('centrality')
 
 
-def custom_decay_betas(beta:(float, list, np.ndarray), min_threshold_wt:float=0.01831563888873418):
+def custom_decay_betas(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
     '''
     A convenience function for mapping :math:`-\\beta` decay parameters to equivalent distance thresholds corresponding to a ``min_threshold_wt`` cutoff parameter.
 
-    :param beta: The :math:`-\\beta` that you wish to convert to distance thresholds.
-    :param min_threshold_wt: The :math:`w_{min}` threshold.
-    :return: A numpy array of effective :math:`d_{max}` distances at the corresponding :math:`w_{min}` threshold.
+    Parameters
+    ----------
+    beta
+        The :math:`-\\beta` that you wish to convert to distance thresholds.
+    min_threshold_wt
+        The :math:`w_{min}` threshold.
 
-    .. note:: There is no need to use this function unless you wish to provide your own :math:`-\\beta` or ``min_threshold_wt`` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
+    Returns
+    -------
+    betas
+        A numpy array of effective :math:`d_{max}` distances.
+    min_threshold_wt
+        The corresponding :math:`w_{min}` threshold.
 
-    .. warning:: Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.
+    Hint
+    ----
+    There is no need to use this function unless you wish to provide your own :math:`-\\beta` or ``min_threshold_wt`` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
 
+    Caution
+    -------
+    Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.
+
+    Notes
+    -----
     The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:
 
     .. math::
@@ -91,21 +108,50 @@ def custom_decay_betas(beta:(float, list, np.ndarray), min_threshold_wt:float=0.
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
-def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, pre_geom:geometry.Polygon=None, ):
+def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-    A convenience function for generating a ``node_map`` and ``link_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph.
+    A convenience function for generating a ``node_map`` and ``link_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
 
-    :param network_x_graph: A ``NetworkX`` undirected graph. The nodes must be provided with node attributes including ``x`` and ``y`` keys pointing to ``<float>`` values for the spatial coordinates. These should be in a suitable projected (flat) coordinate reference system in metres unless the ``wgs84_coords`` parameter is set to ``True``. The links can be provided with an optional link attribute of ``length`` key pointing to a ``<float>`` indicating the length of the link in metres. If not provided, the length will be computed using the pythagorean theorem, thus providing a crow-flies distance between the start and end nodes.
-    :param wgs84_coords: Set to ``True`` if the coordinate keys reference `WGS84 <https://epsg.io/4326>`_ longitudes and latitudes instead of a projected (flat) coordinate system.
-    :param decompose: The graph can be decomposed by setting ``decompose`` to a distance in metres. This will generate a decomposed version of the graph, wherein links are broken into smaller sections no longer than the specified distance.
-    :param pre_geom: An optional shapely geometry defining the original area of interest.
-    :return: Returns 2d ``node_map`` and ``link_map`` numpy arrays, which can be passed to the :meth:`cityseer.centrality.compute_centrality` method.
+    Parameters
+    ----------
+    network_x_graph
+        A NetworkX undirected ``Graph``. Requires node attributes ``x`` and ``y`` for spatial coordinates and accepts optional ``length`` and ``weight`` link attributes. See notes.
+    wgs84_coords
+        Set to ``True`` if the ``x`` and ``y`` node attribute keys reference `WGS84 <https://epsg.io/4326>`_ lng, lat values instead of a projected coordinate system.
+    decompose
+        Generates a decomposed version of the graph wherein links are broken into smaller sections no longer than the specified distance in metres.
+    geom
+        Shapely geometry defining the original area of interest. Recommended for avoidance of edge roll-off in computed metrics.
 
-    .. note:: When calculating local network centralities, it is necessary for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents an edge roll-off effect, which provides misleading results. The ``pre_geom`` geometry is used to determine which nodes fall within such an original non-buffered area of interest.
+    Returns
+    -------
+    node_map
+        containing node data
+    link_map
+        containing link data
 
-    .. warning:: Graph decomposition provides a more granular representation of variations along street lengths. However, setting the ``decompose`` parameter too small can increase the computation time unnecessarily for subsequent methods. It is generally not necessary to go smaller :math:`20m`, and :math:`50m` may already be sufficient for many cases.
+    Notes
+    -----
+
+    The node attributes ``x`` and ``y`` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the ``wgs84_coords`` parameter is set to ``True``.
+
+    The optional edge attribute ``length`` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the links.
+
+    If provided, the optional edge attribute ``weight`` will be used by shortest path algorithms instead of distances in metres.
+
+    Tip
+    ---
+    When calculating local network centralities, it is best-practise for the area of interest to have been buffered by a distance equal to the maximum distance threshold considered. This prevents misleading results arising due to an edge roll-off effect. If provided, the ``geom`` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. (The algorithms still have access to the full buffered network.)
+
+    Caution
+    -------
+    Graph decomposition provides a more granular representation of variations along street lengths. However, setting the ``decompose`` parameter too small can increase the computation time unnecessarily for subsequent analysis. It is generally not necessary to go smaller :math:`20m`, and :math:`50m` may already be sufficient for many cases.
 
     '''
+
+    # check that it is an undirected graph
+    if not isinstance(network_x_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkx graph')
 
     # copy the graph to avoid modifying the original
     G = network_x_graph.copy()
@@ -166,7 +212,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     G = nx.convert_node_labels_to_integers(G, 0)
 
-    # set lengths if missing (if decomposition is not triggered)
+    # set lengths if missing, as may be case if decomposition is not triggered
     if not decompose:
         for s, e, d in G.edges(data=True):
             if 'length' not in d:
@@ -184,7 +230,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     for n, d in G.nodes(data=True):
         total_out_degrees += nx.degree(G, n)
         live = True
-        if pre_geom and not pre_geom.contains(geometry.Point(d['x'], d['y'])):
+        if geom and not geom.contains(geometry.Point(d['x'], d['y'])):
             live = False
         G.node[n]['live'] = live
 
