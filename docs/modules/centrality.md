@@ -1,6 +1,11 @@
+---
+
+---
+<renderMath></renderMath>
+
 # centrality
 
-## distance from beta
+## distance from beta.. again
 
 This is a convenience function for mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
 
@@ -11,7 +16,7 @@ ___
 
 **beta** (`float`, `list[float]`): The $-\beta$ that you wish to convert to distance thresholds.
 
-**min_threshold_wt** (`float`): The $w_{min}$ threshold.
+**min_threshold_wt** (`float`): The $w_{min}$ threshold..
 
 ##### returns
 ___
@@ -65,6 +70,4 @@ In reality, people may be more or less willing to walk based on the specific pur
 | $-0.005$ | $0.01$ | $921m$ |
 | $-0.0025$ | $0.01$ | $1842m$ |
 
-## compute centrality a
-
-test
+## compute centrality af
