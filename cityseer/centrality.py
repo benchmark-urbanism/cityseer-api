@@ -22,75 +22,7 @@ logger = logging.getLogger(__name__)
 cc = CC('centrality')
 
 
-def custom_decay_betas(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
-    '''
-    A convenience function for mapping :math:`-\\beta` decay parameters to equivalent distance thresholds corresponding to a ``min_threshold_wt`` cutoff parameter.
-
-    Parameters
-    ----------
-    beta
-        The :math:`-\\beta` that you wish to convert to distance thresholds.
-    min_threshold_wt
-        The :math:`w_{min}` threshold.
-
-    Returns
-    -------
-    betas
-        A numpy array of effective :math:`d_{max}` distances.
-    min_threshold_wt
-        The corresponding :math:`w_{min}` threshold.
-
-    Hint
-    ----
-    There is no need to use this function unless you wish to provide your own :math:`-\\beta` or ``min_threshold_wt`` parameters to the :meth:`cityseer.centrality.compute_centrality` method.
-
-    Caution
-    -------
-    Remember to pass both the :math:`d_{max}` and :math:`w_{min}` to :meth:`cityseer.centrality.compute_centrality`.
-
-    Notes
-    -----
-    The weighted variants of centrality, e.g. gravity or weighted betweenness, are computed using a negative exponential decay function of the form:
-
-    .. math::
-       weight = exp(-\\beta \\cdot distance)
-
-    The strength of the decay is controlled by the :math:`-\\beta` parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
-    For example, if :math:`-\\beta=0.005` represents a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold :math:`w_{min}` corresponding to a maximum distance of :math:`d_{max}`.
-
-    The :meth:`cityseer.centrality.compute_centrality` method computes the :math:`-\\beta` parameters automatically, using a default ``min_threshold_wt`` of :math:`w_{min}=0.01831563888873418`.
-
-    .. math::
-
-       \\beta = \\frac{log\\big(\\frac{1}{w_{min}}\\big)}{d_{max}}
-
-    Therefore, :math:`-\\beta` weights corresponding to :math:`d_{max}` walking thresholds of 400m, 800m, and 1600m would give:
-
-    .. table::
-       :align: center
-
-       ================= =================
-        :math:`d_{max}`   :math:`-\\beta`
-       ----------------- -----------------
-              400m             -0.01
-              800m             -0.005
-              1600m            -0.0025
-       ================= =================
-
-    In reality, people may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context. If overriding the defaults, or to use a custom :math:`-\\beta` or a different :math:`w_{min}` threshold, then this function can be used to generate the effective :math:`d_{max}` values, which can then be passed to :meth:`cityseer.centrality.compute_centrality` along with the specified :math:`w_{min}`. For example, the following :math:`-\\beta` and :math:`w_{min}` thresholds yield these effective :math:`d_{max}` distances:
-
-    .. table::
-       :align: center
-
-       ================= ================= =================
-        :math:`-\\beta`   :math:`w_{min}`   :math:`d_{max}`
-       ----------------- ----------------- -----------------
-             -0.01            0.01              461m
-             -0.005           0.01              921m
-             -0.0025          0.01              1842m
-       ================= ================= =================
-
-    '''
+def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
 
     # cast to list form
     if isinstance(beta, (int, float)):
@@ -110,9 +42,6 @@ def custom_decay_betas(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-
-
-
 
     A convenience function for generating a ``node_map`` and ``edge_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
 
