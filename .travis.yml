@@ -3,13 +3,20 @@ sudo: required  # workaround prior to official 3.7 support
 dist: xenial  # workaround prior to official 3.7 support
 python: '3.7'
 
+# add yarn
+before_install:
+  - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+  - echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+  - sudo apt-get update && sudo apt-get install yarn
+
 install:
 - pip install -r requirements.txt
 
 script: pytest
 
 before_deploy:
-- sphinx-build -b html ./docs/source ./docs
+- yarn install
+- yarn docs:build
 
 deploy:
 # for deploying to pypi
@@ -26,7 +33,7 @@ deploy:
   on:
     branch: master  # only build on master branch
     tags: true  # only build for tagged pushes
-  local-dir: docs
+  local-dir: docs/.vuepress/dist
   target-branch: gh-pages
   skip-cleanup: true
   github-token: $GITHUB_TOKEN  # Generate personal token in github, then set in travis settings page as a secure variable

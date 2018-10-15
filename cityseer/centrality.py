@@ -110,6 +110,10 @@ def custom_decay_betas(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
+
+
+
+
     A convenience function for generating a ``node_map`` and ``edge_map`` from a `NetworkX <https://networkx.github.io/documentation/networkx-1.10/index.html>`_ undirected Graph, which can then be passed to :meth:`cityseer.centrality.compute_centrality`.
 
     Parameters

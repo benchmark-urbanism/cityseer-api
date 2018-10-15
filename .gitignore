@@ -9,9 +9,12 @@ __pycache__/
 # C extensions
 *.so
 
-# Sphinx
-docs/*
-!docs/source
+# yarn
+yarn.lock
+node_modules/
+
+# Docs
+!docs/.vuepress/dist
 
 # Distribution / packaging
 .Python
