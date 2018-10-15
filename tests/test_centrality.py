@@ -46,7 +46,7 @@ def test_graph_from_networkx():
 
     poly = geometry.Polygon([[300, 300], [900, 300], [900, 900], [300, 900]])
 
-    node_map, link_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, pre_geom=None)
+    node_map, link_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
     assert np.array_equal(node_map[0], np.array([700, 700, 1, 0]))
 
