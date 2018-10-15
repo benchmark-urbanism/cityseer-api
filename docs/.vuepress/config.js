@@ -23,7 +23,6 @@ module.exports = {
       crossorigin: 'anonymous'
     }]
   ],
-  dest: 'dist',
   serviceWorker: true,
   markdown: {
     lineNumbers: true,
