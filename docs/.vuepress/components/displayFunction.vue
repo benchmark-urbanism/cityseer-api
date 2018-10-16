@@ -1,65 +1,68 @@
 <template>
     <div>
-        <v-card class="pa-2 text-theme elevation-0">
-            <v-card-text class="theme-color-text">
+        <v-card-text class="theme-color-text body-1">
 
-                <div class="subheading theme-color-intense pt-3">
+            <div class="py-3">
+                <div class="subheading theme-color-intense light-background pa-3">
                     {{ signature }}
                 </div>
+            </div>
 
-                <div class="subheading pt-2 pb-3">{{ intro }}</div>
+            <div class="pb-2">{{ intro }}</div>
 
-                <div v-for="p in params">
-                    <v-layout class="row wrap py-1">
-                        <v-flex class="xs12 md4">
-                            <v-layout class="row wrap">
-                                <v-flex class="xs12 subheading theme-color-intense">
-                                    $\verb!{{ p.name }}!$
-                                </v-flex>
-                                <v-flex class="xs12 caption">
-                                    {{ p.type }}
-                                </v-flex>
-                            </v-layout>
-                        </v-flex>
-                        <v-flex class="xs12 md8">
-                            {{ p.desc }}
-                        </v-flex>
-                    </v-layout>
-                </div>
+            <div class="body-2 pt-4 pb-1 mb-2 border-bottom">Parameters</div>
 
-                <div class="subheading py-2">Returns</div>
+            <div v-for="p in params">
+                <v-layout class="row wrap py-1 align-center">
+                    <v-flex class="xs12 md4">
+                        <v-layout class="row wrap">
+                            <v-flex class="xs12 subheading theme-color-intense">
+                                $\verb!{{ parse(p.name) }}!$
+                            </v-flex>
+                            <v-flex class="xs12 caption">
+                                {{ p.type }}
+                            </v-flex>
+                        </v-layout>
+                    </v-flex>
+                    <v-flex class="xs12 md8 py-2">
+                        {{ p.desc }}
+                    </v-flex>
+                </v-layout>
+            </div>
 
-                <div v-for="r in returns">
-                    <v-layout class="row wrap py-1">
-                        <v-flex class="xs12 md4">
-                            <v-layout class="row wrap">
-                                <v-flex class="xs12 subheading theme-color-intense">
-                                    $\verb!{{ r.name }}!$
-                                </v-flex>
-                                <v-flex class="xs12 caption">
-                                    {{ r.type }}
-                                </v-flex>
-                            </v-layout>
-                        </v-flex>
-                        <v-flex class="xs12 md8">
-                            {{ r.desc }}
-                        </v-flex>
-                    </v-layout>
-                </div>
-            </v-card-text>
-        </v-card>
+            <div class="body-2 pt-4 pb-1 mb-2 border-bottom">Returns</div>
+
+            <div v-for="r in returns">
+                <v-layout class="row wrap py-1 align-center">
+                    <v-flex class="xs12 md4">
+                        <v-layout class="row wrap">
+                            <v-flex class="xs12 subheading theme-color-intense">
+                                $\verb!{{ r.name }}!$
+                            </v-flex>
+                            <v-flex class="xs12 caption">
+                                {{ r.type }}
+                            </v-flex>
+                        </v-layout>
+                    </v-flex>
+                    <v-flex class="xs12 md8 py-2">
+                        {{ r.desc }}
+                    </v-flex>
+                </v-layout>
+            </div>
+        </v-card-text>
     </div>
 </template>
 
-<style lang="stylus">
+<style lang="stylus" scoped>
     @import '~vuetify/src/stylus/app'
-
-
 </style>
 
 <script>
 
   import { VDivider, VLayout, VFlex, VCard, VCardText, VCardTitle } from 'vuetify/lib'
+
+  const mdItMj = require('markdown-it-mathjax')()
+  const md = require('markdown-it')().use(mdItMj)
 
   export default {
     name: 'displayFunction',
@@ -72,16 +75,14 @@
       VCardTitle
     },
     mounted () {
-      console.log(this.$page)
-      console.log(this.$site)
-      window.renderMathInElement(this.$el, {
-        delimiters: [
-          {left: '$', right: '$', display: false},
-          {left: '$$', right: '$$', display: true},
-          {left: '\\(', right: '\\)', display: false},
-          {left: '\\[', right: '\\]', display: true},
-        ]
-      })
+      // window.renderMathInElement(this.$el, {
+      //   delimiters: [
+      //     {left: '$', right: '$', display: false},
+      //     {left: '$$', right: '$$', display: true},
+      //     {left: '\\(', right: '\\)', display: false},
+      //     {left: '\\[', right: '\\]', display: true},
+      //   ]
+      // })
     },
     props: {
       func: {
@@ -94,17 +95,33 @@
         return this.func
       },
       intro () {
-        return this.$page.frontmatter.functions[this.func]['intro']
+        return this.parse(this.$page.frontmatter.functions[this.func]['intro'])
       },
       params () {
-        return this.$page.frontmatter.functions[this.func]['params']
+        let par = []
+        this.$page.frontmatter.functions[this.func]['params'].forEach(p => {
+          let d = {}
+          for (const key of Object.keys(p)) {
+            d[key] = this.parse(p[key])
+          }
+          par.push(d)
+        })
+        return par
       },
       returns () {
-        return this.$page.frontmatter.functions[this.func]['returns']
+        let ret = []
+        this.$page.frontmatter.functions[this.func]['returns'].forEach(r => {
+          let d = {}
+          for (const key of Object.keys(r)) {
+            d[key] = this.parse(r[key])
+          }
+          ret.push(d)
+        })
+        return ret
       },
       signature () {
         let par = []
-        this.params.forEach(p => {
+        this.$page.frontmatter.functions[this.func]['params'].forEach(p => {
           if (p.def) {
             par.push(p.name + '=' + p.def)
           } else {
@@ -113,9 +130,16 @@
         })
         let param_str = ''
         if (par) {
-          param_str = '\\verb!' + par.join('!\,\\ \\verb!') + '!'
+          param_str = '\\verb!' + par.join('!,$ $\\verb!') + '!'
         }
-        return '$\\verb!' + this.name + '!\\big(' + param_str + '\\big)$'
+        param_str = '$\\verb!' + this.name + '!$$\\big(' + param_str + '\\big)$'
+        return this.parse(param_str)
+      }
+    },
+    methods: {
+      parse (val) {
+        let t = md.renderInline(val)
+        return t
       }
     }
   }
