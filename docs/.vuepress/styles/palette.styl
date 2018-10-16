@@ -1,6 +1,29 @@
 // colors
-$accentColor = #d32f2f
+$primary = #0091ea
+$accent = #64c1ff
+$info = #0064b7
+$secondary = #d32f2f
+$warning = #9a0007
+$error = #ffffff
+$success = #2e7d32
+
+$accentColor = $secondary
 $textColor = #2c3e50
 $borderColor = #eaecef
 $codeBgColor = #282c34
 $arrowBgColor = #ccc
+
+$lightBackground = lighten($codeBgColor, 95%)
+
+.custom-block
+  &.tip
+    background-color $lightBackground
+    border-color $info
+  &.warning
+    background-color lighten($accentColor, 85%)
+    border-color $accentColor
+    color darken(#222, 70%)
+    .custom-block-title
+      color darken(#333, 50%)
+    a
+      color $textColor

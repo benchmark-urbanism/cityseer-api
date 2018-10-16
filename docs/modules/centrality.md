@@ -1,23 +1,23 @@
 ---
 
 functions:
-    distance_from_beta
-        intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
-        params:
-            beta:
-                type: float, list(float)
-                desc: $-\beta$ value/s to convert to distance thresholds $d_{max}$.
-            min_threshold_wt:
-                type: float
-                def: 0.01831563888873418
-                desc: $w_{min}$ threshold at which to set the distance threshold $d_{max}$.
-        returns:
-            betas:
-                type: np.ndarray,
-                desc: A numpy array of effective $d_{max}$ distances.
-            min_threshold_wt:
-                type: float
-                desc: The corresponding $w_{min}$ threshold.
+    distance_from_beta:
+      intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
+      params:
+        - name: beta
+          type: float, list[float], ndarray
+          desc: $-\beta$ value/s to convert to distance thresholds $d_{max}$
+        - name: min_threshold_wt
+          type: float
+          def: 0.01831563888873418
+          desc: $w_{min}$ threshold at which to set the distance threshold $d_{max}$
+      returns:
+        - name: betas
+          type: np.ndarray
+          desc: A numpy array of effective $d_{max}$ distances
+        - name: min_threshold_wt
+          type: float
+          desc: The corresponding $w_{min}$ threshold
 
 ---
 <renderMath></renderMath>
@@ -26,35 +26,7 @@ functions:
 
 ## distance from beta.. again
 
-<displayFunction
-    name='distance_from_beta'
-    intro='A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.'
-    :params='[
-        {
-            name: "beta",
-            type: "float, list(float)",
-            desc: "$-\\beta$ value/s to convert to distance thresholds $d_{max}$."
-        },
-        {
-            name: "min_threshold_wt",
-            type: "float",
-            def: "0.01831563888873418",
-            desc: "$w_{min}$ threshold at which to set the distance threshold $d_{max}$."
-        }
-    ]'
-    :returns='[
-        {
-            name: "betas",
-            type: "np.ndarray",
-            desc: "A numpy array of effective $d_{max}$ distances."
-        },
-        {
-            name: "min_threshold_wt",
-            type: "float",
-            desc: "The corresponding $w_{min}$ threshold."
-        }
-    ]'>
-</displayFunction>
+<displayFunction func='distance_from_beta'></displayFunction>
 
 ::: tip
 There is no need to use this function unless:

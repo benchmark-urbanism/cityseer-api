@@ -16,5 +16,7 @@ meta:
     content: hello2
   - name: keywords
     content: cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development
+theme:
+  - info
 ---
 

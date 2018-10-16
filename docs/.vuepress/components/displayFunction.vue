@@ -1,22 +1,53 @@
 <template>
     <div>
-        <v-card color="blue" class="white--text pa-2">
-            <v-card-title class="pt-5 subheading">
-                {{ signature }}
-            </v-card-title>
-            <v-card-text>
-                <div title>{{ intro }}</div>
-                <v-divider></v-divider>
-                <li v-for="p in params">
-                    {{ p.name }}
-                    {{ p.type }}
-                    {{ p.desc }}
-                </li>
-                <li v-for="r in returns">
-                    {{ r.name }}
-                    {{ r.type }}
-                    {{ r.desc }}
-                </li>
+        <v-card class="pa-2 text-theme elevation-0">
+            <v-card-text class="theme-color-text">
+
+                <div class="subheading theme-color-intense pt-3">
+                    {{ signature }}
+                </div>
+
+                <div class="body-1 pt-1 pb-3">{{ intro }}</div>
+
+                <div v-for="p in params" class="py-2">
+                    <v-layout class="row wrap">
+                        <v-flex class="xs12 md4">
+                            <v-layout class="row wrap">
+                                <v-flex class="xs12 subheading theme-color-intense">
+                                    $\verb!{{ p.name }}!$
+                                </v-flex>
+                                <v-flex class="xs12 caption">
+                                    {{ p.type }}
+                                </v-flex>
+                                <v-flex v-if="p.def" class="xs12 caption">
+                                    ={{ p.def }}
+                                </v-flex>
+                            </v-layout>
+                        </v-flex>
+                        <v-flex class="xs12 md8">
+                            {{ p.desc }}
+                        </v-flex>
+                    </v-layout>
+                </div>
+
+                <div class="subheading py-3">Returns</div>
+                <div v-for="r in returns">
+                    <v-layout class="row wrap">
+                        <v-flex class="xs12 md4">
+                            <v-layout class="row wrap">
+                                <v-flex class="xs12 subheading theme-color-intense">
+                                    $\verb!{{ r.name }}!$
+                                </v-flex>
+                                <v-flex class="xs12 caption">
+                                    {{ r.type }}
+                                </v-flex>
+                            </v-layout>
+                        </v-flex>
+                        <v-flex class="xs12 md8">
+                            {{ r.desc }}
+                        </v-flex>
+                    </v-layout>
+                </div>
             </v-card-text>
         </v-card>
     </div>
@@ -24,6 +55,8 @@
 
 <style lang="stylus">
     @import '~vuetify/src/stylus/app'
+
+
 </style>
 
 <script>
@@ -41,6 +74,8 @@
       VCardTitle
     },
     mounted () {
+      console.log(this.$page)
+      console.log(this.$site)
       window.renderMathInElement(this.$el, {
         delimiters: [
           {left: '$', right: '$', display: false},
@@ -54,24 +89,21 @@
       func: {
         type: String,
         required: true
-      },
-      intro: {
-        type: String,
-        required: false,
-        default: ''
-      },
-      params: {
-        type: Array,
-        required: false,
-        default: []
-      },
-      returns: {
-        type: Array,
-        required: false,
-        default: []
       }
     },
     computed: {
+      name () {
+        return this.func
+      },
+      intro () {
+        return this.$page.frontmatter.functions[this.func]['intro']
+      },
+      params () {
+        return this.$page.frontmatter.functions[this.func]['params']
+      },
+      returns () {
+        return this.$page.frontmatter.functions[this.func]['returns']
+      },
       signature () {
         let par = []
         this.params.forEach(p => {
