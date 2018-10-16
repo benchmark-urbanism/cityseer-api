@@ -1,5 +1,24 @@
 ---
 
+functions:
+    distance_from_beta
+        intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
+        params:
+            beta:
+                type: float, list(float)
+                desc: $-\beta$ value/s to convert to distance thresholds $d_{max}$.
+            min_threshold_wt:
+                type: float
+                def: 0.01831563888873418
+                desc: $w_{min}$ threshold at which to set the distance threshold $d_{max}$.
+        returns:
+            betas:
+                type: np.ndarray,
+                desc: A numpy array of effective $d_{max}$ distances.
+            min_threshold_wt:
+                type: float
+                desc: The corresponding $w_{min}$ threshold.
+
 ---
 <renderMath></renderMath>
 
@@ -7,28 +26,35 @@
 
 ## distance from beta.. again
 
-This is a convenience function for mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
-
-<displayFunction>
-    <template slot='function'>
-        distance_from_beta(beta, min_threshold_wt=0.01831563888873418)
-    </template>
+<displayFunction
+    name='distance_from_beta'
+    intro='A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.'
+    :params='[
+        {
+            name: "beta",
+            type: "float, list(float)",
+            desc: "$-\\beta$ value/s to convert to distance thresholds $d_{max}$."
+        },
+        {
+            name: "min_threshold_wt",
+            type: "float",
+            def: "0.01831563888873418",
+            desc: "$w_{min}$ threshold at which to set the distance threshold $d_{max}$."
+        }
+    ]'
+    :returns='[
+        {
+            name: "betas",
+            type: "np.ndarray",
+            desc: "A numpy array of effective $d_{max}$ distances."
+        },
+        {
+            name: "min_threshold_wt",
+            type: "float",
+            desc: "The corresponding $w_{min}$ threshold."
+        }
+    ]'>
 </displayFunction>
-
-##### params
-___
-
-**beta** (`float`, `list[float]`): The $-\beta$ that you wish to convert to distance thresholds.
-
-**min_threshold_wt** (`float`): The $w_{min}$ threshold..
-
-##### returns
-___
-
-**betas** (`np.ndarray`): A numpy array of effective $d_{max}$ distances.
-
-**min_threshold_wt** (`float`): The corresponding $w_{min}$ threshold.
-
 
 ::: tip
 There is no need to use this function unless:
