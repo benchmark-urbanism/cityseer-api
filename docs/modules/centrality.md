@@ -24,7 +24,7 @@ functions:
 
 # centrality
 
-## distance from beta.. again
+## distance\_from\_beta
 
 <displayFunction func='distance_from_beta'></displayFunction>
 

@@ -7,10 +7,10 @@
                     {{ signature }}
                 </div>
 
-                <div class="body-1 pt-1 pb-3">{{ intro }}</div>
+                <div class="subheading pt-2 pb-3">{{ intro }}</div>
 
-                <div v-for="p in params" class="py-2">
-                    <v-layout class="row wrap">
+                <div v-for="p in params">
+                    <v-layout class="row wrap py-1">
                         <v-flex class="xs12 md4">
                             <v-layout class="row wrap">
                                 <v-flex class="xs12 subheading theme-color-intense">
@@ -18,9 +18,6 @@
                                 </v-flex>
                                 <v-flex class="xs12 caption">
                                     {{ p.type }}
-                                </v-flex>
-                                <v-flex v-if="p.def" class="xs12 caption">
-                                    ={{ p.def }}
                                 </v-flex>
                             </v-layout>
                         </v-flex>
@@ -30,9 +27,10 @@
                     </v-layout>
                 </div>
 
-                <div class="subheading py-3">Returns</div>
+                <div class="subheading py-2">Returns</div>
+
                 <div v-for="r in returns">
-                    <v-layout class="row wrap">
+                    <v-layout class="row wrap py-1">
                         <v-flex class="xs12 md4">
                             <v-layout class="row wrap">
                                 <v-flex class="xs12 subheading theme-color-intense">
@@ -107,7 +105,11 @@
       signature () {
         let par = []
         this.params.forEach(p => {
-          par.push(p.name)
+          if (p.def) {
+            par.push(p.name + '=' + p.def)
+          } else {
+            par.push(p.name)
+          }
         })
         let param_str = ''
         if (par) {
