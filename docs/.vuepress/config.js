@@ -1,3 +1,5 @@
+const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
+
 module.exports = {
   base: '/cityseer-api/',
   title: 'Cityseer API Docs',
@@ -58,7 +60,13 @@ module.exports = {
       updatePopup: true
     }
   },
-  evergreen: true
+  evergreen: true,
+  configureWebpack: (config, isServer) => {
+    if (!isServer) {
+      // mutate the config for client
+      config.plugins.push(new VuetifyLoaderPlugin())
+    }
+  }
 }
 
 /*
