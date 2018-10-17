@@ -1,8 +1,4 @@
 '''
-.. module:: centrality
-   :synopsis: Cityseer centrality methods
-
-.. moduleauthor:: Gareth Simons
 
 '''
 
@@ -47,111 +43,114 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         raise ValueError('This method requires an undirected networkx graph')
 
     # copy the graph to avoid modifying the original
-    G = network_x_graph.copy()
+    g_copy = network_x_graph.copy()
 
     # decided to not discard disconnected components to avoid unintended consequences
 
     # if the coords are WGS84, then convert to local UTM
     if wgs84_coords:
-        for n, d in G.nodes(data=True):
+        for n, d in g_copy.nodes(data=True):
             # convert coords - flip from lat, lon order back to x, y order
             x, y = utm.from_latlon(d['y'], d['x'])[:2][::-1]
-            G.node[n]['x'] = x
-            G.node[n]['y'] = y
+            g_copy.node[n]['x'] = x
+            g_copy.node[n]['y'] = y
 
-    if decompose:
-        for s, e, d in G.edges(data=True):
-            # get start coords
-            s_x = G.node[s]['x']
-            s_y = G.node[s]['y']
-            # get end coords
-            e_x = G.node[e]['x']
-            e_y = G.node[e]['y']
-            # generate the geometry
-            g = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-            # write length to edge if it doesn't exist
-            if 'length' not in d:
-                G[s][e]['length'] = g.length
-            # if both
-            # see how many segments are necessary so as not to exceed decomposition max distance
-            # note that a length less than the decompose threshold will result in a single 'sub'-string
-            l = G[s][e]['length']
-            n = np.ceil(l / decompose)
-            # create the sub-links
-            d_step = 0
-            prior_node_id = s
-            sub_node_counter = 0
-            # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
-            for i in range(int(n) - 1):
-                # create the new node ID
-                new_node_id = f'{s}_{sub_node_counter}_{e}'
-                sub_node_counter += 1
-                # create the split linestring geom for measuring the new length
-                s_g = ops.substring(g, d_step, d_step + l / n)
-                # get the x, y of the new end node
-                x = s_g.coords.xy[0][-1]
-                y = s_g.coords.xy[1][-1]
-                # add the new node and edge
-                G.add_node(new_node_id, x=x, y=y)
-                G.add_edge(prior_node_id, new_node_id, length=s_g.length)
-                # increment the step and node id
-                prior_node_id = new_node_id
-                d_step += l / n
-            # set the last link manually to avoid rounding errors at end of linestring
-            s_g = ops.substring(g, d_step, l)
-            # nodes already exist, so just add link
-            G.add_edge(prior_node_id, e, length=s_g.length)
+    # process the vertices and generate the lengths if not present
+    # note -> write to a duplicated graph to avoid in-place errors
+    g_dup = g_copy.copy()
+    for s, e, d in g_copy.edges(data=True):
+        # continue if a length attribute already exists and no decomposition is required
+        if 'length' in d and not decompose:
+            continue
+        # get start coords
+        s_x = g_copy.node[s]['x']
+        s_y = g_copy.node[s]['y']
+        # get end coords
+        e_x = g_copy.node[e]['x']
+        e_y = g_copy.node[e]['y']
+        # generate the geometry
+        ls = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        # write length to g_dup edge
+        if 'length' not in d:
+            g_dup[s][e]['length'] = ls.length
+        else:
+            g_dup[s][e]['length'] = g_copy[s][e]['length']
+        # continue if not decomposing
+        if not decompose:
+            continue
+        # first remove the prior edge
+        l = g_dup[s][e]['length']
+        g_dup.remove_edge(s, e)
+        # then add the new edge/s
+        # see how many segments are necessary so as not to exceed decomposition max distance
+        # note that a length less than the decompose threshold will result in a single 'sub'-string
+        n = np.ceil(l / decompose)
+        # create the sub-links
+        d_step = 0
+        prior_node_id = s
+        sub_node_counter = 0
+        # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
+        # note, using actual length attribute / n for new length, as provided lengths may not match crow-flies distance
+        for i in range(int(n) - 1):
+            # create the new node ID
+            new_node_id = f'{s}_{sub_node_counter}_{e}'
+            sub_node_counter += 1
+            # create the split linestring geom for measuring the new length
+            s_g = ops.substring(ls, d_step, d_step + l/n)
+            # get the x, y of the new end node
+            x = s_g.coords.xy[0][-1]
+            y = s_g.coords.xy[1][-1]
+            # add the new node and edge
+            g_dup.add_node(new_node_id, x=x, y=y)
+            g_dup.add_edge(prior_node_id, new_node_id, length=l/n)
+            # increment the step and node id
+            prior_node_id = new_node_id
+            d_step += l / n
+        # set the last link manually to avoid rounding errors at end of linestring
+        # the nodes already exist, so just add link
+        g_dup.add_edge(prior_node_id, e, length=l/n)
 
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
-    G = nx.convert_node_labels_to_integers(G, 0)
-
-    # set lengths if missing, as may be case if decomposition is not triggered
-    if not decompose:
-        for s, e, d in G.edges(data=True):
-            if 'length' not in d:
-                # get start coords
-                s_x = G.node[s]['x']
-                s_y = G.node[s]['y']
-                # get end coords
-                e_x = G.node[e]['x']
-                e_y = G.node[e]['y']
-                # set length
-                G[s][e]['length'] = geometry.Point(s_x, s_y).distance(geometry.Point(e_x, e_y))
+    g_dup = nx.convert_node_labels_to_integers(g_dup, 0)
 
     # set the live nodes and sum degrees
     total_out_degrees = 0
-    for n, d in G.nodes(data=True):
-        total_out_degrees += nx.degree(G, n)
+    for n, d in g_dup.nodes(data=True):
+        total_out_degrees += nx.degree(g_dup, n)
         live = True
         if geom and not geom.contains(geometry.Point(d['x'], d['y'])):
             live = False
-        G.node[n]['live'] = live
+        g_dup.node[n]['live'] = live
 
     # prepare the node and link maps
-    n = G.number_of_nodes()
+    n = g_dup.number_of_nodes()
     node_map = np.full((n, 4), np.nan)
     edge_map = np.full((total_out_degrees, 3), np.nan)
-    link_idx = 0
+    edge_idx = 0
     # populate the nodes
-    for n, d in G.nodes(data=True):
+    for n, d in g_dup.nodes(data=True):
         idx = int(n)
         node_map[idx][0] = d['x']
         node_map[idx][1] = d['y']
         node_map[idx][2] = d['live']
-        node_map[idx][3] = link_idx
-        # follow all out links and add
+        node_map[idx][3] = edge_idx
+        # follow all out links and add these to the edge_map
         # this happens for both directions
-        for nb in G.neighbors(n):
+        for nb in g_dup.neighbors(n):
             # start node
-            edge_map[link_idx][0] = idx
+            edge_map[edge_idx][0] = idx
             # end node
-            edge_map[link_idx][1] = int(nb)
+            edge_map[edge_idx][1] = int(nb)
             # length
-            edge_map[link_idx][2] = G[idx][nb]['length']
+            edge_map[edge_idx][2] = g_dup[idx][nb]['length']
             # increment the link_idx
-            link_idx += 1
+            edge_idx += 1
+
+    assert len(node_map) == g_dup.number_of_nodes()
+    assert len(edge_map) == g_dup.number_of_edges() * 2
 
     return node_map, edge_map
+
 
 """
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):

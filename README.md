@@ -1,4 +1,8 @@
 # cityseer-api
 Computational tools for urban analysis
 
-[Docs](https://cityseer.github.io/cityseer-api)
+[![Build Status](https://travis-ci.com/cityseer/cityseer-api.svg?branch=master)](https://travis-ci.com/cityseer/cityseer-api)
+
+
+[Documentation](https://cityseer.github.io/cityseer-api)
+
