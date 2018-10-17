@@ -2,6 +2,8 @@ language: python
 sudo: required  # workaround prior to official 3.7 support
 dist: xenial  # workaround prior to official 3.7 support
 python: '3.7'
+node_js:
+  - "lts/*"
 
 install:
 - pip install -r requirements.txt
