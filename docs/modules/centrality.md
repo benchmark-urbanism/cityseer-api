@@ -6,7 +6,6 @@
 centrality <Chip text="beta" :important="true"/>
 ==========
 
-
 distance\_from\_beta() <Chip text='v0.1+'/>
 ----------------------
 
