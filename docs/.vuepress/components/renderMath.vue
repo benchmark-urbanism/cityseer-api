@@ -4,9 +4,14 @@
 
 <script>
   export default {
-    name: 'renderMath',
+    name: 'RenderMath',
     mounted () {
-      window.renderMathInElement(document.body)
+      window.renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true}, // has to be first!!
+          {left: "$", right: "$", display:false}
+        ]
+      })
     }
   }
 </script>
