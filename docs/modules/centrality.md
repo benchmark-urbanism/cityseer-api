@@ -1,6 +1,7 @@
 ---
 functions:
     distance_from_beta:
+      name: distance_from_beta
       intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
       params:
         - name: beta
@@ -18,6 +19,7 @@ functions:
           type: float
           desc: The corresponding $w_{min}$ threshold.
     graph_from_networkx:
+      name: graph_from_networkx
       intro: A convenience function for generating a `node_map` and `edge_map` from a [NetworkX](https://networkx.github.io/documentation/networkx-1.10/index.html) undirected Graph, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
       params:
         - name: network_x_graph
@@ -53,7 +55,7 @@ centrality
 distance\_from\_beta() <Chip text="beta" :important="true"/><Chip text="0.1.12+"/>
 ----------------------
 
-<DisplayFunction func='distance_from_beta'></DisplayFunction>
+<DisplayFunction :func='$page.frontmatter.functions["distance_from_beta"]'></DisplayFunction>
 
 ::: tip Note
 There is no need to use this function unless:
@@ -97,7 +99,7 @@ In reality, people may be more or less willing to walk based on the specific pur
 graph\_from\_networkx()
 -----------------------
 
-<DisplayFunction func='graph_from_networkx'></DisplayFunction>
+<DisplayFunction :func='$page.frontmatter.functions["graph_from_networkx"]'></DisplayFunction>
 
 The node attributes `x` and `y` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the `wgs84_coords` parameter is set to `True`.
 

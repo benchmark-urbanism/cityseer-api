@@ -1,7 +1,7 @@
 <template>
     <div>
         <v-card-text class="theme-color-text body-1">
-            <div class="pt-5">
+            <div class="pt-4">
 
                 <div class="subheading theme-color-intense light-background pa-4">
                     {{ signature }}
@@ -12,7 +12,7 @@
                 </div>
             </div>
 
-            <div class="body-2 pt-4 pb-1 mb-2 border-bottom">Parameters</div>
+            <div class="body-2 pt-3 pb-1 mb-2 border-bottom">Parameters</div>
 
             <div v-for="p in params" class="py-2">
                 <v-layout class="row wrap align-center">
@@ -32,7 +32,7 @@
                 </v-layout>
             </div>
 
-            <div class="body-2 pt-4 pb-1 mb-2 border-bottom">Returns</div>
+            <div class="body-2 pt-3 pb-1 mb-2 border-bottom">Returns</div>
 
             <div v-for="r in returns" class="py-2">
                 <v-layout class="row wrap align-center">
@@ -81,22 +81,22 @@
     },
     props: {
       func: {
-        type: String,
+        type: Object,
         required: true
       }
     },
     computed: {
       name () {
-        return this.func
+        return this.func['name']
       },
       intro () {
-        return this.$page.frontmatter.functions[this.func]['intro']
+        return this.func['intro']
       },
       params () {
-        return this.$page.frontmatter.functions[this.func]['params']
+        return this.func['params']
       },
       returns () {
-        return this.$page.frontmatter.functions[this.func]['returns']
+        return this.func['returns']
       },
       signature () {
         let par = []

@@ -5,7 +5,8 @@ const md = require('markdown-it')({
 })
 
 function rend (val) {
-  return md.renderInline(val.toString())
+  return val
+  // return md.renderInline(val.toString())
 }
 
 module.exports = {
