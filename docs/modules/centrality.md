@@ -13,7 +13,7 @@ functions:
           desc: $w_{min}$ threshold at which to set the distance threshold $d_{max}$.
       returns:
         - name: betas
-          type: np.ndarray
+          type: numpy.ndarray
           desc: A numpy array of effective $d_{max}$ distances.
         - name: min_threshold_wt
           type: float
@@ -23,7 +23,7 @@ functions:
       intro: A convenience function for generating a `node_map` and `edge_map` from a [NetworkX](https://networkx.github.io/documentation/networkx-1.10/index.html) undirected Graph, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
       params:
         - name: network_x_graph
-          type: nx.Graph
+          type: networkx.Graph
           desc: A NetworkX undirected `Graph`. Requires node attributes `x` and `y` for spatial coordinates and accepts optional `length` and `weight` edge attributes. See notes.
         - name: wgs84_coords
           type: bool
@@ -33,15 +33,15 @@ functions:
           def: None
           desc: Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres.
         - name: geom
-          type: geometry.Polygon
+          type: shapely.geometry.Polygon
           def: None
           desc: Shapely geometry defining the original area of interest. Recommended for avoidance of boundary roll-off in computed metrics.
       returns:
         - name: node_map
-          type: ndarray
+          type: numpy.ndarray
           desc: Node data
         - name: edge_map
-          type: ndarray
+          type: numpy.ndarray
           desc: Edge data
 ---
 
@@ -108,7 +108,7 @@ The optional edge attribute `length` indicates the original edge length in metre
 If provided, the optional edge attribute `weight` will be used by shortest path algorithms instead of distances in metres.
 
 ::: tip Note
-When calculating local network centralities, it is best-practise for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the `geom` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. (The algorithms still have access to the full buffered network.)
+When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the `geom` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. (The algorithms still have access to the full buffered network.)
 :::
 
 ::: warning Important
