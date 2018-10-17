@@ -1,8 +1,12 @@
 <template>
-    <v-chip small :outline="!important" :color="color" :text-color="tColor" class="pa-0 ma-0">
+    <v-chip small outline :color="color" :text-color="tColor" class="ma-1">
         {{ text }}
     </v-chip>
 </template>
+
+<style lang="stylus" scoped>
+    @import '~vuetify/src/stylus/app'
+</style>
 
 <script>
   import { VChip } from 'vuetify/lib'
@@ -29,7 +33,7 @@
         return this.important ? '#d32f2f' : '#0064b7'
       },
       tColor () {
-        return this.important ? '#fff' : '#0064b7'
+        return this.important ? '#d32f2f' : '#0064b7'
       }
     }
   }
