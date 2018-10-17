@@ -25,16 +25,14 @@ module.exports = {
       crossorigin: 'anonymous'
     }]
   ],
+  plugins: [
+    require('./plugins/frontMatterFunctionMarkdown.js')
+  ],
   serviceWorker: true,
   markdown: {
     lineNumbers: true,
     anchor: true,
-    // https://github.com/cben/mathdown/wiki/math-in-markdown
-    extendMarkdown: md => {
-      // mathjax simply converts delimeters to latex compatible form
-      // using auto-render katex function from own component to load math in pages
-      md.use(require('markdown-it-mathjax')())
-    }
+    extendMarkdown: md => {}
   },
   themeConfig: {
     displayAllHeaders: true,
@@ -70,6 +68,13 @@ module.exports = {
 }
 
 /*
+// using auto-render katex function from own component to load math in pages
+// created plugin for parsing front matter data for functions
+
+// https://github.com/cben/mathdown/wiki/math-in-markdown
+// mathjax simply converts delimeters to latex compatible form
+// md.use(require('markdown-it-mathjax')())
+
 markdown-it-mathjax - simply parses delimeters and converts to latex standard - can then run katex in browser?
 markdown-it-math - texzilla renders to mathML - doesn't work with chrome
   - with katex it renders everything doubly - MUST INCLUDE CSS LINK!!!

@@ -43,16 +43,17 @@ functions:
           desc: Edge data
 ---
 
-<renderMath></renderMath>
+<RenderMath></RenderMath>
+
 
 centrality
 ==========
 
 
-distance\_from\_beta()
+distance\_from\_beta() <Chip text="beta" :important="true"/><Chip text="0.1.12+"/>
 ----------------------
 
-<displayFunction func='distance_from_beta'></displayFunction>
+<DisplayFunction func='distance_from_beta'></DisplayFunction>
 
 ::: tip Note
 There is no need to use this function unless:
@@ -62,23 +63,19 @@ There is no need to use this function unless:
 :::
 
 ::: warning Important
-Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality-a) for the desired behaviour.
+Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality) for the desired behaviour.
 :::
 
 The weighted variants of centrality, i.e. gravity and weighted betweenness, are computed using a negative exponential decay function of the form:
 
-$$
-weight = exp(-\beta \cdot distance)
-$$
+$$weight = exp(-\beta \cdot distance)$$
 
 The strength of the decay is controlled by the $-\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
 For example, if $-\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. At some point, it becomes futile to consider locations any farther away, so it is necessary to set a a minimum weight threshold $w_{min}$ corresponding to a maximum distance of $d_{max}$.
 
 The [`centrality.compute_centrality`](#compute-centrality) method computes the $-\beta$ parameters automatically using the following formula, and a default `min_threshold_wt` of $w_{min}=0.01831563888873418$:
 
-$$
-\beta = \frac{log\Big(1 / w_{min}\Big)}{d_{max}}
-$$
+$$\beta = \frac{log\Big(1 / w_{min}\Big)}{d_{max}}$$
 
 Therefore, $-\beta$ weights corresponding to $d_{max}$ walking thresholds of 400m, 800m, and 1600m would yield:
 
@@ -100,7 +97,7 @@ In reality, people may be more or less willing to walk based on the specific pur
 graph\_from\_networkx()
 -----------------------
 
-<displayFunction func='graph_from_networkx'></displayFunction>
+<DisplayFunction func='graph_from_networkx'></DisplayFunction>
 
 The node attributes `x` and `y` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the `wgs84_coords` parameter is set to `True`.
 

@@ -3,4 +3,4 @@ Modules
 
 [[toc]]
 
-<renderMath></renderMath>
+<RenderMath></RenderMath>
