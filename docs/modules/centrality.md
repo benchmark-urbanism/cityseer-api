@@ -48,11 +48,11 @@ functions:
 <RenderMath></RenderMath>
 
 
-centrality
+centrality <Chip text="beta" :important="true"/>
 ==========
 
 
-distance\_from\_beta() <Chip text="beta" :important="true"/><Chip text="0.1.12+"/>
+distance\_from\_beta() <Chip text="0.1.12+"/>
 ----------------------
 
 <DisplayFunction :func='$page.frontmatter.functions["distance_from_beta"]'></DisplayFunction>

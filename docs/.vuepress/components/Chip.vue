@@ -1,5 +1,5 @@
 <template>
-    <v-chip small outline :color="color" :text-color="tColor" class="ma-1">
+    <v-chip small label :color="color" text-color="white" class="ma-1">
         {{ text }}
     </v-chip>
 </template>
@@ -30,9 +30,6 @@
     },
     computed: {
       color () {
-        return this.important ? '#d32f2f' : '#0064b7'
-      },
-      tColor () {
         return this.important ? '#d32f2f' : '#0064b7'
       }
     }

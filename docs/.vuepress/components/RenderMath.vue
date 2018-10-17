@@ -5,7 +5,7 @@
 <script>
   export default {
     name: 'RenderMath',
-    beforeMount () {
+    mounted () {
       window.renderMathInElement(document.body, {
         delimiters: [
           {left: "$$", right: "$$", display: true}, // has to be first!!

@@ -25,9 +25,6 @@ module.exports = {
       crossorigin: 'anonymous'
     }]
   ],
-  plugins: [
-    require('./plugins/frontMatterFunctionMarkdown.js')
-  ],
   serviceWorker: true,
   markdown: {
     lineNumbers: true,
