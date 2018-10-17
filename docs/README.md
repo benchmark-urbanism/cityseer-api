@@ -1,4 +1,6 @@
 ---
+# https://www.markdownguide.org/extended-syntax/#tables
+
 home: true
 heroImage: /slice7.png
 actionText: Get Started →
@@ -17,4 +19,3 @@ meta:
   - name: keywords
     content: cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development
 ---
-

@@ -2,5 +2,3 @@ Modules
 =======
 
 [[toc]]
-
-<RenderMath></RenderMath>
