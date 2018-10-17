@@ -2,7 +2,7 @@
 functions:
     distance_from_beta:
       name: distance_from_beta
-      version: 0.1+
+      version: v0.1+
       intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
       params:
         - name: beta
@@ -21,7 +21,7 @@ functions:
           desc: The corresponding $w_{min}$ threshold.
     graph_from_networkx:
       name: graph_from_networkx
-      version: 0.1+
+      version: v0.1+
       intro: A convenience function for generating a `node_map` and `edge_map` from a [NetworkX](https://networkx.github.io/documentation/networkx-1.10/index.html) undirected Graph, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
       params:
         - name: network_x_graph

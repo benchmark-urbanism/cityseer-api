@@ -61,24 +61,23 @@
 
 <script>
   // use absolute paths -> see bug https://github.com/vuejs/vuepress/issues/451
-  import { VDivider, VLayout, VFlex, VCard, VCardText, VCardTitle } from '../../../node_modules/vuetify/lib'
+  import { VLayout, VFlex, VCardText } from '../../../node_modules/vuetify/lib'
 
   export default {
     name: 'DisplayFunction',
     components: {
-      VDivider,
       VLayout,
       VFlex,
-      VCard,
       VCardText,
-      VCardTitle
     },
-    mounted () {
-      window.renderMathInElement(this.$el, {
-        delimiters: [
-          {left: "$", right: "$", display:false}
-        ]
-      })
+    data () {
+      return {
+        name: null,
+        intro: null,
+        params: null,
+        returns: null,
+        signature: null
+      }
     },
     props: {
       func: {
@@ -86,34 +85,33 @@
         required: true
       }
     },
-    computed: {
-      name () {
-        return this.func['name']
-      },
-      intro () {
-        return this.func['intro']
-      },
-      params () {
-        return this.func['params']
-      },
-      returns () {
-        return this.func['returns']
-      },
-      signature () {
-        let par = []
-        this.params.forEach(p => {
-          if (p.def) {
-            par.push(p.name + '=' + p.def)
-          } else {
-            par.push(p.name)
-          }
-        })
-        let param_str = ''
-        if (par) {
-          param_str = '\\verb!' + par.join('!,$ $\\verb!') + '!'
+    // using frontMatterFunctionMarkdown to pre-process markdown instead of rendering on load
+    // not using computed properties because these variables have to be stable for maths rendering
+    beforeMount () {
+      this.name = this.func['name']
+      this.intro = this.func['intro']
+      this.params = this.func['params']
+      this.returns = this.func['returns']
+      let par = []
+      this.params.forEach(p => {
+        if (p.def) {
+          par.push(p.name + '=' + p.def)
+        } else {
+          par.push(p.name)
         }
-        return '$\\verb!' + this.name + '!$$\\big(' + param_str + '\\big)$'
+      })
+      let param_str = ''
+      if (par) {
+        param_str = '\\verb!' + par.join('!,$ $\\verb!') + '!'
       }
+      this.signature = '$\\verb!' + this.name + '!$$\\big(' + param_str + '\\big)$'
+    },
+    mounted () {
+      window.renderMathInElement(this.$el, {
+        delimiters: [
+          {left: '$', right: '$', display: false}
+        ]
+      })
     }
   }
 </script>
