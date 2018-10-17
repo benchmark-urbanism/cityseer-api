@@ -10,7 +10,8 @@ __pycache__/
 *.so
 
 # yarn
-yarn.lock
+yarn-debug.log*
+yarn-error.log*
 node_modules/
 
 # Docs
@@ -73,5 +74,3 @@ ENV/
 env.bak/
 venv.bak/
 
-# mkdocs documentation
-/site
