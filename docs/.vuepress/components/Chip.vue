@@ -9,7 +9,8 @@
 </style>
 
 <script>
-  import { VChip } from 'vuetify/lib'
+  // use absolute paths -> see bug https://github.com/vuejs/vuepress/issues/451
+  import { VChip } from '../../../node_modules/vuetify/lib'
 
   export default {
     name: 'Chip',

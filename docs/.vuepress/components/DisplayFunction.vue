@@ -60,7 +60,8 @@
 </style>
 
 <script>
-  import { VDivider, VLayout, VFlex, VCard, VCardText, VCardTitle } from 'vuetify/lib'
+  // use absolute paths -> see bug https://github.com/vuejs/vuepress/issues/451
+  import { VDivider, VLayout, VFlex, VCard, VCardText, VCardTitle } from '../../../node_modules/vuetify/lib'
 
   export default {
     name: 'DisplayFunction',
