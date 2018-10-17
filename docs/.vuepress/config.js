@@ -26,7 +26,7 @@ module.exports = {
     }]
   ],
   plugins: [
-    require('./plugins/frontMatterFunctionMarkdown.js')
+    // require('./plugins/MathParser.js')
   ],
   serviceWorker: true,
   markdown: {

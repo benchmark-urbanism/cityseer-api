@@ -1,63 +1,42 @@
 ---
-functions:
-    distance_from_beta:
-      name: distance_from_beta
-      version: v0.1+
-      intro: A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
-      params:
-        - name: beta
-          type: float, list[float], ndarray
-          desc: $-\beta$ value/s to convert to distance thresholds $d_{max}$.
-        - name: min_threshold_wt
-          type: float
-          def: 0.01831563888873418
-          desc: $w_{min}$ threshold at which to set the distance threshold $d_{max}$.
-      returns:
-        - name: betas
-          type: numpy.ndarray
-          desc: A numpy array of effective $d_{max}$ distances.
-        - name: min_threshold_wt
-          type: float
-          desc: The corresponding $w_{min}$ threshold.
-    graph_from_networkx:
-      name: graph_from_networkx
-      version: v0.1+
-      intro: A convenience function for generating a `node_map` and `edge_map` from a [NetworkX](https://networkx.github.io/documentation/networkx-1.10/index.html) undirected Graph, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
-      params:
-        - name: network_x_graph
-          type: networkx.Graph
-          desc: A NetworkX undirected `Graph`. Requires node attributes `x` and `y` for spatial coordinates and accepts optional `length` and `weight` edge attributes. See notes.
-        - name: wgs84_coords
-          type: bool
-          desc: Set to `True` if the `x` and `y` node attribute keys reference [`WGS84`](https://epsg.io/4326) lng, lat values instead of a projected coordinate system.
-        - name: decompose
-          type: int, float
-          def: None
-          desc: Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres.
-        - name: geom
-          type: shapely.geometry.Polygon
-          def: None
-          desc: Shapely geometry defining the original area of interest. Recommended for avoidance of boundary roll-off in computed metrics.
-      returns:
-        - name: node_map
-          type: numpy.ndarray
-          desc: Node data
-        - name: edge_map
-          type: numpy.ndarray
-          desc: Edge data
 ---
 
 <RenderMath></RenderMath>
-
 
 centrality <Chip text="beta" :important="true"/>
 ==========
 
 
-distance\_from\_beta() <Chip :text='$page.frontmatter.functions.distance_from_beta.version'/>
+distance\_from\_beta() <Chip text='v0.1+'/>
 ----------------------
 
-<DisplayFunction :func='$page.frontmatter.functions.distance_from_beta'></DisplayFunction>
+<FuncSignature>distance_from_beta(beta, min_threshold_wt=0.01831563888873418)</FuncSignature>
+
+A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
+
+<FuncHeading>Parameters</FuncHeading>
+<FuncElement name="beta" type="float, list[float], numpy.ndarray">
+
+$-\beta$ value/s to convert to distance thresholds $d_{max}$.
+
+</FuncElement>
+<FuncElement name="min_threshold_wt" type="float">
+
+$w_{min}$ threshold at which to set the distance threshold $d_{max}$.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="betas" type="numpy.ndarray">
+
+A numpy array of effective $d_{max}$ distances.
+
+</FuncElement>
+<FuncElement name="min_threshold_wt" type="float">
+
+The corresponding $w_{min}$ threshold.
+
+</FuncElement>
 
 ::: tip Note
 There is no need to use this function unless:
@@ -98,10 +77,45 @@ In reality, people may be more or less willing to walk based on the specific pur
 | $-0.0025$ | $0.01$ | $1842m$ |
 
 
-graph\_from\_networkx() <Chip :text='$page.frontmatter.functions.distance_from_beta.version'/>
+graph\_from\_networkx() <Chip text='v0.1+'/>
 -----------------------
 
-<DisplayFunction :func='$page.frontmatter.functions.graph_from_networkx'></DisplayFunction>
+<FuncSignature>graph_from_networkx(network_x_graph, wgs84_coords=False, decompose=False, geom=None)</FuncSignature>
+
+A convenience function mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds.
+
+<FuncHeading>Parameters</FuncHeading>
+<FuncElement name="network_x_graph" type="networkx.Graph">
+
+A NetworkX undirected `Graph`. Requires node attributes `x` and `y` for spatial coordinates and accepts optional `length` and `weight` edge attributes. See notes.
+
+</FuncElement>
+<FuncElement name="wgs84_coords" type="bool">
+
+Set to `True` if the `x` and `y` node attribute keys reference [`WGS84`](https://epsg.io/4326) lng, lat values instead of a projected coordinate system.
+
+</FuncElement>
+<FuncElement name="decompose" type="int, float">
+
+Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres.
+
+</FuncElement>
+<FuncElement name="geom" type="shapely.geometry.Polygon">
+
+Shapely geometry defining the original area of interest. Recommended for avoidance of boundary roll-off in computed metrics.
+
+</FuncElement>
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="node_map" type="numpy.ndarray">
+
+Node data.
+
+</FuncElement>
+<FuncElement name="edge_map" type="numpy.ndarray">
+
+Edge data.
+
+</FuncElement>
 
 The node attributes `x` and `y` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the `wgs84_coords` parameter is set to `True`.
 
