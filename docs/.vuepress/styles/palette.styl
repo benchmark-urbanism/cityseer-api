@@ -1,4 +1,5 @@
-// colors
+// variables only in palette.styl per Vuepress docs
+
 $primary = #0091ea
 $accent = #64c1ff
 $info = #0064b7
@@ -18,16 +19,3 @@ $sidebarWidth = 16rem
 $contentWidth = 740px
 
 $lightBackground = lighten($codeBgColor, 95%)
-
-.custom-block
-  &.tip
-    background-color $lightBackground
-    border-color $info
-  &.warning
-    background-color lighten($accentColor, 85%)
-    border-color $accentColor
-    color $textColor
-    .custom-block-title
-      color $textColor
-    a
-      color $accentColor

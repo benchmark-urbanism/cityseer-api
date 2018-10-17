@@ -1,6 +1,23 @@
 .content
   font-size 14px
 
+  a
+    code
+      color $secondary
+
+  .custom-block
+    &.tip
+      background-color $lightBackground
+      border-color $info
+    &.warning
+      background-color lighten($accentColor, 85%)
+      border-color $accentColor
+      color $textColor
+      .custom-block-title
+        color $textColor
+      a
+        color $accentColor
+
 .theme-color-intense
   color $secondary
 
