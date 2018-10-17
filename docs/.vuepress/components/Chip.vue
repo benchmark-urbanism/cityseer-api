@@ -1,22 +1,30 @@
 <template>
-    <v-chip small label :color="color" text-color="white" class="ma-1">
+    <div class="chip-style" :class=" { important: important }">
         {{ text }}
-    </v-chip>
+    </div>
 </template>
 
-<style lang="stylus" scoped>
-    @import '~vuetify/src/stylus/app'
+<style lang="stylus">
+
+    .chip-style
+        display inline-block
+        font-size 12px
+        height 20px
+        line-height 20px
+        border-radius 2px
+        padding 0 6px
+        color white
+        margin-right 5px
+        background-color $info
+        vertical-align top
+    &.important
+        background-color $secondary
+
 </style>
 
 <script>
-  // use absolute paths -> see bug https://github.com/vuejs/vuepress/issues/451
-  import { VChip } from '../../../node_modules/vuetify/lib'
-
   export default {
     name: 'Chip',
-    components: {
-      VChip
-    },
     props: {
       important: {
         type: Boolean,
@@ -27,11 +35,6 @@
         type: String,
         required: true,
         default: 'txt'
-      }
-    },
-    computed: {
-      color () {
-        return this.important ? '#d32f2f' : '#0064b7'
       }
     }
   }

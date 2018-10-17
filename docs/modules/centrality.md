@@ -46,7 +46,7 @@ There is no need to use this function unless:
 :::
 
 ::: warning Important
-Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality) for the desired behaviour.
+Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality).
 :::
 
 The weighted variants of centrality, i.e. gravity and weighted betweenness, are computed using a negative exponential decay function of the form:
