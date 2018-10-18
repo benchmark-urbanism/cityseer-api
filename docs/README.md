@@ -15,9 +15,10 @@ features:
 footer: AGPLv3 | Copyright © 2018-present Gareth Simons
 meta:
   - name: description
-    content: hello2
+    content: Computational tools for urban analysis
   - name: keywords
     content: cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development
 ---
 
-[![Build Status](https://travis-ci.com/cityseer/cityseer-api.svg?branch=master)](https://travis-ci.com/cityseer/cityseer-api)
+Work In Progress draft!
+---

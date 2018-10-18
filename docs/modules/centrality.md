@@ -104,12 +104,12 @@ A `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#pol
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_map" type="numpy.ndarray">
 
-Node data in the form of an $n * 4$ `numpy.ndarray[numpy.uint32]`, where each row represents a node: `[x, y, live, edge_index ]`
+Node data in the form of an $n \times 4$ `numpy.ndarray[numpy.uint32]`, where each row represents a node: `[x, y, live, edge_index ]`
 
 </FuncElement>
 <FuncElement name="edge_map" type="numpy.ndarray">
 
-Edge data in the form of an $e * 4$ `numpy.ndarray[numpy.uint32]`, where each row represents an edge: `[start, end, length, weight]`.
+Edge data in the form of an $e \times 4$ `numpy.ndarray[numpy.uint32]`, where each row represents an edge: `[start, end, length, weight]`.
 
 </FuncElement>
 
