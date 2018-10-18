@@ -59,7 +59,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         x = d['x']
         y = d['y']
         # in case lng lat accidentally passed-in without WGS flag
-        if x < 90 and not wgs84_coords:
+        if x <= 90 and not wgs84_coords:
             raise ValueError(f'Coordinate error, if using lng, lat coordinates, set the wgs84_coords param to True')
         # if the coords are WGS84, then convert to local UTM
         if wgs84_coords:
@@ -94,22 +94,26 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         e_y = g_copy.node[e]['y']
         # generate the geometry
         ls = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        # write length to g_dup edge
-        if 'length' not in d:
+        # write length to g_dup edge if no value already present
+        if 'length' not in g_dup[s][e]:
             g_dup[s][e]['length'] = ls.length
-        else:
-            g_dup[s][e]['length'] = g_copy[s][e]['length']
+        # add weight attribute if not present, and set to length
+        if 'weight' not in g_dup[s][e]:
+            g_dup[s][e]['weight'] = ls.length
         # continue if not decomposing
         if not decompose:
             continue
-        # first remove the prior edge
-        l = g_dup[s][e]['length']
-        g_dup.remove_edge(s, e)
-        # then add the new edge/s
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
+        l = g_dup[s][e]['length']
         n = np.ceil(l / decompose)
-        # create the sub-links
+        # find the length and weight subdivisions
+        sub_l = l / n
+        w = g_dup[s][e]['weight']
+        sub_w = w / n
+        # since decomposing, remove the prior edge... but only after properties have been read
+        g_dup.remove_edge(s, e)
+        # then add the new sub-edge/s
         d_step = 0
         prior_node_id = s
         sub_node_counter = 0
@@ -126,13 +130,13 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
             y = s_g.coords.xy[1][-1]
             # add the new node and edge
             g_dup.add_node(new_node_id, x=x, y=y)
-            g_dup.add_edge(prior_node_id, new_node_id, length=l/n)
+            g_dup.add_edge(prior_node_id, new_node_id, length=sub_l, weight=sub_w)
             # increment the step and node id
             prior_node_id = new_node_id
             d_step += l / n
         # set the last link manually to avoid rounding errors at end of linestring
         # the nodes already exist, so just add link
-        g_dup.add_edge(prior_node_id, e, length=l/n)
+        g_dup.add_edge(prior_node_id, e, length=sub_l, weight=sub_w)
 
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_dup = nx.convert_node_labels_to_integers(g_dup, 0)
@@ -156,7 +160,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     if n > np.iinfo(int_type).max:
         raise ValueError(f'The number of nodes is greater than that manageable by the {int_type} data type')
     node_map = np.full((n, 4), 0, int_type)
-    edge_map = np.full((total_out_degrees, 3), 0, int_type)
+    edge_map = np.full((total_out_degrees, 4), 0, int_type)
     edge_idx = 0
     # populate the nodes
     for n, d in g_dup.nodes(data=True):
@@ -174,6 +178,8 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
             edge_map[edge_idx][1] = int(nb)
             # length
             edge_map[edge_idx][2] = g_dup[idx][nb]['length']
+            # weight
+            edge_map[edge_idx][3] = g_dup[idx][nb]['weight']
             # increment the link_idx
             edge_idx += 1
 
@@ -184,17 +190,8 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
 
 # TODO: add geojson version - process through networkx internally
-
 """
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
-    '''
-
-    :param node_map:
-    :param edge_map:
-    :param distances:
-    :param min_threshold_wt:
-    :return:
-    '''
 
     if node_map.shape[0] != 4:
         raise ValueError('The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters')

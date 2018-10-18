@@ -41,6 +41,8 @@ def test_generate_graph():
 
 def test_graph_from_networkx():
 
+    # TODO: add tests for custom weights and lengths - check proper division into sub-elements
+
     # polygon for testing geom method
     geom = geometry.Polygon([[6000500, 600500], [6000900, 600500], [6000900, 600900], [6000500, 600900]])
 
@@ -75,16 +77,16 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 1, 120]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 116]))
+    assert np.array_equal(e_map[0], np.array([0, 1, 120, 120]))
+    assert np.array_equal(e_map[40], np.array([13, 12, 116, 116]))
 
     # check live designations
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == G.number_of_nodes()
     assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 6
 
     # plots for debugging
-    graph_util.plot_graph_maps(n_map, e_map, geom=geom)
-    graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
+    # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
+    # graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
 
     # test decomposed versions
     n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
@@ -109,13 +111,13 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 46, 17]))
-    assert np.array_equal(e_map[40], np.array([13, 221, 19]))
+    assert np.array_equal(e_map[0], np.array([0, 46, 17, 17]))
+    assert np.array_equal(e_map[40], np.array([13, 221, 19, 19]))
 
     # check live designations
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == 602
     assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 81
 
     # plots for debugging
-    graph_util.plot_graph_maps(n_map, e_map, geom=geom)
-    graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
+    # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
+    # graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)

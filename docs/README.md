@@ -19,3 +19,5 @@ meta:
   - name: keywords
     content: cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development
 ---
+
+[![Build Status](https://travis-ci.com/cityseer/cityseer-api.svg?branch=master)](https://travis-ci.com/cityseer/cityseer-api)
