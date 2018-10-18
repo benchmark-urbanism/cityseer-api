@@ -83,9 +83,6 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     # note -> write to a duplicated graph to avoid in-place errors
     g_dup = g_copy.copy()
     for s, e, d in g_copy.edges(data=True):
-        # continue if a length attribute already exists and no decomposition is required
-        if 'length' in d and not decompose:
-            continue
         # get start coords
         s_x = g_copy.node[s]['x']
         s_y = g_copy.node[s]['y']
@@ -95,11 +92,20 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         # generate the geometry
         ls = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         # write length to g_dup edge if no value already present
-        if 'length' not in g_dup[s][e]:
+        if 'length' in g_dup[s][e]:
+            # check that weight is positive
+            if not g_dup[s][e]['length'] >= 0:
+                raise ValueError('Only positive lengths can be passed to this method')
+        else:
             g_dup[s][e]['length'] = ls.length
         # add weight attribute if not present, and set to length
-        if 'weight' not in g_dup[s][e]:
-            g_dup[s][e]['weight'] = ls.length
+        if 'weight' in g_dup[s][e]:
+            # check that weight is positive
+            if not g_dup[s][e]['weight'] >= 0:
+                raise ValueError('Only positive weights can be passed to this method')
+        else:
+            # NB - set from length attribute and not geom in case input provided
+            g_dup[s][e]['weight'] = g_dup[s][e]['length']
         # continue if not decomposing
         if not decompose:
             continue

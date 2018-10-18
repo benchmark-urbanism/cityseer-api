@@ -104,12 +104,12 @@ A `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#pol
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_map" type="numpy.ndarray">
 
-Node data in the form of an $n * 4$ `numpy.ndarray`, where each row represents `[x, y, live, edge_index ]`
+Node data in the form of an $n * 4$ `numpy.ndarray[numpy.uint32]`, where each row represents a node: `[x, y, live, edge_index ]`
 
 </FuncElement>
 <FuncElement name="edge_map" type="numpy.ndarray">
 
-Edge data in the form of an $n * 4$ `numpy.ndarray`, where each row represents `[start, end, length, weight]`
+Edge data in the form of an $e * 4$ `numpy.ndarray[numpy.uint32]`, where each row represents an edge: `[start, end, length, weight]`.
 
 </FuncElement>
 
@@ -117,7 +117,7 @@ The node attributes `x` and `y` determine the spatial coordinates of the node, a
 
 The optional edge attribute `length` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges.
 
-If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. The `weight` attribute must be a positive value and cannot exceed 4,294,967,295 (`numpy.uint32`).
+If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. The `weight` attribute must be a positive integer and cannot exceed 4,294,967,295 (`numpy.uint32`).
 
 ::: warning Note
 This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream of this method. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org), then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data. Whereas simplification (assuming accurate distances are maintained via the `length` attribute) helps reduce topological distortions in centrality methods, however, another option is to use a sufficiently fine level of decomposition to likewise temper node density variances.
