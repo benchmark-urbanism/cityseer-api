@@ -47,13 +47,29 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
     # decided to not discard disconnected components to avoid unintended consequences
 
-    # if the coords are WGS84, then convert to local UTM
-    if wgs84_coords:
-        for n, d in g_copy.nodes(data=True):
-            # convert coords - flip from lat, lon order back to x, y order
-            x, y = utm.from_latlon(d['y'], d['x'])[:2][::-1]
-            g_copy.node[n]['x'] = x
-            g_copy.node[n]['y'] = y
+    # if necessary, convert from WGS84
+    # also round the nodes to the nearest meter - no need for greater accuracy, allows use of ints
+    # this also ensures more consistent behaviour between wgs and non wgs (due to rounding issues)
+    dirty_nodes_check = {}
+    for n, d in g_copy.nodes(data=True):
+        x = d['x']
+        y = d['y']
+        # if the coords are WGS84, then convert to local UTM
+        if wgs84_coords:
+            # remember - accepts and returns in y, x order
+            y, x = utm.from_latlon(y, x)[:2]
+        # round
+        x = np.round(x)
+        y = np.round(y)
+        # check for dirty nodes - this is only effective within 1m rounding
+        n_key = f'{x} {y}'
+        if n_key not in dirty_nodes_check:
+            dirty_nodes_check[n_key] = n
+        else:
+            n_clash = dirty_nodes_check[n_key]
+            logger.warning(f'NB -> possible dirty nodes detected - two input nodes {n} and {n_clash} are within 1m of each other')
+        g_copy.node[n]['x'] = x
+        g_copy.node[n]['y'] = y
 
     # process the vertices and generate the lengths if not present
     # note -> write to a duplicated graph to avoid in-place errors
@@ -123,9 +139,16 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         g_dup.node[n]['live'] = live
 
     # prepare the node and link maps
+    # using ints - no need for sub-meter accuracy or nans, and avoids need for casting indices to int
+    # min, max for eastings: 160,000 -> 465,000, and northings: 0 -> 10,000,000
+    # uint32 has max value 4,294,967,295
     n = g_dup.number_of_nodes()
-    node_map = np.full((n, 4), np.nan)
-    edge_map = np.full((total_out_degrees, 3), np.nan)
+    # very unlikely and would probably exceed memory, but check in case of some edge case
+    int_type = 'uint32'
+    if n > np.iinfo(int_type).max:
+        raise ValueError(f'The number of nodes is greater than that manageable by the {int_type} data type')
+    node_map = np.full((n, 4), 0, int_type)
+    edge_map = np.full((total_out_degrees, 3), 0, int_type)
     edge_idx = 0
     # populate the nodes
     for n, d in g_dup.nodes(data=True):

@@ -161,8 +161,8 @@ def plot_graph_maps(node_map, edge_map):
         ax.set_ylim(node_map[:, 1].min() - 100, node_map[:, 1].max() + 100)
 
     # plot nodes
-    ax1.scatter(node_map[:, 0], node_map[:, 1])
-    ax2.scatter(node_map[:, 0], node_map[:, 1])
+    ax1.scatter(node_map[:, 0], node_map[:, 1], s=7)
+    ax2.scatter(node_map[:, 0], node_map[:, 1], s=7)
 
     # check for duplicate edges
     edges = set()
@@ -175,7 +175,7 @@ def plot_graph_maps(node_map, edge_map):
         # don't use while True because last node's index increment won't be caught
         while edge_idx < len(edge_map):
             # get the corresponding edge data
-            edge_data = edge_map[int(edge_idx)]
+            edge_data = edge_map[edge_idx]
             # get the src node - this is to check that still within src edge - neighbour range
             fr_idx = edge_data[0]
             # break once all neighbours visited
@@ -184,7 +184,7 @@ def plot_graph_maps(node_map, edge_map):
             # get the neighbour node's index
             to_idx = edge_data[1]
             # fetch the neighbour node's data
-            nb_data = node_map[int(to_idx)]
+            nb_data = node_map[to_idx]
             # check for duplicates
             k = str(sorted([fr_idx, to_idx]))
             if k not in edges:

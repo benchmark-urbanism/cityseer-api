@@ -104,7 +104,7 @@ A `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#pol
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_map" type="numpy.ndarray">
 
-Node data.
+Node data
 
 </FuncElement>
 <FuncElement name="edge_map" type="numpy.ndarray">
@@ -117,7 +117,7 @@ The node attributes `x` and `y` determine the spatial coordinates of the node, a
 
 The optional edge attribute `length` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges.
 
-If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges.
+If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. `weight` must be a positive value and cannot exceed `4,294,967,295 = np.iinfo(np.uint32).max`
 
 ::: tip Note
 When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the `geom` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. Note that the algorithms still have access to the full buffered network.
