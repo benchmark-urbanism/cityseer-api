@@ -1,4 +1,5 @@
 setuptools
+matplotlib
 numpy
 numba
 shapely
