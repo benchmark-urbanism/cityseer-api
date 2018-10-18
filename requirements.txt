@@ -2,7 +2,7 @@ setuptools
 matplotlib
 numpy
 numba
-shapely
+shapely==1.7a1
 utm
 networkx
 pytest
