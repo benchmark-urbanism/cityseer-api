@@ -6,17 +6,33 @@
       color $secondary
 
   .custom-block
+    color $textColor
     &.tip
       background-color $lightBackground
-      border-color $info
-    &.warning
-      background-color lighten($accentColor, 85%)
-      border-color $accentColor
+      border-color $success
       color $textColor
       .custom-block-title
         color $textColor
       a
         color $accentColor
+    &.warning
+      background-color $lightBackground
+      border-color $info
+      color $textColor
+      .custom-block-title
+        color $textColor
+      a
+        color $accentColor
+    &.danger
+      color $textColor
+      .custom-block-title
+        color $textColor
+      a
+        color $accentColor
+      background-color lighten($accentColor, 90%)
+      border-color $accentColor
+
+
 
 .theme-color-intense
   color $secondary

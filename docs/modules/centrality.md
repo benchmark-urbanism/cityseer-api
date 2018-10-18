@@ -9,7 +9,7 @@ centrality <Chip text="beta" :important="true"/>
 distance\_from\_beta() <Chip text='v0.1+'/>
 ----------------------
 
-::: tip Note
+::: warning Note
 There is no need to use this method unless overriding the automatically generated default $\beta$ values in [`centrality.compute_centrality`](#compute-centrality).
 :::
 
@@ -41,7 +41,7 @@ The $w_{min}$ threshold.
 
 </FuncElement>
 
-::: warning Important
+::: danger Important
 Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality).
 :::
 
@@ -117,13 +117,17 @@ The node attributes `x` and `y` determine the spatial coordinates of the node, a
 
 The optional edge attribute `length` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges.
 
-If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. `weight` must be a positive value and cannot exceed `4,294,967,295 = np.iinfo(np.uint32).max`
+If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. `weight` attribute must be a positive value and cannot exceed 4,294,967,295 (`numpy.uint32`).
 
-::: tip Note
+::: warning Note
+This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org) then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data.
+:::
+
+::: tip Hint
 When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the `geom` geometry is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. Note that the algorithms still have access to the full buffered network.
 :::
 
-::: warning Important
+::: danger Important
 Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small can increase the computation time unnecessarily for subsequent analysis. It is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases.
 :::
 

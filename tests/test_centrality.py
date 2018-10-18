@@ -42,6 +42,8 @@ def test_generate_graph():
 def test_graph_from_networkx():
 
     # TODO: add geom variant and test three-wise
+    # TODO: add geojson version - process through networkx internally
+    # TODO: add a reduce option to method?
 
     # fetch graphs for testing
     G, pos = graph_util.tutte_graph()
