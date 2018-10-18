@@ -9,10 +9,6 @@ centrality <Chip text="beta" :important="true"/>
 distance\_from\_beta() <Chip text='v0.1+'/>
 ----------------------
 
-::: warning Note
-There is no need to use this method unless overriding the automatically generated default $\beta$ values in [`centrality.compute_centrality`](#compute-centrality).
-:::
-
 <FuncSignature>distance_from_beta(beta, min_threshold_wt=0.01831563888873418)</FuncSignature>
 
 A convenience method mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds at a specified minimum weight of $w_{min}$, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
@@ -40,6 +36,10 @@ A numpy array of $d_{max}$ distances.
 The $w_{min}$ threshold.
 
 </FuncElement>
+
+::: warning Note
+There is no need to use this method unless overriding the automatically generated default $\beta$ values in [`centrality.compute_centrality`](#compute-centrality).
+:::
 
 ::: danger Important
 Pass both $d_{max}$ and $w_{min}$ to [`centrality.compute_centrality`](#compute-centrality).
@@ -120,7 +120,7 @@ The optional edge attribute `length` indicates the original edge length in metre
 If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. `weight` attribute must be a positive value and cannot exceed 4,294,967,295 (`numpy.uint32`).
 
 ::: warning Note
-This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream of this method. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org), then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data. Whereas simplification (assuming accurate distances are maintained via a `length` attribute) helps reduce topological distortions in centrality methods, another option is to use a sufficiently fine level of decomposition to likewise temper node density variances.
+This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream of this method. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org), then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data. Whereas simplification (assuming accurate distances are maintained via the `length` attribute) helps reduce topological distortions in centrality methods, however, another option is to use a sufficiently fine level of decomposition to likewise temper node density variances.
 :::
 
 ::: tip Hint
@@ -128,7 +128,8 @@ When calculating local network centralities, it is best-practice for the area of
 :::
 
 ::: danger Important
-Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small can increase the computation time unnecessarily for subsequent analysis. It is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases.
+Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small in relation to the size of the graph can increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases. On the other-hand, it may be feasible to go as small as 2m for very small networks, such as building circulation networks.
+
 :::
 
 

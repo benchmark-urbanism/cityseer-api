@@ -41,58 +41,81 @@ def test_generate_graph():
 
 def test_graph_from_networkx():
 
-    # TODO: add geom variant and test three-wise
-    # TODO: add geojson version - process through networkx internally
-    # TODO: add a reduce option to method?
+    # polygon for testing geom method
+    geom = geometry.Polygon([[6000500, 600500], [6000900, 600500], [6000900, 600900], [6000500, 600900]])
 
     # fetch graphs for testing
     G, pos = graph_util.tutte_graph()
     G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
 
+    # check that passing lng, lat without WGS flag raises error
+    with pytest.raises(ValueError):
+        n, e = centrality.graph_from_networkx(G_wgs, wgs84_coords=False, decompose=False, geom=None)
+
     # test non-decomposed versions
-    node_map, edge_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
-    node_map_wgs, edge_map_wgs= centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=None)
+    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=geom)
+    n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=None)
+    n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=geom)
 
     # check basic graph lengths
-    assert len(node_map) == len(node_map_wgs) == G.number_of_nodes()
-    assert len(edge_map) == len(edge_map_wgs) == G.number_of_edges() * 2
+    assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == G.number_of_nodes()
+    assert len(e_map) == len(e_map_geom) == len(e_map_wgs) == len(e_map_wgs_geom) == G.number_of_edges() * 2
 
-    # check wgs vs. non
-    assert np.array_equal(node_map, node_map_wgs)
-    assert np.array_equal(edge_map, edge_map_wgs)
+    # pairwise permutations - since n_map = n_map_wgs just need to repeat for n_map and n_map_geom
+    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_geom[:,[0, 1, 3]])  # live designations won't match
+    assert np.array_equal(n_map, n_map_wgs)
+    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_wgs_geom[:,[0, 1, 3]])  # live designations won't match
 
-    # check attributes, just use node_map version since wgs and non have already been asserted as equal
-    assert np.array_equal(node_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(node_map[21], np.array([6001000, 600870, 1, 63]))
+    assert np.array_equal(e_map, e_map_geom)
+    assert np.array_equal(e_map, e_map_wgs)
+    assert np.array_equal(e_map, e_map_wgs_geom)
 
-    assert np.array_equal(edge_map[0], np.array([0, 1, 120]))
-    assert np.array_equal(edge_map[40], np.array([13, 12, 116]))
+    # check attributes, just use n_map version since other arrays already asserted as equal
+    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
+    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
+
+    assert np.array_equal(e_map[0], np.array([0, 1, 120]))
+    assert np.array_equal(e_map[40], np.array([13, 12, 116]))
+
+    # check live designations
+    assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == G.number_of_nodes()
+    assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 6
 
     # plots for debugging
-    # graph_util.plot_graph_maps(node_map, edge_map)
-    # graph_util.plot_graph_maps(node_map_wgs, edge_map_wgs)
+    graph_util.plot_graph_maps(n_map, e_map, geom=geom)
+    graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
 
     # test decomposed versions
-    node_map, edge_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
-    node_map_wgs, edge_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=None)
+    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
+    n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=geom)
+    n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=None)
+    n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=geom)
 
     # check basic graph lengths
-    assert len(node_map) == len(node_map_wgs) == 602
-    assert len(edge_map) == len(edge_map_wgs) == 1250
+    assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == 602
+    assert len(e_map) == len(e_map_geom) == len(e_map_wgs) == len(e_map_wgs_geom) == 1250
 
-    # check wgs vs. non
-    assert np.array_equal(node_map, node_map_wgs)
-    assert np.array_equal(edge_map, edge_map_wgs)
+    # pairwise permutations - since n_map = n_map_wgs just need to repeat for n_map and n_map_geom
+    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_geom[:,[0, 1, 3]])  # live designations won't match
+    assert np.array_equal(n_map, n_map_wgs)
+    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_wgs_geom[:,[0, 1, 3]])  # live designations won't match
 
-    # check attributes, just use node_map version since wgs and non have already been asserted as equal
-    assert np.array_equal(node_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(node_map[21], np.array([6001000, 600870, 1, 63]))
+    assert np.array_equal(e_map, e_map_geom)
+    assert np.array_equal(e_map, e_map_wgs)
+    assert np.array_equal(e_map, e_map_wgs_geom)
 
-    assert np.array_equal(edge_map[0], np.array([0, 46, 17]))
-    assert np.array_equal(edge_map[40], np.array([13, 221, 19]))
+    # check attributes, just use n_map version since other arrays already asserted as equal
+    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
+    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
+
+    assert np.array_equal(e_map[0], np.array([0, 46, 17]))
+    assert np.array_equal(e_map[40], np.array([13, 221, 19]))
+
+    # check live designations
+    assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == 602
+    assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 81
 
     # plots for debugging
-    # graph_util.plot_graph_maps(node_map, edge_map)
-    # graph_util.plot_graph_maps(node_map_wgs, edge_map_wgs)
-
-    # poly = geometry.Polygon([[300, 300], [900, 300], [900, 900], [300, 900]])
+    graph_util.plot_graph_maps(n_map, e_map, geom=geom)
+    graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)

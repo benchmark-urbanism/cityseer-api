@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 cc = CC('centrality')
 
 
-def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
+def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) \
+        -> Tuple[np.ndarray, float]:
 
     # cast to list form
     if isinstance(beta, (int, float)):
@@ -57,6 +58,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     for n, d in g_copy.nodes(data=True):
         x = d['x']
         y = d['y']
+        # in case lng lat accidentally passed-in without WGS flag
+        if x < 90 and not wgs84_coords:
+            raise ValueError(f'Coordinate error, if using lng, lat coordinates, set the wgs84_coords param to True')
         # if the coords are WGS84, then convert to local UTM
         if wgs84_coords:
             # remember - accepts and returns in y, x order
@@ -70,7 +74,8 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
             dirty_nodes_check[n_key] = n
         else:
             n_clash = dirty_nodes_check[n_key]
-            logger.warning(f'NB -> possible dirty nodes detected - two input nodes {n} and {n_clash} are within 1m of each other')
+            logger.warning(f'NB -> possible dirty nodes detected - two input nodes {n} and {n_clash} are within 1m of'
+                           f' each other')
         g_copy.node[n]['x'] = x
         g_copy.node[n]['y'] = y
 
@@ -177,6 +182,8 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
     return node_map, edge_map
 
+
+# TODO: add geojson version - process through networkx internally
 
 """
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):

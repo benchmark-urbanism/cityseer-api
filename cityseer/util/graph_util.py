@@ -151,8 +151,10 @@ def tutte_graph(wgs84_coords=False):
     return G, pos
 
 
-def plot_graph_maps(node_map, edge_map):
+def plot_graph_maps(node_map, edge_map, geom=None):
 
+    # the links are undirected and therefore duplicate per edge
+    # use two axes to check each copy of links
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
 
     # set extents
@@ -193,4 +195,9 @@ def plot_graph_maps(node_map, edge_map):
             else:
                 ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]])
             edge_idx += 1
+
+    if geom:
+        ax1.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
+        ax2.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
+
     plt.show()
