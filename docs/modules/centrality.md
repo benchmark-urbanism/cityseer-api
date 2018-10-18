@@ -93,7 +93,7 @@ Set to `True` if the `x` and `y` node attribute keys reference [`WGS84`](https:/
 </FuncElement>
 <FuncElement name="decompose" type="int, float">
 
-Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres.
+Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres. This evens out the density of nodes to reduce topological distortions in the graph, which can otherwise cause misleading outcomes in centrality methods.
 
 </FuncElement>
 <FuncElement name="geom" type="shapely.geometry.Polygon">
@@ -120,7 +120,7 @@ The optional edge attribute `length` indicates the original edge length in metre
 If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of newly decomposed edges. `weight` attribute must be a positive value and cannot exceed 4,294,967,295 (`numpy.uint32`).
 
 ::: warning Note
-This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org) then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data.
+This method assumes that all graph preparation, e.g. cleaning and simplification, has happened upstream of this method. If generating data from sources such as [Open Street Map](https://www.openstreetmap.org), then consider using tools such as [roadmap-processing](https://github.com/aicenter/roadmap-processing) for initial fetching, cleaning, and simplification of the data. Whereas simplification (assuming accurate distances are maintained via a `length` attribute) helps reduce topological distortions in centrality methods, another option is to use a sufficiently fine level of decomposition to likewise temper node density variances.
 :::
 
 ::: tip Hint

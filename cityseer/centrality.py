@@ -37,6 +37,11 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 
 def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
+    '''
+    Strategic decisions because of too many edge cases:
+    - decided to not discard disconnected components to avoid unintended consequences
+    - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
+    '''
 
     # check that it is an undirected graph
     if not isinstance(network_x_graph, nx.Graph):
@@ -44,8 +49,6 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
     # copy the graph to avoid modifying the original
     g_copy = network_x_graph.copy()
-
-    # decided to not discard disconnected components to avoid unintended consequences
 
     # if necessary, convert from WGS84
     # also round the nodes to the nearest meter - no need for greater accuracy, allows use of ints
