@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-# from . import networks, mixed_uses, accessibility
+from . import networks, mixed_uses, accessibility
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,9 +52,6 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     g_copy = network_x_graph.copy()
 
     # if necessary, convert from WGS84
-    # also round the nodes to the nearest meter - no need for greater accuracy, allows use of ints
-    # this also ensures more consistent behaviour between wgs and non wgs (due to rounding issues)
-    dirty_nodes_check = {}
     for n, d in g_copy.nodes(data=True):
         x = d['x']
         y = d['y']
@@ -65,19 +62,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         if wgs84_coords:
             # remember - accepts and returns in y, x order
             y, x = utm.from_latlon(y, x)[:2]
-        # round
-        x = np.round(x)
-        y = np.round(y)
-        # check for dirty nodes - this is only effective within 1m rounding
-        n_key = f'{x} {y}'
-        if n_key not in dirty_nodes_check:
-            dirty_nodes_check[n_key] = n
-        else:
-            n_clash = dirty_nodes_check[n_key]
-            logger.warning(f'NB -> possible dirty nodes detected - two input nodes {n} and {n_clash} are within 1m of'
-                           f' each other')
-        g_copy.node[n]['x'] = x
-        g_copy.node[n]['y'] = y
+        # round to 1cm
+        g_copy.node[n]['x'] = np.round(x, 2)
+        g_copy.node[n]['y'] = np.round(y, 2)
 
     # process the vertices and generate the lengths if not present
     # note -> write to a duplicated graph to avoid in-place errors
@@ -157,16 +144,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         g_dup.node[n]['live'] = live
 
     # prepare the node and link maps
-    # using ints - no need for sub-meter accuracy or nans, and avoids need for casting indices to int
-    # min, max for eastings: 160,000 -> 465,000, and northings: 0 -> 10,000,000
-    # uint32 has max value 4,294,967,295
     n = g_dup.number_of_nodes()
-    # very unlikely and would probably exceed memory, but check in case of some edge case
-    int_type = 'uint32'
-    if n > np.iinfo(int_type).max:
-        raise ValueError(f'The number of nodes is greater than that manageable by the {int_type} data type')
-    node_map = np.full((n, 4), 0, int_type)
-    edge_map = np.full((total_out_degrees, 4), 0, int_type)
+    node_map = np.full((n, 4), 0)  # int - prevents need to cast indices to int
+    edge_map = np.full((total_out_degrees, 4), 0.0)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
     for n, d in g_dup.nodes(data=True):
@@ -181,7 +161,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
             # start node
             edge_map[edge_idx][0] = idx
             # end node
-            edge_map[edge_idx][1] = int(nb)
+            edge_map[edge_idx][1] = nb
             # length
             edge_map[edge_idx][2] = g_dup[idx][nb]['length']
             # weight
@@ -195,14 +175,14 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     return node_map, edge_map
 
 
-# TODO: add geojson version - process through networkx internally
-"""
+# TODO: add centrality tests
+# TODO: decide on adding backstep check - instead of separate simplest path algo...?
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
 
-    if node_map.shape[0] != 4:
+    if node_map.shape[1] != 4:
         raise ValueError('The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters')
 
-    if link_map.shape[0] < 3:
+    if edge_map.shape[1] != 4:
         raise ValueError('The link map must have a dimensionality of 3, consisting of start, end, and distance parameters')
 
     if isinstance(distances, (int, float)):
@@ -212,32 +192,24 @@ def centrality(node_map, edge_map, distances, min_threshold_wt=0.018315638888734
         raise ValueError('Please provide a distance or an array of distances')
 
     betas = []
-    for d in [50, 100, 150, 200, 300, 400, 600, 800, 1200, 1600]:
+    for d in distances:
         betas.append(np.log(1 / min_threshold_wt) / d)
 
-    return compute_centrality(node_map, link_map, np.array(distances), np.array(betas))
+    node_density, imp_closeness, gravity, betweenness, betweenness_wt = \
+        networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas))
+
+    return node_density, imp_closeness, gravity, betweenness, betweenness_wt
 
 
-# NOTE -> didn't work with boolean so using unsigned int...
-@cc.export('compute_centrality',
-           'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
+# TODO: add separate mixed-uses algo
+'''
 @njit
-def compute_centrality(node_map, link_map, distances, betas):
-    '''
+def compute_mixed_uses(node_map, edge_map, distances, betas, overlay):
+    max_dist = max(distances)
 
-    :param node_map:
-    :param link_map:
-    :return:
-    '''
-
-
-    # used for calculating a corresponding beta value
-    y = 0.01831563888873418
-
-    max_dist = 800
     # establish the number of nodes
     n = node_map.shape[1]
+
     # create the distance map
     d_map = np.full((len(distances), 2), np.nan)
     for i, d in enumerate(distances):
@@ -248,11 +220,6 @@ def compute_centrality(node_map, link_map, distances, betas):
     gravity = np.full((4, n), 0.0)
     betweenness_wt = np.full((4, n), 0.0)
     betweenness_wt = np.full((4, n), 0.0)
-
-
-
-
-
 
     # prepare data arrays
     gravity = np.zeros((4, total_count))
@@ -265,12 +232,13 @@ def compute_centrality(node_map, link_map, distances, betas):
     beta_400 = -0.01
     beta_800 = -0.005
 
-    data_assign_map, data_assign_dist = networks.assign_accessibility_data(netw_x_arr, netw_y_arr, data_x_arr, data_y_arr, max_dist)
+    data_assign_map, data_assign_dist = networks.assign_accessibility_data(netw_x_arr, netw_y_arr, data_x_arr,
+                                                                           data_y_arr, max_dist)
 
     # iterate through each vert and calculate the shortest path tree
     for netw_src_idx in range(total_count):
 
-        #if netw_src_idx % 1000 == 0:
+        # if netw_src_idx % 1000 == 0:
         #    print('...progress')
         #    print(round(netw_src_idx / total_count * 100, 2))
 
@@ -283,22 +251,37 @@ def compute_centrality(node_map, link_map, distances, betas):
 
         # use np.inf for max distance for data POI mapping, which uses an overshoot and backtracking workflow
         # not a huge penalty because graph is already windowed per above
-        netw_dist_map_trim, netw_pred_map_trim = networks.shortest_path_tree(nbs_trim, lens_trim, netw_src_idx_trim, netw_trim_count, np.inf)
+        netw_dist_map_trim, netw_pred_map_trim = networks.shortest_path_tree(nbs_trim, lens_trim, netw_src_idx_trim,
+                                                                             netw_trim_count, np.inf)
 
         # calculate mixed uses
         # generate the reachable classes and their respective distances
-        reachable_classes, reachable_classes_dist, data_trim_to_full_idx_map = networks.accessibility_agg(netw_src_idx, max_dist,
-            netw_dist_map_trim, netw_pred_map_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes,
-                data_x_arr, data_y_arr, data_assign_map, data_assign_dist)
+        reachable_classes, reachable_classes_dist, data_trim_to_full_idx_map = networks.accessibility_agg(netw_src_idx,
+                                                                                                          max_dist,
+                                                                                                          netw_dist_map_trim,
+                                                                                                          netw_pred_map_trim,
+                                                                                                          netw_idx_map_trim_to_full,
+                                                                                                          netw_x_arr,
+                                                                                                          netw_y_arr,
+                                                                                                          data_classes,
+                                                                                                          data_x_arr,
+                                                                                                          data_y_arr,
+                                                                                                          data_assign_map,
+                                                                                                          data_assign_dist)
 
         # get unique classes, their counts, and nearest - use the default max distance of 1600m
-        classes_unique, classes_counts, classes_nearest = mixed_uses.deduce_unique_species(reachable_classes, reachable_classes_dist)
+        classes_unique, classes_counts, classes_nearest = mixed_uses.deduce_unique_species(reachable_classes,
+                                                                                           reachable_classes_dist)
 
         # compute mixed uses
-        mixed_uses_wt[0][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts, np.exp(beta_100 * classes_nearest), 0)
-        mixed_uses_wt[1][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts, np.exp(beta_200 * classes_nearest), 0)
-        mixed_uses_wt[2][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts, np.exp(beta_400 * classes_nearest), 0)
-        mixed_uses_wt[3][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts, np.exp(beta_800 * classes_nearest), 0)
+        mixed_uses_wt[0][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts,
+                                                                              np.exp(beta_100 * classes_nearest), 0)
+        mixed_uses_wt[1][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts,
+                                                                              np.exp(beta_200 * classes_nearest), 0)
+        mixed_uses_wt[2][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts,
+                                                                              np.exp(beta_400 * classes_nearest), 0)
+        mixed_uses_wt[3][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts,
+                                                                              np.exp(beta_800 * classes_nearest), 0)
 
         # compute accessibilities
         # reachable is same as for mixed uses, use the data_trim_to_full_idx_map array as an index
@@ -309,7 +292,8 @@ def compute_centrality(node_map, link_map, distances, betas):
         for i, idx in enumerate(poi_idx):
             poi_idx_int[i] = np.int(idx)
         # calculate accessibilities
-        pois[:,netw_src_idx] = accessibility.accessibility_osm_poi(poi_cats[poi_idx_int], reachable_classes_dist, 40, beta_800)
+        pois[:, netw_src_idx] = accessibility.accessibility_osm_poi(poi_cats[poi_idx_int], reachable_classes_dist, 40,
+                                                                    beta_800)
 
         # use corresponding indices for reachable verts
         ind = np.where(np.isfinite(netw_dist_map_trim))[0]
@@ -362,4 +346,4 @@ def compute_centrality(node_map, link_map, distances, betas):
                 intermediary_idx_mapped = np.int(netw_idx_map_trim_to_full[intermediary_idx_trim])  # cast to int
 
     return gravity, betweenness_wt, mixed_uses_wt, pois
-"""
+'''

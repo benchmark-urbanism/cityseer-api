@@ -186,9 +186,9 @@ def plot_graph_maps(node_map, edge_map, geom=None):
             # get the neighbour node's index
             to_idx = edge_data[1]
             # fetch the neighbour node's data
-            nb_data = node_map[to_idx]
+            nb_data = node_map[int(to_idx)]
             # check for duplicates
-            k = str(sorted([fr_idx, to_idx]))
+            k = str(sorted([fr_idx, int(to_idx)]))
             if k not in edges:
                 edges.add(k)
                 ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]])

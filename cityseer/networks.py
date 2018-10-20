@@ -19,18 +19,23 @@ cc = CC('networks')
 # use numba.typeof to deduce signatures
 # add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 
+
 @cc.export('crow_flies',
-           'Tuple((i8, Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(i8, i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"))')
+           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
+           '(i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
-def crow_flies(source_x, source_y, max_dist, x_arr, y_arr):
+def crow_flies(src_idx, max_dist, x_arr, y_arr):
+
+    # source easting and northing
+    src_x = x_arr[src_idx]
+    src_y = y_arr[src_idx]
 
     # filter by distance
     total_count = len(x_arr)
     crow_flies = np.full(total_count, False)
     trim_count = 0
     for i in range(total_count):
-        dist = np.sqrt((x_arr[i] - source_x) ** 2 + (y_arr[i] - source_y) ** 2)
+        dist = np.sqrt((x_arr[i] - src_x) ** 2 + (y_arr[i] - src_y) ** 2)
         if dist <= max_dist:
             crow_flies[i] = True
             trim_count += 1
@@ -45,146 +50,212 @@ def crow_flies(source_x, source_y, max_dist, x_arr, y_arr):
             full_to_trim_idx_map[i] = counter
             counter += 1
 
-    return trim_count, trim_to_full_idx_map, full_to_trim_idx_map
-
-
-@cc.export('graph_window',
-           'Tuple((i8, f8, Array(f8, 1, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(i8, i8, Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"))')
-@njit
-def graph_window(source_idx, max_dist, x_arr, y_arr, nbs_arr, lens_arr):
-
-    # filter by distance
-    source_x = x_arr[source_idx]
-    source_y = y_arr[source_idx]
-    trim_count, trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(source_x, source_y, max_dist, x_arr, y_arr)
-
-    # trimmed versions of network
-    nbs_trim = np.full((trim_count, nbs_arr.shape[1]), np.nan)
-    lens_trim = np.full((trim_count, nbs_arr.shape[1]), np.nan)
-    # populate
-    for i, original_idx in enumerate(trim_to_full_idx_map):
-        # using count instead of enumerate because some neighbours are nan
-        # this can interfere with the shortest path algorithm which breaks the loop when encountering nans
-        j = 0
-        # don't confuse j and n!!!
-        for n, nb in enumerate(nbs_arr[np.int(original_idx)]):
-            # break once all neighbours processed
-            if np.isnan(nb):
-                break
-            # map the original neighbour index to the trimmed version
-            nb_trim_idx = full_to_trim_idx_map[np.int(nb)]
-            # some of the neighbours will exceed crow flies distance, in which case they have no mapping
-            if np.isnan(nb_trim_idx):
-                continue
-            nbs_trim[i][j] = nb_trim_idx
-            # lens and angles can be transferred directly
-            lens_trim[i][j] = lens_arr[np.int(original_idx)][n]
-            j += 1
-
-    # get trimmed version of source index
-    trim_source_idx = np.int(full_to_trim_idx_map[source_idx])
-
-    return trim_source_idx, trim_count, trim_to_full_idx_map, nbs_trim, lens_trim
-
-
-# angular has to be separate, can't overload numba jitted function without causing typing issues
-@cc.export('graph_window_angular',
-           'Tuple((i8, i8, Array(f8, 1, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"))')
-@njit
-def graph_window_angular(source_idx, max_dist, x_arr, y_arr, nbs_arr, lens_arr, angles_arr):
-
-    # filter by network
-    source_x = x_arr[source_idx]
-    source_y = y_arr[source_idx]
-    trim_count, trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(source_x, source_y, max_dist, x_arr, y_arr)
-
-    # trimmed versions of data
-    nbs_trim = np.full((trim_count, nbs_arr.shape[1]), np.nan)
-    lens_trim = np.full((trim_count, nbs_arr.shape[1]), np.nan)
-    angles_trim = np.full((trim_count, nbs_arr.shape[1]), np.nan)
-    # populate
-    for i, original_idx in enumerate(trim_to_full_idx_map):
-        # using count instead of enumerate because some neighbours are nan
-        # this can interfere with the shortest path algorithm which breaks the loop when encountering nans
-        j = 0
-        # don't confuse j and n!!!
-        for n, nb in enumerate(nbs_arr[np.int(original_idx)]):
-            # break once all neighbours processed
-            if np.isnan(nb):
-                break
-            # map the original neighbour index to the trimmed version
-            nb_trim_idx = full_to_trim_idx_map[np.int(nb)]
-            # some of the neighbours will exceed crow flies distance, in which case they have no mapping
-            if np.isnan(nb_trim_idx):
-                continue
-            nbs_trim[i][j] = nb_trim_idx
-            # lens and angles can be transferred directly
-            lens_trim[i][j] = lens_arr[np.int(original_idx)][n]
-            angles_trim[i][j] = angles_arr[np.int(original_idx)][n]
-            j += 1
-
-    # get trimmed version of source index
-    trim_source_idx = np.int(full_to_trim_idx_map[source_idx])
-
-    return trim_source_idx, trim_count, trim_to_full_idx_map, nbs_trim, lens_trim, angles_trim
+    return trim_to_full_idx_map, full_to_trim_idx_map
 
 
 @cc.export('shortest_path_tree',
            'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
            '(Array(f8, 2, "C"), Array(f8, 2, "C"), i8, i8, f8)')
 @njit
-def shortest_path_tree(nbs_arr, dist_arr, source_idx, trim_count, max_dist):
+def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist):
     '''
-    This is the no-frills all shortest paths to max dist from source vertex
+    This is the no-frills all shortest paths to max dist from source nodes
+
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge indx
+
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - weight
     '''
 
     # setup the arrays
-    active = np.full(trim_count, np.nan)
-    dist_map = np.full(trim_count, np.inf)
-    pred_map = np.full(trim_count, np.nan)
+    n_trim = len(trim_to_full_idx_map)
+    active = np.full(n_trim, np.nan)
+    dist_map = np.full(n_trim, np.inf)
+    pred_map = np.full(n_trim, np.nan)
 
     # set starting node
-    dist_map[source_idx] = 0
-    active[source_idx] = source_idx  # store actual index number instead of booleans, easier for iteration below:
+    # the active map is:
+    # - NaN for unprocessed nodes
+    # - set to idx of node once discovered
+    # - set to Inf once processed
+    src_idx_trim = np.int(full_to_trim_idx_map[src_idx])
+    dist_map[src_idx_trim] = 0
+    active[src_idx_trim] = src_idx_trim
 
-    # search to max distance threshold to determine reachable verts
+    # search to max distance threshold to determine reachable nodes
     while np.any(np.isfinite(active)):
-        # get the index for the min of currently active vert distances
+
+        # get the index for the min of currently active node distances
         # note, this index corresponds only to currently active vertices
-        # min_idx = np.argmin(dist_map_m[np.isfinite(active)])
-        # map the min index back to the vertices array to get the corresponding vert idx
-        # v = active[np.isfinite(active)][min_idx]
-        # v_idx = np.int(v)  # cast to int
-        # manually iterating definitely faster
+
+        # find the currently closest unprocessed node
+        # manual iteration definitely faster than numpy methods
         min_idx = None
         min_dist = np.inf
         for i, d in enumerate(dist_map):
+            # find any closer nodes that have not yet been discovered
             if d < min_dist and np.isfinite(active[i]):
                 min_dist = d
                 min_idx = i
-        v_idx = np.int(min_idx)  # cast to int
-        # set current vertex to visited
-        active[v_idx] = np.inf
-        # visit neighbours
-        # for n, dist in zip(nbs_arr[v_idx], dist_arr[v_idx]):
-        # manually iterating a tad faster
-        for i, n in enumerate(nbs_arr[v_idx]):
-            # exit once all neighbours visited
-            if np.isnan(n):
+        # cast to int - do this step explicitly for numba type inference
+        trim_idx = int(min_idx)
+        # the node can now be set to visited
+        active[trim_idx] = np.inf
+        # convert the idx to the full node_map
+        node_idx = int(trim_to_full_idx_map[trim_idx])
+        # fetch the relevant edge_map index
+        edge_idx = node_map[node_idx][3]
+        # iterate the node's neighbours
+        # manual iteration a tad faster than numpy methods
+        # instead of while True use length of edge map to catch last node's termination
+        while edge_idx < len(edge_map):
+            # get the edge's start, end, length, weight
+            start, end, nb_len, nb_wt = edge_map[edge_idx]
+            # if the start index no longer matches it means all neighbours have been visited
+            if start != node_idx:
                 break
-            n_idx = np.int(n)  # cast to int for indexing
+            # increment for next loop
+            edge_idx += 1
+            # cast to int for indexing
+            nb_idx = np.int(end)
+            # not all neighbours will be within crow-flies distance - if so, continue
+            if np.isnan(full_to_trim_idx_map[nb_idx]):
+                continue
+            # fetch the neighbour's trim index
+            nb_idx_trim = int(full_to_trim_idx_map[nb_idx])
             # distance is previous distance plus new distance
-            dist = dist_arr[v_idx][i]
-            d = dist_map[v_idx] + dist
+            d = dist_map[trim_idx] + nb_wt
             # only pursue if less than max and less than prior assigned distances
-            if d <= max_dist and d < dist_map[n_idx]:
-                dist_map[n_idx] = d
-                pred_map[n_idx] = v_idx
-                active[n_idx] = n_idx  # using actual vert idx instead of boolean to simplify finding indices
+            if d <= max_dist and d < dist_map[nb_idx_trim]:
+                dist_map[nb_idx_trim] = d
+                # using actual node indices instead of boolean to simplify finding indices
+                pred_map[nb_idx_trim] = trim_idx
+                active[nb_idx_trim] = nb_idx_trim
 
     return dist_map, pred_map
+
+
+# NOTE -> didn't work with boolean so using unsigned int...
+@cc.export('compute_centrality',
+           'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
+           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
+@njit
+def compute_centrality(node_map, edge_map, distances, betas):
+    '''
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge indx
+
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - weight
+    '''
+
+    # establish the number of nodes
+    n = len(node_map)
+
+    # the distances dimension
+    d_n = len(distances)
+
+    # maximum distance
+    max_dist = distances.max()
+
+    # disaggregate node_map
+    x_arr = node_map[:,0]
+    y_arr = node_map[:,1]
+    nodes_live = node_map[:,2]
+
+    # prepare data arrays
+    node_density = np.full((d_n, n), 0.0)
+    farness = np.full((d_n, n), 0.0)
+    gravity = np.full((d_n, n), 0.0)
+    betweenness = np.full((d_n, n), 0.0)
+    betweenness_wt = np.full((d_n, n), 0.0)
+
+    # iterate through each vert and calculate the shortest path tree
+    for src_idx in range(n):
+
+        #if netw_src_idx % 1000 == 0:
+        #    print('...progress')
+        #    print(round(netw_src_idx / total_count * 100, 2))
+
+        # only compute for nodes in current city
+        if not nodes_live[src_idx]:
+            continue
+
+        # filter the graph by distance
+        trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_idx, max_dist, x_arr, y_arr)
+
+        # run the shortest tree dijkstra
+        dist_map_trim, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map,
+                                                                   full_to_trim_idx_map, max_dist)
+
+        # use corresponding indices for reachable verts
+        ind = np.where(np.isfinite(dist_map_trim))[0]
+        for to_idx_trim in ind:
+
+            # skip self node
+            if to_idx_trim == full_to_trim_idx_map[src_idx]:
+                continue
+
+            dist_m = dist_map_trim[to_idx_trim]
+
+            # some crow-flies max distance nodes won't be reached within max distance threshold over the network
+            if np.isinf(dist_m):
+                continue
+
+            # check here for distance - in case max distance in shortest_path_tree is set to infinity
+            if dist_m > max_dist:
+                continue
+
+            # calculate centralities starting with closeness
+            for i in range(len(distances)):
+                d = distances[i]
+                b = betas[i]
+
+                # these arrays are oriented differently - first d index then src index
+                if dist_m <= d:
+                    node_density[i][src_idx] += 1
+                    farness[i][src_idx] += dist_m
+                    gravity[i][src_idx] += np.exp(b * dist_m)
+
+            # betweenness - only counting truly between vertices, not starting and ending verts
+            intermediary_idx_trim = np.int(pred_map_trim[to_idx_trim])
+            intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
+            # only counting betweenness in one 'direction' since the graph is symmetrical (non-directed)
+            while True:
+                # break out of while loop if the intermediary has reached the source node
+                if intermediary_idx_trim == full_to_trim_idx_map[src_idx]:
+                    break
+
+                for i in range(len(distances)):
+                    d = distances[i]
+                    b = betas[i]
+
+                    if dist_m <= d:
+
+                        # weighted variants - summed at all distances
+                        betweenness[i][intermediary_idx_mapped] += 1
+                        betweenness_wt[i][intermediary_idx_mapped] += np.exp(b * dist_m)
+
+                # follow the chain
+                intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])
+                intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
+
+    imp_closeness = node_density ** 2 / farness
+
+    return node_density, imp_closeness, gravity, betweenness, betweenness_wt
 
 
 # parallel and fastmath don't apply (fastmath causes issues...)

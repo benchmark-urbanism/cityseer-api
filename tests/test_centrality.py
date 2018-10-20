@@ -6,7 +6,24 @@ from shapely import geometry
 from cityseer import centrality
 from cityseer.util import graph_util
 
-def test_custom_decay_betas():
+
+
+def test_generate_graph():
+
+    G, pos = graph_util.tutte_graph()
+
+    nx.draw(G, pos=pos, with_labels=True)
+    plt.show()
+
+    assert G.number_of_nodes() == 46
+    assert G.number_of_edges() == 69
+
+    assert nx.average_degree_connectivity(G) == { 3: 3.0 }
+
+    assert nx.average_shortest_path_length(G) == 4.356521739130435
+
+
+def test_distance_from_beta():
 
     assert centrality.distance_from_beta(0.04) == (np.array([100.]), 0.01831563888873418)
 
@@ -22,21 +39,6 @@ def test_custom_decay_betas():
 
     with pytest.raises(ValueError):
         centrality.distance_from_beta(-0.04)
-
-
-def test_generate_graph():
-
-    G, pos = graph_util.tutte_graph()
-
-    # nx.draw(G, pos=pos, with_labels=True)
-    # plt.show()
-
-    assert G.number_of_nodes() == 46
-    assert G.number_of_edges() == 69
-
-    assert nx.average_degree_connectivity(G) == { 3: 3.0 }
-
-    assert nx.average_shortest_path_length(G) == 4.356521739130435
 
 
 def test_graph_from_networkx():
@@ -72,12 +74,14 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 1, 120, 120]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 116, 116]))
+    assert np.array_equal(e_map[0], np.array([0, 1, 120.41594578792295, 120.41594578792295]))
+    assert np.array_equal(e_map[40], np.array([13, 12, 116.61903789690601, 116.61903789690601]))
 
     # check live designations
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == G.number_of_nodes()
-    assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 6
+    # small differences due to rounding in conversions, so split over two lines
+    assert n_map_geom[:,2].sum() == 6
+    assert n_map_wgs_geom[:,2].sum() == 7
 
     # plots for debugging
     # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
@@ -91,6 +95,7 @@ def test_graph_from_networkx():
     n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=geom)
 
     # check basic graph lengths
+    # conversion and rounding differences means slight decomposition differences
     assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == 602
     assert len(e_map) == len(e_map_geom) == len(e_map_wgs) == len(e_map_wgs_geom) == 1250
 
@@ -107,12 +112,14 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 46, 17, 17]))
-    assert np.array_equal(e_map[40], np.array([13, 221, 19, 19]))
+    assert np.array_equal(e_map[0], np.array([0, 46, 17.202277969703278, 17.202277969703278]))
+    assert np.array_equal(e_map[40], np.array([13, 221, 19.436506316151, 19.436506316151]))
 
     # check live designations
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == 602
-    assert n_map_geom[:,2].sum() == n_map_wgs_geom[:,2].sum() == 81
+    # small differences due to rounding in conversions, so split over two lines
+    assert n_map_geom[:,2].sum() == 81
+    assert n_map_wgs_geom[:,2].sum() == 82
 
     # plots for debugging
     # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
@@ -137,16 +144,16 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 1, 240, 240]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 233, 233]))
+    assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 240.8318915758459]))
+    assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 233.23807579381202]))
 
     n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 46, 18, 18]))
-    assert np.array_equal(e_map[40], np.array([13, 411, 19, 19]))
+    assert np.array_equal(e_map[0], np.array([0, 46, 18.525530121218914, 18.525530121218914]))
+    assert np.array_equal(e_map[40], np.array([13, 411, 19.436506316151, 19.436506316151]))
 
     # check that custom weights are processed
     for s, e in G.edges():
@@ -159,16 +166,16 @@ def test_graph_from_networkx():
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 1, 240, 120]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 233, 116]))
+    assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 120.41594578792295]))
+    assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 116.61903789690601]))
 
     n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
 
-    assert np.array_equal(e_map[0], np.array([0, 46, 18, 9]))
-    assert np.array_equal(e_map[40], np.array([13, 411, 19, 9]))
+    assert np.array_equal(e_map[0], np.array([0, 46, 18.525530121218914, 9.262765060609457]))
+    assert np.array_equal(e_map[40], np.array([13, 411, 19.436506316151, 9.7182531580755]))
 
     # check that passing negative lenghts or weights throw errors
     G[0][1]['length'] = -1
@@ -179,3 +186,14 @@ def test_graph_from_networkx():
     G[0][1]['weight'] = -1
     with pytest.raises(ValueError):
         n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+
+
+def test_centrality():
+
+    G, pos = graph_util.tutte_graph()
+
+    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+
+    node_density, imp_closeness, gravity, betweenness, betweenness_wt = centrality.centrality(n_map, e_map, [100, 1000])
+
+    print(node_density)
