@@ -132,7 +132,10 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             nb_idx_trim = int(full_to_trim_idx_map[nb_idx])
             # distance is previous distance plus new distance
             d = dist_map[trim_idx] + nb_wt
+            # TODO: add backstop check - optional
+
             # only pursue if less than max and less than prior assigned distances
+            # TODO: keep max distance (length) and weight (weight) separate
             if d <= max_dist and d < dist_map[nb_idx_trim]:
                 dist_map[nb_idx_trim] = d
                 # using actual node indices instead of boolean to simplify finding indices
@@ -186,9 +189,9 @@ def compute_centrality(node_map, edge_map, distances, betas):
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
 
-        #if netw_src_idx % 1000 == 0:
-        #    print('...progress')
-        #    print(round(netw_src_idx / total_count * 100, 2))
+        if src_idx % 1000 == 0:
+            print('...progress')
+            print(round(src_idx / n * 100, 2))
 
         # only compute for nodes in current city
         if not nodes_live[src_idx]:
