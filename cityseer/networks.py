@@ -5,8 +5,6 @@ from numba import njit
 
 cc = CC('networks')
 
-# TODO: refactor and document
-
 # below assumes running from the aot directory
 # NOTE -> this is ignored if compiling from setup.py script instead
 # cc.output_dir = os.path.abspath(os.path.join(os.pardir, 'compiled'))
@@ -53,13 +51,17 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
+# TODO: have a look at autogenerating signatures? ints vs. floats etc? or are tests sufficient?
 @cc.export('shortest_path_tree',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(Array(f8, 2, "C"), Array(f8, 2, "C"), i8, i8, f8)')
+           'Tuple((Array(i8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C")))'
+           '(Array(i8, 2, "C"), Array(f8, 2, "C"), i8, Array(f8, 1, "C"), Array(f8, 1, "C"), f8, boolean)')
 @njit
-def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist):
+def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular_wt=False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes
+
+    Returns shortest paths (distance_map_wt and pred_map) from a source node to all other nodes based on the weights
+    Also returns a distance map (distance_map_m) based on actual distances
 
     NODE MAP:
     0 - x
@@ -77,7 +79,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
     active = np.full(n_trim, np.nan)
-    dist_map = np.full(n_trim, np.inf)
+    dist_map_wt = np.full(n_trim, np.inf)
+    dist_map_m = np.full(n_trim, np.inf)
     pred_map = np.full(n_trim, np.nan)
 
     # set starting node
@@ -86,7 +89,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     # - set to idx of node once discovered
     # - set to Inf once processed
     src_idx_trim = np.int(full_to_trim_idx_map[src_idx])
-    dist_map[src_idx_trim] = 0
+    dist_map_wt[src_idx_trim] = 0
+    dist_map_m[src_idx_trim] = 0
     active[src_idx_trim] = src_idx_trim
 
     # search to max distance threshold to determine reachable nodes
@@ -99,7 +103,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
         # manual iteration definitely faster than numpy methods
         min_idx = None
         min_dist = np.inf
-        for i, d in enumerate(dist_map):
+        for i, d in enumerate(dist_map_wt):
             # find any closer nodes that have not yet been discovered
             if d < min_dist and np.isfinite(active[i]):
                 min_dist = d
@@ -121,7 +125,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             # if the start index no longer matches it means all neighbours have been visited
             if start != node_idx:
                 break
-            # increment for next loop
+            # increment idx for next loop
             edge_idx += 1
             # cast to int for indexing
             nb_idx = np.int(end)
@@ -131,24 +135,48 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             # fetch the neighbour's trim index
             nb_idx_trim = int(full_to_trim_idx_map[nb_idx])
             # distance is previous distance plus new distance
-            d = dist_map[trim_idx] + nb_wt
-            # TODO: add backstop check - optional
-
-            # only pursue if less than max and less than prior assigned distances
-            # TODO: keep max distance (length) and weight (weight) separate
-            if d <= max_dist and d < dist_map[nb_idx_trim]:
-                dist_map[nb_idx_trim] = d
+            d_w = dist_map_wt[trim_idx] + nb_wt
+            d_m = dist_map_m[trim_idx] + nb_len
+            # check that the distance doesn't exceed the max
+            if d_m > max_dist:
+                continue
+            # it is necessary to check for angular sidestepping if using angular weights on a dual graph
+            if angular_wt:
+                prior_match = False
+                # get the predecessor
+                pred_idx = pred_map[node_idx]
+                # check that the new neighbour was not directly accessible from the prior set of neighbours
+                pred_edge_idx = node_map[pred_idx][3]
+                while pred_edge_idx < len(edge_map):
+                    # get the previous edge's start and end nodes
+                    pred_start, pred_end = edge_map[pred_edge_idx][:2]
+                    # if the prev start index no longer matches prev node, all previous neighbours have been visited
+                    if pred_start != pred_idx:
+                        break
+                    # increment idx for next loop
+                    edge_idx += 1
+                    # check that the previous node's neighbour's node is not equal to the currently new neighbour node
+                    if pred_end == nb_idx:
+                        prior_match = True
+                        break
+                # continue if prior match was found
+                if prior_match:
+                    continue
+            # only pursue if weight distance is less than prior assigned distances
+            if d_w < dist_map_wt[nb_idx_trim]:
+                dist_map_wt[nb_idx_trim] = d_w
+                dist_map_m[nb_idx_trim] = d_m
                 # using actual node indices instead of boolean to simplify finding indices
                 pred_map[nb_idx_trim] = trim_idx
                 active[nb_idx_trim] = nb_idx_trim
 
-    return dist_map, pred_map
+    return dist_map_wt, dist_map_m, pred_map
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality',
            'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
+           '(Array(i8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
 def compute_centrality(node_map, edge_map, distances, betas):
     '''
@@ -201,18 +229,20 @@ def compute_centrality(node_map, edge_map, distances, betas):
         trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_idx, max_dist, x_arr, y_arr)
 
         # run the shortest tree dijkstra
-        dist_map_trim, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map,
-                                                                   full_to_trim_idx_map, max_dist)
+        # keep in mind that predecessor map is based on weights distance - which can be different from metres
+        # distance map in metres still necessary for defining max distances
+        dist_map_trim_wt, dist_map_trim_m, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx,
+                                                                trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
 
         # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(dist_map_trim))[0]
+        ind = np.where(np.isfinite(dist_map_trim_wt))[0]
         for to_idx_trim in ind:
 
             # skip self node
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
                 continue
 
-            dist_m = dist_map_trim[to_idx_trim]
+            dist_m = dist_map_trim_m[to_idx_trim]
 
             # some crow-flies max distance nodes won't be reached within max distance threshold over the network
             if np.isinf(dist_m):
@@ -259,88 +289,6 @@ def compute_centrality(node_map, edge_map, distances, betas):
     imp_closeness = node_density ** 2 / farness
 
     return node_density, imp_closeness, gravity, betweenness, betweenness_wt
-
-
-# parallel and fastmath don't apply (fastmath causes issues...)
-# if using np.inf for max-dist, then handle excessive distance issues from callee function
-@cc.export('shortest_path_tree_angular',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), i8, i8, f8)')
-@njit
-def shortest_path_tree_angular(nbs_arr, ang_dist_arr, dist_arr, source_idx, trim_count, max_dist):
-    '''
-    This is the angular variant which has more complexity:
-    - using source and target version of dijkstra because there are situations where angular routes exceed max dist
-    - i.e. algo searches for and quits once target reached
-    - returns both angular and corresponding euclidean distances
-    - checks that shortest path algorithm doesn't back-step
-    '''
-
-    # setup shortest path arrays
-    active = np.full(trim_count, np.nan)
-    dist_map_m = np.full(trim_count, np.inf)
-    dist_map_a = np.full(trim_count, np.inf)
-    dist_map_a_m = np.full(trim_count, np.inf)
-    pred_map_a = np.full(trim_count, np.nan)
-
-    # set starting node
-    dist_map_a[source_idx] = 0
-    dist_map_a_m[source_idx] = 0
-    active[source_idx] = source_idx  # store actual index number instead of booleans, easier for iteration below:
-
-    # search to max distance threshold to determine reachable verts
-    while np.any(np.isfinite(active)):
-        # get the index for the min of currently active vert distances
-        # note, this index corresponds only to currently active vertices
-        # min_idx = np.argmin(dist_map_a[np.isfinite(active)])
-        # map the min index back to the vertices array to get the corresponding vert idx
-        # v = active[np.isfinite(active)][min_idx]
-        # v_idx = np.int(v)  # cast to int
-        # manually iterating definitely faster
-        min_idx = None
-        min_ang = np.inf
-        for i, a in enumerate(dist_map_a):
-            if a < min_ang and np.isfinite(active[i]):
-                min_ang = a
-                min_idx = i
-        v_idx = np.int(min_idx)  # cast to int
-        # set current vertex to visited
-        active[v_idx] = np.inf
-        # visit neighbours
-        # for n, degrees, meters in zip(nbs_arr[v_idx], ang_dist_arr[v_idx], dist_arr[v_idx]):
-        # manually iterating a tad faster
-        for i, n in enumerate(nbs_arr[v_idx]):
-            # exit once all neighbours visited
-            if np.isnan(n):
-                break
-            n_idx = np.int(n)  # cast to int for indexing
-            # check that the neighbour node does not exceed the euclidean distance threshold
-            if dist_map_m[n_idx] > max_dist:
-                continue
-            # check that the neighbour was not directly accessible from the prior node
-            # this prevents angular backtrack-shortcutting
-            # first get the previous vert's id
-            pred_idx = pred_map_a[v_idx]
-            # need to check for nan in case of first vertex
-            if np.isfinite(pred_idx):
-                # could check that previous is not equal to current neighbour but would automatically die-out...
-                # don't proceed with this index if it could've been followed from predecessor
-                # if np.any(nbs_arr[np.int(prev_nb_idx)] == n_idx):
-                if np.any(nbs_arr[np.int(pred_idx)] == n_idx):
-                    continue
-            # distance is previous distance plus new distance
-            degrees = ang_dist_arr[v_idx][i]
-            d_a = dist_map_a[v_idx] + degrees
-            meters = dist_arr[v_idx][i]
-            d_m = dist_map_a_m[v_idx] + meters
-            # only pursue if angular distance is less than prior assigned distance
-            if d_a < dist_map_a[n_idx]:
-                dist_map_a[n_idx] = d_a
-                dist_map_a_m[n_idx] = d_m
-                pred_map_a[n_idx] = v_idx
-                active[n_idx] = n_idx
-
-    return dist_map_m, dist_map_a, dist_map_a_m, dist_map_a
 
 
 @cc.export('assign_accessibility_data',

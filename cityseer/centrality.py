@@ -176,7 +176,8 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
 
 # TODO: add centrality tests
-# TODO: decide on adding backstep check - instead of separate simplest path algo...?
+# TODO: consider adding primary to dual networkx converter? - too many edge cases and requires geoms...?
+# TODO: consider adding harmonic closeness
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
 
     if node_map.shape[1] != 4:
