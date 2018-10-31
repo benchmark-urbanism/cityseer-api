@@ -178,13 +178,14 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 # TODO: add centrality tests
 # TODO: consider adding primary to dual networkx converter? - too many edge cases and requires geoms...?
 # TODO: consider adding harmonic closeness
+# TODO: have a look at autogenerating signatures? ints vs. floats etc? or are tests sufficient?
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
 
     if node_map.shape[1] != 4:
-        raise ValueError('The node map must have a dimensionality of 4, consisting of x, y, live, and link idx parameters')
+        raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters')
 
     if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of 3, consisting of start, end, and distance parameters')
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and weight parameters')
 
     if isinstance(distances, (int, float)):
         distances = [distances]
@@ -202,7 +203,7 @@ def centrality(node_map, edge_map, distances, min_threshold_wt=0.018315638888734
     return node_density, imp_closeness, gravity, betweenness, betweenness_wt
 
 
-# TODO: add separate mixed-uses algo
+# TODO: add mixed-uses algo
 '''
 @njit
 def compute_mixed_uses(node_map, edge_map, distances, betas, overlay):

@@ -51,7 +51,6 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-# TODO: have a look at autogenerating signatures? ints vs. floats etc? or are tests sufficient?
 @cc.export('shortest_path_tree',
            'Tuple((Array(i8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C")))'
            '(Array(i8, 2, "C"), Array(f8, 2, "C"), i8, Array(f8, 1, "C"), Array(f8, 1, "C"), f8, boolean)')
@@ -144,7 +143,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if angular_wt:
                 prior_match = False
                 # get the predecessor
-                pred_idx = pred_map[node_idx]
+                pred_idx = np.int(pred_map[node_idx])
                 # check that the new neighbour was not directly accessible from the prior set of neighbours
                 pred_edge_idx = node_map[pred_idx][3]
                 while pred_edge_idx < len(edge_map):
@@ -175,7 +174,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality',
-           'Tuple((Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
+           'Tuple((Array(i8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
            '(Array(i8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
 def compute_centrality(node_map, edge_map, distances, betas):
@@ -240,6 +239,10 @@ def compute_centrality(node_map, edge_map, distances, betas):
 
             # skip self node
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
+                continue
+
+            # only process in one direction
+            if to_idx_trim < full_to_trim_idx_map[src_idx]:
                 continue
 
             dist_m = dist_map_trim_m[to_idx_trim]

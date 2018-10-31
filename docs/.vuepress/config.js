@@ -8,20 +8,20 @@ module.exports = {
     // must include katex stylesheet otherwise double displayed MathML and HTML
     ['link', {
       rel: 'stylesheet',
-      href: 'https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.css',
-      integrity: 'sha384-D+9gmBxUQogRLqvARvNLmA9hS2x//eK1FhVb9PiU86gmcrBrJAQT8okdJ4LMp2uv',
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.css',
+      integrity: 'sha384-9eLZqc9ds8eNjO3TmqPeYcDj8n+Qfa4nuSiGYa6DjLNcv9BtN69ZIulL9+8CqC9Y',
       crossorigin: 'anonymous'
     }],
     ['script', {
       defer: true,
-      src: 'https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.js',
-      integrity: 'sha384-483A6DwYfKeDa0Q52fJmxFXkcPCFfnXMoXblOkJ4JcA8zATN6Tm78UNL72AKk+0O',
+      src: 'https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js',
+      integrity: 'sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx',
       crossorigin: 'anonymous'
     }],
     ['script', {
       defer: true,
-      src: 'https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/contrib/auto-render.min.js',
-      integrity: 'sha384-yACMu8JWxKzSp/C1YV86pzGiQ/l1YUfE8oPuahJQxzehAjEt2GiQuy/BIvl9KyeF',
+      src: 'https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/contrib/auto-render.min.js',
+      integrity: 'sha384-kmZOZB5ObwgQnS/DuDg6TScgOiWWBiVt0plIRkZCmE6rDZGrEOQeHM5PcHi+nyqe',
       crossorigin: 'anonymous'
     }]
   ],

@@ -44,7 +44,7 @@
       VFlex
     },
     mounted () {
-      window.renderMathInElement(document.body, {
+      window.renderMathInElement(this.$el, {
         delimiters: [
           {left: "$$", right: "$$", display: true}, // has to be first!!
           {left: "$", right: "$", display:false}

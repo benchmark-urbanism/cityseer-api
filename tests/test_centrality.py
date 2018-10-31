@@ -3,9 +3,8 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 from shapely import geometry
-from cityseer import centrality
+from cityseer import centrality, networks
 from cityseer.util import graph_util
-
 
 
 def test_generate_graph():
@@ -190,10 +189,45 @@ def test_graph_from_networkx():
 
 def test_centrality():
 
+    def find_path(pred_map, src):
+        s_path = []
+        pred = src
+        while True:
+            s_path.append(int(pred))
+            pred = pred_map[int(pred)]
+            if np.isnan(pred):
+                break
+        return list(reversed(s_path))
+
     G, pos = graph_util.tutte_graph()
+    # add weights
+    for s, e in G.edges():
+        s_geom = geometry.Point(G.node[s]['x'], G.node[s]['y'])
+        e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
+        G[s][e]['weight'] = s_geom.distance(e_geom)
 
     n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    # assume all nodes are reachable
+    pseudo_maps = np.array(list(range(len(n_map))))
 
-    node_density, imp_closeness, gravity, betweenness, betweenness_wt = centrality.centrality(n_map, e_map, [100, 1000])
+    # compute centralities
+    for max_d in [200, 500, 2000]:
+        for i in range(len(G)):
+            # check shortest path maps
+            dist_map_wt, dist_map_m, pred_map = \
+                networks.shortest_path_tree(n_map, e_map, i, pseudo_maps, pseudo_maps, max_dist=max_d)
+            nx_dist, nx_path = nx.single_source_dijkstra(G, i, weight='weight', cutoff=max_d)
+            for j in range(len(G)):
+                if j in nx_path:
+                    assert find_path(pred_map, j) == nx_path[j]
 
-    print(node_density)
+    # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
+    node_density, imp_closeness, gravity, betweenness, betweenness_wt = centrality.centrality(n_map, e_map, [2000])
+    # set endpoint counting to false and do not normalise
+    nx_betw = nx.betweenness_centrality(G, weight='weight', endpoints=False, normalized=False)
+    for i in range(len(G)):
+        assert nx_betw[i] == betweenness[0][i]
+
+    # TODO: add closeness
+
+    # TODO: check angular backstep
