@@ -175,9 +175,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     return node_map, edge_map
 
 
-# TODO: add centrality tests
 # TODO: consider adding primary to dual networkx converter? - too many edge cases and requires geoms...?
-# TODO: consider adding harmonic closeness
+
+
 # TODO: have a look at autogenerating signatures? ints vs. floats etc? or are tests sufficient?
 def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
 
@@ -195,12 +195,12 @@ def centrality(node_map, edge_map, distances, min_threshold_wt=0.018315638888734
 
     betas = []
     for d in distances:
-        betas.append(np.log(1 / min_threshold_wt) / d)
+        betas.append(np.log(min_threshold_wt) / d)
 
-    node_density, imp_closeness, gravity, betweenness, betweenness_wt = \
+    node_density, imp_closeness, harm_closeness, gravity, betweenness, betweenness_wt = \
         networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas))
 
-    return node_density, imp_closeness, gravity, betweenness, betweenness_wt
+    return node_density, imp_closeness, harm_closeness, gravity, betweenness, betweenness_wt, betas
 
 
 # TODO: add mixed-uses algo

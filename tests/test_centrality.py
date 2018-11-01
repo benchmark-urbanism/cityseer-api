@@ -189,6 +189,7 @@ def test_graph_from_networkx():
 
 def test_centrality():
 
+    # for extracting paths from predecessor map
     def find_path(pred_map, src):
         s_path = []
         pred = src
@@ -199,6 +200,7 @@ def test_centrality():
                 break
         return list(reversed(s_path))
 
+    # load the test graph
     G, pos = graph_util.tutte_graph()
     # add weights
     for s, e in G.edges():
@@ -206,11 +208,13 @@ def test_centrality():
         e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
         G[s][e]['weight'] = s_geom.distance(e_geom)
 
+    # generate node and edge maps
     n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+
     # assume all nodes are reachable
     pseudo_maps = np.array(list(range(len(n_map))))
 
-    # compute centralities
+    # test shortest path algorithm against networkx
     for max_d in [200, 500, 2000]:
         for i in range(len(G)):
             # check shortest path maps
@@ -221,13 +225,33 @@ def test_centrality():
                 if j in nx_path:
                     assert find_path(pred_map, j) == nx_path[j]
 
+    # test centrality methods
     # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
-    node_density, imp_closeness, gravity, betweenness, betweenness_wt = centrality.centrality(n_map, e_map, [2000])
+    dist = [2000]
+    node_density, improved, harmonic, gravity, betweenness, betweenness_wt, betas = centrality.centrality(n_map, e_map, dist)
+
+    # check betas
+    for b, d in zip(betas, dist):
+        assert np.exp(b * d) == 0.01831563888873418
+
+    # test node density
+    # node density count doesn't include self-node
+    for n in node_density[0]:
+        assert n + 1 == len(G)
+
+    # NOTE: modified improved closeness is not comparable to networkx version
+    # test harmonic closeness
+    nx_harm_cl = nx.harmonic_centrality(G, distance='weight')
+    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
+    assert np.array_equal(nx_harm_cl.round(8), harmonic[0].round(8))
+    # TODO: is there a way to test gravity?
+
+    # test betweenness
     # set endpoint counting to false and do not normalise
     nx_betw = nx.betweenness_centrality(G, weight='weight', endpoints=False, normalized=False)
-    for i in range(len(G)):
-        assert nx_betw[i] == betweenness[0][i]
+    nx_betw = np.array([v for v in nx_betw.values()])
+    assert np.array_equal(nx_betw, betweenness[0])
+    # TODO: is there a way to test weighted betweenness?
 
-    # TODO: add closeness
 
-    # TODO: check angular backstep
+# TODO: add dual graph with angular backstopo check

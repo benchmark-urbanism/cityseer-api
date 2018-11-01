@@ -209,6 +209,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
     # prepare data arrays
     node_density = np.full((d_n, n), 0.0)
     farness = np.full((d_n, n), 0.0)
+    harmonic = np.full((d_n, n), 0.0)
     gravity = np.full((d_n, n), 0.0)
     betweenness = np.full((d_n, n), 0.0)
     betweenness_wt = np.full((d_n, n), 0.0)
@@ -241,10 +242,6 @@ def compute_centrality(node_map, edge_map, distances, betas):
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
                 continue
 
-            # only process in one direction
-            if to_idx_trim < full_to_trim_idx_map[src_idx]:
-                continue
-
             dist_m = dist_map_trim_m[to_idx_trim]
 
             # some crow-flies max distance nodes won't be reached within max distance threshold over the network
@@ -264,7 +261,12 @@ def compute_centrality(node_map, edge_map, distances, betas):
                 if dist_m <= d:
                     node_density[i][src_idx] += 1
                     farness[i][src_idx] += dist_m
+                    harmonic[i][src_idx] += 1/dist_m
                     gravity[i][src_idx] += np.exp(b * dist_m)
+
+            # only process betweenness in one direction
+            if to_idx_trim < full_to_trim_idx_map[src_idx]:
+                continue
 
             # betweenness - only counting truly between vertices, not starting and ending verts
             intermediary_idx_trim = np.int(pred_map_trim[to_idx_trim])
@@ -289,9 +291,9 @@ def compute_centrality(node_map, edge_map, distances, betas):
                 intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-    imp_closeness = node_density ** 2 / farness
+    improved = node_density ** 2 / farness
 
-    return node_density, imp_closeness, gravity, betweenness, betweenness_wt
+    return node_density, improved, harmonic, gravity, betweenness, betweenness_wt
 
 
 @cc.export('assign_accessibility_data',
