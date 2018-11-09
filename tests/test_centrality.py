@@ -254,4 +254,4 @@ def test_centrality():
     # TODO: is there a way to test weighted betweenness?
 
 
-# TODO: add dual graph with angular backstopo check
+# TODO: add dual graph with angular backstop check
