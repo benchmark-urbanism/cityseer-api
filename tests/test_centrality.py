@@ -101,10 +101,10 @@ def test_graph_from_networkx():
     # pairwise permutations - since n_map = n_map_wgs just need to repeat for n_map and n_map_geom
     assert np.array_equal(n_map[:,[0, 1, 3]], n_map_geom[:,[0, 1, 3]])  # live designations won't match
     # numpy uses nearest even rounding, so use difference as workaround where necessary - only seems to happen on northing
-    assert np.all(n_map[:,[1]] - n_map_wgs[:,[1]] < 0.000001)
+    assert np.all(np.abs(n_map[:,1] - n_map_wgs[:,1]) < 0.1)
     assert np.array_equal(n_map[:,[0, 2, 3]].round(0), n_map_wgs[:,[0, 2, 3]].round(0))  # northing already checked
     # numpy uses nearest even rounding, so use difference as workaround where necessary - only seems to happen on northing
-    assert np.all(n_map[:, [1]] - n_map_wgs_geom[:, [1]] < 0.000001)
+    assert np.all(np.abs(n_map[:,1] - n_map_wgs_geom[:,1]) < 0.1)
     assert np.array_equal(n_map[:,[0, 3]], n_map_wgs_geom[:,[0, 3]])  # live designations won't match, and northing already checked
 
     assert np.array_equal(e_map, e_map_geom)
