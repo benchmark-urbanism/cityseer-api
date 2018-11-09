@@ -19,8 +19,8 @@ cc = CC('networks')
 
 
 @cc.export('crow_flies',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"))')
+           'Tuple((float64[:], float64[:]))'
+           '(uint64, float64, float64[:], float64[:])')
 @njit
 def crow_flies(src_idx, max_dist, x_arr, y_arr):
 
@@ -52,8 +52,8 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
 
 
 @cc.export('shortest_path_tree',
-           'Tuple((Array(i8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(Array(i8, 2, "C"), Array(f8, 2, "C"), i8, Array(f8, 1, "C"), Array(f8, 1, "C"), f8, boolean)')
+           'Tuple((float64[:], float64[:], float64[:]))'
+           '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit
 def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular_wt=False):
     '''
@@ -114,7 +114,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
         # convert the idx to the full node_map
         node_idx = int(trim_to_full_idx_map[trim_idx])
         # fetch the relevant edge_map index
-        edge_idx = node_map[node_idx][3]
+        edge_idx = int(node_map[node_idx][3])
         # iterate the node's neighbours
         # manual iteration a tad faster than numpy methods
         # instead of while True use length of edge map to catch last node's termination
@@ -145,7 +145,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
                 # get the predecessor
                 pred_idx = np.int(pred_map[node_idx])
                 # check that the new neighbour was not directly accessible from the prior set of neighbours
-                pred_edge_idx = node_map[pred_idx][3]
+                pred_edge_idx = int(node_map[pred_idx][3])
                 while pred_edge_idx < len(edge_map):
                     # get the previous edge's start and end nodes
                     pred_start, pred_end = edge_map[pred_edge_idx][:2]
@@ -174,8 +174,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality',
-           'Tuple((Array(i8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C"), Array(f8, 2, "C")))'
-           '(Array(i8, 2, "C"), Array(f8, 2, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
+           'Tuple((float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:]))'
+           '(float64[:,:], float64[:,:], float64[:], float64[:])')
 @njit
 def compute_centrality(node_map, edge_map, distances, betas):
     '''
@@ -231,8 +231,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on weights distance - which can be different from metres
         # distance map in metres still necessary for defining max distances
-        dist_map_trim_wt, dist_map_trim_m, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx,
-                                                                trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
+        dist_map_trim_wt, dist_map_trim_m, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
 
         # use corresponding indices for reachable verts
         ind = np.where(np.isfinite(dist_map_trim_wt))[0]
@@ -296,9 +295,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
     return node_density, improved, harmonic, gravity, betweenness, betweenness_wt
 
 
-@cc.export('assign_accessibility_data',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), f8)')
+"""
 @njit
 def assign_accessibility_data(network_x_arr, network_y_arr, data_x_arr, data_y_arr, max_dist):
     '''
@@ -341,9 +338,6 @@ def assign_accessibility_data(network_x_arr, network_y_arr, data_x_arr, data_y_a
     return data_assign_map, data_assign_dist
 
 
-@cc.export('accessibility_agg',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
 def accessibility_agg(netw_src_idx, max_dist, netw_dist_map_trim, netw_pred_map_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes, data_x_arr, data_y_arr, data_assign_map, data_assign_dist):
 
@@ -397,9 +391,6 @@ def accessibility_agg(netw_src_idx, max_dist, netw_dist_map_trim, netw_pred_map_
     return reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map
 
 
-@cc.export('accessibility_agg_angular',
-           'Tuple((Array(f8, 1, "C"), Array(f8, 1, "C")))'
-           '(i8, f8, Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"), Array(f8, 1, "C"))')
 @njit
 def accessibility_agg_angular(netw_src_idx, max_dist, netw_dist_map_a_m_trim, netw_pred_map_a_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes, data_x_arr, data_y_arr, data_assign_map, data_assign_dist):
 
@@ -451,3 +442,5 @@ def accessibility_agg_angular(netw_src_idx, max_dist, netw_dist_map_a_m_trim, ne
 
     # note that some entries will be nan values if the max distance was exceeded
     return reachable_classes_trim, reachable_classes_dist_trim
+    
+"""

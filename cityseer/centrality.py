@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-from . import networks, mixed_uses, accessibility
+from . import networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
 
     # prepare the node and link maps
     n = g_dup.number_of_nodes()
-    node_map = np.full((n, 4), 0)  # int - prevents need to cast indices to int
+    node_map = np.full((n, 4), 0.0)  # float - for consistency
     edge_map = np.full((total_out_degrees, 4), 0.0)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
