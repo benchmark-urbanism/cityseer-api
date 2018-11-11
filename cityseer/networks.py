@@ -52,7 +52,7 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
 
 
 @cc.export('shortest_path_tree',
-           'Tuple((float64[:], float64[:], float64[:]))'
+           'Tuple((float64[:], float64[:], float64[:], boolean[:]))'
            '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit
 def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular_wt=False):
@@ -77,10 +77,11 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
-    active = np.full(n_trim, np.nan)
-    dist_map_wt = np.full(n_trim, np.inf)
-    dist_map_m = np.full(n_trim, np.inf)
-    pred_map = np.full(n_trim, np.nan)
+    active = np.full(n_trim, np.nan)  # whether the node is currently active or not
+    dist_map_wt = np.full(n_trim, np.inf)  # the distance map based on the weights attribute - not necessarily metres
+    dist_map_m = np.full(n_trim, np.inf)  # the distance map based on the metres distance attribute
+    pred_map = np.full(n_trim, np.nan)  # predecessor map
+    cycles = np.full(n_trim, False)  # graph cycles
 
     # set starting node
     # the active map is:
@@ -133,6 +134,9 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
                 continue
             # fetch the neighbour's trim index
             nb_idx_trim = int(full_to_trim_idx_map[nb_idx])
+            # if this neighbour has already been processed, continue
+            if np.isinf(active[nb_idx_trim]):
+                continue
             # distance is previous distance plus new distance
             d_w = dist_map_wt[trim_idx] + nb_wt
             d_m = dist_map_m[trim_idx] + nb_len
@@ -161,6 +165,11 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
                 # continue if prior match was found
                 if prior_match:
                     continue
+            # if a neighbouring node has already been discovered, then it is a cycle
+            # predecessor neighbour nodes are already filtered out above with: np.isinf(active[nb_idx_trim])
+            # so np.isnan is adequate -> can only run into other active nodes - not completed nodes
+            if not np.isnan(active[nb_idx_trim]):
+                cycles[nb_idx_trim] = True
             # only pursue if weight distance is less than prior assigned distances
             if d_w < dist_map_wt[nb_idx_trim]:
                 dist_map_wt[nb_idx_trim] = d_w
@@ -169,12 +178,12 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
                 pred_map[nb_idx_trim] = trim_idx
                 active[nb_idx_trim] = nb_idx_trim
 
-    return dist_map_wt, dist_map_m, pred_map
+    return dist_map_wt, dist_map_m, pred_map, cycles
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality',
-           'Tuple((float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:]))'
+           'Tuple((float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:]))'
            '(float64[:,:], float64[:,:], float64[:], float64[:])')
 @njit
 def compute_centrality(node_map, edge_map, distances, betas):
@@ -213,11 +222,12 @@ def compute_centrality(node_map, edge_map, distances, betas):
     gravity = np.full((d_n, n), 0.0)
     betweenness = np.full((d_n, n), 0.0)
     betweenness_wt = np.full((d_n, n), 0.0)
+    cycle_counts = np.full((d_n, n), 0.0)
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
 
-        if src_idx % 1000 == 0:
+        if src_idx % 100000 == 0:
             print('...progress')
             print(round(src_idx / n * 100, 2))
 
@@ -231,10 +241,11 @@ def compute_centrality(node_map, edge_map, distances, betas):
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on weights distance - which can be different from metres
         # distance map in metres still necessary for defining max distances
-        dist_map_trim_wt, dist_map_trim_m, pred_map_trim = shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
+        dist_map_trim_wt, dist_map_trim_m, pred_map_trim, cycles = \
+            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
 
         # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(dist_map_trim_wt))[0]
+        ind = np.where(np.isfinite(dist_map_trim_m))[0]
         for to_idx_trim in ind:
 
             # skip self node
@@ -262,6 +273,9 @@ def compute_centrality(node_map, edge_map, distances, betas):
                     farness[i][src_idx] += dist_m
                     harmonic[i][src_idx] += 1/dist_m
                     gravity[i][src_idx] += np.exp(b * dist_m)
+                    # check if the current to node is a cycle
+                    if cycles[to_idx_trim]:
+                        cycle_counts[i][src_idx] += np.exp(b * dist_m)
 
             # only process betweenness in one direction
             if to_idx_trim < full_to_trim_idx_map[src_idx]:
@@ -290,9 +304,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
                 intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-    improved = node_density ** 2 / farness
-
-    return node_density, improved, harmonic, gravity, betweenness, betweenness_wt
+    return node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts
 
 
 """

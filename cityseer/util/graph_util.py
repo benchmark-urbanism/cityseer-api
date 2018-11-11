@@ -163,8 +163,8 @@ def plot_graph_maps(node_map, edge_map, geom=None):
         ax.set_ylim(node_map[:, 1].min() - 100, node_map[:, 1].max() + 100)
 
     # plot nodes
-    ax1.scatter(node_map[:, 0], node_map[:, 1], s=7)
-    ax2.scatter(node_map[:, 0], node_map[:, 1], s=7)
+    ax1.scatter(node_map[:, 0], node_map[:, 1], s=7, c=node_map[:, 2])
+    ax2.scatter(node_map[:, 0], node_map[:, 1], s=7, c=node_map[:, 2])
 
     # check for duplicate edges
     edges = set()
@@ -172,7 +172,7 @@ def plot_graph_maps(node_map, edge_map, geom=None):
     # plot edges - requires iteration through maps
     for src_idx, src_data in enumerate(node_map):
         # get the starting edge index
-        edge_idx = src_data[3]
+        edge_idx = int(src_data[3])
         # iterate the neighbours
         # don't use while True because last node's index increment won't be caught
         while edge_idx < len(edge_map):
@@ -188,12 +188,12 @@ def plot_graph_maps(node_map, edge_map, geom=None):
             # fetch the neighbour node's data
             nb_data = node_map[int(to_idx)]
             # check for duplicates
-            k = str(sorted([fr_idx, int(to_idx)]))
+            k = str(sorted([fr_idx, to_idx]))
             if k not in edges:
                 edges.add(k)
-                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]])
+                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
             else:
-                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]])
+                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
             edge_idx += 1
 
     if geom:

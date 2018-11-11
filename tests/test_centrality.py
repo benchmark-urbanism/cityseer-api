@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import networkx as nx
+import utm
 import matplotlib.pyplot as plt
 from shapely import geometry
 from cityseer import centrality, networks
@@ -43,7 +44,12 @@ def test_distance_from_beta():
 def test_graph_from_networkx():
 
     # polygon for testing geom method
-    geom = geometry.Polygon([[6000500, 600500], [6000900, 600500], [6000900, 600900], [6000500, 600900]])
+    geom_coords = [[6000500, 600500], [6000900, 600500], [6000900, 600900], [6000500, 600900]]
+    geom = geometry.Polygon(geom_coords)
+    geom_coords_wgs = []
+    for x, y in geom_coords:
+        geom_coords_wgs.append(utm.to_latlon(y, x, 30, 'U')[:2][::-1])
+    geom_wgs = geometry.Polygon(geom_coords_wgs)
 
     # fetch graphs for testing
     G, pos = graph_util.tutte_graph()
@@ -51,10 +57,14 @@ def test_graph_from_networkx():
 
     # test non-decomposed versions
     # ============================
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
-    n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=geom)
-    n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=None)
-    n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=geom)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    n_labels_geom, n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=geom)
+    n_labels_wgs, n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=None)
+    n_labels_wgs_geom, n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=geom_wgs)
+
+    # check labels
+    assert len(n_labels) == G.number_of_nodes()
+    assert n_labels == n_labels_geom == n_labels_wgs == n_labels_wgs_geom
 
     # check basic graph lengths
     assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == G.number_of_nodes()
@@ -80,18 +90,22 @@ def test_graph_from_networkx():
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == G.number_of_nodes()
     # small differences due to rounding in conversions, so split over two lines
     assert n_map_geom[:,2].sum() == 6
-    assert n_map_wgs_geom[:,2].sum() == 7
+    assert n_map_wgs_geom[:,2].sum() == 8
 
     # plots for debugging
-    # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
-    # graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
+    # graph_util.plot_graph_maps(n_map_geom, e_map_geom, geom=geom)
+    # graph_util.plot_graph_maps(n_map_wgs_geom, e_map_wgs_geom, geom=geom)  # geom_wgs is in a different CRS
 
     # test decomposed versions
     # ========================
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
-    n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=geom)
-    n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=None)
-    n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=geom)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
+    n_labels_geom, n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=geom)
+    n_labels_wgs, n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=None)
+    n_labels_wgs_geom, n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=geom_wgs)
+
+    # check labels
+    assert len(n_labels) == 602
+    assert n_labels == n_labels_geom == n_labels_wgs == n_labels_wgs_geom
 
     # check basic graph lengths
     # conversion and rounding differences means slight decomposition differences
@@ -121,19 +135,19 @@ def test_graph_from_networkx():
     # check live designations
     assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == 602
     # small differences due to rounding in conversions, so split over two lines
-    assert n_map_geom[:,2].sum() == 81
-    assert n_map_wgs_geom[:,2].sum() == 82
+    assert n_map_geom[:,2].sum() == 75
+    assert n_map_wgs_geom[:,2].sum() == 83
 
     # plots for debugging
-    # graph_util.plot_graph_maps(n_map, e_map, geom=geom)
-    # graph_util.plot_graph_maps(n_map_wgs, e_map_wgs, geom=geom)
+    # graph_util.plot_graph_maps(n_map_geom, e_map_geom, geom=geom)
+    # graph_util.plot_graph_maps(n_map_wgs_geom, e_map_wgs_geom, geom=geom)  # geom_wgs is in a different CRS
 
     # SOME OTHER CHECKS
     # =================
 
     # check that passing lng, lat without WGS flag raises error
     with pytest.raises(ValueError):
-        n, e = centrality.graph_from_networkx(G_wgs, wgs84_coords=False, decompose=False, geom=None)
+        n_labels, n, e = centrality.graph_from_networkx(G_wgs, wgs84_coords=False, decompose=False, geom=None)
 
     # check that custom lengths are processed
     # weights should automatically be set to the same value (instead of the geom length)
@@ -142,7 +156,7 @@ def test_graph_from_networkx():
         e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
         G[s][e]['length'] = s_geom.distance(e_geom) * 2
 
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
@@ -150,7 +164,7 @@ def test_graph_from_networkx():
     assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 240.8318915758459]))
     assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 233.23807579381202]))
 
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
@@ -164,7 +178,7 @@ def test_graph_from_networkx():
         e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
         G[s][e]['weight'] = s_geom.distance(e_geom)
 
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
@@ -172,7 +186,7 @@ def test_graph_from_networkx():
     assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 120.41594578792295]))
     assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 116.61903789690601]))
 
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
 
     assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
     assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
@@ -180,15 +194,15 @@ def test_graph_from_networkx():
     assert np.array_equal(e_map[0], np.array([0, 46, 18.525530121218914, 9.262765060609457]))
     assert np.array_equal(e_map[40], np.array([13, 411, 19.436506316151, 9.7182531580755]))
 
-    # check that passing negative lenghts or weights throw errors
+    # check that passing negative lengths or weights throw errors
     G[0][1]['length'] = -1
     with pytest.raises(ValueError):
-        n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+        n_labels, n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
     G[0][1]['length'] = 240
     G[0][1]['weight'] = -1
     with pytest.raises(ValueError):
-        n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+        n_labels, n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
 
 def test_centrality():
@@ -213,7 +227,7 @@ def test_centrality():
         G[s][e]['weight'] = s_geom.distance(e_geom)
 
     # generate node and edge maps
-    n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
     # assume all nodes are reachable
     pseudo_maps = np.array(list(range(len(n_map))))
@@ -222,7 +236,7 @@ def test_centrality():
     for max_d in [200, 500, 2000]:
         for i in range(len(G)):
             # check shortest path maps
-            dist_map_wt, dist_map_m, pred_map = \
+            dist_map_wt, dist_map_m, pred_map, cycles = \
                 networks.shortest_path_tree(n_map, e_map, i, pseudo_maps, pseudo_maps, max_dist=max_d)
             nx_dist, nx_path = nx.single_source_dijkstra(G, i, weight='weight', cutoff=max_d)
             for j in range(len(G)):
@@ -232,7 +246,8 @@ def test_centrality():
     # test centrality methods
     # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
     dist = [2000]
-    node_density, improved, harmonic, gravity, betweenness, betweenness_wt, betas = centrality.centrality(n_map, e_map, dist)
+    node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts, improved, betas \
+        = centrality.compute_centrality(n_map, e_map, dist)
 
     # check betas
     for b, d in zip(betas, dist):
@@ -256,6 +271,3 @@ def test_centrality():
     nx_betw = np.array([v for v in nx_betw.values()])
     assert np.array_equal(nx_betw, betweenness[0])
     # TODO: is there a way to test weighted betweenness?
-
-
-# TODO: add dual graph with angular backstop check

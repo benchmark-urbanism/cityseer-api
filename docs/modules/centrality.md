@@ -83,7 +83,7 @@ A convenience method for generating a `node_map` and `edge_map` from a [NetworkX
 <FuncHeading>Parameters</FuncHeading>
 <FuncElement name="network_x_graph" type="networkx.Graph">
 
-A NetworkX undirected `Graph`. Requires node attributes `x` and `y` for spatial coordinates and accepts optional `length` and `weight` edge attributes. See notes.
+A NetworkX undirected `Graph`. Requires `x` and `y` node attributes for spatial coordinates. Accepts optional `label` and `live` node attributes. Accepts optional `length` and `weight` edge attributes. See notes.
 
 </FuncElement>
 <FuncElement name="wgs84_coords" type="bool">
@@ -93,29 +93,39 @@ Set to `True` if the `x` and `y` node attribute keys reference [`WGS84`](https:/
 </FuncElement>
 <FuncElement name="decompose" type="int, float">
 
-Generates a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres. This evens out the density of nodes to reduce topological distortions in the graph, which can otherwise cause misleading outcomes in centrality methods.
+Optionally generate a decomposed version of the graph wherein edges are broken into smaller sections no longer than the specified distance in metres. This evens out the density of nodes to reduce topological distortions in the graph, and provides a more granular representation of variations along street (edge) lengths.
 
 </FuncElement>
 <FuncElement name="geom" type="shapely.geometry.Polygon">
 
-A `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#polygons) geometry defining the original area of interest. Recommended for avoidance of boundary roll-off in computed metrics.
+An optional `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#polygons) geometry defining the original boundary of interest. Must be in the same Coordinate Reference System as the `x` and `y` attributes supplied in the graph. Used for identifying `live` nodes in the event that a `live` attribute was not provided with the graph. If both the `geom` and the `live` attribute are provided, then the `live` attribute takes precedence and the `geom` is then only used for handling certain edge cases for decomposed nodes.
 
 </FuncElement>
 <FuncHeading>Returns</FuncHeading>
+<FuncElement name="node_labels" type="list">
+
+A list of node labels in the same order as the node map.
+
+</FuncElement>
+
 <FuncElement name="node_map" type="numpy.ndarray">
 
-Node data in the form of an $n \times 4$ array, where each row represents a node consisting of: `[x, y, live, edge_index ]`
+Node data in the form of an $n \times 4$ array, where each row represents a node consisting of: `[x, y, live, edge_index]`
 
 </FuncElement>
 <FuncElement name="edge_map" type="numpy.ndarray">
 
-Edge data in the form of an $e \times 4$ array, where each row represents an edge consisting of: `[start, end, length, weight]`.
+Edge data in the form of an $e \times 4$ array, where each row represents an edge consisting of: `[start_node, end_node, length, weight]`.
 
 </FuncElement>
 
 The node attributes `x` and `y` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the `wgs84_coords` parameter is set to `True`.
 
-The optional edge attribute `length` indicates the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges. This attribute must be positive.
+If provided, the `label` node attribute will be saved to the `node_labels` list. If not provided, labels will be generated automatically. If decomposing the graph, newly generated nodes will be assigned a new label.
+
+The `live` node attribute is optional, but recommended. It is used for identifying which nodes fall within the original boundary of interest as opposed to those that fall within the surrounding buffered area. (That is assuming you have buffered your extents! See the hint box.) If provided, centrality calculations are only performed for `live` nodes, thus reducing frivolous computation. Note that the algorithms still have access to the full buffered network. If providing a `geom` in lieu of the `live` attribute, then the live tag will be generated internally. The `geom` method can be computationally intensive for large graphs or complex boundaries, in which case, consider using a simplified geometry or run the analysis for the entire area and discard buffered nodes afterwards.
+
+The optional edge attribute `length` represents the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges. This attribute must be positive.
 
 If provided, the optional edge attribute `weight` will be used for shortest path calculations instead of distances in metres. If decomposing the network, then the `weight` attribute will be divided into the number of decomposed sub-edges. This attribute must be positive.
 
@@ -124,12 +134,11 @@ This method assumes that all graph preparation, e.g. cleaning and simplification
 :::
 
 ::: tip Hint
-When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect. If provided, the geometry `geom` is used to identify nodes falling within the original non-buffered area of interest. Metrics will then only be computed for these nodes, thus avoiding roll-off effects and reducing frivolous computation. Note that the algorithms still have access to the full buffered network.
+When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect.
 :::
 
 ::: danger Important
-Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small in relation to the size of the graph can increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases. On the other-hand, it may be feasible to go as small as a metre for very small networks, such as building circulation networks.
-
+Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small in relation to the size of the graph can increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases. On the other-hand, it may be feasible to go as small as possible for very small networks, such as building circulation networks.
 :::
 
 

@@ -12,7 +12,7 @@ from cityseer import centrality, networks
 
 setup (
     name = 'cityseer',
-    version = '0.1.12',
+    version = '0.1.13',
     packages=['cityseer'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
@@ -23,10 +23,14 @@ setup (
     },
     author='Gareth Simons',
     author_email='gareth@cityseer.io',
-    license='GPL-3.0',
+    license='AGPL-3.0',
     install_requires=[
         'numpy',
-        'numba'
+        'numba',
+        'utm',
+        'shapely',
+        'networkx',
+        'matplotlib'
       ],
     ext_modules = [
         centrality.cc.distutils_extension(),

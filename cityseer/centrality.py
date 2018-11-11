@@ -7,6 +7,7 @@ from typing import Union, Tuple
 import utm
 from shapely import geometry, ops
 import networkx as nx
+from tqdm import tqdm
 import numpy as np
 from numba.pycc import CC
 from numba import njit
@@ -37,7 +38,8 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
-def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) -> Tuple[np.ndarray, np.ndarray]:
+def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) \
+        -> Tuple[list, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
@@ -52,7 +54,16 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     g_copy = network_x_graph.copy()
 
     # if necessary, convert from WGS84
-    for n, d in g_copy.nodes(data=True):
+    if wgs84_coords and geom:
+        # convert the coords to UTM - remember to flip back to lng, lat
+        utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in
+                  zip(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])]
+        # reconstruct as UTM geom, but remember to flip back the lat and lng
+        geom = geometry.Polygon([[x, y] for x, y in utm_coords])
+
+    logger.info('Preparing nodes')
+    for n, d in tqdm(g_copy.nodes(data=True)):
+        # fetch x, y and convert from WGS if necessary
         x = d['x']
         y = d['y']
         # in case lng lat accidentally passed-in without WGS flag
@@ -65,34 +76,50 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         # round to 1cm
         g_copy.node[n]['x'] = np.round(x, 2)
         g_copy.node[n]['y'] = np.round(y, 2)
+        # if a label has not been provided, then generate
+        if 'label' not in d:
+            g_copy.node[n]['label'] = str(n)
+        # if live nodes have not been set, then initialise
+        if 'live' not in d:
+            # if a geom has been provided
+            if geom and not geom.contains(geometry.Point(x, y)):
+                g_copy.node[n]['live'] = False
+            else:
+                g_copy.node[n]['live'] = True
+
 
     # process the vertices and generate the lengths if not present
     # note -> write to a duplicated graph to avoid in-place errors
+    logger.info('Preparing edges')
     g_dup = g_copy.copy()
-    for s, e, d in g_copy.edges(data=True):
+    for s, e, d in tqdm(g_copy.edges(data=True)):
         # get start coords
+        s_label = g_copy.node[s]['label']
+        s_live = g_copy.node[s]['live']
         s_x = g_copy.node[s]['x']
         s_y = g_copy.node[s]['y']
         # get end coords
+        e_label = g_copy.node[e]['label']
+        e_live = g_copy.node[e]['live']
         e_x = g_copy.node[e]['x']
         e_y = g_copy.node[e]['y']
         # generate the geometry
         ls = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         # write length to g_dup edge if no value already present
-        if 'length' in g_dup[s][e]:
+        if not 'length' in g_dup[s][e] or g_dup[s][e]['length'] is None:
+            g_dup[s][e]['length'] = ls.length
+        else:
             # check that weight is positive
             if not g_dup[s][e]['length'] >= 0:
                 raise ValueError('Only positive lengths can be passed to this method')
-        else:
-            g_dup[s][e]['length'] = ls.length
         # add weight attribute if not present, and set to length
-        if 'weight' in g_dup[s][e]:
+        if not 'weight' in g_dup[s][e] or g_dup[s][e]['weight'] is None:
+            # NB - set from length attribute and not geom in case input provided
+            g_dup[s][e]['weight'] = g_dup[s][e]['length']
+        else:
             # check that weight is positive
             if not g_dup[s][e]['weight'] >= 0:
                 raise ValueError('Only positive weights can be passed to this method')
-        else:
-            # NB - set from length attribute and not geom in case input provided
-            g_dup[s][e]['weight'] = g_dup[s][e]['length']
         # continue if not decomposing
         if not decompose:
             continue
@@ -113,16 +140,30 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
         # note, using actual length attribute / n for new length, as provided lengths may not match crow-flies distance
         for i in range(int(n) - 1):
-            # create the new node ID
+            # create the new node label and id
+            new_node_label = f'{s_label}_{sub_node_counter}_{e_label}'
             new_node_id = f'{s}_{sub_node_counter}_{e}'
+
             sub_node_counter += 1
             # create the split linestring geom for measuring the new length
             s_g = ops.substring(ls, d_step, d_step + l/n)
             # get the x, y of the new end node
             x = s_g.coords.xy[0][-1]
             y = s_g.coords.xy[1][-1]
+            # set to live if both parents are live
+            if s_live and e_live:
+                new_node_live = True
+            # false if neither
+            elif not s_live and not e_live:
+                new_node_live = False
+            # in situations where one node is not live (outside boundary) then use geom if available
+            elif geom and not geom.contains(geometry.Point(x, y)):
+                new_node_live = False
+            # otherwise set to True (in this situation, if one parent true and no geom)
+            else:
+                new_node_live = True
             # add the new node and edge
-            g_dup.add_node(new_node_id, x=x, y=y)
+            g_dup.add_node(new_node_id, x=x, y=y, label=new_node_label, live=new_node_live)
             g_dup.add_edge(prior_node_id, new_node_id, length=sub_l, weight=sub_w)
             # increment the step and node id
             prior_node_id = new_node_id
@@ -134,27 +175,32 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_dup = nx.convert_node_labels_to_integers(g_dup, 0)
 
-    # set the live nodes and sum degrees
+    logger.info('Preparing data arrays')
+
+    # sum degrees
     total_out_degrees = 0
     for n, d in g_dup.nodes(data=True):
         total_out_degrees += nx.degree(g_dup, n)
-        live = True
-        if geom and not geom.contains(geometry.Point(d['x'], d['y'])):
-            live = False
-        g_dup.node[n]['live'] = live
 
     # prepare the node and link maps
     n = g_dup.number_of_nodes()
-    node_map = np.full((n, 4), 0.0)  # float - for consistency
-    edge_map = np.full((total_out_degrees, 4), 0.0)  # float - allows for nan and inf
+    node_map = np.full((n, 4), np.nan)  # float - for consistency
+    node_labels = []
+    edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
-    for n, d in g_dup.nodes(data=True):
+    for n, d in tqdm(g_dup.nodes(data=True)):
         idx = int(n)
+        # x coordinate
         node_map[idx][0] = d['x']
+        # y coordinate
         node_map[idx][1] = d['y']
+        # live or not
         node_map[idx][2] = d['live']
+        # starting index for edges in edge map
         node_map[idx][3] = edge_idx
+        # label
+        node_labels.append(d['label'])
         # follow all out links and add these to the edge_map
         # this happens for both directions
         for nb in g_dup.neighbors(n):
@@ -172,14 +218,12 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     assert len(node_map) == g_dup.number_of_nodes()
     assert len(edge_map) == g_dup.number_of_edges() * 2
 
-    return node_map, edge_map
+    return node_labels, node_map, edge_map
 
 
 # TODO: consider adding primary to dual networkx converter? - too many edge cases and requires geoms...?
-
-
-# TODO: have a look at autogenerating signatures? ints vs. floats etc? or are tests sufficient?
-def centrality(node_map, edge_map, distances, min_threshold_wt=0.01831563888873418):
+def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list, min_threshold_wt:float=0.01831563888873418) \
+        -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, list]:
 
     if node_map.shape[1] != 4:
         raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters')
@@ -197,10 +241,14 @@ def centrality(node_map, edge_map, distances, min_threshold_wt=0.018315638888734
     for d in distances:
         betas.append(np.log(min_threshold_wt) / d)
 
-    node_density, imp_closeness, harm_closeness, gravity, betweenness, betweenness_wt = \
+    node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts = \
         networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas))
 
-    return node_density, imp_closeness, harm_closeness, gravity, betweenness, betweenness_wt, betas
+    # generate improved closeness
+    improved = node_density ** 2 / farness
+    improved[np.isnan(improved)] = 0  # where farness is zero, improved centrality will return nan
+
+    return node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts, improved, betas
 
 
 # TODO: add mixed-uses algo
