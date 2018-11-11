@@ -5,15 +5,13 @@
 # python3 -m pip install --user --upgrade twine
 # /Users/gareth/Library/Python/3.7/bin/twine upload dist/*
 
-# TODO: fix install requires
-
 from setuptools import setup
-from cityseer import centrality, networks
+from cityseer import networks
 
 setup (
     name = 'cityseer',
     version = '0.1.14',
-    packages=['cityseer'],
+    packages=['cityseer'],  # where the source code is located in project
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
     project_urls={
@@ -32,9 +30,7 @@ setup (
         'shapely',
         'networkx',
         'matplotlib'
-      ],
+    ],
     ext_modules = [
-        centrality.cc.distutils_extension(),
         networks.cc.distutils_extension()
     ])
-

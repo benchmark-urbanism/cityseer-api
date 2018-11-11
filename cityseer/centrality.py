@@ -9,14 +9,10 @@ from shapely import geometry, ops
 import networkx as nx
 from tqdm import tqdm
 import numpy as np
-from numba.pycc import CC
-from numba import njit
 from . import networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-cc = CC('centrality')
 
 
 def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) \

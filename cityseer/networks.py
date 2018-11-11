@@ -18,9 +18,7 @@ cc = CC('networks')
 # add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 
 
-@cc.export('crow_flies',
-           'Tuple((float64[:], float64[:]))'
-           '(uint64, float64, float64[:], float64[:])')
+@cc.export('crow_flies', '(uint64, float64, float64[:], float64[:])')
 @njit
 def crow_flies(src_idx, max_dist, x_arr, y_arr):
 
@@ -51,9 +49,7 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@cc.export('shortest_path_tree',
-           'Tuple((float64[:], float64[:], float64[:], boolean[:]))'
-           '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
+@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit
 def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular_wt=False):
     '''
@@ -182,9 +178,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
-@cc.export('compute_centrality',
-           'Tuple((float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:]))'
-           '(float64[:,:], float64[:,:], float64[:], float64[:])')
+@cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:])')
 @njit
 def compute_centrality(node_map, edge_map, distances, betas):
     '''
