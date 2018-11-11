@@ -12,7 +12,7 @@ from cityseer import centrality, networks
 
 setup (
     name = 'cityseer',
-    version = '0.1.13',
+    version = '0.1.14',
     packages=['cityseer'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
