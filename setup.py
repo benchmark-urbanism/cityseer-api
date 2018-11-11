@@ -28,6 +28,7 @@ setup (
         'numpy',
         'numba',
         'utm',
+        'tqdm',
         'shapely',
         'networkx',
         'matplotlib'
