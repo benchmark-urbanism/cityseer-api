@@ -246,7 +246,7 @@ def test_centrality():
     # test centrality methods
     # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
     dist = [2000]
-    node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts, improved, betas \
+    node_density, farness, farness_m, harmonic, improved, gravity, betweenness, betweenness_wt, cycle_counts, betas \
         = centrality.compute_centrality(n_map, e_map, dist)
 
     # check betas

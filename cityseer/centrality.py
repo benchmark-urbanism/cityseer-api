@@ -217,9 +217,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     return node_labels, node_map, edge_map
 
 
-# TODO: consider adding primary to dual networkx converter? - too many edge cases and requires geoms...?
-def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list, min_threshold_wt:float=0.01831563888873418) \
-        -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, list]:
+def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
+                       min_threshold_wt:float=0.01831563888873418, angular_wt:bool=False) \
+        -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, list]:
 
     if node_map.shape[1] != 4:
         raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters')
@@ -237,14 +237,14 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     for d in distances:
         betas.append(np.log(min_threshold_wt) / d)
 
-    node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts = \
-        networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas))
+    node_density, farness, farness_m, harmonic, gravity, betweenness, betweenness_wt, cycle_counts = \
+        networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas), angular_wt)
 
     # generate improved closeness
     improved = node_density ** 2 / farness
     improved[np.isnan(improved)] = 0  # where farness is zero, improved centrality will return nan
 
-    return node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts, improved, betas
+    return node_density, farness, farness_m, harmonic, improved, gravity, betweenness, betweenness_wt, cycle_counts, betas
 
 
 # TODO: add mixed-uses algo

@@ -74,6 +74,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
     active = np.full(n_trim, np.nan)  # whether the node is currently active or not
+    # in many cases the weight and distance maps will be the same, but not necessarily so
     dist_map_wt = np.full(n_trim, np.inf)  # the distance map based on the weights attribute - not necessarily metres
     dist_map_m = np.full(n_trim, np.inf)  # the distance map based on the metres distance attribute
     pred_map = np.full(n_trim, np.nan)  # predecessor map
@@ -105,13 +106,13 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
                 min_dist = d
                 min_idx = i
         # cast to int - do this step explicitly for numba type inference
-        trim_idx = int(min_idx)
+        node_trim_idx = int(min_idx)
         # the node can now be set to visited
-        active[trim_idx] = np.inf
+        active[node_trim_idx] = np.inf
         # convert the idx to the full node_map
-        node_idx = int(trim_to_full_idx_map[trim_idx])
+        node_full_idx = int(trim_to_full_idx_map[node_trim_idx])
         # fetch the relevant edge_map index
-        edge_idx = int(node_map[node_idx][3])
+        edge_idx = int(node_map[node_full_idx][3])
         # iterate the node's neighbours
         # manual iteration a tad faster than numpy methods
         # instead of while True use length of edge map to catch last node's termination
@@ -119,23 +120,24 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             # get the edge's start, end, length, weight
             start, end, nb_len, nb_wt = edge_map[edge_idx]
             # if the start index no longer matches it means all neighbours have been visited
-            if start != node_idx:
+            if start != node_full_idx:
                 break
             # increment idx for next loop
             edge_idx += 1
             # cast to int for indexing
-            nb_idx = np.int(end)
+            nb_full_idx = np.int(end)
             # not all neighbours will be within crow-flies distance - if so, continue
-            if np.isnan(full_to_trim_idx_map[nb_idx]):
+            if np.isnan(full_to_trim_idx_map[nb_full_idx]):
                 continue
             # fetch the neighbour's trim index
-            nb_idx_trim = int(full_to_trim_idx_map[nb_idx])
+            nb_trim_idx = int(full_to_trim_idx_map[nb_full_idx])
             # if this neighbour has already been processed, continue
-            if np.isinf(active[nb_idx_trim]):
+            # i.e. next node will recheck previous (neighbour) node
+            if np.isinf(active[nb_trim_idx]):
                 continue
             # distance is previous distance plus new distance
-            d_w = dist_map_wt[trim_idx] + nb_wt
-            d_m = dist_map_m[trim_idx] + nb_len
+            d_w = dist_map_wt[node_trim_idx] + nb_wt
+            d_m = dist_map_m[node_trim_idx] + nb_len
             # check that the distance doesn't exceed the max
             if d_m > max_dist:
                 continue
@@ -143,44 +145,46 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if angular_wt:
                 prior_match = False
                 # get the predecessor
-                pred_idx = np.int(pred_map[node_idx])
+                pred_trim_idx = int(pred_map[node_trim_idx])
+                # convert to full index
+                pred_full_idx = int(trim_to_full_idx_map[pred_trim_idx])
                 # check that the new neighbour was not directly accessible from the prior set of neighbours
-                pred_edge_idx = int(node_map[pred_idx][3])
+                pred_edge_idx = int(node_map[pred_full_idx][3])
                 while pred_edge_idx < len(edge_map):
                     # get the previous edge's start and end nodes
                     pred_start, pred_end = edge_map[pred_edge_idx][:2]
                     # if the prev start index no longer matches prev node, all previous neighbours have been visited
-                    if pred_start != pred_idx:
+                    if pred_start != pred_full_idx:
                         break
-                    # increment idx for next loop
-                    edge_idx += 1
+                    # increment predecessor idx for next loop
+                    pred_edge_idx += 1
                     # check that the previous node's neighbour's node is not equal to the currently new neighbour node
-                    if pred_end == nb_idx:
+                    if pred_end == nb_full_idx:
                         prior_match = True
                         break
                 # continue if prior match was found
                 if prior_match:
                     continue
             # if a neighbouring node has already been discovered, then it is a cycle
-            # predecessor neighbour nodes are already filtered out above with: np.isinf(active[nb_idx_trim])
+            # predecessor neighbour nodes are already filtered out above with: np.isinf(active[nb_trim_idx])
             # so np.isnan is adequate -> can only run into other active nodes - not completed nodes
-            if not np.isnan(active[nb_idx_trim]):
-                cycles[nb_idx_trim] = True
+            if not np.isnan(active[nb_trim_idx]):
+                cycles[nb_trim_idx] = True
             # only pursue if weight distance is less than prior assigned distances
-            if d_w < dist_map_wt[nb_idx_trim]:
-                dist_map_wt[nb_idx_trim] = d_w
-                dist_map_m[nb_idx_trim] = d_m
+            if d_w < dist_map_wt[nb_trim_idx]:
+                dist_map_wt[nb_trim_idx] = d_w
+                dist_map_m[nb_trim_idx] = d_m
                 # using actual node indices instead of boolean to simplify finding indices
-                pred_map[nb_idx_trim] = trim_idx
-                active[nb_idx_trim] = nb_idx_trim
+                pred_map[nb_trim_idx] = node_trim_idx
+                active[nb_trim_idx] = nb_trim_idx
 
     return dist_map_wt, dist_map_m, pred_map, cycles
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
-@cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:])')
+@cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], boolean)')
 @njit
-def compute_centrality(node_map, edge_map, distances, betas):
+def compute_centrality(node_map, edge_map, distances, betas, angular_wt=False):
     '''
     NODE MAP:
     0 - x
@@ -212,6 +216,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
     # prepare data arrays
     node_density = np.full((d_n, n), 0.0)
     farness = np.full((d_n, n), 0.0)
+    farness_m = np.full((d_n, n), 0.0)
     harmonic = np.full((d_n, n), 0.0)
     gravity = np.full((d_n, n), 0.0)
     betweenness = np.full((d_n, n), 0.0)
@@ -221,7 +226,7 @@ def compute_centrality(node_map, edge_map, distances, betas):
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
 
-        if src_idx % 100000 == 0:
+        if src_idx % 10000 == 0:
             print('...progress')
             print(round(src_idx / n * 100, 2))
 
@@ -236,16 +241,17 @@ def compute_centrality(node_map, edge_map, distances, betas):
         # keep in mind that predecessor map is based on weights distance - which can be different from metres
         # distance map in metres still necessary for defining max distances
         dist_map_trim_wt, dist_map_trim_m, pred_map_trim, cycles = \
-            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist)
+            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist, angular_wt)
 
         # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(dist_map_trim_m))[0]
+        ind = np.where(np.isfinite(dist_map_trim_wt))[0]
         for to_idx_trim in ind:
 
             # skip self node
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
                 continue
 
+            dist_wt = dist_map_trim_wt[to_idx_trim]
             dist_m = dist_map_trim_m[to_idx_trim]
 
             # some crow-flies max distance nodes won't be reached within max distance threshold over the network
@@ -264,12 +270,16 @@ def compute_centrality(node_map, edge_map, distances, betas):
                 # these arrays are oriented differently - first d index then src index
                 if dist_m <= d:
                     node_density[i][src_idx] += 1
-                    farness[i][src_idx] += dist_m
-                    harmonic[i][src_idx] += 1/dist_m
-                    gravity[i][src_idx] += np.exp(b * dist_m)
+                    farness[i][src_idx] += dist_wt
+                    farness_m[i][src_idx] += dist_m
+                    if dist_wt == 0:
+                        harmonic[i][src_idx] = np.inf
+                    else:
+                        harmonic[i][src_idx] += 1 / dist_wt
+                    gravity[i][src_idx] += np.exp(b * dist_wt)
                     # check if the current to node is a cycle
                     if cycles[to_idx_trim]:
-                        cycle_counts[i][src_idx] += np.exp(b * dist_m)
+                        cycle_counts[i][src_idx] += np.exp(b * dist_wt)
 
             # only process betweenness in one direction
             if to_idx_trim < full_to_trim_idx_map[src_idx]:
@@ -292,13 +302,13 @@ def compute_centrality(node_map, edge_map, distances, betas):
 
                         # weighted variants - summed at all distances
                         betweenness[i][intermediary_idx_mapped] += 1
-                        betweenness_wt[i][intermediary_idx_mapped] += np.exp(b * dist_m)
+                        betweenness_wt[i][intermediary_idx_mapped] += np.exp(b * dist_wt)
 
                 # follow the chain
                 intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-    return node_density, farness, harmonic, gravity, betweenness, betweenness_wt, cycle_counts
+    return node_density, farness, farness_m, harmonic, gravity, betweenness, betweenness_wt, cycle_counts
 
 
 """
