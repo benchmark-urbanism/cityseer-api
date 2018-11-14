@@ -83,7 +83,7 @@ A convenience method for generating a `node_map` and `edge_map` from a [NetworkX
 <FuncHeading>Parameters</FuncHeading>
 <FuncElement name="network_x_graph" type="networkx.Graph">
 
-A NetworkX undirected `Graph`. Requires `x` and `y` node attributes for spatial coordinates. Accepts optional `label` and `live` node attributes. Accepts optional `length` and `weight` edge attributes. See notes.
+A NetworkX undirected `Graph`. Requires `x` and `y` node attributes for spatial coordinates in metres (e.g. [UTM](https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system)). Accepts optional `label` and `live` node attributes. Accepts optional `length` and `weight` edge attributes. See notes.
 
 </FuncElement>
 <FuncElement name="wgs84_coords" type="bool">
@@ -98,13 +98,13 @@ Optionally generate a decomposed version of the graph wherein edges are broken i
 </FuncElement>
 <FuncElement name="geom" type="shapely.geometry.Polygon">
 
-An optional `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#polygons) geometry defining the original boundary of interest. Must be in the same Coordinate Reference System as the `x` and `y` attributes supplied in the graph. Used for identifying `live` nodes in the event that a `live` attribute was not provided with the graph. If both the `geom` and the `live` attribute are provided, then the `live` attribute takes precedence and the `geom` is then only used for handling certain edge cases for decomposed nodes.
+An optional `shapely` [`Polygon`](https://shapely.readthedocs.io/en/latest/manual.html#polygons) geometry defining the original boundary of interest. Must be in the same Coordinate Reference System as the `x` and `y` attributes supplied in the graph. Used for identifying `live` nodes in the event that a `live` attribute was not provided with the graph. If both the `geom` and the `live` attribute are provided, then the `live` attribute takes precedence and the `geom` is then only used for handling certain edge cases when decomposing edges.
 
 </FuncElement>
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_labels" type="list">
 
-A list of node labels in the same order as the node map.
+A list of node labels in the same order as the node map. Node labels will be derived from the `label` node attribute, if provided. Otherwise, labels will be generated automatically. If decomposing the graph, newly generated nodes will be assigned new labels.
 
 </FuncElement>
 
@@ -121,9 +121,7 @@ Edge data in the form of an $e \times 4$ array, where each row represents an edg
 
 The node attributes `x` and `y` determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres unless the `wgs84_coords` parameter is set to `True`.
 
-If provided, the `label` node attribute will be saved to the `node_labels` list. If not provided, labels will be generated automatically. If decomposing the graph, newly generated nodes will be assigned a new label.
-
-The `live` node attribute is optional, but recommended. It is used for identifying which nodes fall within the original boundary of interest as opposed to those that fall within the surrounding buffered area. (That is assuming you have buffered your extents! See the hint box.) If provided, centrality calculations are only performed for `live` nodes, thus reducing frivolous computation. Note that the algorithms still have access to the full buffered network. If providing a `geom` in lieu of the `live` attribute, then the live tag will be generated internally. The `geom` method can be computationally intensive for large graphs or complex boundaries, in which case, consider using a simplified geometry or run the analysis for the entire area and discard the nodes in the buffered area afterwards.
+The `live` node attribute is optional, but recommended. It is used for identifying which nodes fall within the original boundary of interest as opposed to those that fall within the surrounding buffered area. (That is assuming you have buffered your extents! See the hint box.) Centrality calculations are only performed for `live` nodes, thus reducing frivolous computation. Note that the algorithms still have access to the full buffered network. If providing a `geom` in lieu of the `live` attribute, then the live tag will be generated internally. The `geom` method can be computationally intensive for large graphs or complex boundaries, in which case, consider using a simplified geometry or run the analysis for the entire area and discard the nodes in the buffered area afterwards.
 
 The optional edge attribute `length` represents the original edge length in metres. If not provided, lengths will be computed using crow-flies distances between either end of the edges. This attribute must be positive.
 
@@ -134,7 +132,7 @@ This method assumes that all graph preparation, e.g. cleaning and simplification
 :::
 
 ::: tip Hint
-When calculating local network centralities, it is best-practice for the area of interest to have been buffered by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect.
+When calculating local network centralities, it is best-practice to buffer the global network by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect.
 :::
 
 ::: danger Important

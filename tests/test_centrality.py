@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 import utm
 import matplotlib.pyplot as plt
+from itertools import permutations
 from shapely import geometry
 from cityseer import centrality, networks
 from cityseer.util import graph_util
@@ -12,8 +13,8 @@ def test_generate_graph():
 
     G, pos = graph_util.tutte_graph()
 
-    # nx.draw(G, pos=pos, with_labels=True)
-    # plt.show()
+    nx.draw(G, pos=pos, with_labels=True)
+    plt.show()
 
     assert G.number_of_nodes() == 46
     assert G.number_of_edges() == 69
@@ -205,7 +206,48 @@ def test_graph_from_networkx():
         n_labels, n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
 
-def test_centrality():
+def test_compute_centrality():
+
+    # load the test graph
+    G, pos = graph_util.tutte_graph()
+
+    # generate node and edge maps
+    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+
+    dist = [100]
+
+    # check that malformed signatures trigger errors
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map[:,:3], e_map, dist, close_metrics=['density'])
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map[:,:3], dist, close_metrics=['density'])
+
+    with pytest.raises(TypeError):
+        centrality.compute_centrality(e_map, dist, close_metrics=['density'])
+
+    with pytest.raises(TypeError):
+        centrality.compute_centrality(n_map, dist, close_metrics=['density'])
+
+    with pytest.raises(TypeError):
+        centrality.compute_centrality(n_map, e_map, close_metrics=['density'])
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map, dist)
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['density_spelling_typo'])
+
+    # check the number of returned types
+    closeness_types = ['count', 'farness', 'farness_meters', 'harmonic', 'improved', 'gravity', 'cycles']
+    betweenness_types = ['count', 'weighted', 'gravity_weighted']
+
+    for cl_types in permutations(closeness_types):
+        for bt_types in permutations(betweenness_types):
+            args_ret = centrality.compute_centrality(n_map, e_map, dist, close_metrics=list(cl_types), between_metrics=list(bt_types))
+            assert len(args_ret) == len(cl_types) + len(bt_types) + 1  # beta list is also added
+
+def test_shortest_paths():
 
     # for extracting paths from predecessor map
     def find_path(pred_map, src):
@@ -230,6 +272,7 @@ def test_centrality():
     n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
 
     # assume all nodes are reachable
+    # i.e. prepare trim to full and full to trim maps consisting of the full range of indices
     pseudo_maps = np.array(list(range(len(n_map))))
 
     # test shortest path algorithm against networkx
@@ -243,11 +286,13 @@ def test_centrality():
                 if j in nx_path:
                     assert find_path(pred_map, j) == nx_path[j]
 
+    # test the
+
     # test centrality methods
     # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
     dist = [2000]
     node_density, harmonic, betweenness, betas = \
-        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['density', 'harmonic'], between_metrics=['betweenness'])
+        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['count', 'harmonic'], between_metrics=['count'])
 
     # check betas
     for b, d in zip(betas, dist):

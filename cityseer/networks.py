@@ -184,7 +184,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 # NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
-def compute_centrality(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular_wt=False):
+def network_centralities(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular_wt=False):
     '''
     NODE MAP:
     0 - x
@@ -302,16 +302,14 @@ def compute_centrality(node_map, edge_map, distances, betas, closeness_map, betw
             if dist > max_dist:
                 continue
 
-            # only process closeness if requested
-            if len(closeness_map) > 0:
-                # calculate centralities starting with closeness
-                for i in range(len(distances)):
-                    d = distances[i]
-                    b = betas[i]
-                    if dist <= d:
-                        is_cycle = cycles_trim[to_idx_trim]
-                        for cl_idx in closeness_map:
-                            closeness_data[cl_idx][i][src_idx] += compute_closeness(cl_idx, wt, dist, b, is_cycle)
+            # calculate centralities starting with closeness
+            for i in range(len(distances)):
+                d = distances[i]
+                b = betas[i]
+                if dist <= d:
+                    is_cycle = cycles_trim[to_idx_trim]
+                    for cl_idx in closeness_map:
+                        closeness_data[int(cl_idx)][i][src_idx] += compute_closeness(int(cl_idx), wt, dist, b, is_cycle)
 
             # only process betweenness if requested
             if len(betweenness_map) == 0:
@@ -335,7 +333,7 @@ def compute_centrality(node_map, edge_map, distances, betas, closeness_map, betw
                     b = betas[i]
                     if dist <= d:
                         for bt_idx in betweenness_map:
-                            betweenness_data[bt_idx][i][intermediary_idx_mapped] += compute_betweenness(bt_idx, wt, dist, b)
+                            betweenness_data[int(bt_idx)][i][intermediary_idx_mapped] += compute_betweenness(int(bt_idx), wt, dist, b)
 
                 # follow the chain
                 intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])

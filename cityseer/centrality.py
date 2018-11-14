@@ -34,6 +34,8 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
+# TODO: whether to add dual converter
+# TODO: add graph_to_networkx method
 def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) \
         -> Tuple[list, np.ndarray, np.ndarray]:
     '''
@@ -227,6 +229,9 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if edge_map.shape[1] != 4:
         raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and weight parameters')
 
+    if not distances:
+        raise ValueError('A list of local centrality distance thresholds is required')
+
     if isinstance(distances, (int, float)):
         distances = [distances]
 
@@ -240,21 +245,21 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if not close_metrics and not between_metrics:
         raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute')
 
-    closeness_options = ['density', 'farness', 'farness_equiv_dist', 'harmonic', 'improved', 'gravity', 'cycles']
+    closeness_options = ['count', 'farness', 'farness_meters', 'harmonic', 'improved', 'gravity', 'cycles']
     closeness_map = []
     for cl in close_metrics:
         if cl not in closeness_options:
             raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}')
         closeness_map.append(closeness_options.index(cl))
 
-    betweenness_options = ['betweenness', 'weighted', 'gravity_weighted']
+    betweenness_options = ['count', 'weighted', 'gravity_weighted']
     betweenness_map = []
     for bt in between_metrics:
         if bt not in betweenness_options:
             raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}')
         betweenness_map.append(betweenness_options.index(bt))
 
-    closeness_data, betweenness_data = networks.compute_centrality(node_map, edge_map, np.array(distances),
+    closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
                                         np.array(betas), np.array(closeness_map), np.array(betweenness_map), angular_wt)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
