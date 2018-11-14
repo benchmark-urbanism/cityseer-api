@@ -3,7 +3,7 @@
 '''
 
 import logging
-from typing import Union, Tuple
+from typing import Union, Tuple, Any
 import utm
 from shapely import geometry, ops
 import networkx as nx
@@ -217,9 +217,9 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
     return node_labels, node_map, edge_map
 
 
-def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
-                       min_threshold_wt:float=0.01831563888873418, angular_wt:bool=False) \
-        -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, list]:
+def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list, close_metrics:list=[],
+                        between_metrics:list=[], min_threshold_wt:float=0.01831563888873418, angular_wt:bool=False) \
+                        -> Tuple[Any, ...]:
 
     if node_map.shape[1] != 4:
         raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters')
@@ -237,14 +237,29 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     for d in distances:
         betas.append(np.log(min_threshold_wt) / d)
 
-    node_density, farness, farness_m, harmonic, gravity, betweenness, betweenness_wt, cycle_counts = \
-        networks.compute_centrality(node_map, edge_map, np.array(distances), np.array(betas), angular_wt)
+    if not close_metrics and not between_metrics:
+        raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute')
 
-    # generate improved closeness
-    improved = node_density ** 2 / farness
-    improved[np.isnan(improved)] = 0  # where farness is zero, improved centrality will return nan
+    closeness_options = ['density', 'farness', 'farness_equiv_dist', 'harmonic', 'improved', 'gravity', 'cycles']
+    closeness_map = []
+    for cl in close_metrics:
+        if cl not in closeness_options:
+            raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}')
+        closeness_map.append(closeness_options.index(cl))
 
-    return node_density, farness, farness_m, harmonic, improved, gravity, betweenness, betweenness_wt, cycle_counts, betas
+    betweenness_options = ['betweenness', 'weighted', 'gravity_weighted']
+    betweenness_map = []
+    for bt in between_metrics:
+        if bt not in betweenness_options:
+            raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}')
+        betweenness_map.append(betweenness_options.index(bt))
+
+    closeness_data, betweenness_data = networks.compute_centrality(node_map, edge_map, np.array(distances),
+                                        np.array(betas), np.array(closeness_map), np.array(betweenness_map), angular_wt)
+
+    # return statement tuple unpacking supported from Python 3.8... till then, unpack first
+    return_data = *closeness_data[closeness_map], *betweenness_data[betweenness_map], betas
+    return return_data
 
 
 # TODO: add mixed-uses algo
