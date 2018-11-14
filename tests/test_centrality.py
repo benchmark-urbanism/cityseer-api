@@ -43,6 +43,71 @@ def test_distance_from_beta():
         centrality.distance_from_beta(-0.04)
 
 
+def test_graph_wgs_to_utm():
+
+    # generate graphs
+    G_utm, pos = graph_util.tutte_graph()
+    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
+
+    # check that non WGS coordinates throw error
+    with pytest.raises(ValueError):
+        centrality.graph_wgs_to_utm(G_utm)
+
+    # convert WGS graph
+    G_converted = centrality.graph_wgs_to_utm(G_wgs)
+
+    # check that node coordinates are correctly converted
+    for n, d in G_utm.nodes(data=True):
+        assert d['x'] == round(G_converted.nodes[n]['x'], 1)
+        assert d['y'] == round(G_converted.nodes[n]['y'], 1)
+
+    # check that edge coordinates are correctly converted
+    for g in [G_utm, G_wgs]:
+        for s, e in g.edges():
+            g[s][e]['geom'] = geometry.LineString([
+                [g.nodes[s]['x'], g.nodes[s]['y']],
+                [g.nodes[e]['x'], g.nodes[e]['y']]
+            ])
+    G_converted = centrality.graph_wgs_to_utm(G_wgs)
+    for s, e, d in G_utm.edges(data=True):
+        assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
+
+    # check that non-LineString geoms throw an error
+    for s, e in G_utm.edges():
+        G_utm[s][e]['geom'] = geometry.Point([G_utm.nodes[s]['x'], G_utm.nodes[s]['y']])
+    with pytest.raises(ValueError):
+        centrality.graph_wgs_to_utm(G_utm)
+
+
+def test_graph_decompose():
+
+    # generate graph
+    G, pos = graph_util.tutte_graph()
+
+    # check that missing geoms throw an error
+    with pytest.raises(ValueError):
+        centrality.graph_decompose(G, 20)
+
+    # check that non-LineString geoms throw an error
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
+    with pytest.raises(ValueError):
+        centrality.graph_decompose(G, 20)
+
+    # add correct geom
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.LineString([
+                [G.nodes[s]['x'], G.nodes[s]['y']],
+                [G.nodes[e]['x'], G.nodes[e]['y']]
+            ])
+
+    # decomposition
+    G_decompose = centrality.graph_decompose(G, 20)
+
+    assert nx.number_of_nodes(G_decompose) == 602
+    assert nx.number_of_edges(G_decompose) == 625
+
+
 def test_graph_from_networkx():
 
     # polygon for testing geom method

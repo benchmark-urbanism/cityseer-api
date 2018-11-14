@@ -15,8 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) \
-        -> Tuple[np.ndarray, float]:
+def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
 
     # cast to list form
     if isinstance(beta, (int, float)):
@@ -34,46 +33,107 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
-# TODO: whether to add dual converter
-# TODO: add graph_to_networkx method
-def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decompose:int=None, geom:geometry.Polygon=None) \
-        -> Tuple[list, np.ndarray, np.ndarray]:
+def graph_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph')
+
+    logger.info('Converting networkX graph from WGS to UTM')
+    g_copy = networkX_graph.copy()
+
+    logger.info('Processing node x, y coordinates')
+    for n, d in tqdm(g_copy.nodes(data=True)):
+        # fetch x, y and convert from WGS if necessary
+        x = d['x']
+        y = d['y']
+        # check for unintentional use of conversion
+        if x > 180 or y > 90:
+            raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+        # remember - accepts and returns in y, x order
+        y, x = utm.from_latlon(y, x)[:2]
+        # write back to graph
+        g_copy.nodes[n]['x'] = x
+        g_copy.nodes[n]['y'] = y
+
+    # if line geom property provided, then convert as well
+    logger.info('Processing edge geom coordinates, if present')
+    for s, e, d in tqdm(g_copy.edges(data=True)):
+        # check if geom present
+        if 'geom' in d:
+            line_geom = d['geom']
+            if line_geom.type != 'LineString':
+                raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+            # convert the coords to UTM - remember to flip back to lng, lat
+            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
+            # write back to edge
+            g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
+
+    return g_copy
+
+
+def graph_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph')
+
+    logger.info(f'Decomposing graph to maximum edge lengths of {decompose_max}')
+    g_copy = networkX_graph.copy()
+
+    # note -> write to a duplicated graph to avoid in-place errors
+    for s, e, d in tqdm(networkX_graph.edges(data=True)):
+        # test for geom
+        if 'geom' not in d:
+            raise ValueError('No edge geom found: Please add an edge "geom" attribute consisting of a shapely LineString.')
+        # get edge geometry
+        line_geom = d['geom']
+        if line_geom.type != 'LineString':
+            raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+        # see how many segments are necessary so as not to exceed decomposition max distance
+        # note that a length less than the decompose threshold will result in a single 'sub'-string
+        n = np.ceil(line_geom.length / decompose_max)
+        step_size = line_geom.length / n
+        # since decomposing, remove the prior edge... but only after properties have been read
+        g_copy.remove_edge(s, e)
+        # then add the new sub-edge/s
+        step = 0
+        prior_node_id = s
+        sub_node_counter = 0
+        # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
+        # note, using actual length attribute / n for new length, as provided lengths may not match crow-flies distance
+        for i in range(int(n) - 1):
+            # create the new node label and id
+            new_node_id = f'{s}_{sub_node_counter}_{e}'
+            sub_node_counter += 1
+            # create the split linestring geom for measuring the new length
+            line_segment = ops.substring(line_geom, step, step + step_size)
+            # get the x, y of the new end node
+            x = line_segment.coords.xy[0][-1]
+            y = line_segment.coords.xy[1][-1]
+            # add the new node and edge
+            g_copy.add_node(new_node_id, x=x, y=y)
+            l = line_segment.length
+            g_copy.add_edge(prior_node_id, new_node_id, length=l, impedance=l, weight=l)
+            # increment the step and node id
+            prior_node_id = new_node_id
+            step += step_size
+        # set the last link manually to avoid rounding errors at end of linestring
+        # the nodes already exist, so just add link
+        line_segment = ops.substring(line_geom, step, line_geom.length)
+        l = line_segment.length
+        g_copy.add_edge(prior_node_id, e, length=l, impedance=l, weight=l)
+
+    return g_copy
+
+
+def graph_from_networkx(network_x_graph:nx.Graph) -> Tuple[list, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
     - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
     '''
 
-    # check that it is an undirected graph
-    if not isinstance(network_x_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkx graph')
-
-    # copy the graph to avoid modifying the original
-    g_copy = network_x_graph.copy()
-
-    # if necessary, convert from WGS84
-    if wgs84_coords and geom:
-        # convert the coords to UTM - remember to flip back to lng, lat
-        utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in
-                  zip(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])]
-        # reconstruct as UTM geom, but remember to flip back the lat and lng
-        geom = geometry.Polygon([[x, y] for x, y in utm_coords])
-
     logger.info('Preparing nodes')
     for n, d in tqdm(g_copy.nodes(data=True)):
-        # fetch x, y and convert from WGS if necessary
-        x = d['x']
-        y = d['y']
-        # in case lng lat accidentally passed-in without WGS flag
-        if x <= 90 and not wgs84_coords:
-            raise ValueError(f'Coordinate error, if using lng, lat coordinates, set the wgs84_coords param to True')
-        # if the coords are WGS84, then convert to local UTM
-        if wgs84_coords:
-            # remember - accepts and returns in y, x order
-            y, x = utm.from_latlon(y, x)[:2]
-        # round to 1cm
-        g_copy.node[n]['x'] = np.round(x, 2)
-        g_copy.node[n]['y'] = np.round(y, 2)
         # if a label has not been provided, then generate
         if 'label' not in d:
             g_copy.node[n]['label'] = str(n)
@@ -101,74 +161,7 @@ def graph_from_networkx(network_x_graph:nx.Graph, wgs84_coords:bool=False, decom
         e_live = g_copy.node[e]['live']
         e_x = g_copy.node[e]['x']
         e_y = g_copy.node[e]['y']
-        # generate the geometry
-        ls = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        # write length to g_dup edge if no value already present
-        if not 'length' in g_dup[s][e] or g_dup[s][e]['length'] is None:
-            g_dup[s][e]['length'] = ls.length
-        else:
-            # check that weight is positive
-            if not g_dup[s][e]['length'] >= 0:
-                raise ValueError('Only positive lengths can be passed to this method')
-        # add weight attribute if not present, and set to length
-        if not 'weight' in g_dup[s][e] or g_dup[s][e]['weight'] is None:
-            # NB - set from length attribute and not geom in case input provided
-            g_dup[s][e]['weight'] = g_dup[s][e]['length']
-        else:
-            # check that weight is positive
-            if not g_dup[s][e]['weight'] >= 0:
-                raise ValueError('Only positive weights can be passed to this method')
-        # continue if not decomposing
-        if not decompose:
-            continue
-        # see how many segments are necessary so as not to exceed decomposition max distance
-        # note that a length less than the decompose threshold will result in a single 'sub'-string
-        l = g_dup[s][e]['length']
-        n = np.ceil(l / decompose)
-        # find the length and weight subdivisions
-        sub_l = l / n
-        w = g_dup[s][e]['weight']
-        sub_w = w / n
-        # since decomposing, remove the prior edge... but only after properties have been read
-        g_dup.remove_edge(s, e)
-        # then add the new sub-edge/s
-        d_step = 0
-        prior_node_id = s
-        sub_node_counter = 0
-        # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
-        # note, using actual length attribute / n for new length, as provided lengths may not match crow-flies distance
-        for i in range(int(n) - 1):
-            # create the new node label and id
-            new_node_label = f'{s_label}_{sub_node_counter}_{e_label}'
-            new_node_id = f'{s}_{sub_node_counter}_{e}'
 
-            sub_node_counter += 1
-            # create the split linestring geom for measuring the new length
-            s_g = ops.substring(ls, d_step, d_step + l/n)
-            # get the x, y of the new end node
-            x = s_g.coords.xy[0][-1]
-            y = s_g.coords.xy[1][-1]
-            # set to live if both parents are live
-            if s_live and e_live:
-                new_node_live = True
-            # false if neither
-            elif not s_live and not e_live:
-                new_node_live = False
-            # in situations where one node is not live (outside boundary) then use geom if available
-            elif geom and not geom.contains(geometry.Point(x, y)):
-                new_node_live = False
-            # otherwise set to True (in this situation, if one parent true and no geom)
-            else:
-                new_node_live = True
-            # add the new node and edge
-            g_dup.add_node(new_node_id, x=x, y=y, label=new_node_label, live=new_node_live)
-            g_dup.add_edge(prior_node_id, new_node_id, length=sub_l, weight=sub_w)
-            # increment the step and node id
-            prior_node_id = new_node_id
-            d_step += l / n
-        # set the last link manually to avoid rounding errors at end of linestring
-        # the nodes already exist, so just add link
-        g_dup.add_edge(prior_node_id, e, length=sub_l, weight=sub_w)
 
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_dup = nx.convert_node_labels_to_integers(g_dup, 0)
