@@ -14,6 +14,7 @@ def test_generate_graph():
     G, pos = graph_util.tutte_graph()
 
     #nx.draw(G, pos=pos, with_labels=True)
+
     #plt.show()
 
     assert G.number_of_nodes() == 46
