@@ -134,7 +134,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             # add the new node and edge
             g_copy.add_node(new_node_id, x=x, y=y)
             l = line_segment.length
-            g_copy.add_edge(prior_node_id, new_node_id, length=l, impedance=l, weight=l)
+            g_copy.add_edge(prior_node_id, new_node_id, length=l, impedance=l)
             # increment the step and node id
             prior_node_id = new_node_id
             step += step_size
@@ -142,7 +142,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         # the nodes already exist, so just add link
         line_segment = ops.substring(line_geom, step, line_geom.length)
         l = line_segment.length
-        g_copy.add_edge(prior_node_id, e, length=l, impedance=l, weight=l)
+        g_copy.add_edge(prior_node_id, e, length=l, impedance=l)
 
     return g_copy
 
@@ -165,7 +165,26 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
             raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
         g_copy[s][e]['length'] = line_geom.length
         g_copy[s][e]['impedance'] = line_geom.length
-        g_copy[s][e]['weight'] = line_geom.length
+
+    return g_copy
+
+
+def networkX_length_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
+
+    logger.info('Generating default edge attributes from edge geoms.')
+    g_copy = networkX_graph.copy()
+
+    for n in g_copy.nodes():
+        agg_length = 0
+        for nb in g_copy.neighbors(n):
+            # test for length attribute
+            if 'length' not in g_copy[n][nb]:
+                raise ValueError(f'No "length" attribute available for edge {n}-{nb}.')
+            agg_length += g_copy[n][nb]['length'] / 2
+        g_copy.nodes[n]['weight'] = agg_length
 
     return g_copy
 
@@ -196,8 +215,8 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
     g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and link maps
     node_labels = []
-    node_map = np.full((g_copy.number_of_nodes(), 4), np.nan)  # float - for consistency
-    edge_map = np.full((total_out_degrees, 5), np.nan)  # float - allows for nan and inf
+    node_map = np.full((g_copy.number_of_nodes(), 5), np.nan)  # float - for consistency
+    edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
     for n, d in tqdm(g_copy.nodes(data=True)):
@@ -220,6 +239,11 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
             node_map[idx][2] = True
         # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
         node_map[idx][3] = edge_idx
+        # NODE MAP INDEX POSITION 4 = weight
+        if 'weight' in d:
+            node_map[idx][4] = d['weight']
+        else:
+            node_map[idx][4] = 1
         # follow all out links and add these to the edge_map
         # this happens for both directions
         for nb in g_copy.neighbors(n):
@@ -243,25 +267,20 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
             if not (np.isfinite(imp) or np.isinf(imp)) or imp < 0:
                 raise ValueError(f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
             edge_map[edge_idx][3] = imp
-            # EDGE MAP INDEX POSITION 4 = weight
-            if 'weight' not in g_copy[idx][nb]:
-                raise ValueError(f'No "weight" attribute for edge {idx}-{nb}.')
-            edge_map[edge_idx][4] = g_copy[idx][nb]['weight']
             # increment the link_idx
             edge_idx += 1
 
     return node_labels, node_map, edge_map
 
 
-def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list, close_metrics:list=[],
-                        between_metrics:list=[], min_threshold_wt:float=0.01831563888873418, angular_wt:bool=False) \
-                        -> Tuple[Any, ...]:
+def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list, close_metrics:list=None,
+        between_metrics:list=None, min_threshold_wt:float=0.01831563888873418, angular:bool=False) -> Tuple[Any, ...]:
 
-    if node_map.shape[1] != 4:
-        raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters.')
+    if node_map.shape[1] != 5:
+        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
 
-    if edge_map.shape[1] != 5:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and weight parameters.')
+    if edge_map.shape[1] != 4:
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and impedance parameters.')
 
     if not distances:
         raise ValueError('A list of local centrality distance thresholds is required.')
@@ -279,26 +298,38 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if not close_metrics and not between_metrics:
         raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute.')
 
-    closeness_options = ['count', 'farness', 'farness_meters', 'harmonic', 'improved', 'gravity', 'cycles']
+    closeness_options = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity', 'cycles']
     closeness_map = []
-    for cl in close_metrics:
-        if cl not in closeness_options:
-            raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
-        closeness_map.append(closeness_options.index(cl))
+    if close_metrics:
+        for cl in close_metrics:
+            if cl not in closeness_options:
+                raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
+            closeness_map.append(closeness_options.index(cl))
 
-    betweenness_options = ['count', 'weighted', 'gravity_weighted']
+    betweenness_options = ['betweenness', 'betweenness_gravity']
     betweenness_map = []
-    for bt in between_metrics:
-        if bt not in betweenness_options:
-            raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
-        betweenness_map.append(betweenness_options.index(bt))
+    if between_metrics:
+        for bt in between_metrics:
+            if bt not in betweenness_options:
+                raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
+            betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                                        np.array(betas), np.array(closeness_map), np.array(betweenness_map), angular_wt)
+                                        np.array(betas), np.array(closeness_map), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = *closeness_data[closeness_map], *betweenness_data[betweenness_map], betas
     return return_data
+
+
+def compute_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list, angular:bool=False) -> Tuple[Any, ...]:
+
+    return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=angular)
+
+
+def compute_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list, angular:bool=False) -> Tuple[Any, ...]:
+
+    return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=angular)
 
 
 # TODO: add mixed-uses algo

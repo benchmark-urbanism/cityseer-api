@@ -169,7 +169,28 @@ def test_networkX_edge_defaults():
     for s, e, d in G.edges(data=True):
         assert d['geom'].length == G_edge_defaults[s][e]['length']
         assert d['geom'].length == G_edge_defaults[s][e]['impedance']
-        assert d['geom'].length == G_edge_defaults[s][e]['weight']
+
+
+def test_networkX_length_weighted_nodes():
+
+    # check that missing length attribute throws error
+    G, pos = graph_util.tutte_graph()
+    with pytest.raises(ValueError):
+        centrality.networkX_length_weighted_nodes(G)
+
+    # test length weighted nodes
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+    G = centrality.networkX_edge_defaults(G)  # generate edge defaults (includes length attribute)
+    G = centrality.networkX_length_weighted_nodes(G)  # generate length weighted nodes
+    for n, d in G.nodes(data=True):
+        agg_length = 0
+        for nb in G.neighbors(n):
+            agg_length += G[n][nb]['length'] / 2
+        assert d['weight'] == agg_length
 
 
 def test_graph_maps_from_networkX():
@@ -189,10 +210,11 @@ def test_graph_maps_from_networkX():
     # set some random 'live' statuses
     for n in G_test.nodes():
         G_test.nodes[n]['live'] = bool(random.getrandbits(1))
-    # randomise the impedances and weights
+    # randomise the impedances
     for s, e in G_test.edges():
         G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * random.uniform(0, 2)
-        G_test[s][e]['weight'] = G_test[s][e]['weight'] * random.uniform(0, 2)
+    # generate length weighted nodes
+    G_test = centrality.networkX_length_weighted_nodes(G_test)
     # generate test maps
     node_labels, node_map, edge_map = centrality.graph_maps_from_networkX(G_test)
     # check lengths
@@ -203,11 +225,11 @@ def test_graph_maps_from_networkX():
         assert node_map[n_label][0] == G_test.nodes[n_label]['x']
         assert node_map[n_label][1] == G_test.nodes[n_label]['y']
         assert node_map[n_label][2] == G_test.nodes[n_label]['live']
+        assert node_map[n_label][4] == G_test.nodes[n_label]['weight']
     # check edge maps (idx and label match in this case...)
-    for start, end, length, impedance, weight in edge_map:
+    for start, end, length, impedance in edge_map:
         assert length == G_test[start][end]['length']
         assert impedance == G_test[start][end]['impedance']
-        assert weight == G_test[start][end]['weight']
 
     # check that missing node attributes throw an error
     G_test = G_template.copy()
@@ -222,7 +244,7 @@ def test_graph_maps_from_networkX():
 
     # check that missing edge attributes throw an error
     G_test = G_template.copy()
-    for attr in ['length', 'impedance', 'weight']:
+    for attr in ['length', 'impedance']:
         G_test = centrality.networkX_edge_defaults(G_test)
         for s, e in G_test.edges():
             # delete attribute from first edge and break
@@ -254,44 +276,7 @@ def test_graph_maps_from_networkX():
             centrality.graph_maps_from_networkX(G_test)
 
 
-def test_compute_centrality():
-
-    # load the test graph
-    G, pos = graph_util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
-    G = centrality.networkX_edge_defaults(G)
-    # generate node and edge maps
-    n_labels, n_map, e_map = centrality.graph_maps_from_networkX(G)
-
-    dist = [100]
-
-    # check that malformed signatures trigger errors
-    with pytest.raises(ValueError):
-        centrality.compute_centrality(n_map[:,:3], e_map, dist, close_metrics=['density'])
-
-    with pytest.raises(ValueError):
-        centrality.compute_centrality(n_map, e_map[:,:4], dist, close_metrics=['density'])
-
-    with pytest.raises(ValueError):
-        centrality.compute_centrality(n_map, e_map, dist)
-
-    with pytest.raises(ValueError):
-        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['density_spelling_typo'])
-
-    # check the number of returned types
-    closeness_types = ['count', 'farness', 'farness_meters', 'harmonic', 'improved', 'gravity', 'cycles']
-    betweenness_types = ['count', 'weighted', 'gravity_weighted']
-
-    for cl_types in permutations(closeness_types):
-        for bt_types in permutations(betweenness_types):
-            args_ret = centrality.compute_centrality(n_map, e_map, dist, close_metrics=list(cl_types), between_metrics=list(bt_types))
-            assert len(args_ret) == len(cl_types) + len(bt_types) + 1  # beta list is also added
-
-def test_shortest_paths():
+def test_shortest_path_tree():
 
     # for extracting paths from predecessor map
     def find_path(pred_map, src):
@@ -306,37 +291,78 @@ def test_shortest_paths():
 
     # load the test graph
     G, pos = graph_util.tutte_graph()
-    # add weights
     for s, e in G.edges():
-        s_geom = geometry.Point(G.node[s]['x'], G.node[s]['y'])
-        e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
-        G[s][e]['weight'] = s_geom.distance(e_geom)
-
-    # generate node and edge maps
-    n_labels, n_map, e_map = centrality.arrays_from_graph(G, wgs84_coords=False, decompose=False, geom=None)
+        G[s][e]['geom'] = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+    G = centrality.networkX_edge_defaults(G)  # set default edge attributes
+    n_labels, n_map, e_map = centrality.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # assume all nodes are reachable
-    # i.e. prepare trim to full and full to trim maps consisting of the full range of indices
+    # i.e. prepare pseudo trim_to_full_idx_map and full_to_trim_idx_map maps consisting of the full range of indices
     pseudo_maps = np.array(list(range(len(n_map))))
 
-    # test shortest path algorithm against networkx
+    # test shortest path algorithm against networkX
     for max_d in [200, 500, 2000]:
         for i in range(len(G)):
             # check shortest path maps
-            dist_map_wt, dist_map_m, pred_map, cycles = \
+            map_impedance, map_distance, map_pred, cycles = \
                 networks.shortest_path_tree(n_map, e_map, i, pseudo_maps, pseudo_maps, max_dist=max_d)
-            nx_dist, nx_path = nx.single_source_dijkstra(G, i, weight='weight', cutoff=max_d)
+            nx_dist, nx_path = nx.single_source_dijkstra(G, i, weight='impedance', cutoff=max_d)
             for j in range(len(G)):
                 if j in nx_path:
-                    assert find_path(pred_map, j) == nx_path[j]
+                    assert find_path(map_pred, j) == nx_path[j]
+                    assert map_impedance[j] == map_distance[j] == nx_dist[j]
 
-    # test the
+    #TODO: test shortest path on angular metric
+
+
+def test_compute_centrality():
+
+    # load the test graph
+    G, pos = graph_util.tutte_graph()
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+    G = centrality.networkX_edge_defaults(G)  # set default edge attributes
+    n_labels, n_map, e_map = centrality.graph_maps_from_networkX(G)  # generate node and edge maps
+
+    dist = [100]
+
+    # check that malformed signatures trigger errors
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map[:,:4], e_map, dist, close_metrics=['node_density'])
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map[:,:3], dist, close_metrics=['node_density'])
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map, dist)
+
+    with pytest.raises(ValueError):
+        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['node_density_spelling_typo'])
+
+    # check the number of returned types
+    closeness_types = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity', 'cycles']
+    betweenness_types = ['betweenness', 'betweenness_gravity']
+
+    centrality.compute_centrality(n_map, e_map, dist, close_metrics=['node_density'])
+
+    for cl_types in permutations(closeness_types):
+        for bt_types in permutations(betweenness_types):
+            args_ret = centrality.compute_centrality(n_map, e_map, dist,
+                                                     close_metrics=list(cl_types), between_metrics=list(bt_types))
+            assert len(args_ret) == len(cl_types) + len(bt_types) + 1  # beta list is also added
 
     # test centrality methods
     # networkx doesn't have a maximum distance cutoff, so have to run on the whole graph
     dist = [2000]
     node_density, harmonic, betweenness, betas = \
-        centrality.compute_centrality(n_map, e_map, dist, close_metrics=['count', 'harmonic'], between_metrics=['count'])
+        centrality.compute_centrality(n_map, e_map, dist,
+                                      close_metrics=['node_density', 'harmonic'], between_metrics=['betweenness'])
 
     # check betas
     for b, d in zip(betas, dist):
@@ -349,14 +375,20 @@ def test_shortest_paths():
 
     # NOTE: modified improved closeness is not comparable to networkx version
     # test harmonic closeness
-    nx_harm_cl = nx.harmonic_centrality(G, distance='weight')
+    nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
     assert np.array_equal(nx_harm_cl.round(8), harmonic[0].round(8))
-    # TODO: is there a way to test gravity?
 
     # test betweenness
     # set endpoint counting to false and do not normalise
-    nx_betw = nx.betweenness_centrality(G, weight='weight', endpoints=False, normalized=False)
+    nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
     assert np.array_equal(nx_betw, betweenness[0])
-    # TODO: is there a way to test weighted betweenness?
+
+    # test easy wrapper version of harmonic closeness
+    harmonic_easy, betas = centrality.compute_harmonic_closeness(n_map, e_map, dist)
+    assert np.array_equal(nx_harm_cl.round(8), harmonic_easy[0].round(8))
+
+    # test easy wrapper version of betweenness
+    betweenness_easy, betas = centrality.compute_betweenness(n_map, e_map, dist)
+    assert np.array_equal(nx_betw, betweenness_easy[0])

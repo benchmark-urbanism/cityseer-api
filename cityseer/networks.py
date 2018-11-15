@@ -55,29 +55,30 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
-    Returns shortest paths (distance_map_wt and pred_map) from a source node to all other nodes based on the weights
-    Also returns a distance map (distance_map_m) based on actual distances
+    Returns shortest paths (map_impedance and map_pred) from a source node to all other nodes based on the impedances
+    Also returns a distance map (map_distance) based on actual distances
 
     NODE MAP:
     0 - x
     1 - y
     2 - live
     3 - edge indx
+    4 - weight
 
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - weight
+    3 - impedance
     '''
 
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
     active = np.full(n_trim, np.nan)  # whether the node is currently active or not
     # in many cases the weight and distance maps will be the same, but not necessarily so
-    weight_map = np.full(n_trim, np.inf)  # the distance map based on the weights attribute - not necessarily metres
-    dist_equiv_map = np.full(n_trim, np.inf)  # the distance map based on the metres distance attribute
-    pred_map = np.full(n_trim, np.nan)  # predecessor map
+    map_impedance = np.full(n_trim, np.inf)  # the distance map based on the weights attribute - not necessarily metres
+    map_distance = np.full(n_trim, np.inf)  # the distance map based on the metres distance attribute
+    map_pred = np.full(n_trim, np.nan)  # predecessor map
     cycles = np.full(n_trim, False)  # graph cycles
 
     # set starting node
@@ -86,8 +87,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     # - set to idx of node once discovered
     # - set to Inf once processed
     src_idx_trim = np.int(full_to_trim_idx_map[src_idx])
-    weight_map[src_idx_trim] = 0
-    dist_equiv_map[src_idx_trim] = 0
+    map_impedance[src_idx_trim] = 0
+    map_distance[src_idx_trim] = 0
     active[src_idx_trim] = src_idx_trim
 
     # search to max distance threshold to determine reachable nodes
@@ -100,7 +101,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
         # manual iteration definitely faster than numpy methods
         min_idx = None
         min_dist = np.inf
-        for i, d in enumerate(weight_map):
+        for i, d in enumerate(map_impedance):
             # find any closer nodes that have not yet been discovered
             if d < min_dist and np.isfinite(active[i]):
                 min_dist = d
@@ -118,7 +119,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
         # instead of while True use length of edge map to catch last node's termination
         while edge_idx < len(edge_map):
             # get the edge's start, end, length, weight
-            start, end, nb_len, nb_wt = edge_map[edge_idx]
+            start, end, nb_len, nb_imp = edge_map[edge_idx]
             # if the start index no longer matches it means all neighbours have been visited
             if start != node_full_idx:
                 break
@@ -136,8 +137,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if np.isinf(active[nb_trim_idx]):
                 continue
             # distance is previous distance plus new distance
-            wt = weight_map[node_trim_idx] + nb_wt
-            dist = dist_equiv_map[node_trim_idx] + nb_len
+            impedance = map_impedance[node_trim_idx] + nb_imp
+            dist = map_distance[node_trim_idx] + nb_len
             # check that the distance doesn't exceed the max
             if dist > max_dist:
                 continue
@@ -145,7 +146,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if angular_wt:
                 prior_match = False
                 # get the predecessor
-                pred_trim_idx = int(pred_map[node_trim_idx])
+                pred_trim_idx = int(map_pred[node_trim_idx])
                 # convert to full index
                 pred_full_idx = int(trim_to_full_idx_map[pred_trim_idx])
                 # check that the new neighbour was not directly accessible from the prior set of neighbours
@@ -171,14 +172,14 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if not np.isnan(active[nb_trim_idx]):
                 cycles[nb_trim_idx] = True
             # only pursue if weight distance is less than prior assigned distances
-            if wt < weight_map[nb_trim_idx]:
-                weight_map[nb_trim_idx] = wt
-                dist_equiv_map[nb_trim_idx] = dist
+            if impedance < map_impedance[nb_trim_idx]:
+                map_impedance[nb_trim_idx] = impedance
+                map_distance[nb_trim_idx] = dist
                 # using actual node indices instead of boolean to simplify finding indices
-                pred_map[nb_trim_idx] = node_trim_idx
+                map_pred[nb_trim_idx] = node_trim_idx
                 active[nb_trim_idx] = nb_trim_idx
 
-    return weight_map, dist_equiv_map, pred_map, cycles
+    return map_impedance, map_distance, map_pred, cycles
 
 
 # NOTE -> didn't work with boolean so using unsigned int...
@@ -191,12 +192,13 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     1 - y
     2 - live
     3 - edge indx
+    4 - weight
 
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - weight
+    3 - impedance
     '''
 
     # establish the number of nodes
@@ -215,35 +217,35 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
 
     # prepare data arrays
     # indices correspond to different centrality formulations
-    # the shortest path is based on weights -> be cognisant of cases where weights are not based on true distance:
-    # in such cases, distances are equivalent to the weighted shortest path, not shortest distance path
+    # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
+    # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     closeness_data = np.full((7, d_n, n), 0.0)
     betweenness_data = np.full((3, d_n, n), 0.0)
 
     # CLOSENESS MEASURES
-    def compute_closeness(idx, wt, dist, beta, is_cycle):
-        # 0 - node density
+    def compute_closeness(idx, impedance, distance, weight, beta, is_cycle):
+        # 0 - node_density
         if idx == 0:
-            return 1
-        # 1 - farness - aggregated weights
+            return 1 * weight
+        # 1 - farness_impedance - aggregated impedances
         elif idx == 1:
-            return wt
-        # 2 - farness equiv dist - aggregated distances
+            return impedance / weight
+        # 2 - farness_distance - aggregated distances
         elif idx == 2:
-            return dist
+            return distance / weight
         # 3 - harmonic closeness - sum of inverse weights
         elif idx == 3:
-            if wt == 0:
+            if impedance == 0:
                 return np.inf
             else:
-                return 1 / wt
+                return weight / impedance
         # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights (post calculated)
         # post-computed - so return 0
         elif idx == 4:
             return 0
-        # 5 - gravity - sum of beta weighted equivalent distances
+        # 5 - gravity - sum of beta weighted distances
         elif idx == 5:
-            return np.exp(beta * dist)
+            return np.exp(beta * distance) * weight
         # 6 - cycles - sum of cycles weighted by equivalent distances
         elif idx == 6:
             if is_cycle:
@@ -252,16 +254,13 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 return 0
 
     # BETWEENNESS MEASURES
-    def compute_betweenness(idx, wt, dist, beta):
-        # 1 - betweenness - density
+    def compute_betweenness(idx, distance, weight, beta):
+        # 0 - betweenness
         if idx == 0:
-            return 1
-        # 2 - betweenness weighted - sum of weights
+            return 1 * weight
+        # 1 - betweenness_gravity - sum of gravity weighted betweenness
         elif idx == 1:
-            return wt
-        # 3 - betweenness distance weighted - sum of beta weighted by equivalent distances
-        elif idx == 2:
-            return np.exp(beta * dist)
+            return np.exp(beta * distance) * weight
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
@@ -278,49 +277,59 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
         trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_idx, max_dist, x_arr, y_arr)
 
         # run the shortest tree dijkstra
-        # keep in mind that predecessor map is based on weights distance - which can be different from metres
+        # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
         # distance map in metres still necessary for defining max distances and computing equivalent distance measures
-        weight_map_trim, dist_equiv_map_trim, pred_map_trim, cycles_trim = \
+        map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
             shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist, angular_wt)
 
         # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(weight_map_trim))[0]
+        ind = np.where(np.isfinite(map_distance_trim))[0]
         for to_idx_trim in ind:
 
             # skip self node
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
                 continue
 
-            wt = weight_map_trim[to_idx_trim]
-            dist = dist_equiv_map_trim[to_idx_trim]
+            impedance = map_impedance_trim[to_idx_trim]
+            distance = map_distance_trim[to_idx_trim]
 
             # some crow-flies max distance nodes won't be reached within max distance threshold over the network
-            if np.isinf(dist):
+            if np.isinf(distance):
                 continue
 
             # check here for distance - in case max distance in shortest_path_tree is set to infinity
-            if dist > max_dist:
+            if distance > max_dist:
                 continue
+
+            # closeness weight is based on target index -> aggregated to source index
+            cl_weight= node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
 
             # calculate centralities starting with closeness
             for i in range(len(distances)):
                 d = distances[i]
                 b = betas[i]
-                if dist <= d:
+                if distance <= d:
                     is_cycle = cycles_trim[to_idx_trim]
+                    # closeness map indices determine which metrics to compute
                     for cl_idx in closeness_map:
-                        closeness_data[int(cl_idx)][i][src_idx] += compute_closeness(int(cl_idx), wt, dist, b, is_cycle)
+                        closeness_data[int(cl_idx)][i][src_idx] += \
+                            compute_closeness(int(cl_idx), impedance, distance, cl_weight, b, is_cycle)
 
             # only process betweenness if requested
             if len(betweenness_map) == 0:
                 continue
+
+            # betweenness weight is based on source and target index - assigned to each between node
+            src_weight = node_map[src_idx][4]
+            to_weight = node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
+            bt_weight = src_weight * to_weight
 
             # only process betweenness in one direction
             if to_idx_trim < full_to_trim_idx_map[src_idx]:
                 continue
 
             # betweenness - only counting truly between vertices, not starting and ending verts
-            intermediary_idx_trim = np.int(pred_map_trim[to_idx_trim])
+            intermediary_idx_trim = np.int(map_pred_trim[to_idx_trim])
             intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
             while True:
@@ -331,12 +340,13 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 for i in range(len(distances)):
                     d = distances[i]
                     b = betas[i]
-                    if dist <= d:
+                    if distance <= d:
                         for bt_idx in betweenness_map:
-                            betweenness_data[int(bt_idx)][i][intermediary_idx_mapped] += compute_betweenness(int(bt_idx), wt, dist, b)
+                            betweenness_data[int(bt_idx)][i][intermediary_idx_mapped] += \
+                                compute_betweenness(int(bt_idx), distance, bt_weight, b)
 
                 # follow the chain
-                intermediary_idx_trim = np.int(pred_map_trim[intermediary_idx_trim])
+                intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
     # improved closeness is post-computed
@@ -345,7 +355,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
             continue
         for d_idx in range(len(closeness_data[4])):
             for p_idx in range(len(closeness_data[4][d_idx])):
-                # ignore 0 / 0 situations where no proximate nodes or zero weights
+                # ignore 0 / 0 situations where no proximate nodes or zero impedance
                 if closeness_data[1][d_idx][p_idx] != 0:
                     closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[1][d_idx][p_idx]
 
