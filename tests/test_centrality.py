@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import networkx as nx
-import utm
+import random
 import matplotlib.pyplot as plt
 from itertools import permutations
 from shapely import geometry
@@ -14,7 +14,6 @@ def test_generate_graph():
     G, pos = graph_util.tutte_graph()
 
     #nx.draw(G, pos=pos, with_labels=True)
-
     #plt.show()
 
     assert G.number_of_nodes() == 46
@@ -43,242 +42,230 @@ def test_distance_from_beta():
         centrality.distance_from_beta(-0.04)
 
 
-def test_graph_wgs_to_utm():
-
-    # generate graphs
-    G_utm, pos = graph_util.tutte_graph()
-    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
-
-    # check that non WGS coordinates throw error
-    with pytest.raises(ValueError):
-        centrality.graph_wgs_to_utm(G_utm)
-
-    # convert WGS graph
-    G_converted = centrality.graph_wgs_to_utm(G_wgs)
+def test_networkX_wgs_to_utm():
 
     # check that node coordinates are correctly converted
+    G_utm, pos = graph_util.tutte_graph()
+    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
+    G_converted = centrality.networkX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         assert d['x'] == round(G_converted.nodes[n]['x'], 1)
         assert d['y'] == round(G_converted.nodes[n]['y'], 1)
 
     # check that edge coordinates are correctly converted
+    G_utm, pos = graph_util.tutte_graph()
+    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
     for g in [G_utm, G_wgs]:
         for s, e in g.edges():
             g[s][e]['geom'] = geometry.LineString([
                 [g.nodes[s]['x'], g.nodes[s]['y']],
                 [g.nodes[e]['x'], g.nodes[e]['y']]
             ])
-    G_converted = centrality.graph_wgs_to_utm(G_wgs)
+    G_converted = centrality.networkX_wgs_to_utm(G_wgs)
     for s, e, d in G_utm.edges(data=True):
         assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
 
     # check that non-LineString geoms throw an error
-    for s, e in G_utm.edges():
-        G_utm[s][e]['geom'] = geometry.Point([G_utm.nodes[s]['x'], G_utm.nodes[s]['y']])
+    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
+    for s, e in G_wgs.edges():
+        G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
     with pytest.raises(ValueError):
-        centrality.graph_wgs_to_utm(G_utm)
+        centrality.networkX_wgs_to_utm(G_wgs)
+
+    # check that missing node attributes throw an error
+    for attr in ['x', 'y']:
+        G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
+        for n in G_wgs.nodes():
+            # delete attribute from first node and break
+            del G_wgs.nodes[n][attr]
+            break
+        # check that missing attribute throws an error
+        with pytest.raises(ValueError):
+            centrality.networkX_wgs_to_utm(G_wgs)
+
+    # check that non WGS coordinates throw error
+    G_utm, pos = graph_util.tutte_graph()
+    with pytest.raises(ValueError):
+        centrality.networkX_wgs_to_utm(G_utm)
 
 
-def test_graph_decompose():
-
-    # generate graph
-    G, pos = graph_util.tutte_graph()
+def test_networkX_decompose():
 
     # check that missing geoms throw an error
+    G, pos = graph_util.tutte_graph()
     with pytest.raises(ValueError):
-        centrality.graph_decompose(G, 20)
+        centrality.networkX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
+    G, pos = graph_util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(ValueError):
-        centrality.graph_decompose(G, 20)
+        centrality.networkX_decompose(G, 20)
 
-    # add correct geom
+    # test decomposition
+    G, pos = graph_util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.LineString([
                 [G.nodes[s]['x'], G.nodes[s]['y']],
                 [G.nodes[e]['x'], G.nodes[e]['y']]
             ])
-
-    # decomposition
-    G_decompose = centrality.graph_decompose(G, 20)
-
+    G_decompose = centrality.networkX_decompose(G, 20)
     assert nx.number_of_nodes(G_decompose) == 602
     assert nx.number_of_edges(G_decompose) == 625
 
+    # check that geoms are correctly flipped
+    G_forward, pos = graph_util.tutte_graph()
+    for s, e in G_forward.edges():
+        G_forward[s][e]['geom'] = geometry.LineString([
+                [G_forward.nodes[s]['x'], G_forward.nodes[s]['y']],  # start
+                [G_forward.nodes[e]['x'], G_forward.nodes[e]['y']]  # end
+            ])
+    G_forward_decompose = centrality.networkX_decompose(G_forward, 20)
 
-def test_graph_from_networkx():
+    G_backward, pos = graph_util.tutte_graph()
+    for s, e in G_backward.edges():
+        G_backward[s][e]['geom'] = geometry.LineString([
+                [G_backward.nodes[e]['x'], G_backward.nodes[e]['y']],  # end
+                [G_backward.nodes[s]['x'], G_backward.nodes[s]['y']]  # start
+            ])
+    G_backward_decompose = centrality.networkX_decompose(G_backward, 20)
 
-    # polygon for testing geom method
-    geom_coords = [[6000500, 600500], [6000900, 600500], [6000900, 600900], [6000500, 600900]]
-    geom = geometry.Polygon(geom_coords)
-    geom_coords_wgs = []
-    for x, y in geom_coords:
-        geom_coords_wgs.append(utm.to_latlon(y, x, 30, 'U')[:2][::-1])
-    geom_wgs = geometry.Polygon(geom_coords_wgs)
+    for n, d in G_forward_decompose.nodes(data=True):
+        assert d['x'] == G_backward_decompose.nodes[n]['x']
+        assert d['y'] == G_backward_decompose.nodes[n]['y']
 
-    # fetch graphs for testing
+    # test that geom coordinate mismatch throws an error
     G, pos = graph_util.tutte_graph()
-    G_wgs, pos_wgs = graph_util.tutte_graph(wgs84_coords=True)
-
-    # test non-decomposed versions
-    # ============================
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
-    n_labels_geom, n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=geom)
-    n_labels_wgs, n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=None)
-    n_labels_wgs_geom, n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=False, geom=geom_wgs)
-
-    # check labels
-    assert len(n_labels) == G.number_of_nodes()
-    assert n_labels == n_labels_geom == n_labels_wgs == n_labels_wgs_geom
-
-    # check basic graph lengths
-    assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == G.number_of_nodes()
-    assert len(e_map) == len(e_map_geom) == len(e_map_wgs) == len(e_map_wgs_geom) == G.number_of_edges() * 2
-
-    # pairwise permutations - since n_map = n_map_wgs just need to repeat for n_map and n_map_geom
-    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_geom[:,[0, 1, 3]])  # live designations won't match
-    assert np.array_equal(n_map.round(0), n_map_wgs.round(0))  # round to prevent rounding errors in easting, northing
-    assert np.array_equal(n_map[:,[0, 1, 3]].round(0), n_map_wgs_geom[:,[0, 1, 3]].round(0))  # live designations won't match
-
-    assert np.array_equal(e_map, e_map_geom)
-    assert np.array_equal(e_map, e_map_wgs)
-    assert np.array_equal(e_map, e_map_wgs_geom)
-
-    # check attributes, just use n_map version since other arrays already asserted as equal
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
-
-    assert np.array_equal(e_map[0], np.array([0, 1, 120.41594578792295, 120.41594578792295]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 116.61903789690601, 116.61903789690601]))
-
-    # check live designations
-    assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == G.number_of_nodes()
-    # small differences due to rounding in conversions, so split over two lines
-    assert n_map_geom[:,2].sum() == 6
-    assert n_map_wgs_geom[:,2].sum() == 8
-
-    # plots for debugging
-    # graph_util.plot_graph_maps(n_map_geom, e_map_geom, geom=geom)
-    # graph_util.plot_graph_maps(n_map_wgs_geom, e_map_wgs_geom, geom=geom)  # geom_wgs is in a different CRS
-
-    # test decomposed versions
-    # ========================
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
-    n_labels_geom, n_map_geom, e_map_geom = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=geom)
-    n_labels_wgs, n_map_wgs, e_map_wgs = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=None)
-    n_labels_wgs_geom, n_map_wgs_geom, e_map_wgs_geom = centrality.graph_from_networkx(G_wgs, wgs84_coords=True, decompose=20, geom=geom_wgs)
-
-    # check labels
-    assert len(n_labels) == 602
-    assert n_labels == n_labels_geom == n_labels_wgs == n_labels_wgs_geom
-
-    # check basic graph lengths
-    # conversion and rounding differences means slight decomposition differences
-    assert len(n_map) == len(n_map_geom) == len(n_map_wgs) == len(n_map_wgs_geom) == 602
-    assert len(e_map) == len(e_map_geom) == len(e_map_wgs) == len(e_map_wgs_geom) == 1250
-
-    # pairwise permutations - since n_map = n_map_wgs just need to repeat for n_map and n_map_geom
-    assert np.array_equal(n_map[:,[0, 1, 3]], n_map_geom[:,[0, 1, 3]])  # live designations won't match
-    # numpy uses nearest even rounding, so use difference as workaround where necessary - only seems to happen on northing
-    assert np.all(np.abs(n_map[:,1] - n_map_wgs[:,1]) < 0.1)
-    assert np.array_equal(n_map[:,[0, 2, 3]].round(0), n_map_wgs[:,[0, 2, 3]].round(0))  # northing already checked
-    # numpy uses nearest even rounding, so use difference as workaround where necessary - only seems to happen on northing
-    assert np.all(np.abs(n_map[:,1] - n_map_wgs_geom[:,1]) < 0.1)
-    assert np.array_equal(n_map[:,[0, 3]], n_map_wgs_geom[:,[0, 3]])  # live designations won't match, and northing already checked
-
-    assert np.array_equal(e_map, e_map_geom)
-    assert np.array_equal(e_map, e_map_wgs)
-    assert np.array_equal(e_map, e_map_wgs_geom)
-
-    # check attributes, just use n_map version since other arrays already asserted as equal
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
-
-    assert np.array_equal(e_map[0], np.array([0, 46, 17.202277969703278, 17.202277969703278]))
-    assert np.array_equal(e_map[40], np.array([13, 221, 19.436506316151, 19.436506316151]))
-
-    # check live designations
-    assert n_map[:, 2].sum() == n_map_wgs[:,2].sum() == 602
-    # small differences due to rounding in conversions, so split over two lines
-    assert n_map_geom[:,2].sum() == 75
-    assert n_map_wgs_geom[:,2].sum() == 83
-
-    # plots for debugging
-    # graph_util.plot_graph_maps(n_map_geom, e_map_geom, geom=geom)
-    # graph_util.plot_graph_maps(n_map_wgs_geom, e_map_wgs_geom, geom=geom)  # geom_wgs is in a different CRS
-
-    # SOME OTHER CHECKS
-    # =================
-
-    # check that passing lng, lat without WGS flag raises error
+    for n in G.nodes():
+        G.nodes[n]['x'] = G.nodes[n]['x'] + 1
+        break
     with pytest.raises(ValueError):
-        n_labels, n, e = centrality.graph_from_networkx(G_wgs, wgs84_coords=False, decompose=False, geom=None)
+        centrality.networkX_decompose(G, 20)
 
-    # check that custom lengths are processed
-    # weights should automatically be set to the same value (instead of the geom length)
+
+def test_networkX_edge_defaults():
+
+    # check that missing geoms throw an error
+    G, pos = graph_util.tutte_graph()
+    with pytest.raises(ValueError):
+        centrality.networkX_edge_defaults(G)
+
+    # check that non-LineString geoms throw an error
+    G, pos = graph_util.tutte_graph()
     for s, e in G.edges():
-        s_geom = geometry.Point(G.node[s]['x'], G.node[s]['y'])
-        e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
-        G[s][e]['length'] = s_geom.distance(e_geom) * 2
+        G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
+    with pytest.raises(ValueError):
+        centrality.networkX_edge_defaults(G)
 
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
-
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
-
-    assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 240.8318915758459]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 233.23807579381202]))
-
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
-
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
-
-    assert np.array_equal(e_map[0], np.array([0, 46, 18.525530121218914, 18.525530121218914]))
-    assert np.array_equal(e_map[40], np.array([13, 411, 19.436506316151, 19.436506316151]))
-
-    # check that custom weights are processed
+    # test edge defaults
+    G, pos = graph_util.tutte_graph()
     for s, e in G.edges():
-        s_geom = geometry.Point(G.node[s]['x'], G.node[s]['y'])
-        e_geom = geometry.Point(G.node[e]['x'], G.node[e]['y'])
-        G[s][e]['weight'] = s_geom.distance(e_geom)
+        G[s][e]['geom'] = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+    G_edge_defaults = centrality.networkX_edge_defaults(G)
+    for s, e, d in G.edges(data=True):
+        assert d['geom'].length == G_edge_defaults[s][e]['length']
+        assert d['geom'].length == G_edge_defaults[s][e]['impedance']
+        assert d['geom'].length == G_edge_defaults[s][e]['weight']
 
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=None, geom=None)
 
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
+def test_graph_maps_from_networkX():
 
-    assert np.array_equal(e_map[0], np.array([0, 1, 240.8318915758459, 120.41594578792295]))
-    assert np.array_equal(e_map[40], np.array([13, 12, 233.23807579381202, 116.61903789690601]))
+    # template graph
+    G_template, pos = graph_util.tutte_graph()
+    # add geoms
+    for s, e in G_template.edges():
+        G_template[s][e]['geom'] = geometry.LineString([
+            [G_template.nodes[s]['x'], G_template.nodes[s]['y']],
+            [G_template.nodes[e]['x'], G_template.nodes[e]['y']]
+        ])
 
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=20, geom=None)
+    # test maps vs. networkX
+    G_test = G_template.copy()
+    G_test = centrality.networkX_edge_defaults(G_test)
+    # set some random 'live' statuses
+    for n in G_test.nodes():
+        G_test.nodes[n]['live'] = bool(random.getrandbits(1))
+    # randomise the impedances and weights
+    for s, e in G_test.edges():
+        G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * random.uniform(0, 2)
+        G_test[s][e]['weight'] = G_test[s][e]['weight'] * random.uniform(0, 2)
+    # generate test maps
+    node_labels, node_map, edge_map = centrality.graph_maps_from_networkX(G_test)
+    # check lengths
+    assert len(node_labels) == len(node_map) == G_test.number_of_nodes()
+    assert len(edge_map) == G_test.number_of_edges() * 2
+    # check node maps (idx and label match in this case...)
+    for n_label in node_labels:
+        assert node_map[n_label][0] == G_test.nodes[n_label]['x']
+        assert node_map[n_label][1] == G_test.nodes[n_label]['y']
+        assert node_map[n_label][2] == G_test.nodes[n_label]['live']
+    # check edge maps (idx and label match in this case...)
+    for start, end, length, impedance, weight in edge_map:
+        assert length == G_test[start][end]['length']
+        assert impedance == G_test[start][end]['impedance']
+        assert weight == G_test[start][end]['weight']
 
-    assert np.array_equal(n_map[0], np.array([6000700, 600700, 1, 0]))
-    assert np.array_equal(n_map[21], np.array([6001000, 600870, 1, 63]))
+    # check that missing node attributes throw an error
+    G_test = G_template.copy()
+    for attr in ['x', 'y']:
+        G_test = centrality.networkX_edge_defaults(G_test)
+        for n in G_test.nodes():
+            # delete attribute from first node and break
+            del G_test.nodes[n][attr]
+            break
+        with pytest.raises(ValueError):
+            centrality.graph_maps_from_networkX(G_test)
 
-    assert np.array_equal(e_map[0], np.array([0, 46, 18.525530121218914, 9.262765060609457]))
-    assert np.array_equal(e_map[40], np.array([13, 411, 19.436506316151, 9.7182531580755]))
+    # check that missing edge attributes throw an error
+    G_test = G_template.copy()
+    for attr in ['length', 'impedance', 'weight']:
+        G_test = centrality.networkX_edge_defaults(G_test)
+        for s, e in G_test.edges():
+            # delete attribute from first edge and break
+            del G_test[s][e][attr]
+            break
+        with pytest.raises(ValueError):
+            centrality.graph_maps_from_networkX(G_test)
 
-    # check that passing negative lengths or weights throw errors
-    G[0][1]['length'] = -1
-    with pytest.raises(ValueError):
-        n_labels, n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    # check that invalid lengths are caught
+    G_test = G_template.copy()
+    G_test = centrality.networkX_edge_defaults(G_test)
+    # corrupt length attribute and break
+    for corrupt_val in [0, -1, -np.inf, np.nan]:
+        for s, e in G_test.edges():
+            G_test[s][e]['length'] = corrupt_val
+            break
+        with pytest.raises(ValueError):
+            centrality.graph_maps_from_networkX(G_test)
 
-    G[0][1]['length'] = 240
-    G[0][1]['weight'] = -1
-    with pytest.raises(ValueError):
-        n_labels, n, e = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    # check that invalid impedances are caught
+    G_test = G_template.copy()
+    G_test = centrality.networkX_edge_defaults(G_test)
+    # corrupt impedance attribute and break
+    for corrupt_val in [-1, -np.inf, np.nan]:
+        for s, e in G_test.edges():
+            G_test[s][e]['length'] = corrupt_val
+            break
+        with pytest.raises(ValueError):
+            centrality.graph_maps_from_networkX(G_test)
 
 
 def test_compute_centrality():
 
     # load the test graph
     G, pos = graph_util.tutte_graph()
-
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+    G = centrality.networkX_edge_defaults(G)
     # generate node and edge maps
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    n_labels, n_map, e_map = centrality.graph_maps_from_networkX(G)
 
     dist = [100]
 
@@ -287,16 +274,7 @@ def test_compute_centrality():
         centrality.compute_centrality(n_map[:,:3], e_map, dist, close_metrics=['density'])
 
     with pytest.raises(ValueError):
-        centrality.compute_centrality(n_map, e_map[:,:3], dist, close_metrics=['density'])
-
-    with pytest.raises(TypeError):
-        centrality.compute_centrality(e_map, dist, close_metrics=['density'])
-
-    with pytest.raises(TypeError):
-        centrality.compute_centrality(n_map, dist, close_metrics=['density'])
-
-    with pytest.raises(TypeError):
-        centrality.compute_centrality(n_map, e_map, close_metrics=['density'])
+        centrality.compute_centrality(n_map, e_map[:,:4], dist, close_metrics=['density'])
 
     with pytest.raises(ValueError):
         centrality.compute_centrality(n_map, e_map, dist)
@@ -335,7 +313,7 @@ def test_shortest_paths():
         G[s][e]['weight'] = s_geom.distance(e_geom)
 
     # generate node and edge maps
-    n_labels, n_map, e_map = centrality.graph_from_networkx(G, wgs84_coords=False, decompose=False, geom=None)
+    n_labels, n_map, e_map = centrality.arrays_from_graph(G, wgs84_coords=False, decompose=False, geom=None)
 
     # assume all nodes are reachable
     # i.e. prepare trim to full and full to trim maps consisting of the full range of indices

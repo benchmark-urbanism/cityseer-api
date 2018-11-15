@@ -24,7 +24,7 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
     # check that the betas do not have leading negatives
     for b in beta:
         if b < 0:
-            raise ValueError('Please provide the beta/s without the leading negative')
+            raise ValueError('Please provide the beta/s without the leading negative.')
 
     # cast to numpy
     beta = np.array(beta)
@@ -33,18 +33,23 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
     return np.log(min_threshold_wt) / -beta, min_threshold_wt
 
 
-def graph_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
+def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph')
+        raise ValueError('This method requires an undirected networkX graph.')
 
-    logger.info('Converting networkX graph from WGS to UTM')
+    logger.info('Converting networkX graph from WGS to UTM.')
     g_copy = networkX_graph.copy()
 
-    logger.info('Processing node x, y coordinates')
+    logger.info('Processing node x, y coordinates.')
     for n, d in tqdm(g_copy.nodes(data=True)):
-        # fetch x, y and convert from WGS if necessary
+        # x coordinate
+        if 'x' not in d:
+            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {n}.')
         x = d['x']
+        # y coordinate
+        if 'y' not in d:
+            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {n}.')
         y = d['y']
         # check for unintentional use of conversion
         if x > 180 or y > 90:
@@ -56,9 +61,9 @@ def graph_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
         g_copy.nodes[n]['y'] = y
 
     # if line geom property provided, then convert as well
-    logger.info('Processing edge geom coordinates, if present')
+    logger.info('Processing edge geom coordinates, if present.')
     for s, e, d in tqdm(g_copy.edges(data=True)):
-        # check if geom present
+        # check if geom present - optional step
         if 'geom' in d:
             line_geom = d['geom']
             if line_geom.type != 'LineString':
@@ -71,23 +76,40 @@ def graph_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def graph_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
+def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph')
+        raise ValueError('This method requires an undirected networkX graph.')
 
-    logger.info(f'Decomposing graph to maximum edge lengths of {decompose_max}')
+    logger.info(f'Decomposing graph to maximum edge lengths of {decompose_max}.')
     g_copy = networkX_graph.copy()
 
     # note -> write to a duplicated graph to avoid in-place errors
     for s, e, d in tqdm(networkX_graph.edges(data=True)):
+        # test for x coordinates
+        if 'x' not in networkX_graph.nodes[s] or 'x' not in networkX_graph.nodes[e]:
+            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {s}.')
+        # test for y coordinates
+        if 'y' not in networkX_graph.nodes[s] or 'y' not in networkX_graph.nodes[e]:
+            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {e}.')
+        s_x = networkX_graph.nodes[s]['x']
+        s_y = networkX_graph.nodes[s]['y']
+        e_x = networkX_graph.nodes[e]['x']
+        e_y = networkX_graph.nodes[e]['y']
         # test for geom
         if 'geom' not in d:
-            raise ValueError('No edge geom found: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise ValueError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
             raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+        # check geom coordinates directionality - flip if facing backwards direction
+        if (s_x, s_y) == line_geom.coords[-1] and (e_x, e_y) == line_geom.coords[0]:
+            flipped_coords = np.fliplr(line_geom.coords.xy)
+            line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+        # double check that coordinates now face the forwards direction
+        if not (s_x, s_y) == line_geom.coords[0] and (e_x, e_y) == line_geom.coords[-1]:
+            raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
         n = np.ceil(line_geom.length / decompose_max)
@@ -125,89 +147,108 @@ def graph_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
     return g_copy
 
 
-def graph_from_networkx(network_x_graph:nx.Graph) -> Tuple[list, np.ndarray, np.ndarray]:
+def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
+
+    logger.info('Generating default edge attributes from edge geoms.')
+    g_copy = networkX_graph.copy()
+
+    logger.info('Preparing graph')
+    for s, e, d in tqdm(g_copy.edges(data=True)):
+        if 'geom' not in d:
+            raise ValueError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+        # get edge geometry
+        line_geom = d['geom']
+        if line_geom.type != 'LineString':
+            raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+        g_copy[s][e]['length'] = line_geom.length
+        g_copy[s][e]['impedance'] = line_geom.length
+        g_copy[s][e]['weight'] = line_geom.length
+
+    return g_copy
+
+
+def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
     - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
     '''
 
-    logger.info('Preparing nodes')
-    for n, d in tqdm(g_copy.nodes(data=True)):
-        # if a label has not been provided, then generate
-        if 'label' not in d:
-            g_copy.node[n]['label'] = str(n)
-        # if live nodes have not been set, then initialise
-        if 'live' not in d:
-            # if a geom has been provided
-            if geom and not geom.contains(geometry.Point(x, y)):
-                g_copy.node[n]['live'] = False
-            else:
-                g_copy.node[n]['live'] = True
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
 
+    logger.info('Preparing node and edge arrays from networkX graph.')
+    g_copy = networkX_graph.copy()
 
-    # process the vertices and generate the lengths if not present
-    # note -> write to a duplicated graph to avoid in-place errors
-    logger.info('Preparing edges')
-    g_dup = g_copy.copy()
-    for s, e, d in tqdm(g_copy.edges(data=True)):
-        # get start coords
-        s_label = g_copy.node[s]['label']
-        s_live = g_copy.node[s]['live']
-        s_x = g_copy.node[s]['x']
-        s_y = g_copy.node[s]['y']
-        # get end coords
-        e_label = g_copy.node[e]['label']
-        e_live = g_copy.node[e]['live']
-        e_x = g_copy.node[e]['x']
-        e_y = g_copy.node[e]['y']
-
-
-    # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
-    g_dup = nx.convert_node_labels_to_integers(g_dup, 0)
-
-    logger.info('Preparing data arrays')
-
-    # sum degrees
+    logger.info('Preparing graph')
     total_out_degrees = 0
-    for n, d in g_dup.nodes(data=True):
-        total_out_degrees += nx.degree(g_dup, n)
+    for n in tqdm(g_copy.nodes()):
+        # writing to 'labels' in case conversion to integers method interferes with order
+        g_copy.nodes[n]['label'] = n
+        # sum edges
+        total_out_degrees += nx.degree(g_copy, n)
 
+    logger.info('Generating data arrays')
+    # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
+    g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and link maps
-    n = g_dup.number_of_nodes()
-    node_map = np.full((n, 4), np.nan)  # float - for consistency
     node_labels = []
-    edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
+    node_map = np.full((g_copy.number_of_nodes(), 4), np.nan)  # float - for consistency
+    edge_map = np.full((total_out_degrees, 5), np.nan)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
-    for n, d in tqdm(g_dup.nodes(data=True)):
-        idx = int(n)
-        # x coordinate
-        node_map[idx][0] = d['x']
-        # y coordinate
-        node_map[idx][1] = d['y']
-        # live or not
-        node_map[idx][2] = d['live']
-        # starting index for edges in edge map
-        node_map[idx][3] = edge_idx
+    for n, d in tqdm(g_copy.nodes(data=True)):
         # label
         node_labels.append(d['label'])
+        # cast to int for indexing
+        idx = int(n)
+        # NODE MAP INDEX POSITION 0 = x coordinate
+        if 'x' not in d:
+            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+        node_map[idx][0] = d['x']
+        # NODE MAP INDEX POSITION 1 = y coordinate
+        if 'y' not in d:
+            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {n}.')
+        node_map[idx][1] = d['y']
+        # NODE MAP INDEX POSITION 2 = live or not
+        if 'live' in d:
+            node_map[idx][2] = d['live']
+        else:
+            node_map[idx][2] = True
+        # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
+        node_map[idx][3] = edge_idx
         # follow all out links and add these to the edge_map
         # this happens for both directions
-        for nb in g_dup.neighbors(n):
-            # start node
+        for nb in g_copy.neighbors(n):
+            # EDGE MAP INDEX POSITION 0 = start node
             edge_map[edge_idx][0] = idx
-            # end node
+            # EDGE MAP INDEX POSITION 1 = end node
             edge_map[edge_idx][1] = nb
-            # length
-            edge_map[edge_idx][2] = g_dup[idx][nb]['length']
-            # weight
-            edge_map[edge_idx][3] = g_dup[idx][nb]['weight']
+            # EDGE MAP INDEX POSITION 2 = length
+            if 'length' not in g_copy[idx][nb]:
+                raise ValueError(f'No "length" attribute for edge {idx}-{nb}.')
+            # cannot have zero length
+            l = g_copy[idx][nb]['length']
+            if not np.isfinite(l) or l <= 0:
+                raise ValueError(f'Length attribute {l} for edge {idx}-{nb} must be a finite positive value.')
+            edge_map[edge_idx][2] = l
+            # EDGE MAP INDEX POSITION 3 = impedance
+            if 'impedance' not in g_copy[idx][nb]:
+                raise ValueError(f'No "impedance" attribute for edge {idx}-{nb}.')
+            # cannot have impedance less than zero (but == 0 is OK)
+            imp = g_copy[idx][nb]['impedance']
+            if not (np.isfinite(imp) or np.isinf(imp)) or imp < 0:
+                raise ValueError(f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
+            edge_map[edge_idx][3] = imp
+            # EDGE MAP INDEX POSITION 4 = weight
+            if 'weight' not in g_copy[idx][nb]:
+                raise ValueError(f'No "weight" attribute for edge {idx}-{nb}.')
+            edge_map[edge_idx][4] = g_copy[idx][nb]['weight']
             # increment the link_idx
             edge_idx += 1
-
-    assert len(node_map) == g_dup.number_of_nodes()
-    assert len(edge_map) == g_dup.number_of_edges() * 2
 
     return node_labels, node_map, edge_map
 
@@ -217,39 +258,39 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
                         -> Tuple[Any, ...]:
 
     if node_map.shape[1] != 4:
-        raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters')
+        raise ValueError('The node map must have a dimensionality of nx4, consisting of x, y, live, and link idx parameters.')
 
-    if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and weight parameters')
+    if edge_map.shape[1] != 5:
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and weight parameters.')
 
     if not distances:
-        raise ValueError('A list of local centrality distance thresholds is required')
+        raise ValueError('A list of local centrality distance thresholds is required.')
 
     if isinstance(distances, (int, float)):
         distances = [distances]
 
     if not isinstance(distances, (list, np.ndarray)):
-        raise ValueError('Please provide a distance or an array of distances')
+        raise ValueError('Please provide a distance or an array of distances.')
 
     betas = []
     for d in distances:
         betas.append(np.log(min_threshold_wt) / d)
 
     if not close_metrics and not between_metrics:
-        raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute')
+        raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute.')
 
     closeness_options = ['count', 'farness', 'farness_meters', 'harmonic', 'improved', 'gravity', 'cycles']
     closeness_map = []
     for cl in close_metrics:
         if cl not in closeness_options:
-            raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}')
+            raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
         closeness_map.append(closeness_options.index(cl))
 
     betweenness_options = ['count', 'weighted', 'gravity_weighted']
     betweenness_map = []
     for bt in between_metrics:
         if bt not in betweenness_options:
-            raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}')
+            raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
         betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
