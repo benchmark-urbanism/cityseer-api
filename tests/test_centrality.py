@@ -32,11 +32,7 @@ def test_compute_centrality():
 
     # load the test graph
     G, pos = util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
+    G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
@@ -100,11 +96,7 @@ def test_compute_harmonic_closeness():
 
     # load the test graph
     G, pos = util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
+    G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
@@ -122,11 +114,7 @@ def test_compute_betweenness():
 
     # load the test graph
     G, pos = util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
+    G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 

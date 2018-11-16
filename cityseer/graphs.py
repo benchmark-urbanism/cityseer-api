@@ -14,6 +14,39 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
+
+    logger.info('Converting networkX graph from WGS to UTM.')
+    g_copy = networkX_graph.copy()
+
+    # unpack coordinates and build simple edge geoms
+    for s, e in g_copy.edges():
+
+        # start x coordinate
+        if 'x' not in g_copy.nodes[s]:
+            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {s}.')
+        s_x = g_copy.nodes[s]['x']
+        # start y coordinate
+        if 'y' not in g_copy.nodes[s]:
+            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {s}.')
+        s_y = g_copy.nodes[s]['y']
+        # end x coordinate
+        if 'x' not in g_copy.nodes[e]:
+            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {e}.')
+        e_x = g_copy.nodes[e]['x']
+        # end y coordinate
+        if 'y' not in g_copy.nodes[e]:
+            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {e}.')
+        e_y = g_copy.nodes[e]['y']
+
+        g_copy[s][e]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+
+    return g_copy
+
+
 def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):

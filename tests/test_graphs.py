@@ -7,6 +7,30 @@ from cityseer import graphs, util
 import matplotlib.pyplot as plt
 
 
+def test_networkX_simple_geoms():
+
+    G, pos = util.tutte_graph()
+    G_geoms = graphs.networkX_simple_geoms(G)
+
+    for s, e in G.edges():
+        line_geom = geometry.LineString([
+            [G.nodes[s]['x'], G.nodes[s]['y']],
+            [G.nodes[e]['x'], G.nodes[e]['y']]
+        ])
+        assert line_geom == G_geoms[s][e]['geom']
+
+    # check that missing node attributes throw an error
+    for attr in ['x', 'y']:
+        G, pos_wgs = util.tutte_graph(wgs84_coords=True)
+        for n in G.nodes():
+            # delete attribute from first node and break
+            del G.nodes[n][attr]
+            break
+        # check that missing attribute throws an error
+        with pytest.raises(ValueError):
+            graphs.networkX_simple_geoms(G)
+
+
 def test_networkX_wgs_to_utm():
 
     # check that node coordinates are correctly converted
@@ -19,13 +43,11 @@ def test_networkX_wgs_to_utm():
 
     # check that edge coordinates are correctly converted
     G_utm, pos = util.tutte_graph()
+    G_utm = graphs.networkX_simple_geoms(G_utm)
+
     G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
-    for g in [G_utm, G_wgs]:
-        for s, e in g.edges():
-            g[s][e]['geom'] = geometry.LineString([
-                [g.nodes[s]['x'], g.nodes[s]['y']],
-                [g.nodes[e]['x'], g.nodes[e]['y']]
-            ])
+    G_wgs = graphs.networkX_simple_geoms(G_wgs)
+
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
     for s, e, d in G_utm.edges(data=True):
         assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
@@ -70,30 +92,19 @@ def test_networkX_decompose():
 
     # test decomposition
     G, pos = util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-                [G.nodes[s]['x'], G.nodes[s]['y']],
-                [G.nodes[e]['x'], G.nodes[e]['y']]
-            ])
+    G = graphs.networkX_simple_geoms(G)
+
     G_decompose = graphs.networkX_decompose(G, 20)
     assert nx.number_of_nodes(G_decompose) == 602
     assert nx.number_of_edges(G_decompose) == 625
 
     # check that geoms are correctly flipped
     G_forward, pos = util.tutte_graph()
-    for s, e in G_forward.edges():
-        G_forward[s][e]['geom'] = geometry.LineString([
-                [G_forward.nodes[s]['x'], G_forward.nodes[s]['y']],  # start
-                [G_forward.nodes[e]['x'], G_forward.nodes[e]['y']]  # end
-            ])
+    G_forward = graphs.networkX_simple_geoms(G_forward)
     G_forward_decompose = graphs.networkX_decompose(G_forward, 20)
 
     G_backward, pos = util.tutte_graph()
-    for s, e in G_backward.edges():
-        G_backward[s][e]['geom'] = geometry.LineString([
-                [G_backward.nodes[e]['x'], G_backward.nodes[e]['y']],  # end
-                [G_backward.nodes[s]['x'], G_backward.nodes[s]['y']]  # start
-            ])
+    G_backward = graphs.networkX_simple_geoms(G_backward)
     G_backward_decompose = graphs.networkX_decompose(G_backward, 20)
 
     for n, d in G_forward_decompose.nodes(data=True):
@@ -102,11 +113,12 @@ def test_networkX_decompose():
 
     # test that geom coordinate mismatch throws an error
     G, pos = util.tutte_graph()
-    for n in G.nodes():
-        G.nodes[n]['x'] = G.nodes[n]['x'] + 1
-        break
-    with pytest.raises(ValueError):
-        graphs.networkX_decompose(G, 20)
+    for attr in ['x', 'y']:
+        for n in G.nodes():
+            G.nodes[n][attr] = G.nodes[n][attr] + 1
+            break
+        with pytest.raises(ValueError):
+            graphs.networkX_decompose(G, 20)
 
 
 def test_networkX_edge_defaults():
@@ -125,11 +137,7 @@ def test_networkX_edge_defaults():
 
     # test edge defaults
     G, pos = util.tutte_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
+    G = graphs.networkX_simple_geoms(G)
     G_edge_defaults = graphs.networkX_edge_defaults(G)
     for s, e, d in G.edges(data=True):
         assert d['geom'].length == G_edge_defaults[s][e]['length']
@@ -144,11 +152,7 @@ def test_networkX_length_weighted_nodes():
         graphs.networkX_length_weighted_nodes(G)
 
     # test length weighted nodes
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
-        ])
+    G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # generate edge defaults (includes length attribute)
     G = graphs.networkX_length_weighted_nodes(G)  # generate length weighted nodes
     for n, d in G.nodes(data=True):
@@ -162,12 +166,7 @@ def test_graph_maps_from_networkX():
 
     # template graph
     G_template, pos = util.tutte_graph()
-    # add geoms
-    for s, e in G_template.edges():
-        G_template[s][e]['geom'] = geometry.LineString([
-            [G_template.nodes[s]['x'], G_template.nodes[s]['y']],
-            [G_template.nodes[e]['x'], G_template.nodes[e]['y']]
-        ])
+    G_template = graphs.networkX_simple_geoms(G_template)
 
     # test maps vs. networkX
     G_test = G_template.copy()
