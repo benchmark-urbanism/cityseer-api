@@ -220,7 +220,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     closeness_data = np.full((7, d_n, n), 0.0)
-    betweenness_data = np.full((3, d_n, n), 0.0)
+    betweenness_data = np.full((2, d_n, n), 0.0)
 
     # CLOSENESS MEASURES
     def compute_closeness(idx, impedance, distance, weight, beta, is_cycle):
