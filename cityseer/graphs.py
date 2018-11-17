@@ -81,7 +81,7 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
         if 'geom' in d:
             line_geom = d['geom']
             if line_geom.type != 'LineString':
-                raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+                raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # convert the coords to UTM - remember to flip back to lng, lat
             utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
             # write back to edge
@@ -101,11 +101,11 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
     # note -> write to a duplicated graph to avoid in-place errors
     for s, e, d in tqdm(networkX_graph.edges(data=True)):
         # test for x coordinates
-        if 'x' not in networkX_graph.nodes[s] or 'x' not in networkX_graph.nodes[e]:
-            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {s}.')
+        if 'x' not in networkX_graph.nodes[s] or 'y' not in networkX_graph.nodes[s]:
+            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {s}.')
         # test for y coordinates
-        if 'y' not in networkX_graph.nodes[s] or 'y' not in networkX_graph.nodes[e]:
-            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {e}.')
+        if 'x' not in networkX_graph.nodes[e] or 'y' not in networkX_graph.nodes[e]:
+            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {e}.')
         s_x = networkX_graph.nodes[s]['x']
         s_y = networkX_graph.nodes[s]['y']
         e_x = networkX_graph.nodes[e]['x']
@@ -116,7 +116,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
         # check geom coordinates directionality - flip if facing backwards direction
         if (s_x, s_y) == line_geom.coords[-1] and (e_x, e_y) == line_geom.coords[0]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
@@ -140,7 +140,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             # create the new node label and id
             new_node_id = f'{s}_{sub_node_counter}_{e}'
             sub_node_counter += 1
-            # create the split linestring geom for measuring the new length
+            # create the split LineString geom for measuring the new length
             line_segment = ops.substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
             x = line_segment.coords.xy[0][-1]
@@ -152,7 +152,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             # increment the step and node id
             prior_node_id = new_node_id
             step += step_size
-        # set the last link manually to avoid rounding errors at end of linestring
+        # set the last link manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add link
         line_segment = ops.substring(line_geom, step, line_geom.length)
         l = line_segment.length
@@ -161,7 +161,113 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
     return g_copy
 
 
+def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
+    '''
+    Not to be used on angular graphs - would overwrite angular impedance
+    '''
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
+
+    logger.info('Converting graph to dual with angular impedances.')
+    g_dual = nx.Graph()
+
+    def get_half_geoms(a_node, b_node):
+        # get edge data
+        edge_data = networkX_graph[a_node][b_node]
+        # test for x coordinates
+        if 'x' not in networkX_graph.nodes[a_node] or 'y' not in networkX_graph.nodes[a_node]:
+            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
+        # test for y coordinates
+        if 'x' not in networkX_graph.nodes[b_node] or 'y' not in networkX_graph.nodes[b_node]:
+            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
+        a_x = networkX_graph.nodes[a_node]['x']
+        a_y = networkX_graph.nodes[a_node]['y']
+        b_x = networkX_graph.nodes[b_node]['x']
+        b_y = networkX_graph.nodes[b_node]['y']
+        # test for geom
+        if 'geom' not in edge_data:
+            raise ValueError(f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+        # get edge geometry
+        line_geom = edge_data['geom']
+        if line_geom.type != 'LineString':
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+        # check geom coordinates directionality - flip if facing backwards direction
+        if (a_x, a_y) == line_geom.coords[-1] and (b_x, b_y) == line_geom.coords[0]:
+            flipped_coords = np.fliplr(line_geom.coords.xy)
+            line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+        # double check that coordinates now face the forwards direction
+        if not (a_x, a_y) == line_geom.coords[0] and (b_x, b_y) == line_geom.coords[-1]:
+            raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
+        # generate the two half geoms
+        a_half_geom = ops.substring(line_geom, 0, line_geom.length / 2)
+        b_half_geom = ops.substring(line_geom, line_geom.length / 2, line_geom.length)
+        assert a_half_geom.coords[-1] == b_half_geom.coords[0]
+
+        return a_half_geom, b_half_geom
+
+    # iterate the primal graph's edges
+    for s, e, d in networkX_graph.edges(data=True):
+
+        # get the first and second half geoms
+        s_half_geom, e_half_geom = get_half_geoms(s, e)
+
+        # create a new dual node corresponding to the current primal edge
+        s_e = sorted([s, e])
+        hub_node_dual = f'{s_e[0]}_{s_e[1]}'
+        x, y = s_half_geom.coords[-1]
+        g_dual.add_node(hub_node_dual, x=x, y=y)
+
+        # process either side
+        for n_side, half_geom in zip([s, e], [s_half_geom, e_half_geom]):
+
+            # add the spoke edges on the dual
+            for nb in nx.neighbors(networkX_graph, n_side):
+
+                # don't follow neighbour back to current edge combo
+                if nb in [s, e]:
+                    continue
+
+                # get the near and far half geoms
+                spoke_half_geom, _discard_geom = get_half_geoms(n_side, nb)
+
+                # add the neighbouring primal edge as dual node
+                s_nb = sorted([n_side, nb])
+                spoke_node_dual = f'{s_nb[0]}_{s_nb[1]}'
+                x, y = spoke_half_geom.coords[-1]
+                g_dual.add_node(spoke_node_dual, x=x, y=y)
+
+                # weld the lines
+                merged_line = ops.linemerge([half_geom, spoke_half_geom])
+                if merged_line.type != 'LineString':
+                    raise ValueError(f'Problem with merged geom: expected LineString geometry but found {merged_line.type} geometry.')
+
+                # iterate the coordinates and sum the calculate the angular change
+                sum_angles = 0
+                for i in range(len(merged_line.coords) - 2):
+                    x_1, y_1 = merged_line.coords[i]
+                    x_2, y_2 = merged_line.coords[i + 1]
+                    x_3, y_3 = merged_line.coords[i + 2]
+
+                    a_1 = np.rad2deg(np.arctan2(x_2 - x_1, y_2 - y_1))
+                    a_2 = np.rad2deg(np.arctan2(x_3 - x_2, y_3 - y_2))
+
+                    sum_angles += np.abs((np.abs(a_2 - a_1) + 180) % 360 -  180)
+
+                    #A = np.array(merged_line.coords[i + 1]) - np.array(merged_line.coords[i])
+                    #B = np.array(merged_line.coords[i + 2]) - np.array(merged_line.coords[i + 1])
+                    #angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
+
+                # add the dual edge
+                g_dual.add_edge(hub_node_dual, spoke_node_dual, length=merged_line.length, impedance=sum_angles)
+
+    return g_dual
+
+
 def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
+    '''
+    Not to be used on angular graphs - would overwrite angular impedance
+    '''
 
     if not isinstance(networkX_graph, nx.Graph):
         raise ValueError('This method requires an undirected networkX graph.')
@@ -176,7 +282,7 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting linestring geometry but found {line_geom.type} geometry.')
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
         g_copy[s][e]['length'] = line_geom.length
         g_copy[s][e]['impedance'] = line_geom.length
 

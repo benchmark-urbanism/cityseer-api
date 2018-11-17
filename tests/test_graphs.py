@@ -121,6 +121,68 @@ def test_networkX_decompose():
             graphs.networkX_decompose(G, 20)
 
 
+def test_networkX_to_dual():
+
+    # check that missing geoms throw an error
+    G, pos = util.tutte_graph()
+    with pytest.raises(ValueError):
+        graphs.networkX_to_dual(G)
+
+    # check that non-LineString geoms throw an error
+    G, pos = util.tutte_graph()
+    for s, e in G.edges():
+        G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
+    with pytest.raises(ValueError):
+        graphs.networkX_to_dual(G)
+
+    # check that missing node attributes throw an error
+    for attr in ['x', 'y']:
+        G, pos = util.tutte_graph()
+        for n in G.nodes():
+            # delete attribute from first node and break
+            del G.nodes[n][attr]
+            break
+        # check that missing attribute throws an error
+        with pytest.raises(ValueError):
+            graphs.networkX_to_dual(G)
+
+    # convert to dual
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G_dual = graphs.networkX_to_dual(G)
+
+    assert G_dual.number_of_nodes() == G.number_of_edges()
+
+    for n in G_dual.nodes():
+        assert nx.degree(G_dual, n) == 4
+
+    '''
+    pos_dual = {}
+    for n, d in G_dual.nodes(data=True):
+        pos_dual[n] = (d['x'], d['y'])
+
+    nx.draw(G, pos,
+            with_labels=True,
+            font_size=8,
+            node_color='y',
+            node_size=100,
+            node_shape='o',
+            edge_color='g',
+            width=1,
+            alpha=0.6)
+    nx.draw(G_dual, pos_dual,
+            with_labels=True,
+            font_size=8,
+            node_color='r',
+            node_size=50,
+            node_shape='d',
+            edge_color='b',
+            width=1,
+            alpha=0.6)
+    plt.show()
+    '''
+
+
 def test_networkX_edge_defaults():
 
     # check that missing geoms throw an error
@@ -153,8 +215,8 @@ def test_networkX_length_weighted_nodes():
 
     # test length weighted nodes
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # generate edge defaults (includes length attribute)
-    G = graphs.networkX_length_weighted_nodes(G)  # generate length weighted nodes
+    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_length_weighted_nodes(G)
     for n, d in G.nodes(data=True):
         agg_length = 0
         for nb in G.neighbors(n):

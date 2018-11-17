@@ -126,3 +126,6 @@ def test_compute_betweenness():
     # test easy wrapper version of betweenness
     betweenness_easy, betas = centrality.compute_betweenness(n_map, e_map, dist)
     assert np.array_equal(nx_betw, betweenness_easy[0])
+
+# TODO: add compute_angular_betweenness
+# TODO: add compute_angular_harmonic_closeness

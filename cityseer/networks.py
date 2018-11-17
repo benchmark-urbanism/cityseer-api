@@ -49,9 +49,9 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
-@njit
-def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular_wt=False):
+#@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
+#@njit
+def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
@@ -133,7 +133,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             # fetch the neighbour's trim index
             nb_trim_idx = int(full_to_trim_idx_map[nb_full_idx])
             # if this neighbour has already been processed, continue
-            # i.e. next node will recheck previous (neighbour) node
+            # i.e. successive nodes would recheck predecessor (neighbour) nodes unnecessarily
             if np.isinf(active[nb_trim_idx]):
                 continue
             # distance is previous distance plus new distance
@@ -143,7 +143,8 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
             if dist > max_dist:
                 continue
             # it is necessary to check for angular sidestepping if using angular weights on a dual graph
-            if angular_wt:
+            # only do this for angular graphs, and only if predecessors exist
+            if angular and not np.isnan(map_pred[node_trim_idx]):
                 prior_match = False
                 # get the predecessor
                 pred_trim_idx = int(map_pred[node_trim_idx])
@@ -182,10 +183,9 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     return map_impedance, map_distance, map_pred, cycles
 
 
-# NOTE -> didn't work with boolean so using unsigned int...
 @cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
-def network_centralities(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular_wt=False):
+def network_centralities(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular=False):
     '''
     NODE MAP:
     0 - x
@@ -280,7 +280,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
         # distance map in metres still necessary for defining max distances and computing equivalent distance measures
         map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
-            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist, angular_wt)
+            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist, angular)
 
         # use corresponding indices for reachable verts
         ind = np.where(np.isfinite(map_distance_trim))[0]

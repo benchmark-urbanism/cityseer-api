@@ -78,14 +78,23 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     return return_data
 
 
-def compute_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list, angular:bool=False) -> Tuple[Any, ...]:
+def compute_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
 
-    return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=angular)
+    return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'])
 
 
-def compute_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list, angular:bool=False) -> Tuple[Any, ...]:
+def compute_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
 
-    return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=angular)
+    return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'])
+
+def compute_angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
+
+    return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=True)
+
+
+def compute_angular_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
+
+    return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=True)
 
 
 # TODO: add mixed-uses algo
