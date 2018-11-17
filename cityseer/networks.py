@@ -49,8 +49,8 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-#@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
-#@njit
+@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
+@njit
 def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes

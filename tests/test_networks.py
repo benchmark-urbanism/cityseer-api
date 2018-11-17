@@ -75,49 +75,59 @@ def test_shortest_path_tree():
                     j_trim = int(full_to_trim_idx_map[j])
                     assert map_impedance[j_trim] == map_distance[j_trim] == nx_dist[j]
 
-    # test that special cases using angular metric will take longer distance routes for shorter angular impedance
-    # ordinary distance impedance
-    G, pos = util.tutte_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
-    # generate trim and full index maps
-    x_arr = n_map[:, 0]
-    y_arr = n_map[:, 1]
-    src = 6
-    trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(src, np.inf, x_arr, y_arr)
-    # get shortest path tree
-    map_impedance, map_distance, map_pred, cycles = networks.shortest_path_tree(n_map, e_map, src,
-                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False)
-    # find path
-    path_dist = find_path(map_pred, 40, trim_to_full_idx_map, full_to_trim_idx_map)
-    # takes 1310m route through middle of network
-    # map_distance[int(full_to_trim_idx_map[40])]
-    assert path_dist == [6, 7, 3, 4, 1, 0, 31, 32, 35, 36, 41, 40]
-
-    # angular impedance
+    # angular impedance should take a simpler but longer path
     G, pos = util.tutte_graph()
     G = graphs.networkX_simple_geoms(G)
     G_dual = graphs.networkX_to_dual(G)
-    n_labels_ang, n_map_ang, e_map_ang = graphs.graph_maps_from_networkX(G_dual)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G_dual)
+    # source and target are the same for either
+    src = n_labels.index('6_11')
+    target = n_labels.index('39_40')
     # generate trim and full index maps
-    x_arr_ang = n_map_ang[:, 0]
-    y_arr_ang = n_map_ang[:, 1]
-    src_ang = n_labels_ang.index('6_11')
-    trim_to_full_idx_map_ang, full_to_trim_idx_map_ang = networks.crow_flies(src_ang, np.inf, x_arr_ang, y_arr_ang)
-    # get shortest path tree
-    map_impedance_ang, map_distance_ang, map_pred_ang, cycles_ang = networks.shortest_path_tree(n_map_ang, e_map_ang,
-                            src_ang, trim_to_full_idx_map_ang, full_to_trim_idx_map_ang, max_dist=np.inf, angular=True)
-    # find path
-    target = n_labels_ang.index('39_40')
-    path_ang = find_path(map_pred_ang, target, trim_to_full_idx_map_ang, full_to_trim_idx_map_ang)
-    path_transpose = [n_labels_ang[n] for n in path_ang]
-    # takes 1597m route via long outside segment
-    # map_distance_ang[int(full_to_trim_idx_map_ang[n_labels_ang.index('39_40')])]
-    assert path_transpose == ['6_11', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
+    x_arr = n_map[:, 0]
+    y_arr = n_map[:, 1]
+    trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(src, np.inf, x_arr, y_arr)
 
-    print(path_dist)
-    print(path_transpose)
+    # SIMPLEST PATH: get simplest path tree using angular impedance
+    map_impedance_a, map_distance_a, map_pred_a, cycles_a = networks.shortest_path_tree(n_map, e_map, src,
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+    # find path
+    path_a = find_path(map_pred_a, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose_a = [n_labels[n] for n in path_a]
+    # takes 1597m route via long outside segment
+    # map_distance_a[int(full_to_trim_idx_map[n_labels.index('39_40')])]
+    assert path_transpose_a == ['6_11', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
+
+    # SHORTEST PATH: override angular impedances with true distances
+    e_map_m = e_map.copy()
+    e_map_m [:,3] = e_map_m[:,2]
+    # get shortest path tree using distance impedance
+    map_impedance_m, map_distance_m, map_pred_m, cycles_m = networks.shortest_path_tree(n_map, e_map_m, src,
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+    # find path
+    path_m = find_path(map_pred_m, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose_m = [n_labels[n] for n in path_m]
+    # takes 1345m route
+    # map_distance_m[int(full_to_trim_idx_map[n_labels.index('39_40')])]
+    assert path_transpose_m == ['6_11', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39', '39_40']
+
+    # NO SIDESTEPS - explicit check that sidesteps are prevented
+    src = n_labels.index('10_43')
+    target = n_labels.index('5_10')
+    map_impedance_ns, map_distance_ns, map_pred_ns, cycles_ns = networks.shortest_path_tree(n_map, e_map, src,
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+    # find path
+    path_ns = find_path(map_pred_ns, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose_ns = [n_labels[n] for n in path_ns]
+    assert path_transpose_ns == ['10_43', '5_10']
+
+    # WITH SIDESTEPS - set angular flag to False
+    map_impedance_s, map_distance_s, map_pred_s, cycles_s = networks.shortest_path_tree(n_map, e_map, src,
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False)
+    # find path
+    path_s = find_path(map_pred_s, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose_s = [n_labels[n] for n in path_s]
+    assert path_transpose_s == ['10_43', '10_14', '5_10']
 
 
 def test_network_centralities():
@@ -142,7 +152,7 @@ def test_network_centralities():
     betweenness_map = [0]
     closeness_data, betweenness_data = \
         networks.network_centralities(n_map, e_map, np.array(distances), np.array(betas),
-                                      closeness_map=np.array(closeness_map), betweenness_map=np.array(betweenness_map), angular=False)
+                        closeness_map=np.array(closeness_map), betweenness_map=np.array(betweenness_map), angular=False)
 
     node_density, harmonic = closeness_data[closeness_map]
     betweenness = betweenness_data[betweenness_map]
