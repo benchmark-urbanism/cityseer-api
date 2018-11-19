@@ -14,6 +14,51 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658
+def substring(geom, start_dist, end_dist, normalized=False):
+
+    assert (isinstance(geom, geometry.LineString))
+
+    # Filter out cases in which to return a point
+    if start_dist == end_dist:
+        return geom.interpolate(start_dist, normalized)
+    elif not normalized and start_dist >= geom.length and end_dist >= geom.length:
+        return geom.interpolate(geom.length, normalized)
+    elif not normalized and -start_dist >= geom.length and -end_dist >= geom.length:
+        return geom.interpolate(0, normalized)
+    elif normalized and start_dist >= 1 and end_dist >= 1:
+        return geom.interpolate(1, normalized)
+    elif normalized and -start_dist >= 1 and -end_dist >= 1:
+        return geom.interpolate(0, normalized)
+
+    start_point = geom.interpolate(start_dist, normalized)
+    end_point = geom.interpolate(end_dist, normalized)
+
+    min_dist = min(start_dist, end_dist)
+    max_dist = max(start_dist, end_dist)
+    if normalized:
+        min_dist *= geom.length
+        max_dist *= geom.length
+
+    vertex_list = [(start_point.x, start_point.y)]
+    coords = list(geom.coords)
+    for p in coords:
+        pd = geom.project(geometry.Point(p))
+        if pd <= min_dist:
+            pass
+        elif min_dist < pd < max_dist:
+            vertex_list.append(p)
+        else:
+            break
+    vertex_list.append((end_point.x, end_point.y))
+
+    # reverse direction of section
+    if start_dist > end_dist:
+        vertex_list = reversed(vertex_list)
+
+    return geometry.LineString(vertex_list)
+
+
 def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
@@ -141,7 +186,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             new_node_id = f'{s}_{sub_node_counter}_{e}'
             sub_node_counter += 1
             # create the split LineString geom for measuring the new length
-            line_segment = ops.substring(line_geom, step, step + step_size)
+            line_segment = substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
             x = line_segment.coords.xy[0][-1]
             y = line_segment.coords.xy[1][-1]
@@ -162,7 +207,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             step += step_size
         # set the last link manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add link
-        line_segment = ops.substring(line_geom, step, line_geom.length)
+        line_segment = substring(line_geom, step, line_geom.length)
         l = line_segment.length
         g_copy.add_edge(prior_node_id, e, length=l, impedance=l)
 
@@ -211,8 +256,8 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
         if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
         # generate the two half geoms
-        a_half_geom = ops.substring(line_geom, 0, line_geom.length / 2)
-        b_half_geom = ops.substring(line_geom, line_geom.length / 2, line_geom.length)
+        a_half_geom = substring(line_geom, 0, line_geom.length / 2)
+        b_half_geom = substring(line_geom, line_geom.length / 2, line_geom.length)
         assert a_half_geom.coords[-1][:2] == b_half_geom.coords[0][:2]
 
         return a_half_geom, b_half_geom
