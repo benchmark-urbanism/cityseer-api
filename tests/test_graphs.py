@@ -105,6 +105,11 @@ def test_networkX_decompose():
 
     G_backward, pos = util.tutte_graph()
     G_backward = graphs.networkX_simple_geoms(G_backward)
+    for i, (s, e, d) in enumerate(G_backward.edges(data=True)):
+        # flip each third geom
+        if i % 3 == 0:
+            flipped_coords = np.fliplr(d['geom'].coords.xy)
+            G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_backward_decompose = graphs.networkX_decompose(G_backward, 20)
 
     for n, d in G_forward_decompose.nodes(data=True):
@@ -146,17 +151,38 @@ def test_networkX_to_dual():
         with pytest.raises(ValueError):
             graphs.networkX_to_dual(G)
 
-    # convert to dual
+    # test dual
     G, pos = util.tutte_graph()
     G = graphs.networkX_simple_geoms(G)
+    # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
+    for i, (s, e, d) in enumerate(G.edges(data=True)):
+        # add a kink to each second geom
+        if i % 2 == 0:
+            geom = d['geom']
+            start = geom.coords[0]
+            end = geom.coords[-1]
+            # bump the new midpoint coordinates
+            mid = list(geom.centroid.coords[0])
+            mid[0] += 10
+            mid[1] -= 10
+            # append 3d coord to check behaviour on 3d data
+            for n in [start, mid, end]:
+                n = list(n)
+                n.append(10)
+            G[s][e]['geom'] = geometry.LineString([start, mid, end])
+        # flip each third geom
+        if i % 3 == 0:
+            flipped_coords = np.fliplr(d['geom'].coords.xy)
+            G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.networkX_to_dual(G)
-
+    # dual nodes should equal primal edges
     assert G_dual.number_of_nodes() == G.number_of_edges()
-
+    # all new nodes should have in-out-degrees of 4
     for n in G_dual.nodes():
         assert nx.degree(G_dual, n) == 4
 
     '''
+    # for debugging
     pos_dual = {}
     for n, d in G_dual.nodes(data=True):
         pos_dual[n] = (d['x'], d['y'])
@@ -206,17 +232,17 @@ def test_networkX_edge_defaults():
         assert d['geom'].length == G_edge_defaults[s][e]['impedance']
 
 
-def test_networkX_length_weighted_nodes():
+def test_networkX_km_weighted_nodes():
 
     # check that missing length attribute throws error
     G, pos = util.tutte_graph()
     with pytest.raises(ValueError):
-        graphs.networkX_length_weighted_nodes(G)
+        graphs.networkX_m_weighted_nodes(G)
 
     # test length weighted nodes
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    G = graphs.networkX_length_weighted_nodes(G)
+    G = graphs.networkX_m_weighted_nodes(G)
     for n, d in G.nodes(data=True):
         agg_length = 0
         for nb in G.neighbors(n):
@@ -240,7 +266,7 @@ def test_graph_maps_from_networkX():
     for s, e in G_test.edges():
         G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * random.uniform(0, 2)
     # generate length weighted nodes
-    G_test = graphs.networkX_length_weighted_nodes(G_test)
+    G_test = graphs.networkX_m_weighted_nodes(G_test)
     # generate test maps
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
     # check lengths

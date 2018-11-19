@@ -38,7 +38,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if edge_map.shape[1] != 4:
         raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and impedance parameters.')
 
-    if not distances:
+    if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')
 
     if isinstance(distances, (int, float)):
@@ -61,6 +61,13 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
             if cl not in closeness_options:
                 raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
             closeness_map.append(closeness_options.index(cl))
+    # improved closeness is extrapolated from node density and farness_distance, so these may have to be added regardless:
+    # assign to new variable so as to keep closeness_map pure for later use in unpacking the results
+    closeness_map_extra = closeness_map
+    if close_metrics and 'improved' in close_metrics:
+        closeness_map_extra = list(set(closeness_map_extra + [
+            closeness_options.index('node_density'),
+            closeness_options.index('farness_distance')]))
 
     betweenness_options = ['betweenness', 'betweenness_gravity']
     betweenness_map = []
@@ -71,7 +78,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
             betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                                        np.array(betas), np.array(closeness_map), np.array(betweenness_map), angular)
+                                    np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = *closeness_data[closeness_map], *betweenness_data[betweenness_map], betas
@@ -79,22 +86,24 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
 
 
 def compute_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
-
     return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'])
 
 
 def compute_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
-
     return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'])
 
 
-def compute_angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
+# TODO: add harmonic closeness with automatic beta
 
+
+# TODO: add weighted betweenness with automatic beta
+
+
+def compute_angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
     return compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=True)
 
 
 def compute_angular_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:list) -> Tuple[Any, ...]:
-
     return compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=True)
 
 

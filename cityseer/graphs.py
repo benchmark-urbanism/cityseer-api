@@ -23,7 +23,7 @@ def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
     g_copy = networkX_graph.copy()
 
     # unpack coordinates and build simple edge geoms
-    for s, e in g_copy.edges():
+    for s, e in tqdm(g_copy.edges()):
 
         # start x coordinate
         if 'x' not in g_copy.nodes[s]:
@@ -116,13 +116,13 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
-        if (s_x, s_y) == line_geom.coords[-1] and (e_x, e_y) == line_geom.coords[0]:
+        if not (s_x, s_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
             line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
         # double check that coordinates now face the forwards direction
-        if not (s_x, s_y) == line_geom.coords[0] and (e_x, e_y) == line_geom.coords[-1]:
+        if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -147,6 +147,14 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
             y = line_segment.coords.xy[1][-1]
             # add the new node and edge
             g_copy.add_node(new_node_id, x=x, y=y)
+            # add and set live property if present in parent graph
+            if 'live' in networkX_graph.nodes[s] and 'live' in networkX_graph.nodes[e]:
+                live = True
+                # if BOTH parents are not live, then set child to not live
+                if not networkX_graph.nodes[s]['live'] and not networkX_graph.nodes[e]['live']:
+                    live = False
+                g_copy.nodes[new_node_id]['live'] = live
+            # add the edge
             l = line_segment.length
             g_copy.add_edge(prior_node_id, new_node_id, length=l, impedance=l)
             # increment the step and node id
@@ -172,51 +180,61 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
     logger.info('Converting graph to dual with angular impedances.')
     g_dual = nx.Graph()
 
-    def get_half_geoms(a_node, b_node):
+    def get_half_geoms(g, a_node, b_node):
+        '''
+        For splitting and orienting half geoms
+        '''
         # get edge data
-        edge_data = networkX_graph[a_node][b_node]
+        edge_data = g[a_node][b_node]
         # test for x coordinates
-        if 'x' not in networkX_graph.nodes[a_node] or 'y' not in networkX_graph.nodes[a_node]:
+        if 'x' not in g.nodes[a_node] or 'y' not in g.nodes[a_node]:
             raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
         # test for y coordinates
-        if 'x' not in networkX_graph.nodes[b_node] or 'y' not in networkX_graph.nodes[b_node]:
+        if 'x' not in g.nodes[b_node] or 'y' not in g.nodes[b_node]:
             raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
-        a_x = networkX_graph.nodes[a_node]['x']
-        a_y = networkX_graph.nodes[a_node]['y']
-        b_x = networkX_graph.nodes[b_node]['x']
-        b_y = networkX_graph.nodes[b_node]['y']
+        a_x = g.nodes[a_node]['x']
+        a_y = g.nodes[a_node]['y']
+        b_x = g.nodes[b_node]['x']
+        b_y = g.nodes[b_node]['y']
         # test for geom
         if 'geom' not in edge_data:
             raise ValueError(f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = edge_data['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
-        # check geom coordinates directionality - flip if facing backwards direction
-        if (a_x, a_y) == line_geom.coords[-1] and (b_x, b_y) == line_geom.coords[0]:
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
+        # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
+        if not (a_x, a_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
             line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
         # double check that coordinates now face the forwards direction
-        if not (a_x, a_y) == line_geom.coords[0] and (b_x, b_y) == line_geom.coords[-1]:
+        if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
         # generate the two half geoms
         a_half_geom = ops.substring(line_geom, 0, line_geom.length / 2)
         b_half_geom = ops.substring(line_geom, line_geom.length / 2, line_geom.length)
-        assert a_half_geom.coords[-1] == b_half_geom.coords[0]
+        assert a_half_geom.coords[-1][:2] == b_half_geom.coords[0][:2]
 
         return a_half_geom, b_half_geom
 
     # iterate the primal graph's edges
-    for s, e, d in networkX_graph.edges(data=True):
+    for s, e, d in tqdm(networkX_graph.edges(data=True)):
 
         # get the first and second half geoms
-        s_half_geom, e_half_geom = get_half_geoms(s, e)
+        s_half_geom, e_half_geom = get_half_geoms(networkX_graph, s, e)
 
         # create a new dual node corresponding to the current primal edge
         s_e = sorted([s, e])
         hub_node_dual = f'{s_e[0]}_{s_e[1]}'
-        x, y = s_half_geom.coords[-1]
+        x, y = s_half_geom.coords[-1][:2]
         g_dual.add_node(hub_node_dual, x=x, y=y)
+        # add and set live property if present in parent graph
+        if 'live' in networkX_graph.nodes[s] and 'live' in networkX_graph.nodes[e]:
+            live = True
+            # if BOTH parents are not live, then set child to not live
+            if not networkX_graph.nodes[s]['live'] and not networkX_graph.nodes[e]['live']:
+                live = False
+            g_dual.nodes[hub_node_dual]['live'] = live
 
         # process either side
         for n_side, half_geom in zip([s, e], [s_half_geom, e_half_geom]):
@@ -229,25 +247,32 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                     continue
 
                 # get the near and far half geoms
-                spoke_half_geom, _discard_geom = get_half_geoms(n_side, nb)
+                spoke_half_geom, _discard_geom = get_half_geoms(networkX_graph, n_side, nb)
 
                 # add the neighbouring primal edge as dual node
                 s_nb = sorted([n_side, nb])
                 spoke_node_dual = f'{s_nb[0]}_{s_nb[1]}'
-                x, y = spoke_half_geom.coords[-1]
+                x, y = spoke_half_geom.coords[-1][:2]
                 g_dual.add_node(spoke_node_dual, x=x, y=y)
+                # add and set live property if present in parent graph
+                if 'live' in networkX_graph.nodes[n_side] and 'live' in networkX_graph.nodes[nb]:
+                    live = True
+                    # if BOTH parents are not live, then set child to not live
+                    if not networkX_graph.nodes[n_side]['live'] and not networkX_graph.nodes[nb]['live']:
+                        live = False
+                    g_dual.nodes[spoke_node_dual]['live'] = live
 
                 # weld the lines
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
-                    raise ValueError(f'Problem with merged geom: expected LineString geometry but found {merged_line.type} geometry.')
+                    raise ValueError(f'Problem with merged geom: expected LineString geometry but found {merged_line.type} geometry {merged_line.wkt}')
 
                 # iterate the coordinates and sum the calculate the angular change
                 sum_angles = 0
                 for i in range(len(merged_line.coords) - 2):
-                    x_1, y_1 = merged_line.coords[i]
-                    x_2, y_2 = merged_line.coords[i + 1]
-                    x_3, y_3 = merged_line.coords[i + 2]
+                    x_1, y_1 = merged_line.coords[i][:2]
+                    x_2, y_2 = merged_line.coords[i + 1][:2]
+                    x_3, y_3 = merged_line.coords[i + 2][:2]
 
                     a_1 = np.rad2deg(np.arctan2(x_2 - x_1, y_2 - y_1))
                     a_2 = np.rad2deg(np.arctan2(x_3 - x_2, y_3 - y_2))
@@ -259,7 +284,7 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                     #angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
 
                 # add the dual edge
-                g_dual.add_edge(hub_node_dual, spoke_node_dual, length=merged_line.length, impedance=sum_angles)
+                g_dual.add_edge(hub_node_dual, spoke_node_dual, parent_primal_node=n_side, length=merged_line.length, impedance=sum_angles, geom=merged_line)
 
     return g_dual
 
@@ -282,14 +307,14 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         g_copy[s][e]['length'] = line_geom.length
         g_copy[s][e]['impedance'] = line_geom.length
 
     return g_copy
 
 
-def networkX_length_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
+def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
         raise ValueError('This method requires an undirected networkX graph.')
@@ -297,7 +322,7 @@ def networkX_length_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
     logger.info('Generating default edge attributes from edge geoms.')
     g_copy = networkX_graph.copy()
 
-    for n in g_copy.nodes():
+    for n in tqdm(g_copy.nodes()):
         agg_length = 0
         for nb in g_copy.neighbors(n):
             # test for length attribute

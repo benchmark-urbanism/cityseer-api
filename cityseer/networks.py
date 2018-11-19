@@ -224,15 +224,17 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
 
     # CLOSENESS MEASURES
     def compute_closeness(idx, impedance, distance, weight, beta, is_cycle):
+        # in the unweighted case, weight assumes 1
         # 0 - node_density
+        # if using segment lengths per node -> converts from a node density measure to a segment length density measure
         if idx == 0:
-            return 1 * weight
+            return weight
         # 1 - farness_impedance - aggregated impedances
         elif idx == 1:
             return impedance / weight
-        # 2 - farness_distance - aggregated distances
+        # 2 - farness_distance - aggregated distances - not weighted
         elif idx == 2:
-            return distance / weight
+            return distance
         # 3 - harmonic closeness - sum of inverse weights
         elif idx == 3:
             if impedance == 0:
@@ -249,7 +251,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
         # 6 - cycles - sum of cycles weighted by equivalent distances
         elif idx == 6:
             if is_cycle:
-                return 1
+                return np.exp(beta * distance)
             else:
                 return 0
 
@@ -257,7 +259,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     def compute_betweenness(idx, distance, weight, beta):
         # 0 - betweenness
         if idx == 0:
-            return 1 * weight
+            return weight
         # 1 - betweenness_gravity - sum of gravity weighted betweenness
         elif idx == 1:
             return np.exp(beta * distance) * weight
@@ -322,7 +324,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
             # betweenness weight is based on source and target index - assigned to each between node
             src_weight = node_map[src_idx][4]
             to_weight = node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
-            bt_weight = src_weight * to_weight
+            bt_weight = (src_weight + to_weight) / 2  # the average of the two weights
 
             # only process betweenness in one direction
             if to_idx_trim < full_to_trim_idx_map[src_idx]:
@@ -356,8 +358,8 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
         for d_idx in range(len(closeness_data[4])):
             for p_idx in range(len(closeness_data[4][d_idx])):
                 # ignore 0 / 0 situations where no proximate nodes or zero impedance
-                if closeness_data[1][d_idx][p_idx] != 0:
-                    closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[1][d_idx][p_idx]
+                if closeness_data[2][d_idx][p_idx] != 0:
+                    closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[2][d_idx][p_idx]
 
     return closeness_data, betweenness_data
 

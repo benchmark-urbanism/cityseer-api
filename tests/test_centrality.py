@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 import networkx as nx
 from itertools import permutations
-from shapely import geometry
 from cityseer import centrality, graphs, util
 import matplotlib.pyplot as plt
 
@@ -25,16 +24,16 @@ def test_distance_from_beta():
         centrality.distance_from_beta(-0.04)
 
 
+# TODO: test improved closeness (due to additional steps)
 def test_compute_centrality():
     '''
     Underlying method also tested via test_networks.test_network_centralities
     '''
 
-    # load the test graph
     G, pos = util.tutte_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    G = graphs.networkX_edge_defaults(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
 
     dist = [100]
 
@@ -112,21 +111,54 @@ def test_compute_harmonic_closeness():
 
 def test_compute_betweenness():
 
-    # load the test graph
     G, pos = util.tutte_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    G = graphs.networkX_edge_defaults(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
 
+    # test easy wrapper version of betweenness vs. networkX betweenness
     dist = [2000]
 
     nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
 
-    # test easy wrapper version of betweenness
     betweenness_easy, betas = centrality.compute_betweenness(n_map, e_map, dist)
+
     assert np.array_equal(nx_betw, betweenness_easy[0])
 
-# TODO: is there a way to test compute_angular_betweenness?
 
-# TODO: is there a way to test  compute_angular_harmonic_closeness?
+def test_compute_angular_betweenness():
+
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_to_dual(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+
+    dist = [500, 2000]
+
+    # test easy wrapper version of angular betweenness against underlying function
+    # (networkX doesn't check against sidestepping...)
+    betw_ang_easy, betas = centrality.compute_angular_betweenness(n_map, e_map, dist)
+
+    betw_ang, betas = centrality.compute_centrality(n_map, e_map, dist, between_metrics=['betweenness'], angular=True)
+
+    assert np.array_equal(betw_ang_easy, betw_ang)
+
+
+def test_compute_angular_harmonic_closeness():
+
+    # load the test graph
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_to_dual(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+
+    dist = [500, 2000]
+
+    # test easy wrapper version of angular harmonic closeness against underlying function
+    # (networkX doesn't check against sidestepping...)
+    harmonic_ang_easy, betas = centrality.compute_angular_harmonic_closeness(n_map, e_map, dist)
+
+    harmonic_ang, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=['harmonic'], angular=True)
+
+    assert np.array_equal(harmonic_ang_easy, harmonic_ang)
