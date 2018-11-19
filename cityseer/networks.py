@@ -351,8 +351,8 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-        print('...progress')
-        print('done')
+    print('...progress')
+    print('done')
 
     # improved closeness is post-computed
     for cl_idx in closeness_map:
