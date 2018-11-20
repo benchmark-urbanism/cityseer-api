@@ -2,7 +2,7 @@
 General graph manipulation
 '''
 import logging
-from typing import Union, Tuple, Any
+from typing import Union, List, Tuple, Any
 import utm
 from shapely import geometry, ops
 import networkx as nx
@@ -62,7 +62,7 @@ def substring(geom, start_dist, end_dist, normalized=False):
 def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting networkX graph from WGS to UTM.')
     g_copy = networkX_graph.copy()
@@ -95,7 +95,7 @@ def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
 def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting networkX graph from WGS to UTM.')
     g_copy = networkX_graph.copy()
@@ -126,7 +126,7 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
         if 'geom' in d:
             line_geom = d['geom']
             if line_geom.type != 'LineString':
-                raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+                raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # convert the coords to UTM - remember to flip back to lng, lat
             utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
             # write back to edge
@@ -138,7 +138,7 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
 def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info(f'Simplifying graph intersections.')
     g_copy = networkX_graph.copy()
@@ -170,7 +170,7 @@ def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
             # add new edge
             merged_line = ops.linemerge([geom_a, geom_b])
             if merged_line.type != 'LineString':
-                raise AttributeError(
+                raise TypeError(
                     f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
             g_copy.add_edge(nb_a, nb_b, geom=merged_line)
 
@@ -180,7 +180,7 @@ def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
 def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info(f'Decomposing graph to maximum edge lengths of {decompose_max}.')
     g_copy = networkX_graph.copy()
@@ -203,7 +203,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+            raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
@@ -261,7 +261,7 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
     '''
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting graph to dual with angular impedances.')
     g_dual = nx.Graph()
@@ -288,7 +288,7 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
         # get edge geometry
         line_geom = edge_data['geom']
         if line_geom.type != 'LineString':
-            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
+            raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
         if not (a_x, a_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
@@ -351,7 +351,7 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                 # weld the lines
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
-                    raise AttributeError(f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
+                    raise TypeError(f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
 
                 # iterate the coordinates and sum the calculate the angular change
                 sum_angles = 0
@@ -381,7 +381,7 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
     '''
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Generating default edge attributes from edge geoms.')
     g_copy = networkX_graph.copy()
@@ -393,7 +393,7 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+            raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         g_copy[s][e]['length'] = line_geom.length
         g_copy[s][e]['impedance'] = line_geom.length
 
@@ -403,7 +403,7 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
 def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Generating default edge attributes from edge geoms.')
     g_copy = networkX_graph.copy()
@@ -428,7 +428,7 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
     '''
 
     if not isinstance(networkX_graph, nx.Graph):
-        raise ValueError('This method requires an undirected networkX graph.')
+        raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Preparing node and edge arrays from networkX graph.')
     g_copy = networkX_graph.copy()
@@ -503,24 +503,37 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
 
     return node_labels, node_map, edge_map
 
-
-def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray) -> nx.Graph:
+Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
+def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
 
     if node_map.shape[1] != 5:
-        raise AttributeError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
+        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
 
     if edge_map.shape[1] != 4:
-        raise AttributeError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
 
     if len(node_labels) != len(node_map):
         raise ValueError('The number of node labels should correspond to the number and order of nodes in the node_map.')
 
+    if node_data:
+        for i, n_d in enumerate(node_data):
+            if not len(n_d) == 2:
+                raise TypeError(f'Data tuple at index {i} is of length {len(n_d)} instead of 2. Data tuples must consist of a (string, enumerable) pair.')
+            k, d = n_d
+            if not isinstance(k, str) or not isinstance(d, (list, tuple, np.ndarray)):
+                raise TypeError(f'Data tuple at index {i} does not consist of a (string, enumerable) pair. Enumerable may be list, tuple, or numpy.ndarray.')
+            if not len(d) == len(node_labels):
+                raise ValueError(f'Data tuple at index {i} contains an enumerable of length {len(d)}, which does not match the number of node labels at {len(node_labels)}.')
+
     g = nx.Graph()
 
     logger.info('Unpacking nodes')
-    for label, node in tqdm(zip(node_labels, node_map)):
+    for i, (label, node) in tqdm(enumerate(zip(node_labels, node_map))):
         x, y, live, edge_idx, wt = node
         g.add_node(label, x=x, y=y, live=live, weight=wt)
+        if node_data:
+            for key, data in node_data:
+                g.nodes[label][key] = data[i]
 
     logger.info('Unpacking edges')
     for edge in tqdm(edge_map):

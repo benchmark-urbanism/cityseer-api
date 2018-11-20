@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 import random
 from shapely import geometry
-from cityseer import graphs, util
+from cityseer import graphs, util, centrality
 import matplotlib.pyplot as plt
 
 
@@ -56,7 +56,7 @@ def test_networkX_wgs_to_utm():
     G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
     for s, e in G_wgs.edges():
         G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         graphs.networkX_wgs_to_utm(G_wgs)
 
     # check that missing node attributes throw an error
@@ -87,7 +87,7 @@ def test_networkX_decompose():
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         graphs.networkX_decompose(G, 20)
 
     # test decomposition
@@ -137,7 +137,7 @@ def test_networkX_to_dual():
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         graphs.networkX_to_dual(G)
 
     # check that missing node attributes throw an error
@@ -220,7 +220,7 @@ def test_networkX_edge_defaults():
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         graphs.networkX_edge_defaults(G)
 
     # test edge defaults
@@ -349,11 +349,28 @@ def test_networkX_from_graph_maps():
         graphs.networkX_from_graph_maps(node_labels[:-1], node_map, edge_map)
 
     # check that malformed node or edge maps trigger errors
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         graphs.networkX_from_graph_maps(node_labels, node_map[:, :4], edge_map)
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])
+
+    # check with data tuples
+    harmonic = centrality.compute_harmonic_closeness(node_map, edge_map, [200])
+    data_tuples = [('harmonic_200', harmonic)]
+    G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=data_tuples)
+    for n, d in G_round_trip.nodes(data=True):
+        node_idx = node_labels.index(n)
+        assert d['harmonic_200'] == harmonic[node_idx]
+
+    # check that malformed tuples raise errors
+    for bad_tuple in [(4, harmonic), ('boo', 'baa'), (harmonic, 'boo'), ('boo'), ('boo', harmonic, 'boo')]:
+        with pytest.raises(TypeError):
+            graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=[bad_tuple])
+
+    # check that incorrect data tuple enumerable lengths flags error
+    with pytest.raises(ValueError):
+        graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=[('boo', harmonic[:-1])])
 
 
 def test_networkX_remove_straight_intersections():
