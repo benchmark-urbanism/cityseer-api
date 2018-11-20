@@ -36,7 +36,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
         raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
 
     if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, distance, and impedance parameters.')
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
 
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')

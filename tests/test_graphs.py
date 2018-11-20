@@ -326,3 +326,31 @@ def test_graph_maps_from_networkX():
             break
         with pytest.raises(ValueError):
             graphs.graph_maps_from_networkX(G_test)
+
+
+def test_networkX_from_graph_maps():
+
+    # check round trip to and from graph maps results in same graph
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    # explicitly set live and weight params for equality checks
+    # graph_maps_from_networkX generates these implicitly if missing
+    for n in G.nodes():
+        G.nodes[n]['live'] = bool(random.getrandbits(1))
+        G.nodes[n]['weight'] = random.uniform(0, 2)
+    node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map)
+    assert G_round_trip.nodes == G.nodes
+    assert G_round_trip.edges == G.edges
+
+    # check that mismatching node_labels length triggers error
+    with pytest.raises(ValueError):
+        graphs.networkX_from_graph_maps(node_labels[:-1], node_map, edge_map)
+
+    # check that malformed node or edge maps trigger errors
+    with pytest.raises(ValueError):
+        graphs.networkX_from_graph_maps(node_labels, node_map[:, :4], edge_map)
+
+    with pytest.raises(ValueError):
+        graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])

@@ -180,7 +180,6 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         prior_node_id = s
         sub_node_counter = 0
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
-        # note, using actual length attribute / n for new length, as provided lengths may not match crow-flies distance
         for i in range(int(n) - 1):
             # create the new node label and id
             new_node_id = f'{s}_{sub_node_counter}_{e}'
@@ -461,3 +460,29 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
             edge_idx += 1
 
     return node_labels, node_map, edge_map
+
+
+def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray) -> nx.Graph:
+
+    if node_map.shape[1] != 5:
+        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
+
+    if edge_map.shape[1] != 4:
+        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+
+    if len(node_labels) != len(node_map):
+        raise ValueError('The number of node labels should correspond to the number and order of nodes in the node_map.')
+
+    g = nx.Graph()
+
+    logger.info('Unpacking nodes')
+    for label, node in tqdm(zip(node_labels, node_map)):
+        x, y, live, edge_idx, wt = node
+        g.add_node(label, x=x, y=y, live=live, weight=wt)
+
+    logger.info('Unpacking edges')
+    for edge in tqdm(edge_map):
+        start, end, length, impedance = edge
+        g.add_edge(start, end, length=length, impedance=impedance)
+
+    return g
