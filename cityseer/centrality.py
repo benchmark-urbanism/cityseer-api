@@ -33,10 +33,10 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
         between_metrics:list=None, min_threshold_wt:float=0.01831563888873418, angular:bool=False) -> Tuple[Any, ...]:
 
     if node_map.shape[1] != 5:
-        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
+        raise AttributeError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
 
     if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+        raise AttributeError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
 
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')
@@ -59,7 +59,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if close_metrics:
         for cl in close_metrics:
             if cl not in closeness_options:
-                raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
+                raise AttributeError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
             closeness_map.append(closeness_options.index(cl))
     # improved closeness is extrapolated from node density and farness_distance, so these may have to be added regardless:
     # assign to new variable so as to keep closeness_map pure for later use in unpacking the results
@@ -74,7 +74,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:list,
     if between_metrics:
         for bt in between_metrics:
             if bt not in betweenness_options:
-                raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
+                raise AttributeError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
             betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),

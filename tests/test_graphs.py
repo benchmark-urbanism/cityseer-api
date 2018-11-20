@@ -27,7 +27,7 @@ def test_networkX_simple_geoms():
             del G.nodes[n][attr]
             break
         # check that missing attribute throws an error
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.networkX_simple_geoms(G)
 
 
@@ -56,7 +56,7 @@ def test_networkX_wgs_to_utm():
     G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
     for s, e in G_wgs.edges():
         G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_wgs_to_utm(G_wgs)
 
     # check that missing node attributes throw an error
@@ -67,12 +67,12 @@ def test_networkX_wgs_to_utm():
             del G_wgs.nodes[n][attr]
             break
         # check that missing attribute throws an error
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.networkX_wgs_to_utm(G_wgs)
 
     # check that non WGS coordinates throw error
     G_utm, pos = util.tutte_graph()
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_wgs_to_utm(G_utm)
 
 
@@ -80,14 +80,14 @@ def test_networkX_decompose():
 
     # check that missing geoms throw an error
     G, pos = util.tutte_graph()
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_decompose(G, 20)
 
     # test decomposition
@@ -122,7 +122,7 @@ def test_networkX_decompose():
         for n in G.nodes():
             G.nodes[n][attr] = G.nodes[n][attr] + 1
             break
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.networkX_decompose(G, 20)
 
 
@@ -130,14 +130,14 @@ def test_networkX_to_dual():
 
     # check that missing geoms throw an error
     G, pos = util.tutte_graph()
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_to_dual(G)
 
     # check that non-LineString geoms throw an error
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_to_dual(G)
 
     # check that missing node attributes throw an error
@@ -148,7 +148,7 @@ def test_networkX_to_dual():
             del G.nodes[n][attr]
             break
         # check that missing attribute throws an error
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.networkX_to_dual(G)
 
     # test dual
@@ -213,14 +213,14 @@ def test_networkX_edge_defaults():
 
     # check that missing geoms throw an error
     G, pos = util.tutte_graph()
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_edge_defaults(G)
 
     # check that non-LineString geoms throw an error
     G, pos = util.tutte_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_edge_defaults(G)
 
     # test edge defaults
@@ -236,7 +236,7 @@ def test_networkX_km_weighted_nodes():
 
     # check that missing length attribute throws error
     G, pos = util.tutte_graph()
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_m_weighted_nodes(G)
 
     # test length weighted nodes
@@ -291,7 +291,7 @@ def test_graph_maps_from_networkX():
             # delete attribute from first node and break
             del G_test.nodes[n][attr]
             break
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.graph_maps_from_networkX(G_test)
 
     # check that missing edge attributes throw an error
@@ -302,7 +302,7 @@ def test_graph_maps_from_networkX():
             # delete attribute from first edge and break
             del G_test[s][e][attr]
             break
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.graph_maps_from_networkX(G_test)
 
     # check that invalid lengths are caught
@@ -313,7 +313,7 @@ def test_graph_maps_from_networkX():
         for s, e in G_test.edges():
             G_test[s][e]['length'] = corrupt_val
             break
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.graph_maps_from_networkX(G_test)
 
     # check that invalid impedances are caught
@@ -324,7 +324,7 @@ def test_graph_maps_from_networkX():
         for s, e in G_test.edges():
             G_test[s][e]['length'] = corrupt_val
             break
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             graphs.graph_maps_from_networkX(G_test)
 
 
@@ -349,8 +349,58 @@ def test_networkX_from_graph_maps():
         graphs.networkX_from_graph_maps(node_labels[:-1], node_map, edge_map)
 
     # check that malformed node or edge maps trigger errors
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_from_graph_maps(node_labels, node_map[:, :4], edge_map)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])
+
+
+def test_networkX_remove_straight_intersections():
+
+    # test that redundant (straight) intersections are removed
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G_messy = G.copy()
+
+    # complexify the graph - write changes to new graph to avoid in-place iteration errors
+    for i, (s, e, d) in enumerate(G.edges(data=True)):
+        # flip each third geom
+        if i % 3 == 0:
+            flipped_coords = np.fliplr(d['geom'].coords.xy)
+            G_messy[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+        # split each second geom
+        if i % 2 == 0:
+            line_geom = G[s][e]['geom']
+            # check geom coordinates directionality - flip if facing backwards direction
+            if not (G.nodes[s]['x'], G.nodes[s]['y']) == line_geom.coords[0][:2]:
+                flipped_coords = np.fliplr(line_geom.coords.xy)
+                line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+            # remove old edge
+            G_messy.remove_edge(s, e)
+            # add new edges
+            # TODO: change to ops.substring once shapely 1.7 released (bug fix)
+            G_messy.add_edge(s, f'{s}-{e}', geom=graphs.substring(line_geom, 0, 0.5, normalized=True))
+            G_messy.add_edge(e, f'{s}-{e}', geom=graphs.substring(line_geom, 0.5, 1, normalized=True))
+
+    # simplify and test
+    G_simplified = graphs.networkX_remove_straight_intersections(G_messy)
+    assert G_simplified.nodes == G.nodes
+    assert G_simplified.edges == G.edges
+    for s, e, d in G_simplified.edges(data=True):
+        assert G_simplified[s][e]['geom'].length == G[s][e]['geom'].length
+
+    # check that missing geoms throw an error
+    G_attr = G_messy.copy()
+    for i, (s, e) in enumerate(G_attr.edges()):
+        if i % 2 == 0:
+            del G_attr[s][e]['geom']
+    with pytest.raises(AttributeError):
+        graphs.networkX_remove_straight_intersections(G_attr)
+
+    # check that non-LineString geoms throw an error
+    G_attr = G_messy.copy()
+    for s, e in G_attr.edges():
+        G_attr[s][e]['geom'] = geometry.Point([G_attr.nodes[s]['x'], G_attr.nodes[s]['y']])
+    with pytest.raises(AttributeError):
+        graphs.networkX_remove_straight_intersections(G_attr)

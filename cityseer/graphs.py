@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658
+# TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658. Note, also used from test_networkX_remove_straight_intersections()
 def substring(geom, start_dist, end_dist, normalized=False):
 
     assert (isinstance(geom, geometry.LineString))
@@ -72,19 +72,19 @@ def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
 
         # start x coordinate
         if 'x' not in g_copy.nodes[s]:
-            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {s}.')
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {s}.')
         s_x = g_copy.nodes[s]['x']
         # start y coordinate
         if 'y' not in g_copy.nodes[s]:
-            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {s}.')
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {s}.')
         s_y = g_copy.nodes[s]['y']
         # end x coordinate
         if 'x' not in g_copy.nodes[e]:
-            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {e}.')
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {e}.')
         e_x = g_copy.nodes[e]['x']
         # end y coordinate
         if 'y' not in g_copy.nodes[e]:
-            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {e}.')
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {e}.')
         e_y = g_copy.nodes[e]['y']
 
         g_copy[s][e]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
@@ -104,15 +104,15 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
     for n, d in tqdm(g_copy.nodes(data=True)):
         # x coordinate
         if 'x' not in d:
-            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
         x = d['x']
         # y coordinate
         if 'y' not in d:
-            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {n}.')
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
         y = d['y']
         # check for unintentional use of conversion
         if x > 180 or y > 90:
-            raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
         # remember - accepts and returns in y, x order
         y, x = utm.from_latlon(y, x)[:2]
         # write back to graph
@@ -126,11 +126,53 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
         if 'geom' in d:
             line_geom = d['geom']
             if line_geom.type != 'LineString':
-                raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+                raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # convert the coords to UTM - remember to flip back to lng, lat
             utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
             # write back to edge
             g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
+
+    return g_copy
+
+
+def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
+
+    if not isinstance(networkX_graph, nx.Graph):
+        raise ValueError('This method requires an undirected networkX graph.')
+
+    logger.info(f'Simplifying graph intersections.')
+    g_copy = networkX_graph.copy()
+
+    # iterate the nodes and weld edges where encountering simple intersections
+    # use the original graph so as to write changes to new graph
+    for n in networkX_graph.nodes():
+        if nx.degree(networkX_graph, n) == 2:
+
+            # get neighbours and geoms either side
+            nb_a, nb_b = list(nx.neighbors(networkX_graph, n))
+
+            # geom A
+            if 'geom' not in networkX_graph[n][nb_a]:
+                raise AttributeError(f'Missing "geom" attribute for edge {n}-{nb_a}')
+            geom_a = networkX_graph[n][nb_a]['geom']
+            if geom_a.type != 'LineString':
+                raise AttributeError(f'Expecting LineString geometry but found {geom_a.type} geometry.')
+            # geom B
+            if 'geom' not in networkX_graph[n][nb_b]:
+                raise AttributeError(f'Missing "geom" attribute for edge {n}-{nb_b}')
+            geom_b = networkX_graph[n][nb_b]['geom']
+            if geom_b.type != 'LineString':
+                raise AttributeError(f'Expecting LineString geometry but found {geom_b.type} geometry.')
+
+            # remove old node - edges are removed implicitly
+            g_copy.remove_node(n)
+
+            # add new edge
+            merged_line = ops.linemerge([geom_a, geom_b])
+            if merged_line.type != 'LineString':
+                raise AttributeError(
+                    f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
+            g_copy.add_edge(nb_a, nb_b, geom=merged_line)
 
     return g_copy
 
@@ -147,28 +189,28 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
     for s, e, d in tqdm(networkX_graph.edges(data=True)):
         # test for x coordinates
         if 'x' not in networkX_graph.nodes[s] or 'y' not in networkX_graph.nodes[s]:
-            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {s}.')
+            raise AttributeError(f'Encountered node missing "x" or "y" coordinate attributes at node {s}.')
         # test for y coordinates
         if 'x' not in networkX_graph.nodes[e] or 'y' not in networkX_graph.nodes[e]:
-            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {e}.')
+            raise AttributeError(f'Encountered node missing "x" or "y" coordinate attributes at node {e}.')
         s_x = networkX_graph.nodes[s]['x']
         s_y = networkX_graph.nodes[s]['y']
         e_x = networkX_graph.nodes[e]['x']
         e_y = networkX_graph.nodes[e]['y']
         # test for geom
         if 'geom' not in d:
-            raise ValueError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
             line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
         # double check that coordinates now face the forwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
-            raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
+            raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
         n = np.ceil(line_geom.length / decompose_max)
@@ -232,28 +274,28 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
         edge_data = g[a_node][b_node]
         # test for x coordinates
         if 'x' not in g.nodes[a_node] or 'y' not in g.nodes[a_node]:
-            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
+            raise AttributeError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
         # test for y coordinates
         if 'x' not in g.nodes[b_node] or 'y' not in g.nodes[b_node]:
-            raise ValueError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
+            raise AttributeError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
         a_x = g.nodes[a_node]['x']
         a_y = g.nodes[a_node]['y']
         b_x = g.nodes[b_node]['x']
         b_y = g.nodes[b_node]['y']
         # test for geom
         if 'geom' not in edge_data:
-            raise ValueError(f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = edge_data['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
+            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
         if not (a_x, a_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
             line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
         # double check that coordinates now face the forwards direction
         if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
-            raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
+            raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
         # generate the two half geoms
         a_half_geom = substring(line_geom, 0, line_geom.length / 2)
         b_half_geom = substring(line_geom, line_geom.length / 2, line_geom.length)
@@ -309,7 +351,7 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                 # weld the lines
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
-                    raise ValueError(f'Problem with merged geom: expected LineString geometry but found {merged_line.type} geometry {merged_line.wkt}')
+                    raise AttributeError(f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
 
                 # iterate the coordinates and sum the calculate the angular change
                 sum_angles = 0
@@ -347,11 +389,11 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
     logger.info('Preparing graph')
     for s, e, d in tqdm(g_copy.edges(data=True)):
         if 'geom' not in d:
-            raise ValueError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
-            raise ValueError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+            raise AttributeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         g_copy[s][e]['length'] = line_geom.length
         g_copy[s][e]['impedance'] = line_geom.length
 
@@ -371,7 +413,7 @@ def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
         for nb in g_copy.neighbors(n):
             # test for length attribute
             if 'length' not in g_copy[n][nb]:
-                raise ValueError(f'No "length" attribute available for edge {n}-{nb}.')
+                raise AttributeError(f'No "length" attribute available for edge {n}-{nb}.')
             agg_length += g_copy[n][nb]['length'] / 2
         g_copy.nodes[n]['weight'] = agg_length
 
@@ -415,11 +457,11 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
         idx = int(n)
         # NODE MAP INDEX POSITION 0 = x coordinate
         if 'x' not in d:
-            raise ValueError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
         node_map[idx][0] = d['x']
         # NODE MAP INDEX POSITION 1 = y coordinate
         if 'y' not in d:
-            raise ValueError(f'Encountered node missing "y" coordinate attribute at node {n}.')
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
         node_map[idx][1] = d['y']
         # NODE MAP INDEX POSITION 2 = live or not
         if 'live' in d:
@@ -442,19 +484,19 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
             edge_map[edge_idx][1] = nb
             # EDGE MAP INDEX POSITION 2 = length
             if 'length' not in g_copy[idx][nb]:
-                raise ValueError(f'No "length" attribute for edge {idx}-{nb}.')
+                raise AttributeError(f'No "length" attribute for edge {idx}-{nb}.')
             # cannot have zero length
             l = g_copy[idx][nb]['length']
             if not np.isfinite(l) or l <= 0:
-                raise ValueError(f'Length attribute {l} for edge {idx}-{nb} must be a finite positive value.')
+                raise AttributeError(f'Length attribute {l} for edge {idx}-{nb} must be a finite positive value.')
             edge_map[edge_idx][2] = l
             # EDGE MAP INDEX POSITION 3 = impedance
             if 'impedance' not in g_copy[idx][nb]:
-                raise ValueError(f'No "impedance" attribute for edge {idx}-{nb}.')
+                raise AttributeError(f'No "impedance" attribute for edge {idx}-{nb}.')
             # cannot have impedance less than zero (but == 0 is OK)
             imp = g_copy[idx][nb]['impedance']
             if not (np.isfinite(imp) or np.isinf(imp)) or imp < 0:
-                raise ValueError(f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
+                raise AttributeError(f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
             edge_map[edge_idx][3] = imp
             # increment the link_idx
             edge_idx += 1
@@ -465,10 +507,10 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
 def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray) -> nx.Graph:
 
     if node_map.shape[1] != 5:
-        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
+        raise AttributeError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
 
     if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+        raise AttributeError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
 
     if len(node_labels) != len(node_map):
         raise ValueError('The number of node labels should correspond to the number and order of nodes in the node_map.')

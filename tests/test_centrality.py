@@ -38,16 +38,16 @@ def test_compute_centrality():
     dist = [100]
 
     # check that malformed signatures trigger errors
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         centrality.compute_centrality(n_map[:, :4], e_map, dist, close_metrics=['node_density'])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         centrality.compute_centrality(n_map, e_map[:, :3], dist, close_metrics=['node_density'])
 
     with pytest.raises(ValueError):
         centrality.compute_centrality(n_map, e_map, dist)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         centrality.compute_centrality(n_map, e_map, dist, close_metrics=['node_density_spelling_typo'])
 
     # check the number of returned types
