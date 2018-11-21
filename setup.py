@@ -6,7 +6,7 @@
 # /Users/gareth/Library/Python/3.7/bin/twine upload dist/*
 
 from setuptools import setup
-from cityseer import networks
+from cityseer import networks, data, landuses
 
 setup (
     name = 'cityseer',
@@ -32,5 +32,7 @@ setup (
         'matplotlib'
     ],
     ext_modules = [
-        networks.cc.distutils_extension()
+        networks.cc.distutils_extension(),
+        data.cc.distutils_extension(),
+        landuses.cc.distutils_extension()
     ])

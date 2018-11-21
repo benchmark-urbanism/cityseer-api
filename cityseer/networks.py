@@ -1,6 +1,11 @@
+import logging
 import numpy as np
 from numba.pycc import CC
 from numba import njit
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 cc = CC('networks')
@@ -365,60 +370,3 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                     closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[2][d_idx][p_idx]
 
     return closeness_data, betweenness_data
-
-
-@cc.export('assign_data_to_network', '(float64[:,:], float64[:,:], float64)')
-@njit
-def assign_data_to_network(node_map, data_map, max_dist):
-    '''
-    Each data point is assigned to the closest network node.
-
-    This is designed to be done once prior to windowed iteration of the graph.
-
-    Crow-flies operations are performed inside the iterative data aggregation step because pre-computation would be memory-prohibitive due to an N*M matrix.
-
-    Note that the assignment to a network index is a starting reference for the data aggregation step, and that if the prior point on the shortest path is closer, then the distance will be calculated via the prior point instead.
-
-    NODE MAP:
-    0 - x
-    1 - y
-    2 - live
-    3 - edge indx
-    4 - weight
-
-    DATA MAP:
-    0 - x
-    1 - y
-    2 - live
-    3 - data class
-    4 - assigned network index
-    5 - distance from assigned network index
-    '''
-
-    netw_x_arr = node_map[:,0]
-    netw_y_arr = node_map[:,1]
-    data_x_arr = data_map[:,0]
-    data_y_arr = data_map[:,1]
-
-    # iterate each data point
-    for data_idx in range(len(data_map)):
-        # iterate each network id
-        for network_idx in range(len(node_map)):
-            # get the distance
-            dist = np.sqrt(
-                (netw_x_arr[network_idx] - data_x_arr[data_idx]) ** 2 +
-                (netw_y_arr[network_idx] - data_y_arr[data_idx]) ** 2)
-            # only proceed if it is less than the max dist cutoff
-            if dist > max_dist:
-                continue
-            # if no adjacent network point has yet been assigned for this data point
-            # then proceed to record this adjacency and the corresponding distance
-            elif np.isnan(data_map[data_idx][5]):
-                data_map[data_idx][5] = dist
-                data_map[data_idx][4] = network_idx
-            # otherwise, only update if the new distance is less than any prior distances
-            elif dist < data_map[data_idx][5]:
-                data_map[data_idx][5] = dist
-                data_map[data_idx][4] = network_idx
-
-    return data_map

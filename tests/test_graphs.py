@@ -38,8 +38,9 @@ def test_networkX_wgs_to_utm():
     G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
-        assert d['x'] == round(G_converted.nodes[n]['x'], 1)
-        assert d['y'] == round(G_converted.nodes[n]['y'], 1)
+        # rounding can be tricky
+        assert d['x']  - G_converted.nodes[n]['x'] < 0.001
+        assert d['y']  - G_converted.nodes[n]['y'] < 0.001
 
     # check that edge coordinates are correctly converted
     G_utm, pos = util.tutte_graph()

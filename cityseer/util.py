@@ -1,48 +1,15 @@
 '''
 Generate a graph for testing and documentation purposes.
 '''
-
-from typing import Tuple
-import numpy as np
+import logging
 import matplotlib.pyplot as plt
 import networkx as nx
+import random
 import utm
 
 
-def data_dict_to_map(data_dict:dict) -> Tuple[list, np.ndarray]:
-
-    if not isinstance(data_dict, dict):
-        raise TypeError('This method requires dictionary object.')
-
-    data_labels = []
-    data_map = np.full((len(data_dict), 6), np.nan)
-
-    for i, (k, v) in enumerate(data_dict.items()):
-        # set key to data labels
-        data_labels.append(k)
-        # DATA MAP INDEX POSITION 0 = x coordinate
-        if 'x' not in v:
-            raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
-        data_map[i][0] = v['x']
-        # DATA MAP INDEX POSITION 1 = y coordinate
-        if 'y' not in v:
-            raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
-        data_map[i][1] = v['y']
-        # DATA MAP INDEX POSITION 2 = live or not
-        if 'live' in v:
-            data_map[i][2] = v['live']
-        else:
-            data_map[i][2] = True
-        # DATA MAP INDEX POSITION 3 = optional data class - leave as np.nan if not present
-        if 'class' in v:
-            data_map[i][3] = v['class']
-        # DATA MAP INDEX POSITION 4 = assigned network index - leave as default np.nan
-        # pass
-        # DATA MAP INDEX POSITION 5 = distance from assigned network index - leave as default np.nan
-        # pass
-
-
-    return data_labels, data_map
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def tutte_graph(wgs84_coords=False):
@@ -180,13 +147,55 @@ def tutte_graph(wgs84_coords=False):
 
     pos = {}
     for n, d in G.nodes(data=True):
-        pos[n] = (d['x'], d['y'])
+        x = d['x']
+        y = d['y']
         if wgs84_coords:
-            lat, lng = utm.to_latlon(d['y'], d['x'], 30, 'U')[:2]
-            d['x'] = lng
-            d['y'] = lat
+            y, x = utm.to_latlon(d['y'], d['x'], 30, 'U')
+        G.nodes[n]['x'] = x
+        G.nodes[n]['y'] = y
 
     return G, pos
+
+
+def mock_data(G):
+
+    min_x = None
+    max_x = None
+    min_y = None
+    max_y = None
+
+    for n, d in G.nodes(data=True):
+
+        if not min_x:
+            min_x = d['x']
+        elif d['x'] < min_x:
+            min_x = d['x']
+
+        if not max_x:
+            max_x = d['x']
+        elif d['x'] > max_x:
+            max_x = d['x']
+
+        if not min_y:
+            min_y = d['y']
+        elif d['y'] < min_y:
+            min_y = d['y']
+
+        if not max_y:
+            max_y = d['y']
+        elif d['y'] > max_y:
+            max_y = d['y']
+
+    data_dict = {}
+    for i in range(100):
+        data_dict[i] = {
+            'x': random.uniform(min_x, max_x),
+            'y': random.uniform(min_y, max_y),
+            'live': bool(random.getrandbits(1)),
+            'class': random.uniform(0, 10)
+        }
+
+    return data_dict
 
 
 def plot_graph_maps(node_map, edge_map, geom=None):

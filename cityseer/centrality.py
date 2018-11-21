@@ -36,10 +36,10 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
         between_metrics:list=None, min_threshold_wt:float=default_min_threshold_wt, angular:bool=False) -> Tuple[Any, ...]:
 
     if node_map.shape[1] != 5:
-        raise AttributeError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
+        raise AttributeError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
 
     if edge_map.shape[1] != 4:
-        raise AttributeError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+        raise AttributeError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')

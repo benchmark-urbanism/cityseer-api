@@ -38,10 +38,10 @@ def test_compute_centrality():
 
     # check that malformed signatures trigger errors
     with pytest.raises(AttributeError):
-        centrality.compute_centrality(n_map[:, :4], e_map, dist, close_metrics=['node_density'])
+        centrality.compute_centrality(n_map[:, :-1], e_map, dist, close_metrics=['node_density'])
 
     with pytest.raises(AttributeError):
-        centrality.compute_centrality(n_map, e_map[:, :3], dist, close_metrics=['node_density'])
+        centrality.compute_centrality(n_map, e_map[:, :-1], dist, close_metrics=['node_density'])
 
     with pytest.raises(ValueError):
         centrality.compute_centrality(n_map, e_map, dist)

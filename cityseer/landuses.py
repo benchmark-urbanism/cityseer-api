@@ -1,3 +1,17 @@
+import logging
+from typing import Tuple
+import numpy as np
+from numba.pycc import CC
+from numba import njit
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+cc = CC('landuses')
+
+
 '''
 @njit
 def accessibility_agg(netw_src_idx, max_dist, netw_dist_map_trim, netw_pred_map_trim, netw_idx_map_trim_to_full,
