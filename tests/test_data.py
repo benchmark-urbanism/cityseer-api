@@ -5,7 +5,7 @@ import numpy as np
 from cityseer import data, util, graphs
 
 
-def test_data_dict_wgs_to_utm():
+def test_dict_wgs_to_utm():
 
     # check that node coordinates are correctly converted
     G_utm, pos = util.tutte_graph()
@@ -19,7 +19,7 @@ def test_data_dict_wgs_to_utm():
         data_dict_wgs[k]['x'] = x
         data_dict_wgs[k]['y'] = y
 
-    data_dict_converted = data.data_dict_wgs_to_utm(data_dict_wgs)
+    data_dict_converted = data.dict_wgs_to_utm(data_dict_wgs)
 
     for k in data_dict.keys():
         # rounding can be tricky
@@ -35,21 +35,21 @@ def test_data_dict_wgs_to_utm():
             break
         # check that missing attribute throws an error
         with pytest.raises(AttributeError):
-            data.data_dict_wgs_to_utm(data_dict_wgs)
+            data.dict_wgs_to_utm(data_dict_wgs)
 
     # check that non WGS coordinates throw error
     G_utm, pos = util.tutte_graph()
     data_dict = util.mock_data(G_utm)
     with pytest.raises(AttributeError):
-        data.data_dict_wgs_to_utm(data_dict)
+        data.dict_wgs_to_utm(data_dict)
 
 
-def test_data_dict_to_map():
+def test_dict_to_map():
 
     # generate mock data
     G, pos = util.tutte_graph()
     data_dict = util.mock_data(G)
-    data_labels, data_map = data.data_dict_to_data_map(data_dict)
+    data_labels, data_map = data.dict_to_data_map(data_dict)
 
     assert len(data_labels) == len(data_map) == len(data_dict)
 
@@ -66,10 +66,10 @@ def test_data_dict_to_map():
         for k in data_dict.keys():
             del data_dict[k][attr]
         with pytest.raises(AttributeError):
-            data.data_dict_to_data_map(data_dict)
+            data.dict_to_data_map(data_dict)
 
 
-def test_assign_to_network():
+def test_assign_data_to_network():
 
     # generate network
     G, pos = util.tutte_graph()
@@ -79,9 +79,9 @@ def test_assign_to_network():
 
     # generate data
     data_dict = util.mock_data(G)
-    data_labels, data_map = data.data_dict_to_data_map(data_dict)
+    data_labels, data_map = data.dict_to_data_map(data_dict)
 
-    data_map = data.assign_to_network(data_map, node_map, 500)
+    data_map = data.assign_data_to_network(data_map, node_map, 500)
 
     for data_point in data_map:
         x = data_point[0]
@@ -104,7 +104,7 @@ def test_assign_to_network():
 
     # check that malformed node and data maps throw errors
     with pytest.raises(AttributeError):
-        data.assign_to_network(data_map[:, :-1], node_map, 500)
+        data.assign_data_to_network(data_map[:, :-1], node_map, 500)
 
     with pytest.raises(AttributeError):
-        data.assign_to_network(data_map[:, :-1], node_map, 500)
+        data.assign_data_to_network(data_map[:, :-1], node_map, 500)

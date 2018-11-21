@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 cc = CC('data')
 
 
-def data_dict_wgs_to_utm(data_dict:dict) -> dict:
+def dict_wgs_to_utm(data_dict:dict) -> dict:
 
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
@@ -44,7 +44,7 @@ def data_dict_wgs_to_utm(data_dict:dict) -> dict:
     return data_dict_copy
 
 
-def data_dict_to_data_map(data_dict:dict) -> Tuple[list, np.ndarray]:
+def dict_to_data_map(data_dict:dict) -> Tuple[list, np.ndarray]:
 
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
@@ -79,9 +79,9 @@ def data_dict_to_data_map(data_dict:dict) -> Tuple[list, np.ndarray]:
     return data_labels, data_map
 
 
-@cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64)')
+@cc.export('assign_data_to_network', '(float64[:,:], float64[:,:], float64)')
 @njit
-def assign_to_network(data_map, node_map, max_dist):
+def assign_data_to_network(data_map, node_map, max_dist):
     '''
     Each data point is assigned to the closest network node.
 
