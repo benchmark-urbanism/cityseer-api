@@ -2,9 +2,44 @@
 Generate a graph for testing and documentation purposes.
 '''
 
+from typing import Tuple
+import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import utm
+
+
+def data_dict_to_map(data_dict:dict) -> Tuple[list, np.ndarray]:
+
+    if not isinstance(data_dict, dict):
+        raise TypeError('This method requires dictionary object.')
+
+    data_labels = []
+    data_map = np.full((len(data_dict), 5), np.nan)
+
+    for i, (k, v) in enumerate(data_dict.items()):
+        # set key to data labels
+        data_labels.append(k)
+        # DATA MAP INDEX POSITION 0 = x coordinate
+        if 'x' not in v:
+            raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
+        data_map[i][0] = v['x']
+        # DATA MAP INDEX POSITION 1 = y coordinate
+        if 'y' not in v:
+            raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
+        data_map[i][1] = v['y']
+        # DATA MAP INDEX POSITION 2 = live or not
+        if 'live' in v:
+            data_map[i][2] = v['live']
+        else:
+            data_map[i][2] = True
+        # DATA MAP INDEX POSITION 3 = assigned network index - leave as default np.nan
+        # pass
+        # DATA MAP INDEX POSITION 4 = optional data class - leave as np.nan if not present
+        if 'class' in v:
+            data_map[i][4] = v['class']
+
+    return data_labels, data_map
 
 
 def tutte_graph(wgs84_coords=False):

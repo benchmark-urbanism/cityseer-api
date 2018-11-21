@@ -2,7 +2,7 @@
 General graph manipulation
 '''
 import logging
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Tuple
 import utm
 from shapely import geometry, ops
 import networkx as nx
