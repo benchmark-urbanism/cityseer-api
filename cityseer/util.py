@@ -15,7 +15,7 @@ def data_dict_to_map(data_dict:dict) -> Tuple[list, np.ndarray]:
         raise TypeError('This method requires dictionary object.')
 
     data_labels = []
-    data_map = np.full((len(data_dict), 5), np.nan)
+    data_map = np.full((len(data_dict), 6), np.nan)
 
     for i, (k, v) in enumerate(data_dict.items()):
         # set key to data labels
@@ -33,11 +33,14 @@ def data_dict_to_map(data_dict:dict) -> Tuple[list, np.ndarray]:
             data_map[i][2] = v['live']
         else:
             data_map[i][2] = True
-        # DATA MAP INDEX POSITION 3 = assigned network index - leave as default np.nan
-        # pass
-        # DATA MAP INDEX POSITION 4 = optional data class - leave as np.nan if not present
+        # DATA MAP INDEX POSITION 3 = optional data class - leave as np.nan if not present
         if 'class' in v:
-            data_map[i][4] = v['class']
+            data_map[i][3] = v['class']
+        # DATA MAP INDEX POSITION 4 = assigned network index - leave as default np.nan
+        # pass
+        # DATA MAP INDEX POSITION 5 = distance from assigned network index - leave as default np.nan
+        # pass
+
 
     return data_labels, data_map
 

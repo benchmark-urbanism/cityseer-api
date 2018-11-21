@@ -26,8 +26,9 @@ def test_data_dict_to_map():
         assert d[0] == data_dict[d_label]['x']
         assert d[1] == data_dict[d_label]['y']
         assert d[2] == data_dict[d_label]['live']
-        assert np.isnan(d[3])
-        assert d[4] == data_dict[d_label]['class']
+        assert d[3] == data_dict[d_label]['class']
+        assert np.isnan(d[4])
+        assert np.isnan(d[5])
 
     # check that missing attributes throw errors
     for attr in ['x', 'y']:

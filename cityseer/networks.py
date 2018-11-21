@@ -183,7 +183,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     return map_impedance, map_distance, map_pred, cycles
 
 
-@cc.export('compute_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
+@cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
 def network_centralities(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular=False):
     '''
@@ -367,152 +367,58 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     return closeness_data, betweenness_data
 
 
+@cc.export('assign_data_to_network', '(float64[:,:], float64[:,:], float64)')
 @njit
-def assign_data_to_network(network_x_arr, network_y_arr, data_x_arr, data_y_arr, max_dist):
+def assign_data_to_network(node_map, data_map, max_dist):
     '''
-    assign data from x, y arrays of data points (e.g. landuses)
-    to the nearest corresponding point on an x, y array from a network
+    Each data point is assigned to the closest network node.
 
-    This is done once for the whole graph because it only requires a one-dimensional array
+    This is designed to be done once prior to windowed iteration of the graph.
 
-    i.e. the similar crow-flies step for the network graph windowing has to happen inside the nested iteration
-    because it would require an NxM matrix if done here - which is memory prohibitive
+    Crow-flies operations are performed inside the iterative data aggregation step because pre-computation would be memory-prohibitive due to an N*M matrix.
+
+    Note that the assignment to a network index is a starting reference for the data aggregation step, and that if the prior point on the shortest path is closer, then the distance will be calculated via the prior point instead.
+
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge indx
+    4 - weight
+
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - data class
+    4 - assigned network index
+    5 - distance from assigned network index
     '''
 
-    verts_count = len(network_x_arr)
-    data_count = len(data_x_arr)
-    # prepare the arrays for tracking the respective nearest vertex
-    data_assign_map = np.full(data_count, np.nan)
-    # and the corresponding distance
-    data_assign_dist = np.full(data_count, np.nan)
+    netw_x_arr = node_map[:,0]
+    netw_y_arr = node_map[:,1]
+    data_x_arr = data_map[:,0]
+    data_y_arr = data_map[:,1]
+
     # iterate each data point
-    for data_idx in range(data_count):
+    for data_idx in range(len(data_map)):
         # iterate each network id
-        for network_idx in range(verts_count):
+        for network_idx in range(len(node_map)):
             # get the distance
-            dist = np.sqrt((network_x_arr[network_idx] - data_x_arr[data_idx]) ** 2 + (
-                        network_y_arr[network_idx] - data_y_arr[data_idx]) ** 2)
+            dist = np.sqrt(
+                (netw_x_arr[network_idx] - data_x_arr[data_idx]) ** 2 +
+                (netw_y_arr[network_idx] - data_y_arr[data_idx]) ** 2)
             # only proceed if it is less than the max dist cutoff
             if dist > max_dist:
                 continue
-            # if within the cutoff distance
-            # and if no adjacent network point has yet been assigned for this data point
+            # if no adjacent network point has yet been assigned for this data point
             # then proceed to record this adjacency and the corresponding distance
-            elif np.isnan(data_assign_dist[data_idx]):
-                data_assign_dist[data_idx] = dist
-                data_assign_map[data_idx] = network_idx
+            elif np.isnan(data_map[data_idx][5]):
+                data_map[data_idx][5] = dist
+                data_map[data_idx][4] = network_idx
             # otherwise, only update if the new distance is less than any prior distances
-            elif dist < data_assign_dist[data_idx]:
-                data_assign_dist[data_idx] = dist
-                data_assign_map[data_idx] = network_idx
+            elif dist < data_map[data_idx][5]:
+                data_map[data_idx][5] = dist
+                data_map[data_idx][4] = network_idx
 
-    return data_assign_map, data_assign_dist
-
-
-@njit
-def accessibility_agg(netw_src_idx, max_dist, netw_dist_map_trim, netw_pred_map_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes, data_x_arr, data_y_arr, data_assign_map, data_assign_dist):
-
-    # window the data
-    source_x = netw_x_arr[netw_src_idx]
-    source_y = netw_y_arr[netw_src_idx]
-    data_trim_count, data_trim_to_full_idx_map, data_full_to_trim_idx_map = \
-        crow_flies(source_x, source_y, max_dist, data_x_arr, data_y_arr)
-
-    # iterate the distance trimmed data point
-    reachable_classes_trim = np.full(data_trim_count, np.nan)
-    reachable_classes_dist_trim = np.full(data_trim_count, np.inf)
-    for i, original_data_idx in enumerate(data_trim_to_full_idx_map):
-        # find the network node that it was assigned to
-        assigned_network_idx = data_assign_map[np.int(original_data_idx)]
-        # now iterate the trimmed network distances
-        for j, (original_network_idx, dist) in enumerate(zip(netw_idx_map_trim_to_full, netw_dist_map_trim)):
-            # no need to continue if it doesn't match the data point's assigned network node idx
-            if original_network_idx != assigned_network_idx:
-                continue
-            # check both current and previous nodes for valid distances before continuing
-            # first calculate the distance to the current node
-            # in many cases, dist_calc will be np.inf, though still works for the logic below
-            dist_calc = dist + data_assign_dist[np.int(original_data_idx)]
-            # get the predecessor node so that distance to prior node can be compared
-            # in some cases this is closer and therefore use the closer corner, especially for full networks
-            prev_netw_node_trim_idx = netw_pred_map_trim[j]
-            # some will be unreachable causing dist = np.inf or prev_netw_node_trim_idx = np.nan
-            if not np.isfinite(prev_netw_node_trim_idx):
-                # in this cases, just check whether dist_calc is less than max and continue
-                if dist_calc <= max_dist:
-                    reachable_classes_dist_trim[i] = dist_calc
-                    reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-                continue
-            # otherwise, go-ahead and calculate for the prior node
-            prev_netw_node_full_idx = np.int(netw_idx_map_trim_to_full[np.int(prev_netw_node_trim_idx)])
-            prev_dist_calc = netw_dist_map_trim[np.int(prev_netw_node_trim_idx)] + \
-                             np.sqrt((netw_x_arr[prev_netw_node_full_idx] - data_x_arr[np.int(original_data_idx)]) ** 2
-                                     + (netw_y_arr[prev_netw_node_full_idx] - data_y_arr[np.int(original_data_idx)]) ** 2)
-            # use the shorter distance between the current and prior nodes
-            # but only if less than the maximum distance
-            if dist_calc < prev_dist_calc and dist_calc <= max_dist:
-                reachable_classes_dist_trim[i] = dist_calc
-                reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-            elif prev_dist_calc < dist_calc and prev_dist_calc <= max_dist:
-                reachable_classes_dist_trim[i] = prev_dist_calc
-                reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-
-    # note that some entries will be nan values if the max distance was exceeded
-    # return the trim to full idx map as well in case other forms of data also need to be processed
-    return reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map
-
-
-"""
-@njit
-def accessibility_agg_angular(netw_src_idx, max_dist, netw_dist_map_a_m_trim, netw_pred_map_a_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes, data_x_arr, data_y_arr, data_assign_map, data_assign_dist):
-
-    # window the data
-    source_x = netw_x_arr[netw_src_idx]
-    source_y = netw_y_arr[netw_src_idx]
-    data_trim_count, data_trim_to_full_idx_map, data_full_to_trim_idx_map = \
-        crow_flies(source_x, source_y, max_dist, data_x_arr, data_y_arr)
-
-    # iterate the distance trimmed data point
-    reachable_classes_trim = np.full(data_trim_count, np.nan)
-    reachable_classes_dist_trim = np.full(data_trim_count, np.inf)
-    for i, original_data_idx in enumerate(data_trim_to_full_idx_map):
-        # find the network node that it was assigned to
-        assigned_network_idx = data_assign_map[np.int(original_data_idx)]
-        # now iterate the trimmed network distances
-        # use the angular route (simplest paths) version of distances
-        for j, (original_network_idx, dist) in enumerate(zip(netw_idx_map_trim_to_full, netw_dist_map_a_m_trim)):
-            # no need to continue if it doesn't match the data point's assigned network node idx
-            if original_network_idx != assigned_network_idx:
-                continue
-            # check both current and previous nodes for valid distances before continuing
-            # first calculate the distance to the current node
-            # in many cases, dist_calc will be np.inf, though still works for the logic below
-            dist_calc = dist + data_assign_dist[np.int(original_data_idx)]
-            # get the predecessor node so that distance to prior node can be compared
-            # in some cases this is closer and therefore use the closer corner, especially for full networks
-            prev_netw_node_trim_idx = netw_pred_map_a_trim[j]
-            # some will be unreachable causing dist = np.inf or prev_netw_node_trim_idx = np.nan
-            if not np.isfinite(prev_netw_node_trim_idx):
-                # in this cases, just check whether dist_calc is less than max and continue
-                if dist_calc <= max_dist:
-                    reachable_classes_dist_trim[i] = dist_calc
-                    reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-                continue
-            # otherwise, go-ahead and calculate for the prior node
-            prev_netw_node_full_idx = np.int(netw_idx_map_trim_to_full[np.int(prev_netw_node_trim_idx)])
-            prev_dist_calc = netw_dist_map_a_m_trim[np.int(prev_netw_node_trim_idx)] + \
-                             np.sqrt((netw_x_arr[prev_netw_node_full_idx] - data_x_arr[np.int(original_data_idx)]) ** 2
-                                     + (netw_y_arr[prev_netw_node_full_idx] - data_y_arr[np.int(original_data_idx)]) ** 2)
-            # use the shorter distance between the current and prior nodes
-            # but only if less than the maximum distance
-            if dist_calc < prev_dist_calc and dist_calc <= max_dist:
-                reachable_classes_dist_trim[i] = dist_calc
-                reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-            elif prev_dist_calc < dist_calc and prev_dist_calc <= max_dist:
-                reachable_classes_dist_trim[i] = prev_dist_calc
-                reachable_classes_trim[i] = data_classes[np.int(original_data_idx)]
-
-    # note that some entries will be nan values if the max distance was exceeded
-    return reachable_classes_trim, reachable_classes_dist_trim
-    
-"""
+    return data_map
