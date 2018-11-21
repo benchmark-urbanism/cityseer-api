@@ -356,7 +356,7 @@ def test_networkX_from_graph_maps():
         graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])
 
     # check with data tuples
-    harmonic = centrality.compute_harmonic_closeness(node_map, edge_map, [200])
+    harmonic = centrality.harmonic_closeness(node_map, edge_map, [200])
     data_tuples = [('harmonic_200', harmonic)]
     G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=data_tuples)
     for n, d in G_round_trip.nodes(data=True):

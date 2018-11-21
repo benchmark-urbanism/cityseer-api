@@ -11,7 +11,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=0.01831563888873418) -> Tuple[np.ndarray, float]:
+default_min_threshold_wt = 0.01831563888873418
+
+def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=default_min_threshold_wt) -> Tuple[np.ndarray, float]:
 
     # cast to list form
     if isinstance(beta, (int, float)):
@@ -31,7 +33,7 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 Enumerable = Union[list, tuple, np.ndarray]
 def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable, close_metrics:list=None,
-        between_metrics:list=None, min_threshold_wt:float=0.01831563888873418, angular:bool=False) -> Tuple[Any, ...]:
+        between_metrics:list=None, min_threshold_wt:float=default_min_threshold_wt, angular:bool=False) -> Tuple[Any, ...]:
 
     if node_map.shape[1] != 5:
         raise AttributeError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
@@ -52,7 +54,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
     for d in distances:
         betas.append(np.log(min_threshold_wt) / d)
 
-    if not close_metrics and not between_metrics:
+    if close_metrics is None and between_metrics is None:
         raise ValueError(f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute.')
 
     closeness_options = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity', 'cycles']
@@ -82,50 +84,70 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
                                     np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
-    return_data = *closeness_data[closeness_map], *betweenness_data[betweenness_map], betas
+    return_data = list((*closeness_data[closeness_map], *betweenness_data[betweenness_map]))
+    # unpack if single dimension
+    if len(distances) == 1:
+        for i in range(len(return_data)):
+            return_data[i] = return_data[i][0]
+    # add betas
+    return_data = *return_data, betas
     return return_data
 
 
-def compute_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
+def harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
+    harmonic, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'])
+    # discard betas - unused
+    return harmonic
+
+
+def gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable=None, betas:Enumerable=None,
+            min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
+    # establish distances and min weights
+    if distances is not None and betas is None:
+        dist = distances
+        threshold_wt = min_threshold_wt
+    elif betas is not None and distances is None:
+        dist, threshold_wt = distance_from_beta(betas, min_threshold_wt=min_threshold_wt)
+    else:
+        raise ValueError('Please provide either distances or betas, but not both.')
+
+    gravity, betas = compute_centrality(node_map, edge_map, dist, close_metrics=['gravity'], min_threshold_wt=threshold_wt)
+    # discard betas - unused
+    return gravity
+
+
+def angular_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
+    harmonic, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=True)
+    # discard betas - unused
+    return harmonic
+
+
+def betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
     betw, betas = compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'])
-    # unpack if single dimension
-    if len(distances) == 1:
-        betw = betw[0]
     # discard betas - unused
     return betw
 
 
-def compute_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    harm, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'])
-    # unpack if single dimension
-    if len(distances) == 1:
-        harm = harm[0]
+def betweenness_gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable=None, betas:Enumerable=None,
+                        min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
+    # establish distances and min weights
+    if distances is not None and betas is None:
+        dist = distances
+        threshold_wt = min_threshold_wt
+    elif betas is not None and distances is None:
+        dist, threshold_wt = distance_from_beta(betas, min_threshold_wt=min_threshold_wt)
+    else:
+        raise ValueError('Please provide either distances or betas, but not both.')
+
+    betw, betas = compute_centrality(node_map, edge_map, dist, between_metrics=['betweenness_gravity'], min_threshold_wt=threshold_wt)
     # discard betas - unused
-    return harm
+    return betw
 
 
-# TODO: add harmonic closeness with automatic beta
-
-
-# TODO: add weighted betweenness with automatic beta
-
-
-def compute_angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    ang_betw, betas = compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=True)
-    # unpack if single dimension
-    if len(distances) == 1:
-        ang_betw = ang_betw[0]
+def angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
+    betw, betas = compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=True)
     # discard betas - unused
-    return ang_betw
-
-
-def compute_angular_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    ang_harm, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=True)
-    # unpack if single dimension
-    if len(distances) == 1:
-        ang_harm = ang_harm[0]
-    # discard betas - unused
-    return ang_harm
+    return betw
 
 
 # TODO: add mixed-uses algo

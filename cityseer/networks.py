@@ -267,6 +267,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
 
+        # numba no object mode can only handle basic printing
         if src_idx % 10000 == 0:
             print('...progress')
             print(round(src_idx / n * 100, 2))
@@ -351,8 +352,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-    print('...progress')
-    print('done')
+    print('completed')
 
     # improved closeness is post-computed
     for cl_idx in closeness_map:
@@ -367,11 +367,10 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     return closeness_data, betweenness_data
 
 
-"""
 @njit
-def assign_accessibility_data(network_x_arr, network_y_arr, data_x_arr, data_y_arr, max_dist):
+def assign_data_to_network(network_x_arr, network_y_arr, data_x_arr, data_y_arr, max_dist):
     '''
-    assign data from an x, y array of data point (e.g. landuses)
+    assign data from x, y arrays of data points (e.g. landuses)
     to the nearest corresponding point on an x, y array from a network
 
     This is done once for the whole graph because it only requires a one-dimensional array
@@ -463,6 +462,7 @@ def accessibility_agg(netw_src_idx, max_dist, netw_dist_map_trim, netw_pred_map_
     return reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map
 
 
+"""
 @njit
 def accessibility_agg_angular(netw_src_idx, max_dist, netw_dist_map_a_m_trim, netw_pred_map_a_trim, netw_idx_map_trim_to_full, netw_x_arr, netw_y_arr, data_classes, data_x_arr, data_y_arr, data_assign_map, data_assign_dist):
 

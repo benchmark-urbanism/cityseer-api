@@ -74,91 +74,23 @@ def test_compute_centrality():
 
     # test node density
     # node density count doesn't include self-node
-    for n in node_density[0]:
+    for n in node_density:
         assert n + 1 == len(G)
 
     # NOTE: modified improved closeness is not comparable to networkx version
     # test harmonic closeness
     nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.array_equal(nx_harm_cl.round(8), harmonic[0].round(8))
+    assert np.array_equal(nx_harm_cl.round(8), harmonic.round(8))
 
     # test betweenness
     # set endpoint counting to false and do not normalise
     nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
-    assert np.array_equal(nx_betw, betweenness[0])
+    assert np.array_equal(nx_betw, betweenness)
 
 
-def test_compute_harmonic_closeness():
-
-    # load the test graph
-    G, pos = util.tutte_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
-
-    # test first with single distance - use large distance because networkX does not have maximum distance parameter
-    dist = [2000]
-    harmonic_easy = centrality.compute_harmonic_closeness(n_map, e_map, dist)
-    nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
-    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.array_equal(nx_harm_cl.round(8), harmonic_easy.round(8))
-
-    # check that multiple distances return type is nested array equal to number of distances
-    dist = [2000, 5000]
-    harmonic_easy = centrality.compute_harmonic_closeness(n_map, e_map, dist)
-    assert harmonic_easy.shape[0] == len(dist)
-
-
-def test_compute_betweenness():
-
-    G, pos = util.tutte_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
-
-    # test easy wrapper version of betweenness vs. networkX betweenness
-
-    # test first with single distance - use large distance because networkX does not have maximum distance parameter
-    dist = [2000]
-    betweenness_easy = centrality.compute_betweenness(n_map, e_map, dist)
-    nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
-    nx_betw = np.array([v for v in nx_betw.values()])
-    assert np.array_equal(nx_betw, betweenness_easy)
-
-    # check that multiple distances return type is nested array equal to number of distances
-    dist = [2000, 5000]
-    betweenness_easy = centrality.compute_betweenness(n_map, e_map, dist)
-    assert betweenness_easy.shape[0] == len(dist)
-
-
-def test_compute_angular_betweenness():
-
-    G, pos = util.tutte_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_to_dual(G)
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
-
-    # test easy wrapper version of angular betweenness against underlying function
-    # (networkX doesn't check against sidestepping...)
-
-    # test first with single distance
-    dist = [500]
-    betw_ang_easy = centrality.compute_angular_betweenness(n_map, e_map, dist)
-    betw_ang, betas = centrality.compute_centrality(n_map, e_map, dist, between_metrics=['betweenness'], angular=True)
-    # compute_angular_betweenness unpacks single dimension arrays
-    assert np.array_equal(betw_ang_easy, betw_ang[0])
-
-    # test with multiple distances
-    dist = [500, 2000]
-    betw_ang_easy = centrality.compute_angular_betweenness(n_map, e_map, dist)
-    betw_ang, betas = centrality.compute_centrality(n_map, e_map, dist, between_metrics=['betweenness'], angular=True)
-    # compute_angular_betweenness unpacks single dimension arrays
-    assert np.array_equal(betw_ang_easy, betw_ang)
-
-
-def test_compute_angular_harmonic_closeness():
+def wrapper_for_centralities(func, close_key, betw_key, angular):
 
     # load the test graph
     G, pos = util.tutte_graph()
@@ -171,13 +103,115 @@ def test_compute_angular_harmonic_closeness():
 
     # test first with single distance
     dist = [500]
-    harmonic_ang_easy = centrality.compute_angular_harmonic_closeness(n_map, e_map, dist)
-    harmonic_ang, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=['harmonic'], angular=True)
+    easy = func(n_map, e_map, dist)
+    full, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=close_key, between_metrics=betw_key, angular=angular)
     # compute_angular_harmonic_closeness unpacks single dimension arrays
-    assert np.array_equal(harmonic_ang_easy, harmonic_ang[0])
+    assert np.array_equal(easy, full)
 
     # test with multiple distances
     dist = [500, 2000]
-    harmonic_ang_easy = centrality.compute_angular_harmonic_closeness(n_map, e_map, dist)
-    harmonic_ang, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=['harmonic'], angular=True)
-    assert np.array_equal(harmonic_ang_easy, harmonic_ang)
+    easy = func(n_map, e_map, dist)
+    full, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=close_key, between_metrics=betw_key, angular=angular)
+    assert np.array_equal(easy, full)
+
+
+# this function is for running the same tests on gravity and betweenness_gravity
+def wrapper_for_gravity_centralities(func, close_key, betw_key):
+
+    # load the test graph
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+
+    # test gravity centrality easy wrapper versions against underlying function
+
+    dist = [500]
+    easy_compute = func(n_map, e_map, distances=dist)
+    full_compute, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=close_key, between_metrics=betw_key)
+    assert np.array_equal(easy_compute, full_compute)
+
+    # check that betas return same results
+    # remove leading negatives
+    betas = -np.array(betas)
+    full_compute_betas = func(n_map, e_map, betas=betas)
+    assert np.array_equal(easy_compute, full_compute_betas)
+
+    # check on multiple distances
+    dist = [500, 2000]
+    easy_compute = func(n_map, e_map, distances=dist)
+    full_compute, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=close_key, between_metrics=betw_key)
+    assert np.array_equal(easy_compute, full_compute)
+
+    # check that betas return same results
+    # remove leading negatives
+    betas = -np.array(betas)
+    betweenness_gravity_easy_betas = func(n_map, e_map, betas=betas)
+    assert np.array_equal(easy_compute, betweenness_gravity_easy_betas)
+
+    # check that providing both betas and distances returns error
+    with pytest.raises(ValueError):
+        func(n_map, e_map, betas=betas, distances=dist)
+
+    # check that providing neither betas nor distances returns error
+    with pytest.raises(ValueError):
+        func(n_map, e_map)
+
+    # check custom min_threshold_wt
+    betas = [0.0025, 0.005]
+    dist, threshold_wt = centrality.distance_from_beta(betas, min_threshold_wt=0.1)
+    easy_dist = func(n_map, e_map, distances=dist, min_threshold_wt=threshold_wt)
+    easy_betas = func(n_map, e_map, betas=betas, min_threshold_wt=threshold_wt)
+    full_compute, betas = centrality.compute_centrality(n_map, e_map, dist, close_metrics=close_key, between_metrics=betw_key, min_threshold_wt=threshold_wt)
+    assert np.array_equal(easy_dist, full_compute)
+    assert np.array_equal(easy_betas, full_compute)
+
+
+def test_harmonic_closeness():
+
+    wrapper_for_centralities(centrality.harmonic_closeness, ['harmonic'], None, angular=False)
+
+    # test against networkX
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    # test first with single distance - use large distance because networkX does not have maximum distance parameter
+    dist = [2000]
+    harmonic_easy = centrality.harmonic_closeness(n_map, e_map, dist)
+    nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
+    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
+    assert np.array_equal(nx_harm_cl.round(8), harmonic_easy.round(8))
+
+
+def test_gravity():
+    wrapper_for_gravity_centralities(centrality.gravity, ['gravity'], None)
+
+
+def test_angular_harmonic_closeness():
+    wrapper_for_centralities(centrality.angular_harmonic_closeness, ['harmonic'], None, angular=True)
+
+
+def test_betweenness():
+
+    wrapper_for_centralities(centrality.betweenness, None, ['betweenness'], angular=False)
+
+    # test against networkX
+    G, pos = util.tutte_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+    # test first with single distance - use large distance because networkX does not have maximum distance parameter
+    dist = [2000]
+    betweenness_easy = centrality.betweenness(n_map, e_map, dist)
+    nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
+    nx_betw = np.array([v for v in nx_betw.values()])
+    assert np.array_equal(nx_betw, betweenness_easy)
+
+
+def test_betweenness_gravity():
+    wrapper_for_gravity_centralities(centrality.betweenness_gravity, None, ['betweenness_gravity'])
+
+
+def test_angular_betweenness():
+    wrapper_for_centralities(centrality.angular_betweenness, None, ['betweenness'], angular=True)
