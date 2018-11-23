@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 import networkx as nx
 from itertools import permutations
-from cityseer import centrality, graphs, util
-import matplotlib.pyplot as plt
+from cityseer.util import mock, graphs
+from cityseer.metrics import centrality
 
 
 def test_distance_from_beta():
@@ -29,7 +29,7 @@ def test_compute_centrality():
     Underlying method also tested via test_networks.test_network_centralities
     '''
 
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
@@ -58,7 +58,7 @@ def test_compute_centrality():
     for cl_types in permutations(closeness_types):
         for bt_types in permutations(betweenness_types):
             args_ret = centrality.compute_centrality(n_map, e_map, dist,
-                                                 close_metrics=list(cl_types), between_metrics=list(bt_types))
+                                                     close_metrics=list(cl_types), between_metrics=list(bt_types))
             assert len(args_ret) == len(cl_types) + len(bt_types) + 1  # beta list is also added
 
     # test centrality methods being passed through correctly
@@ -93,7 +93,7 @@ def test_compute_centrality():
 def wrapper_for_centralities(func, close_key, betw_key, angular):
 
     # load the test graph
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_to_dual(G)
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
@@ -119,7 +119,7 @@ def wrapper_for_centralities(func, close_key, betw_key, angular):
 def wrapper_for_gravity_centralities(func, close_key, betw_key):
 
     # load the test graph
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
@@ -172,7 +172,7 @@ def test_harmonic_closeness():
     wrapper_for_centralities(centrality.harmonic_closeness, ['harmonic'], None, angular=False)
 
     # test against networkX
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
@@ -197,7 +197,7 @@ def test_betweenness():
     wrapper_for_centralities(centrality.betweenness, None, ['betweenness'], angular=False)
 
     # test against networkX
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)

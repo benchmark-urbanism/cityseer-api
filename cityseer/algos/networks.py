@@ -1,26 +1,9 @@
-import logging
 import numpy as np
 from numba.pycc import CC
 from numba import njit
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
 cc = CC('networks')
-
-# below assumes running from the aot directory
-# NOTE -> this is ignored if compiling from setup.py script instead
-# cc.output_dir = os.path.abspath(os.path.join(os.pardir, 'compiled'))
-
-# Uncomment the following line to print out the compilation steps
-# cc.verbose = True
-
-# NOTE -> this is ignored if compiling from setup.py script instead
-# cc.compile()
-# use numba.typeof to deduce signatures
-# add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 
 
 @cc.export('crow_flies', '(uint64, float64, float64[:], float64[:])')

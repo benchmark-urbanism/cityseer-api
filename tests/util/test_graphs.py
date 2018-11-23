@@ -3,13 +3,13 @@ import numpy as np
 import networkx as nx
 import random
 from shapely import geometry
-from cityseer import graphs, util, centrality
-import matplotlib.pyplot as plt
+from cityseer.util import mock, graphs
+from cityseer.metrics import centrality
 
 
 def test_networkX_simple_geoms():
 
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G_geoms = graphs.networkX_simple_geoms(G)
 
     for s, e in G.edges():
@@ -21,7 +21,7 @@ def test_networkX_simple_geoms():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G, pos_wgs = util.tutte_graph(wgs84_coords=True)
+        G, pos_wgs = mock.mock_graph(wgs84_coords=True)
         for n in G.nodes():
             # delete attribute from first node and break
             del G.nodes[n][attr]
@@ -34,19 +34,19 @@ def test_networkX_simple_geoms():
 def test_networkX_wgs_to_utm():
 
     # check that node coordinates are correctly converted
-    G_utm, pos = util.tutte_graph()
-    G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
+    G_utm, pos = mock.mock_graph()
+    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
-        assert d['x']  - G_converted.nodes[n]['x'] < 0.001
-        assert d['y']  - G_converted.nodes[n]['y'] < 0.001
+        assert abs(d['x'] - G_converted.nodes[n]['x']) < 0.01
+        assert abs(d['y'] - G_converted.nodes[n]['y']) < 0.01
 
     # check that edge coordinates are correctly converted
-    G_utm, pos = util.tutte_graph()
+    G_utm, pos = mock.mock_graph()
     G_utm = graphs.networkX_simple_geoms(G_utm)
 
-    G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
+    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
     G_wgs = graphs.networkX_simple_geoms(G_wgs)
 
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
@@ -54,7 +54,7 @@ def test_networkX_wgs_to_utm():
         assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
 
     # check that non-LineString geoms throw an error
-    G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
+    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
     for s, e in G_wgs.edges():
         G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
     with pytest.raises(TypeError):
@@ -62,7 +62,7 @@ def test_networkX_wgs_to_utm():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G_wgs, pos_wgs = util.tutte_graph(wgs84_coords=True)
+        G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
         for n in G_wgs.nodes():
             # delete attribute from first node and break
             del G_wgs.nodes[n][attr]
@@ -72,27 +72,77 @@ def test_networkX_wgs_to_utm():
             graphs.networkX_wgs_to_utm(G_wgs)
 
     # check that non WGS coordinates throw error
-    G_utm, pos = util.tutte_graph()
+    G_utm, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_wgs_to_utm(G_utm)
+
+
+def test_networkX_remove_straight_intersections():
+
+    # test that redundant (straight) intersections are removed
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G_messy = G.copy()
+
+    # complexify the graph - write changes to new graph to avoid in-place iteration errors
+    for i, (s, e, d) in enumerate(G.edges(data=True)):
+        # flip each third geom
+        if i % 3 == 0:
+            flipped_coords = np.fliplr(d['geom'].coords.xy)
+            G_messy[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+        # split each second geom
+        if i % 2 == 0:
+            line_geom = G[s][e]['geom']
+            # check geom coordinates directionality - flip if facing backwards direction
+            if not (G.nodes[s]['x'], G.nodes[s]['y']) == line_geom.coords[0][:2]:
+                flipped_coords = np.fliplr(line_geom.coords.xy)
+                line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+            # remove old edge
+            G_messy.remove_edge(s, e)
+            # add new edges
+            # TODO: change to ops.substring once shapely 1.7 released (bug fix)
+            G_messy.add_edge(s, f'{s}-{e}', geom=graphs.substring(line_geom, 0, 0.5, normalized=True))
+            G_messy.add_edge(e, f'{s}-{e}', geom=graphs.substring(line_geom, 0.5, 1, normalized=True))
+
+    # simplify and test
+    G_simplified = graphs.networkX_remove_straight_intersections(G_messy)
+    assert G_simplified.nodes == G.nodes
+    assert G_simplified.edges == G.edges
+    for s, e, d in G_simplified.edges(data=True):
+        assert G_simplified[s][e]['geom'].length == G[s][e]['geom'].length
+
+    # check that missing geoms throw an error
+    G_attr = G_messy.copy()
+    for i, (s, e) in enumerate(G_attr.edges()):
+        if i % 2 == 0:
+            del G_attr[s][e]['geom']
+    with pytest.raises(AttributeError):
+        graphs.networkX_remove_straight_intersections(G_attr)
+
+    # check that non-LineString geoms throw an error
+    G_attr = G_messy.copy()
+    for s, e in G_attr.edges():
+        G_attr[s][e]['geom'] = geometry.Point([G_attr.nodes[s]['x'], G_attr.nodes[s]['y']])
+    with pytest.raises(AttributeError):
+        graphs.networkX_remove_straight_intersections(G_attr)
 
 
 def test_networkX_decompose():
 
     # check that missing geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
         graphs.networkX_decompose(G, 20)
 
     # test decomposition
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
 
     G_decompose = graphs.networkX_decompose(G, 20)
@@ -100,11 +150,11 @@ def test_networkX_decompose():
     assert nx.number_of_edges(G_decompose) == 625
 
     # check that geoms are correctly flipped
-    G_forward, pos = util.tutte_graph()
+    G_forward, pos = mock.mock_graph()
     G_forward = graphs.networkX_simple_geoms(G_forward)
     G_forward_decompose = graphs.networkX_decompose(G_forward, 20)
 
-    G_backward, pos = util.tutte_graph()
+    G_backward, pos = mock.mock_graph()
     G_backward = graphs.networkX_simple_geoms(G_backward)
     for i, (s, e, d) in enumerate(G_backward.edges(data=True)):
         # flip each third geom
@@ -118,7 +168,7 @@ def test_networkX_decompose():
         assert d['y'] == G_backward_decompose.nodes[n]['y']
 
     # test that geom coordinate mismatch throws an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     for attr in ['x', 'y']:
         for n in G.nodes():
             G.nodes[n][attr] = G.nodes[n][attr] + 1
@@ -130,12 +180,12 @@ def test_networkX_decompose():
 def test_networkX_to_dual():
 
     # check that missing geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_to_dual(G)
 
     # check that non-LineString geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
@@ -143,7 +193,7 @@ def test_networkX_to_dual():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G, pos = util.tutte_graph()
+        G, pos = mock.mock_graph()
         for n in G.nodes():
             # delete attribute from first node and break
             del G.nodes[n][attr]
@@ -153,7 +203,7 @@ def test_networkX_to_dual():
             graphs.networkX_to_dual(G)
 
     # test dual
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
     for i, (s, e, d) in enumerate(G.edges(data=True)):
@@ -213,19 +263,19 @@ def test_networkX_to_dual():
 def test_networkX_edge_defaults():
 
     # check that missing geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_edge_defaults(G)
 
     # check that non-LineString geoms throw an error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
         graphs.networkX_edge_defaults(G)
 
     # test edge defaults
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G_edge_defaults = graphs.networkX_edge_defaults(G)
     for s, e, d in G.edges(data=True):
@@ -233,10 +283,10 @@ def test_networkX_edge_defaults():
         assert d['geom'].length == G_edge_defaults[s][e]['impedance']
 
 
-def test_networkX_km_weighted_nodes():
+def test_networkX_m_weighted_nodes():
 
     # check that missing length attribute throws error
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_m_weighted_nodes(G)
 
@@ -254,7 +304,7 @@ def test_networkX_km_weighted_nodes():
 def test_graph_maps_from_networkX():
 
     # template graph
-    G_template, pos = util.tutte_graph()
+    G_template, pos = mock.mock_graph()
     G_template = graphs.networkX_simple_geoms(G_template)
 
     # test maps vs. networkX
@@ -332,7 +382,7 @@ def test_graph_maps_from_networkX():
 def test_networkX_from_graph_maps():
 
     # check round trip to and from graph maps results in same graph
-    G, pos = util.tutte_graph()
+    G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     # explicitly set live and weight params for equality checks
@@ -372,53 +422,3 @@ def test_networkX_from_graph_maps():
     # check that incorrect data tuple enumerable lengths flags error
     with pytest.raises(ValueError):
         graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=[('boo', harmonic[:-1])])
-
-
-def test_networkX_remove_straight_intersections():
-
-    # test that redundant (straight) intersections are removed
-    G, pos = util.tutte_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G_messy = G.copy()
-
-    # complexify the graph - write changes to new graph to avoid in-place iteration errors
-    for i, (s, e, d) in enumerate(G.edges(data=True)):
-        # flip each third geom
-        if i % 3 == 0:
-            flipped_coords = np.fliplr(d['geom'].coords.xy)
-            G_messy[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
-        # split each second geom
-        if i % 2 == 0:
-            line_geom = G[s][e]['geom']
-            # check geom coordinates directionality - flip if facing backwards direction
-            if not (G.nodes[s]['x'], G.nodes[s]['y']) == line_geom.coords[0][:2]:
-                flipped_coords = np.fliplr(line_geom.coords.xy)
-                line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
-            # remove old edge
-            G_messy.remove_edge(s, e)
-            # add new edges
-            # TODO: change to ops.substring once shapely 1.7 released (bug fix)
-            G_messy.add_edge(s, f'{s}-{e}', geom=graphs.substring(line_geom, 0, 0.5, normalized=True))
-            G_messy.add_edge(e, f'{s}-{e}', geom=graphs.substring(line_geom, 0.5, 1, normalized=True))
-
-    # simplify and test
-    G_simplified = graphs.networkX_remove_straight_intersections(G_messy)
-    assert G_simplified.nodes == G.nodes
-    assert G_simplified.edges == G.edges
-    for s, e, d in G_simplified.edges(data=True):
-        assert G_simplified[s][e]['geom'].length == G[s][e]['geom'].length
-
-    # check that missing geoms throw an error
-    G_attr = G_messy.copy()
-    for i, (s, e) in enumerate(G_attr.edges()):
-        if i % 2 == 0:
-            del G_attr[s][e]['geom']
-    with pytest.raises(AttributeError):
-        graphs.networkX_remove_straight_intersections(G_attr)
-
-    # check that non-LineString geoms throw an error
-    G_attr = G_messy.copy()
-    for s, e in G_attr.edges():
-        G_attr[s][e]['geom'] = geometry.Point([G_attr.nodes[s]['x'], G_attr.nodes[s]['y']])
-    with pytest.raises(AttributeError):
-        graphs.networkX_remove_straight_intersections(G_attr)

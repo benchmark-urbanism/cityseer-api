@@ -1,12 +1,21 @@
-# in case the user doesn't have setup tools installed
+'''
+in case the user doesn't have setup tools installed:
+python3 -m pip install --user --upgrade setuptools wheel
+python3 setup.py sdist bdist_wheel
+python3 -m pip install --user --upgrade twine
+/Users/gareth/Library/Python/3.7/bin/twine upload dist/*
 
-# python3 -m pip install --user --upgrade setuptools wheel
-# python3 setup.py sdist bdist_wheel
-# python3 -m pip install --user --upgrade twine
-# /Users/gareth/Library/Python/3.7/bin/twine upload dist/*
-
+if compiling numba directly from file:
+cc.output_dir = os.path.abspath(os.path.join(os.pardir, 'compiled'))
+cc.verbose = True
+cc.compile()
+use numba.typeof to deduce signatures
+add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
+'''
 from setuptools import setup
-from cityseer import networks, data, landuses
+from cityseer import data
+from cityseer.algos import networks
+from cityseer.metrics import landuses
 
 setup (
     name = 'cityseer',

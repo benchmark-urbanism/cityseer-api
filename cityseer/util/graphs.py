@@ -420,7 +420,7 @@ def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray, np.ndarray]:
+def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
@@ -501,7 +501,8 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[list, np.ndarray,
             # increment the link_idx
             edge_idx += 1
 
-    return node_labels, node_map, edge_map
+    return tuple(node_labels), node_map, edge_map
+
 
 Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
 def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
