@@ -28,7 +28,7 @@ def test_assign_data_to_network():
         node_y = node_map[assigned_idx][1]
 
         # check the assigned distance
-        assert assigned_dist == np.sqrt((node_x - x) ** 2 + (node_y - y) ** 2)
+        assert abs(assigned_dist - np.sqrt((node_x - x) ** 2 + (node_y - y) ** 2)) < 0.00000001
 
         # check that no other nodes are closer
         for idx, node in enumerate(node_map):

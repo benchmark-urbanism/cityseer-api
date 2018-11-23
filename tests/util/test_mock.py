@@ -50,3 +50,16 @@ def test_mock_data():
         assert 'class' in v and isinstance(v['class'], str)
         assert v['x'] >= min_x and v['x'] <= max_x
         assert v['y'] >= min_y and v['y'] <= max_y
+
+
+def test_mock_species_diversity():
+
+    for counts, probs in mock.mock_species_diversity():
+        assert np.array_equal(counts / counts.sum(), probs)
+        assert round(probs.sum(), 8) == 1
+
+
+def test_mock_landuse_classifications():
+
+    classes, distances = mock.mock_landuse_classifications()
+    assert len(classes) == len(distances)

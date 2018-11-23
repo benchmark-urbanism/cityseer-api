@@ -13,9 +13,7 @@ use numba.typeof to deduce signatures
 add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 '''
 from setuptools import setup
-from cityseer import data
-from cityseer.algos import networks
-from cityseer.metrics import landuses
+from cityseer.algos import data, diversity, networks
 
 setup (
     name = 'cityseer',
@@ -41,7 +39,7 @@ setup (
         'matplotlib'
     ],
     ext_modules = [
-        networks.cc.distutils_extension(),
         data.cc.distutils_extension(),
-        landuses.cc.distutils_extension()
+        diversity.cc.distutils_extension(),
+        networks.cc.distutils_extension()
     ])

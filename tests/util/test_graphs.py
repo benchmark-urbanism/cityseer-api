@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import networkx as nx
-import random
 from shapely import geometry
 from cityseer.util import mock, graphs
 from cityseer.metrics import centrality
@@ -312,10 +311,10 @@ def test_graph_maps_from_networkX():
     G_test = graphs.networkX_edge_defaults(G_test)
     # set some random 'live' statuses
     for n in G_test.nodes():
-        G_test.nodes[n]['live'] = bool(random.getrandbits(1))
+        G_test.nodes[n]['live'] = bool(np.random.randint(0, 1))
     # randomise the impedances
     for s, e in G_test.edges():
-        G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * random.uniform(0, 2)
+        G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * np.random.random() * 2000
     # generate length weighted nodes
     G_test = graphs.networkX_m_weighted_nodes(G_test)
     # generate test maps
@@ -388,8 +387,8 @@ def test_networkX_from_graph_maps():
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
     for n in G.nodes():
-        G.nodes[n]['live'] = bool(random.getrandbits(1))
-        G.nodes[n]['weight'] = random.uniform(0, 2)
+        G.nodes[n]['live'] = bool(np.random.randint(0, 1))
+        G.nodes[n]['weight'] = np.random.random() * 2000
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map)
     assert G_round_trip.nodes == G.nodes

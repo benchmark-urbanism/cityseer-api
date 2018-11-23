@@ -1,6 +1,5 @@
 import numpy as np
 import networkx as nx
-from cityseer import util
 from cityseer.algos import networks
 from cityseer.util import mock, graphs
 

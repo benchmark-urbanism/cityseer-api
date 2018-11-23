@@ -3,9 +3,7 @@ Generate a graph for testing and documentation purposes.
 '''
 import logging
 import numpy as np
-import matplotlib.pyplot as plt
 import networkx as nx
-import random
 import utm
 
 
@@ -179,69 +177,30 @@ def mock_data(G):
     random_class_str = 'abcdefghijk'
     for i in range(100):
         data_dict[i] = {
-            'x': random.randint(int(min_x), int(max_x)),
-            'y': random.randint(int(min_y), int(max_y)),
-            'live': bool(random.getrandbits(1)),
-            'class': random_class_str[random.randint(0, len(random_class_str) - 1)]
+            'x': np.random.uniform(int(min_x), int(max_x)),
+            'y': np.random.uniform(int(min_y), int(max_y)),
+            'live': bool(np.random.randint(0, 1)),
+            'class': random_class_str[np.random.randint(0, len(random_class_str) - 1)]
         }
 
     return data_dict
 
 
-def plot_graph_maps(node_map, edge_map, geom=None):
+def mock_species_diversity():
 
-    # the links are undirected and therefore duplicate per edge
-    # use two axes to check each copy of links
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
+    for n in range(1, 10):
+        data = np.random.random_integers(1, 3, n)
+        unique = np.unique(data)
+        counts = np.zeros_like(unique)
+        for i, u in enumerate(unique):
+            counts[i] = (data==u).sum()
+        probs = counts / len(data)
 
-    # set extents
-    for ax in (ax1, ax2):
-        ax.set_xlim(node_map[:, 0].min() - 100, node_map[:, 0].max() + 100)
-        ax.set_ylim(node_map[:, 1].min() - 100, node_map[:, 1].max() + 100)
-
-    # plot nodes
-    ax1.scatter(node_map[:, 0], node_map[:, 1], s=7, c=node_map[:, 2])
-    ax2.scatter(node_map[:, 0], node_map[:, 1], s=7, c=node_map[:, 2])
-
-    # check for duplicate edges
-    edges = set()
-
-    # plot edges - requires iteration through maps
-    for src_idx, src_data in enumerate(node_map):
-        # get the starting edge index
-        edge_idx = int(src_data[3])
-        # iterate the neighbours
-        # don't use while True because last node's index increment won't be caught
-        while edge_idx < len(edge_map):
-            # get the corresponding edge data
-            edge_data = edge_map[edge_idx]
-            # get the src node - this is to check that still within src edge - neighbour range
-            fr_idx = edge_data[0]
-            # break once all neighbours visited
-            if fr_idx != src_idx:
-                break
-            # get the neighbour node's index
-            to_idx = edge_data[1]
-            # fetch the neighbour node's data
-            nb_data = node_map[int(to_idx)]
-            # check for duplicates
-            k = str(sorted([fr_idx, to_idx]))
-            if k not in edges:
-                edges.add(k)
-                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
-            else:
-                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
-            edge_idx += 1
-
-    if geom:
-        ax1.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
-        ax2.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
-
-    plt.show()
+        yield counts, probs
 
 
-def mock_landuse_data():
-    cl = np.array(
+def mock_landuse_classifications():
+    classes = np.array(
         [10540740, 5320397, 3170245, 10540740, 2120200, 10540740, 10540740, 2150222, 7400522, 4220279, 5280364, 5280369,
          5280364, 5280364, 5280369, 2030054, 1020043, 9480680, 7370476, 2090141, 10540740, 2110190, 10540740, 10540740,
          10540740, 10540740, 10540740, 10540740, 10540740, 2100183, 7410535, 7410535, 6340455, 7410535, 10590732,
@@ -363,7 +322,7 @@ def mock_landuse_data():
          2100156, 9470669, 2100156, 1020013, 2110190, 1020034, 9470699, 9470699, 1020034, 9470699, 1020018, 1020013,
          6340459, 6340459, 6340459, 6340459, 6340459, 6340456, 6340456, 6340456, 6340459, 6340459]
         )
-    d = np.array(
+    distances = np.array(
         [875.9032592773438, 1411.107666015625, 1112.341552734375, 637.4013671875, 1195.2349853515625, 1416.85791015625,
          1221.3719482421875, 1424.84619140625, 574.2115478515625, 997.333740234375, 770.5394287109375, 1404.71630859375,
          1364.36767578125, 1489.6724853515625, 558.559814453125, 130.32652282714844, 1522.315673828125,
@@ -631,3 +590,4 @@ def mock_landuse_data():
          1051.271484375, 1505.5042724609375, 1374.51416015625, 1532.640625, 1008.0911865234375, 202.73126220703125,
          1475.594482421875, 730.8089599609375, 1304.7701416015625, 668.5051879882812, 1487.8699951171875,
          1279.9713134765625, 1509.9534912109375, 1390.7794189453125, 1467.6668701171875, 398.7703552246094])
+    return classes, distances
