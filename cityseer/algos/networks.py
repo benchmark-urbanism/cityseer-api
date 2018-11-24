@@ -6,13 +6,12 @@ from numba import njit
 cc = CC('networks')
 
 
-@cc.export('crow_flies', '(uint64, float64, float64[:], float64[:])')
+@cc.export('crow_flies', '(float64, float64, float64[:], float64[:], float64)')
 @njit
-def crow_flies(src_idx, max_dist, x_arr, y_arr):
+def crow_flies(src_x:float, src_y:float, x_arr:np.ndarray, y_arr:np.ndarray, max_dist:float):
 
-    # source easting and northing
-    src_x = x_arr[src_idx]
-    src_y = y_arr[src_idx]
+    if len(x_arr) != len(y_arr):
+        raise ValueError('Mismatching x and y array lengths.')
 
     # filter by distance
     total_count = len(x_arr)
@@ -39,7 +38,7 @@ def crow_flies(src_idx, max_dist, x_arr, y_arr):
 
 @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit
-def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False):
+def shortest_path_tree(node_map:np.ndarray, edge_map:np.ndarray, src_idx:int, trim_to_full_idx_map:np.ndarray, full_to_trim_idx_map:np.ndarray, max_dist:float=np.inf, angular:bool=False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
@@ -59,6 +58,18 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
     2 - length in metres
     3 - impedance
     '''
+
+    if node_map.shape[1] != 5:
+        raise ValueError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+
+    if edge_map.shape[1] != 4:
+        raise ValueError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+
+    if not src_idx < len(node_map):
+        raise ValueError('Source index is out of range.')
+
+    if len(full_to_trim_idx_map) != len(node_map):
+        raise ValueError('Mismatching lengths for node map and trim maps.')
 
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
@@ -173,7 +184,7 @@ def shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_t
 
 @cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
-def network_centralities(node_map, edge_map, distances, betas, closeness_map, betweenness_map, angular=False):
+def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndarray, betas:np.ndarray, closeness_keys:np.ndarray, betweenness_keys:np.ndarray, angular:bool=False):
     '''
     NODE MAP:
     0 - x
@@ -188,6 +199,18 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     2 - length in metres
     3 - impedance
     '''
+
+    if node_map.shape[1] != 5:
+        raise ValueError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+
+    if edge_map.shape[1] != 4:
+        raise ValueError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+
+    if len(distances) != len(betas):
+        raise ValueError('The number of distances and betas should be equal.')
+
+    if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
+        raise ValueError('No metrics specified for computation. Please specify at least one.')
 
     # establish the number of nodes
     n = len(node_map)
@@ -211,7 +234,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     betweenness_data = np.full((2, d_n, n), 0.0)
 
     # CLOSENESS MEASURES
-    def compute_closeness(idx, impedance, distance, weight, beta, is_cycle):
+    def closeness_metrics(idx, impedance, distance, weight, beta, is_cycle):
         # in the unweighted case, weight assumes 1
         # 0 - node_density
         # if using segment lengths per node -> converts from a node density measure to a segment length density measure
@@ -244,7 +267,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 return 0
 
     # BETWEENNESS MEASURES
-    def compute_betweenness(idx, distance, weight, beta):
+    def betweenness_metrics(idx, distance, weight, beta):
         # 0 - betweenness
         if idx == 0:
             return weight
@@ -265,7 +288,9 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
             continue
 
         # filter the graph by distance
-        trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_idx, max_dist, x_arr, y_arr)
+        src_x = x_arr[src_idx]
+        src_y = y_arr[src_idx]
+        trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -302,12 +327,12 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                 if distance <= d:
                     is_cycle = cycles_trim[to_idx_trim]
                     # closeness map indices determine which metrics to compute
-                    for cl_idx in closeness_map:
+                    for cl_idx in closeness_keys:
                         closeness_data[int(cl_idx)][i][src_idx] += \
-                            compute_closeness(int(cl_idx), impedance, distance, cl_weight, b, is_cycle)
+                            closeness_metrics(int(cl_idx), impedance, distance, cl_weight, b, is_cycle)
 
             # only process betweenness if requested
-            if len(betweenness_map) == 0:
+            if len(betweenness_keys) == 0:
                 continue
 
             # betweenness weight is based on source and target index - assigned to each between node
@@ -332,9 +357,9 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
                     d = distances[i]
                     b = betas[i]
                     if distance <= d:
-                        for bt_idx in betweenness_map:
+                        for bt_idx in betweenness_keys:
                             betweenness_data[int(bt_idx)][i][intermediary_idx_mapped] += \
-                                compute_betweenness(int(bt_idx), distance, bt_weight, b)
+                                betweenness_metrics(int(bt_idx), distance, bt_weight, b)
 
                 # follow the chain
                 intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
@@ -343,7 +368,7 @@ def network_centralities(node_map, edge_map, distances, betas, closeness_map, be
     print('completed')
 
     # improved closeness is post-computed
-    for cl_idx in closeness_map:
+    for cl_idx in closeness_keys:
         if cl_idx != 4:
             continue
         for d_idx in range(len(closeness_data[4])):

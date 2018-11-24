@@ -39,12 +39,6 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
     This method provides full access to the underlying network.network_centralities method
     '''
 
-    if node_map.shape[1] != 5:
-        raise AttributeError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
-
-    if edge_map.shape[1] != 4:
-        raise AttributeError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
-
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')
 
@@ -85,7 +79,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
             betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                                                                     np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
+                            np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = list((*closeness_data[closeness_map], *betweenness_data[betweenness_map]))

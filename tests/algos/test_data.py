@@ -4,7 +4,7 @@ from cityseer.util import graphs, layers, mock
 from cityseer.algos import data
 
 
-def test_assign_data_to_network():
+def test_assign_to_network():
 
     # generate network
     G, pos = mock.mock_graph()
@@ -16,7 +16,7 @@ def test_assign_data_to_network():
     data_dict = mock.mock_data(G)
     data_labels, data_map, data_classes = layers.dict_to_data_map(data_dict)
 
-    data_map = data.assign_data_to_network(data_map, node_map, 500)
+    data_map = data.assign_to_network(data_map, node_map, 500)
 
     for data_point in data_map:
         x = data_point[0]
@@ -39,7 +39,7 @@ def test_assign_data_to_network():
 
     # check that malformed node and data maps throw errors
     with pytest.raises(AttributeError):
-        data.assign_data_to_network(data_map[:, :-1], node_map, 500)
+        data.assign_to_network(data_map[:, :-1], node_map, 500)
 
     with pytest.raises(AttributeError):
-        data.assign_data_to_network(data_map[:, :-1], node_map, 500)
+        data.assign_to_network(data_map[:, :-1], node_map, 500)

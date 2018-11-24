@@ -1,6 +1,7 @@
 import numpy as np
 from numba.pycc import CC
 from numba import njit
+from cityseer.algos import data, networks
 
 
 cc = CC('diversity')
@@ -351,7 +352,7 @@ def raos_quadratic_diversity(class_counts:np.ndarray, wt_matrix:np.ndarray, alph
 
 
 #@njit
-def deduce_unique_species(classes, distances, max_dist=1600):
+def deduce_species(classes, distances, max_dist=1600):
     '''
     Sifts through the classes and returns unique classes, their counts, and the nearest distance to each respective type
     Only considers classes within the max distance
@@ -409,75 +410,148 @@ def deduce_unique_species(classes, distances, max_dist=1600):
     return classes_unique, classes_counts, classes_nearest
 
 
-#@njit
-def compute_mixed_uses(node_map, edge_map, distances, betas, overlay):
-    max_dist = max(distances)
+# TODO: do you really need this?
+@njit
+def filter_to_src(cl_unique_arr, cl_counts_arr, cl_nearest_arr, max_dist):
+    # first figure out how many valid items there are
+    c = 0
+    for i, d in enumerate(cl_nearest_arr):
+        if d <= max_dist:
+            c += 1
+    # create trimmed arrays
+    cl_unique_arr_trim = np.full(c, np.nan)
+    cl_counts_arr_trim = np.full(c, 0)
+    # then copy over valid data
+    # don't parallelise - would cause issues
+    c = 0
+    for i, d in enumerate(cl_nearest_arr):
+        if d <= max_dist:
+            cl_unique_arr_trim[c] = cl_unique_arr[i]
+            cl_counts_arr_trim[c] = cl_counts_arr[i]
+            c += 1
+
+    return cl_unique_arr_trim, cl_counts_arr_trim
+
+
+def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics, accessibility_codes, angular=False):
+    '''
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge indx
+    4 - weight
+
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - impedance
+
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - data class
+    4 - assigned network index
+    5 - distance from assigned network index
+    '''
+
+    if node_map.shape[1] != 5:
+        raise ValueError(
+            'The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+
+    if edge_map.shape[1] != 4:
+        raise ValueError(
+            'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+
+    if data_map.shape[1] != 6:
+        raise AttributeError('The data map must have a dimensionality of Nx6, consisting of x, y, live, class code, assigned network index, and distance from assigned network index.')
+
+    if len(distances) != len(betas):
+        raise ValueError('The number of distances and betas should be equal.')
+
+    if len(mixed_use_metrics) == 0 and len(accessibility_codes) == 0:
+        raise ValueError('No mixed-use metrics or accessibilities specified for computation. Please specify at least one.')
 
     # establish the number of nodes
-    n = node_map.shape[1]
+    n = len(node_map)
 
-    # create the distance map
-    d_map = np.full((len(distances), 2), np.nan)
-    for i, d in enumerate(distances):
-        d_map[i] = [d, ]
+    # the distances dimension
+    d_n = len(distances)
 
-    # prepare data arrays
-    closeness = np.full((4, n), 0.0)
-    gravity = np.full((4, n), 0.0)
-    betweenness_wt = np.full((4, n), 0.0)
-    betweenness_wt = np.full((4, n), 0.0)
+    # maximum distance
+    max_dist = distances.max()
 
-    # prepare data arrays
-    gravity = np.zeros((4, total_count))
-    betweenness_wt = np.zeros((4, total_count))
-    mixed_uses_wt = np.zeros((4, total_count))
-    pois = np.zeros((40, total_count))
+    # disaggregate
+    netw_nodes_live = node_map[:, 2]
 
-    beta_100 = -0.04
-    beta_200 = -0.02
-    beta_400 = -0.01
-    beta_800 = -0.005
+    #TODO: confirm number of metrics
+    mixed_use_data = np.full((10, d_n, n), 0.0)
 
-    data_assign_map, data_assign_dist = networks.assign_accessibility_data(netw_x_arr, netw_y_arr, data_x_arr,
-                                                                           data_y_arr, max_dist)
+    #TODO: insert metrics
+    def mixed_use_metrics(idx, class_counts, distances, etc):
 
-    # iterate through each vert and calculate the shortest path tree
-    for netw_src_idx in range(total_count):
+        if idx == 0:
+            pass
 
-        # if netw_src_idx % 1000 == 0:
-        #    print('...progress')
-        #    print(round(netw_src_idx / total_count * 100, 2))
+    for src_idx in range(n):
+
+        # numba no object mode can only handle basic printing
+        if src_idx % 10000 == 0:
+            print('...progress')
+            print(round(src_idx / n * 100, 2))
 
         # only compute for nodes in current city
-        if not hot_node[netw_src_idx]:
+        if not netw_nodes_live[src_idx]:
             continue
-
-        netw_src_idx_trim, netw_trim_count, netw_idx_map_trim_to_full, nbs_trim, lens_trim = \
-            networks.graph_window(netw_src_idx, max_dist, netw_x_arr, netw_y_arr, nbs, lens)
-
-        # use np.inf for max distance for data POI mapping, which uses an overshoot and backtracking workflow
-        # not a huge penalty because graph is already windowed per above
-        netw_dist_map_trim, netw_pred_map_trim = networks.shortest_path_tree(nbs_trim, lens_trim, netw_src_idx_trim,
-                                                                             netw_trim_count, np.inf)
 
         # calculate mixed uses
         # generate the reachable classes and their respective distances
-        reachable_classes, reachable_classes_dist, data_trim_to_full_idx_map = networks.accessibility_agg(netw_src_idx,
-                                                                                                          max_dist,
-                                                                                                          netw_dist_map_trim,
-                                                                                                          netw_pred_map_trim,
-                                                                                                          netw_idx_map_trim_to_full,
-                                                                                                          netw_x_arr,
-                                                                                                          netw_y_arr,
-                                                                                                          data_classes,
-                                                                                                          data_x_arr,
-                                                                                                          data_y_arr,
-                                                                                                          data_assign_map,
-                                                                                                          data_assign_dist)
+        reachable_classes_trim, reachable_classes_dist_trim = \
+            data.aggregate_to_src_idx(node_map, edge_map, data_map, src_idx, max_dist, angular=angular)
 
         # get unique classes, their counts, and nearest - use the default max distance of 1600m
-        classes_unique, classes_counts, classes_nearest = mixed_uses.deduce_unique_species(reachable_classes,
-                                                                                           reachable_classes_dist)
+        classes_unique, classes_counts, classes_nearest = \
+            deduce_species(reachable_classes_trim, reachable_classes_dist_trim)
+
+        # TODO: insert new logic for mixed-use metrics and accessibilities
+
+        # iterate the distances and betas
+        for dist, beta in zip(-, betas):
+
+            # filter out the items not within the maximum distance
+            cl_unique_trim, cl_counts_trim = landuses.dist_filter(classes_unique, classes_counts, classes_nearest, dist)
+
+            results[dist].append((
+                # vert id
+                int(vert_idx),
+                # compute the non-weighted variants - these use trimmed arrays for max distances
+                mixed_uses.gini_simpson(cl_counts_trim),
+                mixed_uses.shannon(cl_counts_trim),
+                mixed_uses.raos_quad(cl_unique_trim, cl_counts_trim),
+                # compute hill numbers
+                mixed_uses.hill_div(cl_counts_trim, 0),
+                mixed_uses.hill_div(cl_counts_trim, 1),
+                mixed_uses.hill_div(cl_counts_trim, 2),
+                # compute the weighted variants - these use all unique classes within 1600m max
+                mixed_uses.hill_div_phylo(classes_counts, class_weights, 0),
+                mixed_uses.hill_div_phylo(classes_counts, class_weights, 1),
+                mixed_uses.hill_div_phylo(classes_counts, class_weights, 2),
+                # functional variant
+                mixed_uses.hill_div_func(classes_counts, class_weights, 0),
+                mixed_uses.hill_div_func(classes_counts, class_weights, 1),
+                mixed_uses.hill_div_func(classes_counts, class_weights, 2),
+                # pairwise disparity variant
+                mixed_uses.hill_div_disparity_os_poi(cl_unique_trim, cl_counts_trim, np.array([]), 0,
+                                                     dist_weighting=False, class_weighting=True),
+                mixed_uses.hill_div_disparity_os_poi(cl_unique_trim, cl_counts_trim, np.array([]), 1,
+                                                     dist_weighting=False, class_weighting=True),
+                mixed_uses.hill_div_disparity_os_poi(cl_unique_trim, cl_counts_trim, np.array([]), 2,
+                                                     dist_weighting=False, class_weighting=True),
+                # add the accessibilities
+                *accessibility_os_poi(reachable_classes, reachable_classes_dist, beta)
+
 
         # compute mixed uses
         mixed_uses_wt[0][netw_src_idx] = mixed_uses.hill_diversity_functional(classes_counts,
@@ -500,55 +574,3 @@ def compute_mixed_uses(node_map, edge_map, distances, betas, overlay):
         # calculate accessibilities
         pois[:, netw_src_idx] = accessibility.accessibility_osm_poi(poi_cats[poi_idx_int], reachable_classes_dist, 40,
                                                                     beta_800)
-
-        # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(netw_dist_map_trim))[0]
-        for trim_to_idx in ind:
-
-            # skip self node
-            if trim_to_idx == netw_src_idx_trim:
-                continue
-
-            dist_m = netw_dist_map_trim[trim_to_idx]
-
-            # some crow-flies max distance nodes won't be reached within max distance threshold over the network
-            if np.isinf(dist_m):
-                continue
-
-            # remember that the shortest_path_tree is set to np.inf for mixed-uses purposes, so check here for distance
-            if dist_m > max_dist:
-                continue
-
-            # calculate gravity and betweenness
-            # the strength of the weight is based on the start and end vertices, not the intermediate locations
-            netw_wt_100 = np.exp(beta_100 * dist_m)
-            netw_wt_200 = np.exp(beta_200 * dist_m)
-            netw_wt_400 = np.exp(beta_400 * dist_m)
-            netw_wt_800 = np.exp(beta_800 * dist_m)
-
-            # gravity -> an accessibility measure, or effectively a closeness consisting of inverse distance weighted node count
-            gravity[0][netw_src_idx] += netw_wt_100
-            gravity[1][netw_src_idx] += netw_wt_200
-            gravity[2][netw_src_idx] += netw_wt_400
-            gravity[3][netw_src_idx] += netw_wt_800
-
-            # betweenness - only counting truly between vertices, not starting and ending verts
-            intermediary_idx_trim = np.int(netw_pred_map_trim[trim_to_idx])
-            intermediary_idx_mapped = np.int(netw_idx_map_trim_to_full[intermediary_idx_trim])  # cast to int
-            # only counting betweenness in one 'direction' since the graph is symmetrical (non-directed)
-            while True:
-                # break out of while loop if the intermediary has reached the source node
-                if intermediary_idx_trim == netw_src_idx_trim:
-                    break
-
-                # weighted variants - summed at all distances
-                betweenness_wt[0][intermediary_idx_mapped] += netw_wt_100
-                betweenness_wt[1][intermediary_idx_mapped] += netw_wt_200
-                betweenness_wt[2][intermediary_idx_mapped] += netw_wt_400
-                betweenness_wt[3][intermediary_idx_mapped] += netw_wt_800
-
-                # unlike the dist_map the pred_map contains all vertices, so no offset required
-                intermediary_idx_trim = np.int(netw_pred_map_trim[intermediary_idx_trim])
-                intermediary_idx_mapped = np.int(netw_idx_map_trim_to_full[intermediary_idx_trim])  # cast to int
-
-    return gravity, betweenness_wt, mixed_uses_wt, pois
