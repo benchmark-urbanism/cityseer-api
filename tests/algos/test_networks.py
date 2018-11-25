@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import networkx as nx
 from cityseer.algos import networks
-from cityseer.util import mock, graphs
+from cityseer.util import mock, graphs, plot
 
 
 def test_crow_flies():
@@ -21,8 +21,8 @@ def test_crow_flies():
     src_y = y_arr[0]
     trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
 
-    #nx.draw(G, pos, with_labels=True)
-    #plt.show()
+    # debugging
+    # plot.plot_networkX_graphs(primal=G)
 
     # manually confirmed for 200m max distance:
     assert np.array_equal(trim_to_full_idx_map, np.array([0, 1, 16, 31]))

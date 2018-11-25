@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import networkx as nx
 from shapely import geometry
-from cityseer.util import mock, graphs
+from cityseer.util import mock, graphs, plot
 from cityseer.metrics import centrality
 
 
@@ -231,32 +231,8 @@ def test_networkX_to_dual():
     for n in G_dual.nodes():
         assert nx.degree(G_dual, n) == 4
 
-    '''
     # for debugging
-    pos_dual = {}
-    for n, d in G_dual.nodes(data=True):
-        pos_dual[n] = (d['x'], d['y'])
-
-    nx.draw(G, pos,
-            with_labels=True,
-            font_size=8,
-            node_color='y',
-            node_size=100,
-            node_shape='o',
-            edge_color='g',
-            width=1,
-            alpha=0.6)
-    nx.draw(G_dual, pos_dual,
-            with_labels=True,
-            font_size=8,
-            node_color='r',
-            node_size=50,
-            node_shape='d',
-            edge_color='b',
-            width=1,
-            alpha=0.6)
-    plt.show()
-    '''
+    # plot.plot_networkX_graphs(primal=G, dual=G_dual)
 
 
 def test_networkX_edge_defaults():
@@ -319,6 +295,10 @@ def test_graph_maps_from_networkX():
     G_test = graphs.networkX_m_weighted_nodes(G_test)
     # generate test maps
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
+    # debug plot
+    plot.plot_graphs(primal=G_test)
+    plot.plot_graph_maps(node_labels, node_map, edge_map)
+
     # check lengths
     assert len(node_labels) == len(node_map) == G_test.number_of_nodes()
     assert len(edge_map) == G_test.number_of_edges() * 2

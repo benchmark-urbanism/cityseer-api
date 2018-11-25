@@ -499,8 +499,7 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
 
         # numba no object mode can only handle basic printing
         if src_idx % 10000 == 0:
-            print('...progress')
-            print(round(src_idx / n * 100, 2))
+            print('...progress:', round(src_idx / n * 100, 2), '%')
 
         # only compute for nodes in current city
         if not netw_nodes_live[src_idx]:
@@ -510,6 +509,9 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
         # generate the reachable classes and their respective distances
         reachable_classes_trim, reachable_classes_dist_trim = \
             data.aggregate_to_src_idx(node_map, edge_map, data_map, src_idx, max_dist, angular=angular)
+
+
+
 
         # get unique classes, their counts, and nearest - use the default max distance of 1600m
         classes_unique, classes_counts, classes_nearest = \

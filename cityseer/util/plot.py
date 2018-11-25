@@ -1,8 +1,43 @@
+import numpy as np
+import networkx as nx
 import matplotlib.pyplot as plt
 
-def plot_graph_maps(node_map, edge_map, geom=None):
+def plot_graphs(primal:nx.Graph=None, dual:nx.Graph=None):
 
-    # the links are undirected and therefore duplicate per edge
+    if primal is not None:
+        pos_primal = {}
+        for n, d in primal.nodes(data=True):
+            pos_primal[n] = (d['x'], d['y'])
+        nx.draw(primal, pos_primal,
+                with_labels=True,
+                font_size=8,
+                node_color='y',
+                node_size=100,
+                node_shape='o',
+                edge_color='g',
+                width=1,
+                alpha=0.6)
+
+    if dual is not None:
+        pos_dual = {}
+        for n, d in dual.nodes(data=True):
+            pos_dual[n] = (d['x'], d['y'])
+        nx.draw(dual, pos_dual,
+                with_labels=True,
+                font_size=8,
+                node_color='r',
+                node_size=50,
+                node_shape='d',
+                edge_color='b',
+                width=1,
+                alpha=0.6)
+
+    plt.show()
+
+
+def plot_graph_maps(node_labels, node_map, edge_map, data_map=None):
+
+    # the links are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of links
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
 
@@ -40,13 +75,38 @@ def plot_graph_maps(node_map, edge_map, geom=None):
             k = str(sorted([fr_idx, to_idx]))
             if k not in edges:
                 edges.add(k)
-                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
+                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey', linewidth=1)
             else:
-                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey')
+                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c='grey', linewidth=1)
             edge_idx += 1
 
-    if geom:
-        ax1.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
-        ax2.plot(geom.exterior.coords.xy[0], geom.exterior.coords.xy[1])
+    for ax in (ax1, ax2):
+        for label, x, y in zip(node_labels, node_map[:,0], node_map[:,1]):
+            ax.annotate(label, xy=(x, y))
+
+    '''
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - data class
+    4 - assigned network index
+    5 - distance from assigned network index
+    '''
+
+    if data_map is not None:
+
+        # plot parents on ax1
+        ax1.scatter(x=data_map[:, 0], y=data_map[:,1], c=data_map[:,3])
+        for x, y, cl, netw_idx, dist in zip(data_map[:,0], data_map[:,1], data_map[:,3], data_map[:,4], data_map[:,5]):
+            # plot lines to parents for easier viz
+            p_x = node_map[int(netw_idx)][0]
+            p_y = node_map[int(netw_idx)][1]
+            ax1.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
+            ax1.annotate('cl:' + str(int(cl)), xy=(x, y), size=8, color='red')
+
+            # ax-2
+            ax2.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
+            ax2.annotate('d:' + str(int(dist)), xy=(x, y), size=8, color='red')
 
     plt.show()

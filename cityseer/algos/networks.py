@@ -6,6 +6,7 @@ from numba import njit
 cc = CC('networks')
 
 
+# TODO: think about replacing crow flies with index workflow - i.e. compute index once, then just filter against index
 @cc.export('crow_flies', '(float64, float64, float64[:], float64[:], float64)')
 @njit
 def crow_flies(src_x:float, src_y:float, x_arr:np.ndarray, y_arr:np.ndarray, max_dist:float):
@@ -280,8 +281,7 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
 
         # numba no object mode can only handle basic printing
         if src_idx % 10000 == 0:
-            print('...progress')
-            print(round(src_idx / n * 100, 2))
+            print('...progress:', round(src_idx / n * 100, 2), '%')
 
         # only compute for nodes in current city
         if not nodes_live[src_idx]:

@@ -156,7 +156,10 @@ def mock_graph(wgs84_coords=False):
     return G, pos
 
 
-def mock_data(G):
+def mock_data(G, random_seed=None):
+
+    if random_seed:
+        np.random.seed(seed=random_seed)
 
     # get min and maxes for x and y
     min_x = np.inf
@@ -175,7 +178,7 @@ def mock_data(G):
 
     data_dict = {}
     random_class_str = 'abcdefghijk'
-    for i in range(100):
+    for i in range(50):
         data_dict[i] = {
             'x': np.random.uniform(int(min_x), int(max_x)),
             'y': np.random.uniform(int(min_y), int(max_y)),
@@ -186,7 +189,10 @@ def mock_data(G):
     return data_dict
 
 
-def mock_species_diversity():
+def mock_species_diversity(random_seed=None):
+
+    if random_seed:
+        np.random.seed(seed=random_seed)
 
     for n in range(1, 10):
         data = np.random.random_integers(1, 3, n)

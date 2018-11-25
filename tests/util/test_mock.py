@@ -1,7 +1,6 @@
-from cityseer.util import mock
+from cityseer.util import mock, plot
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def test_mock_graph():
@@ -9,8 +8,8 @@ def test_mock_graph():
     G, pos = mock.mock_graph()
     G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
 
-    #nx.draw(G, pos=pos, with_labels=True)
-    #plt.show()
+    # debugging
+    plot.plot_graphs(primal=G)
 
     for g in [G, G_wgs]:
         assert g.number_of_nodes() == 46
