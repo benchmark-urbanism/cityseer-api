@@ -505,7 +505,7 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray
 
 
 Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
-def networkX_from_graph_maps(node_labels:list, node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
+def networkX_from_graph_maps(node_labels:Union[tuple, list], node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
 
     if node_map.shape[1] != 5:
         raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')

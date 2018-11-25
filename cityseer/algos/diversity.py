@@ -512,7 +512,7 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
 
 
 
-
+    '''
         # get unique classes, their counts, and nearest - use the default max distance of 1600m
         classes_unique, classes_counts, classes_nearest = \
             deduce_species(reachable_classes_trim, reachable_classes_dist_trim)
@@ -576,3 +576,4 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
         # calculate accessibilities
         pois[:, netw_src_idx] = accessibility.accessibility_osm_poi(poi_cats[poi_idx_int], reachable_classes_dist, 40,
                                                                     beta_800)
+        '''

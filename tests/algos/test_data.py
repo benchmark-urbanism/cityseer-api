@@ -1,27 +1,10 @@
 import pytest
 import numpy as np
 from cityseer.util import graphs, layers, mock, plot
-from cityseer.algos import data
+from cityseer.algos import data, networks
 
 
-
-def test_merge_sort_1d():
-
-    for n in range(1, 20):
-        # create random data - stack with indices
-        random_data = np.random.uniform(0, 500, n)
-        # check that merge sort behaves as anticipated
-        sorted_data = data.merge_sort_1d(random_data)
-        for idx in range(len(sorted_data) - 1):
-            # check that values increase
-            assert sorted_data[idx] <= sorted_data[idx + 1]
-        # check that all of the data has been retained
-        assert len(sorted_data) == len(random_data)
-        for d in random_data:
-            assert d in sorted_data
-
-
-def test_merge_sort_2d():
+def test_merge_sort():
 
     # test 2d - this version uses a second dimension storing the indices
     for n in range(1, 20):
@@ -29,8 +12,9 @@ def test_merge_sort_2d():
         random_data = np.random.uniform(0, 500, n)
         indices = np.arange(len(random_data))
         stacked_data = np.vstack((random_data, indices)).T
+
         # check that merge sort behaves as anticipated
-        sorted_data = data.merge_sort_2d(stacked_data)
+        sorted_data = data.merge_sort(stacked_data)
         for idx in range(len(sorted_data) - 1):
             # check that values increase
             assert sorted_data[idx][0] <= sorted_data[idx + 1][0]
@@ -43,21 +27,38 @@ def test_merge_sort_2d():
         for d in random_data:
             assert d in sorted_data[:,0]
 
+        # cast back to the original order, this time using the indices to sort, i.e. tier 2
+        sorted_data = data.merge_sort(sorted_data, tier=1)
+        # check that the arrays now match their original versions
+        assert np.array_equal(sorted_data[:,0], random_data)
+        assert np.array_equal(sorted_data[:,1], indices)
+
+        # test malformed signatures
+        with pytest.raises(ValueError):
+            data.merge_sort(stacked_data, tier=2)
+
 
 def test_generate_index():
 
     for n in range(1, 20):
         # create some random x and y data
-        random_x = np.random.uniform(0, 1000, 20)
-        random_y = np.random.uniform(2000, 3000, 20)
+        random_x = np.random.uniform(0, 1000, n)
+        random_y = np.random.uniform(2000, 3000, n)
         index_map = data.generate_index(random_x, random_y)
+
         # test arrangement of index data against independently sorted data
-        x_sort = data.merge_sort_2d(np.vstack((random_x, np.arange(len(random_x)))).T)
-        y_sort = data.merge_sort_2d(np.vstack((random_y, np.arange(len(random_y)))).T)
+        x_sort = data.merge_sort(np.vstack((random_x, np.arange(len(random_x)))).T)
+        y_sort = data.merge_sort(np.vstack((random_y, np.arange(len(random_y)))).T)
         for idx in range(len(index_map)):
             assert np.array_equal(x_sort[idx][:2], index_map[idx][:2])
             assert np.array_equal(y_sort[idx][:2], index_map[idx][2:])
-        # test malformed signature
+
+        # test the integrity of the x and y data against the indices
+        for idx, (x, p_x, y, p_y) in enumerate(index_map):
+            assert random_x[int(p_x)] == x
+            assert random_y[int(p_y)] == y
+
+        # test malformed signatures
         with pytest.raises(ValueError):
             data.generate_index(random_x[:-1], random_y)
         with pytest.raises(ValueError):
@@ -72,7 +73,7 @@ def test_binary_search():
         random_data = np.random.uniform(0, max_val, n)
         indices = np.arange(len(random_data))
         stacked_data = np.vstack((random_data, indices)).T
-        sorted_data = data.merge_sort_2d(stacked_data)
+        sorted_data = data.merge_sort(stacked_data)
         # check some permutations
         mid_val = random_data[int(np.floor(len(random_data)/2))]
         left_thresholds = [0, 0, 111.11, 200, mid_val]
@@ -90,6 +91,78 @@ def test_binary_search():
                     assert d > right_max
                 elif l_idx:
                     assert d <= right_max
+
+
+def test_crow_flies():
+
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+
+    max_dist = 200
+    x_arr = n_map[:,0]
+    y_arr = n_map[:,1]
+
+    # generate trim and full index maps
+    src_x = x_arr[0]
+    src_y = y_arr[0]
+    trim_to_full_idx_map, full_to_trim_idx_map = data.crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
+
+    # debugging
+    # plot.plot_networkX_graphs(primal=G)
+
+    # manually confirmed for 200m max distance:
+    assert np.array_equal(trim_to_full_idx_map, np.array([0, 1, 16, 31]))
+    # check that the full to trim is still the same length
+    assert len(full_to_trim_idx_map) == G.number_of_nodes()
+    # check that all non NaN full_to_trim_idx_map indices are reflected in the either direction
+    c = 0
+    for idx, n in enumerate(full_to_trim_idx_map):
+        if not np.isnan(n):
+            c += 1
+            assert trim_to_full_idx_map[int(n)] == idx
+    assert c == len(trim_to_full_idx_map)
+
+    # test for malformed data
+    with pytest.raises(ValueError):
+        data.crow_flies(src_x, src_y, x_arr[:-1], y_arr, max_dist)
+    with pytest.raises(ValueError):
+        data.crow_flies(src_x, src_y, x_arr, y_arr[:-1], max_dist)
+
+
+def test_spatial_filter():
+
+    # create some random x and y data
+    random_x = np.random.uniform(0, 1000, 20)
+    random_y = np.random.uniform(2000, 3000, 20)
+    index_map = data.generate_index(random_x, random_y)
+    src_x = 500
+    src_y = 2500
+    max_dist = 250
+    # generate the filtered maps
+    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=True)
+
+    # test radial version against crow-flies
+    crow_trim_to_full, crow_full_to_trim = data.crow_flies(src_x, src_y, random_x, random_y, max_dist)
+    assert np.array_equal(crow_trim_to_full, trim_to_full_idx_map)
+    assert np.allclose(crow_full_to_trim, full_to_trim_idx_map, equal_nan=True)
+
+    # test that all reachable indices are, in fact, within the max distance
+    for idx, val in enumerate(full_to_trim_idx_map):
+        dist = np.sqrt((random_x[idx] - src_x) ** 2 + (random_y[idx] - src_y) ** 2)
+        if dist > max_dist:
+            assert np.isnan(val)
+        else:
+            assert np.isfinite(val)
+
+    # test the non radial version
+    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=False)
+    for idx, val in enumerate(full_to_trim_idx_map):
+        if abs(random_x[idx] - src_x) <= max_dist and abs(random_y[idx] - src_y) <= max_dist:
+            assert np.isfinite(val)
+        else:
+            assert np.isnan(val)
 
 
 def test_assign_to_network():

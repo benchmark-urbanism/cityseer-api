@@ -296,8 +296,8 @@ def test_graph_maps_from_networkX():
     # generate test maps
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
     # debug plot
-    plot.plot_graphs(primal=G_test)
-    plot.plot_graph_maps(node_labels, node_map, edge_map)
+    # plot.plot_graphs(primal=G_test)
+    # plot.plot_graph_maps(node_labels, node_map, edge_map)
 
     # check lengths
     assert len(node_labels) == len(node_map) == G_test.number_of_nodes()

@@ -9,7 +9,7 @@ def test_mock_graph():
     G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
 
     # debugging
-    plot.plot_graphs(primal=G)
+    # plot.plot_graphs(primal=G)
 
     for g in [G, G_wgs]:
         assert g.number_of_nodes() == 46

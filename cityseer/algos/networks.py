@@ -1,40 +1,10 @@
 import numpy as np
 from numba.pycc import CC
 from numba import njit
+from cityseer.algos import data
 
 
 cc = CC('networks')
-
-
-# TODO: think about replacing crow flies with index workflow - i.e. compute index once, then just filter against index
-@cc.export('crow_flies', '(float64, float64, float64[:], float64[:], float64)')
-@njit
-def crow_flies(src_x:float, src_y:float, x_arr:np.ndarray, y_arr:np.ndarray, max_dist:float):
-
-    if len(x_arr) != len(y_arr):
-        raise ValueError('Mismatching x and y array lengths.')
-
-    # filter by distance
-    total_count = len(x_arr)
-    crow_flies = np.full(total_count, False)
-    trim_count = 0
-    for i in range(total_count):
-        dist = np.sqrt((x_arr[i] - src_x) ** 2 + (y_arr[i] - src_y) ** 2)
-        if dist <= max_dist:
-            crow_flies[i] = True
-            trim_count += 1
-
-    # populate the trimmed to full index map, also populate a reverse index for mapping the neighbours
-    trim_to_full_idx_map = np.full(trim_count, np.nan)
-    full_to_trim_idx_map = np.full(total_count, np.nan)
-    counter = 0
-    for i in range(total_count):
-        if crow_flies[i]:
-            trim_to_full_idx_map[counter] = i
-            full_to_trim_idx_map[i] = counter
-            counter += 1
-
-    return trim_to_full_idx_map, full_to_trim_idx_map
 
 
 @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
@@ -227,6 +197,9 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
     y_arr = node_map[:,1]
     nodes_live = node_map[:,2]
 
+    # generate the indices for x and y
+    index_map = data.generate_index(x_arr, y_arr)
+
     # prepare data arrays
     # indices correspond to different centrality formulations
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
@@ -290,7 +263,7 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
+        trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=True)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres

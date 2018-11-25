@@ -1,50 +1,8 @@
 import pytest
 import numpy as np
 import networkx as nx
-from cityseer.algos import networks
+from cityseer.algos import data, networks
 from cityseer.util import mock, graphs, plot
-
-
-def test_crow_flies():
-
-    G, pos = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
-
-    max_dist = 200
-    x_arr = n_map[:,0]
-    y_arr = n_map[:,1]
-
-    # generate trim and full index maps
-    src_x = x_arr[0]
-    src_y = y_arr[0]
-    trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
-
-    # debugging
-    # plot.plot_networkX_graphs(primal=G)
-
-    # manually confirmed for 200m max distance:
-    assert np.array_equal(trim_to_full_idx_map, np.array([0, 1, 16, 31]))
-    # check that the full to trim is still the same length
-    assert len(full_to_trim_idx_map) == G.number_of_nodes()
-    # check that all non NaN full_to_trim_idx_map indices are reflected in the either direction
-    for idx, n in enumerate(full_to_trim_idx_map):
-        if not np.isnan(n):
-            assert trim_to_full_idx_map[int(n)] == idx
-
-    # check that aggregate distances are less than max
-    map_impedance, map_distance, map_pred, cycles = \
-        networks.shortest_path_tree(n_map, e_map, 0, trim_to_full_idx_map, full_to_trim_idx_map, max_dist=max_dist)
-    for n in full_to_trim_idx_map:
-        if not np.isnan(n):
-            assert map_distance[int(n)] < max_dist
-
-    # test for malformed data
-    with pytest.raises(ValueError):
-        networks.crow_flies(src_x, src_y, x_arr[:-1], y_arr, max_dist)
-    with pytest.raises(ValueError):
-        networks.crow_flies(src_x, src_y, x_arr, y_arr[:-1], max_dist)
 
 
 def test_shortest_path_tree():
@@ -70,7 +28,8 @@ def test_shortest_path_tree():
     x_arr = n_map[:, 0]
     y_arr = n_map[:, 1]
     src = 0
-    trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(x_arr[src], y_arr[src], x_arr, y_arr, 500)
+    index_map = data.generate_index(x_arr, y_arr)
+    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], 500, radial=True)
     with pytest.raises(ValueError):
         networks.shortest_path_tree(n_map[:,:-1], e_map, src, trim_to_full_idx_map, full_to_trim_idx_map)
     with pytest.raises(ValueError):
@@ -87,7 +46,8 @@ def test_shortest_path_tree():
             x_arr = n_map[:, 0]
             y_arr = n_map[:, 1]
             src = 0
-            trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(x_arr[src], y_arr[src], x_arr, y_arr, max_dist)
+            index_map = data.generate_index(x_arr, y_arr)
+            trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], max_dist, radial=True)
             # check shortest path maps
             map_impedance, map_distance, map_pred, cycles = networks.shortest_path_tree(n_map, e_map, src,
                             trim_to_full_idx_map, full_to_trim_idx_map, max_dist=max_dist, angular=False)
@@ -110,7 +70,8 @@ def test_shortest_path_tree():
     # generate trim and full index maps
     x_arr = n_map[:, 0]
     y_arr = n_map[:, 1]
-    trim_to_full_idx_map, full_to_trim_idx_map = networks.crow_flies(x_arr[src], y_arr[src], x_arr, y_arr, np.inf)
+    index_map = data.generate_index(x_arr, y_arr)
+    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], np.inf, radial=True)
 
     # SIMPLEST PATH: get simplest path tree using angular impedance
     map_impedance_a, map_distance_a, map_pred_a, cycles_a = networks.shortest_path_tree(n_map, e_map, src,
