@@ -6,7 +6,6 @@ from typing import Union, Tuple, Any
 import numpy as np
 from cityseer.algos import networks
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
             betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                            np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
+                                                                     np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = list((*closeness_data[closeness_map], *betweenness_data[betweenness_map]))

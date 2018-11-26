@@ -1,4 +1,4 @@
-from cityseer.util import mock, plot
+from cityseer.util import mock
 import networkx as nx
 import numpy as np
 

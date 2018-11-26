@@ -1,11 +1,11 @@
-setuptools
-matplotlib
 numpy
 numba
-shapely>=1.7a1
 utm
+shapely>=1.7a1
 networkx
-pytest
 tqdm
+matplotlib
 sklearn
 scipy
+setuptools
+pytest

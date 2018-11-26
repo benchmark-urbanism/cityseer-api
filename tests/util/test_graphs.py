@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import networkx as nx
 from shapely import geometry
-from cityseer.util import mock, graphs, plot
+from cityseer.util import mock, graphs
 from cityseer.metrics import centrality
 
 

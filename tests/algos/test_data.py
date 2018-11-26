@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from cityseer.util import graphs, layers, mock, plot
-from cityseer.algos import data, networks
+from cityseer.algos import data
 
 
 def test_merge_sort():
@@ -216,7 +216,7 @@ def test_aggregate_to_src_idx():
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
-    netw_index = data.generate_index(node_map[:,0], node_map[:,1])
+    netw_index = data.generate_index(node_map[:, 0], node_map[:, 1])
 
     # generate data
     data_dict = mock.mock_data(G, random_seed=5)

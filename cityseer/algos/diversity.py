@@ -1,8 +1,7 @@
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-from cityseer.algos import data, networks
-
+from cityseer.algos import data
 
 cc = CC('diversity')
 

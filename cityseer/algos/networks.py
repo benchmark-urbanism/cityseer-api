@@ -3,7 +3,6 @@ from numba.pycc import CC
 from numba import njit
 from cityseer.algos import data
 
-
 cc = CC('networks')
 
 

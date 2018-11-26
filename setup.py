@@ -1,4 +1,6 @@
 '''
+https://docs.python.org/3.7/distutils/examples.html
+
 in case the user doesn't have setup tools installed:
 python3 -m pip install --user --upgrade setuptools wheel
 python3 setup.py sdist bdist_wheel
@@ -12,13 +14,13 @@ cc.compile()
 use numba.typeof to deduce signatures
 add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 '''
+
 from setuptools import setup
-from cityseer.algos import data, diversity, networks
 
 setup (
     name = 'cityseer',
     version = '0.2.0',
-    packages=['cityseer'],  # where the source code is located in project
+    packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
     project_urls={
@@ -33,11 +35,12 @@ setup (
         'numpy',
         'numba',
         'utm',
-        'tqdm',
-        'shapely',
+        'shapely>=1.7a1',
         'networkx',
-        'matplotlib'
-    ],
+        'tqdm',
+        'matplotlib',
+        'sklearn'
+    ]
     #ext_modules = [
         # TODO: not precompiling until sorted() etc. bug is resolved?
         #data.cc.distutils_extension(),
