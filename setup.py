@@ -17,7 +17,7 @@ from cityseer.algos import data, diversity, networks
 
 setup (
     name = 'cityseer',
-    version = '0.1.14',
+    version = '0.2.0',
     packages=['cityseer'],  # where the source code is located in project
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
@@ -38,8 +38,10 @@ setup (
         'networkx',
         'matplotlib'
     ],
-    ext_modules = [
-        data.cc.distutils_extension(),
-        diversity.cc.distutils_extension(),
-        networks.cc.distutils_extension()
-    ])
+    #ext_modules = [
+        # TODO: not precompiling until sorted() etc. bug is resolved?
+        #data.cc.distutils_extension(),
+        #diversity.cc.distutils_extension(),
+        #networks.cc.distutils_extension()
+    #]
+)
