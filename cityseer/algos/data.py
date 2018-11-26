@@ -8,59 +8,29 @@ from cityseer.algos import networks
 cc = CC('data')
 
 
-@cc.export('_top_down_split_merge', '(float64[:,:], uint64, uint64, float64[:,:], uint8)')
+@cc.export('merge_sort', '(float64[:,:], uint8)')
 @njit
-def _top_down_split_merge(work_arr:np.ndarray, begin_idx:int, end_idx:int, arr:np.ndarray, tier:int):
-
-    if end_idx - begin_idx < 2:
-        return
-
-    split_idx = int((end_idx + begin_idx) / 2)
-
-    _top_down_split_merge(arr, begin_idx, split_idx, work_arr, tier)
-    _top_down_split_merge(arr, split_idx, end_idx, work_arr, tier)
-    _top_down_merge(work_arr, begin_idx, split_idx, end_idx, arr, tier)
-
-
-@cc.export('_top_down_merge', '(float64[:,:], uint64, uint64, uint64, float64[:,:], uint8)')
-@njit
-def _top_down_merge(arr:np.ndarray, begin_idx:int, mid_idx:int, end_idx:int, work_arr:np.ndarray, tier:int):
-    i = begin_idx
-    j = mid_idx
-
-    k = begin_idx
-    while k < end_idx:
-        if i < mid_idx and (j >= end_idx or arr[i][tier] <= arr[j][tier]):
-            work_arr[k] = arr[i]
-            i += 1
-        else:
-            work_arr[k] = arr[j]
-            j += 1
-        k += 1
-
-
-@cc.export('merge_sort', 'float64[:,:](float64[:,:], uint8)')
-@njit
-def merge_sort(arr:np.ndarray, tier:int=0) -> np.ndarray:
-    '''
-    https://en.wikipedia.org/wiki/Merge_sort
-    NOTE -> this version is for 2d arrays
-    e.g. second level keeps track of original indices so if sorted by x or y, the original indices remain associated
-    The tier parameter is used to control which tier the sorting is applied to
-    '''
-
-    # NOTE -> passing non 2d array to merge_sort will automatically raise a numba error...
+def tiered_sort(arr:np.ndarray, tier:int) -> np.ndarray:
 
     if tier > arr.shape[1] - 1:
         raise ValueError('The selected tier for sorting exceeds the available tiers.')
 
     # don't modify the arrays in place
-    sort_arr = arr.copy()
-    work_arr = arr.copy()
-    n = len(sort_arr)
-    _top_down_split_merge(work_arr, 0, n, sort_arr, tier)
+    sort_order = arr[:,tier].argsort()
+    return arr[sort_order]
 
-    return sort_arr
+
+@cc.export('binary_search', '(float64[:], float64, float64)')
+@njit
+def binary_search(arr:np.ndarray, min:float, max:float) -> Tuple[int, int]:
+
+    if min > max:
+        raise ValueError('Max must be greater than min.')
+
+    left_idx = np.searchsorted(arr, min)
+    right_idx = np.searchsorted(arr, max, side='right')
+
+    return left_idx, right_idx
 
 
 @cc.export('generate_idx', '(float64[:], float64[:])')
@@ -81,58 +51,13 @@ def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
 
     x_idx = np.arange(len(x_arr))
     x_stacked = np.vstack((x_arr, x_idx)).T
-    index_map[:,:2] = merge_sort(x_stacked)
+    index_map[:,:2] = tiered_sort(x_stacked, tier=0)
 
     y_idx = np.arange(len(y_arr))
     y_stacked = np.vstack((y_arr, y_idx)).T
-    index_map[:, 2:] = merge_sort(y_stacked)
+    index_map[:, 2:] = tiered_sort(y_stacked, tier=0)
 
     return index_map
-
-
-@cc.export('_binary_search_leftmost', '(float64[:], float64)')
-@njit
-def _binary_search_leftmost(arr:np.ndarray, target_min:float) -> int:
-    L = 0
-    R = len(arr)
-    while L < R:
-        m = int(np.floor((L + R) / 2))
-        if arr[m] < target_min:
-            L = m + 1
-        else:
-            R = m
-    return L
-
-
-@cc.export('_binary_search_rightmost', '(float64[:], float64)')
-@njit
-def _binary_search_rightmost(arr:np.ndarray, target_max:float) -> int:
-    L = 0
-    R = len(arr)
-    while L < R:
-        m = int(np.floor((L + R) / 2))
-        if arr[m] <= target_max:
-            L = m + 1
-        else:
-            R = m
-    return R
-
-
-@cc.export('binary_search', '(float64[:], float64, float64)')
-@njit
-def binary_search(arr:np.ndarray, min:float, max:float) -> Tuple[int, int]:
-    '''
-    https://en.wikipedia.org/wiki/Merge_sort
-    NOTE -> this version is for double deep arrays - second level keeps track of original indices
-    '''
-
-    if min > max:
-        raise ValueError('Max must be greater than min.')
-
-    left_idx = _binary_search_leftmost(arr, min)
-    right_idx = _binary_search_rightmost(arr, max)
-
-    return left_idx, right_idx
 
 
 @cc.export('crow_flies', '(float64, float64, float64[:], float64[:], float64)')
@@ -167,7 +92,7 @@ def crow_flies(src_x:float, src_y:float, x_arr:np.ndarray, y_arr:np.ndarray, max
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@cc.export('spatial_filter', '(float64[:,:], float64, float64, uint64)')
+@cc.export('spatial_filter', '(float64[:,:], float64, float64, uint64, boolean)')
 @njit
 def spatial_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radial=True) -> Tuple[np.ndarray, np.ndarray]:
     '''
@@ -185,10 +110,10 @@ def spatial_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radia
 
     # slice the x and y data based on min and max - then sort to index order
     x_keys = index_map[x_start:x_end, :2]
-    x_keys_sorted = merge_sort(x_keys, tier=1)
+    x_keys_sorted = tiered_sort(x_keys, tier=1)
 
     y_keys = index_map[y_start:y_end, 2:]
-    y_keys_sorted = merge_sort(y_keys, tier=1)
+    y_keys_sorted = tiered_sort(y_keys, tier=1)
 
     # prepare the full to trim output map
     total_count = len(x_arr)
@@ -302,9 +227,10 @@ def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, max_dist:float) 
     return data_map
 
 
-#@cc.export('aggregate_to_src_idx', '(float64[:,:], float64[:,:], float64[:,:], uint64, float64, boolean)')
+#@cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
 #@njit
-def aggregate_to_src_idx(node_map:np.ndarray, edge_map:np.ndarray, data_map:np.ndarray, src_idx:int, max_dist:float, angular:bool=False):
+def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_map:np.ndarray, netw_index:np.ndarray,
+                         data_map:np.ndarray, data_index:np.ndarray, angular:bool=False):
 
     netw_x_arr = node_map[:,0]
     netw_y_arr = node_map[:,1]
@@ -318,8 +244,7 @@ def aggregate_to_src_idx(node_map:np.ndarray, edge_map:np.ndarray, data_map:np.n
     data_assign_dist = data_map[:,5]
 
     # filter the network by distance
-    netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = \
-        networks.crow_flies(src_x, src_y, netw_x_arr, netw_y_arr, max_dist)
+    netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = spatial_filter(netw_index, src_x, src_y, max_dist)
 
     # run the shortest tree dijkstra
     # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -332,8 +257,7 @@ def aggregate_to_src_idx(node_map:np.ndarray, edge_map:np.ndarray, data_map:np.n
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
-    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = \
-        networks.crow_flies(src_x, src_y, data_x_arr, data_y_arr, max_dist)
+    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = spatial_filter(data_index, src_x, src_y, max_dist)
 
     # prepare the new data arrays
     reachable_classes_trim = np.full(len(data_trim_to_full_idx_map), np.nan)
@@ -343,6 +267,9 @@ def aggregate_to_src_idx(node_map:np.ndarray, edge_map:np.ndarray, data_map:np.n
     for idx, data_idx_full in enumerate(data_trim_to_full_idx_map):
         # cast to int
         data_idx_full = int(data_idx_full)
+
+        # TODO: error here, cannot convert float NaN to int
+
         # find the full and trim indices of the assigned network node
         assigned_netw_idx_full = int(data_assign_map[data_idx_full])
         assigned_netw_idx_trim = int(netw_full_to_trim_idx_map[assigned_netw_idx_full])

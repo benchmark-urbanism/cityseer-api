@@ -14,7 +14,7 @@ def test_merge_sort():
         stacked_data = np.vstack((random_data, indices)).T
 
         # check that merge sort behaves as anticipated
-        sorted_data = data.merge_sort(stacked_data)
+        sorted_data = data.tiered_sort(stacked_data, tier=0)
         for idx in range(len(sorted_data) - 1):
             # check that values increase
             assert sorted_data[idx][0] <= sorted_data[idx + 1][0]
@@ -28,41 +28,14 @@ def test_merge_sort():
             assert d in sorted_data[:,0]
 
         # cast back to the original order, this time using the indices to sort, i.e. tier 2
-        sorted_data = data.merge_sort(sorted_data, tier=1)
+        sorted_data = data.tiered_sort(sorted_data, tier=1)
         # check that the arrays now match their original versions
         assert np.array_equal(sorted_data[:,0], random_data)
         assert np.array_equal(sorted_data[:,1], indices)
 
         # test malformed signatures
         with pytest.raises(ValueError):
-            data.merge_sort(stacked_data, tier=2)
-
-
-def test_generate_index():
-
-    for n in range(1, 20):
-        # create some random x and y data
-        random_x = np.random.uniform(0, 1000, n)
-        random_y = np.random.uniform(2000, 3000, n)
-        index_map = data.generate_index(random_x, random_y)
-
-        # test arrangement of index data against independently sorted data
-        x_sort = data.merge_sort(np.vstack((random_x, np.arange(len(random_x)))).T)
-        y_sort = data.merge_sort(np.vstack((random_y, np.arange(len(random_y)))).T)
-        for idx in range(len(index_map)):
-            assert np.array_equal(x_sort[idx][:2], index_map[idx][:2])
-            assert np.array_equal(y_sort[idx][:2], index_map[idx][2:])
-
-        # test the integrity of the x and y data against the indices
-        for idx, (x, p_x, y, p_y) in enumerate(index_map):
-            assert random_x[int(p_x)] == x
-            assert random_y[int(p_y)] == y
-
-        # test malformed signatures
-        with pytest.raises(ValueError):
-            data.generate_index(random_x[:-1], random_y)
-        with pytest.raises(ValueError):
-            data.generate_index(random_x, random_y[:-1])
+            data.tiered_sort(stacked_data, tier=2)
 
 
 def test_binary_search():
@@ -73,7 +46,7 @@ def test_binary_search():
         random_data = np.random.uniform(0, max_val, n)
         indices = np.arange(len(random_data))
         stacked_data = np.vstack((random_data, indices)).T
-        sorted_data = data.merge_sort(stacked_data)
+        sorted_data = data.tiered_sort(stacked_data, tier=0)
         # check some permutations
         mid_val = random_data[int(np.floor(len(random_data)/2))]
         left_thresholds = [0, 0, 111.11, 200, mid_val]
@@ -89,8 +62,35 @@ def test_binary_search():
                     assert d >= left_min
                 if idx >= r_idx:
                     assert d > right_max
-                elif l_idx:
+                else:
                     assert d <= right_max
+
+
+def test_generate_index():
+
+    for n in range(1, 20):
+        # create some random x and y data
+        random_x = np.random.uniform(0, 1000, n)
+        random_y = np.random.uniform(2000, 3000, n)
+        index_map = data.generate_index(random_x, random_y)
+
+        # test arrangement of index data against independently sorted data
+        x_sort = data.tiered_sort(np.vstack((random_x, np.arange(len(random_x)))).T, tier=0)
+        y_sort = data.tiered_sort(np.vstack((random_y, np.arange(len(random_y)))).T, tier=0)
+        for idx in range(len(index_map)):
+            assert np.array_equal(x_sort[idx][:2], index_map[idx][:2])
+            assert np.array_equal(y_sort[idx][:2], index_map[idx][2:])
+
+        # test the integrity of the x and y data against the indices
+        for idx, (x, p_x, y, p_y) in enumerate(index_map):
+            assert random_x[int(p_x)] == x
+            assert random_y[int(p_y)] == y
+
+        # test malformed signatures
+        with pytest.raises(ValueError):
+            data.generate_index(random_x[:-1], random_y)
+        with pytest.raises(ValueError):
+            data.generate_index(random_x, random_y[:-1])
 
 
 def test_crow_flies():
@@ -216,16 +216,16 @@ def test_aggregate_to_src_idx():
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    netw_index = data.generate_index(node_map[:,0], node_map[:,1])
 
     # generate data
     data_dict = mock.mock_data(G, random_seed=5)
     data_labels, data_map, data_classes = layers.dict_to_data_map(data_dict)
-
     data_map = data.assign_to_network(data_map, node_map, 500)
+    data_index = data.generate_index(data_map[:, 0], data_map[:, 1])
 
     reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map = \
-        data.aggregate_to_src_idx(node_map, edge_map, data_map, 0, max_dist=400, angular=False)
+        data.aggregate_to_src_idx(0, 400, node_map, edge_map, netw_index, data_map, data_index, angular=False)
 
     # for debugging
     plot.plot_graph_maps(node_labels, node_map, edge_map, data_map[data_trim_to_full_idx_map])
-
