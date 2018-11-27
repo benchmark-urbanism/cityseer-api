@@ -4,7 +4,7 @@ Centrality methods
 import logging
 from typing import Union, Tuple, Any
 import numpy as np
-from cityseer.algos import networks
+from cityseer.algos import networks, types
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,14 +21,14 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
     # check that the betas do not have leading negatives
     for b in beta:
-        if b < 0:
+        if b >= 0:
             raise ValueError('Please provide the beta/s without the leading negative.')
 
     # cast to numpy
     beta = np.array(beta)
 
     # deduce the effective distance thresholds
-    return np.log(min_threshold_wt) / -beta, min_threshold_wt
+    return np.log(min_threshold_wt) / beta, min_threshold_wt
 
 
 Enumerable = Union[list, tuple, np.ndarray]
@@ -37,6 +37,8 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
     '''
     This method provides full access to the underlying network.network_centralities method
     '''
+
+    types.check_network_types(node_map, edge_map)
 
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')
@@ -78,7 +80,7 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
             betweenness_map.append(betweenness_options.index(bt))
 
     closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                                                                     np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
+                                np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = list((*closeness_data[closeness_map], *betweenness_data[betweenness_map]))

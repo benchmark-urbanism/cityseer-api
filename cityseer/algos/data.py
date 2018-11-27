@@ -2,12 +2,12 @@ import numpy as np
 from typing import Tuple
 from numba.pycc import CC
 from numba import njit
-from cityseer.algos import networks
+from cityseer.algos import networks, types
 
 cc = CC('data')
 
 
-@cc.export('merge_sort', '(float64[:,:], uint8)')
+@cc.export('tiered_sort', '(float64[:,:], uint8)')
 @njit
 def tiered_sort(arr:np.ndarray, tier:int) -> np.ndarray:
 
@@ -32,7 +32,7 @@ def binary_search(arr:np.ndarray, min:float, max:float) -> Tuple[int, int]:
     return left_idx, right_idx
 
 
-@cc.export('generate_idx', '(float64[:], float64[:])')
+@cc.export('generate_index', '(float64[:], float64[:])')
 @njit
 def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
     '''
@@ -59,41 +59,9 @@ def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
     return index_map
 
 
-@cc.export('crow_flies', '(float64, float64, float64[:], float64[:], float64)')
+@cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
 @njit
-def crow_flies(src_x:float, src_y:float, x_arr:np.ndarray, y_arr:np.ndarray, max_dist:float) -> Tuple[np.ndarray, np.ndarray]:
-
-    if len(x_arr) != len(y_arr):
-        raise ValueError('Mismatching x and y array lengths.')
-
-    # prepare the full to trim map
-    total_count = len(x_arr)
-    full_to_trim_idx_map = np.full(total_count, np.nan)
-
-    # populate full to trim where distances within max
-    trim_count = 0
-    for i in range(total_count):
-        dist = np.sqrt((x_arr[i] - src_x) ** 2 + (y_arr[i] - src_y) ** 2)
-        if dist <= max_dist:
-            full_to_trim_idx_map[i] = trim_count
-            trim_count += 1
-
-    # prepare the trim to full map
-    trim_to_full_idx_map = np.full(trim_count, np.nan)
-    for i, trim_map in enumerate(full_to_trim_idx_map):
-        # if the full map has a finite value, then respectively map from the trimmed index to the full index
-        if not np.isnan(trim_map):
-            trim_to_full_idx_map[int(trim_map)] = i
-        # no need to iterate remainder if last value already written
-        if trim_map == len(trim_to_full_idx_map) - 1:
-            break
-
-    return trim_to_full_idx_map, full_to_trim_idx_map
-
-
-@cc.export('spatial_filter', '(float64[:,:], float64, float64, uint64, boolean)')
-@njit
-def spatial_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radial=True) -> Tuple[np.ndarray, np.ndarray]:
+def _slice_index(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple[np.ndarray, np.ndarray]:
     '''
     0 - x_arr
     1 - x_idx - corresponds to original index of non-sorted x_arr
@@ -102,31 +70,58 @@ def spatial_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radia
     '''
 
     # find the x and y ranges
-    x_arr = index_map[:,0]
-    y_arr = index_map[:,2]
+    x_arr = index_map[:, 0]
+    y_arr = index_map[:, 2]
     x_start, x_end = binary_search(x_arr, x - max_dist, x + max_dist)
     y_start, y_end = binary_search(y_arr, y - max_dist, y + max_dist)
 
     # slice the x and y data based on min and max - then sort to index order
-    x_keys = index_map[x_start:x_end, :2]
-    x_keys_sorted = tiered_sort(x_keys, tier=1)
+    x_range = index_map[x_start:x_end, :2]
+    y_range = index_map[y_start:y_end, 2:]
 
-    y_keys = index_map[y_start:y_end, 2:]
-    y_keys_sorted = tiered_sort(y_keys, tier=1)
+    x_idx_sorted = tiered_sort(x_range, tier=1)
+    y_idx_sorted = tiered_sort(y_range, tier=1)
+
+    return x_idx_sorted, y_idx_sorted
+
+
+@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
+@njit
+def _generate_trim_to_full_map(full_to_trim_map:np.ndarray, trim_count:int) -> np.ndarray:
+
+    # prepare the trim to full map
+    trim_to_full_idx_map = np.full(trim_count, np.nan)
+
+    for idx in range(len(full_to_trim_map)):
+        trim_map = full_to_trim_map[idx]
+        # if the full map has a finite value, then respectively map from the trimmed index to the full index
+        if not np.isnan(trim_map):
+            trim_to_full_idx_map[int(trim_map)] = idx
+        # no need to iterate remainder if last value already written
+        if trim_map == len(trim_to_full_idx_map) - 1:
+            break
+    return trim_to_full_idx_map
+
+
+@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
+@njit
+def distance_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radial=True) -> Tuple[np.ndarray, np.ndarray]:
+
+    x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
     # prepare the full to trim output map
-    total_count = len(x_arr)
+    total_count = len(index_map)
     full_to_trim_idx_map = np.full(total_count, np.nan)
 
     # iterate the slices
     trim_count = 0
     y_cursor = 0
-    for idx in range(len(x_keys_sorted)):
+    for idx in range(len(x_idx_sorted)):
         # disaggregate this way to avoid numba typing issues
-        x_coord = x_keys_sorted[idx][0]
-        x_key = x_keys_sorted[idx][1]
+        x_coord = x_idx_sorted[idx][0]
+        x_key = x_idx_sorted[idx][1]
         # see if the same key is in the y array
-        l, r = binary_search(y_keys_sorted[y_cursor:,1], x_key, x_key)
+        l, r = binary_search(y_idx_sorted[y_cursor:,1], x_key, x_key)
         # l is the index relative to the cropped range
         # this can be incremented regardless of matches
         y_cursor += l
@@ -134,39 +129,62 @@ def spatial_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radia
         if l < r:
             # if crow-flies - check the distance
             if radial:
-                y_coord = y_keys_sorted[y_cursor,0]
-                dist = np.sqrt((x_coord - x) ** 2 + (y_coord - y) ** 2)
+                y_coord = y_idx_sorted[y_cursor,0]
+                dist = np.hypot(x_coord - x, y_coord - y)
                 if dist > max_dist:
                     continue
             full_to_trim_idx_map[int(x_key)] = trim_count
             trim_count += 1
 
-    # prepare the trim to full map
-    trim_to_full_idx_map = np.full(trim_count, np.nan)
-    # zero results will return an empty array - no need to iterate
-    if trim_count:
-        for i, trim_map in enumerate(full_to_trim_idx_map):
-            # if the full map has a finite value, then respectively map from the trimmed index to the full index
-            if not np.isnan(trim_map):
-                trim_to_full_idx_map[int(trim_map)] = i
-            # no need to iterate remainder if last value already written
-            if trim_map == len(trim_to_full_idx_map) - 1:
-                break
+    trim_to_full_idx_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
 
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64)')
+@cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
 @njit
-def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, max_dist:float) -> np.ndarray:
+def nearest_idx(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple[int, float]:
+
+    # get the x and y ranges spanning the max distance
+    x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
+
+    min_idx = np.nan
+    min_dist = np.inf
+    y_cursor = 0
+    for idx in range(len(x_idx_sorted)):
+        # disaggregate this way to avoid numba typing issues
+        x_coord = x_idx_sorted[idx][0]
+        x_key = x_idx_sorted[idx][1]
+        # see if the same key is in the y array
+        l, r = binary_search(y_idx_sorted[y_cursor:,1], x_key, x_key)
+        # l is the index relative to the cropped range
+        # this can be incremented regardless of matches
+        y_cursor += l
+        # if the left and right indices are not the same, the element was found
+        if l < r:
+            # check if it is less than the current minimum
+            y_coord = y_idx_sorted[y_cursor, 0]
+            dist = np.hypot(x_coord - x, y_coord - y)
+            if dist < min_dist:
+                min_idx = x_key
+                min_dist = dist
+
+    return min_idx, min_dist
+
+
+#@cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
+#@njit
+def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, edge_map:np.ndarray, netw_index:np.ndarray,
+                      max_dist:float) -> np.ndarray:
     '''
-    Each data point is assigned to the closest network node.
+    To save unnecessary computation - this is done once and written to the data map.
 
-    This is designed to be done once prior to windowed iteration of the graph.
-
-    Crow-flies operations are performed inside the iterative data aggregation step because pre-computation would be memory-prohibitive due to an N*M matrix.
-
-    Note that the assignment to a network index is a starting reference for the data aggregation step, and that if the prior point on the shortest path is closer, then the distance will be calculated via the prior point instead.
+    1 - find the closest network node from each data point
+    2A - wind clockwise along the network to preferably find a block cycle surrounding the node
+    2B - in event of topological traps, try anti-clockwise as well
+    3A - select the closest block cycle node
+    3B - if no enclosing cycle - simply use the closest node
+    4 - find the neighbouring node that minimises the distance between the data point on "street-front"
 
     NODE MAP:
     0 - x
@@ -175,51 +193,92 @@ def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, max_dist:float) 
     3 - edge indx
     4 - weight
 
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - impedance
+
     DATA MAP:
     0 - x
     1 - y
     2 - live
     3 - data class
-    4 - assigned network index
-    5 - distance from assigned network index
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
     '''
 
-    if data_map.shape[1] != 6:
-        raise AttributeError('The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. This method will populate indices 5 and 6.')
+    types.check_data_map(data_map)
 
-    if node_map.shape[1] != 5:
-        raise AttributeError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
-
-    netw_x_arr = node_map[:,0]
-    netw_y_arr = node_map[:,1]
-    data_x_arr = data_map[:,0]
-    data_y_arr = data_map[:,1]
+    types.check_network_types(node_map, edge_map, index_map=netw_index)
 
     # iterate each data point
-    for idx, data_idx in enumerate(range(len(data_map))):
+    for idx in range(len(data_map)):
 
         # numba no object mode can only handle basic printing
         if idx % 10000 == 0:
             print('...progress:', round(idx / len(data_map) * 100, 2), '%')
 
         # iterate each network id
-        for network_idx in range(len(node_map)):
-            # get the distance
-            dist = np.sqrt(
-                (netw_x_arr[network_idx] - data_x_arr[data_idx]) ** 2 +
-                (netw_y_arr[network_idx] - data_y_arr[data_idx]) ** 2)
-            # only proceed if it is less than the max dist cutoff
-            if dist > max_dist:
-                continue
-            # if no adjacent network point has yet been assigned for this data point
-            # then proceed to record this adjacency and the corresponding distance
-            elif np.isnan(data_map[data_idx][5]):
-                data_map[data_idx][5] = dist
-                data_map[data_idx][4] = network_idx
-            # otherwise, only update if the new distance is less than any prior distances
-            elif dist < data_map[data_idx][5]:
-                data_map[data_idx][5] = dist
-                data_map[data_idx][4] = network_idx
+        d_x = data_map[idx][0]
+        d_y = data_map[idx][1]
+        min_idx, min_dist = nearest_idx(netw_index, d_x, d_y, max_dist)
+
+        # wind along the network - try to find a block cycle around the point
+        visited = np.full(len(node_map), False)
+        # follow neighbours that maximise the clockwise winding
+        node_idx = int(min_idx)
+        total_wind = 0
+        while True:
+            visited[node_idx] = True
+            nb_wind = 0
+            max_nb_idx = None
+            n_x = node_map[node_idx][0]
+            n_y = node_map[node_idx][1]
+            edge_idx = int(node_map[node_idx][3])
+            while edge_idx < len(edge_map):
+                # get the edge's start and end node indices
+                start, end = edge_map[edge_idx][:2]
+                # if the start index no longer matches it means all neighbours have been visited
+                if start != node_idx:
+                    break
+                # increment idx for next loop
+                edge_idx += 1
+                # cast to int for indexing
+                nb = int(end)
+                nb_x = node_map[nb][0]
+                nb_y = node_map[nb][1]
+                # calculate the wind
+                wind = np.random.uniform(1, 10)
+                # if greater than, update
+                if wind > nb_wind:
+                    total_wind += wind
+                    max_nb_idx = nb
+
+            # break conditions
+            # 1 - if the original node is re-encountered after circling a block
+            if max_nb_idx == min_idx:
+                break
+            # 2 - if no neighbour is found
+            if max_nb_idx is None:
+                break
+            # 3 - if the max wind node had already been visited, then a non-encircling loop was found...
+            if visited[max_nb_idx]:
+                break
+            node_idx = max_nb_idx
+
+        # if clockwise fails, try counter-clockwise
+
+        # if encircling succeeded: iterate visited nodes and select closest
+        # NOTE -> this is not necessarily the starting node if the nearest node is not on the encircling block
+
+        # select any neighbours on the encircling (visited) route and choose the one with the shallowest adjacent street
+
+        # if encircling failed: simply select the closest and next closest neighbour
+
+        # set in the data map
+        data_map[idx][4] = 0 #adj_idx
+        data_map[idx][5] = 0 #next_adj_idx
 
     print('...done')
 
@@ -229,7 +288,7 @@ def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, max_dist:float) 
 #@cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
 #@njit
 def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_map:np.ndarray, netw_index:np.ndarray,
-                         data_map:np.ndarray, data_index:np.ndarray, angular:bool=False):
+                         data_map:np.ndarray, angular:bool=False):
 
     netw_x_arr = node_map[:,0]
     netw_y_arr = node_map[:,1]
@@ -243,7 +302,8 @@ def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_
     data_assign_dist = data_map[:,5]
 
     # filter the network by distance
-    netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = spatial_filter(netw_index, src_x, src_y, max_dist)
+    netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = \
+        distance_filter(netw_index, src_x, src_y, max_dist)
 
     # run the shortest tree dijkstra
     # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -254,9 +314,16 @@ def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_
         networks.shortest_path_tree(node_map, edge_map, src_idx, netw_trim_to_full_idx_map, netw_full_to_trim_idx_map,
                                     max_dist=np.inf, angular=angular)
 
+    # STEP A - SLICE THE DATA POINTS
+
+    # STEP B - LOOKUP EACH DATA POINTS NEAREST AND NEXT NEAREST ADJACENCIES
+
+    # STEP C - AGGREGATE TO LEAST DISTANCE VIA SHORTEST PATH MAP
+
+
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
-    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = spatial_filter(data_index, src_x, src_y, max_dist)
+    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = distance_filter(data_index, src_x, src_y, max_dist)
 
     # prepare the new data arrays
     reachable_classes_trim = np.full(len(data_trim_to_full_idx_map), np.nan)
@@ -281,9 +348,8 @@ def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_
         prev_netw_full_idx = int(netw_trim_to_full_idx_map[prev_netw_idx_trim])
         # calculate the distance - in this case the tail-end from the network node to data point is computed manually
         prev_dist_calc = map_distance_trim[prev_netw_idx_trim]
-        prev_dist_calc += np.sqrt(
-            (netw_x_arr[prev_netw_full_idx] - data_x_arr[data_idx_full]) ** 2 +
-            (netw_y_arr[prev_netw_full_idx] - data_y_arr[data_idx_full]) ** 2)
+        prev_dist_calc += np.hypot(netw_x_arr[prev_netw_full_idx] - data_x_arr[data_idx_full],
+                                   netw_y_arr[prev_netw_full_idx] - data_y_arr[data_idx_full])
         # use the shorter distance between the current and prior nodes
         # but only if less than the maximum distance
         if dist_calc <= max_dist and dist_calc <= prev_dist_calc:

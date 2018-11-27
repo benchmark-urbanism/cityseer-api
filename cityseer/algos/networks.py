@@ -1,7 +1,7 @@
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-from cityseer.algos import data
+from cityseer.algos import data, types
 
 cc = CC('networks')
 
@@ -29,11 +29,7 @@ def shortest_path_tree(node_map:np.ndarray, edge_map:np.ndarray, src_idx:int, tr
     3 - impedance
     '''
 
-    if node_map.shape[1] != 5:
-        raise ValueError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
-
-    if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+    types.check_network_types(node_map, edge_map)
 
     if not src_idx < len(node_map):
         raise ValueError('Source index is out of range.')
@@ -170,14 +166,9 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
     3 - impedance
     '''
 
-    if node_map.shape[1] != 5:
-        raise ValueError('The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+    types.check_network_types(node_map, edge_map)
 
-    if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
-
-    if len(distances) != len(betas):
-        raise ValueError('The number of distances and betas should be equal.')
+    types.check_distances_and_betas(distances, betas)
 
     if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
         raise ValueError('No metrics specified for computation. Please specify at least one.')
@@ -197,7 +188,9 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
     nodes_live = node_map[:,2]
 
     # generate the indices for x and y
-    index_map = data.generate_index(x_arr, y_arr)
+    # NOTE -> debating whether to do this implicitly or explicitly outside of this method... as with diversity.mixed_uses()
+    # if the latter, then can be reused, but requires more cognisance on part of user
+    netw_index = data.generate_index(x_arr, y_arr)
 
     # prepare data arrays
     # indices correspond to different centrality formulations
@@ -262,7 +255,7 @@ def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=True)
+        trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index, src_x, src_y, max_dist, radial=True)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres

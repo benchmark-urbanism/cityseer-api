@@ -24,21 +24,6 @@ def test_shortest_path_tree():
     G = graphs.networkX_edge_defaults(G)
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
 
-    # test for malformed data
-    x_arr = n_map[:, 0]
-    y_arr = n_map[:, 1]
-    src = 0
-    index_map = data.generate_index(x_arr, y_arr)
-    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], 500, radial=True)
-    with pytest.raises(ValueError):
-        networks.shortest_path_tree(n_map[:, :-1], e_map, src, trim_to_full_idx_map, full_to_trim_idx_map)
-    with pytest.raises(ValueError):
-        networks.shortest_path_tree(n_map, e_map[:, :-1], src, trim_to_full_idx_map, full_to_trim_idx_map)
-    with pytest.raises(ValueError):
-        networks.shortest_path_tree(n_map, e_map, len(n_map), trim_to_full_idx_map, full_to_trim_idx_map)
-    with pytest.raises(ValueError):
-        networks.shortest_path_tree(n_map, e_map, src, trim_to_full_idx_map, full_to_trim_idx_map[:-1])
-
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [200, 500, 2000]:
         for src in range(len(G)):
@@ -47,10 +32,10 @@ def test_shortest_path_tree():
             y_arr = n_map[:, 1]
             src = 0
             index_map = data.generate_index(x_arr, y_arr)
-            trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], max_dist, radial=True)
+            trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(index_map, x_arr[src], y_arr[src], max_dist, radial=True)
             # check shortest path maps
             map_impedance, map_distance, map_pred, cycles = networks.shortest_path_tree(n_map, e_map, src,
-                                                                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=max_dist, angular=False)
+                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=max_dist, angular=False)
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G, src, weight='impedance', cutoff=max_dist)
             for j in range(len(G)):
@@ -71,11 +56,11 @@ def test_shortest_path_tree():
     x_arr = n_map[:, 0]
     y_arr = n_map[:, 1]
     index_map = data.generate_index(x_arr, y_arr)
-    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, x_arr[src], y_arr[src], np.inf, radial=True)
+    trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(index_map, x_arr[src], y_arr[src], np.inf, radial=True)
 
     # SIMPLEST PATH: get simplest path tree using angular impedance
     map_impedance_a, map_distance_a, map_pred_a, cycles_a = networks.shortest_path_tree(n_map, e_map, src,
-                                                                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
     # find path
     path_a = find_path(map_pred_a, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_a = [n_labels[n] for n in path_a]
@@ -88,7 +73,7 @@ def test_shortest_path_tree():
     e_map_m [:,3] = e_map_m[:,2]
     # get shortest path tree using distance impedance
     map_impedance_m, map_distance_m, map_pred_m, cycles_m = networks.shortest_path_tree(n_map, e_map_m, src,
-                                                                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
     # find path
     path_m = find_path(map_pred_m, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_m = [n_labels[n] for n in path_m]
@@ -100,7 +85,7 @@ def test_shortest_path_tree():
     src = n_labels.index('10_43')
     target = n_labels.index('5_10')
     map_impedance_ns, map_distance_ns, map_pred_ns, cycles_ns = networks.shortest_path_tree(n_map, e_map, src,
-                                                                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=True)
     # find path
     path_ns = find_path(map_pred_ns, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_ns = [n_labels[n] for n in path_ns]
@@ -108,12 +93,18 @@ def test_shortest_path_tree():
 
     # WITH SIDESTEPS - set angular flag to False
     map_impedance_s, map_distance_s, map_pred_s, cycles_s = networks.shortest_path_tree(n_map, e_map, src,
-                                                                                        trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False)
+                                            trim_to_full_idx_map, full_to_trim_idx_map, max_dist=np.inf, angular=False)
     # find path
     path_s = find_path(map_pred_s, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_s = [n_labels[n] for n in path_s]
     assert path_transpose_s == ['10_43', '10_14', '5_10']
 
+    # check that out of range src index raises error
+    with pytest.raises(ValueError):
+        networks.shortest_path_tree(n_map, e_map, len(n_map), trim_to_full_idx_map, full_to_trim_idx_map)
+    # test that mismatching full_to_trim length raises error
+    with pytest.raises(ValueError):
+        networks.shortest_path_tree(n_map, e_map, 0, trim_to_full_idx_map, full_to_trim_idx_map[:-1])
 
 def test_network_centralities():
     '''
@@ -135,19 +126,7 @@ def test_network_centralities():
     betas = np.array([np.log(min_threshold_wt) / dist])
     closeness_map = np.array([0, 3])
     betweenness_map = np.array([0])
-
-    # test for malformed data
-    with pytest.raises(ValueError):
-        networks.network_centralities(n_map[:, :-1], e_map, distances, betas, closeness_map, betweenness_map)
-    with pytest.raises(ValueError):
-        networks.network_centralities(n_map, e_map[:, :-1], distances, betas, closeness_map, betweenness_map)
-    with pytest.raises(ValueError):
-        networks.network_centralities(n_map, e_map, distances[:-1], betas, closeness_map, betweenness_map)
-    with pytest.raises(ValueError):
-        networks.network_centralities(n_map, e_map, distances, betas[:-1], closeness_map, betweenness_map)
-    with pytest.raises(ValueError):
-        networks.network_centralities(n_map, e_map, distances, betas, np.array([]), np.array([]))
-
+    print(betas)
     # compute closeness and betweenness
     closeness_data, betweenness_data = \
         networks.network_centralities(n_map, e_map, distances, betas, closeness_map, betweenness_map, angular=False)

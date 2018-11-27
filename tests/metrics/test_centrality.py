@@ -8,20 +8,20 @@ from cityseer.metrics import centrality
 
 def test_distance_from_beta():
 
-    assert centrality.distance_from_beta(0.04) == (np.array([100.]), 0.01831563888873418)
+    assert centrality.distance_from_beta(-0.04) == (np.array([100.]), 0.01831563888873418)
 
-    assert centrality.distance_from_beta(0.0025) == (np.array([1600.]), 0.01831563888873418)
+    assert centrality.distance_from_beta(-0.0025) == (np.array([1600.]), 0.01831563888873418)
 
-    arr, t_w = centrality.distance_from_beta(0.04, min_threshold_wt=0.001)
+    arr, t_w = centrality.distance_from_beta(-0.04, min_threshold_wt=0.001)
     assert np.array_equal(arr.round(8), np.array([172.69388197]).round(8))
     assert t_w == 0.001
 
-    arr, t_w = centrality.distance_from_beta([0.04, 0.0025])
+    arr, t_w = centrality.distance_from_beta([-0.04, -0.0025])
     assert np.array_equal(arr, np.array([100, 1600]))
     assert t_w == 0.01831563888873418
 
     with pytest.raises(ValueError):
-        centrality.distance_from_beta(-0.04)
+        centrality.distance_from_beta(0.04)
 
 
 def test_compute_centrality():
@@ -126,8 +126,6 @@ def wrapper_for_gravity_centralities(func, close_key, betw_key):
     assert np.array_equal(easy_compute, full_compute)
 
     # check that betas return same results
-    # remove leading negatives
-    betas = -np.array(betas)
     full_compute_betas = func(n_map, e_map, betas=betas)
     assert np.array_equal(easy_compute, full_compute_betas)
 
@@ -138,8 +136,6 @@ def wrapper_for_gravity_centralities(func, close_key, betw_key):
     assert np.array_equal(easy_compute, full_compute)
 
     # check that betas return same results
-    # remove leading negatives
-    betas = -np.array(betas)
     betweenness_gravity_easy_betas = func(n_map, e_map, betas=betas)
     assert np.array_equal(easy_compute, betweenness_gravity_easy_betas)
 
@@ -152,7 +148,7 @@ def wrapper_for_gravity_centralities(func, close_key, betw_key):
         func(n_map, e_map)
 
     # check custom min_threshold_wt
-    betas = [0.0025, 0.005]
+    betas = [-0.0025, -0.005]
     dist, threshold_wt = centrality.distance_from_beta(betas, min_threshold_wt=0.1)
     easy_dist = func(n_map, e_map, distances=dist, min_threshold_wt=threshold_wt)
     easy_betas = func(n_map, e_map, betas=betas, min_threshold_wt=threshold_wt)

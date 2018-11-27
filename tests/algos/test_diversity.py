@@ -19,6 +19,7 @@ def test_hill_diversity():
         with pytest.raises(ValueError):
             diversity.hill_diversity(counts, q=-1)
 
+
 def test_hill_diversity_branch_generic():
 
     #  test hill diversity against weighted diversity where all weights = 1

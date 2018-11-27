@@ -8,6 +8,7 @@ from shapely import geometry, ops
 import networkx as nx
 from tqdm import tqdm
 import numpy as np
+from cityseer.algos import types
 
 
 logging.basicConfig(level=logging.INFO)
@@ -507,11 +508,7 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray
 Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
 def networkX_from_graph_maps(node_labels:Union[tuple, list], node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
 
-    if node_map.shape[1] != 5:
-        raise ValueError('The node map must have a dimensionality of nx5, consisting of x, y, live, link idx, and weight parameters.')
-
-    if edge_map.shape[1] != 4:
-        raise ValueError('The link map must have a dimensionality of nx4, consisting of start, end, length, and impedance parameters.')
+    types.check_network_types(node_map, edge_map)
 
     if len(node_labels) != len(node_map):
         raise ValueError('The number of node labels should correspond to the number and order of nodes in the node_map.')

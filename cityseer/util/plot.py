@@ -1,6 +1,9 @@
-import numpy as np
+'''
+These plot methods are mainly for testing and debugging
+'''
 import networkx as nx
 import matplotlib.pyplot as plt
+
 
 def plot_graphs(primal:nx.Graph=None, dual:nx.Graph=None):
 
@@ -35,16 +38,22 @@ def plot_graphs(primal:nx.Graph=None, dual:nx.Graph=None):
     plt.show()
 
 
-def plot_graph_maps(node_labels, node_map, edge_map, data_map=None):
+def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
 
     # the links are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of links
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
 
     # set extents
     for ax in (ax1, ax2):
         ax.set_xlim(node_map[:, 0].min() - 100, node_map[:, 0].max() + 100)
         ax.set_ylim(node_map[:, 1].min() - 100, node_map[:, 1].max() + 100)
+
+    if poly:
+        x = [x for x in poly.exterior.coords.xy[0]]
+        y = [y for y in poly.exterior.coords.xy[1]]
+        ax1.plot(x, y)
+        ax2.plot(x, y)
 
     # plot nodes
     ax1.scatter(node_map[:, 0], node_map[:, 1], s=7, c=node_map[:, 2])

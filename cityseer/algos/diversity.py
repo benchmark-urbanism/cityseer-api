@@ -1,7 +1,7 @@
 import numpy as np
 from numba.pycc import CC
 from numba import njit
-from cityseer.algos import data
+from cityseer.algos import data, types
 
 cc = CC('diversity')
 
@@ -410,7 +410,7 @@ def deduce_species(classes, distances, max_dist=1600):
 
 
 # TODO: do you really need this?
-@njit
+# @njit
 def filter_to_src(cl_unique_arr, cl_counts_arr, cl_nearest_arr, max_dist):
     # first figure out how many valid items there are
     c = 0
@@ -456,22 +456,11 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
     5 - distance from assigned network index
     '''
 
-    if node_map.shape[1] != 5:
-        raise ValueError(
-            'The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+    types.check_data_map(data_map)
 
-    if edge_map.shape[1] != 4:
-        raise ValueError(
-            'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+    types.check_network_types(node_map, edge_map)
 
-    if data_map.shape[1] != 6:
-        raise AttributeError('The data map must have a dimensionality of Nx6, consisting of x, y, live, class code, assigned network index, and distance from assigned network index.')
-
-    if len(distances) != len(betas):
-        raise ValueError('The number of distances and betas should be equal.')
-
-    if len(mixed_use_metrics) == 0 and len(accessibility_codes) == 0:
-        raise ValueError('No mixed-use metrics or accessibilities specified for computation. Please specify at least one.')
+    types.check_distances_and_betas(distances, betas)
 
     # establish the number of nodes
     n = len(node_map)
@@ -482,8 +471,15 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
     # maximum distance
     max_dist = distances.max()
 
-    # disaggregate
-    netw_nodes_live = node_map[:, 2]
+    # disaggregate node_map
+    netw_x_arr = node_map[:,0]
+    netw_y_arr = node_map[:,1]
+    netw_nodes_live = node_map[:,2]
+
+    # generate the indices for x and y
+    # NOTE -> debating whether to do this implicitly or explicitly outside of this method...as with networks.network_centralities()
+    # if the latter, then can be reused, but requires more cognisance on part of user
+    netw_index = data.generate_index(netw_x_arr, netw_y_arr)
 
     #TODO: confirm number of metrics
     mixed_use_data = np.full((10, d_n, n), 0.0)
@@ -507,7 +503,7 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
         # calculate mixed uses
         # generate the reachable classes and their respective distances
         reachable_classes_trim, reachable_classes_dist_trim = \
-            data.aggregate_to_src_idx(node_map, edge_map, data_map, src_idx, max_dist, angular=angular)
+            data.aggregate_to_src_idx(src_idx, max_dist, node_map, edge_map, netw_index, data_map, angular=angular)
 
 
 

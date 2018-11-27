@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from shapely import geometry
 from cityseer.util import graphs, layers, mock, plot
 from cityseer.algos import data
 
@@ -93,76 +94,98 @@ def test_generate_index():
             data.generate_index(random_x, random_y[:-1])
 
 
-def test_crow_flies():
+def test_distance_filter():
 
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
 
-    max_dist = 200
-    x_arr = n_map[:,0]
-    y_arr = n_map[:,1]
+    # generate some data
+    data_dict = mock.mock_data(G)
+    d_labels, d_map, d_classes = layers.dict_to_data_map(data_dict)
+    x_arr = d_map[:,0]
+    y_arr = d_map[:,1]
+    data_index = data.generate_index(x_arr, y_arr)
 
-    # generate trim and full index maps
-    src_x = x_arr[0]
-    src_y = y_arr[0]
-    trim_to_full_idx_map, full_to_trim_idx_map = data.crow_flies(src_x, src_y, x_arr, y_arr, max_dist)
+    # test the filter
+    src_x = n_map[0][0]
+    src_y = n_map[0][1]
+    for max_dist in [0, 200, 500, 750]:
+        trim_to_full_idx_map, full_to_trim_idx_map = \
+            data.distance_filter(data_index, src_x, src_y, max_dist, radial=True)
 
-    # debugging
-    # plot.plot_networkX_graphs(primal=G)
+        # plots for debugging
+        # override the d_map's data class with the results of the filtering
+        # NOTE -> if all are on, then matplotlib will plot all the same dark color
+        # d_map = data.assign_to_network(d_map, n_map, 2000)
+        # d_map[:,3] = 0
+        # on_idx = np.where(np.isfinite(full_to_trim_idx_map))
+        # d_map[on_idx, 3] = 1
+        # geom = None
+        # if max_dist:
+        #    geom = geometry.Point(src_x, src_y).buffer(max_dist)
+        # plot.plot_graph_maps(n_labels, n_map, e_map, d_map=d_map, poly=geom)
 
-    # manually confirmed for 200m max distance:
-    assert np.array_equal(trim_to_full_idx_map, np.array([0, 1, 16, 31]))
-    # check that the full to trim is still the same length
-    assert len(full_to_trim_idx_map) == G.number_of_nodes()
-    # check that all non NaN full_to_trim_idx_map indices are reflected in the either direction
-    c = 0
-    for idx, n in enumerate(full_to_trim_idx_map):
-        if not np.isnan(n):
-            c += 1
-            assert trim_to_full_idx_map[int(n)] == idx
-    assert c == len(trim_to_full_idx_map)
+        # check that the full index map is the correct number of elements
+        assert len(full_to_trim_idx_map) == len(d_map)
+        # check that all non NaN indices are reflected in the either direction
+        c = 0
+        for idx, n in enumerate(full_to_trim_idx_map):
+            if not np.isnan(n):
+                c += 1
+                assert trim_to_full_idx_map[int(n)] == idx
+        assert c == len(trim_to_full_idx_map)
 
-    # test for malformed data
-    with pytest.raises(ValueError):
-        data.crow_flies(src_x, src_y, x_arr[:-1], y_arr, max_dist)
-    with pytest.raises(ValueError):
-        data.crow_flies(src_x, src_y, x_arr, y_arr[:-1], max_dist)
+        # test that all reachable indices are, in fact, within the max distance
+        for idx, val in enumerate(full_to_trim_idx_map):
+            dist = np.sqrt((x_arr[idx] - src_x) ** 2 + (y_arr[idx] - src_y) ** 2)
+            if np.isfinite(val):
+                assert dist <= max_dist
+            else:
+                assert dist > max_dist
+
+        # test the non radial version
+        trim_to_full_idx_map, full_to_trim_idx_map = \
+            data.distance_filter(data_index, src_x, src_y, max_dist, radial=False)
+        for idx, val in enumerate(full_to_trim_idx_map):
+            if abs(x_arr[idx] - src_x) <= max_dist and abs(y_arr[idx] - src_y) <= max_dist:
+                assert np.isfinite(val)
+            else:
+                assert np.isnan(val)
 
 
-def test_spatial_filter():
+def test_nearest_idx():
 
-    # create some random x and y data
-    random_x = np.random.uniform(0, 1000, 20)
-    random_y = np.random.uniform(2000, 3000, 20)
-    index_map = data.generate_index(random_x, random_y)
-    src_x = 500
-    src_y = 2500
-    max_dist = 250
-    # generate the filtered maps
-    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=True)
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+    x_arr = n_map[:, 0]
+    y_arr = n_map[:, 1]
+    netw_index = data.generate_index(x_arr, y_arr)
 
-    # test radial version against crow-flies
-    crow_trim_to_full, crow_full_to_trim = data.crow_flies(src_x, src_y, random_x, random_y, max_dist)
-    assert np.array_equal(crow_trim_to_full, trim_to_full_idx_map)
-    assert np.allclose(crow_full_to_trim, full_to_trim_idx_map, equal_nan=True)
+    # generate some data
+    data_dict = mock.mock_data(G)
+    d_labels, d_map, d_classes = layers.dict_to_data_map(data_dict)
 
-    # test that all reachable indices are, in fact, within the max distance
-    for idx, val in enumerate(full_to_trim_idx_map):
-        dist = np.sqrt((random_x[idx] - src_x) ** 2 + (random_y[idx] - src_y) ** 2)
-        if dist > max_dist:
-            assert np.isnan(val)
-        else:
-            assert np.isfinite(val)
+    # test the filter - iterating each point in data map
+    for d in d_map:
+        d_x = d[0]
+        d_y = d[1]
 
-    # test the non radial version
-    trim_to_full_idx_map, full_to_trim_idx_map = data.spatial_filter(index_map, src_x, src_y, max_dist, radial=False)
-    for idx, val in enumerate(full_to_trim_idx_map):
-        if abs(random_x[idx] - src_x) <= max_dist and abs(random_y[idx] - src_y) <= max_dist:
-            assert np.isfinite(val)
-        else:
-            assert np.isnan(val)
+        # find the closest point on the network
+        min_idx, min_dist = data.nearest_idx(netw_index, d_x, d_y, max_dist=500)
+
+        # check that no other indices are nearer
+        for idx, n in enumerate(n_map):
+            n_x = n[0]
+            n_y = n[1]
+            dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
+            if idx == min_idx:
+                assert round(dist, 8) == round(min_dist, 8)
+            else:
+                assert dist > min_dist
 
 
 def test_assign_to_network():
@@ -171,42 +194,42 @@ def test_assign_to_network():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
-
+    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+    x_arr = n_map[:, 0]
+    y_arr = n_map[:, 1]
+    netw_index = data.generate_index(x_arr, y_arr)
+    
     # generate data
-    data_dict = mock.mock_data(G, random_seed=5)
-    data_labels, data_map, data_classes = layers.dict_to_data_map(data_dict)
+    data_dict = mock.mock_data(G)
+    d_labels, d_map, d_classes = layers.dict_to_data_map(data_dict)
 
-    data_map = data.assign_to_network(data_map, node_map, 500)
+    d_map = data.assign_to_network(d_map, n_map, e_map, netw_index, 500)
 
     # for debugging
-    # plot.plot_graph_maps(node_labels, node_map, edge_map, data_map)
+    # plot.plot_graph_maps(node_labels, node_map, edge_map, d_map)
 
-    for data_point in data_map:
+    for data_point in d_map:
         x = data_point[0]
         y = data_point[1]
         assigned_idx = int(data_point[4])
+
+
+
+        # TODO: This will no longer work...
         assigned_dist = data_point[5]
 
-        node_x = node_map[assigned_idx][0]
-        node_y = node_map[assigned_idx][1]
+        node_x = n_map[assigned_idx][0]
+        node_y = n_map[assigned_idx][1]
 
         # check the assigned distance
-        assert abs(assigned_dist - np.sqrt((node_x - x) ** 2 + (node_y - y) ** 2)) < 0.00000001
+        assert round(assigned_dist, 8) == round(np.sqrt((node_x - x) ** 2 + (node_y - y) ** 2), 8)
 
         # check that no other nodes are closer
-        for idx, node in enumerate(node_map):
+        for idx, node in enumerate(n_map):
             if idx != assigned_idx:
                 test_x = node[0]
                 test_y = node[1]
                 assert assigned_dist <= np.sqrt((test_x - x) ** 2 + (test_y - y) ** 2)
-
-    # check that malformed node and data maps throw errors
-    with pytest.raises(AttributeError):
-        data.assign_to_network(data_map[:, :-1], node_map, 500)
-
-    with pytest.raises(AttributeError):
-        data.assign_to_network(data_map, node_map[:, :-1], 500)
 
 
 def test_aggregate_to_src_idx():
@@ -220,12 +243,12 @@ def test_aggregate_to_src_idx():
 
     # generate data
     data_dict = mock.mock_data(G, random_seed=5)
-    data_labels, data_map, data_classes = layers.dict_to_data_map(data_dict)
-    data_map = data.assign_to_network(data_map, node_map, 500)
-    data_index = data.generate_index(data_map[:, 0], data_map[:, 1])
+    d_labels, d_map, d_classes = layers.dict_to_data_map(data_dict)
+    d_map = data.assign_to_network(d_map, node_map, 500)
+    data_index = data.generate_index(d_map[:, 0], d_map[:, 1])
 
     reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map = \
-        data.aggregate_to_src_idx(0, 400, node_map, edge_map, netw_index, data_map, data_index, angular=False)
+        data.aggregate_to_src_idx(0, 400, node_map, edge_map, netw_index, d_map, data_index, angular=False)
 
     # for debugging
-    plot.plot_graph_maps(node_labels, node_map, edge_map, data_map[data_trim_to_full_idx_map])
+    plot.plot_graph_maps(node_labels, node_map, edge_map, d_map[data_trim_to_full_idx_map])

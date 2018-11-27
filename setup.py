@@ -1,5 +1,6 @@
 '''
 https://docs.python.org/3.7/distutils/examples.html
+https://scikit-build.readthedocs.io/en/latest/usage.html
 
 in case the user doesn't have setup tools installed:
 python3 -m pip install --user --upgrade setuptools wheel
@@ -20,7 +21,7 @@ from setuptools import setup
 setup (
     name = 'cityseer',
     version = '0.2.0',
-    packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
+    packages=['cityseer'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
     project_urls={
