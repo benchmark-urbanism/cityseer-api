@@ -8,7 +8,6 @@ from cityseer.metrics import networks
 
 
 def test_distance_from_beta():
-
     assert networks.distance_from_beta(-0.04) == np.array([100.])
     assert networks.distance_from_beta(-0.0025) == np.array([1600.])
 
@@ -23,7 +22,6 @@ def test_distance_from_beta():
 
 
 def test_Network_Layer():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
@@ -37,7 +35,8 @@ def test_Network_Layer():
     angular = False
 
     # test against Network_Layer's internal process
-    N = networks.Network_Layer(node_uids, node_map, edge_map, distances, betas=None, min_threshold_wt=min_thresh_wt, angular=angular)
+    N = networks.Network_Layer(node_uids, node_map, edge_map, distances, betas=None, min_threshold_wt=min_thresh_wt,
+                               angular=angular)
     assert N.uids == node_uids
     assert np.array_equal(N.nodes, node_map)
     assert np.array_equal(N.edges, edge_map)
@@ -61,9 +60,9 @@ def test_Network_Layer():
     with pytest.raises(ValueError):
         networks.Network_Layer(node_uids[:-1], node_map, edge_map, distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map[:,:-1], edge_map, distances)
+        networks.Network_Layer(node_uids, node_map[:, :-1], edge_map, distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map[:,:-1], distances)
+        networks.Network_Layer(node_uids, node_map, edge_map[:, :-1], distances)
     with pytest.raises(ValueError):
         networks.Network_Layer(node_uids, node_map, edge_map, [])
     with pytest.raises(ValueError):
@@ -71,7 +70,6 @@ def test_Network_Layer():
 
 
 def test_Network_Layer_From_NetworkX():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
@@ -104,6 +102,28 @@ def test_Network_Layer_From_NetworkX():
         networks.Network_Layer_From_NetworkX(G, None, None)
 
 
+def test_to_networkX():
+    # tested from test_graphs.test_networkX_from_graph_maps
+    pass
+
+
+def test_metrics_to_dict():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    N.harmonic_closeness()
+    N.betweenness()
+    metrics_dict = N.metrics_to_dict()
+
+    for metric_key in N.metrics.keys():
+        for measure_key in N.metrics[metric_key].keys():
+            for dist in N.metrics[metric_key][measure_key].keys():
+                for idx, uid in enumerate(N.uids):
+                    assert N.metrics[metric_key][measure_key][dist][idx] == \
+                           metrics_dict[uid][metric_key][measure_key][dist]
+
+
 def test_compute_centrality():
     '''
     Underlying method also tested via test_networks.test_network_centralities
@@ -133,7 +153,8 @@ def test_compute_centrality():
     assert len(N.metrics['centrality']) == 1
 
     # also check the number of returned types for all permutations
-    closeness_types = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity', 'cycles']
+    closeness_types = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity',
+                       'cycles']
     betweenness_types = ['betweenness', 'betweenness_gravity']
     N = networks.Network_Layer_From_NetworkX(G, distances)
     for cl_types in permutations(closeness_types):
@@ -174,7 +195,6 @@ def test_compute_centrality():
 
 
 def network_generator():
-
     for betas in [[-0.008], [-0.008, -0.002]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
@@ -185,7 +205,6 @@ def network_generator():
 
 
 def test_harmonic_closeness():
-
     for G, distances, betas, angular in network_generator():
 
         # easy version
@@ -203,7 +222,6 @@ def test_harmonic_closeness():
 
 
 def test_gravity():
-
     for G, distances, betas, angular in network_generator():
 
         # DISTANCES
@@ -227,7 +245,6 @@ def test_gravity():
 
 
 def test_betweenness():
-
     for G, distances, betas, angular in network_generator():
 
         # easy version
@@ -245,7 +262,6 @@ def test_betweenness():
 
 
 def test_betweenness_gravity():
-
     for G, distances, betas, angular in network_generator():
 
         # DISTANCES

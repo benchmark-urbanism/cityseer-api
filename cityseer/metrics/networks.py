@@ -114,7 +114,24 @@ class Network_Layer:
         return self.nodes[:, 2]
 
     def to_networkX(self):
-        return graphs.networkX_from_graph_maps(self.uids, self.nodes, self.edges, self.networkX, self.metrics)
+        metrics_dict = self.metrics_to_dict()
+        return graphs.networkX_from_graph_maps(self.uids, self.nodes, self.edges, self.networkX, metrics_dict)
+
+    def metrics_to_dict(self):
+        '''
+        metrics are stored in arrays, this method unpacks per uid
+        '''
+        m = {}
+        for idx, uid in enumerate(self.uids):
+            m[uid] = {}
+            for metric_key, metric_value in self.metrics.items():
+                m[uid][metric_key] = {}
+                for measure_key, measure_value in metric_value.items():
+                    m[uid][metric_key][measure_key] = {}
+                    for dist in measure_value:
+                        m[uid][metric_key][measure_key][dist] = measure_value[dist][idx]
+        return m
+
 
     def compute_centrality(self, close_metrics: Union[list, tuple] = None, between_metrics: Union[list, tuple] = None):
         '''

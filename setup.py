@@ -17,11 +17,12 @@ add @njit to help aot functions find each other, see https://stackoverflow.com/q
 '''
 
 from setuptools import setup
+from cityseer.algos import centrality, data, diversity, types
 
 setup (
     name = 'cityseer',
-    version = '0.2.0',
-    packages=['cityseer'],
+    version = '0.2.3',
+    packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
     project_urls={
@@ -41,11 +42,11 @@ setup (
         'tqdm',
         'matplotlib',
         'sklearn'
+    ],
+    ext_modules = [
+        centrality.cc.distutils_extension(),
+        data.cc.distutils_extension(),
+        diversity.cc.distutils_extension(),
+        types.cc.distutils_extension()
     ]
-    #ext_modules = [
-        # TODO: not precompiling until sorted() etc. bug is resolved?
-        #data.cc.distutils_extension(),
-        #diversity.cc.distutils_extension(),
-        #networks.cc.distutils_extension()
-    #]
 )

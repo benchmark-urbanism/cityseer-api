@@ -513,7 +513,7 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
                              node_map: np.ndarray,
                              edge_map: np.ndarray,
                              networkX_graph: nx.Graph = None,
-                             metrics: dict = None) -> nx.Graph:
+                             metrics_dict: dict = None) -> nx.Graph:
 
     logger.info('Populating node and edge map data to a networkX graph.')
 
@@ -547,17 +547,9 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
         # networkX will silently add new edges / data over existing edges
         g_copy.add_edge(start, end, length=length, impedance=impedance)
 
-    if metrics is not None:
+    if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
-        for uid in tqdm(node_uids):
-            m = {}
-            for metric_key, metric_value in metrics.items():
-                m[metric_key] = {}
-                for measure_key, measure_value in metric_value.items():
-                    m[metric_key][measure_key] = {}
-                    for dist in measure_value:
-                        m[metric_key][measure_key][dist] = measure_value[dist][uid]
-
-            g_copy.nodes[uid]['metrics'] = m
+        for uid, metrics in tqdm(metrics_dict.items()):
+            g_copy.nodes[uid]['metrics'] = metrics
 
     return g_copy

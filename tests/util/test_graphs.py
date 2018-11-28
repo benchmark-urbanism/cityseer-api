@@ -395,12 +395,12 @@ def test_networkX_from_graph_maps():
     N.harmonic_closeness()
     N.betweenness()
     G_metrics = N.to_networkX()
-    for metric_key, metric_value in N.metrics.items():
-        for measure_key, measure_value in metric_value.items():
-            for dist in measure_value:
-                for n, d in G_metrics.nodes(data=True):
-                    idx = node_uids.index(n)
-                    assert measure_value[dist][idx] == d['metrics'][metric_key][measure_key][dist]
+    for metric_key in N.metrics.keys():
+        for measure_key in N.metrics[metric_key].keys():
+            for dist in N.metrics[metric_key][measure_key].keys():
+                for idx, uid in enumerate(N.uids):
+                    assert N.metrics[metric_key][measure_key][dist][idx] == \
+                           G_metrics.nodes[uid]['metrics'][metric_key][measure_key][dist]
 
     # check that mismatching node uid triggers error when unpacking onto graph
     with pytest.raises(AttributeError):
