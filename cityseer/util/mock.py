@@ -2,10 +2,10 @@
 Generate a graph for testing and documentation purposes.
 '''
 import logging
-import numpy as np
-import networkx as nx
-import utm
 
+import networkx as nx
+import numpy as np
+import utm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -157,7 +157,6 @@ def mock_graph(wgs84_coords=False):
 
 
 def mock_data(G, random_seed=None):
-
     if random_seed:
         np.random.seed(seed=random_seed)
 
@@ -190,7 +189,6 @@ def mock_data(G, random_seed=None):
 
 
 def mock_species_diversity(random_seed=None):
-
     if random_seed:
         np.random.seed(seed=random_seed)
 
@@ -199,7 +197,7 @@ def mock_species_diversity(random_seed=None):
         unique = np.unique(data)
         counts = np.zeros_like(unique)
         for i, u in enumerate(unique):
-            counts[i] = (data==u).sum()
+            counts[i] = (data == u).sum()
         probs = counts / len(data)
 
         yield counts, probs
@@ -327,7 +325,7 @@ def mock_landuse_classifications():
          2110192, 2150230, 1020034, 9470666, 1020018, 9470671, 2150222, 9470705, 9470665, 1020013, 1020043, 1020020,
          2100156, 9470669, 2100156, 1020013, 2110190, 1020034, 9470699, 9470699, 1020034, 9470699, 1020018, 1020013,
          6340459, 6340459, 6340459, 6340459, 6340459, 6340456, 6340456, 6340456, 6340459, 6340459]
-        )
+    )
     distances = np.array(
         [875.9032592773438, 1411.107666015625, 1112.341552734375, 637.4013671875, 1195.2349853515625, 1416.85791015625,
          1221.3719482421875, 1424.84619140625, 574.2115478515625, 997.333740234375, 770.5394287109375, 1404.71630859375,

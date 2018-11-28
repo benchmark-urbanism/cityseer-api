@@ -1,13 +1,12 @@
-import pytest
 import numpy as np
-from shapely import geometry
-from cityseer.util import graphs, layers, mock, plot
-from cityseer.metrics import networks
+import pytest
+
 from cityseer.algos import data
+from cityseer.metrics import networks
+from cityseer.util import graphs, layers, mock, plot
 
 
 def test_merge_sort():
-
     # test 2d - this version uses a second dimension storing the indices
     for n in range(1, 20):
         # create random data - stack with indices
@@ -25,15 +24,15 @@ def test_merge_sort():
             i = sorted_data[idx][1]
             assert list(random_data).index(r) == list(indices).index(i)
         # check that all of the data has been retained
-        assert len(sorted_data[:,0]) == len(random_data)
+        assert len(sorted_data[:, 0]) == len(random_data)
         for d in random_data:
-            assert d in sorted_data[:,0]
+            assert d in sorted_data[:, 0]
 
         # cast back to the original order, this time using the indices to sort, i.e. tier 2
         sorted_data = data.tiered_sort(sorted_data, tier=1)
         # check that the arrays now match their original versions
-        assert np.array_equal(sorted_data[:,0], random_data)
-        assert np.array_equal(sorted_data[:,1], indices)
+        assert np.array_equal(sorted_data[:, 0], random_data)
+        assert np.array_equal(sorted_data[:, 1], indices)
 
         # test malformed signatures
         with pytest.raises(ValueError):
@@ -41,7 +40,6 @@ def test_merge_sort():
 
 
 def test_binary_search():
-
     for n in range(1, 10):
         # create index sorted data
         max_val = 500
@@ -50,7 +48,7 @@ def test_binary_search():
         stacked_data = np.vstack((random_data, indices)).T
         sorted_data = data.tiered_sort(stacked_data, tier=0)
         # check some permutations
-        mid_val = random_data[int(np.floor(len(random_data)/2))]
+        mid_val = random_data[int(np.floor(len(random_data) / 2))]
         left_thresholds = [0, 0, 111.11, 200, mid_val]
         right_thresholds = [0, max_val, 333.3, 300, mid_val]
         test_data = sorted_data[:, 0]
@@ -69,7 +67,6 @@ def test_binary_search():
 
 
 def test_generate_index():
-
     for n in range(1, 20):
         # create some random x and y data
         random_x = np.random.uniform(0, 1000, n)
@@ -96,7 +93,6 @@ def test_generate_index():
 
 
 def test_distance_filter():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
@@ -154,7 +150,6 @@ def test_distance_filter():
 
 
 def test_nearest_idx():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
@@ -184,13 +179,12 @@ def test_nearest_idx():
 
 
 def test_assign_to_network():
-
     # generate network
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G)
-    
+
     # generate data
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict)
@@ -222,7 +216,6 @@ def test_assign_to_network():
 
 
 def test_aggregate_to_src_idx():
-
     # generate network
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)

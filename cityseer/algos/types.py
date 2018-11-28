@@ -1,17 +1,16 @@
 import numpy as np
-from numba.pycc import CC
 from numba import njit
-
+from numba.pycc import CC
 
 cc = CC('types')
 
 
 @cc.export('check_index_map', 'void(float64[:,:])')
 @njit
-def check_index_map(index_map:np.ndarray):
-
+def check_index_map(index_map: np.ndarray):
     if not index_map.ndim == 2 or index_map.shape[1] != 4:
-        raise ValueError('The index map must have a dimensionality of Nx4, corresponding to sorted x coordinates, associated x indices, sorted y coordinates, and associated y indices.')
+        raise ValueError(
+            'The index map must have a dimensionality of Nx4, corresponding to sorted x coordinates, associated x indices, sorted y coordinates, and associated y indices.')
 
     for idx in range(len(index_map) - 1):
         if index_map[idx][0] > index_map[idx + 1][0]:
@@ -22,16 +21,15 @@ def check_index_map(index_map:np.ndarray):
 
 @cc.export('check_data_types', 'void(float64[:,:])')
 @njit
-def check_data_map(data_map:np.ndarray):
-
+def check_data_map(data_map: np.ndarray):
     if not data_map.ndim == 2 or data_map.shape[1] != 6:
-        raise ValueError('The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
+        raise ValueError(
+            'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
 
 
 @cc.export('check_trim_maps', '(float64[:], float64[:])')
 @njit
-def check_trim_maps(trim_to_full:np.ndarray, full_to_trim:np.ndarray):
-
+def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     counter = 0
     for idx in range(len(full_to_trim)):
         ref = full_to_trim[idx]
@@ -40,13 +38,13 @@ def check_trim_maps(trim_to_full:np.ndarray, full_to_trim:np.ndarray):
                 raise ValueError('Mismatching trim-to-full and full-to-trim maps.')
             counter += 1
     if counter != len(trim_to_full):
-        raise ValueError('The length of the trim-to-full map does not match the number of active elements in the full-to-trim map.')
+        raise ValueError(
+            'The length of the trim-to-full map does not match the number of active elements in the full-to-trim map.')
 
 
 @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
 @njit
-def check_network_types(node_map:np.ndarray, edge_map:np.ndarray):
-
+def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
     if not node_map.ndim == 2 or node_map.shape[1] != 5:
         raise ValueError(
             'The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
@@ -58,8 +56,7 @@ def check_network_types(node_map:np.ndarray, edge_map:np.ndarray):
 
 @cc.export('check_distances_and_betas', '(float64[:], float64[:])')
 @njit
-def check_distances_and_betas(distances:np.ndarray, betas:np.ndarray):
-
+def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) != len(betas):
         raise ValueError('The number of distances and betas should be equal.')
 
@@ -70,4 +67,5 @@ def check_distances_and_betas(distances:np.ndarray, betas:np.ndarray):
     threshold_min = np.exp(distances[0] * -betas[0])
     for d, b in zip(distances, betas):
         if np.exp(d * -b) != threshold_min:
-            raise ValueError('Inconsistent threshold minimums, indicating that the relationship between the betas and distances is not consistent for all distance / beta pairs.')
+            raise ValueError(
+                'Inconsistent threshold minimums, indicating that the relationship between the betas and distances is not consistent for all distance / beta pairs.')

@@ -1,7 +1,9 @@
-import numpy as np
 from typing import Tuple
-from numba.pycc import CC
+
+import numpy as np
 from numba import njit
+from numba.pycc import CC
+
 from cityseer.algos import centrality, types
 
 cc = CC('data')
@@ -9,20 +11,18 @@ cc = CC('data')
 
 @cc.export('tiered_sort', '(float64[:,:], uint8)')
 @njit
-def tiered_sort(arr:np.ndarray, tier:int) -> np.ndarray:
-
+def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
     if tier > arr.shape[1] - 1:
         raise ValueError('The selected tier for sorting exceeds the available tiers.')
 
     # don't modify the arrays in place
-    sort_order = arr[:,tier].argsort()
+    sort_order = arr[:, tier].argsort()
     return arr[sort_order]
 
 
 @cc.export('binary_search', '(float64[:], float64, float64)')
 @njit
-def binary_search(arr:np.ndarray, min:float, max:float) -> Tuple[int, int]:
-
+def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
     if min > max:
         raise ValueError('Max must be greater than min.')
 
@@ -34,7 +34,7 @@ def binary_search(arr:np.ndarray, min:float, max:float) -> Tuple[int, int]:
 
 @cc.export('generate_index', '(float64[:], float64[:])')
 @njit
-def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
+def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
     '''
     Create a 2d numpy array:
     0 - x_arr
@@ -50,7 +50,7 @@ def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
 
     x_idx = np.arange(len(x_arr))
     x_stacked = np.vstack((x_arr, x_idx)).T
-    index_map[:,:2] = tiered_sort(x_stacked, tier=0)
+    index_map[:, :2] = tiered_sort(x_stacked, tier=0)
 
     y_idx = np.arange(len(y_arr))
     y_stacked = np.vstack((y_arr, y_idx)).T
@@ -61,7 +61,7 @@ def generate_index(x_arr:np.ndarray, y_arr:np.ndarray) -> np.ndarray:
 
 @cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
 @njit
-def _slice_index(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple[np.ndarray, np.ndarray]:
+def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[np.ndarray, np.ndarray]:
     '''
     0 - x_arr
     1 - x_idx - corresponds to original index of non-sorted x_arr
@@ -87,8 +87,7 @@ def _slice_index(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tupl
 
 @cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
 @njit
-def _generate_trim_to_full_map(full_to_trim_map:np.ndarray, trim_count:int) -> np.ndarray:
-
+def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
     trim_to_full_idx_map = np.full(trim_count, np.nan)
 
@@ -105,8 +104,8 @@ def _generate_trim_to_full_map(full_to_trim_map:np.ndarray, trim_count:int) -> n
 
 @cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
 @njit
-def distance_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radial=True) -> Tuple[np.ndarray, np.ndarray]:
-
+def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
+    np.ndarray, np.ndarray]:
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
     # prepare the full to trim output map
@@ -121,7 +120,7 @@ def distance_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radi
         x_coord = x_idx_sorted[idx][0]
         x_key = x_idx_sorted[idx][1]
         # see if the same key is in the y array
-        l, r = binary_search(y_idx_sorted[y_cursor:,1], x_key, x_key)
+        l, r = binary_search(y_idx_sorted[y_cursor:, 1], x_key, x_key)
         # l is the index relative to the cropped range
         # this can be incremented regardless of matches
         y_cursor += l
@@ -129,7 +128,7 @@ def distance_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radi
         if l < r:
             # if crow-flies - check the distance
             if radial:
-                y_coord = y_idx_sorted[y_cursor,0]
+                y_coord = y_idx_sorted[y_cursor, 0]
                 dist = np.hypot(x_coord - x, y_coord - y)
                 if dist > max_dist:
                     continue
@@ -143,8 +142,7 @@ def distance_filter(index_map:np.ndarray, x:float, y:float, max_dist:float, radi
 
 @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
 @njit
-def nearest_idx(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple[int, float]:
-
+def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
     # get the x and y ranges spanning the max distance
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
@@ -156,7 +154,7 @@ def nearest_idx(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple
         x_coord = x_idx_sorted[idx][0]
         x_key = x_idx_sorted[idx][1]
         # see if the same key is in the y array
-        l, r = binary_search(y_idx_sorted[y_cursor:,1], x_key, x_key)
+        l, r = binary_search(y_idx_sorted[y_cursor:, 1], x_key, x_key)
         # l is the index relative to the cropped range
         # this can be incremented regardless of matches
         y_cursor += l
@@ -172,10 +170,10 @@ def nearest_idx(index_map:np.ndarray, x:float, y:float, max_dist:float) -> Tuple
     return min_idx, min_dist
 
 
-#@cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
-#@njit
-def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, edge_map:np.ndarray, netw_index:np.ndarray,
-                      max_dist:float) -> np.ndarray:
+# @cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
+# @njit
+def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.ndarray, netw_index: np.ndarray,
+                      max_dist: float) -> np.ndarray:
     '''
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -277,29 +275,29 @@ def assign_to_network(data_map:np.ndarray, node_map:np.ndarray, edge_map:np.ndar
         # if encircling failed: simply select the closest and next closest neighbour
 
         # set in the data map
-        data_map[idx][4] = 0 #adj_idx
-        data_map[idx][5] = 0 #next_adj_idx
+        data_map[idx][4] = 0  # adj_idx
+        data_map[idx][5] = 0  # next_adj_idx
 
     print('...done')
 
     return data_map
 
 
-#@cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
-#@njit
-def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_map:np.ndarray, netw_index:np.ndarray,
-                         data_map:np.ndarray, angular:bool=False):
-
-    netw_x_arr = node_map[:,0]
-    netw_y_arr = node_map[:,1]
+# @cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
+# @njit
+def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, edge_map: np.ndarray,
+                         netw_index: np.ndarray,
+                         data_map: np.ndarray, angular: bool = False):
+    netw_x_arr = node_map[:, 0]
+    netw_y_arr = node_map[:, 1]
     src_x = netw_x_arr[src_idx]
     src_y = netw_y_arr[src_idx]
 
-    data_x_arr = data_map[:,0]
-    data_y_arr = data_map[:,1]
-    data_classes = data_map[:,3]
-    data_assign_map = data_map[:,4]
-    data_assign_dist = data_map[:,5]
+    data_x_arr = data_map[:, 0]
+    data_y_arr = data_map[:, 1]
+    data_classes = data_map[:, 3]
+    data_assign_map = data_map[:, 4]
+    data_assign_dist = data_map[:, 5]
 
     # filter the network by distance
     netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = \
@@ -319,7 +317,6 @@ def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_
     # STEP B - LOOKUP EACH DATA POINTS NEAREST AND NEXT NEAREST ADJACENCIES
 
     # STEP C - AGGREGATE TO LEAST DISTANCE VIA SHORTEST PATH MAP
-
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks

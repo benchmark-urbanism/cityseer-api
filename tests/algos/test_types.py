@@ -1,33 +1,32 @@
-import pytest
 import numpy as np
-from cityseer.util import graphs, mock, layers
-from cityseer.metrics import networks
+import pytest
+
 from cityseer.algos import data, types
+from cityseer.metrics import networks
+from cityseer.util import graphs, mock, layers
 
 
 def test_check_index_map():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
 
     with pytest.raises(ValueError):
-        types.check_index_map(N.index[:,:-1])
+        types.check_index_map(N.index[:, :-1])
     with pytest.raises(ValueError):
         # flip x order
         index_corrupted = N.index
-        index_corrupted[:,:-1] = index_corrupted[:,:-1][::-1]
+        index_corrupted[:, :-1] = index_corrupted[:, :-1][::-1]
         types.check_index_map(index_corrupted)
     with pytest.raises(ValueError):
         # flip y order
         index_corrupted = N.index
-        index_corrupted[:,:-3] = index_corrupted[:,:-3][::-1]
+        index_corrupted[:, :-3] = index_corrupted[:, :-3][::-1]
         types.check_index_map(index_corrupted)
 
 
 def test_check_data_map():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
@@ -35,17 +34,16 @@ def test_check_data_map():
     D = layers.Data_Layer_From_Dict(data_dict)
 
     with pytest.raises(ValueError):
-        types.check_data_map(D.data[:,:-1])
+        types.check_data_map(D.data[:, :-1])
 
 
 def test_check_trim_maps():
-
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
     trim_to_full_idx_map, full_to_trim_idx_map = \
-            data.distance_filter(N.index, N.x_arr[0], N.y_arr[1], 500, radial=True)
+        data.distance_filter(N.index, N.x_arr[0], N.y_arr[1], 500, radial=True)
 
     # mismatching lengths
     with pytest.raises(ValueError):
@@ -64,7 +62,6 @@ def test_check_trim_maps():
 
 
 def test_check_network_types():
-
     # network maps
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -73,13 +70,12 @@ def test_check_network_types():
 
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
-        types.check_network_types(N.nodes[:,:-1], N.edges)
+        types.check_network_types(N.nodes[:, :-1], N.edges)
     with pytest.raises(ValueError):
-        types.check_network_types(N.nodes, N.edges[:,:-1])
+        types.check_network_types(N.nodes, N.edges[:, :-1])
 
 
 def test_check_distances_and_betas():
-
     betas = np.array([-0.02, -0.01, -0.005, -0.0025])
     distances = networks.distance_from_beta(betas)
 

@@ -1,6 +1,7 @@
 import numpy as np
-from numba.pycc import CC
 from numba import njit
+from numba.pycc import CC
+
 from cityseer.algos import data, types
 
 cc = CC('networks')
@@ -8,7 +9,8 @@ cc = CC('networks')
 
 @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit
-def shortest_path_tree(node_map:np.ndarray, edge_map:np.ndarray, src_idx:int, trim_to_full_idx_map:np.ndarray, full_to_trim_idx_map:np.ndarray, max_dist:float=np.inf, angular:bool=False):
+def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int, trim_to_full_idx_map: np.ndarray,
+                       full_to_trim_idx_map: np.ndarray, max_dist: float = np.inf, angular: bool = False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
@@ -150,7 +152,8 @@ def shortest_path_tree(node_map:np.ndarray, edge_map:np.ndarray, src_idx:int, tr
 
 @cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
-def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndarray, betas:np.ndarray, closeness_keys:np.ndarray, betweenness_keys:np.ndarray, angular:bool=False):
+def local_centrality(node_map: np.ndarray, edge_map: np.ndarray, distances: np.ndarray, betas: np.ndarray,
+                     closeness_keys: np.ndarray, betweenness_keys: np.ndarray, angular: bool = False):
     '''
     NODE MAP:
     0 - x
@@ -183,9 +186,9 @@ def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndar
     max_dist = distances.max()
 
     # disaggregate node_map
-    x_arr = node_map[:,0]
-    y_arr = node_map[:,1]
-    nodes_live = node_map[:,2]
+    x_arr = node_map[:, 0]
+    y_arr = node_map[:, 1]
+    nodes_live = node_map[:, 2]
 
     # generate the indices for x and y
     # NOTE -> debating whether to do this implicitly or explicitly outside of this method... as with diversity.mixed_uses()
@@ -255,13 +258,15 @@ def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndar
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index, src_x, src_y, max_dist, radial=True)
+        trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index, src_x, src_y, max_dist,
+                                                                          radial=True)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
         # distance map in metres still necessary for defining max distances and computing equivalent distance measures
         map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
-            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist, angular)
+            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist,
+                               angular)
 
         # use corresponding indices for reachable verts
         ind = np.where(np.isfinite(map_distance_trim))[0]
@@ -283,7 +288,7 @@ def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndar
                 continue
 
             # closeness weight is based on target index -> aggregated to source index
-            cl_weight= node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
+            cl_weight = node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
 
             # calculate centralities starting with closeness
             for i in range(len(distances)):
@@ -340,6 +345,7 @@ def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndar
             for p_idx in range(len(closeness_data[4][d_idx])):
                 # ignore 0 / 0 situations where no proximate nodes or zero impedance
                 if closeness_data[2][d_idx][p_idx] != 0:
-                    closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[2][d_idx][p_idx]
+                    closeness_data[4][d_idx][p_idx] = closeness_data[0][d_idx][p_idx] ** 2 / closeness_data[2][d_idx][
+                        p_idx]
 
     return closeness_data, betweenness_data

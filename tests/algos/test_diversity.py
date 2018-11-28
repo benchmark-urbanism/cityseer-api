@@ -1,12 +1,12 @@
-import pytest
 import numpy as np
+import pytest
+from scipy.stats import entropy
+
 from cityseer.algos import diversity
 from cityseer.util import mock
-from scipy.stats import entropy
 
 
 def test_hill_diversity():
-
     # test hill diversity against scipy entropy
     for counts, probs in mock.mock_species_diversity():
         # check hill q=1
@@ -21,14 +21,13 @@ def test_hill_diversity():
 
 
 def test_hill_diversity_branch_generic():
-
     #  test hill diversity against weighted diversity where all weights = 1
     for counts, probs in mock.mock_species_diversity():
-
         q = [0, 1, 2][np.random.randint(0, 3)]
 
         non_weights = np.full(len(counts), 1)
-        assert abs(diversity.hill_diversity(counts, q) - diversity.hill_diversity_branch_generic(counts, non_weights, q)) < 0.00000001
+        assert abs(diversity.hill_diversity(counts, q) - diversity.hill_diversity_branch_generic(counts, non_weights,
+                                                                                                 q)) < 0.00000001
 
         # check for malformed signatures
         with pytest.raises(ValueError):
@@ -40,7 +39,6 @@ def test_hill_diversity_branch_generic():
 
 
 def test_hill_diversity_branch_distance_wt():
-
     for counts, probs in mock.mock_species_diversity():
         distances = np.random.uniform(0, 2000, len(counts))
         q = [0, 1, 2][np.random.randint(0, 3)]
@@ -51,7 +49,6 @@ def test_hill_diversity_branch_distance_wt():
 
 
 def test_hill_diversity_pairwise_generic():
-
     # what to test against?
     # just run for now to check against unexpectedly thrown errors
     for counts, probs in mock.mock_species_diversity():
@@ -69,7 +66,6 @@ def test_hill_diversity_pairwise_generic():
 
 
 def test_pairwise_distance_matrix():
-
     def check_matrix(wt_matrix, i, j, wt):
         # in this case the iteration handles i = i situations
         assert wt_matrix[i][j] == wt
@@ -89,7 +85,6 @@ def test_pairwise_distance_matrix():
 
 
 def test_hill_diversity_pairwise_distance_wt():
-
     for counts, probs in mock.mock_species_diversity():
         distances = np.random.uniform(0, 2000, len(counts))
         beta = [0.01, 0.005, 0.0025][np.random.randint(0, 3)]
@@ -102,14 +97,13 @@ def test_hill_diversity_pairwise_distance_wt():
 
 
 def test_pairwise_disparity_matrix():
-
     def check_matrix(wt_matrix, i, j, wt):
         assert wt_matrix[i][i] == 0
         assert wt_matrix[j][j] == 0
         assert wt_matrix[i][j] == wt
         assert wt_matrix[j][i] == wt
 
-    class_weights = np.array([3/3, 2/3, 1/3, 0])
+    class_weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
 
     # test various levels of convergence
     class_tiers = np.array([
@@ -154,7 +148,6 @@ def test_pairwise_disparity_matrix():
 
 
 def test_hill_diversity_pairwise_disparity_wt():
-
     def tier_factory(n):
         tiers = []
         for i in range(n):
@@ -168,7 +161,7 @@ def test_hill_diversity_pairwise_disparity_wt():
 
     for counts, probs in mock.mock_species_diversity():
         tiers = tier_factory(len(counts))
-        weights = np.array([3/3, 2/3, 1/3, 0])
+        weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
         q = float([0, 1, 2][np.random.randint(0, 3)])
 
         # check for malformed data

@@ -3,8 +3,10 @@ Centrality methods
 '''
 import logging
 from typing import Union
-import numpy as np
+
 import networkx as nx
+import numpy as np
+
 from cityseer.algos import centrality, data, types
 from cityseer.util import graphs
 
@@ -131,7 +133,6 @@ class Network_Layer:
                     for dist in measure_value:
                         m[uid][metric_key][measure_key][dist] = measure_value[dist][idx]
         return m
-
 
     def compute_centrality(self, close_metrics: Union[list, tuple] = None, between_metrics: Union[list, tuple] = None):
         '''

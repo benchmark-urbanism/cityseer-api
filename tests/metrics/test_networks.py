@@ -1,10 +1,12 @@
-import pytest
-import numpy as np
-import networkx as nx
 from itertools import permutations
+
+import networkx as nx
+import numpy as np
+import pytest
+
 from cityseer.algos import data
-from cityseer.util import mock, graphs
 from cityseer.metrics import networks
+from cityseer.util import mock, graphs
 
 
 def test_distance_from_beta():

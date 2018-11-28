@@ -1,13 +1,13 @@
-import pytest
-import numpy as np
 import networkx as nx
+import numpy as np
+import pytest
 from shapely import geometry
-from cityseer.util import mock, graphs
+
 from cityseer.metrics import networks
+from cityseer.util import mock, graphs
 
 
 def test_networkX_simple_geoms():
-
     G, pos = mock.mock_graph()
     G_geoms = graphs.networkX_simple_geoms(G)
 
@@ -31,7 +31,6 @@ def test_networkX_simple_geoms():
 
 
 def test_networkX_wgs_to_utm():
-
     # check that node coordinates are correctly converted
     G_utm, pos = mock.mock_graph()
     G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
@@ -77,7 +76,6 @@ def test_networkX_wgs_to_utm():
 
 
 def test_networkX_remove_straight_intersections():
-
     # test that redundant (straight) intersections are removed
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -127,7 +125,6 @@ def test_networkX_remove_straight_intersections():
 
 
 def test_networkX_decompose():
-
     # check that missing geoms throw an error
     G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
@@ -177,7 +174,6 @@ def test_networkX_decompose():
 
 
 def test_networkX_to_dual():
-
     # check that missing geoms throw an error
     G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
@@ -236,7 +232,6 @@ def test_networkX_to_dual():
 
 
 def test_networkX_edge_defaults():
-
     # check that missing geoms throw an error
     G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
@@ -259,7 +254,6 @@ def test_networkX_edge_defaults():
 
 
 def test_networkX_m_weighted_nodes():
-
     # check that missing length attribute throws error
     G, pos = mock.mock_graph()
     with pytest.raises(AttributeError):
@@ -277,7 +271,6 @@ def test_networkX_m_weighted_nodes():
 
 
 def test_graph_maps_from_networkX():
-
     # template graph
     G_template, pos = mock.mock_graph()
     G_template = graphs.networkX_simple_geoms(G_template)
@@ -359,7 +352,6 @@ def test_graph_maps_from_networkX():
 
 
 def test_networkX_from_graph_maps():
-
     # check round trip to and from graph maps results in same graph
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)

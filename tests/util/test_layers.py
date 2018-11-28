@@ -1,13 +1,14 @@
 import copy
+
+import numpy as np
 import pytest
 import utm
-import numpy as np
+
 from cityseer.algos import data
 from cityseer.util import mock, layers
 
 
 def test_Data_Layer():
-
     G, pos = mock.mock_graph()
     data_dict = mock.mock_data(G)
     data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
@@ -30,7 +31,6 @@ def test_Data_Layer():
 
 
 def test_Data_Layer_From_Dict():
-
     G, pos = mock.mock_graph()
     data_dict = mock.mock_data(G)
     data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
@@ -53,7 +53,6 @@ def test_Data_Layer_From_Dict():
 
 
 def test_dict_wgs_to_utm():
-
     # check that node coordinates are correctly converted
     G_utm, pos = mock.mock_graph()
     data_dict = mock.mock_data(G_utm)
@@ -92,7 +91,6 @@ def test_dict_wgs_to_utm():
 
 
 def test_dict_to_data_layer():
-
     # generate mock data
     G, pos = mock.mock_graph()
     data_dict = mock.mock_data(G)

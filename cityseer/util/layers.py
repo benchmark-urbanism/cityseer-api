@@ -3,12 +3,13 @@
 '''
 import logging
 from typing import Tuple
-from tqdm import tqdm
-import utm
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
-from cityseer.algos import data, types
 
+import numpy as np
+import utm
+from sklearn.preprocessing import LabelEncoder
+from tqdm import tqdm
+
+from cityseer.algos import data, types
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class Data_Layer:
 
-    def __init__(self, data_uids:[list, tuple], data_map:np.ndarray, class_labels:[list, tuple]):
+    def __init__(self, data_uids: [list, tuple], data_map: np.ndarray, class_labels: [list, tuple]):
 
         '''
         DATA MAP:
@@ -72,13 +73,11 @@ class Data_Layer:
 class Data_Layer_From_Dict(Data_Layer):
 
     def __init__(self, data_dict):
-
         d_labels, d_map, d_classes = dict_to_data_map(data_dict)
         super().__init__(d_labels, d_map, d_classes)
 
 
-def dict_wgs_to_utm(data_dict:dict) -> dict:
-
+def dict_wgs_to_utm(data_dict: dict) -> dict:
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
 
@@ -107,8 +106,7 @@ def dict_wgs_to_utm(data_dict:dict) -> dict:
     return data_dict_copy
 
 
-def dict_to_data_map(data_dict:dict) -> Tuple[tuple, np.ndarray, tuple]:
-
+def dict_to_data_map(data_dict: dict) -> Tuple[tuple, np.ndarray, tuple]:
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
 

@@ -3,11 +3,13 @@ General graph manipulation
 '''
 import logging
 from typing import Union, List, Tuple
+
+import networkx as nx
+import numpy as np
 import utm
 from shapely import geometry, ops
-import networkx as nx
 from tqdm import tqdm
-import numpy as np
+
 from cityseer.algos import types
 
 logging.basicConfig(level=logging.INFO)
@@ -514,7 +516,6 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
                              edge_map: np.ndarray,
                              networkX_graph: nx.Graph = None,
                              metrics_dict: dict = None) -> nx.Graph:
-
     logger.info('Populating node and edge map data to a networkX graph.')
 
     types.check_network_types(node_map, edge_map)
@@ -526,7 +527,8 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
         g_copy = networkX_graph.copy()
         for uid in node_uids:
             if uid not in g_copy:
-                raise AttributeError(f'Node uid {uid} not found in graph. If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
+                raise AttributeError(
+                    f'Node uid {uid} not found in graph. If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
     else:
         logger.info('No existing graph found, creating new.')
         g_copy = nx.Graph()

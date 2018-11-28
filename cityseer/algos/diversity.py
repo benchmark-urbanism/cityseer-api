@@ -1,6 +1,7 @@
 import numpy as np
-from numba.pycc import CC
 from numba import njit
+from numba.pycc import CC
+
 from cityseer.algos import data, types
 
 cc = CC('diversity')
@@ -8,7 +9,7 @@ cc = CC('diversity')
 
 @cc.export('hill_diversity', '(uint64[:], float64)')
 @njit
-def hill_diversity(class_counts:np.ndarray, q:float) -> float:
+def hill_diversity(class_counts: np.ndarray, q: float) -> float:
     '''
     Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
 
@@ -45,7 +46,7 @@ def hill_diversity(class_counts:np.ndarray, q:float) -> float:
 
 @cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
 @njit
-def hill_diversity_branch_generic(class_counts:np.ndarray, class_weights:np.ndarray, q:float) -> float:
+def hill_diversity_branch_generic(class_counts: np.ndarray, class_weights: np.ndarray, q: float) -> float:
     '''
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
     See table on page 308 and surrounding text
@@ -86,7 +87,7 @@ def hill_diversity_branch_generic(class_counts:np.ndarray, class_weights:np.ndar
             PD_lim += wt * a / T * np.log(a / T)  # sum entropy
         # return exponent of entropy
         PD_lim = np.exp(-PD_lim)
-        return PD_lim #/ T
+        return PD_lim  # / T
     # otherwise use the usual form of Hill numbers
     else:
         PD = 0
@@ -94,16 +95,16 @@ def hill_diversity_branch_generic(class_counts:np.ndarray, class_weights:np.ndar
         for i in range(len(class_counts)):
             wt = class_weights[i]
             a = class_counts[i] / N
-            PD += wt * (a / T)**q  # sum
+            PD += wt * (a / T) ** q  # sum
         # once summed, apply q
         PD = PD ** (1 / (1 - q))
-        return PD #/ T
+        return PD  # / T
 
 
 @cc.export('hill_diversity_branch_distance_wt', '(uint64[:], float64[:], float64, float64)')
 @njit
-def hill_diversity_branch_distance_wt(class_counts:np.array, class_distances:np.array, beta:float, q:float) -> float:
-
+def hill_diversity_branch_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
+                                      q: float) -> float:
     if beta < 0:
         raise ValueError('Please provide the beta/s without the leading negative.')
 
@@ -114,7 +115,7 @@ def hill_diversity_branch_distance_wt(class_counts:np.array, class_distances:np.
 
 @cc.export('hill_diversity_pairwise_generic', '(uint64[:], float64[:,:], float64)')
 @njit
-def hill_diversity_pairwise_generic(class_counts:np.ndarray, wt_matrix:np.ndarray, q:float) -> float:
+def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
     '''
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
     See table on page 308 and surrounding text
@@ -187,8 +188,7 @@ def hill_diversity_pairwise_generic(class_counts:np.ndarray, wt_matrix:np.ndarra
 
 @cc.export('pairwise_distance_matrix', '(float64[:], float64)')
 @njit
-def pairwise_distance_matrix(distances:np.ndarray, beta:float) -> np.ndarray:
-
+def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
     if beta < 0:
         raise ValueError('Please provide the beta/s without the leading negative.')
 
@@ -210,8 +210,8 @@ def pairwise_distance_matrix(distances:np.ndarray, beta:float) -> np.ndarray:
 
 @cc.export('hill_diversity_pairwise_distance_wt', '(uint64[:], float64[:], float64, float64)')
 @njit
-def hill_diversity_pairwise_distance_wt(class_counts:np.array, class_distances:np.array, beta:float, q:float) -> float:
-
+def hill_diversity_pairwise_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
+                                        q: float) -> float:
     if len(class_counts) != len(class_distances):
         raise ValueError('Mismatching number of unique class counts and class distances.')
 
@@ -222,8 +222,7 @@ def hill_diversity_pairwise_distance_wt(class_counts:np.array, class_distances:n
 
 @cc.export('pairwise_disparity_matrix', '(uint64[:,:], float64[:])')
 @njit
-def pairwise_disparity_matrix(class_tiers:np.ndarray, class_weights:np.ndarray) -> np.ndarray:
-
+def pairwise_disparity_matrix(class_tiers: np.ndarray, class_weights: np.ndarray) -> np.ndarray:
     if class_tiers.shape[1] != len(class_weights):
         raise ValueError('The number of weights must correspond to the number of tiers for nodes i and j.')
 
@@ -244,7 +243,8 @@ def pairwise_disparity_matrix(class_tiers:np.ndarray, class_weights:np.ndarray) 
                     else:
                         break
                 if np.isnan(w):
-                    raise AttributeError('Failed convergence in species tiers. Check that all tiers converge at the first level.')
+                    raise AttributeError(
+                        'Failed convergence in species tiers. Check that all tiers converge at the first level.')
                 # write in both directions - though not technically necessary
                 wt_matrix[i_idx][j_idx] = w
                 wt_matrix[j_idx][i_idx] = w
@@ -253,8 +253,8 @@ def pairwise_disparity_matrix(class_tiers:np.ndarray, class_weights:np.ndarray) 
 
 @cc.export('hill_diversity_pairwise_disparity_wt', '(uint64[:], uint64[:,:], float64[:], float64)')
 @njit
-def hill_diversity_pairwise_disparity_wt(class_counts:np.array, class_tiers:np.array, class_weights:np.array, q:float) -> float:
-
+def hill_diversity_pairwise_disparity_wt(class_counts: np.array, class_tiers: np.array, class_weights: np.array,
+                                         q: float) -> float:
     if len(class_counts) != len(class_tiers):
         raise ValueError('Mismatching number of unique class counts and respective class taxonomy tiers.')
 
@@ -267,7 +267,7 @@ def hill_diversity_pairwise_disparity_wt(class_counts:np.array, class_tiers:np.a
 # TypeError: invalid signature: 'str' instance not allowed
 @cc.export('gini_simpson_diversity', 'float64(uint64[:])')
 @njit
-def gini_simpson_diversity(class_counts:np.ndarray) -> float:
+def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     '''
     Gini-Simpson
     Gini transformed to 1 − λ
@@ -292,7 +292,7 @@ def gini_simpson_diversity(class_counts:np.ndarray) -> float:
 
 @cc.export('shannon_diversity', 'float64(uint64[:])')
 @njit
-def shannon_diversity(class_counts:np.ndarray) -> float:
+def shannon_diversity(class_counts: np.ndarray) -> float:
     '''
     Entropy
     p = Xi/N
@@ -313,7 +313,8 @@ def shannon_diversity(class_counts:np.ndarray) -> float:
 
 @cc.export('raos_quadratic_diversity', '(uint64[:], float64[:,:], float64, float64)')
 @njit
-def raos_quadratic_diversity(class_counts:np.ndarray, wt_matrix:np.ndarray, alpha:float=1, beta:float=1) -> float:
+def raos_quadratic_diversity(class_counts: np.ndarray, wt_matrix: np.ndarray, alpha: float = 1,
+                             beta: float = 1) -> float:
     '''
     Rao's quadratic - bias corrected and based on disparity
 
@@ -346,11 +347,11 @@ def raos_quadratic_diversity(class_counts:np.ndarray, wt_matrix:np.ndarray, alph
             p_j = class_counts[j] / (N - 1)  # bias adjusted
             # calculate 3rd level disparity
             wt = wt_matrix[i][j]
-            R += wt**alpha * (p_i * p_j)**beta
+            R += wt ** alpha * (p_i * p_j) ** beta
     return R
 
 
-#@njit
+# @njit
 def deduce_species(classes, distances, max_dist=1600):
     '''
     Sifts through the classes and returns unique classes, their counts, and the nearest distance to each respective type
@@ -472,19 +473,19 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
     max_dist = distances.max()
 
     # disaggregate node_map
-    netw_x_arr = node_map[:,0]
-    netw_y_arr = node_map[:,1]
-    netw_nodes_live = node_map[:,2]
+    netw_x_arr = node_map[:, 0]
+    netw_y_arr = node_map[:, 1]
+    netw_nodes_live = node_map[:, 2]
 
     # generate the indices for x and y
     # NOTE -> debating whether to do this implicitly or explicitly outside of this method...as with networks.network_centralities()
     # if the latter, then can be reused, but requires more cognisance on part of user
     netw_index = data.generate_index(netw_x_arr, netw_y_arr)
 
-    #TODO: confirm number of metrics
+    # TODO: confirm number of metrics
     mixed_use_data = np.full((10, d_n, n), 0.0)
 
-    #TODO: insert metrics
+    # TODO: insert metrics
     def mixed_use_metrics(idx, class_counts, distances, etc):
 
         if idx == 0:
@@ -504,8 +505,6 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
         # generate the reachable classes and their respective distances
         reachable_classes_trim, reachable_classes_dist_trim = \
             data.aggregate_to_src_idx(src_idx, max_dist, node_map, edge_map, netw_index, data_map, angular=angular)
-
-
 
     '''
         # get unique classes, their counts, and nearest - use the default max distance of 1600m

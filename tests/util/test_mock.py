@@ -1,10 +1,10 @@
-from cityseer.util import mock
 import networkx as nx
 import numpy as np
 
+from cityseer.util import mock
+
 
 def test_mock_graph():
-
     G, pos = mock.mock_graph()
     G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
 
@@ -14,7 +14,7 @@ def test_mock_graph():
     for g in [G, G_wgs]:
         assert g.number_of_nodes() == 46
         assert g.number_of_edges() == 69
-        assert nx.average_degree_connectivity(g) == { 3: 3.0 }
+        assert nx.average_degree_connectivity(g) == {3: 3.0}
         assert nx.average_shortest_path_length(g) == 4.356521739130435
 
         for n, d in g.nodes(data=True):
@@ -23,7 +23,6 @@ def test_mock_graph():
 
 
 def test_mock_data():
-
     G, pos = mock.mock_graph()
     data = mock.mock_data(G)
 
@@ -52,13 +51,11 @@ def test_mock_data():
 
 
 def test_mock_species_diversity():
-
     for counts, probs in mock.mock_species_diversity():
         assert np.array_equal(counts / counts.sum(), probs)
         assert round(probs.sum(), 8) == 1
 
 
 def test_mock_landuse_classifications():
-
     classes, distances = mock.mock_landuse_classifications()
     assert len(classes) == len(distances)

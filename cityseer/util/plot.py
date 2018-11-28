@@ -1,12 +1,11 @@
 '''
 These plot methods are mainly for testing and debugging
 '''
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
 
 
-def plot_graphs(primal:nx.Graph=None, dual:nx.Graph=None):
-
+def plot_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
     if primal is not None:
         pos_primal = {}
         for n, d in primal.nodes(data=True):
@@ -39,7 +38,6 @@ def plot_graphs(primal:nx.Graph=None, dual:nx.Graph=None):
 
 
 def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
-
     # the links are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of links
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
@@ -90,7 +88,7 @@ def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
             edge_idx += 1
 
     for ax in (ax1, ax2):
-        for label, x, y in zip(node_labels, node_map[:,0], node_map[:,1]):
+        for label, x, y in zip(node_labels, node_map[:, 0], node_map[:, 1]):
             ax.annotate(label, xy=(x, y))
 
     '''
@@ -106,8 +104,9 @@ def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
     if data_map is not None:
 
         # plot parents on ax1
-        ax1.scatter(x=data_map[:, 0], y=data_map[:,1], c=data_map[:,3])
-        for x, y, cl, netw_idx, dist in zip(data_map[:,0], data_map[:,1], data_map[:,3], data_map[:,4], data_map[:,5]):
+        ax1.scatter(x=data_map[:, 0], y=data_map[:, 1], c=data_map[:, 3])
+        for x, y, cl, netw_idx, dist in zip(data_map[:, 0], data_map[:, 1], data_map[:, 3], data_map[:, 4],
+                                            data_map[:, 5]):
             # plot lines to parents for easier viz
             p_x = node_map[int(netw_idx)][0]
             p_y = node_map[int(netw_idx)][1]
