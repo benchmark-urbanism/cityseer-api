@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 from numba.pycc import CC
 from numba import njit
-from cityseer.algos import networks, types
+from cityseer.algos import centrality, types
 
 cc = CC('data')
 
@@ -311,8 +311,8 @@ def aggregate_to_src_idx(src_idx:int, max_dist:float, node_map:np.ndarray, edge_
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is check later
     map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
-        networks.shortest_path_tree(node_map, edge_map, src_idx, netw_trim_to_full_idx_map, netw_full_to_trim_idx_map,
-                                    max_dist=np.inf, angular=angular)
+        centrality.shortest_path_tree(node_map, edge_map, src_idx, netw_trim_to_full_idx_map, netw_full_to_trim_idx_map,
+                                      max_dist=np.inf, angular=angular)
 
     # STEP A - SLICE THE DATA POINTS
 

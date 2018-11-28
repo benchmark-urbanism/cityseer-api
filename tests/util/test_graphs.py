@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 from shapely import geometry
 from cityseer.util import mock, graphs
-from cityseer.metrics import centrality
+from cityseer.metrics import networks
 
 
 def test_networkX_simple_geoms():
@@ -370,7 +370,9 @@ def test_networkX_from_graph_maps():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
         G.nodes[n]['weight'] = np.random.random() * 2000
     node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
-    G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map)
+    N = networks.Network_Layer_From_NetworkX(G)
+
+    G_round_trip = graphs.networkX_from_graph_maps(N.uids, N.nodes, N.edges)
     assert G_round_trip.nodes == G.nodes
     assert G_round_trip.edges == G.edges
 
@@ -386,7 +388,7 @@ def test_networkX_from_graph_maps():
         graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])
 
     # check with data tuples
-    harmonic = centrality.harmonic_closeness(node_map, edge_map, [200])
+    harmonic = networks.harmonic_closeness(N, [200])
     data_tuples = [('harmonic_200', harmonic)]
     G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=data_tuples)
     for n, d in G_round_trip.nodes(data=True):

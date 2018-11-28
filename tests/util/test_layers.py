@@ -2,7 +2,54 @@ import copy
 import pytest
 import utm
 import numpy as np
+from cityseer.algos import data
 from cityseer.util import mock, layers
+
+
+def test_Data_Layer():
+
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_data(G)
+    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    class_codes = data_map[:, 3]
+    index = data.generate_index(x_arr, y_arr)
+
+    # test against Data_Layer internal process
+    D = layers.Data_Layer(data_uids, data_map, class_labels)
+    assert D.uids == data_uids
+    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert D.class_labels == class_labels
+    assert np.array_equal(D.index, index)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.class_codes, class_codes)
+
+
+def test_Data_Layer_From_Dict():
+
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_data(G)
+    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    class_codes = data_map[:, 3]
+    index = data.generate_index(x_arr, y_arr)
+
+    # test against Data_Layer_From_Dict's internal process
+    D = layers.Data_Layer_From_Dict(data_dict)
+    assert D.uids == data_uids
+    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert D.class_labels == class_labels
+    assert np.array_equal(D.index, index)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.class_codes, class_codes)
 
 
 def test_dict_wgs_to_utm():
@@ -44,22 +91,22 @@ def test_dict_wgs_to_utm():
         layers.dict_wgs_to_utm(data_dict)
 
 
-def test_dict_to_data_map():
+def test_dict_to_data_layer():
 
     # generate mock data
     G, pos = mock.mock_graph()
     data_dict = mock.mock_data(G)
-    data_labels, data_map, data_classes = layers.dict_to_data_map(data_dict)
+    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
 
-    assert len(data_labels) == len(data_map) == len(data_dict)
+    assert len(data_uids) == len(data_map) == len(data_dict)
 
-    for d_label, d in zip(data_labels, data_map):
+    for d_label, d in zip(data_uids, data_map):
         assert d[0] == data_dict[d_label]['x']
         assert d[1] == data_dict[d_label]['y']
         assert d[2] == data_dict[d_label]['live']
         # check that the class encoding maps back to the class
         class_encoding = int(d[3])
-        assert data_classes[class_encoding] == data_dict[d_label]['class']
+        assert class_labels[class_encoding] == data_dict[d_label]['class']
         assert np.isnan(d[4])
         assert np.isnan(d[5])
 

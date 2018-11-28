@@ -150,7 +150,7 @@ def shortest_path_tree(node_map:np.ndarray, edge_map:np.ndarray, src_idx:int, tr
 
 @cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
 @njit
-def network_centralities(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndarray, betas:np.ndarray, closeness_keys:np.ndarray, betweenness_keys:np.ndarray, angular:bool=False):
+def local_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:np.ndarray, betas:np.ndarray, closeness_keys:np.ndarray, betweenness_keys:np.ndarray, angular:bool=False):
     '''
     NODE MAP:
     0 - x

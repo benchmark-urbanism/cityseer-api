@@ -7,10 +7,74 @@ from tqdm import tqdm
 import utm
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
+from cityseer.algos import data, types
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class Data_Layer:
+
+    def __init__(self, data_uids:[list, tuple], data_map:np.ndarray, class_labels:[list, tuple]):
+
+        '''
+        DATA MAP:
+        0 - x
+        1 - y
+        2 - live
+        3 - data class - integer form encoded from original raw classes
+        4 - assigned network index - nearest
+        5 - assigned network index - next-nearest
+
+        INDEX MAP
+        0 - x_arr
+        1 - x_idx - corresponds to original index of non-sorted x_arr
+        2 - y_arr
+        3 - y_idx - corresponds to original index of non-sorted y_arr
+        '''
+
+        self.uids = data_uids  # original labels / indices for each data point
+        self.data = data_map  # data map per above
+        self.class_labels = class_labels  # original raw data classes
+        self.index = data.generate_index(self.x_arr, self.y_arr)
+
+        # check the data structures
+        if len(self.uids) != len(self.data):
+            raise ValueError('The number of data labels does not match the number of data points.')
+        if len(self.class_labels) != len(set(self.class_codes)):
+            raise ValueError('The number of data class labels does not match the number of data class codes.')
+        if len(self.data) != len(self.index):
+            raise ValueError('The data map and index map are not the same lengths.')
+        types.check_data_map(self.data)
+        types.check_index_map(self.index)
+
+    @property
+    def x_arr(self):
+        return self.data[:, 0]
+
+    @property
+    def y_arr(self):
+        return self.data[:, 1]
+
+    @property
+    def live(self):
+        return self.data[:, 2]
+
+    @property
+    def class_codes(self):
+        return self.data[:, 3]
+
+    def assign_to_network(self, Network, max_dist):
+        data.assign_to_network(self.data, Network.nodes, Network.edges, Network.index, max_dist)
+
+
+class Data_Layer_From_Dict(Data_Layer):
+
+    def __init__(self, data_dict):
+
+        d_labels, d_map, d_classes = dict_to_data_map(data_dict)
+        super().__init__(d_labels, d_map, d_classes)
 
 
 def dict_wgs_to_utm(data_dict:dict) -> dict:

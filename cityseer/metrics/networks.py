@@ -4,13 +4,75 @@ Centrality methods
 import logging
 from typing import Union, Tuple, Any
 import numpy as np
-from cityseer.algos import networks, types
+from cityseer.algos import centrality, data, types
+from cityseer.util import graphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 default_min_threshold_wt = 0.01831563888873418
+
+
+class Network_Layer:
+
+    def __init__(self, node_uids: [list, tuple], node_map: np.ndarray, edge_map: [list, tuple]):
+
+        '''
+        NODE MAP:
+        0 - x
+        1 - y
+        2 - live
+        3 - edge indx
+        4 - weight
+
+        EDGE MAP:
+        0 - start node
+        1 - end node
+        2 - length in metres
+        3 - impedance
+
+        INDEX MAP
+        0 - x_arr
+        1 - x_idx - corresponds to original index of non-sorted x_arr
+        2 - y_arr
+        3 - y_idx
+        '''
+
+        self.uids = node_uids
+        self.nodes = node_map
+        self.edges = edge_map
+        self.index = data.generate_index(self.x_arr, self.y_arr)
+
+        # check the data structures
+        if len(self.uids) != len(self.nodes):
+            raise ValueError('The number of indices does not match the number of nodes.')
+        if len(self.nodes) != len(self.index):
+            raise ValueError('The data map and index map are not the same lengths.')
+        types.check_network_types(self.nodes, self.edges)
+        types.check_index_map(self.index)
+
+    @property
+    def x_arr(self):
+        return self.nodes[:, 0]
+
+    @property
+    def y_arr(self):
+        return self.nodes[:, 1]
+
+    @property
+    def live(self):
+        return self.nodes[:, 2]
+
+    def to_networkX(self):
+        return graphs.networkX_from_graph_maps(self.uids, self.nodes, self.edges)
+
+
+class Network_Layer_From_NetworkX(Network_Layer):
+
+    def __init__(self, G):
+        n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)
+        super().__init__(n_labels, n_map, e_map)
 
 
 def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:float=default_min_threshold_wt) -> Tuple[np.ndarray, float]:
@@ -32,13 +94,11 @@ def distance_from_beta(beta:Union[float, list, np.ndarray], min_threshold_wt:flo
 
 
 Enumerable = Union[list, tuple, np.ndarray]
-def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable, close_metrics:list=None,
-        between_metrics:list=None, min_threshold_wt:float=default_min_threshold_wt, angular:bool=False) -> Tuple[Any, ...]:
+def compute_centrality(Network, distances:Enumerable, close_metrics:list=None, between_metrics:list=None,
+                       min_threshold_wt:float=default_min_threshold_wt, angular:bool=False) -> Tuple[Any, ...]:
     '''
     This method provides full access to the underlying network.network_centralities method
     '''
-
-    types.check_network_types(node_map, edge_map)
 
     if distances == []:
         raise ValueError('A list of local centrality distance thresholds is required.')
@@ -79,8 +139,8 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
                 raise ValueError(f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
             betweenness_map.append(betweenness_options.index(bt))
 
-    closeness_data, betweenness_data = networks.network_centralities(node_map, edge_map, np.array(distances),
-                                np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
+    closeness_data, betweenness_data = centrality.local_centrality(Network.nodes, Network.edges,
+                                                                   np.array(distances), np.array(betas), np.array(closeness_map_extra), np.array(betweenness_map), angular)
 
     # return statement tuple unpacking supported from Python 3.8... till then, unpack first
     return_data = list((*closeness_data[closeness_map], *betweenness_data[betweenness_map]))
@@ -93,14 +153,13 @@ def compute_centrality(node_map:np.ndarray, edge_map:np.ndarray, distances:Enume
     return return_data
 
 
-def harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    harmonic, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'])
+def harmonic_closeness(Network, distances:Enumerable) -> np.ndarray:
+    harmonic, betas = compute_centrality(Network, distances, close_metrics=['harmonic'])
     # discard betas - unused
     return harmonic
 
 
-def gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable=None, betas:Enumerable=None,
-            min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
+def gravity(Network, distances:Enumerable=None, betas:Enumerable=None, min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
     # establish distances and min weights
     if distances is not None and betas is None:
         dist = distances
@@ -110,25 +169,24 @@ def gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable=None,
     else:
         raise ValueError('Please provide either distances or betas, but not both.')
 
-    gravity, betas = compute_centrality(node_map, edge_map, dist, close_metrics=['gravity'], min_threshold_wt=threshold_wt)
+    gravity, betas = compute_centrality(Network, dist, close_metrics=['gravity'], min_threshold_wt=threshold_wt)
     # discard betas - unused
     return gravity
 
 
-def angular_harmonic_closeness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    harmonic, betas = compute_centrality(node_map, edge_map, distances, close_metrics=['harmonic'], angular=True)
+def angular_harmonic_closeness(Network, distances:Enumerable) -> np.ndarray:
+    harmonic, betas = compute_centrality(Network, distances, close_metrics=['harmonic'], angular=True)
     # discard betas - unused
     return harmonic
 
 
-def betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    betw, betas = compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'])
+def betweenness(Network, distances:Enumerable) -> np.ndarray:
+    betw, betas = compute_centrality(Network, distances, between_metrics=['betweenness'])
     # discard betas - unused
     return betw
 
 
-def betweenness_gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable=None, betas:Enumerable=None,
-                        min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
+def betweenness_gravity(Network, distances:Enumerable=None, betas:Enumerable=None, min_threshold_wt=default_min_threshold_wt) -> np.ndarray:
     # establish distances and min weights
     if distances is not None and betas is None:
         dist = distances
@@ -138,12 +196,12 @@ def betweenness_gravity(node_map:np.ndarray, edge_map:np.ndarray, distances:Enum
     else:
         raise ValueError('Please provide either distances or betas, but not both.')
 
-    betw, betas = compute_centrality(node_map, edge_map, dist, between_metrics=['betweenness_gravity'], min_threshold_wt=threshold_wt)
+    betw, betas = compute_centrality(Network, dist, between_metrics=['betweenness_gravity'], min_threshold_wt=threshold_wt)
     # discard betas - unused
     return betw
 
 
-def angular_betweenness(node_map:np.ndarray, edge_map:np.ndarray, distances:Enumerable) -> np.ndarray:
-    betw, betas = compute_centrality(node_map, edge_map, distances, between_metrics=['betweenness'], angular=True)
+def angular_betweenness(Network, distances:Enumerable) -> np.ndarray:
+    betw, betas = compute_centrality(Network, distances, between_metrics=['betweenness'], angular=True)
     # discard betas - unused
     return betw
