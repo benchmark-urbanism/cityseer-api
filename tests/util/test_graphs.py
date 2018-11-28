@@ -294,16 +294,16 @@ def test_graph_maps_from_networkX():
     # generate length weighted nodes
     G_test = graphs.networkX_m_weighted_nodes(G_test)
     # generate test maps
-    node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
     # debug plot
     # plot.plot_graphs(primal=G_test)
-    # plot.plot_graph_maps(node_labels, node_map, edge_map)
+    # plot.plot_graph_maps(node_uids, node_map, edge_map)
 
     # check lengths
-    assert len(node_labels) == len(node_map) == G_test.number_of_nodes()
+    assert len(node_uids) == len(node_map) == G_test.number_of_nodes()
     assert len(edge_map) == G_test.number_of_edges() * 2
     # check node maps (idx and label match in this case...)
-    for n_label in node_labels:
+    for n_label in node_uids:
         assert node_map[n_label][0] == G_test.nodes[n_label]['x']
         assert node_map[n_label][1] == G_test.nodes[n_label]['y']
         assert node_map[n_label][2] == G_test.nodes[n_label]['live']
@@ -369,37 +369,41 @@ def test_networkX_from_graph_maps():
     for n in G.nodes():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
         G.nodes[n]['weight'] = np.random.random() * 2000
-    node_labels, node_map, edge_map = graphs.graph_maps_from_networkX(G)
-    N = networks.Network_Layer_From_NetworkX(G)
 
-    G_round_trip = graphs.networkX_from_graph_maps(N.uids, N.nodes, N.edges)
+    # test directly from and to graph maps
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    G_round_trip = graphs.networkX_from_graph_maps(node_uids, node_map, edge_map)
     assert G_round_trip.nodes == G.nodes
     assert G_round_trip.edges == G.edges
 
-    # check that mismatching node_labels length triggers error
-    with pytest.raises(ValueError):
-        graphs.networkX_from_graph_maps(node_labels[:-1], node_map, edge_map)
+    # test via Network layer
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    G_round_trip = N.to_networkX()
+    # now has extra data, so need to check manually
+    for n, d in G.nodes(data=True):
+        assert d['x'] == G_round_trip.nodes[n]['x']
+        assert d['y'] == G_round_trip.nodes[n]['y']
+        assert d['live'] == G_round_trip.nodes[n]['live']
+        assert d['weight'] == G_round_trip.nodes[n]['weight']
+    for s, e, d in G.edges(data=True):
+        assert d['geom'] == G_round_trip[s][e]['geom']
+        assert d['length'] == G_round_trip[s][e]['length']
+        assert d['impedance'] == G_round_trip[s][e]['impedance']
 
-    # check that malformed node or edge maps trigger errors
-    with pytest.raises(ValueError):
-        graphs.networkX_from_graph_maps(node_labels, node_map[:, :4], edge_map)
+    # test with metrics
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    N.harmonic_closeness()
+    N.betweenness()
+    G_metrics = N.to_networkX()
+    for metric_key, metric_value in N.metrics.items():
+        for measure_key, measure_value in metric_value.items():
+            for dist in measure_value:
+                for n, d in G_metrics.nodes(data=True):
+                    idx = node_uids.index(n)
+                    assert measure_value[dist][idx] == d['metrics'][metric_key][measure_key][dist]
 
-    with pytest.raises(ValueError):
-        graphs.networkX_from_graph_maps(node_labels, node_map, edge_map[:, :3])
-
-    # check with data tuples
-    harmonic = networks.harmonic_closeness(N, [200])
-    data_tuples = [('harmonic_200', harmonic)]
-    G_round_trip = graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=data_tuples)
-    for n, d in G_round_trip.nodes(data=True):
-        node_idx = node_labels.index(n)
-        assert d['harmonic_200'] == harmonic[node_idx]
-
-    # check that malformed tuples raise errors
-    for bad_tuple in [(4, harmonic), ('boo', 'baa'), (harmonic, 'boo'), ('boo'), ('boo', harmonic, 'boo')]:
-        with pytest.raises(TypeError):
-            graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=[bad_tuple])
-
-    # check that incorrect data tuple enumerable lengths flags error
-    with pytest.raises(ValueError):
-        graphs.networkX_from_graph_maps(node_labels, node_map, edge_map, node_data=[('boo', harmonic[:-1])])
+    # check that mismatching node uid triggers error when unpacking onto graph
+    with pytest.raises(AttributeError):
+        corrupt_node_uids = list(node_uids)
+        corrupt_node_uids[0] = 'boo'
+        graphs.networkX_from_graph_maps(corrupt_node_uids, node_map, edge_map, networkX_graph=G)

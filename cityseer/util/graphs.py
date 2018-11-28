@@ -10,14 +10,12 @@ from tqdm import tqdm
 import numpy as np
 from cityseer.algos import types
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 # TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658. Note, also used from test_networkX_remove_straight_intersections()
 def substring(geom, start_dist, end_dist, normalized=False):
-
     assert (isinstance(geom, geometry.LineString))
 
     # Filter out cases in which to return a point
@@ -60,8 +58,7 @@ def substring(geom, start_dist, end_dist, normalized=False):
     return geometry.LineString(vertex_list)
 
 
-def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
-
+def networkX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -93,8 +90,7 @@ def networkX_simple_geoms(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
-
+def networkX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -129,15 +125,15 @@ def networkX_wgs_to_utm(networkX_graph:nx.Graph) -> nx.Graph:
             if line_geom.type != 'LineString':
                 raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # convert the coords to UTM - remember to flip back to lng, lat
-            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
+            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in
+                          zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
             # write back to edge
             g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
 
     return g_copy
 
 
-def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
-
+def networkX_remove_straight_intersections(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -178,8 +174,7 @@ def networkX_remove_straight_intersections(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph:
-
+def networkX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -200,7 +195,8 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
         e_y = networkX_graph.nodes[e]['y']
         # test for geom
         if 'geom' not in d:
-            raise AttributeError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(
+                f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
@@ -256,7 +252,7 @@ def networkX_decompose(networkX_graph:nx.Graph, decompose_max:float) -> nx.Graph
     return g_copy
 
 
-def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
+def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
@@ -285,11 +281,13 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
         b_y = g.nodes[b_node]['y']
         # test for geom
         if 'geom' not in edge_data:
-            raise AttributeError(f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(
+                f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = edge_data['geom']
         if line_geom.type != 'LineString':
-            raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
+            raise TypeError(
+                f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
         if not (a_x, a_y) == line_geom.coords[0][:2]:
             flipped_coords = np.fliplr(line_geom.coords.xy)
@@ -352,7 +350,8 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                 # weld the lines
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
-                    raise TypeError(f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
+                    raise TypeError(
+                        f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
 
                 # iterate the coordinates and sum the calculate the angular change
                 sum_angles = 0
@@ -364,19 +363,20 @@ def networkX_to_dual(networkX_graph:nx.Graph) -> nx.Graph:
                     a_1 = np.rad2deg(np.arctan2(x_2 - x_1, y_2 - y_1))
                     a_2 = np.rad2deg(np.arctan2(x_3 - x_2, y_3 - y_2))
 
-                    sum_angles += np.abs((np.abs(a_2 - a_1) + 180) % 360 -  180)
+                    sum_angles += np.abs((np.abs(a_2 - a_1) + 180) % 360 - 180)
 
-                    #A = np.array(merged_line.coords[i + 1]) - np.array(merged_line.coords[i])
-                    #B = np.array(merged_line.coords[i + 2]) - np.array(merged_line.coords[i + 1])
-                    #angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
+                    # A = np.array(merged_line.coords[i + 1]) - np.array(merged_line.coords[i])
+                    # B = np.array(merged_line.coords[i + 2]) - np.array(merged_line.coords[i + 1])
+                    # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
 
                 # add the dual edge
-                g_dual.add_edge(hub_node_dual, spoke_node_dual, parent_primal_node=n_side, length=merged_line.length, impedance=sum_angles, geom=merged_line)
+                g_dual.add_edge(hub_node_dual, spoke_node_dual, parent_primal_node=n_side, length=merged_line.length,
+                                impedance=sum_angles, geom=merged_line)
 
     return g_dual
 
 
-def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
+def networkX_edge_defaults(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
@@ -390,7 +390,8 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
     logger.info('Preparing graph')
     for s, e, d in tqdm(g_copy.edges(data=True)):
         if 'geom' not in d:
-            raise AttributeError(f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+            raise AttributeError(
+                f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
@@ -401,8 +402,7 @@ def networkX_edge_defaults(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
-
+def networkX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -421,7 +421,7 @@ def networkX_m_weighted_nodes(networkX_graph:nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
+def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
@@ -446,14 +446,14 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and link maps
-    node_labels = []
+    node_uids = []
     node_map = np.full((g_copy.number_of_nodes(), 5), np.nan)  # float - for consistency
     edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
     for n, d in tqdm(g_copy.nodes(data=True)):
         # label
-        node_labels.append(d['label'])
+        node_uids.append(d['label'])
         # cast to int for indexing
         idx = int(n)
         # NODE MAP INDEX POSITION 0 = x coordinate
@@ -497,45 +497,67 @@ def graph_maps_from_networkX(networkX_graph:nx.Graph) -> Tuple[tuple, np.ndarray
             # cannot have impedance less than zero (but == 0 is OK)
             imp = g_copy[idx][nb]['impedance']
             if not (np.isfinite(imp) or np.isinf(imp)) or imp < 0:
-                raise AttributeError(f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
+                raise AttributeError(
+                    f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
             edge_map[edge_idx][3] = imp
             # increment the link_idx
             edge_idx += 1
 
-    return tuple(node_labels), node_map, edge_map
+    return tuple(node_uids), node_map, edge_map
 
 
 Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
-def networkX_from_graph_maps(node_labels:Union[tuple, list], node_map:np.ndarray, edge_map:np.ndarray, node_data:Data_Tuple=None) -> nx.Graph:
+
+
+def networkX_from_graph_maps(node_uids: Union[tuple, list],
+                             node_map: np.ndarray,
+                             edge_map: np.ndarray,
+                             networkX_graph: nx.Graph = None,
+                             metrics: dict = None) -> nx.Graph:
+
+    logger.info('Populating node and edge map data to a networkX graph.')
 
     types.check_network_types(node_map, edge_map)
 
-    if len(node_labels) != len(node_map):
-        raise ValueError('The number of node labels should correspond to the number and order of nodes in the node_map.')
+    if networkX_graph is not None:
+        logger.info('Reusing existing graph as backbone.')
+        if networkX_graph.number_of_nodes() != len(node_map):
+            raise ValueError('The number of nodes in the graph does not match the number of nodes in the node map.')
+        g_copy = networkX_graph.copy()
+        for uid in node_uids:
+            if uid not in g_copy:
+                raise AttributeError(f'Node uid {uid} not found in graph. If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
+    else:
+        logger.info('No existing graph found, creating new.')
+        g_copy = nx.Graph()
+        for uid in node_uids:
+            g_copy.add_node(uid)
 
-    if node_data:
-        for i, n_d in enumerate(node_data):
-            if not len(n_d) == 2:
-                raise TypeError(f'Data tuple at index {i} is of length {len(n_d)} instead of 2. Data tuples must consist of a (string, enumerable) pair.')
-            k, d = n_d
-            if not isinstance(k, str) or not isinstance(d, (list, tuple, np.ndarray)):
-                raise TypeError(f'Data tuple at index {i} does not consist of a (string, enumerable) pair. Enumerable may be list, tuple, or numpy.ndarray.')
-            if not len(d) == len(node_labels):
-                raise ValueError(f'Data tuple at index {i} contains an enumerable of length {len(d)}, which does not match the number of node labels at {len(node_labels)}.')
-
-    g = nx.Graph()
-
-    logger.info('Unpacking nodes')
-    for i, (label, node) in tqdm(enumerate(zip(node_labels, node_map))):
+    logger.info('Unpacking node data.')
+    for idx, (uid, node) in tqdm(enumerate(zip(node_uids, node_map))):
         x, y, live, edge_idx, wt = node
-        g.add_node(label, x=x, y=y, live=live, weight=wt)
-        if node_data:
-            for key, data in node_data:
-                g.nodes[label][key] = data[i]
+        g_copy.nodes[uid]['x'] = x
+        g_copy.nodes[uid]['y'] = y
+        g_copy.nodes[uid]['live'] = live
+        g_copy.nodes[uid]['weight'] = wt
 
-    logger.info('Unpacking edges')
+    logger.info('Unpacking edge data.')
     for edge in tqdm(edge_map):
         start, end, length, impedance = edge
-        g.add_edge(start, end, length=length, impedance=impedance)
+        # networkX will silently add new edges / data over existing edges
+        g_copy.add_edge(start, end, length=length, impedance=impedance)
 
-    return g
+    if metrics is not None:
+        logger.info('Unpacking metrics to nodes.')
+        for uid in tqdm(node_uids):
+            m = {}
+            for metric_key, metric_value in metrics.items():
+                m[metric_key] = {}
+                for measure_key, measure_value in metric_value.items():
+                    m[metric_key][measure_key] = {}
+                    for dist in measure_value:
+                        m[metric_key][measure_key][dist] = measure_value[dist][uid]
+
+            g_copy.nodes[uid]['metrics'] = m
+
+    return g_copy

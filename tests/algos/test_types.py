@@ -10,7 +10,7 @@ def test_check_index_map():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
 
     with pytest.raises(ValueError):
         types.check_index_map(N.index[:,:-1])
@@ -43,7 +43,7 @@ def test_check_trim_maps():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
     trim_to_full_idx_map, full_to_trim_idx_map = \
             data.distance_filter(N.index, N.x_arr[0], N.y_arr[1], 500, radial=True)
 
@@ -69,7 +69,7 @@ def test_check_network_types():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
 
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
@@ -81,13 +81,12 @@ def test_check_network_types():
 def test_check_distances_and_betas():
 
     betas = np.array([-0.02, -0.01, -0.005, -0.0025])
-    distances, min_threshold_wt = networks.distance_from_beta(betas)
+    distances = networks.distance_from_beta(betas)
 
     with pytest.raises(ValueError):
-        types.check_distances_and_betas(distances[:-1], betas)
+        types.check_distances_and_betas(np.array(distances[:-1]), betas)
     with pytest.raises(ValueError):
-        types.check_distances_and_betas(distances, betas[:-1])
+        types.check_distances_and_betas(np.array(distances), betas[:-1])
     with pytest.raises(ValueError):
         betas[0] = 4
-        types.check_distances_and_betas(distances, betas)
-
+        types.check_distances_and_betas(np.array(distances), betas)
