@@ -29,7 +29,7 @@ centrality.cc.verbose = True
 
 setup (
     name = 'cityseer',
-    version='0.2.5',
+    version='0.2.6',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
