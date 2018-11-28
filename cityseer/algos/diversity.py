@@ -4,7 +4,7 @@ from numba.pycc import CC
 
 from cityseer.algos import data, types
 
-cc = CC('diversity')
+cc = CC('diversity', source_module='cityseer.algos.diversity')
 
 
 @cc.export('hill_diversity', '(uint64[:], float64)')

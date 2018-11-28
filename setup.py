@@ -1,5 +1,6 @@
 '''
 https://docs.python.org/3.7/distutils/examples.html
+https://docs.python.org/3/distutils/setupscript.html
 https://scikit-build.readthedocs.io/en/latest/usage.html
 
 in case the user doesn't have setup tools installed:
@@ -15,13 +16,20 @@ cc.compile()
 use numba.typeof to deduce signatures
 add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 '''
+# switching to SKBUILD to try build chains for different systems?
+from skbuild import setup
 
-from setuptools import setup
 from cityseer.algos import centrality, data, diversity, types
+
+print(centrality.cc.name)
+print(centrality.cc.output_file)
+print(centrality.cc.output_dir)
+print(centrality.cc._source_module)
+centrality.cc.verbose = True
 
 setup (
     name = 'cityseer',
-    version = '0.2.3',
+    version='0.2.5',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
@@ -43,6 +51,7 @@ setup (
         'matplotlib',
         'sklearn'
     ],
+    ext_package='cityseer.algos',  # NB -> sets output directory for extension modules
     ext_modules = [
         centrality.cc.distutils_extension(),
         data.cc.distutils_extension(),

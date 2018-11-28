@@ -7,5 +7,5 @@ tqdm
 matplotlib
 sklearn
 scipy
-setuptools
 pytest
+scikit-build

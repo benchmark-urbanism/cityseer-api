@@ -4,8 +4,7 @@ from numba.pycc import CC
 
 from cityseer.algos import data, types
 
-cc = CC('networks')
-
+cc = CC('centrality', source_module='cityseer.algos.centrality')
 
 @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit

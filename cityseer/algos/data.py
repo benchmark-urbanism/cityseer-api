@@ -6,8 +6,7 @@ from numba.pycc import CC
 
 from cityseer.algos import centrality, types
 
-cc = CC('data')
-
+cc = CC('data', source_module='cityseer.algos.data')
 
 @cc.export('tiered_sort', '(float64[:,:], uint8)')
 @njit
