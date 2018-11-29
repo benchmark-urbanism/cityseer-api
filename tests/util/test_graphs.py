@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 from shapely import geometry
 
-from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
 
@@ -352,6 +351,8 @@ def test_graph_maps_from_networkX():
 
 
 def test_networkX_from_graph_maps():
+    # also see test_networks.test_to_networkX for tests on implementation via Network layer
+
     # check round trip to and from graph maps results in same graph
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -368,33 +369,7 @@ def test_networkX_from_graph_maps():
     assert G_round_trip.nodes == G.nodes
     assert G_round_trip.edges == G.edges
 
-    # test via Network layer
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-    G_round_trip = N.to_networkX()
-    # now has extra data, so need to check manually
-    for n, d in G.nodes(data=True):
-        assert d['x'] == G_round_trip.nodes[n]['x']
-        assert d['y'] == G_round_trip.nodes[n]['y']
-        assert d['live'] == G_round_trip.nodes[n]['live']
-        assert d['weight'] == G_round_trip.nodes[n]['weight']
-    for s, e, d in G.edges(data=True):
-        assert d['geom'] == G_round_trip[s][e]['geom']
-        assert d['length'] == G_round_trip[s][e]['length']
-        assert d['impedance'] == G_round_trip[s][e]['impedance']
-
-    # test with metrics
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-    N.harmonic_closeness()
-    N.betweenness()
-    G_metrics = N.to_networkX()
-    for metric_key in N.metrics.keys():
-        for measure_key in N.metrics[metric_key].keys():
-            for dist in N.metrics[metric_key][measure_key].keys():
-                for idx, uid in enumerate(N.uids):
-                    assert N.metrics[metric_key][measure_key][dist][idx] == \
-                           G_metrics.nodes[uid]['metrics'][metric_key][measure_key][dist]
-
-    # check that mismatching node uid triggers error when unpacking onto graph
+    # check that mismatching node uid triggers error when used with graph argument
     with pytest.raises(AttributeError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'

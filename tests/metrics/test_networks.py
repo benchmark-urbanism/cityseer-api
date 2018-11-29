@@ -105,8 +105,46 @@ def test_Network_Layer_From_NetworkX():
 
 
 def test_to_networkX():
-    # tested from test_graphs.test_networkX_from_graph_maps
-    pass
+    # also see test_graphs.test_networkX_from_graph_maps for plain graph maps version
+
+    # check round trip to and from graph maps results in same graph
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    # explicitly set live and weight params for equality checks
+    # graph_maps_from_networkX generates these implicitly if missing
+    for n in G.nodes():
+        G.nodes[n]['live'] = bool(np.random.randint(0, 1))
+        G.nodes[n]['weight'] = np.random.random() * 2000
+
+    # add random data to check persistence at other end
+    G.nodes[0]['boo'] = 'baa'
+    G[0][1]['baa'] = 'boo'
+
+    # test with metrics
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    N.harmonic_closeness()
+    N.betweenness()
+    G_round_trip = N.to_networkX()
+    for n, d in G.nodes(data=True):
+        assert d['x'] == G_round_trip.nodes[n]['x']
+        assert d['y'] == G_round_trip.nodes[n]['y']
+        assert d['live'] == G_round_trip.nodes[n]['live']
+        assert d['weight'] == G_round_trip.nodes[n]['weight']
+    for s, e, d in G.edges(data=True):
+        assert d['geom'] == G_round_trip[s][e]['geom']
+        assert d['length'] == G_round_trip[s][e]['length']
+        assert d['impedance'] == G_round_trip[s][e]['impedance']
+
+    for metric_key in N.metrics.keys():
+        for measure_key in N.metrics[metric_key].keys():
+            for dist in N.metrics[metric_key][measure_key].keys():
+                for idx, uid in enumerate(N.uids):
+                    assert N.metrics[metric_key][measure_key][dist][idx] == \
+                           G_round_trip.nodes[uid]['metrics'][metric_key][measure_key][dist]
+
+    assert G_round_trip.nodes[0]['boo'] == 'baa'
+    assert G_round_trip[0][1]['baa'] == 'boo'
 
 
 def test_metrics_to_dict():
