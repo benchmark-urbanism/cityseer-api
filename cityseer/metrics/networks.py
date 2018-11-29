@@ -7,7 +7,7 @@ from typing import Union
 import networkx as nx
 import numpy as np
 
-from cityseer.algos import centrality, data, types
+from cityseer.algos import centrality, data, checks
 from cityseer.util import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -100,8 +100,8 @@ class Network_Layer:
             raise ValueError('The number of indices does not match the number of nodes.')
         if len(self.nodes) != len(self.index):
             raise ValueError('The data map and index map are not the same lengths.')
-        types.check_network_types(self.nodes, self.edges)
-        types.check_index_map(self.index)
+        checks.check_network_types(self.nodes, self.edges)
+        checks.check_index_map(self.index)
 
     @property
     def x_arr(self):

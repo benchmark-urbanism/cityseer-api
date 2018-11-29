@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 from numba.pycc import CC
 
-from cityseer.algos import data, types
+from cityseer.algos import data, checks
 
 cc = CC('centrality', source_module='cityseer.algos.centrality')
 
@@ -30,7 +30,7 @@ def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int,
     3 - impedance
     '''
 
-    types.check_network_types(node_map, edge_map)
+    checks.check_network_types(node_map, edge_map)
 
     if not src_idx < len(node_map):
         raise ValueError('Source index is out of range.')
@@ -168,9 +168,9 @@ def local_centrality(node_map: np.ndarray, edge_map: np.ndarray, distances: np.n
     3 - impedance
     '''
 
-    types.check_network_types(node_map, edge_map)
+    checks.check_network_types(node_map, edge_map)
 
-    types.check_distances_and_betas(distances, betas)
+    checks.check_distances_and_betas(distances, betas)
 
     if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
         raise ValueError('No metrics specified for computation. Please specify at least one.')

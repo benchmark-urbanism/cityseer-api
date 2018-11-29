@@ -19,7 +19,7 @@ add @njit to help aot functions find each other, see https://stackoverflow.com/q
 # switching to SKBUILD to try build chains for different systems?
 from skbuild import setup
 
-from cityseer.algos import centrality, data, diversity, types
+from cityseer.algos import centrality, data, diversity, checks
 
 print(centrality.cc.name)
 print(centrality.cc.output_file)
@@ -29,7 +29,7 @@ centrality.cc.verbose = True
 
 setup (
     name = 'cityseer',
-    version='0.2.6',
+    version='0.2.7',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
@@ -56,6 +56,6 @@ setup (
         centrality.cc.distutils_extension(),
         data.cc.distutils_extension(),
         diversity.cc.distutils_extension(),
-        types.cc.distutils_extension()
+        checks.cc.distutils_extension()
     ]
 )

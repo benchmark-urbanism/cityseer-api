@@ -4,7 +4,7 @@ import numpy as np
 from numba import njit
 from numba.pycc import CC
 
-from cityseer.algos import centrality, types
+from cityseer.algos import centrality, checks
 
 cc = CC('data', source_module='cityseer.algos.data')
 
@@ -205,9 +205,9 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
     5 - assigned network index - next-nearest
     '''
 
-    types.check_data_map(data_map)
+    checks.check_data_map(data_map)
 
-    types.check_network_types(node_map, edge_map, index_map=netw_index)
+    checks.check_network_types(node_map, edge_map, index_map=netw_index)
 
     # iterate each data point
     for idx in range(len(data_map)):

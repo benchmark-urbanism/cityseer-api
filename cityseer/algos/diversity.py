@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 from numba.pycc import CC
 
-from cityseer.algos import data, types
+from cityseer.algos import data, checks
 
 cc = CC('diversity', source_module='cityseer.algos.diversity')
 
@@ -457,11 +457,11 @@ def mixed_uses(node_map, edge_map, data_map, distances, betas, mixed_use_metrics
     5 - distance from assigned network index
     '''
 
-    types.check_data_map(data_map)
+    checks.check_data_map(data_map)
 
-    types.check_network_types(node_map, edge_map)
+    checks.check_network_types(node_map, edge_map)
 
-    types.check_distances_and_betas(distances, betas)
+    checks.check_distances_and_betas(distances, betas)
 
     # establish the number of nodes
     n = len(node_map)

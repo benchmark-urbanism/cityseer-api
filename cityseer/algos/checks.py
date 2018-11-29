@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 from numba.pycc import CC
 
-cc = CC('types', source_module='cityseer.algos.types')
+cc = CC('checks', source_module='cityseer.algos.checks')
 
 @cc.export('check_index_map', 'void(float64[:,:])')
 @njit

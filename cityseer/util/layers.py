@@ -9,7 +9,7 @@ import utm
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
-from cityseer.algos import data, types
+from cityseer.algos import data, checks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,8 +47,8 @@ class Data_Layer:
             raise ValueError('The number of data class labels does not match the number of data class codes.')
         if len(self.data) != len(self.index):
             raise ValueError('The data map and index map are not the same lengths.')
-        types.check_data_map(self.data)
-        types.check_index_map(self.index)
+        checks.check_data_map(self.data)
+        checks.check_index_map(self.index)
 
     @property
     def x_arr(self):
