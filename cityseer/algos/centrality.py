@@ -269,8 +269,12 @@ def local_centrality(node_map: np.ndarray,
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index, src_x, src_y, max_dist,
-                                                                          radial=True)
+        # trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index,
+        #                                                                  src_x,
+        #                                                                  src_y,
+        #                                                                  max_dist,
+        #                                                                  radial=True)
+        trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x, src_y, x_arr, y_arr, max_dist)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres

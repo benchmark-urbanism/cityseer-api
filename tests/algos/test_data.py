@@ -97,15 +97,14 @@ def test_distance_filter():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
 
     # generate some data
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict)
 
     # test the filter
-    src_x = N.x_arr[0]
-    src_y = N.y_arr[1]
+    src_x = G.nodes[0]['x']
+    src_y = G.nodes[0]['y']
     for max_dist in [0, 200, 500, 750]:
         trim_to_full_map, full_to_trim_map = \
             data.distance_filter(D.index, src_x, src_y, max_dist, radial=True)
@@ -148,6 +147,53 @@ def test_distance_filter():
                 assert np.isfinite(val)
             else:
                 assert np.isnan(val)
+
+
+def test_radial_filter():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+
+    # generate some data
+    data_dict = mock.mock_data(G)
+    D = layers.Data_Layer_From_Dict(data_dict)
+
+    # test the filter
+    src_x = G.nodes[0]['x']
+    src_y = G.nodes[0]['y']
+    for max_dist in [0, 200, 500, 750]:
+        trim_to_full_map, full_to_trim_map = \
+            data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
+
+        # plots for debugging
+        # override the d_map's data class with the results of the filtering
+        # NOTE -> if all are on, then matplotlib will plot all the same dark color
+        # d_map = data.assign_to_network(d_map, n_map, 2000)
+        # d_map[:,3] = 0
+        # on_idx = np.where(np.isfinite(full_to_trim_map))
+        # d_map[on_idx, 3] = 1
+        # geom = None
+        # if max_dist:
+        #    geom = geometry.Point(src_x, src_y).buffer(max_dist)
+        # plot.plot_graph_maps(n_labels, n_map, e_map, d_map=d_map, poly=geom)
+
+        # check that the full_to_trim map is the correct number of elements
+        assert len(full_to_trim_map) == len(D.data)
+        # check that all non NaN indices are reflected in the either direction
+        c = 0
+        for idx, n in enumerate(full_to_trim_map):
+            if not np.isnan(n):
+                c += 1
+                assert trim_to_full_map[int(n)] == idx
+        assert c == len(trim_to_full_map)
+
+        # test that all reachable indices are, in fact, within the max distance
+        for idx, val in enumerate(full_to_trim_map):
+            dist = np.sqrt((D.x_arr[idx] - src_x) ** 2 + (D.y_arr[idx] - src_y) ** 2)
+            if np.isfinite(val):
+                assert dist <= max_dist
+            else:
+                assert dist > max_dist
 
 
 def test_nearest_idx():

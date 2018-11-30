@@ -8,7 +8,7 @@ from cityseer.algos import centrality, checks
 
 # cc = CC('data')
 
-
+# index strategy is slower than simple pythagorean filter - would need careful time analysis to find bottlenecks
 # @cc.export('tiered_sort', '(float64[:,:], uint8)')
 @njit
 def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
@@ -91,14 +91,15 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
     # prepare the trim to full map
     trim_to_full_idx_map = np.full(trim_count, np.nan)
 
+    if trim_count == 0:
+        return trim_to_full_idx_map
+
     for idx in range(len(full_to_trim_map)):
-        trim_map = full_to_trim_map[idx]
+        trim_idx = full_to_trim_map[idx]
         # if the full map has a finite value, then respectively map from the trimmed index to the full index
-        if not np.isnan(trim_map):
-            trim_to_full_idx_map[int(trim_map)] = idx
-        # no need to iterate remainder if last value already written
-        if trim_map == len(trim_to_full_idx_map) - 1:
-            break
+        if not np.isnan(trim_idx):
+            trim_to_full_idx_map[int(trim_idx)] = idx
+
     return trim_to_full_idx_map
 
 
@@ -140,6 +141,29 @@ def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, 
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
+# TODO: this is definitely faster... what is the bottleneck on index method?
+@njit
+def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
+    if len(x_arr) != len(y_arr):
+        raise ValueError('Mismatching x and y array lengths.')
+
+    # filter by distance
+    total_count = len(x_arr)
+    full_to_trim_idx_map = np.full(total_count, np.nan)
+
+    trim_count = 0
+    for idx in range(total_count):
+        dist = np.sqrt((x_arr[idx] - src_x) ** 2 + (y_arr[idx] - src_y) ** 2)
+        if dist <= max_dist:
+            full_to_trim_idx_map[int(idx)] = trim_count
+            trim_count += 1
+
+    trim_to_full_idx_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
+
+    return trim_to_full_idx_map, full_to_trim_idx_map
+
+
+# TODO: timeit test this vs. simple pythagorean filter...
 # @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
 @njit
 def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
