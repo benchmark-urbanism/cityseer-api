@@ -6,8 +6,9 @@ from cityseer.algos import data, checks
 
 cc = CC('centrality', source_module='cityseer.algos.centrality')
 
+
 @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
-@njit
+@njit(cache=True)
 def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int, trim_to_full_idx_map: np.ndarray,
                        full_to_trim_idx_map: np.ndarray, max_dist: float = np.inf, angular: bool = False):
     '''
@@ -150,7 +151,7 @@ def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int,
 
 
 @cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
-@njit
+@njit(cache=True)
 def local_centrality(node_map: np.ndarray, edge_map: np.ndarray, distances: np.ndarray, betas: np.ndarray,
                      closeness_keys: np.ndarray, betweenness_keys: np.ndarray, angular: bool = False):
     '''

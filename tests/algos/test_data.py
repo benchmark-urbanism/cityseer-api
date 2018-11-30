@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from cityseer.algos import data
-from cityseer.metrics import networks
-from cityseer.util import graphs, layers, mock, plot
+from cityseer.metrics import networks, layers
+from cityseer.util import graphs, mock, plot
 
 
 def test_merge_sort():
@@ -183,36 +183,21 @@ def test_assign_to_network():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    x_arr = node_map[:, 0]
+    y_arr = node_map[:, 1]
+    netw_index = data.generate_index(x_arr, y_arr)
 
     # generate data
-    data_dict = mock.mock_data(G)
-    D = layers.Data_Layer_From_Dict(data_dict)
-    D.assign_to_network(N, 500)
+    data_dict = mock.mock_data(G, random_seed=13)
+    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
 
     # for debugging
-    # plot.plot_graph_maps(node_labels, node_map, edge_map, d_map)
+    plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
 
-    for data_point in D.data:
-        x = data_point[0]
-        y = data_point[1]
-        assigned_idx = int(data_point[4])
+    data.assign_to_network(data_map, node_map, edge_map, netw_index, 500)
 
-        # TODO: This will no longer work...
-        assigned_dist = data_point[5]
 
-        node_x = N.nodes[assigned_idx][0]
-        node_y = N.nodes[assigned_idx][1]
-
-        # check the assigned distance
-        assert round(assigned_dist, 8) == round(np.sqrt((node_x - x) ** 2 + (node_y - y) ** 2), 8)
-
-        # check that no other nodes are closer
-        for idx, node in enumerate(N.nodes):
-            if idx != assigned_idx:
-                test_x = node[0]
-                test_y = node[1]
-                assert assigned_dist <= np.sqrt((test_x - x) ** 2 + (test_y - y) ** 2)
 
 
 def test_aggregate_to_src_idx():
@@ -224,7 +209,7 @@ def test_aggregate_to_src_idx():
 
     # generate data
     data_dict = mock.mock_data(G, random_seed=5)
-    d_labels, d_map, d_classes = layers.dict_to_data_map(data_dict)
+    d_labels, d_map, d_classes = layers.data_map_from_dict(data_dict)
     d_map = data.assign_to_network(Layer, Network, 500)
     data_index = data.generate_index(d_map[:, 0], d_map[:, 1])
 

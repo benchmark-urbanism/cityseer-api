@@ -5,51 +5,8 @@ import pytest
 import utm
 
 from cityseer.algos import data
-from cityseer.util import mock, layers
-
-
-def test_Data_Layer():
-    G, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
-    x_arr = data_map[:, 0]
-    y_arr = data_map[:, 1]
-    live = data_map[:, 2]
-    class_codes = data_map[:, 3]
-    index = data.generate_index(x_arr, y_arr)
-
-    # test against Data_Layer internal process
-    D = layers.Data_Layer(data_uids, data_map, class_labels)
-    assert D.uids == data_uids
-    assert np.allclose(D.data, data_map, equal_nan=True)
-    assert D.class_labels == class_labels
-    assert np.array_equal(D.index, index)
-    assert np.array_equal(D.x_arr, x_arr)
-    assert np.array_equal(D.y_arr, y_arr)
-    assert np.array_equal(D.live, live)
-    assert np.array_equal(D.class_codes, class_codes)
-
-
-def test_Data_Layer_From_Dict():
-    G, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
-    x_arr = data_map[:, 0]
-    y_arr = data_map[:, 1]
-    live = data_map[:, 2]
-    class_codes = data_map[:, 3]
-    index = data.generate_index(x_arr, y_arr)
-
-    # test against Data_Layer_From_Dict's internal process
-    D = layers.Data_Layer_From_Dict(data_dict)
-    assert D.uids == data_uids
-    assert np.allclose(D.data, data_map, equal_nan=True)
-    assert D.class_labels == class_labels
-    assert np.array_equal(D.index, index)
-    assert np.array_equal(D.x_arr, x_arr)
-    assert np.array_equal(D.y_arr, y_arr)
-    assert np.array_equal(D.live, live)
-    assert np.array_equal(D.class_codes, class_codes)
+from cityseer.metrics import layers
+from cityseer.util import mock
 
 
 def test_dict_wgs_to_utm():
@@ -90,11 +47,11 @@ def test_dict_wgs_to_utm():
         layers.dict_wgs_to_utm(data_dict)
 
 
-def test_dict_to_data_layer():
+def test_data_map_from_dict():
     # generate mock data
     G, pos = mock.mock_graph()
     data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.dict_to_data_map(data_dict)
+    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
 
     assert len(data_uids) == len(data_map) == len(data_dict)
 
@@ -113,4 +70,49 @@ def test_dict_to_data_layer():
         for k in data_dict.keys():
             del data_dict[k][attr]
         with pytest.raises(AttributeError):
-            layers.dict_to_data_map(data_dict)
+            layers.data_map_from_dict(data_dict)
+
+
+def test_Data_Layer():
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_data(G)
+    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    class_codes = data_map[:, 3]
+    index = data.generate_index(x_arr, y_arr)
+
+    # test against Data_Layer internal process
+    D = layers.Data_Layer(data_uids, data_map, class_labels)
+    assert D.uids == data_uids
+    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert D.class_labels == class_labels
+    assert np.array_equal(D.index, index)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.class_codes, class_codes)
+
+
+def test_Data_Layer_From_Dict():
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_data(G)
+    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    class_codes = data_map[:, 3]
+    index = data.generate_index(x_arr, y_arr)
+
+    # test against Data_Layer_From_Dict's internal process
+    D = layers.Data_Layer_From_Dict(data_dict)
+    assert D.uids == data_uids
+    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert D.class_labels == class_labels
+    assert np.array_equal(D.index, index)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.class_codes, class_codes)
+

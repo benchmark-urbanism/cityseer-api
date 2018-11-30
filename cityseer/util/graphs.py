@@ -361,11 +361,11 @@ def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
                     x_1, y_1 = merged_line.coords[i][:2]
                     x_2, y_2 = merged_line.coords[i + 1][:2]
                     x_3, y_3 = merged_line.coords[i + 2][:2]
+                    # arctan2 is y / x order
+                    a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                    a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
 
-                    a_1 = np.rad2deg(np.arctan2(x_2 - x_1, y_2 - y_1))
-                    a_2 = np.rad2deg(np.arctan2(x_3 - x_2, y_3 - y_2))
-
-                    sum_angles += np.abs((np.abs(a_2 - a_1) + 180) % 360 - 180)
+                    sum_angles += np.abs((a_2 - a_1 + 180) % 360 - 180)
 
                     # A = np.array(merged_line.coords[i + 1]) - np.array(merged_line.coords[i])
                     # B = np.array(merged_line.coords[i + 2]) - np.array(merged_line.coords[i + 1])

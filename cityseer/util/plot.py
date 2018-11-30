@@ -3,6 +3,7 @@ These plot methods are mainly for testing and debugging
 '''
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
 
 def plot_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
@@ -97,24 +98,31 @@ def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
     1 - y
     2 - live
     3 - data class
-    4 - assigned network index
-    5 - distance from assigned network index
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
     '''
 
     if data_map is not None:
 
         # plot parents on ax1
         ax1.scatter(x=data_map[:, 0], y=data_map[:, 1], c=data_map[:, 3])
-        for x, y, cl, netw_idx, dist in zip(data_map[:, 0], data_map[:, 1], data_map[:, 3], data_map[:, 4],
-                                            data_map[:, 5]):
-            # plot lines to parents for easier viz
-            p_x = node_map[int(netw_idx)][0]
-            p_y = node_map[int(netw_idx)][1]
-            ax1.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
-            ax1.annotate('cl:' + str(int(cl)), xy=(x, y), size=8, color='red')
+        ax2.scatter(x=data_map[:, 0], y=data_map[:, 1], c=data_map[:, 2])
+        for idx, (x, y, cl, nearest_netw_idx, next_n_netw_idx) in \
+                enumerate(zip(data_map[:, 0], data_map[:, 1], data_map[:, 3], data_map[:, 4], data_map[:, 5])):
 
-            # ax-2
-            ax2.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
-            ax2.annotate('d:' + str(int(dist)), xy=(x, y), size=8, color='red')
+            ax1.annotate('cl:' + str(int(cl)), xy=(x, y), size=8, color='red')
+            ax2.annotate('idx:' + str(int(idx)), xy=(x, y), size=8, color='red')
+
+            # if the data points have been assigned network indices:
+            if not np.isnan(nearest_netw_idx):
+                # plot lines to parents for easier viz
+                p_x = node_map[int(nearest_netw_idx)][0]
+                p_y = node_map[int(nearest_netw_idx)][1]
+                ax1.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
+
+                # ax-2
+                p_x = node_map[int(next_n_netw_idx)][0]
+                p_y = node_map[int(next_n_netw_idx)][1]
+                ax2.plot([p_x, x], [p_y, y], c='blue', linewidth=0.5)
 
     plt.show()

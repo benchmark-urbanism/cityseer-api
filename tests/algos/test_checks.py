@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from cityseer.algos import data, checks
-from cityseer.metrics import networks
-from cityseer.util import graphs, mock, layers
+from cityseer.metrics import networks, layers
+from cityseer.util import graphs, mock
 
 
 def test_check_index_map():

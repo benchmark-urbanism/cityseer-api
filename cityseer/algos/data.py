@@ -8,8 +8,9 @@ from cityseer.algos import centrality, checks
 
 cc = CC('data', source_module='cityseer.algos.data')
 
+
 @cc.export('tiered_sort', '(float64[:,:], uint8)')
-@njit
+@njit(cache=True)
 def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
     if tier > arr.shape[1] - 1:
         raise ValueError('The selected tier for sorting exceeds the available tiers.')
@@ -20,7 +21,7 @@ def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
 
 
 @cc.export('binary_search', '(float64[:], float64, float64)')
-@njit
+@njit(cache=True)
 def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
     if min > max:
         raise ValueError('Max must be greater than min.')
@@ -32,7 +33,7 @@ def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
 
 
 @cc.export('generate_index', '(float64[:], float64[:])')
-@njit
+@njit(cache=True)
 def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
     '''
     Create a 2d numpy array:
@@ -59,7 +60,7 @@ def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
 
 
 @cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
-@njit
+@njit(cache=True)
 def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[np.ndarray, np.ndarray]:
     '''
     0 - x_arr
@@ -85,7 +86,7 @@ def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> 
 
 
 @cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
-@njit
+@njit(cache=True)
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
     trim_to_full_idx_map = np.full(trim_count, np.nan)
@@ -102,7 +103,7 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
 
 
 @cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
-@njit
+@njit(cache=True)
 def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
     np.ndarray, np.ndarray]:
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
@@ -207,62 +208,96 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
 
     checks.check_data_map(data_map)
 
-    checks.check_network_types(node_map, edge_map, index_map=netw_index)
+    checks.check_network_types(node_map, edge_map)
+
+    def calculate_rotation(point_a, point_b):
+        # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
+        ang_a = np.arctan2(*point_a[::-1])
+        ang_b = np.arctan2(*point_b[::-1])
+        return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
 
     # iterate each data point
-    for idx in range(len(data_map)):
+    for data_idx in range(len(data_map)):
 
         # numba no object mode can only handle basic printing
-        if idx % 10000 == 0:
-            print('...progress:', round(idx / len(data_map) * 100, 2), '%')
+        if data_idx % 10000 == 0:
+            print('...progress:', round(data_idx / len(data_map) * 100, 2), '%')
 
-        # iterate each network id
-        d_x = data_map[idx][0]
-        d_y = data_map[idx][1]
-        min_idx, min_dist = nearest_idx(netw_index, d_x, d_y, max_dist)
-
-        # wind along the network - try to find a block cycle around the point
-        visited = np.full(len(node_map), False)
-        # follow neighbours that maximise the clockwise winding
+        # state
+        enclosed = False
+        print('DATA INDEX', data_idx)
+        # keep track of visited nodes
+        pred_map = np.full(len(node_map), np.nan)
+        # the data point's coordinates don't change
+        data_coords = data_map[data_idx][:2]
+        # get the nearest point on the network
+        min_idx, min_dist = nearest_idx(netw_index, data_coords[0], data_coords[1], max_dist)
+        # set start node to nearest network node
         node_idx = int(min_idx)
-        total_wind = 0
+        print('start:', node_idx)
+        # track total rotation - distinguishes between encircling and non-encircling cycles
+        total_rot = 0
+        # keep track of previous indices to avoid doubling-back
+        prev_idx = None
+        # iterate neighbours
         while True:
-            visited[node_idx] = True
-            nb_wind = 0
-            max_nb_idx = None
-            n_x = node_map[node_idx][0]
-            n_y = node_map[node_idx][1]
+            # update node coordinates
+            node_coords = node_map[node_idx][:2]
+            # reset neighbour rotation and index counters
+            nb_rot = None
+            nb_idx = None
+            # get the starting edge index
             edge_idx = int(node_map[node_idx][3])
             while edge_idx < len(edge_map):
                 # get the edge's start and end node indices
                 start, end = edge_map[edge_idx][:2]
-                # if the start index no longer matches it means all neighbours have been visited
+                # if the start index no longer matches it means the node's neighbours have all been visited
                 if start != node_idx:
                     break
                 # increment idx for next loop
                 edge_idx += 1
+                # check that this isn't the previous node
+                if prev_idx is not None and end == prev_idx:
+                    continue
                 # cast to int for indexing
-                nb = int(end)
-                nb_x = node_map[nb][0]
-                nb_y = node_map[nb][1]
-                # calculate the wind
-                wind = np.random.uniform(1, 10)
-                # if greater than, update
-                if wind > nb_wind:
-                    total_wind += wind
-                    max_nb_idx = nb
-
+                new_idx = int(end)
+                # calculate the clockwise rotation from the base line
+                new_coords = node_map[new_idx][:2]
+                rotation = calculate_rotation(new_coords - node_coords, data_coords - node_coords)
+                # if least change from prior node, update
+                if nb_rot is None or rotation < nb_rot:
+                    nb_rot = rotation
+                    nb_idx = new_idx
             # break conditions
-            # 1 - if the original node is re-encountered after circling a block
-            if max_nb_idx == min_idx:
+            # if no neighbour is found
+            if nb_idx is None:
                 break
-            # 2 - if no neighbour is found
-            if max_nb_idx is None:
+            print('nb:', nb_idx)
+            # aggregate total rotation - but in clockwise direction
+            nb_coords = node_map[nb_idx][:2]
+            total_rot += (calculate_rotation(node_coords - data_coords, nb_coords - data_coords) + 180) % 360 - 180
+            # break if the original node is re-encountered after circling a block
+            if nb_idx == min_idx:
+                # check that rotation is through 360
+                if round(total_rot):
+                    enclosed = True
+                # set the predecessor
+                pred_map[int(min_idx)] = node_idx
                 break
-            # 3 - if the max wind node had already been visited, then a non-encircling loop was found...
-            if visited[max_nb_idx]:
+            # if the new nb node has already been visited, but not origin, then non-encircling loop was found...
+            if not np.isnan(pred_map[nb_idx]):
                 break
-            node_idx = max_nb_idx
+            # otherwise, set predecessor and keep going
+            pred_map[nb_idx] = node_idx
+            prev_idx = node_idx
+            node_idx = nb_idx
+
+        # TODO: add distance cutoff
+        # TODO: reverse??
+
+        if enclosed:
+            print('ENCLOSED')
+        print('')
 
         # if clockwise fails, try counter-clockwise
 
@@ -274,8 +309,8 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         # if encircling failed: simply select the closest and next closest neighbour
 
         # set in the data map
-        data_map[idx][4] = 0  # adj_idx
-        data_map[idx][5] = 0  # next_adj_idx
+        data_map[data_idx][4] = 0  # adj_idx
+        data_map[data_idx][5] = 0  # next_adj_idx
 
     print('...done')
 

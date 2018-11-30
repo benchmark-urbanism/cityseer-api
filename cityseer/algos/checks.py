@@ -4,8 +4,9 @@ from numba.pycc import CC
 
 cc = CC('checks', source_module='cityseer.algos.checks')
 
+
 @cc.export('check_index_map', 'void(float64[:,:])')
-@njit
+@njit(cache=True)
 def check_index_map(index_map: np.ndarray):
     if not index_map.ndim == 2 or index_map.shape[1] != 4:
         raise ValueError(
@@ -19,7 +20,7 @@ def check_index_map(index_map: np.ndarray):
 
 
 @cc.export('check_data_types', 'void(float64[:,:])')
-@njit
+@njit(cache=True)
 def check_data_map(data_map: np.ndarray):
     if not data_map.ndim == 2 or data_map.shape[1] != 6:
         raise ValueError(
@@ -27,7 +28,7 @@ def check_data_map(data_map: np.ndarray):
 
 
 @cc.export('check_trim_maps', '(float64[:], float64[:])')
-@njit
+@njit(cache=True)
 def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     counter = 0
     for idx in range(len(full_to_trim)):
@@ -42,7 +43,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 
 @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
-@njit
+@njit(cache=True)
 def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
     if not node_map.ndim == 2 or node_map.shape[1] != 5:
         raise ValueError(
@@ -54,7 +55,7 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
 
 
 @cc.export('check_distances_and_betas', '(float64[:], float64[:])')
-@njit
+@njit(cache=True)
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) != len(betas):
         raise ValueError('The number of distances and betas should be equal.')
