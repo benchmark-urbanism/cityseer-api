@@ -125,7 +125,12 @@ class Network_Layer:
         '''
         m = {}
         for idx, uid in enumerate(self.uids):
-            m[uid] = {}
+            m[uid] = {
+                'x': self.x_arr[idx],
+                'y': self.y_arr[idx],
+                'live': self.live[idx] == 1,
+                'weight': self.nodes[:, 4][idx]
+            }
             for metric_key, metric_value in self.metrics.items():
                 m[uid][metric_key] = {}
                 for measure_key, measure_value in metric_value.items():

@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from shapely import geometry
 
 from cityseer.algos import data
 from cityseer.metrics import networks, layers
@@ -182,7 +183,25 @@ def test_assign_to_network():
     # generate network
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
+
+    # add a dead-end condition near the first data point
+    coord_46 = (6001015, 600535)
+    G.add_node(46, x=coord_46[0], y=coord_46[1])
+    line_geom_a = geometry.LineString([(G.nodes[22]['x'], G.nodes[22]['y']), coord_46])
+    G.add_edge(22, 46, geom=line_geom_a)
+
+    coord_47 = (6001100, 600480)
+    G.add_node(47, x=coord_47[0], y=coord_47[1])
+    line_geom_b = geometry.LineString([coord_46, coord_47])
+    G.add_edge(46, 47, geom=line_geom_b)
+
+    coord_48 = (6000917, 600517)
+    G.add_node(48, x=coord_48[0], y=coord_48[1])
+    line_geom_c = geometry.LineString([coord_46, coord_48])
+    G.add_edge(46, 48, geom=line_geom_c)
+
     G = graphs.networkX_edge_defaults(G)
+
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
@@ -192,12 +211,14 @@ def test_assign_to_network():
     data_dict = mock.mock_data(G, random_seed=13)
     data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
 
+    # override data point 0 and 1's locations for test cases
+    data_map[0][:2] = [6001000, 600350]
+    data_map[1][:2] = [6001170, 600445]
+
     # for debugging
     plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
 
     data.assign_to_network(data_map, node_map, edge_map, netw_index, 500)
-
-
 
 
 def test_aggregate_to_src_idx():

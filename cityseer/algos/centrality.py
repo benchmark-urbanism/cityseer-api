@@ -1,16 +1,22 @@
 import numpy as np
 from numba import njit
-from numba.pycc import CC
 
 from cityseer.algos import data, checks
 
-cc = CC('centrality', source_module='cityseer.algos.centrality')
+
+# cc = CC('centrality')
 
 
-@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
+# @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
 @njit(cache=True)
-def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int, trim_to_full_idx_map: np.ndarray,
-                       full_to_trim_idx_map: np.ndarray, max_dist: float = np.inf, angular: bool = False):
+def shortest_path_tree(
+        node_map: np.ndarray,
+        edge_map: np.ndarray,
+        src_idx: int,
+        trim_to_full_idx_map: np.ndarray,
+        full_to_trim_idx_map: np.ndarray,
+        max_dist: float = np.inf,
+        angular: bool = False):
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
@@ -150,10 +156,15 @@ def shortest_path_tree(node_map: np.ndarray, edge_map: np.ndarray, src_idx: int,
     return map_impedance, map_distance, map_pred, cycles
 
 
-@cc.export('network_centralities', '(float64[:,:], float64[:,:], float64[:], float64[:], int64[:], int64[:], boolean)')
+#@cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
 @njit(cache=True)
-def local_centrality(node_map: np.ndarray, edge_map: np.ndarray, distances: np.ndarray, betas: np.ndarray,
-                     closeness_keys: np.ndarray, betweenness_keys: np.ndarray, angular: bool = False):
+def local_centrality(node_map: np.ndarray,
+                     edge_map: np.ndarray,
+                     distances: np.ndarray,
+                     betas: np.ndarray,
+                     closeness_keys: np.ndarray,
+                     betweenness_keys: np.ndarray,
+                     angular: bool = False):
     '''
     NODE MAP:
     0 - x
@@ -265,7 +276,12 @@ def local_centrality(node_map: np.ndarray, edge_map: np.ndarray, distances: np.n
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
         # distance map in metres still necessary for defining max distances and computing equivalent distance measures
         map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
-            shortest_path_tree(node_map, edge_map, src_idx, trim_to_full_idx_map, full_to_trim_idx_map, max_dist,
+            shortest_path_tree(node_map,
+                               edge_map,
+                               src_idx,
+                               trim_to_full_idx_map,
+                               full_to_trim_idx_map,
+                               max_dist,
                                angular)
 
         # use corresponding indices for reachable verts

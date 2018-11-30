@@ -156,10 +156,17 @@ def test_metrics_to_dict():
     N.betweenness()
     metrics_dict = N.metrics_to_dict()
 
-    for metric_key in N.metrics.keys():
-        for measure_key in N.metrics[metric_key].keys():
-            for dist in N.metrics[metric_key][measure_key].keys():
-                for idx, uid in enumerate(N.uids):
+    for idx, uid in enumerate(N.uids):
+        assert metrics_dict[uid]['x'] == N.nodes[idx][0]
+        assert metrics_dict[uid]['y'] == N.nodes[idx][1]
+        assert metrics_dict[uid]['live'] == (N.nodes[idx][2] == 1)
+        assert metrics_dict[uid]['weight'] == N.nodes[idx][4]
+        for metric_key in N.metrics.keys():
+            for measure_key in N.metrics[metric_key].keys():
+                print(measure_key)
+                for dist in N.metrics[metric_key][measure_key].keys():
+                    print(N.metrics[metric_key][measure_key][dist][idx],
+                          metrics_dict[uid][metric_key][measure_key][dist])
                     assert N.metrics[metric_key][measure_key][dist][idx] == \
                            metrics_dict[uid][metric_key][measure_key][dist]
 

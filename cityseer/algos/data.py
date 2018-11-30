@@ -2,14 +2,14 @@ from typing import Tuple
 
 import numpy as np
 from numba import njit
-from numba.pycc import CC
 
 from cityseer.algos import centrality, checks
 
-cc = CC('data', source_module='cityseer.algos.data')
+
+# cc = CC('data')
 
 
-@cc.export('tiered_sort', '(float64[:,:], uint8)')
+# @cc.export('tiered_sort', '(float64[:,:], uint8)')
 @njit(cache=True)
 def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
     if tier > arr.shape[1] - 1:
@@ -20,7 +20,7 @@ def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
     return arr[sort_order]
 
 
-@cc.export('binary_search', '(float64[:], float64, float64)')
+#@cc.export('binary_search', '(float64[:], float64, float64)')
 @njit(cache=True)
 def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
     if min > max:
@@ -32,7 +32,7 @@ def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
     return left_idx, right_idx
 
 
-@cc.export('generate_index', '(float64[:], float64[:])')
+#@cc.export('generate_index', '(float64[:], float64[:])')
 @njit(cache=True)
 def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
     '''
@@ -59,7 +59,7 @@ def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
     return index_map
 
 
-@cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
+#@cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
 @njit(cache=True)
 def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[np.ndarray, np.ndarray]:
     '''
@@ -85,7 +85,7 @@ def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> 
     return x_idx_sorted, y_idx_sorted
 
 
-@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
+#@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
 @njit(cache=True)
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
@@ -102,7 +102,7 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
     return trim_to_full_idx_map
 
 
-@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
+#@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
 @njit(cache=True)
 def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
     np.ndarray, np.ndarray]:
@@ -140,8 +140,8 @@ def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, 
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
-@njit
+# @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
+@njit(cache=True)
 def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
     # get the x and y ranges spanning the max distance
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
@@ -215,6 +215,8 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         ang_a = np.arctan2(*point_a[::-1])
         ang_b = np.arctan2(*point_b[::-1])
         return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
+
+    pred_map = np.full(len(node_map), np.nan)
 
     # iterate each data point
     for data_idx in range(len(data_map)):

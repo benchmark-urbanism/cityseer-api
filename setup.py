@@ -17,19 +17,12 @@ use numba.typeof to deduce signatures
 add @njit to help aot functions find each other, see https://stackoverflow.com/questions/49326937/error-when-compiling-a-numba-module-with-function-using-other-functions-inline
 '''
 # switching to SKBUILD to try build chains for different systems?
-from skbuild import setup
-
-from cityseer.algos import centrality, data, diversity, checks
-
-print(centrality.cc.name)
-print(centrality.cc.output_file)
-print(centrality.cc.output_dir)
-print(centrality.cc._source_module)
-centrality.cc.verbose = True
+# from skbuild import setup
+from setuptools import setup
 
 setup (
     name = 'cityseer',
-    version='0.2.7',
+    version='0.2.12',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
@@ -52,10 +45,11 @@ setup (
         'sklearn'
     ],
     ext_package='cityseer.algos',  # NB -> sets output directory for extension modules
+    # some sort of issue with AOT precompilation - using njit for now...
     ext_modules = [
-        centrality.cc.distutils_extension(),
-        data.cc.distutils_extension(),
-        diversity.cc.distutils_extension(),
-        checks.cc.distutils_extension()
+        # centrality.cc.distutils_extension(),
+        # data.cc.distutils_extension(),
+        # diversity.cc.distutils_extension(),
+        #checks.cc.distutils_extension()
     ]
 )
