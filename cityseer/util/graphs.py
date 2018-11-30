@@ -127,8 +127,7 @@ def networkX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
             if line_geom.type != 'LineString':
                 raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # convert the coords to UTM - remember to flip back to lng, lat
-            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in
-                          zip(line_geom.coords.xy[0], line_geom.coords.xy[1])]
+            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in line_geom.coords]
             # write back to edge
             g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
 
@@ -205,8 +204,7 @@ def networkX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Gra
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2]:
-            flipped_coords = np.fliplr(line_geom.coords.xy)
-            line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+            line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
             raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
@@ -228,8 +226,7 @@ def networkX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Gra
             # create the split LineString geom for measuring the new length
             line_segment = substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
-            x = line_segment.coords.xy[0][-1]
-            y = line_segment.coords.xy[1][-1]
+            x, y = line_segment.coords[-1]
             # add the new node and edge
             g_copy.add_node(new_node_id, x=x, y=y)
             # add and set live property if present in parent graph
@@ -292,8 +289,7 @@ def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
                 f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
         if not (a_x, a_y) == line_geom.coords[0][:2]:
-            flipped_coords = np.fliplr(line_geom.coords.xy)
-            line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+            line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
         if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
             raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
