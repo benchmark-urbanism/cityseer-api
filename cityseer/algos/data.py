@@ -10,7 +10,7 @@ from cityseer.algos import centrality, checks
 
 
 # @cc.export('tiered_sort', '(float64[:,:], uint8)')
-@njit(cache=True)
+@njit
 def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
     if tier > arr.shape[1] - 1:
         raise ValueError('The selected tier for sorting exceeds the available tiers.')
@@ -21,7 +21,7 @@ def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
 
 
 #@cc.export('binary_search', '(float64[:], float64, float64)')
-@njit(cache=True)
+@njit
 def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
     if min > max:
         raise ValueError('Max must be greater than min.')
@@ -33,7 +33,7 @@ def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
 
 
 #@cc.export('generate_index', '(float64[:], float64[:])')
-@njit(cache=True)
+@njit
 def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
     '''
     Create a 2d numpy array:
@@ -60,7 +60,7 @@ def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
 
 
 #@cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
-@njit(cache=True)
+@njit
 def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[np.ndarray, np.ndarray]:
     '''
     0 - x_arr
@@ -86,7 +86,7 @@ def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> 
 
 
 #@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
-@njit(cache=True)
+@njit
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
     trim_to_full_idx_map = np.full(trim_count, np.nan)
@@ -103,7 +103,7 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
 
 
 #@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
-@njit(cache=True)
+@njit
 def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
     np.ndarray, np.ndarray]:
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
@@ -141,7 +141,7 @@ def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, 
 
 
 # @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
-@njit(cache=True)
+@njit
 def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
     # get the x and y ranges spanning the max distance
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
@@ -227,9 +227,11 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
 
         # state
         enclosed = False
+        reversing = False
+        end_node = np.nan
         print('DATA INDEX', data_idx)
         # keep track of visited nodes
-        pred_map = np.full(len(node_map), np.nan)
+        pred_map.fill(np.nan)
         # the data point's coordinates don't change
         data_coords = data_map[data_idx][:2]
         # get the nearest point on the network
@@ -239,7 +241,7 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         print('start:', node_idx)
         # track total rotation - distinguishes between encircling and non-encircling cycles
         total_rot = 0
-        # keep track of previous indices to avoid doubling-back
+        # keep track of previous indices
         prev_idx = None
         # iterate neighbours
         while True:
@@ -263,42 +265,76 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
                     continue
                 # cast to int for indexing
                 new_idx = int(end)
-                # calculate the clockwise rotation from the base line
+                # look for the new neighbour with the smallest rightwards (anti-clockwise arctan2) angle
                 new_coords = node_map[new_idx][:2]
-                rotation = calculate_rotation(new_coords - node_coords, data_coords - node_coords)
-                # if least change from prior node, update
-                if nb_rot is None or rotation < nb_rot:
-                    nb_rot = rotation
-                    nb_idx = new_idx
+                # measure the angle relative to the data point for the first node
+                if prev_idx is None:
+                    r = calculate_rotation(new_coords - node_coords, data_coords - node_coords)
+                else:
+                    prev_coords = node_map[prev_idx][:2]
+                    r = calculate_rotation(new_coords - node_coords, prev_coords - node_coords)
+                if reversing:
+                    r = 360 - r
+                # if least angle, update
+                if nb_rot is None or r < nb_rot:
+                    nb_rot = r
+                    nb_idx = int(new_idx)
             # break conditions
-            # if no neighbour is found
+            # allow backtracking if no neighbour is found
             if nb_idx is None:
-                break
-            print('nb:', nb_idx)
+                nb_idx = int(pred_map[node_idx])
+                print('BACKTRACKING')
             # aggregate total rotation - but in clockwise direction
             nb_coords = node_map[nb_idx][:2]
             total_rot += (calculate_rotation(node_coords - data_coords, nb_coords - data_coords) + 180) % 360 - 180
+            # if the new nb node has already been visited
+            if not np.isnan(pred_map[nb_idx]):
+                # this can be ignored while backtracking, but this is otherwise a non-enclosing cycle: break
+                if nb_idx != pred_map[node_idx]:
+                    end_node = nb_idx
+                    print('ARBITRARY CYCLE', nb_idx, round(total_rot))
+                    if not reversing:
+                        # reverse and try in opposite direction
+                        print("REVERSING")
+                        reversing = True
+                        pred_map.fill(np.nan)
+                        node_idx = int(min_idx)
+                        total_rot = 0
+                        prev_idx = None
+                        continue
+                    break
+            # do not overwrite predecessors if backtracking
+            if np.isnan(pred_map[nb_idx]):
+                pred_map[nb_idx] = node_idx
             # break if the original node is re-encountered after circling a block
             if nb_idx == min_idx:
-                # check that rotation is through 360
-                if round(total_rot):
+                end_node = nb_idx
+                # enclosing loops will give a rotation of 360
+                rot = round(abs(total_rot))
+                if rot >= 360:  # tot
+                    print("ENCLOSED", nb_idx, round(total_rot))
                     enclosed = True
-                # set the predecessor
-                pred_map[int(min_idx)] = node_idx
+                # non-enclosing loops wil give a rotation of 0
+                elif rot == 0 and not reversing:
+                    # reverse and try in opposite direction
+                    print("REVERSING")
+                    reversing = True
+                    pred_map.fill(np.nan)
+                    node_idx = int(min_idx)
+                    total_rot = 0
+                    prev_idx = None
+                    continue
+                else:
+                    print("NON-ENCLOSED", nb_idx, round(total_rot))
+                    # other arbitrary spin-off loops may give other totals
                 break
-            # if the new nb node has already been visited, but not origin, then non-encircling loop was found...
-            if not np.isnan(pred_map[nb_idx]):
-                break
-            # otherwise, set predecessor and keep going
-            pred_map[nb_idx] = node_idx
+            # otherwise, keep going
+            print('nb:', nb_idx)
             prev_idx = node_idx
             node_idx = nb_idx
 
+        # TODO: whether to try opposite direction for non-enclosing loops?
         # TODO: add distance cutoff
-        # TODO: reverse??
-
-        if enclosed:
-            print('ENCLOSED')
         print('')
 
         # if clockwise fails, try counter-clockwise

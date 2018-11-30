@@ -8,7 +8,7 @@ from cityseer.algos import data, checks
 
 
 # @cc.export('hill_diversity', '(uint64[:], float64)')
-@njit(cache=True)
+@njit
 def hill_diversity(class_counts: np.ndarray, q: float) -> float:
     '''
     Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
@@ -45,7 +45,7 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
 
 
 #@cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
-@njit(cache=True)
+@njit
 def hill_diversity_branch_generic(class_counts: np.ndarray, class_weights: np.ndarray, q: float) -> float:
     '''
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
@@ -102,7 +102,7 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, class_weights: np.nd
 
 
 #@cc.export('hill_diversity_branch_distance_wt', '(uint64[:], float64[:], float64, float64)')
-@njit(cache=True)
+@njit
 def hill_diversity_branch_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
                                       q: float) -> float:
     if beta < 0:
@@ -114,7 +114,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.array, class_distances: n
 
 
 #@cc.export('hill_diversity_pairwise_generic', '(uint64[:], float64[:,:], float64)')
-@njit(cache=True)
+@njit
 def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
     '''
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
@@ -187,7 +187,7 @@ def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndar
 
 
 #@cc.export('pairwise_distance_matrix', '(float64[:], float64)')
-@njit(cache=True)
+@njit
 def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
     if beta < 0:
         raise ValueError('Please provide the beta/s without the leading negative.')
@@ -209,7 +209,7 @@ def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
 
 
 #@cc.export('hill_diversity_pairwise_distance_wt', '(uint64[:], float64[:], float64, float64)')
-@njit(cache=True)
+@njit
 def hill_diversity_pairwise_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
                                         q: float) -> float:
     if len(class_counts) != len(class_distances):
@@ -221,7 +221,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.array, class_distances:
 
 
 #@cc.export('pairwise_disparity_matrix', '(uint64[:,:], float64[:])')
-@njit(cache=True)
+@njit
 def pairwise_disparity_matrix(class_tiers: np.ndarray, class_weights: np.ndarray) -> np.ndarray:
     if class_tiers.shape[1] != len(class_weights):
         raise ValueError('The number of weights must correspond to the number of tiers for nodes i and j.')
@@ -252,7 +252,7 @@ def pairwise_disparity_matrix(class_tiers: np.ndarray, class_weights: np.ndarray
 
 
 #@cc.export('hill_diversity_pairwise_disparity_wt', '(uint64[:], uint64[:,:], float64[:], float64)')
-@njit(cache=True)
+@njit
 def hill_diversity_pairwise_disparity_wt(class_counts: np.array, class_tiers: np.array, class_weights: np.array,
                                          q: float) -> float:
     if len(class_counts) != len(class_tiers):
@@ -266,7 +266,7 @@ def hill_diversity_pairwise_disparity_wt(class_counts: np.array, class_tiers: np
 # explicit return required, otherwise numba throws:
 # TypeError: invalid signature: 'str' instance not allowed
 #@cc.export('gini_simpson_diversity', 'float64(uint64[:])')
-@njit(cache=True)
+@njit
 def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     '''
     Gini-Simpson
@@ -291,7 +291,7 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
 
 
 #@cc.export('shannon_diversity', 'float64(uint64[:])')
-@njit(cache=True)
+@njit
 def shannon_diversity(class_counts: np.ndarray) -> float:
     '''
     Entropy
@@ -312,7 +312,7 @@ def shannon_diversity(class_counts: np.ndarray) -> float:
 
 
 #@cc.export('raos_quadratic_diversity', '(uint64[:], float64[:,:], float64, float64)')
-@njit(cache=True)
+@njit
 def raos_quadratic_diversity(class_counts: np.ndarray, wt_matrix: np.ndarray, alpha: float = 1,
                              beta: float = 1) -> float:
     '''

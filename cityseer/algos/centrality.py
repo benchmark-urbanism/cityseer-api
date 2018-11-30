@@ -8,7 +8,7 @@ from cityseer.algos import data, checks
 
 
 # @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
-@njit(cache=True)
+@njit
 def shortest_path_tree(
         node_map: np.ndarray,
         edge_map: np.ndarray,
@@ -157,7 +157,7 @@ def shortest_path_tree(
 
 
 #@cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
-@njit(cache=True)
+@njit
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
