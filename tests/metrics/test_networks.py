@@ -4,7 +4,6 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from cityseer.algos import data
 from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
@@ -30,7 +29,6 @@ def test_Network_Layer():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
-    index = data.generate_index(x_arr, y_arr)
     betas = [-0.02, -0.005]
     distances = networks.distance_from_beta(betas)
     min_thresh_wt = 0.01831563888873418
@@ -52,7 +50,6 @@ def test_Network_Layer():
             assert N.min_threshold_wt == min_thresh_wt
             assert np.array_equal(N._nodes, node_map)
             assert np.array_equal(N._edges, edge_map)
-            assert np.array_equal(N._index, index)
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
             assert np.array_equal(N.live, node_map[:, 2])
@@ -91,7 +88,6 @@ def test_Network_Layer_From_NetworkX():
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
     live = node_map[:, 2]
-    index = data.generate_index(x_arr, y_arr)
     distances = [100, 200]
     min_thresh_wt = 0.018
     angular = False
@@ -101,7 +97,6 @@ def test_Network_Layer_From_NetworkX():
     assert N.uids == node_uids
     assert np.array_equal(N._nodes, node_map)
     assert np.array_equal(N._edges, edge_map)
-    assert np.array_equal(N._index, index)
     assert np.array_equal(N.x_arr, x_arr)
     assert np.array_equal(N.y_arr, y_arr)
     assert np.array_equal(N.live, live)

@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import utm
 
-from cityseer.algos import data
 from cityseer.metrics import layers
 from cityseer.util import mock
 
@@ -81,14 +80,12 @@ def test_Data_Layer():
     y_arr = data_map[:, 1]
     live = data_map[:, 2]
     class_codes = data_map[:, 3]
-    index = data.generate_index(x_arr, y_arr)
 
     # test against Data_Layer internal process
     D = layers.Data_Layer(data_uids, data_map, class_labels)
     assert D.uids == data_uids
     assert np.allclose(D.data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
-    assert np.array_equal(D.index, index)
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
     assert np.array_equal(D.live, live)
@@ -103,14 +100,12 @@ def test_Data_Layer_From_Dict():
     y_arr = data_map[:, 1]
     live = data_map[:, 2]
     class_codes = data_map[:, 3]
-    index = data.generate_index(x_arr, y_arr)
 
     # test against Data_Layer_From_Dict's internal process
     D = layers.Data_Layer_From_Dict(data_dict)
     assert D.uids == data_uids
     assert np.allclose(D.data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
-    assert np.array_equal(D.index, index)
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
     assert np.array_equal(D.live, live)

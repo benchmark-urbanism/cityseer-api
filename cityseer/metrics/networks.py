@@ -7,7 +7,7 @@ from typing import Union
 import networkx as nx
 import numpy as np
 
-from cityseer.algos import centrality, data, checks
+from cityseer.algos import centrality, checks
 from cityseer.util import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +66,6 @@ class Network_Layer:
         self._uids = node_uids
         self._nodes = node_map
         self._edges = edge_map
-        self._index = data.generate_index(self.x_arr, self.y_arr)
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
@@ -98,10 +97,7 @@ class Network_Layer:
         # check the data structures
         if len(self._uids) != len(self._nodes):
             raise ValueError('The number of indices does not match the number of nodes.')
-        if len(self._nodes) != len(self._index):
-            raise ValueError('The data map and index map are not the same lengths.')
         checks.check_network_types(self._nodes, self._edges)
-        checks.check_index_map(self._index)
 
     @property
     def uids(self):

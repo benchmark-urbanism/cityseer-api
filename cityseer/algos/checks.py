@@ -5,20 +5,6 @@ from numba import njit
 # cc = CC('checks')
 
 
-# @cc.export('check_index_map', 'void(float64[:,:])')
-@njit
-def check_index_map(index_map: np.ndarray):
-    if not index_map.ndim == 2 or index_map.shape[1] != 4:
-        raise ValueError(
-            'The index map must have a dimensionality of Nx4, corresponding to sorted x coordinates, associated x indices, sorted y coordinates, and associated y indices.')
-
-    for idx in range(len(index_map) - 1):
-        if index_map[idx][0] > index_map[idx + 1][0]:
-            raise ValueError('The index map x coordinates are not sorted.')
-        if index_map[idx][2] > index_map[idx + 1][2]:
-            raise ValueError('The index map y coordinates are not sorted.')
-
-
 #@cc.export('check_data_map', 'void(float64[:,:])')
 @njit
 def check_data_map(data_map: np.ndarray):

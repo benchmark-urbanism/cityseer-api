@@ -109,17 +109,13 @@ class Data_Layer:
         self.uids = data_uids  # original labels / indices for each data point
         self.data = data_map  # data map per above
         self.class_labels = class_labels  # original raw data classes
-        self.index = data.generate_index(self.x_arr, self.y_arr)
 
         # check the data structures
         if len(self.uids) != len(self.data):
             raise ValueError('The number of data labels does not match the number of data points.')
         if len(self.class_labels) != len(set(self.class_codes)):
             raise ValueError('The number of data class labels does not match the number of data class codes.')
-        if len(self.data) != len(self.index):
-            raise ValueError('The data map and index map are not the same lengths.')
         checks.check_data_map(self.data)
-        checks.check_index_map(self.index)
 
     @property
     def x_arr(self):
@@ -138,7 +134,7 @@ class Data_Layer:
         return self.data[:, 3]
 
     def assign_to_network(self, Network_Layer, max_dist):
-        data.assign_to_network(self.data, Network_Layer.nodes, Network_Layer.edges, Network_Layer.index, max_dist)
+        data.assign_to_network(self.data, Network_Layer.nodes, Network_Layer.edges, max_dist)
 
 
 class Data_Layer_From_Dict(Data_Layer):

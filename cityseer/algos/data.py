@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 from numba import njit
 
@@ -7,82 +5,6 @@ from cityseer.algos import centrality, checks
 
 
 # cc = CC('data')
-
-# index strategy is slower than simple pythagorean filter - would need careful time analysis to find bottlenecks
-# @cc.export('tiered_sort', '(float64[:,:], uint8)')
-@njit
-def tiered_sort(arr: np.ndarray, tier: int) -> np.ndarray:
-    if tier > arr.shape[1] - 1:
-        raise ValueError('The selected tier for sorting exceeds the available tiers.')
-
-    # don't modify the arrays in place
-    sort_order = arr[:, tier].argsort()
-    return arr[sort_order]
-
-
-#@cc.export('binary_search', '(float64[:], float64, float64)')
-@njit
-def binary_search(arr: np.ndarray, min: float, max: float) -> Tuple[int, int]:
-    if min > max:
-        raise ValueError('Max must be greater than min.')
-
-    left_idx = np.searchsorted(arr, min)
-    right_idx = np.searchsorted(arr, max, side='right')
-
-    return left_idx, right_idx
-
-
-#@cc.export('generate_index', '(float64[:], float64[:])')
-@njit
-def generate_index(x_arr: np.ndarray, y_arr: np.ndarray) -> np.ndarray:
-    '''
-    Create a 2d numpy array:
-    0 - x_arr
-    1 - x_idx - corresponds to original index of non-sorted x_arr
-    2 - y_arr
-    3 - y_idx
-    '''
-
-    if len(x_arr) != len(y_arr):
-        raise ValueError('x and y arrays must match in length')
-
-    index_map = np.full((len(x_arr), 4), np.nan)
-
-    x_idx = np.arange(len(x_arr))
-    x_stacked = np.vstack((x_arr, x_idx)).T
-    index_map[:, :2] = tiered_sort(x_stacked, tier=0)
-
-    y_idx = np.arange(len(y_arr))
-    y_stacked = np.vstack((y_arr, y_idx)).T
-    index_map[:, 2:] = tiered_sort(y_stacked, tier=0)
-
-    return index_map
-
-
-#@cc.export('_slice_index', '(float64[:,:], float64, float64, float64)')
-@njit
-def _slice_index(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[np.ndarray, np.ndarray]:
-    '''
-    0 - x_arr
-    1 - x_idx - corresponds to original index of non-sorted x_arr
-    2 - y_arr
-    3 - y_idx
-    '''
-
-    # find the x and y ranges
-    x_arr = index_map[:, 0]
-    y_arr = index_map[:, 2]
-    x_start, x_end = binary_search(x_arr, x - max_dist, x + max_dist)
-    y_start, y_end = binary_search(y_arr, y - max_dist, y + max_dist)
-
-    # slice the x and y data based on min and max - then sort to index order
-    x_range = index_map[x_start:x_end, :2]
-    y_range = index_map[y_start:y_end, 2:]
-
-    x_idx_sorted = tiered_sort(x_range, tier=1)
-    y_idx_sorted = tiered_sort(y_range, tier=1)
-
-    return x_idx_sorted, y_idx_sorted
 
 
 #@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
@@ -101,49 +23,6 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
             trim_to_full_idx_map[int(trim_idx)] = idx
 
     return trim_to_full_idx_map
-
-
-#@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
-@njit
-def ___distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
-    np.ndarray, np.ndarray]:
-    '''
-    TODO: SUBSTANTIALLY SLOWER THAN RADIAL VARIANT
-    Have tried various strategies which basically amount to simpler and simper implementations,
-    ultimately converging on radial_filter brute-force approach over a single dimension of complexity.
-    '''
-    x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
-
-    # prepare the full to trim output map
-    total_count = len(index_map)
-    full_to_trim_idx_map = np.full(total_count, np.nan)
-
-    # iterate the slices
-    trim_count = 0
-    y_cursor = 0
-    for idx in range(len(x_idx_sorted)):
-        # disaggregate this way to avoid numba typing issues
-        x_coord = x_idx_sorted[idx][0]
-        x_key = x_idx_sorted[idx][1]
-        # see if the same key is in the y array
-        l, r = binary_search(y_idx_sorted[y_cursor:, 1], x_key, x_key)
-        # l is the index relative to the cropped range
-        # this can be incremented regardless of matches
-        y_cursor += l
-        # if the left and right indices are not the same, the element was found
-        if l < r:
-            # if crow-flies - check the distance
-            if radial:
-                y_coord = y_idx_sorted[y_cursor, 0]
-                dist = np.hypot(x_coord - x, y_coord - y)
-                if dist > max_dist:
-                    continue
-            full_to_trim_idx_map[int(x_key)] = trim_count
-            trim_count += 1
-
-    trim_to_full_idx_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
-
-    return trim_to_full_idx_map, full_to_trim_idx_map
 
 
 @njit
@@ -167,43 +46,8 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-# @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
 @njit
-def ___nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
-    '''
-    TODO: SUBSTANTIALLY SLOWER THAN SIMPLE VARIANT
-    Have tried various strategies which basically amount to simpler and simper implementations,
-    ultimately converging on radial_filter brute-force approach over a single dimension of complexity.
-    '''
-    # get the x and y ranges spanning the max distance
-    x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
-
-    min_idx = np.nan
-    min_dist = np.inf
-    y_cursor = 0
-    for idx in range(len(x_idx_sorted)):
-        # disaggregate this way to avoid numba typing issues
-        x_coord = x_idx_sorted[idx][0]
-        x_key = x_idx_sorted[idx][1]
-        # see if the same key is in the y array
-        l, r = binary_search(y_idx_sorted[y_cursor:, 1], x_key, x_key)
-        # l is the index relative to the cropped range
-        # this can be incremented regardless of matches
-        y_cursor += l
-        # if the left and right indices are not the same, the element was found
-        if l < r:
-            # check if it is less than the current minimum
-            y_coord = y_idx_sorted[y_cursor, 0]
-            dist = np.hypot(x_coord - x, y_coord - y)
-            if dist < min_dist:
-                min_idx = x_key
-                min_dist = dist
-
-    return min_idx, min_dist
-
-
-@njit
-def nearest_idx_simple(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
+def nearest_idx(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
 
@@ -287,7 +131,7 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         # get the nearest point on the network
         netw_x_arr = node_map[:, 0]
         netw_y_arr = node_map[:, 1]
-        min_idx, min_dist = nearest_idx_simple(data_coords[0], data_coords[1], netw_x_arr, netw_y_arr, max_dist)
+        min_idx, min_dist = nearest_idx(data_coords[0], data_coords[1], netw_x_arr, netw_y_arr, max_dist)
         # set start node to nearest network node
         node_idx = int(min_idx)
         print('start:', node_idx)

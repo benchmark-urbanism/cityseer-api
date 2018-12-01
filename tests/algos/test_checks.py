@@ -6,26 +6,6 @@ from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 
 
-def test_check_index_map():
-    G, pos = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-
-    with pytest.raises(ValueError):
-        checks.check_index_map(N._index[:, :-1])
-    with pytest.raises(ValueError):
-        # flip x order
-        index_corrupted = N._index
-        index_corrupted[:, :-1] = index_corrupted[:, :-1][::-1]
-        checks.check_index_map(index_corrupted)
-    with pytest.raises(ValueError):
-        # flip y order
-        index_corrupted = N._index
-        index_corrupted[:, :-3] = index_corrupted[:, :-3][::-1]
-        checks.check_index_map(index_corrupted)
-
-
 def test_check_data_map():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)

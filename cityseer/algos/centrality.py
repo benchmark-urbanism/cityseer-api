@@ -201,11 +201,6 @@ def local_centrality(node_map: np.ndarray,
     y_arr = node_map[:, 1]
     nodes_live = node_map[:, 2]
 
-    # generate the indices for x and y
-    # NOTE -> debating whether to do this implicitly or explicitly outside of this method... as with diversity.mixed_uses()
-    # if the latter, then can be reused, but requires more cognisance on part of user
-    netw_index = data.generate_index(x_arr, y_arr)
-
     # prepare data arrays
     # indices correspond to different centrality formulations
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
@@ -269,11 +264,6 @@ def local_centrality(node_map: np.ndarray,
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        # trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(netw_index,
-        #                                                                  src_x,
-        #                                                                  src_y,
-        #                                                                  max_dist,
-        #                                                                  radial=True)
         trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x, src_y, x_arr, y_arr, max_dist)
 
         # run the shortest tree dijkstra
