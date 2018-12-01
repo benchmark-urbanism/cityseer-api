@@ -108,7 +108,9 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
 def ___distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
     np.ndarray, np.ndarray]:
     '''
-    # TODO: SUBSTANTIALLY SLOWER THAN RADIAL VARIANT - look at removing sorting
+    TODO: SUBSTANTIALLY SLOWER THAN RADIAL VARIANT
+    Have tried various strategies which basically amount to simpler and simper implementations,
+    ultimately converging on radial_filter brute-force approach over a single dimension of complexity.
     '''
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
@@ -169,7 +171,9 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
 @njit
 def ___nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
     '''
-    # TODO: SUBSTANTIALLY SLOWER THAN SIMPLE VARIANT - look at removing sorting
+    TODO: SUBSTANTIALLY SLOWER THAN SIMPLE VARIANT
+    Have tried various strategies which basically amount to simpler and simper implementations,
+    ultimately converging on radial_filter brute-force approach over a single dimension of complexity.
     '''
     # get the x and y ranges spanning the max distance
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)

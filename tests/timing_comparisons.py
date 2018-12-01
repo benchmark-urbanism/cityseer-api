@@ -24,22 +24,22 @@ def test_filter_times():
     # WARMUP THE FUNCTIONS FIRST
     print('')
     print('Warming up functions')
-    _ = data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
     _ = data.___distance_filter(D.index, src_x, src_y, max_dist, radial=True)
+    _ = data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
 
     start = time.time()
     for i in range(iterations):
         _ = data.___distance_filter(D.index, src_x, src_y, max_dist, radial=True)
     end = time.time()
     print(f'TIME: distance_filter = {end - start}')
-    # distance_filter = 3.6621828079223633
+    # distance_filter = 5.90056300163269
 
     start = time.time()
     for i in range(iterations):
         _ = data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
     end = time.time()
     print(f'TIME: radial_filter = {end - start}')
-    # radial_filter = 0.08966994285583496
+    # radial_filter = 0.1493382453918457
 
 
 def test_nearest_filters():
@@ -69,11 +69,11 @@ def test_nearest_filters():
         _ = data.___nearest_idx(D.index, src_x, src_y, max_dist)
     end = time.time()
     print(f'TIME: nearest_idx = {end - start}')
-    # nearest_idx = 4.452321767807007
+    # nearest_idx = 4.57602596282959
 
     start = time.time()
     for i in range(iterations):
         _ = data.nearest_idx_simple(src_x, src_y, D.x_arr, D.y_arr, max_dist)
     end = time.time()
     print(f'TIME: nearest_idx_simple = {end - start}')
-    # nearest_idx_simple = 0.0771932601928711
+    # nearest_idx_simple = 0.06587481498718262
