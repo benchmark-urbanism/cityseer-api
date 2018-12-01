@@ -200,7 +200,7 @@ def test_nearest_idx():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[200])
 
     # generate some data
     data_dict = mock.mock_data(G)
@@ -293,7 +293,7 @@ def test_assign_to_network():
     # for debugging
     plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
 
-    data.assign_to_network(data_map, node_map, edge_map, netw_index, 500)
+    data.assign_to_network(data_map, node_map, edge_map, 500)
 
 
 def test_aggregate_to_src_idx():

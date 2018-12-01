@@ -223,8 +223,7 @@ def nearest_idx_simple(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.
 
 # @cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
 # @njit
-def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.ndarray, netw_index: np.ndarray,
-                      max_dist: float) -> np.ndarray:
+def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.ndarray, max_dist: float) -> np.ndarray:
     '''
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -286,7 +285,9 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         # the data point's coordinates don't change
         data_coords = data_map[data_idx][:2]
         # get the nearest point on the network
-        min_idx, min_dist = ___nearest_idx(netw_index, data_coords[0], data_coords[1], max_dist)
+        netw_x_arr = node_map[:, 0]
+        netw_y_arr = node_map[:, 1]
+        min_idx, min_dist = nearest_idx_simple(data_coords[0], data_coords[1], netw_x_arr, netw_y_arr, max_dist)
         # set start node to nearest network node
         node_idx = int(min_idx)
         print('start:', node_idx)
