@@ -30,7 +30,6 @@ def test_Network_Layer():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
-    live = node_map[:, 2]
     index = data.generate_index(x_arr, y_arr)
     distances = [100, 200]
     min_thresh_wt = 0.018
@@ -45,7 +44,9 @@ def test_Network_Layer():
     assert np.array_equal(N.index, index)
     assert np.array_equal(N.x_arr, x_arr)
     assert np.array_equal(N.y_arr, y_arr)
-    assert np.array_equal(N.live, live)
+    assert np.array_equal(N.live, node_map[:, 2])
+    assert np.array_equal(N.edge_lengths, edge_map[:, 2])
+    assert np.array_equal(N.edge_impedances, edge_map[:, 3])
     assert N.min_threshold_wt == min_thresh_wt
     assert N.betas == [np.log(min_thresh_wt) / d for d in distances]
     assert N.angular == angular

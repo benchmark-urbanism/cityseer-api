@@ -115,6 +115,14 @@ class Network_Layer:
     def live(self):
         return self.nodes[:, 2]
 
+    @property
+    def edge_lengths(self):
+        return self.edges[:, 2]
+
+    @property
+    def edge_impedances(self):
+        return self.edges[:, 3]
+
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
         return graphs.networkX_from_graph_maps(self.uids, self.nodes, self.edges, self.networkX, metrics_dict)
