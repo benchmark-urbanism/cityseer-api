@@ -31,9 +31,11 @@ def test_shortest_path_tree():
             x_arr = n_map[:, 0]
             y_arr = n_map[:, 1]
             src = 0
-            index_map = data.generate_index(x_arr, y_arr)
-            trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(index_map, x_arr[src], y_arr[src],
-                                                                              max_dist, radial=True)
+            trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(x_arr[src],
+                                                                            y_arr[src],
+                                                                            x_arr,
+                                                                            y_arr,
+                                                                            max_dist)
             # check shortest path maps
             map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(n_map,
                                                                                           e_map,
@@ -61,9 +63,11 @@ def test_shortest_path_tree():
     # generate trim and full index maps
     x_arr = n_map[:, 0]
     y_arr = n_map[:, 1]
-    index_map = data.generate_index(x_arr, y_arr)
-    trim_to_full_idx_map, full_to_trim_idx_map = data.distance_filter(index_map, x_arr[src], y_arr[src], np.inf,
-                                                                      radial=True)
+    trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(x_arr[src],
+                                                                    y_arr[src],
+                                                                    x_arr,
+                                                                    y_arr,
+                                                                    np.inf)
 
     # SIMPLEST PATH: get simplest path tree using angular impedance
     map_impedance_a, map_distance_a, map_pred_a, cycles_a = centrality.shortest_path_tree(n_map,

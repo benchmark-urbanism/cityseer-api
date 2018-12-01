@@ -105,8 +105,11 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
 
 #@cc.export('distance_filter', '(float64[:,:], float64, float64, float64, boolean)')
 @njit
-def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
+def ___distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, radial=True) -> Tuple[
     np.ndarray, np.ndarray]:
+    '''
+    # TODO: SUBSTANTIALLY SLOWER THAN RADIAL VARIANT - look at removing sorting
+    '''
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
     # prepare the full to trim output map
@@ -141,7 +144,6 @@ def distance_filter(index_map: np.ndarray, x: float, y: float, max_dist: float, 
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-# TODO: this is definitely faster... what is the bottleneck on index method?
 @njit
 def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
@@ -153,7 +155,7 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
 
     trim_count = 0
     for idx in range(total_count):
-        dist = np.sqrt((x_arr[idx] - src_x) ** 2 + (y_arr[idx] - src_y) ** 2)
+        dist = np.hypot(x_arr[idx] - src_x, y_arr[idx] - src_y)
         if dist <= max_dist:
             full_to_trim_idx_map[int(idx)] = trim_count
             trim_count += 1
@@ -163,10 +165,12 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-# TODO: timeit test this vs. simple pythagorean filter...
 # @cc.export('nearest_idx', '(float64[:,:], float64, float64, float64)')
 @njit
-def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
+def ___nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> Tuple[int, float]:
+    '''
+    # TODO: SUBSTANTIALLY SLOWER THAN SIMPLE VARIANT - look at removing sorting
+    '''
     # get the x and y ranges spanning the max distance
     x_idx_sorted, y_idx_sorted = _slice_index(index_map, x, y, max_dist)
 
@@ -190,6 +194,25 @@ def nearest_idx(index_map: np.ndarray, x: float, y: float, max_dist: float) -> T
             if dist < min_dist:
                 min_idx = x_key
                 min_dist = dist
+
+    return min_idx, min_dist
+
+
+@njit
+def nearest_idx_simple(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
+    if len(x_arr) != len(y_arr):
+        raise ValueError('Mismatching x and y array lengths.')
+
+    # filter by distance
+    total_count = len(x_arr)
+    min_idx = np.nan
+    min_dist = np.inf
+
+    for idx in range(total_count):
+        dist = np.hypot(x_arr[idx] - src_x, y_arr[idx] - src_y)
+        if dist <= max_dist and dist < min_dist:
+            min_idx = idx
+            min_dist = dist
 
     return min_idx, min_dist
 
@@ -259,7 +282,7 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         # the data point's coordinates don't change
         data_coords = data_map[data_idx][:2]
         # get the nearest point on the network
-        min_idx, min_dist = nearest_idx(netw_index, data_coords[0], data_coords[1], max_dist)
+        min_idx, min_dist = ___nearest_idx(netw_index, data_coords[0], data_coords[1], max_dist)
         # set start node to nearest network node
         node_idx = int(min_idx)
         print('start:', node_idx)
@@ -397,7 +420,7 @@ def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, ed
 
     # filter the network by distance
     netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = \
-        distance_filter(netw_index, src_x, src_y, max_dist)
+        ___distance_filter(netw_index, src_x, src_y, max_dist)
 
     # run the shortest tree dijkstra
     # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -416,7 +439,7 @@ def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, ed
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
-    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = distance_filter(data_index, src_x, src_y, max_dist)
+    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = ___distance_filter(data_index, src_x, src_y, max_dist)
 
     # prepare the new data arrays
     reachable_classes_trim = np.full(len(data_trim_to_full_idx_map), np.nan)

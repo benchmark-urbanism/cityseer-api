@@ -156,7 +156,7 @@ def mock_graph(wgs84_coords=False):
     return G, pos
 
 
-def mock_data(G, random_seed=None):
+def mock_data(G, num=50, random_seed=None):
     if random_seed:
         np.random.seed(seed=random_seed)
 
@@ -177,7 +177,7 @@ def mock_data(G, random_seed=None):
 
     data_dict = {}
     random_class_str = 'abcdefghijk'
-    for i in range(50):
+    for i in range(num):
         data_dict[i] = {
             'x': np.random.uniform(int(min_x), int(max_x)),
             'y': np.random.uniform(int(min_y), int(max_y)),

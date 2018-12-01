@@ -43,7 +43,7 @@ def test_check_trim_maps():
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
     trim_to_full_idx_map, full_to_trim_idx_map = \
-        data.distance_filter(N._index, N.x_arr[0], N.y_arr[1], 500, radial=True)
+        data.radial_filter(N.x_arr[0], N.y_arr[1], N.x_arr, N.y_arr, 500)
 
     # mismatching lengths
     with pytest.raises(ValueError):

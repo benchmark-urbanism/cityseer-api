@@ -107,7 +107,7 @@ def test_distance_filter():
     src_y = G.nodes[0]['y']
     for max_dist in [0, 200, 500, 750]:
         trim_to_full_map, full_to_trim_map = \
-            data.distance_filter(D.index, src_x, src_y, max_dist, radial=True)
+            data.___distance_filter(D.index, src_x, src_y, max_dist, radial=True)
 
         # plots for debugging
         # override the d_map's data class with the results of the filtering
@@ -141,7 +141,7 @@ def test_distance_filter():
 
         # test the non radial version
         trim_to_full_map, full_to_trim_map = \
-            data.distance_filter(D.index, src_x, src_y, max_dist, radial=False)
+            data.___distance_filter(D.index, src_x, src_y, max_dist, radial=False)
         for idx, val in enumerate(full_to_trim_map):
             if abs(D.x_arr[idx] - src_x) <= max_dist and abs(D.y_arr[idx] - src_y) <= max_dist:
                 assert np.isfinite(val)
@@ -212,7 +212,36 @@ def test_nearest_idx():
         d_y = d[1]
 
         # find the closest point on the network
-        min_idx, min_dist = data.nearest_idx(N._index, d_x, d_y, max_dist=500)
+        min_idx, min_dist = data.___nearest_idx(N._index, d_x, d_y, max_dist=500)
+
+        # check that no other indices are nearer
+        for idx, n in enumerate(N._nodes):
+            n_x = n[0]
+            n_y = n[1]
+            dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
+            if idx == min_idx:
+                assert round(dist, 8) == round(min_dist, 8)
+            else:
+                assert dist > min_dist
+
+
+def test_nearest_idx_simple():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[100])
+
+    # generate some data
+    data_dict = mock.mock_data(G)
+    D = layers.Data_Layer_From_Dict(data_dict)
+
+    # test the filter - iterating each point in data map
+    for d in D.data:
+        d_x = d[0]
+        d_y = d[1]
+
+        # find the closest point on the network
+        min_idx, min_dist = data.nearest_idx_simple(d_x, d_y, N.x_arr, N.y_arr, max_dist=500)
 
         # check that no other indices are nearer
         for idx, n in enumerate(N._nodes):
