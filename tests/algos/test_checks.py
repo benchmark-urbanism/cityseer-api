@@ -13,15 +13,15 @@ def test_check_index_map():
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
 
     with pytest.raises(ValueError):
-        checks.check_index_map(N.index[:, :-1])
+        checks.check_index_map(N._index[:, :-1])
     with pytest.raises(ValueError):
         # flip x order
-        index_corrupted = N.index
+        index_corrupted = N._index
         index_corrupted[:, :-1] = index_corrupted[:, :-1][::-1]
         checks.check_index_map(index_corrupted)
     with pytest.raises(ValueError):
         # flip y order
-        index_corrupted = N.index
+        index_corrupted = N._index
         index_corrupted[:, :-3] = index_corrupted[:, :-3][::-1]
         checks.check_index_map(index_corrupted)
 
@@ -43,7 +43,7 @@ def test_check_trim_maps():
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
     trim_to_full_idx_map, full_to_trim_idx_map = \
-        data.distance_filter(N.index, N.x_arr[0], N.y_arr[1], 500, radial=True)
+        data.distance_filter(N._index, N.x_arr[0], N.y_arr[1], 500, radial=True)
 
     # mismatching lengths
     with pytest.raises(ValueError):
@@ -70,9 +70,9 @@ def test_check_network_types():
 
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
-        checks.check_network_types(N.nodes[:, :-1], N.edges)
+        checks.check_network_types(N._nodes[:, :-1], N._edges)
     with pytest.raises(ValueError):
-        checks.check_network_types(N.nodes, N.edges[:, :-1])
+        checks.check_network_types(N._nodes, N._edges[:, :-1])
 
 
 def test_check_distances_and_betas():

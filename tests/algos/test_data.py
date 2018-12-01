@@ -212,10 +212,10 @@ def test_nearest_idx():
         d_y = d[1]
 
         # find the closest point on the network
-        min_idx, min_dist = data.nearest_idx(N.index, d_x, d_y, max_dist=500)
+        min_idx, min_dist = data.nearest_idx(N._index, d_x, d_y, max_dist=500)
 
         # check that no other indices are nearer
-        for idx, n in enumerate(N.nodes):
+        for idx, n in enumerate(N._nodes):
             n_x = n[0]
             n_y = n[1]
             dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)

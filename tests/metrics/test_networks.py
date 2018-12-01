@@ -31,28 +31,39 @@ def test_Network_Layer():
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
     index = data.generate_index(x_arr, y_arr)
-    distances = [100, 200]
-    min_thresh_wt = 0.018
-    angular = False
+    betas = [-0.02, -0.005]
+    distances = networks.distance_from_beta(betas)
+    min_thresh_wt = 0.01831563888873418
 
     # test against Network_Layer's internal process
-    N = networks.Network_Layer(node_uids, node_map, edge_map, distances, betas=None, min_threshold_wt=min_thresh_wt,
-                               angular=angular)
-    assert N.uids == node_uids
-    assert np.array_equal(N.nodes, node_map)
-    assert np.array_equal(N.edges, edge_map)
-    assert np.array_equal(N.index, index)
-    assert np.array_equal(N.x_arr, x_arr)
-    assert np.array_equal(N.y_arr, y_arr)
-    assert np.array_equal(N.live, node_map[:, 2])
-    assert np.array_equal(N.edge_lengths, edge_map[:, 2])
-    assert np.array_equal(N.edge_impedances, edge_map[:, 3])
-    assert N.min_threshold_wt == min_thresh_wt
-    assert N.betas == [np.log(min_thresh_wt) / d for d in distances]
-    assert N.angular == angular
+    for d, b in zip([distances, None], [None, betas]):
+        for angular in [True, False]:
+            N = networks.Network_Layer(node_uids,
+                                       node_map,
+                                       edge_map,
+                                       distances=d,
+                                       betas=b,
+                                       min_threshold_wt=min_thresh_wt,
+                                       angular=angular)
+            assert np.array_equal(N.uids, node_uids)
+            assert np.array_equal(N.distances, distances)
+            assert np.array_equal(N.betas, betas)
+            assert N.angular == angular
+            assert N.min_threshold_wt == min_thresh_wt
+            assert np.array_equal(N._nodes, node_map)
+            assert np.array_equal(N._edges, edge_map)
+            assert np.array_equal(N._index, index)
+            assert np.array_equal(N.x_arr, x_arr)
+            assert np.array_equal(N.y_arr, y_arr)
+            assert np.array_equal(N.live, node_map[:, 2])
+            assert np.array_equal(N.edge_lengths, edge_map[:, 2])
+            assert np.array_equal(N.edge_impedances, edge_map[:, 3])
 
+    # test round trip coordinates
+    N = networks.Network_Layer(node_uids, node_map, edge_map, distances=distances)
     G_round_trip = N.to_networkX()
     # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
+    # i.e. check properties manually
     for n, d in G.nodes(data=True):
         assert n in G_round_trip
         assert G.nodes[n]['x'] == d['x']
@@ -88,9 +99,9 @@ def test_Network_Layer_From_NetworkX():
     # test against Network_Layer_From_NetworkX's internal process
     N = networks.Network_Layer_From_NetworkX(G, distances, betas=None, min_threshold_wt=min_thresh_wt, angular=angular)
     assert N.uids == node_uids
-    assert np.array_equal(N.nodes, node_map)
-    assert np.array_equal(N.edges, edge_map)
-    assert np.array_equal(N.index, index)
+    assert np.array_equal(N._nodes, node_map)
+    assert np.array_equal(N._edges, edge_map)
+    assert np.array_equal(N._index, index)
     assert np.array_equal(N.x_arr, x_arr)
     assert np.array_equal(N.y_arr, y_arr)
     assert np.array_equal(N.live, live)
@@ -158,10 +169,10 @@ def test_metrics_to_dict():
     metrics_dict = N.metrics_to_dict()
 
     for idx, uid in enumerate(N.uids):
-        assert metrics_dict[uid]['x'] == N.nodes[idx][0]
-        assert metrics_dict[uid]['y'] == N.nodes[idx][1]
-        assert metrics_dict[uid]['live'] == (N.nodes[idx][2] == 1)
-        assert metrics_dict[uid]['weight'] == N.nodes[idx][4]
+        assert metrics_dict[uid]['x'] == N._nodes[idx][0]
+        assert metrics_dict[uid]['y'] == N._nodes[idx][1]
+        assert metrics_dict[uid]['live'] == (N._nodes[idx][2] == 1)
+        assert metrics_dict[uid]['weight'] == N._nodes[idx][4]
         for metric_key in N.metrics.keys():
             for measure_key in N.metrics[metric_key].keys():
                 print(measure_key)

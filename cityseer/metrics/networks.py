@@ -63,81 +63,109 @@ class Network_Layer:
         3 - y_idx
         '''
 
-        self.uids = node_uids
-        self.nodes = node_map
-        self.edges = edge_map
-        self.index = data.generate_index(self.x_arr, self.y_arr)
-        self.distances = distances
-        self.betas = betas
-        self.min_threshold_wt = min_threshold_wt
-        self.angular = angular
+        self._uids = node_uids
+        self._nodes = node_map
+        self._edges = edge_map
+        self._index = data.generate_index(self.x_arr, self.y_arr)
+        self._distances = distances
+        self._betas = betas
+        self._min_threshold_wt = min_threshold_wt
+        self._angular = angular
         self.metrics = {
             'centrality': {},
             'landuses': {}
         }
-        self.networkX = None
+        self._networkX = None
 
         # if distances, check the types and generate the betas
-        if self.distances is not None and self.betas is None:
-            if self.distances == []:
+        if self._distances is not None and self._betas is None:
+            if self._distances == []:
                 raise ValueError('A list of local centrality distance thresholds is required.')
-            if isinstance(self.distances, (int, float)):
-                self.distances = [self.distances]
-            if not isinstance(self.distances, (list, tuple, np.ndarray)):
+            if isinstance(self._distances, (int, float)):
+                self._distances = [self._distances]
+            if not isinstance(self._distances, (list, tuple, np.ndarray)):
                 raise TypeError('Please provide a distance or a list, tuple, or numpy.ndarray of distances.')
             # generate the betas
-            self.betas = []
-            for d in self.distances:
-                self.betas.append(np.log(self.min_threshold_wt) / d)
+            self._betas = []
+            for d in self._distances:
+                self._betas.append(np.log(self._min_threshold_wt) / d)
         # if betas, generate the distances
-        elif self.betas is not None and self.distances is None:
-            self.distances = distance_from_beta(self.betas, min_threshold_wt=self.min_threshold_wt)
+        elif self._betas is not None and self._distances is None:
+            self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
         else:
             raise ValueError('Please provide either distances or betas, but not both.')
 
         # check the data structures
-        if len(self.uids) != len(self.nodes):
+        if len(self._uids) != len(self._nodes):
             raise ValueError('The number of indices does not match the number of nodes.')
-        if len(self.nodes) != len(self.index):
+        if len(self._nodes) != len(self._index):
             raise ValueError('The data map and index map are not the same lengths.')
-        checks.check_network_types(self.nodes, self.edges)
-        checks.check_index_map(self.index)
+        checks.check_network_types(self._nodes, self._edges)
+        checks.check_index_map(self._index)
+
+    @property
+    def uids(self):
+        return self._uids
+
+    @property
+    def distances(self):
+        return self._distances
+
+    @property
+    def betas(self):
+        return self._betas
+
+    @property
+    def angular(self):
+        return self._angular
+
+    @property
+    def min_threshold_wt(self):
+        return self._min_threshold_wt
 
     @property
     def x_arr(self):
-        return self.nodes[:, 0]
+        return self._nodes[:, 0]
 
     @property
     def y_arr(self):
-        return self.nodes[:, 1]
+        return self._nodes[:, 1]
 
     @property
     def live(self):
-        return self.nodes[:, 2]
+        return self._nodes[:, 2]
 
     @property
     def edge_lengths(self):
-        return self.edges[:, 2]
+        return self._edges[:, 2]
 
     @property
     def edge_impedances(self):
-        return self.edges[:, 3]
+        return self._edges[:, 3]
+
+    @property
+    def networkX(self):
+        return self._networkX
+
+    @networkX.setter
+    def networkX(self, value):
+        self._networkX = value
 
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
-        return graphs.networkX_from_graph_maps(self.uids, self.nodes, self.edges, self.networkX, metrics_dict)
+        return graphs.networkX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
 
     def metrics_to_dict(self):
         '''
         metrics are stored in arrays, this method unpacks per uid
         '''
         m = {}
-        for idx, uid in enumerate(self.uids):
+        for idx, uid in enumerate(self._uids):
             m[uid] = {
                 'x': self.x_arr[idx],
                 'y': self.y_arr[idx],
                 'live': self.live[idx] == 1,
-                'weight': self.nodes[:, 4][idx]
+                'weight': self._nodes[:, 4][idx]
             }
             for metric_key, metric_value in self.metrics.items():
                 m[uid][metric_key] = {}
@@ -182,13 +210,13 @@ class Network_Layer:
                 betweenness_map.append(betweenness_options.index(bt))
 
         closeness_data, betweenness_data = centrality.local_centrality(
-            self.nodes,
-            self.edges,
-            np.array(self.distances),
-            np.array(self.betas),
+            self._nodes,
+            self._edges,
+            np.array(self._distances),
+            np.array(self._betas),
             np.array(closeness_map_extra),
             np.array(betweenness_map),
-            self.angular)
+            self._angular)
 
         # write the results
         # keys will check for pre-existing
@@ -197,14 +225,14 @@ class Network_Layer:
             for cl_key, cl_idx in zip(close_metrics, closeness_map):
                 if cl_key not in self.metrics['centrality']:
                     self.metrics['centrality'][cl_key] = {}
-                for d_idx, d_key in enumerate(self.distances):
+                for d_idx, d_key in enumerate(self._distances):
                     self.metrics['centrality'][cl_key][d_key] = closeness_data[cl_idx][d_idx]
 
         if between_metrics is not None:
             for bt_key, bt_idx in zip(between_metrics, betweenness_map):
                 if bt_key not in self.metrics['centrality']:
                     self.metrics['centrality'][bt_key] = {}
-                for d_idx, d_key in enumerate(self.distances):
+                for d_idx, d_key in enumerate(self._distances):
                     self.metrics['centrality'][bt_key][d_key] = betweenness_data[bt_idx][d_idx]
 
     def harmonic_closeness(self):
@@ -230,6 +258,12 @@ class Network_Layer_From_NetworkX(Network_Layer):
                  angular: bool = False):
         node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(networkX_graph)
 
-        super().__init__(node_uids, node_map, edge_map, distances, betas, min_threshold_wt, angular)
+        super().__init__(node_uids,
+                         node_map,
+                         edge_map,
+                         distances,
+                         betas,
+                         min_threshold_wt,
+                         angular)
 
         self.networkX = networkX_graph
