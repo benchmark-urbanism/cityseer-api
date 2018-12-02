@@ -106,9 +106,77 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
 
     def calculate_rotation(point_a, point_b):
         # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
+        # these two points / angles are relative to the origin - so pass in difference between the points and origin as vectors
         ang_a = np.arctan2(*point_a[::-1])
         ang_b = np.arctan2(*point_b[::-1])
         return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
+
+    def calculate_rotation_smallest(point_a, point_b):
+        # smallest difference angle
+        ang_a = np.rad2deg(np.arctan2(*point_a[::-1]))
+        ang_b = np.rad2deg(np.arctan2(*point_b[::-1]))
+        return np.abs((ang_b - ang_a + 180) % 360 - 180)
+
+    def road_distance(data_coords, netw_idx_a, netw_idx_b):
+
+        a_coords = node_map[netw_idx_a][:2]
+        b_coords = node_map[netw_idx_b][:2]
+
+        # get the angles from either intersection node to the data point
+        ang_a = calculate_rotation_smallest(data_coords - a_coords, b_coords - a_coords)
+        ang_b = calculate_rotation_smallest(data_coords - b_coords, a_coords - b_coords)
+
+        # assume offset street segment if either angle is greater than 135 (assuming outside bend of 90º corner...)
+        if ang_a > 135 or ang_b > 135:
+            return np.inf, np.nan, np.nan
+
+        # calculate height from two sides and included angle
+        side_a = np.hypot(data_coords[0] - a_coords[0], data_coords[1] - a_coords[1])
+        side_b = np.hypot(data_coords[0] - b_coords[0], data_coords[1] - b_coords[1])
+        base = np.hypot(a_coords[0] - b_coords[0], a_coords[1] - b_coords[1])
+        # heron's formula
+        s = (side_a + side_b + base) / 2  # perimeter / 2
+        a = np.sqrt(s * (s - side_a) * (s - side_b) * (s - base))
+        # area is 1/2 base * h, so h = area / (0.5 * base)
+        h = a / (0.5 * base)
+        # return indices in order of nearest then next nearest
+        if side_a < side_b:
+            return h, netw_idx_a, netw_idx_b
+        else:
+            return h, netw_idx_b, netw_idx_a
+
+    def closest_intersections(data_coords, pred_map, end_node):
+
+        if len(pred_map) == 1:
+            return end_node, np.nan
+
+        if len(pred_map) == 2:
+            h, nearest_idx, next_nearest_idx = road_distance(data_coords, end_node, pred_map[end_node])
+            return nearest_idx, next_nearest_idx
+
+        nearest_idx = np.nan
+        next_nearest_idx = np.nan
+        min_dist = np.inf
+
+        start_idx = end_node
+        current_idx = end_node
+        next_idx = int(pred_map[end_node])
+        while True:
+            h, nearest, next = road_distance(data_coords, current_idx, next_idx)
+            if h < min_dist:
+                min_dist = h
+                nearest_idx = nearest
+                next_nearest_idx = next
+            # if the next in the chain is nan, then break
+            if np.isnan(pred_map[next_idx]):
+                break
+            current_idx = next_idx
+            next_idx = int(pred_map[next_idx])
+            if next_idx == start_idx:
+                break
+
+        return nearest_idx, next_nearest_idx
+
 
     pred_map = np.full(len(node_map), np.nan)
 
@@ -175,61 +243,70 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
                 if nb_rot is None or r < nb_rot:
                     nb_rot = r
                     nb_idx = int(new_idx)
-            # break conditions
+
             # allow backtracking if no neighbour is found
             if nb_idx is None:
                 nb_idx = int(pred_map[node_idx])
                 print('BACKTRACKING')
+
             # aggregate total rotation - but in clockwise direction
             nb_coords = node_map[nb_idx][:2]
             total_rot += (calculate_rotation(node_coords - data_coords, nb_coords - data_coords) + 180) % 360 - 180
-            # if the new nb node has already been visited
-            if not np.isnan(pred_map[nb_idx]):
-                # this can be ignored while backtracking, but this is otherwise a non-enclosing cycle: break
-                if nb_idx != pred_map[node_idx]:
-                    end_node = nb_idx
-                    print('ARBITRARY CYCLE', nb_idx, round(total_rot))
-                    if not reversing:
-                        # reverse and try in opposite direction
-                        print("REVERSING")
-                        reversing = True
-                        pred_map.fill(np.nan)
-                        node_idx = int(min_idx)
-                        total_rot = 0
-                        prev_idx = None
-                        continue
-                    break
-            # do not overwrite predecessors if backtracking
-            if np.isnan(pred_map[nb_idx]):
-                pred_map[nb_idx] = node_idx
-            # break if the original node is re-encountered after circling a block
-            if nb_idx == min_idx:
+
+            # if the distance is exceeded, reset and attempt in the other direction
+            dist = np.hypot(nb_coords[0] - data_coords[0], nb_coords[1] - data_coords[1])
+            if dist > max_dist:
+                print('DISTANCE EXCEEDED: ', round(dist), 'm')
                 end_node = nb_idx
-                # enclosing loops will give a rotation of 360
-                rot = round(abs(total_rot))
-                if rot >= 360:  # tot
-                    print("ENCLOSED", nb_idx, round(total_rot))
-                    enclosed = True
-                # non-enclosing loops wil give a rotation of 0
-                elif rot == 0 and not reversing:
+                pred_map[nb_idx] = node_idx
+                if not reversing:
                     # reverse and try in opposite direction
                     print("REVERSING")
+                    print(closest_intersections(data_coords, pred_map, nb_idx))
                     reversing = True
                     pred_map.fill(np.nan)
                     node_idx = int(min_idx)
                     total_rot = 0
                     prev_idx = None
                     continue
-                else:
-                    print("NON-ENCLOSED", nb_idx, round(total_rot))
-                    # other arbitrary spin-off loops may give other totals
+                print(closest_intersections(data_coords, pred_map, nb_idx))
                 break
+
+            # ignore the following conditions while backtracking
+            if not nb_idx == pred_map[node_idx]:
+
+                # if the new nb node has already been visited
+                if not np.isnan(pred_map[nb_idx]):
+                    end_node = nb_idx
+                    pred_map[nb_idx] = node_idx
+                    print('ARBITRARY CYCLE', nb_idx, round(total_rot))
+                    print(closest_intersections(data_coords, pred_map, nb_idx))
+                    break
+
+                # break if the original node is re-encountered after circling a block
+                if nb_idx == min_idx:
+                    end_node = nb_idx
+                    pred_map[nb_idx] = node_idx
+                    # enclosing loops will give a rotation of 360
+                    rot = round(abs(total_rot))
+                    if rot >= 360:  # tot
+                        print("ENCLOSED", nb_idx, round(total_rot))
+                        print(closest_intersections(data_coords, pred_map, nb_idx))
+                        enclosed = True
+                    else:
+                        print("NON-ENCLOSED", nb_idx, round(total_rot))
+                        print(closest_intersections(data_coords, pred_map, nb_idx))
+                        # other arbitrary spin-off loops may give other totals
+                    break
+
+                # set predecessor (only if not backtracking)
+                pred_map[nb_idx] = node_idx
+
             # otherwise, keep going
             print('nb:', nb_idx)
             prev_idx = node_idx
             node_idx = nb_idx
 
-        # TODO: whether to try opposite direction for non-enclosing loops?
         # TODO: add distance cutoff
         print('')
 

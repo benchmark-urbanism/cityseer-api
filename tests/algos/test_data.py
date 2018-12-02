@@ -88,6 +88,12 @@ def test_assign_to_network():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
 
+    # create some dead-end scenarios
+    G.remove_edge(14, 15)
+    G.remove_edge(15, 28)
+    G.remove_edge(16, 17)
+    G.remove_edge(18, 19)
+
     # add a dead-end condition near the first data point
     coord_46 = (6001015, 600535)
     G.add_node(46, x=coord_46[0], y=coord_46[1])
