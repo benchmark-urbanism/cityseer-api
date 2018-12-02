@@ -5,7 +5,7 @@ from numba import njit
 # cc = CC('checks')
 
 
-#@cc.export('check_data_map', 'void(float64[:,:])')
+# @cc.export('check_data_map', 'void(float64[:,:])')
 @njit
 def check_data_map(data_map: np.ndarray):
     if not data_map.ndim == 2 or data_map.shape[1] != 6:
@@ -13,7 +13,7 @@ def check_data_map(data_map: np.ndarray):
             'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
 
 
-#@cc.export('check_trim_maps', '(float64[:], float64[:])')
+# @cc.export('check_trim_maps', '(float64[:], float64[:])')
 @njit
 def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     counter = 0
@@ -28,7 +28,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
             'The length of the trim-to-full map does not match the number of active elements in the full-to-trim map.')
 
 
-#@cc.export('check_network_types', '(float64[:,:], float64[:,:])')
+# @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
 @njit
 def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
     if not node_map.ndim == 2 or node_map.shape[1] != 5:
@@ -40,7 +40,7 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
             'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
 
-#@cc.export('check_distances_and_betas', '(float64[:], float64[:])')
+# @cc.export('check_distances_and_betas', '(float64[:], float64[:])')
 @njit
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) != len(betas):

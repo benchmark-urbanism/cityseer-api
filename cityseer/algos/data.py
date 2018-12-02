@@ -7,7 +7,7 @@ from cityseer.algos import centrality, checks
 # cc = CC('data')
 
 
-#@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
+# @cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
 @njit
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
@@ -66,8 +66,11 @@ def nearest_idx(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray
 
 
 # @cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
-# @njit
-def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.ndarray, max_dist: float) -> np.ndarray:
+@njit
+def assign_to_network(data_map: np.ndarray,
+                      node_map: np.ndarray,
+                      edge_map: np.ndarray,
+                      max_dist: float) -> np.ndarray:
     '''
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -107,14 +110,14 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
     def calculate_rotation(point_a, point_b):
         # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
         # these two points / angles are relative to the origin - so pass in difference between the points and origin as vectors
-        ang_a = np.arctan2(*point_a[::-1])
-        ang_b = np.arctan2(*point_b[::-1])
+        ang_a = np.arctan2(point_a[1], point_a[0])  # arctan is in y/x order
+        ang_b = np.arctan2(point_b[1], point_b[0])
         return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
 
     def calculate_rotation_smallest(point_a, point_b):
         # smallest difference angle
-        ang_a = np.rad2deg(np.arctan2(*point_a[::-1]))
-        ang_b = np.rad2deg(np.arctan2(*point_b[::-1]))
+        ang_a = np.rad2deg(np.arctan2(point_a[1], point_a[0]))
+        ang_b = np.rad2deg(np.arctan2(point_b[1], point_b[0]))
         return np.abs((ang_b - ang_a + 180) % 360 - 180)
 
     def road_distance(data_coords, netw_idx_a, netw_idx_b):
@@ -126,8 +129,8 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
         ang_a = calculate_rotation_smallest(data_coords - a_coords, b_coords - a_coords)
         ang_b = calculate_rotation_smallest(data_coords - b_coords, a_coords - b_coords)
 
-        # assume offset street segment if either angle is greater than 135 (assuming outside bend of 90º corner...)
-        if ang_a > 135 or ang_b > 135:
+        # assume offset street segment if either is significantly greater than 90 (in which case offset from road)
+        if ang_a > 110 or ang_b > 110:
             return np.inf, np.nan, np.nan
 
         # calculate height from two sides and included angle
@@ -148,72 +151,68 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
     def closest_intersections(data_coords, pred_map, end_node):
 
         if len(pred_map) == 1:
-            return end_node, np.nan
+            return np.inf, end_node, np.nan
+
+        current_idx = end_node
+        next_idx = int(pred_map[int(end_node)])
 
         if len(pred_map) == 2:
-            h, nearest_idx, next_nearest_idx = road_distance(data_coords, end_node, pred_map[end_node])
-            return nearest_idx, next_nearest_idx
+            h, n, n_n = road_distance(data_coords, current_idx, next_idx)
+            return h, n, n_n
 
-        nearest_idx = np.nan
-        next_nearest_idx = np.nan
+        nearest = np.nan
+        next_nearest = np.nan
         min_dist = np.inf
-
-        start_idx = end_node
-        current_idx = end_node
-        next_idx = int(pred_map[end_node])
+        first_pred = next_idx  # for finding end of loop
         while True:
-            h, nearest, next = road_distance(data_coords, current_idx, next_idx)
+            h, n, n_n = road_distance(data_coords, current_idx, next_idx)
             if h < min_dist:
                 min_dist = h
-                nearest_idx = nearest
-                next_nearest_idx = next
+                nearest = n
+                next_nearest = n_n
             # if the next in the chain is nan, then break
             if np.isnan(pred_map[next_idx]):
                 break
             current_idx = next_idx
             next_idx = int(pred_map[next_idx])
-            if next_idx == start_idx:
+            if next_idx == first_pred:
                 break
 
-        return nearest_idx, next_nearest_idx
-
+        return min_dist, nearest, next_nearest
 
     pred_map = np.full(len(node_map), np.nan)
+    netw_coords = node_map[:, :2]
+    netw_x_arr = node_map[:, 0]
+    netw_y_arr = node_map[:, 1]
+    data_coords = data_map[:, :2]
+    data_x_arr = data_map[:, 0]
+    data_y_arr = data_map[:, 1]
 
-    # iterate each data point
     for data_idx in range(len(data_map)):
 
         # numba no object mode can only handle basic printing
         if data_idx % 10000 == 0:
             print('...progress:', round(data_idx / len(data_map) * 100, 2), '%')
 
-        # state
-        enclosed = False
-        reversing = False
-        end_node = np.nan
-        print('DATA INDEX', data_idx)
         # keep track of visited nodes
         pred_map.fill(np.nan)
-        # the data point's coordinates don't change
-        data_coords = data_map[data_idx][:2]
-        # get the nearest point on the network
-        netw_x_arr = node_map[:, 0]
-        netw_y_arr = node_map[:, 1]
-        min_idx, min_dist = nearest_idx(data_coords[0], data_coords[1], netw_x_arr, netw_y_arr, max_dist)
+        # the data point's coordinates don't change below
+        min_idx, min_dist = nearest_idx(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
+        nearest = min_idx
+        next_nearest = np.nan
+
+        # state
+        reversing = False
         # set start node to nearest network node
         node_idx = int(min_idx)
-        print('start:', node_idx)
-        # track total rotation - distinguishes between encircling and non-encircling cycles
-        total_rot = 0
+
         # keep track of previous indices
-        prev_idx = None
+        prev_idx = np.nan
         # iterate neighbours
         while True:
-            # update node coordinates
-            node_coords = node_map[node_idx][:2]
             # reset neighbour rotation and index counters
-            nb_rot = None
-            nb_idx = None
+            rotation = np.nan
+            nb_idx = np.nan
             # get the starting edge index
             edge_idx = int(node_map[node_idx][3])
             while edge_idx < len(edge_map):
@@ -224,104 +223,79 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
                     break
                 # increment idx for next loop
                 edge_idx += 1
-                # check that this isn't the previous node
-                if prev_idx is not None and end == prev_idx:
+                # check that this isn't the previous node (already visited as neighbour from other direction)
+                if np.isfinite(prev_idx) and end == prev_idx:
                     continue
                 # cast to int for indexing
                 new_idx = int(end)
                 # look for the new neighbour with the smallest rightwards (anti-clockwise arctan2) angle
-                new_coords = node_map[new_idx][:2]
                 # measure the angle relative to the data point for the first node
-                if prev_idx is None:
-                    r = calculate_rotation(new_coords - node_coords, data_coords - node_coords)
+                if np.isnan(prev_idx):
+                    r = calculate_rotation(netw_coords[int(new_idx)] - netw_coords[node_idx],
+                                           data_coords[data_idx] - netw_coords[node_idx])
+                # else relative to the previous node
                 else:
-                    prev_coords = node_map[prev_idx][:2]
-                    r = calculate_rotation(new_coords - node_coords, prev_coords - node_coords)
+                    r = calculate_rotation(netw_coords[int(new_idx)] - netw_coords[node_idx],
+                                           netw_coords[int(prev_idx)] - netw_coords[node_idx])
                 if reversing:
                     r = 360 - r
                 # if least angle, update
-                if nb_rot is None or r < nb_rot:
-                    nb_rot = r
-                    nb_idx = int(new_idx)
+                if np.isnan(rotation) or r < rotation:
+                    rotation = r
+                    nb_idx = new_idx
 
-            # allow backtracking if no neighbour is found
-            if nb_idx is None:
-                nb_idx = int(pred_map[node_idx])
-                print('BACKTRACKING')
-
-            # aggregate total rotation - but in clockwise direction
-            nb_coords = node_map[nb_idx][:2]
-            total_rot += (calculate_rotation(node_coords - data_coords, nb_coords - data_coords) + 180) % 360 - 180
+            # allow backtracking if no neighbour is found - i.e. dead-ends
+            if np.isnan(nb_idx):
+                nb_idx = pred_map[node_idx]
 
             # if the distance is exceeded, reset and attempt in the other direction
-            dist = np.hypot(nb_coords[0] - data_coords[0], nb_coords[1] - data_coords[1])
+            dist = np.hypot(netw_x_arr[int(nb_idx)] - data_x_arr[data_idx],
+                            netw_y_arr[int(nb_idx)] - data_y_arr[data_idx])
             if dist > max_dist:
-                print('DISTANCE EXCEEDED: ', round(dist), 'm')
-                end_node = nb_idx
-                pred_map[nb_idx] = node_idx
+                pred_map[int(nb_idx)] = node_idx
+                d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(nb_idx))
+                if d < min_dist:
+                    min_dist = d
+                    nearest = n
+                    next_nearest = n_n
+                # reverse and try in opposite direction
                 if not reversing:
-                    # reverse and try in opposite direction
-                    print("REVERSING")
-                    print(closest_intersections(data_coords, pred_map, nb_idx))
                     reversing = True
                     pred_map.fill(np.nan)
                     node_idx = int(min_idx)
-                    total_rot = 0
-                    prev_idx = None
+                    prev_idx = np.nan
                     continue
-                print(closest_intersections(data_coords, pred_map, nb_idx))
                 break
 
             # ignore the following conditions while backtracking
-            if not nb_idx == pred_map[node_idx]:
+            # if backtracking, the current node's predecessor will be the new neighbour
+            if nb_idx != pred_map[node_idx]:
 
                 # if the new nb node has already been visited
-                if not np.isnan(pred_map[nb_idx]):
-                    end_node = nb_idx
-                    pred_map[nb_idx] = node_idx
-                    print('ARBITRARY CYCLE', nb_idx, round(total_rot))
-                    print(closest_intersections(data_coords, pred_map, nb_idx))
-                    break
-
-                # break if the original node is re-encountered after circling a block
-                if nb_idx == min_idx:
-                    end_node = nb_idx
-                    pred_map[nb_idx] = node_idx
-                    # enclosing loops will give a rotation of 360
-                    rot = round(abs(total_rot))
-                    if rot >= 360:  # tot
-                        print("ENCLOSED", nb_idx, round(total_rot))
-                        print(closest_intersections(data_coords, pred_map, nb_idx))
-                        enclosed = True
-                    else:
-                        print("NON-ENCLOSED", nb_idx, round(total_rot))
-                        print(closest_intersections(data_coords, pred_map, nb_idx))
-                        # other arbitrary spin-off loops may give other totals
+                # or if it is the original starting node
+                if not np.isnan(pred_map[int(nb_idx)]) or nb_idx == min_idx:
+                    pred_map[int(nb_idx)] = node_idx
+                    d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(nb_idx))
+                    if d < min_dist:
+                        min_dist = d
+                        nearest = n
+                        next_nearest = n_n
                     break
 
                 # set predecessor (only if not backtracking)
-                pred_map[nb_idx] = node_idx
+                pred_map[int(nb_idx)] = node_idx
 
             # otherwise, keep going
-            print('nb:', nb_idx)
             prev_idx = node_idx
-            node_idx = nb_idx
+            node_idx = int(nb_idx)
 
-        # TODO: add distance cutoff
-        print('')
-
-        # if clockwise fails, try counter-clockwise
-
-        # if encircling succeeded: iterate visited nodes and select closest
-        # NOTE -> this is not necessarily the starting node if the nearest node is not on the encircling block
-
-        # select any neighbours on the encircling (visited) route and choose the one with the shallowest adjacent street
-
-        # if encircling failed: simply select the closest and next closest neighbour
+        # print(f'[{data_idx}, {nearest}, {next_nearest}],')
 
         # set in the data map
-        data_map[data_idx][4] = 0  # adj_idx
-        data_map[data_idx][5] = 0  # next_adj_idx
+        data_map[data_idx][4] = nearest  # adj_idx
+        # in some cases next nearest will be NaN
+        # this is mostly in situations where it works to leave as NaN - e.g. access off dead-ends...
+        data_map[data_idx][5] = next_nearest  # next_adj_idx
 
     print('...done')
 
@@ -329,24 +303,26 @@ def assign_to_network(data_map: np.ndarray, node_map: np.ndarray, edge_map: np.n
 
 
 # @cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
-# @njit
-def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, edge_map: np.ndarray,
-                         netw_index: np.ndarray,
-                         data_map: np.ndarray, angular: bool = False):
+@njit
+def aggregate_to_src_idx(src_idx: int,
+                         node_map: np.ndarray,
+                         edge_map: np.ndarray,
+                         data_map: np.ndarray,
+                         max_dist: float,
+                         angular: bool = False):
     netw_x_arr = node_map[:, 0]
     netw_y_arr = node_map[:, 1]
     src_x = netw_x_arr[src_idx]
     src_y = netw_y_arr[src_idx]
 
-    data_x_arr = data_map[:, 0]
-    data_y_arr = data_map[:, 1]
-    data_classes = data_map[:, 3]
-    data_assign_map = data_map[:, 4]
-    data_assign_dist = data_map[:, 5]
+    d_x_arr = data_map[:, 0]
+    d_y_arr = data_map[:, 1]
+    d_classes = data_map[:, 3]
+    d_assign_nearest = data_map[:, 4]
+    d_assign_next_nearest = data_map[:, 5]
 
     # filter the network by distance
-    netw_trim_to_full_idx_map, netw_full_to_trim_idx_map = \
-        ___distance_filter(netw_index, src_x, src_y, max_dist)
+    netw_trim_to_full, netw_full_to_trim = radial_filter(src_x, src_y, netw_x_arr, netw_y_arr, max_dist)
 
     # run the shortest tree dijkstra
     # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -354,18 +330,17 @@ def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, ed
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is check later
     map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
-        centrality.shortest_path_tree(node_map, edge_map, src_idx, netw_trim_to_full_idx_map, netw_full_to_trim_idx_map,
-                                      max_dist=np.inf, angular=angular)
-
-    # STEP A - SLICE THE DATA POINTS
-
-    # STEP B - LOOKUP EACH DATA POINTS NEAREST AND NEXT NEAREST ADJACENCIES
-
-    # STEP C - AGGREGATE TO LEAST DISTANCE VIA SHORTEST PATH MAP
+        centrality.shortest_path_tree(node_map,
+                                      edge_map,
+                                      src_idx,
+                                      netw_trim_to_full,
+                                      netw_full_to_trim,
+                                      max_dist=max_dist,
+                                      angular=angular)
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
-    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = ___distance_filter(data_index, src_x, src_y, max_dist)
+    data_trim_to_full_idx_map, _data_full_to_trim_idx_map = radial_filter(src_x, src_y, d_x_arr, d_y_arr, max_dist)
 
     # prepare the new data arrays
     reachable_classes_trim = np.full(len(data_trim_to_full_idx_map), np.nan)
@@ -373,33 +348,47 @@ def aggregate_to_src_idx(src_idx: int, max_dist: float, node_map: np.ndarray, ed
 
     # iterate the distance trimmed data points
     for idx, data_idx_full in enumerate(data_trim_to_full_idx_map):
-        # cast to int
-        data_idx_full = int(data_idx_full)
 
-        # TODO: error here, cannot convert float NaN to int
+        # cast to int
+        data_idx = int(data_idx_full)
+
+        if data_idx == 16:
+            print('here')
 
         # find the full and trim indices of the assigned network node
-        assigned_netw_idx_full = int(data_assign_map[data_idx_full])
-        assigned_netw_idx_trim = int(netw_full_to_trim_idx_map[assigned_netw_idx_full])
-        # calculate the distance via the assigned network node - use the distance map, not the impedance map
-        # in some cases the distance will exceed the max distance, though the predecessor may offer a closer route
-        dist_calc = map_distance_trim[assigned_netw_idx_trim] + data_assign_dist[data_idx_full]
-        # get the predecessor node so that distance can be compared
-        # in some cases this will provide access via a closer corner, especially for non-decomposed networks
-        prev_netw_idx_trim = int(map_pred_trim[assigned_netw_idx_trim])
-        prev_netw_full_idx = int(netw_trim_to_full_idx_map[prev_netw_idx_trim])
-        # calculate the distance - in this case the tail-end from the network node to data point is computed manually
-        prev_dist_calc = map_distance_trim[prev_netw_idx_trim]
-        prev_dist_calc += np.hypot(netw_x_arr[prev_netw_full_idx] - data_x_arr[data_idx_full],
-                                   netw_y_arr[prev_netw_full_idx] - data_y_arr[data_idx_full])
-        # use the shorter distance between the current and prior nodes
-        # but only if less than the maximum distance
-        if dist_calc <= max_dist and dist_calc <= prev_dist_calc:
-            reachable_classes_trim[idx] = data_classes[data_idx_full]
-            reachable_classes_dist_trim[idx] = dist_calc
-        elif prev_dist_calc <= max_dist and prev_dist_calc < dist_calc:
-            reachable_classes_trim[idx] = data_classes[data_idx_full]
-            reachable_classes_dist_trim[idx] = prev_dist_calc
+        if np.isfinite(d_assign_nearest[data_idx]):
+            netw_full_idx = int(d_assign_nearest[data_idx])
+            # if the assigned network node is within the threshold
+            if np.isfinite(netw_full_to_trim[netw_full_idx]):
+                # get the network distance
+                netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
+                # find the distance from the nearest assigned network node to the actual location of the data point
+                d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_full_idx],
+                               d_y_arr[data_idx] - netw_y_arr[netw_full_idx])
+                # add to the distance assigned for the network node: use the distance map, not the impedance map
+                dist = map_distance_trim[netw_trim_idx] + d_d
+                # only assign distance if within max distance
+                if dist <= max_dist:
+                    reachable_classes_trim[idx] = d_classes[data_idx]
+                    reachable_classes_dist_trim[idx] = dist
+
+        # the next-nearest may offer a closer route depending on the direction the shortest path approaches from
+        if np.isfinite(d_assign_next_nearest[data_idx]):
+            netw_full_idx = int(d_assign_next_nearest[data_idx])
+            # if the assigned network node is within the threshold
+            if np.isfinite(netw_full_to_trim[netw_full_idx]):
+                # get the network distance
+                netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
+                # find the distance from the nearest assigned network node to the actual location of the data point
+                d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_full_idx],
+                               d_y_arr[data_idx] - netw_y_arr[netw_full_idx])
+                # add to the distance assigned for the network node: use the distance map, not the impedance map
+                dist = map_distance_trim[netw_trim_idx] + d_d
+                # only assign distance if within max distance
+                # AND only if closer than other direction
+                if dist <= max_dist and dist < reachable_classes_dist_trim[idx]:
+                    reachable_classes_trim[idx] = d_classes[data_idx]
+                    reachable_classes_dist_trim[idx] = dist
 
     # note that some entries will be nan values if the max distance was exceeded
     return reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map

@@ -156,7 +156,7 @@ def shortest_path_tree(
     return map_impedance, map_distance, map_pred, cycles
 
 
-#@cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
+# @cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
 @njit
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,

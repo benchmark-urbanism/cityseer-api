@@ -44,7 +44,7 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
         return D ** (1 / (1 - q))  # return as equivalent species
 
 
-#@cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
+# @cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
 @njit
 def hill_diversity_branch_generic(class_counts: np.ndarray, class_weights: np.ndarray, q: float) -> float:
     '''
@@ -101,7 +101,7 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, class_weights: np.nd
         return PD  # / T
 
 
-#@cc.export('hill_diversity_branch_distance_wt', '(uint64[:], float64[:], float64, float64)')
+# @cc.export('hill_diversity_branch_distance_wt', '(uint64[:], float64[:], float64, float64)')
 @njit
 def hill_diversity_branch_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
                                       q: float) -> float:
@@ -113,7 +113,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.array, class_distances: n
     return hill_diversity_branch_generic(class_counts, class_weights, q)
 
 
-#@cc.export('hill_diversity_pairwise_generic', '(uint64[:], float64[:,:], float64)')
+# @cc.export('hill_diversity_pairwise_generic', '(uint64[:], float64[:,:], float64)')
 @njit
 def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
     '''
@@ -186,7 +186,7 @@ def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndar
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
 
 
-#@cc.export('pairwise_distance_matrix', '(float64[:], float64)')
+# @cc.export('pairwise_distance_matrix', '(float64[:], float64)')
 @njit
 def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
     if beta < 0:
@@ -208,7 +208,7 @@ def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
     return wt_matrix
 
 
-#@cc.export('hill_diversity_pairwise_distance_wt', '(uint64[:], float64[:], float64, float64)')
+# @cc.export('hill_diversity_pairwise_distance_wt', '(uint64[:], float64[:], float64, float64)')
 @njit
 def hill_diversity_pairwise_distance_wt(class_counts: np.array, class_distances: np.array, beta: float,
                                         q: float) -> float:
@@ -220,7 +220,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.array, class_distances:
     return hill_diversity_pairwise_generic(class_counts, wt_matrix, q)
 
 
-#@cc.export('pairwise_disparity_matrix', '(uint64[:,:], float64[:])')
+# @cc.export('pairwise_disparity_matrix', '(uint64[:,:], float64[:])')
 @njit
 def pairwise_disparity_matrix(class_tiers: np.ndarray, class_weights: np.ndarray) -> np.ndarray:
     if class_tiers.shape[1] != len(class_weights):
@@ -251,7 +251,7 @@ def pairwise_disparity_matrix(class_tiers: np.ndarray, class_weights: np.ndarray
     return wt_matrix
 
 
-#@cc.export('hill_diversity_pairwise_disparity_wt', '(uint64[:], uint64[:,:], float64[:], float64)')
+# @cc.export('hill_diversity_pairwise_disparity_wt', '(uint64[:], uint64[:,:], float64[:], float64)')
 @njit
 def hill_diversity_pairwise_disparity_wt(class_counts: np.array, class_tiers: np.array, class_weights: np.array,
                                          q: float) -> float:
@@ -265,7 +265,7 @@ def hill_diversity_pairwise_disparity_wt(class_counts: np.array, class_tiers: np
 
 # explicit return required, otherwise numba throws:
 # TypeError: invalid signature: 'str' instance not allowed
-#@cc.export('gini_simpson_diversity', 'float64(uint64[:])')
+# @cc.export('gini_simpson_diversity', 'float64(uint64[:])')
 @njit
 def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     '''
@@ -290,7 +290,7 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     return 1 - G
 
 
-#@cc.export('shannon_diversity', 'float64(uint64[:])')
+# @cc.export('shannon_diversity', 'float64(uint64[:])')
 @njit
 def shannon_diversity(class_counts: np.ndarray) -> float:
     '''
@@ -311,7 +311,7 @@ def shannon_diversity(class_counts: np.ndarray) -> float:
     return -H  # remember negative
 
 
-#@cc.export('raos_quadratic_diversity', '(uint64[:], float64[:,:], float64, float64)')
+# @cc.export('raos_quadratic_diversity', '(uint64[:], float64[:,:], float64, float64)')
 @njit
 def raos_quadratic_diversity(class_counts: np.ndarray, wt_matrix: np.ndarray, alpha: float = 1,
                              beta: float = 1) -> float:

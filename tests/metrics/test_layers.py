@@ -110,4 +110,3 @@ def test_Data_Layer_From_Dict():
     assert np.array_equal(D.y_arr, y_arr)
     assert np.array_equal(D.live, live)
     assert np.array_equal(D.class_codes, class_codes)
-
