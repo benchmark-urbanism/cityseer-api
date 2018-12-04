@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 import utm
 
-from cityseer.metrics import layers
-from cityseer.util import mock
+from cityseer.metrics import layers, networks
+from cityseer.util import mock, graphs
+from ..algos.test_diversity import matrix_factory
 
 
 def test_dict_wgs_to_utm():
@@ -84,7 +85,7 @@ def test_Data_Layer():
     # test against Data_Layer internal process
     D = layers.Data_Layer(data_uids, data_map, class_labels)
     assert D.uids == data_uids
-    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert np.allclose(D._data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
@@ -104,9 +105,36 @@ def test_Data_Layer_From_Dict():
     # test against Data_Layer_From_Dict's internal process
     D = layers.Data_Layer_From_Dict(data_dict)
     assert D.uids == data_uids
-    assert np.allclose(D.data, data_map, equal_nan=True)
+    assert np.allclose(D._data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
     assert np.array_equal(D.live, live)
     assert np.array_equal(D.class_codes, class_codes)
+
+
+def test_compute_landuses():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+
+    distances = [100, 200, 400]
+    N = networks.Network_Layer_From_NetworkX(G, distances)
+    data_dict = mock.mock_data(G)
+    D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+    # hacking this for testing
+    D._cl_disparity_wt_matrix = matrix_factory(len(D.class_labels))
+    D.assign_to_network(N, max_dist=400)
+
+    div_keys = ['hill',
+                'hill_branch_wt',
+                'hill_pairwise_wt',
+                'hill_pairwise_disparity',
+                'shannon',
+                'gini_simpson',
+                'raos_pairwise_disparity']
+    ac_codes = [2, 4, 6]
+
+    D.compute_landuses(div_keys, ac_codes)
+
+    data = N.metrics_to_dict()

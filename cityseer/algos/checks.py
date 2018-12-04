@@ -5,6 +5,9 @@ from numba import njit
 # cc = CC('checks')
 
 
+def_min_thresh_wt = 0.01831563888873418
+
+
 # @cc.export('check_data_map', 'void(float64[:,:])')
 @njit
 def check_data_map(data_map: np.ndarray):
@@ -17,10 +20,10 @@ def check_data_map(data_map: np.ndarray):
 @njit
 def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     counter = 0
-    for idx in range(len(full_to_trim)):
-        ref = full_to_trim[idx]
+    for i in range(len(full_to_trim)):
+        ref = full_to_trim[i]
         if not np.isnan(ref):
-            if trim_to_full[int(ref)] != idx or idx > len(trim_to_full):
+            if trim_to_full[int(ref)] != i or i > len(trim_to_full):
                 raise ValueError('Mismatching trim-to-full and full-to-trim maps.')
             counter += 1
     if counter != len(trim_to_full):
@@ -43,6 +46,12 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
 # @cc.export('check_distances_and_betas', '(float64[:], float64[:])')
 @njit
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
+    if len(distances) == 0:
+        raise ValueError('No distances provided.')
+
+    if len(betas) == 0:
+        raise ValueError('No betas provided.')
+
     if len(distances) != len(betas):
         raise ValueError('The number of distances and betas should be equal.')
 

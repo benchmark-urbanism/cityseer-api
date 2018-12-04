@@ -16,11 +16,11 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
     if trim_count == 0:
         return trim_to_full_idx_map
 
-    for idx in range(len(full_to_trim_map)):
-        trim_idx = full_to_trim_map[idx]
+    for i in range(len(full_to_trim_map)):
+        trim_idx = full_to_trim_map[i]
         # if the full map has a finite value, then respectively map from the trimmed index to the full index
         if not np.isnan(trim_idx):
-            trim_to_full_idx_map[int(trim_idx)] = idx
+            trim_to_full_idx_map[int(trim_idx)] = i
 
     return trim_to_full_idx_map
 
@@ -35,10 +35,10 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
     full_to_trim_idx_map = np.full(total_count, np.nan)
 
     trim_count = 0
-    for idx in range(total_count):
-        dist = np.hypot(x_arr[idx] - src_x, y_arr[idx] - src_y)
+    for i in range(total_count):
+        dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
         if dist <= max_dist:
-            full_to_trim_idx_map[int(idx)] = trim_count
+            full_to_trim_idx_map[int(i)] = trim_count
             trim_count += 1
 
     trim_to_full_idx_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
@@ -56,10 +56,10 @@ def nearest_idx(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray
     min_idx = np.nan
     min_dist = np.inf
 
-    for idx in range(total_count):
-        dist = np.hypot(x_arr[idx] - src_x, y_arr[idx] - src_y)
+    for i in range(total_count):
+        dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
         if dist <= max_dist and dist < min_dist:
-            min_idx = idx
+            min_idx = i
             min_dist = dist
 
     return min_idx, min_dist
@@ -347,13 +347,10 @@ def aggregate_to_src_idx(src_idx: int,
     reachable_classes_dist_trim = np.full(len(data_trim_to_full_idx_map), np.inf)
 
     # iterate the distance trimmed data points
-    for idx, data_idx_full in enumerate(data_trim_to_full_idx_map):
+    for i, data_idx_full in enumerate(data_trim_to_full_idx_map):
 
         # cast to int
         data_idx = int(data_idx_full)
-
-        if data_idx == 16:
-            print('here')
 
         # find the full and trim indices of the assigned network node
         if np.isfinite(d_assign_nearest[data_idx]):
@@ -369,8 +366,8 @@ def aggregate_to_src_idx(src_idx: int,
                 dist = map_distance_trim[netw_trim_idx] + d_d
                 # only assign distance if within max distance
                 if dist <= max_dist:
-                    reachable_classes_trim[idx] = d_classes[data_idx]
-                    reachable_classes_dist_trim[idx] = dist
+                    reachable_classes_trim[i] = d_classes[data_idx]
+                    reachable_classes_dist_trim[i] = dist
 
         # the next-nearest may offer a closer route depending on the direction the shortest path approaches from
         if np.isfinite(d_assign_next_nearest[data_idx]):
@@ -386,9 +383,9 @@ def aggregate_to_src_idx(src_idx: int,
                 dist = map_distance_trim[netw_trim_idx] + d_d
                 # only assign distance if within max distance
                 # AND only if closer than other direction
-                if dist <= max_dist and dist < reachable_classes_dist_trim[idx]:
-                    reachable_classes_trim[idx] = d_classes[data_idx]
-                    reachable_classes_dist_trim[idx] = dist
+                if dist <= max_dist and dist < reachable_classes_dist_trim[i]:
+                    reachable_classes_trim[i] = d_classes[data_idx]
+                    reachable_classes_dist_trim[i] = dist
 
     # note that some entries will be nan values if the max distance was exceeded
     return reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map

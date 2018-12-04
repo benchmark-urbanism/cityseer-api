@@ -35,18 +35,18 @@ def test_radial_filter():
         # plot.plot_graph_maps(n_labels, n_map, e_map, d_map=d_map, poly=geom)
 
         # check that the full_to_trim map is the correct number of elements
-        assert len(full_to_trim_map) == len(D.data)
+        assert len(full_to_trim_map) == len(D._data)
         # check that all non NaN indices are reflected in the either direction
         c = 0
-        for idx, n in enumerate(full_to_trim_map):
+        for i, n in enumerate(full_to_trim_map):
             if not np.isnan(n):
                 c += 1
-                assert trim_to_full_map[int(n)] == idx
+                assert trim_to_full_map[int(n)] == i
         assert c == len(trim_to_full_map)
 
         # test that all reachable indices are, in fact, within the max distance
-        for idx, val in enumerate(full_to_trim_map):
-            dist = np.sqrt((D.x_arr[idx] - src_x) ** 2 + (D.y_arr[idx] - src_y) ** 2)
+        for i, val in enumerate(full_to_trim_map):
+            dist = np.sqrt((D.x_arr[i] - src_x) ** 2 + (D.y_arr[i] - src_y) ** 2)
             if np.isfinite(val):
                 assert dist <= max_dist
             else:
@@ -64,7 +64,7 @@ def test_nearest_idx():
     D = layers.Data_Layer_From_Dict(data_dict)
 
     # test the filter - iterating each point in data map
-    for d in D.data:
+    for d in D._data:
         d_x = d[0]
         d_y = d[1]
 
@@ -72,11 +72,11 @@ def test_nearest_idx():
         min_idx, min_dist = data.nearest_idx(d_x, d_y, N.x_arr, N.y_arr, max_dist=500)
 
         # check that no other indices are nearer
-        for idx, n in enumerate(N._nodes):
+        for i, n in enumerate(N._nodes):
             n_x = n[0]
             n_y = n[1]
             dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
-            if idx == min_idx:
+            if i == min_idx:
                 assert round(dist, 8) == round(min_dist, 8)
             else:
                 assert dist > min_dist
@@ -181,9 +181,9 @@ def test_assign_to_network():
                [48, 2, 5],
                [49, 29, 30]]
 
-    for idx in range(len(data_map)):
-        assert data_map[idx][4] == targets[idx][1]
-        assert np.allclose(data_map[idx][5], targets[idx][2], equal_nan=True)
+    for i in range(len(data_map)):
+        assert data_map[i][4] == targets[i][1]
+        assert np.allclose(data_map[i][5], targets[i][2], equal_nan=True)
 
     # for debugging
     # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
@@ -192,82 +192,81 @@ def test_assign_to_network():
 def test_aggregate_to_src_idx():
     node_uids, node_map, edge_map, data_uids, data_map, class_labels = mod_graph_and_data()
 
-    src_idx = 0
-    max_dist = 400
-    angular = False
+    for max_dist in [400, 750]:
+        for angular in [True, False]:
+            for src_idx in [0, 10]:
 
-    reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map = \
-        data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map, max_dist, angular=angular)
+                # aggregate to src...
+                reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map = \
+                    data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map, max_dist, angular=angular)
 
-    print(reachable_classes_trim)
-    print(reachable_classes_dist_trim)
-    print(data_trim_to_full_idx_map)
+                # generate data for testing against
+                netw_x_arr = node_map[:, 0]
+                netw_y_arr = node_map[:, 1]
+                src_x = netw_x_arr[src_idx]
+                src_y = netw_y_arr[src_idx]
+                data_x_arr = data_map[:, 0]
+                data_y_arr = data_map[:, 1]
 
-    # generate data for testing against
-    netw_x_arr = node_map[:, 0]
-    netw_y_arr = node_map[:, 1]
-    src_x = netw_x_arr[src_idx]
-    src_y = netw_y_arr[src_idx]
-    data_x_arr = data_map[:, 0]
-    data_y_arr = data_map[:, 1]
+                # get the trim maps
+                netw_trim_to_full, netw_full_to_trim = data.radial_filter(src_x, src_y, netw_x_arr, netw_y_arr,
+                                                                          max_dist)
 
-    # get the trim maps
-    netw_trim_to_full, netw_full_to_trim = data.radial_filter(src_x, src_y, netw_x_arr, netw_y_arr, max_dist)
+                # get the network distances
+                map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
+                    centrality.shortest_path_tree(node_map,
+                                                  edge_map,
+                                                  src_idx,
+                                                  netw_trim_to_full,
+                                                  netw_full_to_trim,
+                                                  max_dist=max_dist,
+                                                  angular=angular)
 
-    # get the network distances
-    map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
-        centrality.shortest_path_tree(node_map,
-                                      edge_map,
-                                      src_idx,
-                                      netw_trim_to_full,
-                                      netw_full_to_trim,
-                                      max_dist=max_dist,
-                                      angular=angular)
+                # verify
+                for i in range(len(data_trim_to_full_idx_map)):
+                    cl = reachable_classes_trim[i]
+                    dist = reachable_classes_dist_trim[i]
+                    d_full_idx = int(data_trim_to_full_idx_map[i])
 
-    for idx in range(len(data_trim_to_full_idx_map)):
-        cl = reachable_classes_trim[idx]
-        dist = reachable_classes_dist_trim[idx]
-        d_full_idx = int(data_trim_to_full_idx_map[idx])
+                    # get the distance via the nearest assigned index
+                    nearest_dist = np.inf
+                    if np.isfinite(data_map[d_full_idx][4]):
+                        netw_full_idx = int(data_map[d_full_idx][4])
+                        if np.isfinite(netw_full_to_trim[netw_full_idx]):
+                            netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
+                            # get the distances
+                            d_d = np.hypot(data_x_arr[d_full_idx] - netw_x_arr[netw_full_idx],
+                                           data_y_arr[d_full_idx] - netw_y_arr[netw_full_idx])
+                            n_d = map_distance_trim[netw_trim_idx]
+                            nearest_dist = d_d + n_d
 
-        # get the distance via the nearest assigned index
-        nearest_dist = np.inf
-        if np.isfinite(data_map[d_full_idx][4]):
-            netw_full_idx = int(data_map[d_full_idx][4])
-            if np.isfinite(netw_full_to_trim[netw_full_idx]):
-                netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
-                # get the distances
-                d_d = np.hypot(data_x_arr[d_full_idx] - netw_x_arr[netw_full_idx],
-                               data_y_arr[d_full_idx] - netw_y_arr[netw_full_idx])
-                n_d = map_distance_trim[netw_trim_idx]
-                nearest_dist = d_d + n_d
+                    # get the distance via the next nearest assigned index
+                    next_nearest_dist = np.inf
+                    if np.isfinite(data_map[d_full_idx][5]):
+                        netw_full_idx = int(data_map[d_full_idx][5])
+                        if np.isfinite(netw_full_to_trim[netw_full_idx]):
+                            netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
+                            # get the distances
+                            d_d = np.hypot(data_x_arr[d_full_idx] - netw_x_arr[netw_full_idx],
+                                           data_y_arr[d_full_idx] - netw_y_arr[netw_full_idx])
+                            n_d = map_distance_trim[netw_trim_idx]
+                            next_nearest_dist = d_d + n_d
 
-        # get the distance via the next nearest assigned index
-        next_nearest_dist = np.inf
-        if np.isfinite(data_map[d_full_idx][5]):
-            netw_full_idx = int(data_map[d_full_idx][5])
-            if np.isfinite(netw_full_to_trim[netw_full_idx]):
-                netw_trim_idx = int(netw_full_to_trim[netw_full_idx])
-                # get the distances
-                d_d = np.hypot(data_x_arr[d_full_idx] - netw_x_arr[netw_full_idx],
-                               data_y_arr[d_full_idx] - netw_y_arr[netw_full_idx])
-                n_d = map_distance_trim[netw_trim_idx]
-                next_nearest_dist = d_d + n_d
+                    # check distance integrity
+                    if np.isinf(dist):
+                        assert nearest_dist > max_dist and next_nearest_dist > max_dist
+                    else:
+                        assert dist <= max_dist
+                        if nearest_dist < next_nearest_dist:
+                            assert dist == nearest_dist
+                        else:
+                            assert dist == next_nearest_dist
 
-        # check distance integrity
-        if np.isinf(dist):
-            assert nearest_dist > max_dist and next_nearest_dist > max_dist
-        else:
-            assert dist <= max_dist
-            if nearest_dist < next_nearest_dist:
-                assert dist == nearest_dist
-            else:
-                assert dist == next_nearest_dist
+                    # check the class integrity
+                    if np.isfinite(dist):
+                        assert cl == data_map[d_full_idx][3]
+                    else:
+                        assert np.isnan(cl)
 
-        # check the class integrity
-        if np.isfinite(dist):
-            assert cl == data_map[d_full_idx][3]
-        else:
-            assert np.isnan(cl)
-
-    # for debugging
-    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
+                # for debugging
+                # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)

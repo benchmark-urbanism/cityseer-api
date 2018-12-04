@@ -14,7 +14,7 @@ def test_check_data_map():
     D = layers.Data_Layer_From_Dict(data_dict)
 
     with pytest.raises(ValueError):
-        checks.check_data_map(D.data[:, :-1])
+        checks.check_data_map(D._data[:, :-1])
 
 
 def test_check_trim_maps():

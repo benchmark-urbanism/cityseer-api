@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 from numba import njit
 
@@ -16,7 +18,7 @@ def shortest_path_tree(
         trim_to_full_idx_map: np.ndarray,
         full_to_trim_idx_map: np.ndarray,
         max_dist: float = np.inf,
-        angular: bool = False):
+        angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     This is the no-frills all shortest paths to max dist from source nodes
 
@@ -164,7 +166,7 @@ def local_centrality(node_map: np.ndarray,
                      betas: np.ndarray,
                      closeness_keys: np.ndarray,
                      betweenness_keys: np.ndarray,
-                     angular: bool = False):
+                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -180,23 +182,18 @@ def local_centrality(node_map: np.ndarray,
     3 - impedance
     '''
 
+    if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
+        raise ValueError(
+            'Neither closeness nor betweenness keys specified, please specify at least one metric to compute.')
+
     checks.check_network_types(node_map, edge_map)
 
     checks.check_distances_and_betas(distances, betas)
 
-    if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
-        raise ValueError('No metrics specified for computation. Please specify at least one.')
-
-    # establish the number of nodes
+    # establish variables
     n = len(node_map)
-
-    # the distances dimension
     d_n = len(distances)
-
-    # maximum distance
     max_dist = distances.max()
-
-    # disaggregate node_map
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
     nodes_live = node_map[:, 2]
@@ -240,6 +237,8 @@ def local_centrality(node_map: np.ndarray,
                 return np.exp(beta * distance)
             else:
                 return 0
+        if idx > 6:
+            raise ValueError('Closeness key exceeds the available options.')
 
     # BETWEENNESS MEASURES
     def betweenness_metrics(idx, distance, weight, beta):
@@ -249,6 +248,8 @@ def local_centrality(node_map: np.ndarray,
         # 1 - betweenness_gravity - sum of gravity weighted betweenness
         elif idx == 1:
             return np.exp(beta * distance) * weight
+        if idx > 1:
+            raise ValueError('Betweenness key exceeds the available options.')
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
@@ -257,7 +258,7 @@ def local_centrality(node_map: np.ndarray,
         if src_idx % 10000 == 0:
             print('...progress:', round(src_idx / n * 100, 2), '%')
 
-        # only compute for nodes in current city
+        # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
 

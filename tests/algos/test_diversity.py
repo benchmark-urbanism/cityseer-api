@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 from scipy.stats import entropy
 
-from cityseer.algos import diversity
-from cityseer.util import mock
+from cityseer.algos import diversity, data
+from cityseer.metrics import layers, networks
+from cityseer.util import mock, graphs
 
 
 def test_hill_diversity():
@@ -45,7 +46,7 @@ def test_hill_diversity_branch_distance_wt():
 
         # check for malformed data
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, distances, -0.005, q)
+            diversity.hill_diversity_branch_distance_wt(counts, distances, 0.005, q)
 
 
 def test_hill_diversity_pairwise_generic():
@@ -66,22 +67,23 @@ def test_hill_diversity_pairwise_generic():
 
 
 def test_pairwise_distance_matrix():
+
     def check_matrix(wt_matrix, i, j, wt):
         # in this case the iteration handles i = i situations
         assert wt_matrix[i][j] == wt
         assert wt_matrix[j][i] == wt
 
-    distances = [0, 100, 1000, 2, 200, 2000]
-    beta = 0.005
+    distances = [0, np.inf, 100, 1000, 2, 200, 2000, np.inf]
+    beta = -0.005
 
     wt_matrix = diversity.pairwise_distance_matrix(np.array(distances), beta)
     for i, l_1 in enumerate(distances):
         for j, l_2 in enumerate(distances):
-            check_matrix(wt_matrix, i, j, np.exp((l_1 + l_2) * -beta))
+            check_matrix(wt_matrix, i, j, np.exp((l_1 + l_2) * beta))
 
     # check for malformed data
     with pytest.raises(ValueError):
-        diversity.pairwise_distance_matrix(np.array(distances), -0.005)
+        diversity.pairwise_distance_matrix(np.array(distances), 0.005)
 
 
 def test_hill_diversity_pairwise_distance_wt():
@@ -96,80 +98,26 @@ def test_hill_diversity_pairwise_distance_wt():
             diversity.hill_diversity_pairwise_distance_wt(counts, distances[:-1], beta, q)
 
 
-def test_pairwise_disparity_matrix():
-    def check_matrix(wt_matrix, i, j, wt):
-        assert wt_matrix[i][i] == 0
-        assert wt_matrix[j][j] == 0
-        assert wt_matrix[i][j] == wt
-        assert wt_matrix[j][i] == wt
-
-    class_weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
-
-    # test various levels of convergence
-    class_tiers = np.array([
-        [0, 10, 100, 1000],
-        [0, 10, 100, 1000]
-    ])
-    wt_matrix = diversity.pairwise_disparity_matrix(class_tiers, class_weights)
-    check_matrix(wt_matrix, 0, 1, class_weights[3])
-
-    class_tiers = np.array([
-        [0, 10, 100, 1000],
-        [0, 10, 100, 1001]
-    ])
-    wt_matrix = diversity.pairwise_disparity_matrix(class_tiers, class_weights)
-    check_matrix(wt_matrix, 0, 1, class_weights[2])
-
-    class_tiers = np.array([
-        [0, 10, 100, 1000],
-        [0, 10, 101, 1000]
-    ])
-    wt_matrix = diversity.pairwise_disparity_matrix(class_tiers, class_weights)
-    check_matrix(wt_matrix, 0, 1, class_weights[1])
-
-    class_tiers = np.array([
-        [0, 10, 100, 1000],
-        [0, 11, 100, 1000]
-    ])
-    wt_matrix = diversity.pairwise_disparity_matrix(class_tiers, class_weights)
-    check_matrix(wt_matrix, 0, 1, class_weights[0])
-
-    # check for lack of convergence
-    class_tiers = np.array([
-        [0, 10, 100, 1000],
-        [1, 11, 100, 1000]
-    ])
-    with pytest.raises(AttributeError):
-        diversity.pairwise_disparity_matrix(class_tiers, class_weights)
-
-    # check for malformed data
-    with pytest.raises(ValueError):
-        diversity.pairwise_disparity_matrix(class_tiers, class_weights[:-1])
+def matrix_factory(n):
+    m = np.full((n, n), np.nan)
+    for i in range(n):
+        for j in range(n):
+            m[i][j] = np.random.randint(0, 10)
+    return m
 
 
 def test_hill_diversity_pairwise_disparity_wt():
-    def tier_factory(n):
-        tiers = []
-        for i in range(n):
-            tiers.append([
-                0,
-                np.random.randint(10, 12),
-                np.random.randint(100, 102),
-                np.random.randint(1000, 1002)
-            ])
-        return np.array(tiers)
 
     for counts, probs in mock.mock_species_diversity():
-        tiers = tier_factory(len(counts))
-        weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
+        mock_matrix = matrix_factory(len(counts))
         q = float([0, 1, 2][np.random.randint(0, 3)])
 
         # check for malformed data
         if len(counts) > 1:
             with pytest.raises(ValueError):
-                diversity.hill_diversity_pairwise_disparity_wt(counts[:-1], tiers, weights, q)
+                diversity.hill_diversity_pairwise_disparity_wt(counts[:-1], mock_matrix, q)
             with pytest.raises(ValueError):
-                diversity.hill_diversity_pairwise_disparity_wt(counts, tiers[:-1], weights, q)
+                diversity.hill_diversity_pairwise_disparity_wt(counts, mock_matrix[:-1], q)
 
 
 def test_gini_simpson_diversity():
@@ -196,13 +144,59 @@ def test_raos_quadratic_diversity():
     '''
     # just run for now to check against unexpectedly thrown errors
     for counts, probs in mock.mock_species_diversity():
-        non_weights = np.full((len(counts), len(counts)), 1)
-        diversity.raos_quadratic_diversity(counts, non_weights)
+        mock_matrix = matrix_factory(len(counts))
+        class_weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
+        diversity.raos_quadratic_diversity(counts, mock_matrix)
 
 
-def test_deduce_unique_species():
-    pass
+def test_local_landuses():
+    # load the test graph
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
+    data_dict = mock.mock_data(G, random_seed=13)
+    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
 
-def test_compute_mixed_uses():
-    pass
+    betas = np.array([-0.005, -0.0025])
+    distances = networks.distance_from_beta(betas)
+    qs = np.array([0, 1, 2])
+    div_keys = np.arange(7)
+    ac_codes = np.random.randint(0, len(class_labels), 4)
+    mock_matrix = matrix_factory(len(class_labels))
+    class_weights = np.array([3 / 3, 2 / 3, 1 / 3, 0])
+
+    mixed_use_hill, mixed_use_other, accessibility_data, accessibility_data_wt = \
+        diversity.local_landuses(node_map,
+                                 edge_map,
+                                 data_map,
+                                 distances,
+                                 betas,
+                                 qs,
+                                 div_keys,
+                                 ac_codes,
+                                 mock_matrix)
+
+    # catch no qs
+    with pytest.raises(ValueError):
+        diversity.local_landuses(node_map,
+                                 edge_map,
+                                 data_map,
+                                 distances,
+                                 betas,
+                                 np.array([]),
+                                 div_keys,
+                                 ac_codes)
+    # catch missing class tiers
+    with pytest.raises(ValueError):
+        diversity.local_landuses(node_map,
+                                 edge_map,
+                                 data_map,
+                                 distances,
+                                 betas,
+                                 qs,
+                                 div_keys,
+                                 ac_codes,
+                                 mock_matrix[:-1])

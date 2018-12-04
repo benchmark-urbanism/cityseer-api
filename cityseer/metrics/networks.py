@@ -13,11 +13,9 @@ from cityseer.util import graphs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def_min_thresh_wt = 0.01831563888873418
-
 
 def distance_from_beta(beta: Union[float, list, np.ndarray],
-                       min_threshold_wt: float = def_min_thresh_wt) -> np.ndarray:
+                       min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     # cast to list form
     if isinstance(beta, (int, float)):
         beta = [beta]
@@ -39,7 +37,7 @@ class Network_Layer:
                  edge_map: np.ndarray,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
 
         '''
@@ -55,12 +53,6 @@ class Network_Layer:
         1 - end node
         2 - length in metres
         3 - impedance
-
-        INDEX MAP
-        0 - x_arr
-        1 - x_idx - corresponds to original index of non-sorted x_arr
-        2 - y_arr
-        3 - y_idx
         '''
 
         self._uids = node_uids
@@ -72,7 +64,8 @@ class Network_Layer:
         self._angular = angular
         self.metrics = {
             'centrality': {},
-            'landuses': {}
+            'mixed_uses': {},
+            'accessibility': {}
         }
         self._networkX = None
 
@@ -112,12 +105,12 @@ class Network_Layer:
         return self._betas
 
     @property
-    def angular(self):
-        return self._angular
-
-    @property
     def min_threshold_wt(self):
         return self._min_threshold_wt
+
+    @property
+    def angular(self):
+        return self._angular
 
     @property
     def x_arr(self):
@@ -156,76 +149,108 @@ class Network_Layer:
         metrics are stored in arrays, this method unpacks per uid
         '''
         m = {}
-        for idx, uid in enumerate(self._uids):
+        for i, uid in enumerate(self._uids):
             m[uid] = {
-                'x': self.x_arr[idx],
-                'y': self.y_arr[idx],
-                'live': self.live[idx] == 1,
-                'weight': self._nodes[:, 4][idx]
+                'x': self.x_arr[i],
+                'y': self.y_arr[i],
+                'live': self.live[i] == 1,
+                'weight': self._nodes[:, 4][i]
             }
-            for metric_key, metric_value in self.metrics.items():
-                m[uid][metric_key] = {}
-                for measure_key, measure_value in metric_value.items():
-                    m[uid][metric_key][measure_key] = {}
-                    for dist in measure_value:
-                        m[uid][metric_key][measure_key][dist] = measure_value[dist][idx]
+            # unpack centralities
+            m[uid]['centrality'] = {}
+            for m_key, m_val in self.metrics['centrality'].items():
+                m[uid]['centrality'][m_key] = {}
+                for d_key, d_val in m_val.items():
+                    m[uid]['centrality'][m_key][d_key] = d_val[i]
+
+            m[uid]['mixed_uses'] = {}
+            for m_key, m_val in self.metrics['mixed_uses'].items():
+                m[uid]['mixed_uses'][m_key] = {}
+                if 'hill' in m_key:
+                    for q_key, q_val in m_val.items():
+                        m[uid]['mixed_uses'][m_key][q_key] = {}
+                        for d_key, d_val in q_val.items():
+                            m[uid]['mixed_uses'][m_key][q_key][d_key] = d_val[i]
+                else:
+                    for d_key, d_val in m_val.items():
+                        m[uid]['mixed_uses'][m_key][d_key] = d_val[i]
+
+            m[uid]['accessibility'] = {
+                'non_weighted': {},
+                'weighted': {}
+            }
+            for cat in ['non_weighted', 'weighted']:
+                if cat in self.metrics['accessibility']:
+                    for cl_key, cl_val in self.metrics['accessibility'][cat].items():
+                        m[uid]['accessibility'][cat][cl_key] = {}
+                        for d_key, d_val in cl_val.items():
+                            m[uid]['accessibility'][cat][cl_key][d_key] = d_val[i]
+
         return m
 
-    def compute_centrality(self, close_metrics: Union[list, tuple] = None, between_metrics: Union[list, tuple] = None):
+    def compute_centrality(self,
+                           close_metrics: Union[list, tuple] = None,
+                           between_metrics: Union[list, tuple] = None):
         '''
-        This method provides full access to the underlying network.network_centralities method
+        This method provides full access to the underlying centrality.local_centrality method
         '''
 
         if close_metrics is None and between_metrics is None:
             raise ValueError(
                 f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute.')
 
-        closeness_options = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity',
+        closeness_options = ['node_density',
+                             'farness_impedance',
+                             'farness_distance',
+                             'harmonic',
+                             'improved',
+                             'gravity',
                              'cycles']
-        closeness_map = []
+        closeness_keys = []
         if close_metrics is not None:
             for cl in close_metrics:
                 if cl not in closeness_options:
                     raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
-                closeness_map.append(closeness_options.index(cl))
+                closeness_keys.append(closeness_options.index(cl))
         # improved closeness is extrapolated from node density and farness_distance, so these may have to be added regardless:
         # assign to new variable so as to keep closeness_map pure for later use in unpacking the results
-        closeness_map_extra = closeness_map
+        closeness_keys_extra = closeness_keys
         if close_metrics is not None and 'improved' in close_metrics:
-            closeness_map_extra = list(set(closeness_map_extra + [
+            closeness_keys_extra = list(set(closeness_keys_extra + [
                 closeness_options.index('node_density'),
                 closeness_options.index('farness_distance')]))
 
-        betweenness_options = ['betweenness', 'betweenness_gravity']
-        betweenness_map = []
+        betweenness_options = ['betweenness',
+                               'betweenness_gravity']
+        betweenness_keys = []
         if between_metrics is not None:
             for bt in between_metrics:
                 if bt not in betweenness_options:
                     raise ValueError(
                         f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
-                betweenness_map.append(betweenness_options.index(bt))
+                betweenness_keys.append(betweenness_options.index(bt))
 
         closeness_data, betweenness_data = centrality.local_centrality(
             self._nodes,
             self._edges,
             np.array(self._distances),
             np.array(self._betas),
-            np.array(closeness_map_extra),
-            np.array(betweenness_map),
+            np.array(closeness_keys_extra),
+            np.array(betweenness_keys),
             self._angular)
 
         # write the results
         # keys will check for pre-existing
         # distances will overwrite
         if close_metrics is not None:
-            for cl_key, cl_idx in zip(close_metrics, closeness_map):
+            for cl_key, cl_idx in zip(close_metrics, closeness_keys):
                 if cl_key not in self.metrics['centrality']:
                     self.metrics['centrality'][cl_key] = {}
                 for d_idx, d_key in enumerate(self._distances):
                     self.metrics['centrality'][cl_key][d_key] = closeness_data[cl_idx][d_idx]
 
         if between_metrics is not None:
-            for bt_key, bt_idx in zip(between_metrics, betweenness_map):
+            for bt_key, bt_idx in zip(between_metrics, betweenness_keys):
                 if bt_key not in self.metrics['centrality']:
                     self.metrics['centrality'][bt_key] = {}
                 for d_idx, d_key in enumerate(self._distances):
@@ -250,7 +275,7 @@ class Network_Layer_From_NetworkX(Network_Layer):
                  networkX_graph: nx.Graph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
         node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(networkX_graph)
 

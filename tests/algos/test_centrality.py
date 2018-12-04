@@ -155,6 +155,7 @@ def test_network_centralities():
     '''
     Also tested indirectly via test_centrality.test_compute_centrality
     '''
+    # TODO: expand tests against different keys
 
     # load the test graph
     G, pos = mock.mock_graph()
@@ -171,7 +172,7 @@ def test_network_centralities():
     betas = np.array([np.log(min_threshold_wt) / dist])
     closeness_keys = np.array([0, 3])
     betweenness_keys = np.array([0])
-    print(betas)
+
     # compute closeness and betweenness
     closeness_data, betweenness_data = \
         centrality.local_centrality(n_map,

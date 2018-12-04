@@ -453,50 +453,50 @@ def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarra
         # label
         node_uids.append(d['label'])
         # cast to int for indexing
-        idx = int(n)
+        i = int(n)
         # NODE MAP INDEX POSITION 0 = x coordinate
         if 'x' not in d:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        node_map[idx][0] = d['x']
+        node_map[i][0] = d['x']
         # NODE MAP INDEX POSITION 1 = y coordinate
         if 'y' not in d:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        node_map[idx][1] = d['y']
+        node_map[i][1] = d['y']
         # NODE MAP INDEX POSITION 2 = live or not
         if 'live' in d:
-            node_map[idx][2] = d['live']
+            node_map[i][2] = d['live']
         else:
-            node_map[idx][2] = True
+            node_map[i][2] = True
         # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
-        node_map[idx][3] = edge_idx
+        node_map[i][3] = edge_idx
         # NODE MAP INDEX POSITION 4 = weight
         if 'weight' in d:
-            node_map[idx][4] = d['weight']
+            node_map[i][4] = d['weight']
         else:
-            node_map[idx][4] = 1
+            node_map[i][4] = 1
         # follow all out links and add these to the edge_map
         # this happens for both directions
         for nb in g_copy.neighbors(n):
             # EDGE MAP INDEX POSITION 0 = start node
-            edge_map[edge_idx][0] = idx
+            edge_map[edge_idx][0] = i
             # EDGE MAP INDEX POSITION 1 = end node
             edge_map[edge_idx][1] = nb
             # EDGE MAP INDEX POSITION 2 = length
-            if 'length' not in g_copy[idx][nb]:
-                raise AttributeError(f'No "length" attribute for edge {idx}-{nb}.')
+            if 'length' not in g_copy[i][nb]:
+                raise AttributeError(f'No "length" attribute for edge {i}-{nb}.')
             # cannot have zero length
-            l = g_copy[idx][nb]['length']
+            l = g_copy[i][nb]['length']
             if not np.isfinite(l) or l <= 0:
-                raise AttributeError(f'Length attribute {l} for edge {idx}-{nb} must be a finite positive value.')
+                raise AttributeError(f'Length attribute {l} for edge {i}-{nb} must be a finite positive value.')
             edge_map[edge_idx][2] = l
             # EDGE MAP INDEX POSITION 3 = impedance
-            if 'impedance' not in g_copy[idx][nb]:
-                raise AttributeError(f'No "impedance" attribute for edge {idx}-{nb}.')
+            if 'impedance' not in g_copy[i][nb]:
+                raise AttributeError(f'No "impedance" attribute for edge {i}-{nb}.')
             # cannot have impedance less than zero (but == 0 is OK)
-            imp = g_copy[idx][nb]['impedance']
+            imp = g_copy[i][nb]['impedance']
             if not (np.isfinite(imp) or np.isinf(imp)) or imp < 0:
                 raise AttributeError(
-                    f'Impedance attribute {imp} for edge {idx}-{nb} must be a finite positive value or positive infinity.')
+                    f'Impedance attribute {imp} for edge {i}-{nb} must be a finite positive value or positive infinity.')
             edge_map[edge_idx][3] = imp
             # increment the link_idx
             edge_idx += 1
@@ -532,7 +532,7 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
             g_copy.add_node(uid)
 
     logger.info('Unpacking node data.')
-    for idx, (uid, node) in tqdm(enumerate(zip(node_uids, node_map))):
+    for uid, node in tqdm(zip(node_uids, node_map)):
         x, y, live, edge_idx, wt = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y

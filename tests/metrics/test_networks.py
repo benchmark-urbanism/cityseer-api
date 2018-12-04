@@ -146,8 +146,8 @@ def test_to_networkX():
     for metric_key in N.metrics.keys():
         for measure_key in N.metrics[metric_key].keys():
             for dist in N.metrics[metric_key][measure_key].keys():
-                for idx, uid in enumerate(N.uids):
-                    assert N.metrics[metric_key][measure_key][dist][idx] == \
+                for i, uid in enumerate(N.uids):
+                    assert N.metrics[metric_key][measure_key][dist][i] == \
                            G_round_trip.nodes[uid]['metrics'][metric_key][measure_key][dist]
 
     assert G_round_trip.nodes[0]['boo'] == 'baa'
@@ -163,18 +163,15 @@ def test_metrics_to_dict():
     N.betweenness()
     metrics_dict = N.metrics_to_dict()
 
-    for idx, uid in enumerate(N.uids):
-        assert metrics_dict[uid]['x'] == N._nodes[idx][0]
-        assert metrics_dict[uid]['y'] == N._nodes[idx][1]
-        assert metrics_dict[uid]['live'] == (N._nodes[idx][2] == 1)
-        assert metrics_dict[uid]['weight'] == N._nodes[idx][4]
+    for i, uid in enumerate(N.uids):
+        assert metrics_dict[uid]['x'] == N._nodes[i][0]
+        assert metrics_dict[uid]['y'] == N._nodes[i][1]
+        assert metrics_dict[uid]['live'] == (N._nodes[i][2] == 1)
+        assert metrics_dict[uid]['weight'] == N._nodes[i][4]
         for metric_key in N.metrics.keys():
             for measure_key in N.metrics[metric_key].keys():
-                print(measure_key)
                 for dist in N.metrics[metric_key][measure_key].keys():
-                    print(N.metrics[metric_key][measure_key][dist][idx],
-                          metrics_dict[uid][metric_key][measure_key][dist])
-                    assert N.metrics[metric_key][measure_key][dist][idx] == \
+                    assert N.metrics[metric_key][measure_key][dist][i] == \
                            metrics_dict[uid][metric_key][measure_key][dist]
 
 
@@ -207,9 +204,15 @@ def test_compute_centrality():
     assert len(N.metrics['centrality']) == 1
 
     # also check the number of returned types for all permutations
-    closeness_types = ['node_density', 'farness_impedance', 'farness_distance', 'harmonic', 'improved', 'gravity',
+    closeness_types = ['node_density',
+                       'farness_impedance',
+                       'farness_distance',
+                       'harmonic',
+                       'improved',
+                       'gravity',
                        'cycles']
-    betweenness_types = ['betweenness', 'betweenness_gravity']
+    betweenness_types = ['betweenness',
+                         'betweenness_gravity']
     N = networks.Network_Layer_From_NetworkX(G, distances)
     for cl_types in permutations(closeness_types):
         for bt_types in permutations(betweenness_types):
