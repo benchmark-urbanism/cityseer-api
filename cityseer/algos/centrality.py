@@ -346,7 +346,7 @@ def local_centrality(node_map: np.ndarray,
                 intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
                 intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
 
-    print('completed')
+    print('...done')
 
     # improved closeness is post-computed
     for cl_idx in closeness_keys:

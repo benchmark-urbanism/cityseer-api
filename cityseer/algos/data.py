@@ -137,6 +137,9 @@ def assign_to_network(data_map: np.ndarray,
         side_a = np.hypot(data_coords[0] - a_coords[0], data_coords[1] - a_coords[1])
         side_b = np.hypot(data_coords[0] - b_coords[0], data_coords[1] - b_coords[1])
         base = np.hypot(a_coords[0] - b_coords[0], a_coords[1] - b_coords[1])
+        # forestall potential division by zero
+        if base == 0:
+            return np.inf, np.nan, np.nan
         # heron's formula
         s = (side_a + side_b + base) / 2  # perimeter / 2
         a = np.sqrt(s * (s - side_a) * (s - side_b) * (s - base))
