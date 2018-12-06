@@ -3,7 +3,7 @@ from shapely import geometry
 
 from cityseer.algos import data, centrality
 from cityseer.metrics import networks, layers
-from cityseer.util import graphs, mock
+from cityseer.util import graphs, mock, plot
 
 
 def test_radial_filter():
@@ -93,6 +93,16 @@ def mod_graph_and_data():
     G.remove_edge(16, 17)
     G.remove_edge(18, 19)
 
+    # create an orphaned node (affiliated with a data point)
+    G.remove_edge(28, 29)
+    G.remove_edge(25, 29)
+    G.remove_edge(29, 30)
+
+    # create an orphaned edge (affiliated with a data point)
+    G.remove_edge(10, 14)
+    G.remove_edge(11, 6)
+    G.remove_edge(11, 12)
+
     # add a dead-end condition near the first data point
     coord_46 = (6001015, 600535)
     G.add_node(46, x=coord_46[0], y=coord_46[1])
@@ -121,15 +131,14 @@ def mod_graph_and_data():
     data_map[0][:2] = [6001000, 600350]
     data_map[1][:2] = [6001170, 600445]
 
-    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
-
     return node_uids, node_map, edge_map, data_uids, data_map, class_labels
 
 
 def test_assign_to_network():
     node_uids, node_map, edge_map, data_uids, data_map, class_labels = mod_graph_and_data()
 
-    # confirmed visually in plots
+    # 500m visually confirmed in plots
+    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
     targets = [[0, 45, 30],
                [1, 30, 45],
                [2, 23, 21],
@@ -155,7 +164,7 @@ def test_assign_to_network():
                [22, 16, 0],
                [23, 10, 43],
                [24, 31, 0],
-               [25, 29, 28],
+               [25, 29.0, np.nan],
                [26, 45, 30],
                [27, 36, 41],
                [28, 41, 40],
@@ -168,7 +177,7 @@ def test_assign_to_network():
                [35, 14.0, np.nan],
                [36, 10, 43],
                [37, 30, 45],
-               [38, 29, 25],
+               [38, 29.0, np.nan],
                [39, 43, 10],
                [40, 45, 30],
                [41, 5, 2],
@@ -179,14 +188,18 @@ def test_assign_to_network():
                [46, 43, 10],
                [47, 27, 22],
                [48, 2, 5],
-               [49, 29, 30]]
-
+               [49, 29.0, np.nan]]
     for i in range(len(data_map)):
         assert data_map[i][4] == targets[i][1]
         assert np.allclose(data_map[i][5], targets[i][2], equal_nan=True)
 
     # for debugging
-    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
+    plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
+
+    # iterate various distances - e.g. situations where internal nearest_idx method returns NaN
+    for d in [0, 50, 200, 750]:
+        data.assign_to_network(data_map, node_map, edge_map, d)
+
 
 
 def test_aggregate_to_src_idx():

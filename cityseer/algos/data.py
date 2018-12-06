@@ -194,18 +194,20 @@ def assign_to_network(data_map: np.ndarray,
         if data_idx % 10000 == 0:
             print('...progress:', round(data_idx / len(data_map) * 100, 2), '%')
 
-        # keep track of visited nodes
-        pred_map.fill(np.nan)
-        # the data point's coordinates don't change below
+        # find the nearest network node
         min_idx, min_dist = nearest_idx(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
+        # in some cases no network node will be within max_dist... so accept NaN
+        if np.isnan(min_idx):
+            continue
+        # nearest is initially set for this nearest node, but if a nearer street-edge is found, it will be overriden
         nearest = min_idx
         next_nearest = np.nan
-
-        # state
-        reversing = False
         # set start node to nearest network node
         node_idx = int(min_idx)
-
+        # keep track of visited nodes
+        pred_map.fill(np.nan)
+        # state
+        reversing = False
         # keep track of previous indices
         prev_idx = np.nan
         # iterate neighbours
@@ -246,6 +248,19 @@ def assign_to_network(data_map: np.ndarray,
 
             # allow backtracking if no neighbour is found - i.e. dead-ends
             if np.isnan(nb_idx):
+                if np.isnan(pred_map[node_idx]):
+                    # for isolated nodes: nb_idx == np.nan, pred_map[node_idx] == np.nan, and prev_idx == np.nan
+                    if np.isnan(prev_idx):
+                        break
+                    # for isolated edges, the algorithm gets turned-around back to the starting node with nowhere to go
+                    # nb_idx == np.nan, pred_map[node_idx] == np.nan
+                    # in these cases, pass closest_intersections the prev idx so that it has a predecessor to follow
+                    d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(prev_idx))
+                    if d < min_dist:
+                        nearest = n
+                        next_nearest = n_n
+                    break
+                # otherwise, go ahead and backtrack
                 nb_idx = pred_map[node_idx]
 
             # if the distance is exceeded, reset and attempt in the other direction
@@ -277,7 +292,6 @@ def assign_to_network(data_map: np.ndarray,
                     pred_map[int(nb_idx)] = node_idx
                     d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(nb_idx))
                     if d < min_dist:
-                        min_dist = d
                         nearest = n
                         next_nearest = n_n
                     break

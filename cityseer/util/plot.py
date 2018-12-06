@@ -4,9 +4,10 @@ These plot methods are mainly for testing and debugging
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from shapely import geometry
 
 
-def plot_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
+def plot_primal_dual_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
     if primal is not None:
         pos_primal = {}
         for n, d in primal.nodes(data=True):
@@ -38,7 +39,11 @@ def plot_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
     plt.show()
 
 
-def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
+def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
+                    node_map: np.ndarray,
+                    edge_map: np.ndarray,
+                    data_map: np.ndarray = None,
+                    poly: geometry.Polygon = None):
     # the links are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of links
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
@@ -89,7 +94,7 @@ def plot_graph_maps(node_labels, node_map, edge_map, data_map=None, poly=None):
             edge_idx += 1
 
     for ax in (ax1, ax2):
-        for label, x, y in zip(node_labels, node_map[:, 0], node_map[:, 1]):
+        for label, x, y in zip(node_uids, node_map[:, 0], node_map[:, 1]):
             ax.annotate(label, xy=(x, y))
 
     '''
