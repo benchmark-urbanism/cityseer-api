@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from shapely import geometry
 
+from cityseer.algos import checks
 from cityseer.util import mock, graphs
 
 
@@ -141,8 +142,8 @@ def test_networkX_decompose():
     G = graphs.networkX_simple_geoms(G)
 
     G_decompose = graphs.networkX_decompose(G, 20)
-    assert nx.number_of_nodes(G_decompose) == 602
-    assert nx.number_of_edges(G_decompose) == 625
+    assert nx.number_of_nodes(G_decompose) == 632
+    assert nx.number_of_edges(G_decompose) == 653
 
     # check that geoms are correctly flipped
     G_forward, pos = mock.mock_graph()
@@ -199,6 +200,7 @@ def test_networkX_to_dual():
     # test dual
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
+
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
     for i, (s, e, d) in enumerate(G.edges(data=True)):
         # add a kink to each second geom
@@ -220,11 +222,22 @@ def test_networkX_to_dual():
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.networkX_to_dual(G)
+
+    # from cityseer.util import plot
+    # plot.plot_networkX_primal_or_dual(primal=G, dual=G_dual)
+
     # dual nodes should equal primal edges
     assert G_dual.number_of_nodes() == G.number_of_edges()
     # all new nodes should have in-out-degrees of 4
     for n in G_dual.nodes():
-        assert nx.degree(G_dual, n) == 4
+        if n in ['50_51']:
+            assert nx.degree(G_dual, n) == 0
+        elif n in ['46_47', '46_48']:
+            assert nx.degree(G_dual, n) == 2
+        elif n in ['19_22', '22_23', '22_27', '22_46']:
+            assert nx.degree(G_dual, n) == 5
+        else:
+            assert nx.degree(G_dual, n) == 4
 
     # for debugging
     # plot.plot_networkX_graphs(primal=G, dual=G_dual)
@@ -291,6 +304,8 @@ def test_graph_maps_from_networkX():
     # plot.plot_graphs(primal=G_test)
     # plot.plot_graph_maps(node_uids, node_map, edge_map)
 
+    # run check
+    checks.check_network_types(node_map, edge_map)
     # check lengths
     assert len(node_uids) == len(node_map) == G_test.number_of_nodes()
     assert len(edge_map) == G_test.number_of_edges() * 2

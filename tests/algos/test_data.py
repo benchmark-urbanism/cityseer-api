@@ -1,9 +1,8 @@
 import numpy as np
-from shapely import geometry
 
 from cityseer.algos import data, centrality
 from cityseer.metrics import networks, layers
-from cityseer.util import graphs, mock, plot
+from cityseer.util import graphs, mock
 
 
 def test_radial_filter():
@@ -90,34 +89,6 @@ def mod_graph_and_data():
     # create some dead-end scenarios
     G.remove_edge(14, 15)
     G.remove_edge(15, 28)
-    G.remove_edge(16, 17)
-    G.remove_edge(18, 19)
-
-    # create an orphaned node (affiliated with a data point)
-    G.remove_edge(28, 29)
-    G.remove_edge(25, 29)
-    G.remove_edge(29, 30)
-
-    # create an orphaned edge (affiliated with a data point)
-    G.remove_edge(10, 14)
-    G.remove_edge(11, 6)
-    G.remove_edge(11, 12)
-
-    # add a dead-end condition near the first data point
-    coord_46 = (6001015, 600535)
-    G.add_node(46, x=coord_46[0], y=coord_46[1])
-    line_geom_a = geometry.LineString([(G.nodes[22]['x'], G.nodes[22]['y']), coord_46])
-    G.add_edge(22, 46, geom=line_geom_a)
-
-    coord_47 = (6001100, 600480)
-    G.add_node(47, x=coord_47[0], y=coord_47[1])
-    line_geom_b = geometry.LineString([coord_46, coord_47])
-    G.add_edge(46, 47, geom=line_geom_b)
-
-    coord_48 = (6000917, 600517)
-    G.add_node(48, x=coord_48[0], y=coord_48[1])
-    line_geom_c = geometry.LineString([coord_46, coord_48])
-    G.add_edge(46, 48, geom=line_geom_c)
 
     G = graphs.networkX_edge_defaults(G)
 
@@ -145,39 +116,39 @@ def test_assign_to_network():
                [3, 32, 35],
                [4, 25, 26],
                [5, 3, 4],
-               [6, 20, 17],
+               [6, 50, np.nan],
                [7, 13, 9],
                [8, 30, 45],
                [9, 43, 10],
                [10, 43, 44],
                [11, 24, 20],
                [12, 19, 22],
-               [13, 1, 4],
+               [13, 51, np.nan],
                [14, 14, 11],
                [15, 16, 19],
-               [16, 2, 5],
+               [16, 49, np.nan],
                [17, 10, 43],
                [18, 43, 42],
                [19, 19, 16],
                [20, 43, 10],
-               [21, 15.0, np.nan],
+               [21, 15, np.nan],
                [22, 16, 0],
-               [23, 10, 43],
+               [23, 49, np.nan],
                [24, 31, 0],
-               [25, 29.0, np.nan],
+               [25, 29, 28],
                [26, 45, 30],
                [27, 36, 41],
                [28, 41, 40],
                [29, 16, 19],
                [30, 10, 43],
-               [31, 10, 43],
-               [32, 47.0, np.nan],
+               [31, 49, np.nan],
+               [32, 47, np.nan],
                [33, 36, 37],
-               [34, 14.0, np.nan],
-               [35, 14.0, np.nan],
+               [34, 14, np.nan],
+               [35, 14, np.nan],
                [36, 10, 43],
                [37, 30, 45],
-               [38, 29.0, np.nan],
+               [38, 29, 25],
                [39, 43, 10],
                [40, 45, 30],
                [41, 5, 2],
@@ -188,18 +159,17 @@ def test_assign_to_network():
                [46, 43, 10],
                [47, 27, 22],
                [48, 2, 5],
-               [49, 29.0, np.nan]]
+               [49, 29, 30]]
     for i in range(len(data_map)):
         assert data_map[i][4] == targets[i][1]
         assert np.allclose(data_map[i][5], targets[i][2], equal_nan=True)
 
     # for debugging
-    plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
+    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
 
     # iterate various distances - e.g. situations where internal nearest_idx method returns NaN
     for d in [0, 50, 200, 750]:
         data.assign_to_network(data_map, node_map, edge_map, d)
-
 
 
 def test_aggregate_to_src_idx():

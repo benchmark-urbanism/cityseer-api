@@ -12,10 +12,14 @@ def test_mock_graph():
     # plot.plot_graphs(primal=G)
 
     for g in [G, G_wgs]:
-        assert g.number_of_nodes() == 46
-        assert g.number_of_edges() == 69
-        assert nx.average_degree_connectivity(g) == {3: 3.0}
-        assert nx.average_shortest_path_length(g) == 4.356521739130435
+        assert g.number_of_nodes() == 52
+        assert g.number_of_edges() == 73
+        assert nx.average_degree_connectivity(g) == {
+            3: 3.0,
+            4: 3.0,
+            1: 2.0,
+            0: 0
+        }
 
         for n, d in g.nodes(data=True):
             assert 'x' in d and isinstance(d['y'], (int, float))

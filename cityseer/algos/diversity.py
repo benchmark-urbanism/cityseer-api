@@ -483,6 +483,7 @@ def local_landuses(node_map: np.ndarray,
                 b = betas[d_idx]
 
                 # increment class counts at respective distances
+                # TODO - not all classes though...
                 # since the classes are encoded to ints, you can just use the class as an index
                 if cl_dist < d:
                     classes_counts[d_idx][cl] += 1

@@ -7,7 +7,7 @@ import numpy as np
 from shapely import geometry
 
 
-def plot_primal_dual_graphs(primal: nx.Graph = None, dual: nx.Graph = None):
+def plot_networkX_primal_or_dual(primal: nx.Graph = None, dual: nx.Graph = None):
     if primal is not None:
         pos_primal = {}
         for n, d in primal.nodes(data=True):
@@ -69,7 +69,11 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
     # plot edges - requires iteration through maps
     for src_idx, src_data in enumerate(node_map):
         # get the starting edge index
-        edge_idx = int(src_data[3])
+        # isolated nodes don't have edges
+        edge_idx = src_data[3]
+        if np.isnan(edge_idx):
+            continue
+        edge_idx = int(edge_idx)
         # iterate the neighbours
         # don't use while True because last node's index increment won't be caught
         while edge_idx < len(edge_map):

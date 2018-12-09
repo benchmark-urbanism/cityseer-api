@@ -20,16 +20,19 @@ def shortest_path_tree(
         max_dist: float = np.inf,
         angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
-    This is the no-frills all shortest paths to max dist from source nodes
+    All shortest paths to max network distance from source node
 
-    Returns shortest paths (map_impedance and map_pred) from a source node to all other nodes based on the impedances
-    Also returns a distance map (map_distance) based on actual distances
+    Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance
+
+    Also returns a distance map based on actual distances (as opposed to impedances)
+
+    Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns)
 
     NODE MAP:
     0 - x
     1 - y
     2 - live
-    3 - edge indx
+    3 - edge index
     4 - weight
 
     EDGE MAP:
@@ -41,7 +44,7 @@ def shortest_path_tree(
 
     checks.check_network_types(node_map, edge_map)
 
-    if not src_idx < len(node_map):
+    if src_idx >= len(node_map):
         raise ValueError('Source index is out of range.')
 
     if len(full_to_trim_idx_map) != len(node_map):
@@ -88,6 +91,9 @@ def shortest_path_tree(
         # convert the idx to the full node_map
         node_full_idx = int(trim_to_full_idx_map[node_trim_idx])
         # fetch the relevant edge_map index
+        # isolated nodes will have no corresponding edges
+        if np.isnan(node_map[node_full_idx][3]):
+            continue
         edge_idx = int(node_map[node_full_idx][3])
         # iterate the node's neighbours
         # manual iteration a tad faster than numpy methods
@@ -151,7 +157,6 @@ def shortest_path_tree(
             if impedance < map_impedance[nb_trim_idx]:
                 map_impedance[nb_trim_idx] = impedance
                 map_distance[nb_trim_idx] = dist
-                # using actual node indices instead of boolean to simplify finding indices
                 map_pred[nb_trim_idx] = node_trim_idx
                 active[nb_trim_idx] = nb_trim_idx
 
@@ -182,13 +187,35 @@ def local_centrality(node_map: np.ndarray,
     3 - impedance
     '''
 
+    checks.check_network_types(node_map, edge_map)
+
+    checks.check_distances_and_betas(distances, betas)
+
     if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
         raise ValueError(
             'Neither closeness nor betweenness keys specified, please specify at least one metric to compute.')
 
-    checks.check_network_types(node_map, edge_map)
+    if len(closeness_keys) != 0 and (closeness_keys.min() < 0 or closeness_keys.max() > 6):
+        raise ValueError('Closeness keys out of range of 0:6.')
 
-    checks.check_distances_and_betas(distances, betas)
+    if len(betweenness_keys) != 0 and (betweenness_keys.min() < 0 or betweenness_keys.max() > 1):
+        raise ValueError('Betweenness keys out of range of 0:1.')
+
+    for i in range(len(closeness_keys)):
+        for j in range(len(closeness_keys)):
+            if j > i:
+                i_key = closeness_keys[i]
+                j_key = closeness_keys[j]
+                if i_key == j_key:
+                    raise ValueError('Duplicate closeness key.')
+
+    for i in range(len(betweenness_keys)):
+        for j in range(len(betweenness_keys)):
+            if j > i:
+                i_key = betweenness_keys[i]
+                j_key = betweenness_keys[j]
+                if i_key == j_key:
+                    raise ValueError('Duplicate betweenness key.')
 
     # establish variables
     n = len(node_map)
@@ -237,8 +264,6 @@ def local_centrality(node_map: np.ndarray,
                 return np.exp(beta * distance)
             else:
                 return 0
-        if idx > 6:
-            raise ValueError('Closeness key exceeds the available options.')
 
     # BETWEENNESS MEASURES
     def betweenness_metrics(idx, distance, weight, beta):
@@ -248,8 +273,6 @@ def local_centrality(node_map: np.ndarray,
         # 1 - betweenness_gravity - sum of gravity weighted betweenness
         elif idx == 1:
             return np.exp(beta * distance) * weight
-        if idx > 1:
-            raise ValueError('Betweenness key exceeds the available options.')
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):

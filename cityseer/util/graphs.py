@@ -468,7 +468,12 @@ def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarra
         else:
             node_map[i][2] = True
         # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
-        node_map[i][3] = edge_idx
+        # NB - if an isolated node, then this should be np.nan
+        # otherwise it will refer to the incorrect edge since the edge won't be iterated below
+        if nx.degree(g_copy, n) == 0:
+            node_map[i][3] = np.nan
+        else:
+            node_map[i][3] = edge_idx
         # NODE MAP INDEX POSITION 4 = weight
         if 'weight' in d:
             node_map[i][4] = d['weight']

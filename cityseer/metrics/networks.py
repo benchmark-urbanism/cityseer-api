@@ -69,6 +69,12 @@ class Network_Layer:
         }
         self._networkX = None
 
+        # check the data structures
+        if len(self._uids) != len(self._nodes):
+            raise ValueError('The number of indices does not match the number of nodes.')
+
+        checks.check_network_types(self._nodes, self._edges)
+
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
             if self._distances == []:
@@ -81,16 +87,12 @@ class Network_Layer:
             self._betas = []
             for d in self._distances:
                 self._betas.append(np.log(self._min_threshold_wt) / d)
+
         # if betas, generate the distances
         elif self._betas is not None and self._distances is None:
             self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
         else:
             raise ValueError('Please provide either distances or betas, but not both.')
-
-        # check the data structures
-        if len(self._uids) != len(self._nodes):
-            raise ValueError('The number of indices does not match the number of nodes.')
-        checks.check_network_types(self._nodes, self._edges)
 
     @property
     def uids(self):

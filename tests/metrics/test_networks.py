@@ -26,6 +26,8 @@ def test_Network_Layer():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
+
+    # manual graph maps for comparison
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
@@ -48,7 +50,7 @@ def test_Network_Layer():
             assert np.array_equal(N.betas, betas)
             assert N.angular == angular
             assert N.min_threshold_wt == min_thresh_wt
-            assert np.array_equal(N._nodes, node_map)
+            assert np.allclose(N._nodes, node_map, equal_nan=True)
             assert np.array_equal(N._edges, edge_map)
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
@@ -95,7 +97,7 @@ def test_Network_Layer_From_NetworkX():
     # test against Network_Layer_From_NetworkX's internal process
     N = networks.Network_Layer_From_NetworkX(G, distances, betas=None, min_threshold_wt=min_thresh_wt, angular=angular)
     assert N.uids == node_uids
-    assert np.array_equal(N._nodes, node_map)
+    assert np.allclose(N._nodes, node_map, equal_nan=True)
     assert np.array_equal(N._edges, edge_map)
     assert np.array_equal(N.x_arr, x_arr)
     assert np.array_equal(N.y_arr, y_arr)
@@ -231,7 +233,7 @@ def test_compute_centrality():
     # node density count doesn't include self-node
     node_density_2000 = N.metrics['centrality']['node_density'][2000]
     for n in node_density_2000:
-        assert n + 1 == len(G)
+        assert n in [len(G) - 4, 1, 0]
 
     # NOTE: modified improved closeness is not comparable to networkx version
 

@@ -219,6 +219,9 @@ def assign_to_network(data_map: np.ndarray,
             rotation = np.nan
             nb_idx = np.nan
             # get the starting edge index
+            # isolated nodes will have no edge index
+            if np.isnan(node_map[node_idx][3]):
+                break
             edge_idx = int(node_map[node_idx][3])
             while edge_idx < len(edge_map):
                 # get the edge's start and end node indices
