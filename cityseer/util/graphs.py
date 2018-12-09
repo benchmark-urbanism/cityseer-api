@@ -141,6 +141,10 @@ def networkX_remove_straight_intersections(networkX_graph: nx.Graph) -> nx.Graph
     logger.info(f'Simplifying graph intersections.')
     g_copy = networkX_graph.copy()
 
+    # remove self-edges, otherwise nx.degree includes self-loops
+    for s, e in nx.selfloop_edges(g_copy):
+        g_copy.remove_edge(s, e)
+
     # iterate the nodes and weld edges where encountering simple intersections
     # use the original graph so as to write changes to new graph
     for n in networkX_graph.nodes():
@@ -432,6 +436,10 @@ def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarra
     logger.info('Preparing node and edge arrays from networkX graph.')
     g_copy = networkX_graph.copy()
 
+    # remove self-edges, otherwise nx.degree includes self-loops
+    for s, e in nx.selfloop_edges(g_copy):
+        g_copy.remove_edge(s, e)
+
     logger.info('Preparing graph')
     total_out_degrees = 0
     for n in tqdm(g_copy.nodes()):
@@ -470,7 +478,7 @@ def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarra
         # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
         # NB - if an isolated node, then this should be np.nan
         # otherwise it will refer to the incorrect edge since the edge won't be iterated below
-        if nx.degree(g_copy, n) == 0:
+        if nx.degree(g_copy, i) == 0:
             node_map[i][3] = np.nan
         else:
             node_map[i][3] = edge_idx

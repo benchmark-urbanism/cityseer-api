@@ -104,7 +104,6 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
             'Invalid edge impedance encountered. All edge impedances should be greater than or equal to zero.')
 
 
-
 # @cc.export('check_distances_and_betas', '(float64[:], float64[:])')
 @njit
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
