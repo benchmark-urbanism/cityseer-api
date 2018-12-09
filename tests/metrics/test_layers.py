@@ -6,7 +6,6 @@ import utm
 
 from cityseer.metrics import layers, networks
 from cityseer.util import mock, graphs
-from ..algos.test_diversity import matrix_factory
 
 
 def test_dict_wgs_to_utm():
@@ -123,7 +122,7 @@ def test_compute_landuses():
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
     # hacking this for testing
-    D._cl_disparity_wt_matrix = matrix_factory(len(D.class_labels))
+    D._cl_disparity_wt_matrix = np.full((len(D.class_labels), len(D.class_labels)), 1)
     D.assign_to_network(N, max_dist=400)
 
     div_keys = ['hill',

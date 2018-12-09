@@ -183,6 +183,9 @@ def test_aggregate_to_src_idx():
                 reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full_idx_map = \
                     data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map, max_dist, angular=angular)
 
+                # for debugging
+                # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
+
                 # generate data for testing against
                 netw_x_arr = node_map[:, 0]
                 netw_y_arr = node_map[:, 1]
@@ -250,6 +253,3 @@ def test_aggregate_to_src_idx():
                         assert cl == data_map[d_full_idx][3]
                     else:
                         assert np.isnan(cl)
-
-                # for debugging
-                # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)

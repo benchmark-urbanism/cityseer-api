@@ -349,7 +349,7 @@ def aggregate_to_src_idx(src_idx: int,
     # NOTE -> use np.inf for max distance so as to explore all paths
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is check later
-    map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
+    _map_impedance_trim, map_distance_trim, _map_pred_trim, _cycles_trim = \
         centrality.shortest_path_tree(node_map,
                                       edge_map,
                                       src_idx,

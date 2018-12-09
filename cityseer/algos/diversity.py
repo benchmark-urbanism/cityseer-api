@@ -50,7 +50,10 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
 
 # @cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
 @njit
-def hill_diversity_branch_generic(class_counts: np.ndarray, tier_weights: np.ndarray, q: float) -> float:
+def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
+                                      class_distances: np.array,
+                                      q: float,
+                                      beta: float) -> float:
     '''
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
     See table on page 308 and surrounding text
@@ -63,8 +66,11 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, tier_weights: np.nda
     This is debatably most relevant to q=0
     '''
 
-    if len(class_counts) != len(tier_weights):
-        raise ValueError('Mismatching number of unique class counts and respective class weights.')
+    if len(class_counts) != len(class_distances):
+        raise ValueError('Mismatching number of unique class counts and respective class distances.')
+
+    if beta > 0:
+        raise ValueError('Please provide the beta with the leading negative.')
 
     if q < 0:
         raise ValueError('Please select a non-zero value for q.')
@@ -79,7 +85,7 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, tier_weights: np.nda
     for i in range(len(class_counts)):
         if class_counts[i]:
             a = class_counts[i] / N
-            wt = tier_weights[i]
+            wt = np.exp(class_distances[i] * beta)
             T += wt * a
 
     # hill number defined in the limit as the exponential of information entropy
@@ -89,7 +95,7 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, tier_weights: np.nda
         for i in range(len(class_counts)):
             if class_counts[i]:
                 a = class_counts[i] / N
-                wt = tier_weights[i]
+                wt = np.exp(class_distances[i] * beta)
                 PD_lim += wt * a / T * np.log(a / T)  # sum entropy
         # return exponent of entropy
         PD_lim = np.exp(-PD_lim)
@@ -101,31 +107,21 @@ def hill_diversity_branch_generic(class_counts: np.ndarray, tier_weights: np.nda
         for i in range(len(class_counts)):
             if class_counts[i]:
                 a = class_counts[i] / N
-                wt = tier_weights[i]
+                wt = np.exp(class_distances[i] * beta)
                 PD += wt * (a / T) ** q  # sum
         # once summed, apply q
         PD = PD ** (1 / (1 - q))
         return PD  # / T
 
 
-# @cc.export('hill_diversity_branch_distance_wt', '(uint64[:], float64[:], float64, float64)')
 @njit
-def hill_diversity_branch_distance_wt(class_counts: np.array,
-                                      class_distances: np.array,
-                                      beta: float,
-                                      q: float) -> float:
-    if beta >= 0:
-        raise ValueError('Please provide the beta/s with the leading negative.')
-
-    tier_weights = np.exp(class_distances * beta)
-
-    return hill_diversity_branch_generic(class_counts, tier_weights, q)
-
-
-# @cc.export('hill_diversity_pairwise_generic', '(uint64[:], float64[:,:], float64)')
-@njit
-def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
+def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
+                                        class_distances: np.ndarray,
+                                        q: float,
+                                        beta: float) -> float:
     '''
+    This is the distances version - see below for disparity matrix version
+
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
     See table on page 308 and surrounding text
 
@@ -138,8 +134,89 @@ def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndar
     This is different to the non-pairwise form of the phylogenetic version which simply takes singular distance k to i
     '''
 
+    if len(class_counts) != len(class_distances):
+        raise ValueError('Mismatching number of unique class counts and respective class distances.')
+
+    if beta > 0:
+        raise ValueError('Please provide the beta with the leading negative.')
+
+    if q < 0:
+        raise ValueError('Please select a non-zero value for q.')
+
+    # catch potential division by zero situations
+    N = class_counts.sum()
+    if N == 0:
+        return 0
+
+    # calculate Q
+    Q = 0
+    for i in range(len(class_counts)):
+        if class_counts[i]:
+            a_i = class_counts[i] / N
+            for j in range(len(class_counts)):
+                # only need to examine the pair if j < i, otherwise double-counting
+                if j > i:
+                    break
+                if class_counts[j]:
+                    a_j = class_counts[j] / N
+                    wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                    # pairwise distances
+                    Q += wt * a_i * a_j
+
+    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
+    if Q == 0:
+        return 0
+
+    # if in the limit, use exponential
+    if q == 1:
+        FD_lim = 0  # using the same variable name as non limit version causes errors for parallel
+        for i in range(len(class_counts)):
+            if class_counts[i]:
+                a_i = class_counts[i] / N
+                for j in range(len(class_counts)):
+                    # only need to examine the pair if j < i, otherwise double-counting
+                    if j > i:
+                        break
+                    if class_counts[j]:
+                        a_j = class_counts[j] / N
+                        # pairwise distances
+                        wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                        FD_lim += wt * a_i * a_j / Q * np.log(a_i * a_j / Q)  # sum
+        # once summed
+        FD_lim = np.exp(-FD_lim)
+        return FD_lim ** (1 / 2)  # (FD_lim / Q) ** (1 / 2)
+    # otherwise conventional form
+    else:
+        FD = 0
+        for i in range(len(class_counts)):
+            if class_counts[i]:
+                a_i = class_counts[i] / N
+                for j in range(len(class_counts)):
+                    # only need to examine the pair if j < i, otherwise double-counting
+                    if j > i:
+                        break
+                    if class_counts[j]:
+                        a_j = class_counts[j] / N
+                        # pairwise distances
+                        wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                        FD += wt * (a_i * a_j / Q) ** q  # sum
+        FD = FD ** (1 / (1 - q))
+        return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
+
+
+@njit
+def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
+    '''
+    This is the matrix version - requires a precomputed (e.g. disparity) matrix for all classes.
+
+    See above for distance version.
+    '''
+
     if len(class_counts) != len(wt_matrix):
-        raise ValueError('Mismatching number of unique class counts vs. weights matrix dimensionality.')
+        raise ValueError('Mismatching number of unique class counts and dimensionality of class weights matrix.')
+
+    if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
+        raise ValueError('Weights matrix must be an NxN pairwise matrix of disparity weights.')
 
     if q < 0:
         raise ValueError('Please select a non-zero value for q.')
@@ -203,57 +280,6 @@ def hill_diversity_pairwise_generic(class_counts: np.ndarray, wt_matrix: np.ndar
                         FD += wt * (a_i * a_j / Q) ** q  # sum
         FD = FD ** (1 / (1 - q))
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
-
-
-# @cc.export('pairwise_distance_matrix', '(float64[:], float64)')
-@njit
-def pairwise_distance_matrix(distances: np.ndarray, beta: float) -> np.ndarray:
-    if beta >= 0:
-        raise ValueError('Please provide the beta/s with the leading negative.')
-
-    # prepare the weights matrix
-    wt_matrix = np.full((len(distances), len(distances)), np.inf)
-    for i_idx in range(len(distances)):
-        for j_idx in range(len(distances)):
-            # no need to repeat where j > i
-            if j_idx > i_idx:
-                break
-            # in this case i == j distances have to be calculated
-            # this is because diversity of 1 class (but weighted) still has to be factored (e.g. hill with 1 element)
-            else:
-                # write in both directions - though not technically necessary
-                w = np.exp((distances[i_idx] + distances[j_idx]) * beta)
-                wt_matrix[i_idx][j_idx] = w
-                wt_matrix[j_idx][i_idx] = w
-    return wt_matrix
-
-
-# @cc.export('hill_diversity_pairwise_distance_wt', '(uint64[:], float64[:], float64, float64)')
-@njit
-def hill_diversity_pairwise_distance_wt(class_counts: np.array,
-                                        class_distances: np.array,
-                                        beta: float,
-                                        q: float) -> float:
-    if len(class_counts) != len(class_distances):
-        raise ValueError('Mismatching number of unique class counts and class distances.')
-
-    wt_matrix = pairwise_distance_matrix(class_distances, beta)
-
-    return hill_diversity_pairwise_generic(class_counts, wt_matrix, q)
-
-
-# @cc.export('hill_diversity_pairwise_disparity_wt', '(uint64[:], uint64[:,:], float64[:], float64)')
-@njit
-def hill_diversity_pairwise_disparity_wt(class_counts: np.array,
-                                         wt_matrix: np.array,
-                                         q: float) -> float:
-    if len(class_counts) != len(wt_matrix):
-        raise ValueError('Mismatching number of unique class counts and respective class taxonomy tiers.')
-
-    if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
-        raise ValueError('Weights matrix must be an NxN pairwise matrix of disparity weights.')
-
-    return hill_diversity_pairwise_generic(class_counts, wt_matrix, q)
 
 
 # explicit return required, otherwise numba throws:
@@ -421,32 +447,6 @@ def local_landuses(node_map: np.ndarray,
     accessibility_data = np.full((len(accessibility_keys), d_n, n), 0.0)
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, n), 0.0)
 
-    def mixed_use_metrics(idx, classes_counts, classes_distances, beta, q, cl_disparity_wt_matrix):
-
-        if idx == 0:
-            return hill_diversity(classes_counts, q)
-
-        if idx == 1:
-            return hill_diversity_branch_distance_wt(classes_counts, classes_distances, beta, q)
-
-        if idx == 2:
-            return hill_diversity_pairwise_distance_wt(classes_counts, classes_distances, beta, q)
-
-        if idx == 3:
-            return hill_diversity_pairwise_disparity_wt(classes_counts, cl_disparity_wt_matrix, q)
-
-        if idx == 4:
-            return shannon_diversity(classes_counts)
-
-        if idx == 5:
-            return gini_simpson_diversity(classes_counts)
-
-        if idx == 6:
-            return raos_quadratic_diversity(classes_counts, cl_disparity_wt_matrix)
-
-        if idx > 6:
-            raise ValueError('Mixed-use key exceeds the available options.')
-
     for src_idx in range(n):
 
         # numba no object mode can only handle basic printing
@@ -457,9 +457,8 @@ def local_landuses(node_map: np.ndarray,
         if not netw_nodes_live[src_idx]:
             continue
 
-        # calculate mixed uses
         # generate the reachable classes and their respective distances
-        reachable_classes_trim, reachable_classes_dist_trim, _data_trim_to_full_idx_map = \
+        reachable_classes_raw, reachable_classes_dist_raw, _data_raw_to_full_idx_map = \
             data.aggregate_to_src_idx(src_idx,
                                       node_map,
                                       edge_map,
@@ -467,36 +466,37 @@ def local_landuses(node_map: np.ndarray,
                                       max_dist,
                                       angular)
 
-        classes_counts = np.full((d_n, unique_classes_n), 0)  # counts of each class type
-        classes_nearest = np.full((d_n, unique_classes_n), np.inf)  # nearest of each class type
-
-        for i in range(len(reachable_classes_trim)):
-            cl_dist = reachable_classes_dist_trim[i]
+        # counts of each class type (array length per all unique classes - not just those within radial max distance)
+        classes_counts = np.full((d_n, unique_classes_n), 0)
+        # nearest of each class type (likewise)
+        classes_nearest = np.full((d_n, unique_classes_n), np.inf)
+        # iterate the reachable classes and deduce reachable class counts and nearest corresponding distances
+        for i in range(len(reachable_classes_raw)):
             # some classes will be nan if beyond max threshold distance - so check for infinity
+            cl_dist = reachable_classes_dist_raw[i]
             if np.isinf(cl_dist):
                 continue
-            cl = int(reachable_classes_trim[i])
-
+            # get the class category in integer form
+            # remember that all class codes were encoded to sequential integers - these correspond to the array indices
+            cl = int(reachable_classes_raw[i])
+            # iterate the distance dimensions
             for d_idx in range(len(distances)):
-
                 d = distances[d_idx]
                 b = betas[d_idx]
-
-                # increment class counts at respective distances
-                # TODO - not all classes though...
-                # since the classes are encoded to ints, you can just use the class as an index
+                # increment class counts at respective distances - but only if the distance is less than the current d
                 if cl_dist < d:
                     classes_counts[d_idx][cl] += 1
-                    # if distance is nearer, update
+                    # if distance is nearer, update the nearest distance array too
                     if cl_dist < classes_nearest[d_idx][cl]:
                         classes_nearest[d_idx][cl] = cl_dist
-
-                    # if within distance, and if in accessibility keys, then aggregate accessibility
+                    # if within distance, and if in accessibility keys, then aggregate accessibility too
                     for ac_idx in range(len(accessibility_keys)):
-                        if accessibility_keys[ac_idx] == cl:
+                        ac_code = accessibility_keys[ac_idx]
+                        if ac_code == cl:
                             accessibility_data[ac_idx][d_idx][src_idx] += 1
                             accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * cl_dist)
 
+        # now that the local class counts are aggregated, mixed uses can now be calculated
         # iterate the distances and betas
         for d_idx in range(len(distances)):
             b = betas[d_idx]
@@ -509,24 +509,43 @@ def local_landuses(node_map: np.ndarray,
                 if mu_idx < 4:
                     for q_idx in range(len(qs)):
                         q = qs[q_idx]
-                        mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                            mixed_use_metrics(mu_idx,
-                                              cl_counts,
-                                              cl_nearest,
-                                              b,
-                                              q,
-                                              cl_disparity_wt_matrix)
+
+                        if mu_idx == 0:
+                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
+                                hill_diversity(cl_counts, q)
+
+                        if mu_idx == 1:
+                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
+                                hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
+
+                        if mu_idx == 2:
+                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
+                                hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
+
+                        # land-use classification disparity hill diversity
+                        # the wt matrix can be used without mapping because cl_counts is based on all classes
+                        # regardless of whether they are reachable
+                        if mu_idx == 3:
+                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
+                                hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q)
+
                 # otherwise store in first dimension
                 else:
                     # offset index for data structure
                     data_idx = mu_idx - 4
-                    # no qs
-                    mixed_use_other_data[data_idx][d_idx][src_idx] = \
-                        mixed_use_metrics(mu_idx,
-                                          cl_counts,
-                                          cl_nearest,
-                                          np.nan,  # no beta necessary
-                                          np.nan,  # no q necessary
-                                          cl_disparity_wt_matrix)
+
+                    if mu_idx == 4:
+                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
+                            shannon_diversity(cl_counts)
+
+                    if mu_idx == 5:
+                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
+                            gini_simpson_diversity(cl_counts)
+
+                    if mu_idx == 6:
+                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
+                            raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+
+    print('...done')
 
     return mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt
