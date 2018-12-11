@@ -47,7 +47,7 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
 
 
 @njit
-def nearest_idx(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
+def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
 
@@ -120,22 +120,22 @@ def assign_to_network(data_map: np.ndarray,
         ang_b = np.rad2deg(np.arctan2(point_b[1], point_b[0]))
         return np.abs((ang_b - ang_a + 180) % 360 - 180)
 
-    def road_distance(data_coords, netw_idx_a, netw_idx_b):
+    def road_distance(d_coords, netw_idx_a, netw_idx_b):
 
         a_coords = node_map[netw_idx_a][:2]
         b_coords = node_map[netw_idx_b][:2]
 
         # get the angles from either intersection node to the data point
-        ang_a = calculate_rotation_smallest(data_coords - a_coords, b_coords - a_coords)
-        ang_b = calculate_rotation_smallest(data_coords - b_coords, a_coords - b_coords)
+        ang_a = calculate_rotation_smallest(d_coords - a_coords, b_coords - a_coords)
+        ang_b = calculate_rotation_smallest(d_coords - b_coords, a_coords - b_coords)
 
         # assume offset street segment if either is significantly greater than 90 (in which case offset from road)
         if ang_a > 110 or ang_b > 110:
             return np.inf, np.nan, np.nan
 
         # calculate height from two sides and included angle
-        side_a = np.hypot(data_coords[0] - a_coords[0], data_coords[1] - a_coords[1])
-        side_b = np.hypot(data_coords[0] - b_coords[0], data_coords[1] - b_coords[1])
+        side_a = np.hypot(d_coords[0] - a_coords[0], d_coords[1] - a_coords[1])
+        side_b = np.hypot(d_coords[0] - b_coords[0], d_coords[1] - b_coords[1])
         base = np.hypot(a_coords[0] - b_coords[0], a_coords[1] - b_coords[1])
         # forestall potential division by zero
         if base == 0:
@@ -151,37 +151,36 @@ def assign_to_network(data_map: np.ndarray,
         else:
             return h, netw_idx_b, netw_idx_a
 
-    def closest_intersections(data_coords, pred_map, end_node):
+    def closest_intersections(d_coords, pr_map, end_node):
 
-        if len(pred_map) == 1:
+        if len(pr_map) == 1:
             return np.inf, end_node, np.nan
 
         current_idx = end_node
-        next_idx = int(pred_map[int(end_node)])
+        next_idx = int(pr_map[int(end_node)])
 
-        if len(pred_map) == 2:
-            h, n, n_n = road_distance(data_coords, current_idx, next_idx)
-            return h, n, n_n
+        if len(pr_map) == 2:
+            return road_distance(d_coords, current_idx, next_idx)
 
-        nearest = np.nan
-        next_nearest = np.nan
-        min_dist = np.inf
+        nearest_idx = np.nan
+        next_nearest_idx = np.nan
+        min_d = np.inf
         first_pred = next_idx  # for finding end of loop
         while True:
-            h, n, n_n = road_distance(data_coords, current_idx, next_idx)
-            if h < min_dist:
-                min_dist = h
-                nearest = n
-                next_nearest = n_n
+            h, n_idx, n_n_idx = road_distance(d_coords, current_idx, next_idx)
+            if h < min_d:
+                min_d = h
+                nearest_idx = n_idx
+                next_nearest_idx = n_n_idx
             # if the next in the chain is nan, then break
-            if np.isnan(pred_map[next_idx]):
+            if np.isnan(pr_map[next_idx]):
                 break
             current_idx = next_idx
-            next_idx = int(pred_map[next_idx])
+            next_idx = int(pr_map[next_idx])
             if next_idx == first_pred:
                 break
 
-        return min_dist, nearest, next_nearest
+        return min_d, nearest_idx, next_nearest_idx
 
     pred_map = np.full(len(node_map), np.nan)
     netw_coords = node_map[:, :2]
@@ -198,7 +197,7 @@ def assign_to_network(data_map: np.ndarray,
             print('...progress:', round(data_idx / len(data_map) * 100, 2), '%')
 
         # find the nearest network node
-        min_idx, min_dist = nearest_idx(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
+        min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
         # in some cases no network node will be within max_dist... so accept NaN
         if np.isnan(min_idx):
             continue
