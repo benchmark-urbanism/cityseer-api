@@ -329,6 +329,10 @@ def aggregate_to_src_idx(src_idx: int,
                          data_map: np.ndarray,
                          max_dist: float,
                          angular: bool = False):
+    # this function is typically called iteratively, so don't do integrity and assignment checks re: speed
+    checks.check_network_types(node_map, edge_map, check_integrity=False)
+    checks.check_data_map(data_map, check_assigned=False)
+
     netw_x_arr = node_map[:, 0]
     netw_y_arr = node_map[:, 1]
     src_x = netw_x_arr[src_idx]
@@ -355,8 +359,7 @@ def aggregate_to_src_idx(src_idx: int,
                                       netw_trim_to_full,
                                       netw_full_to_trim,
                                       max_dist=max_dist,
-                                      angular=angular,
-                                      run_checks=False)  # turn off checks! This is called iteratively...
+                                      angular=angular)  # turn off checks! This is called iteratively...
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks

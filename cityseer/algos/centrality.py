@@ -18,8 +18,7 @@ def shortest_path_tree(
         trim_to_full_idx_map: np.ndarray,
         full_to_trim_idx_map: np.ndarray,
         max_dist: float = np.inf,
-        angular: bool = False,
-        run_checks: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     All shortest paths to max network distance from source node
 
@@ -43,16 +42,13 @@ def shortest_path_tree(
     3 - impedance
     '''
 
-    # turn off checks when calling iteratively - has a speed impact for nested centrality and diversity computations
-    if run_checks:
+    checks.check_network_types(node_map, edge_map, check_integrity=False)  # speed implications for nested calls
 
-        checks.check_network_types(node_map, edge_map)  # speed implications for nested calls
+    if src_idx >= len(node_map):
+        raise ValueError('Source index is out of range.')
 
-        if src_idx >= len(node_map):
-            raise ValueError('Source index is out of range.')
-
-        if len(full_to_trim_idx_map) != len(node_map):
-            raise ValueError('Mismatching lengths for node map and trim maps.')
+    if len(full_to_trim_idx_map) != len(node_map):
+        raise ValueError('Mismatching lengths for node map and trim maps.')
 
     # setup the arrays
     n_trim = len(trim_to_full_idx_map)
@@ -274,8 +270,7 @@ def local_centrality(node_map: np.ndarray,
                                trim_to_full_idx_map,
                                full_to_trim_idx_map,
                                global_max_dist,
-                               angular,
-                               run_checks=False)  # turn off checks! This is called iteratively...
+                               angular)
 
         # use corresponding indices for reachable verts
         ind = np.where(np.isfinite(map_distance_trim))[0]

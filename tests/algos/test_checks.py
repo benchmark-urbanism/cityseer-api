@@ -86,17 +86,20 @@ def test_check_network_types():
     # catch corrupted edge references from node map
     corrupted_nodes = N._nodes.copy()
     corrupted_nodes[1][3] = 4
+    checks.check_network_types(corrupted_nodes, N._edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(corrupted_nodes, N._edges)
     # catch corrupted node references from edge map
     # first out of order
     corrupted_edges = N._edges.copy()
     corrupted_edges[1][0] = 1
+    checks.check_network_types(N._nodes, corrupted_edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(N._nodes, corrupted_edges)
     # greater than sequential step
     corrupted_edges = N._edges.copy()
     corrupted_edges[3][0] = 2
+    checks.check_network_types(N._nodes, corrupted_edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(N._nodes, corrupted_edges)
     # catch NaN or negative values

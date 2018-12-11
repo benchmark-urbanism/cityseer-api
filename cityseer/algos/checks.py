@@ -31,7 +31,6 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     if check_assigned:
         # check that data map has been assigned
         if np.all(np.isnan(data_map[:, 4])):
-            print('boo')
             raise ValueError('Data map has not been assigned to a network.')
 
 
@@ -69,7 +68,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 # @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
 @njit
-def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
+def check_network_types(node_map: np.ndarray, edge_map: np.ndarray, check_integrity=True):
     '''
     NODE MAP:
     0 - x
@@ -93,23 +92,25 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
         raise ValueError(
             'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
-    # check sequential and reciprocal node to edge map indices
-    edge_counter = 0
-    for n_idx in range(len(node_map)):
-        # in the event of isolated nodes, there will be no corresponding edge index
-        e_idx = node_map[n_idx][3]
-        if np.isnan(e_idx):
-            continue
-        # the edge index should match the sequential edge counter
-        if e_idx != edge_counter:
-            raise ValueError('Mismatched node / edge maps encountered.')
-        while edge_counter < len(edge_map):
-            start = edge_map[edge_counter][0]
-            if start != n_idx:
-                break
-            edge_counter += 1
-    if edge_counter != len(edge_map):
-        raise ValueError('Mismatched node and edge maps encountered.')
+    # check integrity is optional because when used iteratively from a loop it is computationally expensive
+    if check_integrity:
+        # check sequential and reciprocal node to edge map indices
+        edge_counter = 0
+        for n_idx in range(len(node_map)):
+            # in the event of isolated nodes, there will be no corresponding edge index
+            e_idx = node_map[n_idx][3]
+            if np.isnan(e_idx):
+                continue
+            # the edge index should match the sequential edge counter
+            if e_idx != edge_counter:
+                raise ValueError('Mismatched node / edge maps encountered.')
+            while edge_counter < len(edge_map):
+                start = edge_map[edge_counter][0]
+                if start != n_idx:
+                    break
+                edge_counter += 1
+        if edge_counter != len(edge_map):
+            raise ValueError('Mismatched node and edge maps encountered.')
 
     if not np.all(np.isfinite(node_map[:, 4])) or not np.all(node_map[:, 4] >= 0):
         raise ValueError('Invalid node weights encountered. All weights should be greater than or equal to zero.')
