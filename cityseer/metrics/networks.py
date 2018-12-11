@@ -214,13 +214,12 @@ class Network_Layer:
                 if cl not in closeness_options:
                     raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
                 closeness_keys.append(closeness_options.index(cl))
-        # improved closeness is extrapolated from node density and farness_distance, so these may have to be added regardless:
-        # assign to new variable so as to keep closeness_map pure for later use in unpacking the results
-        closeness_keys_extra = closeness_keys
-        if close_metrics is not None and 'improved' in close_metrics:
-            closeness_keys_extra = list(set(closeness_keys_extra + [
-                closeness_options.index('node_density'),
-                closeness_options.index('farness_distance')]))
+                # improved closeness is extrapolated from node density and farness_distance - so check if present
+                if cl == 'improved':
+                    if 'node_density' not in close_metrics:
+                        closeness_keys.append(closeness_options.index('node_density'))
+                    if 'farness_distance' not in close_metrics:
+                        closeness_keys.append(closeness_options.index('farness_distance'))
 
         betweenness_options = ['betweenness',
                                'betweenness_gravity']
@@ -237,26 +236,32 @@ class Network_Layer:
             self._edges,
             np.array(self._distances),
             np.array(self._betas),
-            np.array(closeness_keys_extra),
+            np.array(closeness_keys),
             np.array(betweenness_keys),
             self._angular)
 
         # write the results
-        # keys will check for pre-existing
-        # distances will overwrite
+        # writing metrics to dictionary will check for pre-existing
+        # but writing sub-distances arrays will overwrite prior
         if close_metrics is not None:
-            for cl_key, cl_idx in zip(close_metrics, closeness_keys):
-                if cl_key not in self.metrics['centrality']:
-                    self.metrics['centrality'][cl_key] = {}
+            for cl_idx, cl_key in enumerate(closeness_keys):
+                cl_name = closeness_options[cl_key]
+                # some closeness keys may have been added in case required by improved closeness, so check if req'd.
+                if cl_name not in close_metrics:
+                    continue
+                # unpack
+                if cl_name not in self.metrics['centrality']:
+                    self.metrics['centrality'][cl_name] = {}
                 for d_idx, d_key in enumerate(self._distances):
-                    self.metrics['centrality'][cl_key][d_key] = closeness_data[cl_idx][d_idx]
+                    self.metrics['centrality'][cl_name][d_key] = closeness_data[cl_idx][d_idx]
 
         if between_metrics is not None:
-            for bt_key, bt_idx in zip(between_metrics, betweenness_keys):
-                if bt_key not in self.metrics['centrality']:
-                    self.metrics['centrality'][bt_key] = {}
+            for bt_idx, bt_key in enumerate(betweenness_keys):
+                bt_name = betweenness_options[bt_key]
+                if bt_name not in self.metrics['centrality']:
+                    self.metrics['centrality'][bt_name] = {}
                 for d_idx, d_key in enumerate(self._distances):
-                    self.metrics['centrality'][bt_key][d_key] = betweenness_data[bt_idx][d_idx]
+                    self.metrics['centrality'][bt_name][d_key] = betweenness_data[bt_idx][d_idx]
 
     def harmonic_closeness(self):
         return self.compute_centrality(close_metrics=['harmonic'])
