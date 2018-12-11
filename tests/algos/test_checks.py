@@ -9,11 +9,30 @@ from cityseer.util import graphs, mock
 def test_check_data_map():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict)
 
+    # should throw error if not assigned
+    with pytest.raises(ValueError):
+        checks.check_data_map(D._data)
+
+    # should work if flag set to False
+    checks.check_data_map(D._data, check_assigned=False)
+
+    # assign then check that it runs as intended
+    D.assign_to_network(N, 400)
+    checks.check_data_map(D._data)
+
+    # catch invalid dimensionality
     with pytest.raises(ValueError):
         checks.check_data_map(D._data[:, :-1])
+
+    # catch missing data classes
+    with pytest.raises(ValueError):
+        D._data[:, 3] = np.nan
+        checks.check_data_map(D._data)
 
 
 def test_check_trim_maps():

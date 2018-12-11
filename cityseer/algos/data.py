@@ -103,7 +103,7 @@ def assign_to_network(data_map: np.ndarray,
     5 - assigned network index - next-nearest
     '''
 
-    checks.check_data_map(data_map)
+    checks.check_data_map(data_map, check_assigned=False)
 
     checks.check_network_types(node_map, edge_map)
 

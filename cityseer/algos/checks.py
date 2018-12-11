@@ -10,11 +10,30 @@ def_min_thresh_wt = 0.01831563888873418
 
 # @cc.export('check_data_map', 'void(float64[:,:])')
 @njit
-def check_data_map(data_map: np.ndarray):
+def check_data_map(data_map: np.ndarray, check_assigned=True):
+    '''
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - data class
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
+    '''
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
-    if not data_map.ndim == 2 or data_map.shape[1] != 6:
+    if not data_map.ndim == 2 or not data_map.shape[1] == 6:
         raise ValueError(
             'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
+
+    if not np.all(np.isfinite(data_map[:, 3])) or not np.all(data_map[:, 3] >= 0):
+        print('missing data classes')
+        raise ValueError('Data map contains points with missing data classes.')
+
+    if check_assigned:
+        # check that data map has been assigned
+        if np.all(np.isnan(data_map[:, 4])):
+            print('boo')
+            raise ValueError('Data map has not been assigned to a network.')
 
 
 # @cc.export('check_trim_maps', '(float64[:], float64[:])')
@@ -22,7 +41,7 @@ def check_data_map(data_map: np.ndarray):
 def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     if len(trim_to_full) > len(full_to_trim):
         raise ValueError(
-            'The trim_to_full map is longer than the full_to_trim map. Check that these have not been switched around.')
+            'The trim_to_full map is longer than the full_to_trim map. Check that these have not been switched.')
 
     counter = 0
     # test for round-trip in the indices
@@ -67,11 +86,11 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
     3 - impedance
     '''
 
-    if not node_map.ndim == 2 or node_map.shape[1] != 5:
+    if not node_map.ndim == 2 or not node_map.shape[1] == 5:
         raise ValueError(
             'The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
 
-    if not edge_map.ndim == 2 or edge_map.shape[1] != 4:
+    if not edge_map.ndim == 2 or not edge_map.shape[1] == 4:
         raise ValueError(
             'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
@@ -113,7 +132,7 @@ def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(betas) == 0:
         raise ValueError('No betas provided.')
 
-    if len(distances) != len(betas):
+    if not len(distances) == len(betas):
         raise ValueError('The number of distances and betas should be equal.')
 
     for b in betas:
@@ -122,6 +141,6 @@ def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
 
     threshold_min = np.exp(distances[0] * -betas[0])
     for d, b in zip(distances, betas):
-        if np.exp(d * -b) != threshold_min:
+        if not np.exp(d * -b) == threshold_min:
             raise ValueError(
                 'Inconsistent threshold minimums, indicating that the relationship between the betas and distances is not consistent for all distance / beta pairs.')

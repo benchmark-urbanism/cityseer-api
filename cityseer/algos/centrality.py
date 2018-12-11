@@ -60,13 +60,14 @@ def shortest_path_tree(
     cycles = np.full(n_trim, False)  # graph cycles
 
     # set starting node
-    # the active map is:
-    # - NaN for unprocessed nodes
-    # - set to idx of node once discovered
-    # - set to Inf once processed
     src_idx_trim = np.int(full_to_trim_idx_map[src_idx])
     map_impedance[src_idx_trim] = 0
     map_distance[src_idx_trim] = 0
+    # the active map is:
+    # - NaN for unprocessed nodes
+    # - Finite for discovered nodes within max distance
+    # - Inf for discovered nodes beyond max distance
+    # - Inf for any processed node
     active[src_idx_trim] = src_idx_trim
 
     # search to max distance threshold to determine reachable nodes
@@ -97,11 +98,11 @@ def shortest_path_tree(
         edge_idx = int(node_map[node_full_idx][3])
         # iterate the node's neighbours
         # manual iteration a tad faster than numpy methods
-        # instead of while True use length of edge map to catch last node's termination
+        # instead of while True, use length of edge map to catch last node's termination
         while edge_idx < len(edge_map):
             # get the edge's start, end, length, weight
             start, end, nb_len, nb_imp = edge_map[edge_idx]
-            # if the start index no longer matches it means all neighbours have been visited
+            # if the start index no longer matches it means all neighbours have been visited for current node
             if start != node_full_idx:
                 break
             # increment idx for next loop
@@ -113,16 +114,10 @@ def shortest_path_tree(
                 continue
             # fetch the neighbour's trim index
             nb_trim_idx = int(full_to_trim_idx_map[nb_full_idx])
-            # if this neighbour has already been processed, continue
-            # i.e. successive nodes would recheck predecessor (neighbour) nodes unnecessarily
-            if np.isinf(active[nb_trim_idx]):
+            # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
+            if nb_trim_idx == map_pred[node_trim_idx]:
                 continue
-            # distance is previous distance plus new distance
-            impedance = map_impedance[node_trim_idx] + nb_imp
-            dist = map_distance[node_trim_idx] + nb_len
-            # check that the distance doesn't exceed the max
-            if dist > max_dist:
-                continue
+            # DO ANGULAR BEFORE CYCLES, AND CYCLES BEFORE DISTANCE THRESHOLD
             # it is necessary to check for angular sidestepping if using angular weights on a dual graph
             # only do this for angular graphs, and only if predecessors exist
             if angular and not np.isnan(map_pred[node_trim_idx]):
@@ -149,10 +144,22 @@ def shortest_path_tree(
                 if prior_match:
                     continue
             # if a neighbouring node has already been discovered, then it is a cycle
-            # predecessor neighbour nodes are already filtered out above with: np.isinf(active[nb_trim_idx])
-            # so np.isnan is adequate -> can only run into other active nodes - not completed nodes
+            # do before distance cutoff because this node and the neighbour can respectively be within max distance
+            # in some cases e.g. local_centrality(), all distances are run at once, so keep behaviour consistent by
+            # designating the farthest node (but via the shortest distance) as the cycle node
             if not np.isnan(active[nb_trim_idx]):
-                cycles[nb_trim_idx] = True
+                # set the farthest location to True
+                if map_distance[nb_trim_idx] > map_distance[node_trim_idx]:
+                    cycles[nb_trim_idx] = True
+                else:
+                    cycles[node_trim_idx] = True
+            # impedance and distance is previous plus new
+            impedance = map_impedance[node_trim_idx] + nb_imp
+            dist = map_distance[node_trim_idx] + nb_len
+            # check that the distance doesn't exceed the max
+            # remember that a closer route may be found, and that this may well be within max...
+            if dist > max_dist:
+                continue
             # only pursue if weight distance is less than prior assigned distances
             if impedance < map_impedance[nb_trim_idx]:
                 map_impedance[nb_trim_idx] = impedance
@@ -201,18 +208,18 @@ def local_centrality(node_map: np.ndarray,
     if len(betweenness_keys) != 0 and (betweenness_keys.min() < 0 or betweenness_keys.max() > 1):
         raise ValueError('Betweenness keys out of range of 0:1.')
 
-    for i in range(len(closeness_keys)):
+    for d_idx in range(len(closeness_keys)):
         for j in range(len(closeness_keys)):
-            if j > i:
-                i_key = closeness_keys[i]
+            if j > d_idx:
+                i_key = closeness_keys[d_idx]
                 j_key = closeness_keys[j]
                 if i_key == j_key:
                     raise ValueError('Duplicate closeness key.')
 
-    for i in range(len(betweenness_keys)):
+    for d_idx in range(len(betweenness_keys)):
         for j in range(len(betweenness_keys)):
-            if j > i:
-                i_key = betweenness_keys[i]
+            if j > d_idx:
+                i_key = betweenness_keys[d_idx]
                 j_key = betweenness_keys[j]
                 if i_key == j_key:
                     raise ValueError('Duplicate betweenness key.')
@@ -220,10 +227,11 @@ def local_centrality(node_map: np.ndarray,
     # establish variables
     n = len(node_map)
     d_n = len(distances)
-    max_dist = distances.max()
+    global_max_dist = distances.max()
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
     nodes_live = node_map[:, 2]
+    nodes_wt = node_map[:, 4]
 
     # prepare data arrays
     # indices correspond to different centrality formulations
@@ -231,48 +239,6 @@ def local_centrality(node_map: np.ndarray,
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     closeness_data = np.full((7, d_n, n), 0.0)
     betweenness_data = np.full((2, d_n, n), 0.0)
-
-    # CLOSENESS MEASURES
-    def closeness_metrics(idx, impedance, distance, weight, beta, is_cycle):
-        # in the unweighted case, weight assumes 1
-        # 0 - node_density
-        # if using segment lengths per node -> converts from a node density measure to a segment length density measure
-        if idx == 0:
-            return weight
-        # 1 - farness_impedance - aggregated impedances
-        elif idx == 1:
-            return impedance / weight
-        # 2 - farness_distance - aggregated distances - not weighted
-        elif idx == 2:
-            return distance
-        # 3 - harmonic closeness - sum of inverse weights
-        elif idx == 3:
-            if impedance == 0:
-                return np.inf
-            else:
-                return weight / impedance
-        # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights (post calculated)
-        # post-computed - so return 0
-        elif idx == 4:
-            return 0
-        # 5 - gravity - sum of beta weighted distances
-        elif idx == 5:
-            return np.exp(beta * distance) * weight
-        # 6 - cycles - sum of cycles weighted by equivalent distances
-        elif idx == 6:
-            if is_cycle:
-                return np.exp(beta * distance)
-            else:
-                return 0
-
-    # BETWEENNESS MEASURES
-    def betweenness_metrics(idx, distance, weight, beta):
-        # 0 - betweenness
-        if idx == 0:
-            return weight
-        # 1 - betweenness_gravity - sum of gravity weighted betweenness
-        elif idx == 1:
-            return np.exp(beta * distance) * weight
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
@@ -288,7 +254,11 @@ def local_centrality(node_map: np.ndarray,
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x, src_y, x_arr, y_arr, max_dist)
+        trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x,
+                                                                        src_y,
+                                                                        x_arr,
+                                                                        y_arr,
+                                                                        global_max_dist)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -299,7 +269,7 @@ def local_centrality(node_map: np.ndarray,
                                src_idx,
                                trim_to_full_idx_map,
                                full_to_trim_idx_map,
-                               max_dist,
+                               global_max_dist,
                                angular)
 
         # use corresponding indices for reachable verts
@@ -311,29 +281,47 @@ def local_centrality(node_map: np.ndarray,
                 continue
 
             impedance = map_impedance_trim[to_idx_trim]
-            distance = map_distance_trim[to_idx_trim]
-
-            # some crow-flies max distance nodes won't be reached within max distance threshold over the network
-            if np.isinf(distance):
-                continue
-
-            # check here for distance - in case max distance in shortest_path_tree is set to infinity
-            if distance > max_dist:
-                continue
+            dist = map_distance_trim[to_idx_trim]
 
             # closeness weight is based on target index -> aggregated to source index
-            cl_weight = node_map[int(trim_to_full_idx_map[to_idx_trim])][4]
+            cl_weight = nodes_wt[int(trim_to_full_idx_map[to_idx_trim])]
 
             # calculate centralities starting with closeness
-            for i in range(len(distances)):
-                d = distances[i]
-                b = betas[i]
-                if distance <= d:
-                    is_cycle = cycles_trim[to_idx_trim]
+            for d_idx in range(len(distances)):
+                dist_cutoff = distances[d_idx]
+                beta = betas[d_idx]
+                if dist <= dist_cutoff:
                     # closeness map indices determine which metrics to compute
-                    for cl_idx in closeness_keys:
-                        closeness_data[int(cl_idx)][i][src_idx] += \
-                            closeness_metrics(int(cl_idx), impedance, distance, cl_weight, b, is_cycle)
+                    for cl_k in closeness_keys:
+                        cl_idx = int(cl_k)
+                        # in the unweighted case, weight assumes 1
+                        # 0 - node_density
+                        # if using segment lengths weighted node then:
+                        # has the effect of converting from a node density measure to a segment length density measure
+                        if cl_idx == 0:
+                            closeness_data[int(cl_idx)][d_idx][src_idx] += cl_weight
+                        # 1 - farness_impedance - aggregated impedances
+                        elif cl_idx == 1:
+                            closeness_data[cl_idx][d_idx][src_idx] += impedance / cl_weight
+                        # 2 - farness_distance - aggregated distances - not weighted
+                        elif cl_idx == 2:
+                            closeness_data[cl_idx][d_idx][src_idx] += dist
+                        # 3 - harmonic closeness - sum of inverse weights
+                        elif cl_idx == 3:
+                            if impedance == 0:
+                                closeness_data[cl_idx][d_idx][src_idx] += np.inf
+                            else:
+                                closeness_data[cl_idx][d_idx][src_idx] += cl_weight / impedance
+                        # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights
+                        # post-computed - so ignore here
+                        # 5 - gravity - sum of beta weighted distances
+                        elif cl_idx == 5:
+                            closeness_data[cl_idx][d_idx][src_idx] += np.exp(beta * dist) * cl_weight
+                        # 6 - cycles - sum of cycles weighted by equivalent distances
+                        elif cl_idx == 6:
+                            # if there is a cycle
+                            if cycles_trim[to_idx_trim]:
+                                closeness_data[cl_idx][d_idx][src_idx] += np.exp(beta * dist)
 
             # only process betweenness if requested
             if len(betweenness_keys) == 0:
@@ -349,31 +337,40 @@ def local_centrality(node_map: np.ndarray,
                 continue
 
             # betweenness - only counting truly between vertices, not starting and ending verts
-            intermediary_idx_trim = np.int(map_pred_trim[to_idx_trim])
-            intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
+            inter_idx_trim = np.int(map_pred_trim[to_idx_trim])
+            inter_idx_full = np.int(trim_to_full_idx_map[inter_idx_trim])  # cast to int
 
             while True:
                 # break out of while loop if the intermediary has reached the source node
-                if intermediary_idx_trim == full_to_trim_idx_map[src_idx]:
+                if inter_idx_trim == full_to_trim_idx_map[src_idx]:
                     break
 
-                for i in range(len(distances)):
-                    d = distances[i]
-                    b = betas[i]
-                    if distance <= d:
-                        for bt_idx in betweenness_keys:
-                            betweenness_data[int(bt_idx)][i][intermediary_idx_mapped] += \
-                                betweenness_metrics(int(bt_idx), distance, bt_weight, b)
+                for d_idx in range(len(distances)):
+                    dist_cutoff = distances[d_idx]
+                    beta = betas[d_idx]
+                    if dist <= dist_cutoff:
+                        # betweenness map indices determine which metrics to compute
+                        for b_k in betweenness_keys:
+                            bt_idx = int(b_k)
+                            # 0 - betweenness
+                            if bt_idx == 0:
+                                betweenness_data[bt_idx][d_idx][inter_idx_full] += bt_weight
+                            # 1 - betweenness_gravity - sum of gravity weighted betweenness
+                            # distance is based on distance between from and to vertices
+                            # thus potential gravity via between vertex
+                            elif bt_idx == 1:
+                                betweenness_data[bt_idx][d_idx][inter_idx_full] += \
+                                    np.exp(beta * dist) * bt_weight
 
                 # follow the chain
-                intermediary_idx_trim = np.int(map_pred_trim[intermediary_idx_trim])
-                intermediary_idx_mapped = np.int(trim_to_full_idx_map[intermediary_idx_trim])  # cast to int
+                inter_idx_trim = np.int(map_pred_trim[inter_idx_trim])
+                inter_idx_full = np.int(trim_to_full_idx_map[inter_idx_trim])  # cast to int
 
     print('...done')
 
     # improved closeness is post-computed
-    for cl_idx in closeness_keys:
-        if cl_idx != 4:
+    for cl_k in closeness_keys:
+        if cl_k != 4:
             continue
         for d_idx in range(len(closeness_data[4])):
             for p_idx in range(len(closeness_data[4][d_idx])):

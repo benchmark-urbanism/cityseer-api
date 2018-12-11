@@ -514,18 +514,18 @@ def local_landuses(node_map: np.ndarray,
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
                                 hill_diversity(cl_counts, q)
 
-                        if mu_idx == 1:
+                        elif mu_idx == 1:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
                                 hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
 
-                        if mu_idx == 2:
+                        elif mu_idx == 2:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
                                 hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
 
                         # land-use classification disparity hill diversity
                         # the wt matrix can be used without mapping because cl_counts is based on all classes
                         # regardless of whether they are reachable
-                        if mu_idx == 3:
+                        elif mu_idx == 3:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
                                 hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q)
 
@@ -538,11 +538,11 @@ def local_landuses(node_map: np.ndarray,
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             shannon_diversity(cl_counts)
 
-                    if mu_idx == 5:
+                    elif mu_idx == 5:
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             gini_simpson_diversity(cl_counts)
 
-                    if mu_idx == 6:
+                    elif mu_idx == 6:
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
 

@@ -165,12 +165,11 @@ def test_network_centralities():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)  # set default edge attributes
-    n_labels, n_map, e_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # Test centrality methods where possible against NetworkX - i.e. harmonic closeness and betweenness
     # Note that NetworkX improved closeness is not the same as derivation used in this package
-    # Note that networkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
-    # i.e. use index 3 of returned data for distance large enough to span entire graph from either end
+    # Note that NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
 
     betas = np.array([-0.02, -0.01, -0.005, -0.0025])
     distances = networks.distance_from_beta(betas)
@@ -180,15 +179,15 @@ def test_network_centralities():
 
     # compute closeness and betweenness
     closeness_data, betweenness_data = \
-        centrality.local_centrality(n_map,
-                                    e_map,
-                                    distances,
+        centrality.local_centrality(node_map,
+                                    edge_map,
+                                    distances,  # use only last (biggest) distance to avoid cutoffs
                                     betas,
                                     closeness_keys,
                                     betweenness_keys,
                                     angular=False)
 
-    node_density, far_impedance, far_distance, harmonic, imp_closeness, gravity, cycles = closeness_data[closeness_keys]
+    node_density, far_impedance, far_distance, harmonic, improved, gravity, cycles = closeness_data[closeness_keys]
     betweenness, betweenness_gravity = betweenness_data[betweenness_keys]
 
     # test node density
@@ -196,46 +195,145 @@ def test_network_centralities():
     # else == 48 == len(G) - 4
     # isolated edge == 1
     # isolated node == 0
-    for n in node_density[3]:
+    for n in node_density[3]:  # only largest distance - which exceeds cutoff clashes
         assert n in [len(G) - 4, 1, 0]
 
-    # test harmonic closeness
+    # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
     assert np.allclose(nx_harm_cl, harmonic[3])
 
-    # test betweenness
+    # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
     nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
     assert np.array_equal(nx_betw, betweenness[3])
 
-    # test a variety of distances and metrics for all nodes against manual shortest_path_tree
-    x_arr = n_map[:, 0]
-    y_arr = n_map[:, 1]
-    for max_dist in [200, 500, 2000]:
-        for src in range(len(G)):
+    # test a variety of distances and metrics for all nodes against manual versions
+    x_arr = node_map[:, 0]
+    y_arr = node_map[:, 1]
+    for d_idx in range(len(distances)):
+        dist_cutoff = distances[d_idx]
+        beta = betas[d_idx]
+
+        betw = np.full(G.number_of_nodes(), 0.0)
+        betw_wt = np.full(G.number_of_nodes(), 0.0)
+
+        for src_idx in range(len(G)):
+
             # generate trim and full index maps
-            trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(x_arr[src],
-                                                                            y_arr[src],
+            trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(x_arr[src_idx],
+                                                                            y_arr[src_idx],
                                                                             x_arr,
                                                                             y_arr,
-                                                                            max_dist)
-            # check shortest path maps
-            map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(n_map,
-                                                                                          e_map,
-                                                                                          src,
-                                                                                          trim_to_full_idx_map,
-                                                                                          full_to_trim_idx_map,
-                                                                                          max_dist=max_dist,
-                                                                                          angular=False)
+                                                                            dist_cutoff)
+
+            # get shortest path maps
+            map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
+                centrality.shortest_path_tree(node_map,
+                                              edge_map,
+                                              src_idx,
+                                              trim_to_full_idx_map,
+                                              full_to_trim_idx_map,
+                                              max_dist=dist_cutoff,
+                                              angular=False)
 
             dens = 0
             far_imp = 0
             far_dist = 0
-            harm = 0
-            imp = 0
+            harmonic_cl = 0
             grav = 0
             cyc = 0
-            betw = 0
-            betw_grav = 0
+
+            for n_idx in G.nodes():
+                # skip self nodes
+                if n_idx == src_idx:
+                    continue
+                # get trim idx
+                trim_idx = full_to_trim_idx_map[n_idx]
+                if np.isnan(trim_idx):
+                    continue
+                trim_idx = int(trim_idx)
+                # get distance and impedance
+                dist = map_distance_trim[trim_idx]
+                imp = map_impedance_trim[trim_idx]
+
+                # continue if exceeds max
+                if dist > dist_cutoff:
+                    continue
+
+                # aggregate values
+                dens += 1
+                far_imp += imp
+                far_dist += dist
+                harmonic_cl += 1 / imp
+                grav += np.exp(beta * dist)
+                # cycles
+                if cycles_trim[trim_idx]:
+                    cyc += np.exp(beta * dist)
+
+                # BETWEENNESS
+                # only process betweenness in one direction
+                if n_idx < src_idx:
+                    continue
+
+                # betweenness - only counting truly between vertices, not starting and ending verts
+                inter_idx_trim = np.int(map_pred_trim[trim_idx])
+                inter_idx_full = np.int(trim_to_full_idx_map[inter_idx_trim])
+
+                while True:
+                    # break out of while loop if the intermediary has reached the source node
+                    if inter_idx_trim == full_to_trim_idx_map[src_idx]:
+                        break
+
+                    betw[inter_idx_full] += 1
+                    betw_wt[inter_idx_full] += np.exp(beta * dist)
+
+                    # follow
+                    inter_idx_trim = np.int(map_pred_trim[inter_idx_trim])
+                    inter_idx_full = np.int(trim_to_full_idx_map[inter_idx_trim])
+
+            if far_dist == 0:
+                improved_cl = 0
+            else:
+                improved_cl = dens ** 2 / far_dist
+
+            '''
+            # for debugging:
+            if src_idx == 6 and dist_cutoff == 400:
+
+                # for debugging
+                from cityseer.util import plot
+                from shapely import geometry
+                geom = geometry.Point(x_arr[src_idx], y_arr[src_idx]).buffer(dist_cutoff)
+                # override live designation to distinguish reachable nodes...
+                temp_node_map = node_map.copy()
+                temp_node_map[:, 2] = 0
+                for live_idx in trim_to_full_idx_map[np.isfinite(map_distance_trim)]:
+                    temp_node_map[:, 2][int(live_idx)] = 1
+                plot.plot_graph_maps(node_uids, temp_node_map, edge_map, poly=geom)
+            '''
+
+            # check closeness
+            assert node_density[d_idx][src_idx] == dens
+            assert far_impedance[d_idx][src_idx] == far_imp
+            assert far_distance[d_idx][src_idx] == far_dist
+            assert harmonic[d_idx][src_idx] == harmonic_cl
+            assert improved[d_idx][src_idx] == improved_cl
+            assert gravity[d_idx][src_idx] == grav
+            assert cycles[d_idx][src_idx] == cyc
+
+        # check betweenness
+        assert np.array_equal(betweenness[d_idx], betw)
+        assert np.array_equal(betweenness_gravity[d_idx], betw_wt)
+
+    # check that problematic keys are caught
+    for cl_key, bt_key in [(np.array([]), np.array([])),  # missing
+                           (np.array([-1]), np.array([1])),  # negative
+                           (np.array([1]), np.array([-1])),
+                           (np.array([7]), np.array([1])),  # out of range
+                           (np.array([1]), np.array([2])),
+                           (np.array([1, 1]), np.array([1])),  # duplicate
+                           (np.array([1]), np.array([1, 1]))]:
+        with pytest.raises(ValueError):
+            centrality.local_centrality(node_map, edge_map, distances, betas, cl_key, bt_key, angular=False)

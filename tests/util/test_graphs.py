@@ -76,6 +76,8 @@ def test_networkX_wgs_to_utm():
 
 
 def test_networkX_remove_straight_intersections():
+    # TODO: add test for self-loops
+
     # test that redundant (straight) intersections are removed
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -283,6 +285,8 @@ def test_networkX_m_weighted_nodes():
 
 
 def test_graph_maps_from_networkX():
+    # TODO: add test for self-loops
+
     # template graph
     G_template, pos = mock.mock_graph()
     G_template = graphs.networkX_simple_geoms(G_template)
