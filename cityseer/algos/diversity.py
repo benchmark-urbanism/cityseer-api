@@ -417,21 +417,44 @@ def local_landuses(node_map: np.ndarray,
     5 - assigned network index - next-nearest
     '''
     checks.check_data_map(data_map)
+
     checks.check_network_types(node_map, edge_map)
+
     checks.check_distances_and_betas(distances, betas)
 
     if len(mixed_use_keys) == 0 and len(accessibility_keys) == 0:
-        raise ValueError('Please specify at least one mixed use or accessibility measure to compute.')
+        raise ValueError(
+            'Neither mixed-use nor accessibility keys specified, please specify at least one metric to compute.')
+
+    if len(mixed_use_keys) != 0 and (mixed_use_keys.min() < 0 or mixed_use_keys.max() > 6):
+        raise ValueError('Mixed-use keys out of range of 0:6.')
+
+    if len(accessibility_keys) != 0 and (accessibility_keys.min() < 0):
+        raise ValueError('Negative accessibility key encountered. Use positive keys corresponding to class encodings.')
+
+    for i in range(len(mixed_use_keys)):
+        for j in range(len(mixed_use_keys)):
+            if j > i:
+                i_key = mixed_use_keys[i]
+                j_key = mixed_use_keys[j]
+                if i_key == j_key:
+                    raise ValueError('Duplicate mixed-use key.')
+
+    for i in range(len(accessibility_keys)):
+        for j in range(len(accessibility_keys)):
+            if j > i:
+                i_key = accessibility_keys[i]
+                j_key = accessibility_keys[j]
+                if i_key == j_key:
+                    raise ValueError('Duplicate accessibility key.')
 
     for k in mixed_use_keys:
         if k < 4:
             if len(qs) == 0:
-                raise ValueError(
-                    'All hill diversity measures require that at least one value of q is specified.')
+                raise ValueError('All hill diversity measures require that at least one value of q is specified.')
         if k == 3 or k == 6:
             if len(cl_disparity_wt_matrix) == 0:
-                raise ValueError(
-                    'Hill / Rao pairwise disparity measures require a class disparity weights matrix.')
+                raise ValueError('Hill / Rao pairwise disparity measures require a class disparity weights matrix.')
 
     # establish variables
     n = len(node_map)
@@ -503,46 +526,48 @@ def local_landuses(node_map: np.ndarray,
             cl_counts = classes_counts[d_idx]
             cl_nearest = classes_nearest[d_idx]
 
-            # compute mixed uses
-            for mu_idx in mixed_use_keys:
+            q_idx_counter = 0  # keep track of number of indices for q metrics, helps figure out indices for non q
+            # mu keys determine which metrics to compute
+            # don't confuse with indices
+            for mu_idx, mu_key in enumerate(mixed_use_keys):
                 # the hill indices require an extra data dimension for various qs
-                if mu_idx < 4:
-                    for q_idx in range(len(qs)):
-                        q = qs[q_idx]
+                if mu_key < 4:
+                    q_idx_counter += 1
+                    for q_idx, q_key in enumerate(qs):
 
-                        if mu_idx == 0:
+                        if mu_key == 0:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity(cl_counts, q)
+                                hill_diversity(cl_counts, q_key)
 
-                        elif mu_idx == 1:
+                        elif mu_key == 1:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
+                                hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
-                        elif mu_idx == 2:
+                        elif mu_key == 2:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q, beta=b)
+                                hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
                         # land-use classification disparity hill diversity
                         # the wt matrix can be used without mapping because cl_counts is based on all classes
                         # regardless of whether they are reachable
-                        elif mu_idx == 3:
+                        elif mu_key == 3:
                             mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q)
+                                hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q_key)
 
                 # otherwise store in first dimension
                 else:
                     # offset index for data structure
-                    data_idx = mu_idx - 4
+                    data_idx = int(mu_idx - q_idx_counter)
 
-                    if mu_idx == 4:
+                    if mu_key == 4:
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             shannon_diversity(cl_counts)
 
-                    elif mu_idx == 5:
+                    elif mu_key == 5:
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             gini_simpson_diversity(cl_counts)
 
-                    elif mu_idx == 6:
+                    elif mu_key == 6:
                         mixed_use_other_data[data_idx][d_idx][src_idx] = \
                             raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
 
