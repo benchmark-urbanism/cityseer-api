@@ -174,8 +174,11 @@ def test_network_centralities():
     betas = np.array([-0.02, -0.01, -0.005, -0.0025])
     distances = networks.distance_from_beta(betas)
 
+    # set the keys - add shuffling to be sure various orders work
     closeness_keys = np.array([0, 1, 2, 3, 4, 5, 6])
+    np.random.shuffle(closeness_keys)
     betweenness_keys = np.array([0, 1])
+    np.random.shuffle(betweenness_keys)
 
     # compute closeness and betweenness
     closeness_data, betweenness_data = \
@@ -187,8 +190,16 @@ def test_network_centralities():
                                     betweenness_keys,
                                     angular=False)
 
-    node_density, far_impedance, far_distance, harmonic, improved, gravity, cycles = closeness_data[closeness_keys]
-    betweenness, betweenness_gravity = betweenness_data[betweenness_keys]
+    node_density = closeness_data[np.where(closeness_keys == 0)][0]
+    far_impedance = closeness_data[np.where(closeness_keys == 1)][0]
+    far_distance = closeness_data[np.where(closeness_keys == 2)][0]
+    harmonic = closeness_data[np.where(closeness_keys == 3)][0]
+    improved = closeness_data[np.where(closeness_keys == 4)][0]
+    gravity = closeness_data[np.where(closeness_keys == 5)][0]
+    cycles = closeness_data[np.where(closeness_keys == 6)][0]
+
+    betweenness = betweenness_data[np.where(betweenness_keys == 0)][0]
+    betweenness_gravity = betweenness_data[np.where(betweenness_keys == 1)][0]
 
     # test node density
     # node density count doesn't include self-node
@@ -331,6 +342,10 @@ def test_network_centralities():
     # check behaviour of weights
     node_map_w = node_map.copy()
     node_map_w[:, 4] = 2
+    # unshuffle the keys
+    closeness_keys.sort()
+    betweenness_keys.sort()
+    # compute
     closeness_data_w, betweenness_data_w = \
         centrality.local_centrality(node_map_w,
                                     edge_map,
@@ -339,7 +354,7 @@ def test_network_centralities():
                                     closeness_keys,
                                     betweenness_keys,
                                     angular=False)
-
+    # unpack
     node_density_w, far_impedance_w, far_distance_w, harmonic_w, improved_w, gravity_w, cycles_w = \
         closeness_data_w[closeness_keys]
     betweenness_w, betweenness_gravity_w = betweenness_data_w[betweenness_keys]
