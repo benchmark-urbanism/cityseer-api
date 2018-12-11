@@ -250,7 +250,7 @@ class Data_Layer:
                         self.Network.metrics['mixed_uses'][mu_label][q_key] = {}
                         for d_idx, d_key in enumerate(self.Network.distances):
                             self.Network.metrics['mixed_uses'][mu_label][q_key][d_key] = \
-                            mixed_use_hill_data[mu_idx][q_idx][d_idx]
+                                mixed_use_hill_data[mu_idx][q_idx][d_idx]
                 else:
                     # offset index
                     mu_idx -= 4

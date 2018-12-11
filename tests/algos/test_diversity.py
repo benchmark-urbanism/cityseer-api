@@ -64,7 +64,6 @@ def test_hill_diversity_pairwise_distance_wt():
 
 
 def test_hill_diversity_pairwise_matrix_wt():
-
     for counts, probs in mock.mock_species_diversity():
         non_matrix = np.full((len(counts), len(counts)), 1)
         for q in [0, 1, 2]:

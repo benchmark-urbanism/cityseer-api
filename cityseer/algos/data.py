@@ -356,7 +356,8 @@ def aggregate_to_src_idx(src_idx: int,
                                       netw_trim_to_full,
                                       netw_full_to_trim,
                                       max_dist=max_dist,
-                                      angular=angular)
+                                      angular=angular,
+                                      run_checks=False)  # turn off checks! This is called iteratively...
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
