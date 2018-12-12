@@ -135,6 +135,12 @@ def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if not len(distances) == len(betas):
         raise ValueError('The number of distances and betas should be equal.')
 
+    for i in range(len(distances)):
+        for j in range(len(distances)):
+            if i != j:
+                if distances[i] == distances[j]:
+                    raise ValueError('Duplicate distances provided. Please provide only one of each.')
+
     for b in betas:
         if b >= 0:
             raise ValueError('Please provide the beta values with the leading negative.')

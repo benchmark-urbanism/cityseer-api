@@ -237,8 +237,8 @@ def local_centrality(node_map: np.ndarray,
     # indices correspond to different centrality formulations
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
-    closeness_data = np.full((len(closeness_keys), d_n, n), 0.0)
-    betweenness_data = np.full((len(betweenness_keys), d_n, n), 0.0)
+    closeness_data = np.full((7, d_n, n), 0.0)
+    betweenness_data = np.full((2, d_n, n), 0.0)
 
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
@@ -287,40 +287,41 @@ def local_centrality(node_map: np.ndarray,
             cl_weight = nodes_wt[int(trim_to_full_idx_map[to_idx_trim])]
 
             # calculate centralities starting with closeness
-            for d_idx, dist_cutoff in enumerate(distances):
-                beta = betas[d_idx]
-                if dist <= dist_cutoff:
-                    # closeness keys determine which metrics to compute
-                    # don't confuse with indices
-                    for cl_idx, cl_key in enumerate(closeness_keys):
-                        # in the unweighted case, weight assumes 1
+            if len(closeness_keys) != 0:
+                for d_idx, dist_cutoff in enumerate(distances):
+                    beta = betas[d_idx]
+                    if dist <= dist_cutoff:
+                        # closeness keys determine which metrics to compute
+                        # don't confuse with indices
+
+                        # compute node density and farness distance regardless -> required for improved closeness
+                        # in the unweighted case, weights assume 1
                         # 0 - node_density
-                        # if using segment lengths weighted node then:
-                        # has the effect of converting from a node density measure to a segment length density measure
-                        if cl_key == 0:
-                            closeness_data[cl_idx][d_idx][src_idx] += cl_weight
-                        # 1 - farness_impedance - aggregated impedances
-                        elif cl_key == 1:
-                            closeness_data[cl_idx][d_idx][src_idx] += impedance / cl_weight
+                        # if using segment lengths weighted node then weight has the effect of converting
+                        # from a node density measure to a segment length density measure
+                        closeness_data[0][d_idx][src_idx] += cl_weight
                         # 2 - farness_distance - aggregated distances - not weighted
-                        elif cl_key == 2:
-                            closeness_data[cl_idx][d_idx][src_idx] += dist
-                        # 3 - harmonic closeness - sum of inverse weights
-                        elif cl_key == 3:
-                            if impedance == 0:
-                                closeness_data[cl_idx][d_idx][src_idx] += np.inf
-                            else:
-                                closeness_data[cl_idx][d_idx][src_idx] += cl_weight / impedance
-                        # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights
-                        # post-computed - so ignore here
-                        # 5 - gravity - sum of beta weighted distances
-                        elif cl_key == 5:
-                            closeness_data[cl_idx][d_idx][src_idx] += np.exp(beta * dist) * cl_weight
-                        # 6 - cycles - sum of cycles weighted by equivalent distances
-                        elif cl_key == 6:
-                            # if there is a cycle
-                            if cycles_trim[to_idx_trim]:
-                                closeness_data[cl_idx][d_idx][src_idx] += np.exp(beta * dist)
+                        closeness_data[2][d_idx][src_idx] += dist
+                        for cl_key in closeness_keys:
+                            # 1 - farness_impedance - aggregated impedances
+                            if cl_key == 1:
+                                closeness_data[1][d_idx][src_idx] += impedance / cl_weight
+                            # 3 - harmonic closeness - sum of inverse weights
+                            elif cl_key == 3:
+                                if impedance == 0:
+                                    closeness_data[3][d_idx][src_idx] += np.inf
+                                else:
+                                    closeness_data[3][d_idx][src_idx] += cl_weight / impedance
+                            # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights
+                            # post-computed - so ignore here
+                            # 5 - gravity - sum of beta weighted distances
+                            elif cl_key == 5:
+                                closeness_data[5][d_idx][src_idx] += np.exp(beta * dist) * cl_weight
+                            # 6 - cycles - sum of cycles weighted by equivalent distances
+                            elif cl_key == 6:
+                                # if there is a cycle
+                                if cycles_trim[to_idx_trim]:
+                                    closeness_data[6][d_idx][src_idx] += np.exp(beta * dist)
 
             # only process betweenness if requested
             if len(betweenness_keys) == 0:
@@ -348,15 +349,15 @@ def local_centrality(node_map: np.ndarray,
                     beta = betas[d_idx]
                     if dist <= dist_cutoff:
                         # betweenness map indices determine which metrics to compute
-                        for bt_idx, bt_key in enumerate(betweenness_keys):
+                        for bt_key in betweenness_keys:
                             # 0 - betweenness
                             if bt_key == 0:
-                                betweenness_data[bt_idx][d_idx][inter_idx_full] += bt_weight
+                                betweenness_data[0][d_idx][inter_idx_full] += bt_weight
                             # 1 - betweenness_gravity - sum of gravity weighted betweenness
                             # distance is based on distance between from and to vertices
                             # thus potential gravity via between vertex
                             elif bt_key == 1:
-                                betweenness_data[bt_idx][d_idx][inter_idx_full] += np.exp(beta * dist) * bt_weight
+                                betweenness_data[1][d_idx][inter_idx_full] += np.exp(beta * dist) * bt_weight
 
                 # follow the chain
                 inter_idx_trim = np.int(map_pred_trim[inter_idx_trim])
@@ -364,26 +365,23 @@ def local_centrality(node_map: np.ndarray,
 
     print('...done')
 
-    # improved closeness is post-computed
-    n_d_idx = np.nan
-    f_d_idx = np.nan
-    imp_idx = np.nan
-    # sniff out the keys for density, farness distance, and improved closeness
-    for cl_idx, cl_key in enumerate(closeness_keys):
-        if cl_key == 0:
-            n_d_idx = cl_idx
-        if cl_key == 2:
-            f_d_idx = cl_idx
-        if cl_key == 4:
-            imp_idx = cl_idx
-
     # if improved closeness is required, then compute
-    if not np.isnan(imp_idx):
-        for d_idx in range(len(distances)):
-            for src_idx in range(len(node_map)):
-                # ignore 0 / 0 situations where no proximate nodes or zero impedance
-                if closeness_data[int(f_d_idx)][d_idx][src_idx] != 0:
-                    closeness_data[int(imp_idx)][d_idx][src_idx] = \
-                        closeness_data[int(n_d_idx)][d_idx][src_idx] ** 2 / closeness_data[int(f_d_idx)][d_idx][src_idx]
+    for cl_k in closeness_keys:
+        if cl_k == 4:
+            for d_idx in range(len(distances)):
+                for src_idx in range(len(node_map)):
+                    # ignore 0 / 0 situations where no proximate nodes or zero impedance
+                    if closeness_data[2][d_idx][src_idx] != 0:
+                        closeness_data[4][d_idx][src_idx] = \
+                            closeness_data[0][d_idx][src_idx] ** 2 / closeness_data[2][d_idx][src_idx]
 
-    return closeness_data, betweenness_data
+    # send the data back in the same types and same order as the original keys
+    cl_k_int = np.full(len(closeness_keys), 0)
+    for i, k in enumerate(closeness_keys):
+        cl_k_int[i] = k
+
+    bt_k_int = np.full(len(betweenness_keys), 0)
+    for i, k in enumerate(betweenness_keys):
+        bt_k_int[i] = k
+
+    return closeness_data[cl_k_int], betweenness_data[bt_k_int]

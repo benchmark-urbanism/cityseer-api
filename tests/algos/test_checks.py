@@ -135,6 +135,11 @@ def test_check_distances_and_betas():
         checks.check_distances_and_betas(np.array(distances[:-1]), betas)
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances, betas[:-1])
+    # check that duplicates are caught
+    with pytest.raises(ValueError):
+        dup_betas = np.array([-0.02, -0.02])
+        dup_distances = np.array(networks.distance_from_beta(dup_betas))
+        checks.check_distances_and_betas(dup_distances, dup_betas)
     # positive values of beta
     with pytest.raises(ValueError):
         betas[0] = 4

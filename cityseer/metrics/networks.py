@@ -19,6 +19,8 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     # cast to list form
     if isinstance(beta, (int, float)):
         beta = [beta]
+    if not isinstance(beta, (list, tuple, np.ndarray)):
+        raise TypeError('Please provide a beta or a list, tuple, or numpy.ndarray of betas.')
     # check that the betas do not have leading negatives
     for b in beta:
         if b >= 0:
@@ -78,7 +80,7 @@ class Network_Layer:
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
             if self._distances == []:
-                raise ValueError('A list of local centrality distance thresholds is required.')
+                raise ValueError('An empty list of distances was provided. Please provide at least one distance.')
             if isinstance(self._distances, (int, float)):
                 self._distances = [self._distances]
             if not isinstance(self._distances, (list, tuple, np.ndarray)):
@@ -90,6 +92,8 @@ class Network_Layer:
 
         # if betas, generate the distances
         elif self._betas is not None and self._distances is None:
+            if self._betas == []:
+                raise ValueError('An empty list of betas was provided. Please provide at least one value of beta.')
             self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
         else:
             raise ValueError('Please provide either distances or betas, but not both.')
@@ -142,10 +146,6 @@ class Network_Layer:
     def networkX(self, value):
         self._networkX = value
 
-    def to_networkX(self):
-        metrics_dict = self.metrics_to_dict()
-        return graphs.networkX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
-
     def metrics_to_dict(self):
         '''
         metrics are stored in arrays, this method unpacks per uid
@@ -190,6 +190,10 @@ class Network_Layer:
 
         return m
 
+    def to_networkX(self):
+        metrics_dict = self.metrics_to_dict()
+        return graphs.networkX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
+
     def compute_centrality(self,
                            close_metrics: Union[list, tuple] = None,
                            between_metrics: Union[list, tuple] = None):
@@ -197,9 +201,8 @@ class Network_Layer:
         This method provides full access to the underlying centrality.local_centrality method
         '''
 
-        if close_metrics is None and between_metrics is None:
-            raise ValueError(
-                f'Neither closeness nor betweenness metrics specified, please specify at least one metric to compute.')
+        # see centrality.local_centrality for integrity checks on closeness and betweenness keys
+        # typos are caught below
 
         closeness_options = ['node_density',
                              'farness_impedance',
@@ -214,12 +217,6 @@ class Network_Layer:
                 if cl not in closeness_options:
                     raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
                 closeness_keys.append(closeness_options.index(cl))
-                # improved closeness is extrapolated from node density and farness_distance - so check if present
-                if cl == 'improved':
-                    if 'node_density' not in close_metrics:
-                        closeness_keys.append(closeness_options.index('node_density'))
-                    if 'farness_distance' not in close_metrics:
-                        closeness_keys.append(closeness_options.index('farness_distance'))
 
         betweenness_options = ['betweenness',
                                'betweenness_gravity']
@@ -246,10 +243,6 @@ class Network_Layer:
         if close_metrics is not None:
             for cl_idx, cl_key in enumerate(closeness_keys):
                 cl_name = closeness_options[cl_key]
-                # some closeness keys may have been added in case required by improved closeness, so check if req'd.
-                if cl_name not in close_metrics:
-                    continue
-                # unpack
                 if cl_name not in self.metrics['centrality']:
                     self.metrics['centrality'][cl_name] = {}
                 for d_idx, d_key in enumerate(self._distances):

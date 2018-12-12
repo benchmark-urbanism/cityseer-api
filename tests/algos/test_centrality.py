@@ -156,7 +156,7 @@ def test_shortest_path_tree():
                                       angular=False)
 
 
-def test_network_centralities():
+def test_local_centrality():
     '''
     Also tested indirectly via test_centrality.test_compute_centrality
     '''

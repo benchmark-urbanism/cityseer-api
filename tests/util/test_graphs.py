@@ -4,6 +4,7 @@ import pytest
 from shapely import geometry
 
 from cityseer.algos import checks
+from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs
 
 
@@ -388,7 +389,37 @@ def test_networkX_from_graph_maps():
     assert G_round_trip.nodes == G.nodes
     assert G_round_trip.edges == G.edges
 
-    # check that mismatching node uid triggers error when used with graph argument
+    # check with metrics dictionary
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500, 1000])
+    N.harmonic_closeness()
+    data_dict = mock.mock_data(G)
+    D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1])
+    D.assign_to_network(N, max_dist=400)
+    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_codes=[0, 3])
+    metrics_dict = N.metrics_to_dict()
+    # without backbone
+    G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,
+                                                        node_map,
+                                                        edge_map,
+                                                        metrics_dict=metrics_dict)
+    for uid, metrics in metrics_dict.items():
+        assert G_round_trip_data.nodes[uid]['metrics'] == metrics
+    # with backbone
+    G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,
+                                                        node_map,
+                                                        edge_map,
+                                                        networkX_graph=G,
+                                                        metrics_dict=metrics_dict)
+    for uid, metrics in metrics_dict.items():
+        assert G_round_trip_data.nodes[uid]['metrics'] == metrics
+
+    # error checks for when using backbone graph:
+    # mismatching numbers of nodes
+    corrupt_G = G.copy()
+    corrupt_G.remove_node(0)
+    with pytest.raises(ValueError):
+        graphs.networkX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=corrupt_G)
+    # mismatching node uid
     with pytest.raises(AttributeError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
