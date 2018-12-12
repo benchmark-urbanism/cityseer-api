@@ -1,7 +1,5 @@
 import copy
-from itertools import permutations
 
-import networkx as nx
 import numpy as np
 import pytest
 
@@ -62,7 +60,7 @@ def test_Network_Layer():
             assert np.array_equal(N.edge_lengths, edge_map[:, 2])
             assert np.array_equal(N.edge_impedances, edge_map[:, 3])
 
-    # test round graph to and from Network_Layer
+    # test round-trip graph to and from Network_Layer
     N = networks.Network_Layer(node_uids, node_map, edge_map, distances=distances)
     G_round_trip = N.to_networkX()
     # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
@@ -152,7 +150,7 @@ def dict_check(m_dict, Network):
     for i, uid in enumerate(Network.uids):
         assert m_dict[uid]['x'] == Network._nodes[i][0]
         assert m_dict[uid]['y'] == Network._nodes[i][1]
-        assert m_dict[uid]['live'] == (Network._nodes[i][2] == 1)
+        assert m_dict[uid]['live'] == Network._nodes[i][2]
         assert m_dict[uid]['weight'] == Network._nodes[i][4]
 
         for c_key, c_val in Network.metrics['centrality'].items():
@@ -281,7 +279,7 @@ def test_compute_centrality():
     for d_idx, d_key in enumerate(distances):
         assert np.array_equal(N_temp.metrics['centrality']['betweenness'][d_key], bt_data[0][d_idx])
 
-    # also check the number of returned types for a few permutations
+    # also check the number of returned types for a few assortments of metrics
     closeness_types = np.array(['node_density',
                                 'farness_impedance',
                                 'farness_distance',

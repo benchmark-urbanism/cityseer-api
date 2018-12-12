@@ -44,6 +44,8 @@ def shortest_path_tree(
 
     checks.check_network_types(node_map, edge_map, check_integrity=False)  # speed implications for nested calls
 
+    # don't check trim maps here - potentially expensive when called iteratively
+
     if src_idx >= len(node_map):
         raise ValueError('Source index is out of range.')
 
