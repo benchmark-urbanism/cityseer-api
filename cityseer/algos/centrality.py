@@ -295,6 +295,7 @@ def local_centrality(node_map: np.ndarray,
                     if dist <= dist_cutoff:
                         # closeness keys determine which metrics to compute
                         # don't confuse with indices
+                        # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys
 
                         # compute node density and farness distance regardless -> required for improved closeness
                         # in the unweighted case, weights assume 1
@@ -377,7 +378,7 @@ def local_centrality(node_map: np.ndarray,
                         closeness_data[4][d_idx][src_idx] = \
                             closeness_data[0][d_idx][src_idx] ** 2 / closeness_data[2][d_idx][src_idx]
 
-    # send the data back in the same types and same order as the original keys
+    # send the data back in the same types and same order as the original keys - convert to int for indexing
     cl_k_int = np.full(len(closeness_keys), 0)
     for i, k in enumerate(closeness_keys):
         cl_k_int[i] = k

@@ -174,9 +174,9 @@ def test_local_centrality():
     distances = networks.distance_from_beta(betas)
 
     # set the keys - add shuffling to be sure various orders work
-    closeness_keys = np.array([0, 1, 2, 3, 4, 5, 6])
+    closeness_keys = np.arange(7)
     np.random.shuffle(closeness_keys)
-    betweenness_keys = np.array([0, 1])
+    betweenness_keys = np.arange(2)
     np.random.shuffle(betweenness_keys)
 
     # compute closeness and betweenness
@@ -219,13 +219,15 @@ def test_local_centrality():
     nx_betw = np.array([v for v in nx_betw.values()])
     assert np.array_equal(nx_betw, betweenness[3])
 
-    # test a variety of distances and metrics for all nodes against manual versions
+    # test manual metrics against all nodes
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
+    # test against various distances
     for d_idx in range(len(distances)):
         dist_cutoff = distances[d_idx]
         beta = betas[d_idx]
 
+        # do the comparisons array-wise so that betweenness can be aggregated
         betw = np.full(G.number_of_nodes(), 0.0)
         betw_wt = np.full(G.number_of_nodes(), 0.0)
         dens = np.full(G.number_of_nodes(), 0.0)
@@ -302,6 +304,22 @@ def test_local_centrality():
                     inter_idx_trim = np.int(map_pred_trim[inter_idx_trim])
                     inter_idx_full = np.int(trim_to_full_idx_map[inter_idx_trim])
 
+                '''
+                # for debugging:
+                if src_idx == 6 and dist_cutoff == 400:
+    
+                    # for debugging
+                    from cityseer.util import plot
+                    from shapely import geometry
+                    geom = geometry.Point(x_arr[src_idx], y_arr[src_idx]).buffer(dist_cutoff)
+                    # override live designation to distinguish reachable nodes...
+                    temp_node_map = node_map.copy()
+                    temp_node_map[:, 2] = 0
+                    for live_idx in trim_to_full_idx_map[np.isfinite(map_distance_trim)]:
+                        temp_node_map[:, 2][int(live_idx)] = 1
+                    plot.plot_graph_maps(node_uids, temp_node_map, edge_map, poly=geom)
+                '''
+
         # improved closeness
         for n_idx in range(len(improved_cl)):
             # catch division by zero
@@ -310,21 +328,6 @@ def test_local_centrality():
             else:
                 improved_cl[n_idx] = dens[n_idx] ** 2 / far_dist[n_idx]
 
-            '''
-            # for debugging:
-            if src_idx == 6 and dist_cutoff == 400:
-
-                # for debugging
-                from cityseer.util import plot
-                from shapely import geometry
-                geom = geometry.Point(x_arr[src_idx], y_arr[src_idx]).buffer(dist_cutoff)
-                # override live designation to distinguish reachable nodes...
-                temp_node_map = node_map.copy()
-                temp_node_map[:, 2] = 0
-                for live_idx in trim_to_full_idx_map[np.isfinite(map_distance_trim)]:
-                    temp_node_map[:, 2][int(live_idx)] = 1
-                plot.plot_graph_maps(node_uids, temp_node_map, edge_map, poly=geom)
-            '''
 
         # check betweenness
         assert np.allclose(node_density[d_idx], dens)
@@ -369,13 +372,15 @@ def test_local_centrality():
     assert np.allclose(betweenness, betweenness_w / 2)  # should double
     assert np.allclose(betweenness_gravity, betweenness_gravity_w / 2)  # should double
 
-    # check that angular is passed-through - i.e. A
+    # check that angular is passed-through
     # actual angular tests happen in test_shortest_path_tree()
     # here the emphasis is simply on checking that the angular instruction gets chained through
+
+    # setup dual data
     G_dual = graphs.networkX_to_dual(G)
     node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
 
-    closeness_data_ang, betweenness_data_ang = \
+    cl_dual, bt_dual = \
         centrality.local_centrality(node_map_dual,
                                     edge_map_dual,
                                     distances,
@@ -384,7 +389,7 @@ def test_local_centrality():
                                     betweenness_keys,
                                     angular=True)
 
-    closeness_data_ang_sidestep, betweenness_data_ang_sidestep = \
+    cl_dual_sidestep, bt_dual_sidestep = \
         centrality.local_centrality(node_map_dual,
                                     edge_map_dual,
                                     distances,
@@ -393,16 +398,22 @@ def test_local_centrality():
                                     betweenness_keys,
                                     angular=False)
 
-    assert not np.allclose(closeness_data_ang, closeness_data_ang_sidestep)
-    assert not np.allclose(betweenness_data_ang, betweenness_data_ang_sidestep)
+    assert not np.allclose(cl_dual, cl_dual_sidestep)
+    assert not np.allclose(bt_dual, bt_dual_sidestep)
 
     # check that problematic keys are caught
-    for cl_key, bt_key in [(np.array([]), np.array([])),  # missing
-                           (np.array([-1]), np.array([1])),  # negative
-                           (np.array([1]), np.array([-1])),
-                           (np.array([7]), np.array([1])),  # out of range
-                           (np.array([1]), np.array([2])),
-                           (np.array([1, 1]), np.array([1])),  # duplicate
-                           (np.array([1]), np.array([1, 1]))]:
+    for cl_key, bt_key in [([], []),  # missing
+                           ([-1], [1]),  # negative
+                           ([1], [-1]),
+                           ([7], [1]),  # out of range
+                           ([1], [2]),
+                           ([1, 1], [1]),  # duplicate
+                           ([1], [1, 1])]:
         with pytest.raises(ValueError):
-            centrality.local_centrality(node_map, edge_map, distances, betas, cl_key, bt_key, angular=False)
+            centrality.local_centrality(node_map,
+                                        edge_map,
+                                        distances,
+                                        betas,
+                                        np.array(cl_key),
+                                        np.array(bt_key),
+                                        angular=False)

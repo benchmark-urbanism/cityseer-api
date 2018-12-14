@@ -390,7 +390,8 @@ def local_landuses(node_map: np.ndarray,
                    distances: np.ndarray,
                    betas: np.ndarray,
                    qs: np.ndarray = np.array([]),
-                   mixed_use_keys: np.ndarray = np.array([]),
+                   mixed_use_hill_keys: np.ndarray = np.array([]),
+                   mixed_use_other_keys: np.ndarray = np.array([]),
                    accessibility_keys: np.ndarray = np.array([]),
                    cl_disparity_wt_matrix: np.ndarray = np.array([[]]),
                    angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -416,161 +417,194 @@ def local_landuses(node_map: np.ndarray,
     4 - assigned network index - nearest
     5 - assigned network index - next-nearest
     '''
-    checks.check_data_map(data_map)
-
     checks.check_network_types(node_map, edge_map)
+
+    checks.check_data_map(data_map)  # raises ValueError data points are not assigned to a network
 
     checks.check_distances_and_betas(distances, betas)
 
-    if len(mixed_use_keys) == 0 and len(accessibility_keys) == 0:
+    # negative qs caught by hill diversity methods
+
+    if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
         raise ValueError(
             'Neither mixed-use nor accessibility keys specified, please specify at least one metric to compute.')
 
-    if len(mixed_use_keys) != 0 and (mixed_use_keys.min() < 0 or mixed_use_keys.max() > 6):
-        raise ValueError('Mixed-use keys out of range of 0:6.')
+    if len(mixed_use_hill_keys) != 0 and (mixed_use_hill_keys.min() < 0 or mixed_use_hill_keys.max() > 3):
+        raise ValueError('Mixed-use "hill" keys out of range of 0:4.')
 
-    if len(accessibility_keys) != 0 and (accessibility_keys.min() < 0):
+    if len(mixed_use_other_keys) != 0 and (mixed_use_other_keys.min() < 0 or mixed_use_other_keys.max() > 2):
+        raise ValueError('Mixed-use "other" keys out of range of 0:3.')
+
+    max_ac_key = data_map[:, 3].max()
+    if len(accessibility_keys) != 0 and (accessibility_keys.min() < 0 or accessibility_keys.max() > max_ac_key):
         raise ValueError('Negative accessibility key encountered. Use positive keys corresponding to class encodings.')
 
-    for i in range(len(mixed_use_keys)):
-        for j in range(len(mixed_use_keys)):
+    for i in range(len(mixed_use_hill_keys)):
+        for j in range(len(mixed_use_hill_keys)):
+            print('mixed use keys hill', i, j)
             if j > i:
-                i_key = mixed_use_keys[i]
-                j_key = mixed_use_keys[j]
+                i_key = mixed_use_hill_keys[i]
+                j_key = mixed_use_hill_keys[j]
                 if i_key == j_key:
-                    raise ValueError('Duplicate mixed-use key.')
+                    raise ValueError('Duplicate mixed-use "hill" key.')
+
+    for i in range(len(mixed_use_other_keys)):
+        for j in range(len(mixed_use_other_keys)):
+            print('mixed use keys other', i, j)
+            if j > i:
+                i_key = mixed_use_other_keys[i]
+                j_key = mixed_use_other_keys[j]
+                if i_key == j_key:
+                    raise ValueError('Duplicate mixed-use "other" key.')
 
     for i in range(len(accessibility_keys)):
         for j in range(len(accessibility_keys)):
+            print('accessibility keys', i, j)
             if j > i:
                 i_key = accessibility_keys[i]
                 j_key = accessibility_keys[j]
                 if i_key == j_key:
                     raise ValueError('Duplicate accessibility key.')
 
-    for k in mixed_use_keys:
-        if k < 4:
-            if len(qs) == 0:
-                raise ValueError('All hill diversity measures require that at least one value of q is specified.')
-        if k == 3 or k == 6:
+    for k in mixed_use_hill_keys:
+        if len(qs) == 0:
+            raise ValueError('All hill diversity measures require that at least one value of q is specified.')
+        if k == 3:
             if len(cl_disparity_wt_matrix) == 0:
-                raise ValueError('Hill / Rao pairwise disparity measures require a class disparity weights matrix.')
+                raise ValueError('Hill pairwise disparity require a class disparity weights matrix.')
+
+    for k in mixed_use_other_keys:
+        if k == 2:
+            if len(cl_disparity_wt_matrix) == 0:
+                raise ValueError('Rao pairwise disparity requires a class disparity weights matrix.')
 
     # establish variables
-    n = len(node_map)
+    netw_n = len(node_map)
     d_n = len(distances)
     q_n = len(qs)
-    unique_classes_n = int(data_map[:, 3].max() + 1)
-    max_dist = distances.max()
+    mu_max_unique_cl = int(data_map[:, 3].max() + 1)
+    global_max_dist = distances.max()
     netw_nodes_live = node_map[:, 2]
 
     # setup data structures
-    mixed_use_hill_data = np.full((4, q_n, d_n, n), np.nan)
-    mixed_use_other_data = np.full((3, d_n, n), np.nan)
-    accessibility_data = np.full((len(accessibility_keys), d_n, n), 0.0)
-    accessibility_data_wt = np.full((len(accessibility_keys), d_n, n), 0.0)
+    # hill mixed uses are structured separately to take values of q into account
+    mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), np.nan)  # 4 dim
+    mixed_use_other_data = np.full((3, d_n, netw_n), np.nan)  # 3 dim
+    accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
+    accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
 
-    for src_idx in range(n):
+    # iterate through each vert and aggregate
+    for src_idx in range(netw_n):
 
         # numba no object mode can only handle basic printing
         if src_idx % 10000 == 0:
-            print('...progress:', round(src_idx / n * 100, 2), '%')
+            print('...progress:', round(src_idx / netw_n * 100, 2), '%')
 
         # only compute for live nodes
         if not netw_nodes_live[src_idx]:
             continue
 
         # generate the reachable classes and their respective distances
-        reachable_classes_raw, reachable_classes_dist_raw, _data_raw_to_full_idx_map = \
+        # these are non-unique - i.e. simply the class of each data point within the maximum distance
+        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
+        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
+        reachable_classes_trim, reachable_classes_dist_trim, _data_trim_to_full_idx_map = \
             data.aggregate_to_src_idx(src_idx,
                                       node_map,
                                       edge_map,
                                       data_map,
-                                      max_dist,
+                                      global_max_dist,
                                       angular)
 
-        # counts of each class type (array length per all unique classes - not just those within radial max distance)
-        classes_counts = np.full((d_n, unique_classes_n), 0)
+        # counts of each class type (array length per max unique classes - not just those within max distance)
+        classes_counts = np.full((d_n, mu_max_unique_cl), 0)
         # nearest of each class type (likewise)
-        classes_nearest = np.full((d_n, unique_classes_n), np.inf)
-        # iterate the reachable classes and deduce reachable class counts and nearest corresponding distances
-        for i in range(len(reachable_classes_raw)):
-            # some classes will be nan if beyond max threshold distance - so check for infinity
-            cl_dist = reachable_classes_dist_raw[i]
+        classes_nearest = np.full((d_n, mu_max_unique_cl), np.inf)
+        # iterate the reachable non-unique classes and deduce reachable unique class counts and corresponding distances
+        for i in range(len(reachable_classes_trim)):
+            # some classes will be NaN if beyond max threshold distance - so check for infinity
+            # this happens when within radial max distance, but beyond network max distance
+            cl_dist = reachable_classes_dist_trim[i]
             if np.isinf(cl_dist):
                 continue
             # get the class category in integer form
             # remember that all class codes were encoded to sequential integers - these correspond to the array indices
-            cl = int(reachable_classes_raw[i])
+            cl = int(reachable_classes_trim[i])
             # iterate the distance dimensions
             for d_idx in range(len(distances)):
                 d = distances[d_idx]
                 b = betas[d_idx]
                 # increment class counts at respective distances - but only if the distance is less than the current d
-                if cl_dist < d:
+                if cl_dist <= d:
                     classes_counts[d_idx][cl] += 1
                     # if distance is nearer, update the nearest distance array too
                     if cl_dist < classes_nearest[d_idx][cl]:
                         classes_nearest[d_idx][cl] = cl_dist
                     # if within distance, and if in accessibility keys, then aggregate accessibility too
-                    for ac_idx in range(len(accessibility_keys)):
-                        ac_code = accessibility_keys[ac_idx]
+                    for ac_idx, ac_code in enumerate(accessibility_keys):
                         if ac_code == cl:
                             accessibility_data[ac_idx][d_idx][src_idx] += 1
                             accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * cl_dist)
+                            # if a match was found, then no need to check others
+                            break
 
-        # now that the local class counts are aggregated, mixed uses can now be calculated
+        # mixed uses can be calculated now that the local class counts are aggregated
         # iterate the distances and betas
         for d_idx in range(len(distances)):
             b = betas[d_idx]
             cl_counts = classes_counts[d_idx]
             cl_nearest = classes_nearest[d_idx]
 
-            q_idx_counter = 0  # keep track of number of indices for q metrics, helps figure out indices for non q
             # mu keys determine which metrics to compute
             # don't confuse with indices
-            for mu_idx, mu_key in enumerate(mixed_use_keys):
-                # the hill indices require an extra data dimension for various qs
-                if mu_key < 4:
-                    q_idx_counter += 1
-                    for q_idx, q_key in enumerate(qs):
+            # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys
+            for mu_hill_key in mixed_use_hill_keys:
 
-                        if mu_key == 0:
-                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity(cl_counts, q_key)
+                for q_idx, q_key in enumerate(qs):
 
-                        elif mu_key == 1:
-                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                    if mu_hill_key == 0:
+                        mixed_use_hill_data[0][q_idx][d_idx][src_idx] = \
+                            hill_diversity(cl_counts, q_key)
 
-                        elif mu_key == 2:
-                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                    elif mu_hill_key == 1:
+                        mixed_use_hill_data[1][q_idx][d_idx][src_idx] = \
+                            hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
-                        # land-use classification disparity hill diversity
-                        # the wt matrix can be used without mapping because cl_counts is based on all classes
-                        # regardless of whether they are reachable
-                        elif mu_key == 3:
-                            mixed_use_hill_data[mu_idx][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q_key)
+                    elif mu_hill_key == 2:
+                        mixed_use_hill_data[2][q_idx][d_idx][src_idx] = \
+                            hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
-                # otherwise store in first dimension
-                else:
-                    # offset index for data structure
-                    data_idx = int(mu_idx - q_idx_counter)
+                    # land-use classification disparity hill diversity
+                    # the wt matrix can be used without mapping because cl_counts is based on all classes
+                    # regardless of whether they are reachable
+                    elif mu_hill_key == 3:
+                        mixed_use_hill_data[3][q_idx][d_idx][src_idx] = \
+                            hill_diversity_pairwise_matrix_wt(cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q_key)
 
-                    if mu_key == 4:
-                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
-                            shannon_diversity(cl_counts)
+            for mu_other_key in mixed_use_other_keys:
 
-                    elif mu_key == 5:
-                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
-                            gini_simpson_diversity(cl_counts)
+                if mu_other_key == 0:
+                    mixed_use_other_data[0][d_idx][src_idx] = \
+                        shannon_diversity(cl_counts)
 
-                    elif mu_key == 6:
-                        mixed_use_other_data[data_idx][d_idx][src_idx] = \
-                            raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+                elif mu_other_key == 1:
+                    mixed_use_other_data[1][d_idx][src_idx] = \
+                        gini_simpson_diversity(cl_counts)
+
+                elif mu_other_key == 2:
+                    mixed_use_other_data[2][d_idx][src_idx] = \
+                        raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
 
     print('...done')
 
-    return mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt
+    # send the data back in the same types and same order as the original keys - convert to int for indexing
+    mu_hill_k_int = np.full(len(mixed_use_hill_keys), 0)
+    for i, k in enumerate(mixed_use_hill_keys):
+        mu_hill_k_int[i] = k
+
+    mu_other_k_int = np.full(len(mixed_use_other_keys), 0)
+    for i, k in enumerate(mixed_use_other_keys):
+        mu_other_k_int[i] = k
+
+    return mixed_use_hill_data[mu_hill_k_int], mixed_use_other_data[mu_other_k_int], \
+           accessibility_data, accessibility_data_wt
