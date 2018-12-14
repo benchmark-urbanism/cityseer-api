@@ -185,21 +185,15 @@ class Data_Layer:
 
     def compute_landuses(self,
                          mixed_use_metrics: Union[list, tuple] = None,
-                         accessibility_codes: Union[list, tuple] = None):
+                         accessibility_labels: Union[list, tuple] = None):
         '''
         This method provides full access to the underlying diversity.local_landuses method
         '''
 
-        if self.Network is None or np.all(self._data[:, 3]) == np.nan:
-            raise ValueError('Assign this data layer to a network prior to calculating land-uses.')
+        # checks on parameter integrity occur in underlying method
 
-        if mixed_use_metrics is None and accessibility_codes is None:
-            raise ValueError('Please specify at least one mixed use or accessibility measure to compute.')
-
-        for d_i in ['hill_pairwise_disparity', 'raos_pairwise_disparity']:
-            if d_i in mixed_use_metrics and self.cl_disparity_wt_matrix is None:
-                raise ValueError(
-                    f'The "{d_i}" measure requires a class disparity weights matrix, however, this layer was initialised without one.')
+        if self.Network is None:
+            raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
 
         # extrapolate the requested mixed use measures
         mixed_uses_options = ['hill',
@@ -209,20 +203,24 @@ class Data_Layer:
                               'shannon',
                               'gini_simpson',
                               'raos_pairwise_disparity']
-        mixed_use_keys = []
+        mixed_use_hill_keys = []
+        mixed_use_other_keys = []
         if mixed_use_metrics is not None:
             for mu in mixed_use_metrics:
                 if mu not in mixed_uses_options:
                     raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
-                mixed_use_keys.append(mixed_uses_options.index(mu))
+                idx = mixed_uses_options.index(mu)
+                if idx < 4:
+                    mixed_use_hill_keys.append(idx)
+                else:
+                    mixed_use_other_keys.append(idx - 4)
 
         accessibility_keys = []
-        if accessibility_codes is not None:
-            for ac_code in accessibility_codes:
-                if not isinstance(ac_code, int):
-                    raise ValueError(
-                        'The accesibility keys must be integers corresponding to the classification codes.')
-                accessibility_keys.append(ac_code)
+        if accessibility_labels is not None:
+            for ac_label in accessibility_labels:
+                if ac_label not in self.class_labels:
+                    raise ValueError('Class label not found in Data Layer class labels.')
+                accessibility_keys.append(self.class_labels.index(ac_label))
 
         mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
             diversity.local_landuses(self.Network._nodes,
@@ -231,46 +229,42 @@ class Data_Layer:
                                      np.array(self.Network.distances),
                                      np.array(self.Network.betas),
                                      np.array(self.qs),
-                                     np.array(mixed_use_keys),
+                                     np.array(mixed_use_hill_keys),
+                                     np.array(mixed_use_other_keys),
                                      np.array(accessibility_keys),
                                      np.array(self.cl_disparity_wt_matrix),
                                      self.Network.angular)
 
         # write the results to the Network's metrics dict
-        # keys will check for pre-existing
-        # qs and distances will overwrite
-        if mixed_use_metrics is not None:
-            for mu_label, mu_idx in zip(mixed_use_metrics, mixed_use_keys):
-                if mu_label not in self.Network.metrics['mixed_uses']:
-                    self.Network.metrics['mixed_uses'][mu_label] = {}
-                # if a hill measure, then unpack q as well as distance
-                # hill indices are 0, 1, 2, 3
-                if mu_idx < 4:
-                    for q_idx, q_key in enumerate(self.qs):
-                        self.Network.metrics['mixed_uses'][mu_label][q_key] = {}
-                        for d_idx, d_key in enumerate(self.Network.distances):
-                            self.Network.metrics['mixed_uses'][mu_label][q_key][d_key] = \
-                                mixed_use_hill_data[mu_idx][q_idx][d_idx]
-                else:
-                    # offset index
-                    mu_idx -= 4
-                    # no qs
+        # keys will check for pre-existing, whereas qs and distance keys will overwrite
+        # unpack mixed use hill
+        if mixed_use_hill_keys is not None:
+            for mu_h_idx, mu_h_key in enumerate(mixed_use_hill_keys):
+                mu_h_label = mixed_uses_options[mu_h_key]
+                if mu_h_label not in self.Network.metrics['mixed_uses']:
+                    self.Network.metrics['mixed_uses'][mu_h_label] = {}
+                for q_idx, q_key in enumerate(self.qs):
+                    self.Network.metrics['mixed_uses'][mu_h_label][q_key] = {}
                     for d_idx, d_key in enumerate(self.Network.distances):
-                        self.Network.metrics['mixed_uses'][mu_label][d_key] = mixed_use_other_data[mu_idx][d_idx]
-
-        if accessibility_codes is not None:
-            # create keys
-            self.Network.metrics['accessibility'] = {
-                'non_weighted': {},
-                'weighted': {}
-            }
+                        self.Network.metrics['mixed_uses'][mu_h_label][q_key][d_key] = \
+                            mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
+        # unpack mixed use other
+        if mixed_use_other_keys is not None:
+            for mu_o_idx, mu_o_key in enumerate(mixed_use_other_keys):
+                mu_o_label = mixed_uses_options[mu_o_key + 4]
+                if mu_o_label not in self.Network.metrics['mixed_uses']:
+                    self.Network.metrics['mixed_uses'][mu_o_label] = {}
+                # no qs
+                for d_idx, d_key in enumerate(self.Network.distances):
+                    self.Network.metrics['mixed_uses'][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
+        # unpack accessibility data
+        for ac_idx, ac_code in enumerate(accessibility_keys):
+            ac_label = self.class_labels[ac_code]
             for k, data in zip(['non_weighted', 'weighted'], [accessibility_data, accessibility_data_wt]):
-                for ac_idx, ac_code in enumerate(accessibility_codes):
-                    # get actual class label
-                    cl_label = self.class_labels[ac_code]
-                    self.Network.metrics['accessibility'][k][cl_label] = {}
-                    for d_idx, d_key in enumerate(self.Network.distances):
-                        self.Network.metrics['accessibility'][k][cl_label][d_key] = data[ac_idx][d_idx]
+                if ac_label not in self.Network.metrics['accessibility'][k]:
+                    self.Network.metrics['accessibility'][k][ac_label] = {}
+                for d_idx, d_key in enumerate(self.Network.distances):
+                    self.Network.metrics['accessibility'][k][ac_label][d_key] = data[ac_idx][d_idx]
 
     def hill_diversity(self):
         return self.compute_landuses(mixed_use_metrics=['hill'])
@@ -280,6 +274,9 @@ class Data_Layer:
 
     def hill_pairwise_wt_diversity(self):
         return self.compute_landuses(mixed_use_metrics=['hill_pairwise_wt'])
+
+    def compute_accessibilities(self, accessibility_labels: Union[list, tuple]):
+        return self.compute_landuses(accessibility_labels=accessibility_labels)
 
 
 class Data_Layer_From_Dict(Data_Layer):

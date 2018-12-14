@@ -441,7 +441,6 @@ def local_landuses(node_map: np.ndarray,
 
     for i in range(len(mixed_use_hill_keys)):
         for j in range(len(mixed_use_hill_keys)):
-            print('mixed use keys hill', i, j)
             if j > i:
                 i_key = mixed_use_hill_keys[i]
                 j_key = mixed_use_hill_keys[j]
@@ -450,7 +449,6 @@ def local_landuses(node_map: np.ndarray,
 
     for i in range(len(mixed_use_other_keys)):
         for j in range(len(mixed_use_other_keys)):
-            print('mixed use keys other', i, j)
             if j > i:
                 i_key = mixed_use_other_keys[i]
                 j_key = mixed_use_other_keys[j]
@@ -459,7 +457,6 @@ def local_landuses(node_map: np.ndarray,
 
     for i in range(len(accessibility_keys)):
         for j in range(len(accessibility_keys)):
-            print('accessibility keys', i, j)
             if j > i:
                 i_key = accessibility_keys[i]
                 j_key = accessibility_keys[j]

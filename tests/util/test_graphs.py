@@ -395,7 +395,7 @@ def test_networkX_from_graph_maps():
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1])
     D.assign_to_network(N, max_dist=400)
-    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_codes=[0, 3])
+    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'])
     metrics_dict = N.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,

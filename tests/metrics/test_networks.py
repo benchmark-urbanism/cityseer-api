@@ -196,7 +196,7 @@ def test_metrics_to_dict():
     data_dict = mock.mock_data(G)
     D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1])
     D.assign_to_network(N, max_dist=400)
-    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_codes=[0, 3])
+    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'])
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
@@ -295,7 +295,8 @@ def test_compute_centrality():
     bt_random = np.arange(len(betweenness_types))
     np.random.shuffle(bt_random)
 
-    for cl_min in range(8):
+    # not necessary to do all labels, first few should do
+    for cl_min in range(3):
         cl_keys = np.array(cl_random[cl_min:])
 
         for bt_min in range(3):
@@ -326,21 +327,24 @@ def test_compute_centrality():
                 for d_idx, d_key in enumerate(distances):
                     assert np.array_equal(N_temp.metrics['centrality'][bt_m][d_key], bt_data[bt_idx][d_idx])
 
-    # check that malformed signatures trigger errors
-    with pytest.raises(ValueError):
-        N.compute_centrality(close_metrics=None, between_metrics=None)
-    with pytest.raises(ValueError):
-        N.compute_centrality(close_metrics=[])
+    # check that angular gets passed through
+    G_dual = graphs.networkX_to_dual(G)
+    N_dual = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=True)
+    N_dual.compute_centrality(close_metrics=['harmonic'], between_metrics=['betweenness'])
+
+    N_dual_sidestep = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=False)
+    N_dual_sidestep.compute_centrality(close_metrics=['harmonic'], between_metrics=['betweenness'])
+
+    assert not np.array_equal(N_dual.metrics['centrality']['harmonic'][2000],
+                              N_dual_sidestep.metrics['centrality']['harmonic'][2000])
+    assert not np.array_equal(N_dual.metrics['centrality']['betweenness'][2000],
+                              N_dual_sidestep.metrics['centrality']['betweenness'][2000])
+
+    # most integrity checks happen in underlying method, though check here for typos
     with pytest.raises(ValueError):
         N.compute_centrality(close_metrics=['spelling_typo'])
     with pytest.raises(ValueError):
-        N.compute_centrality(close_metrics=['harmonic', 'harmonic'])
-    with pytest.raises(ValueError):
-        N.compute_centrality(between_metrics=[])
-    with pytest.raises(ValueError):
         N.compute_centrality(between_metrics=['spelling_typo'])
-    with pytest.raises(ValueError):
-        N.compute_centrality(between_metrics=['betweenness', 'betweenness'])
 
 
 def network_generator():
@@ -365,9 +369,8 @@ def test_harmonic_closeness():
 
         # compare
         for d in distances:
-            harmonic_easy = N_easy.metrics['centrality']['harmonic'][d]
-            harmonic_full = N_full.metrics['centrality']['harmonic'][d]
-            assert np.array_equal(harmonic_easy, harmonic_full)
+            assert np.array_equal(N_easy.metrics['centrality']['harmonic'][d],
+                                  N_full.metrics['centrality']['harmonic'][d])
 
 
 def test_gravity():
@@ -405,9 +408,8 @@ def test_betweenness():
 
         # compare
         for d in distances:
-            between_easy = N_easy.metrics['centrality']['betweenness'][d]
-            between_full = N_full.metrics['centrality']['betweenness'][d]
-            assert np.array_equal(between_easy, between_full)
+            assert np.array_equal(N_easy.metrics['centrality']['betweenness'][d],
+                                  N_full.metrics['centrality']['betweenness'][d])
 
 
 def test_betweenness_gravity():
