@@ -6,12 +6,24 @@
 
 ---
 
-[![Build Status](https://travis-ci.com/cityseer/cityseer-api.svg?branch=master)](https://travis-ci.com/cityseer/cityseer-api)
+Installation
+------------
+
+```
+pip3 install cityseer
+```
 
 Modules
-=======
+-------
 
-### [centrality/](centrality.md)
+### [/algos/](algos/README.md)
+
+### [/metrics/](metrics/README.md)
+
+### [/util/](util/README.md)
 
 
-### [mixed_uses/](mixed_uses.md)
+License
+-------
+
+AGPLv3 | Copyright © 2018-present Gareth Simons

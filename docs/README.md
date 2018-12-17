@@ -6,12 +6,12 @@ heroImage: /slice7.png
 actionText: Get Started →
 actionLink: /modules/
 features:
-- title: Urban design specific
-  details: Urban-design-specific tools for the computation of network centralities, mixed-uses, and land-use accessibilities.
-- title: Hyperlocal
-  details: The tools derive from hyperlocal analysis methods that remain sensitive to variations along street lengths.
-- title: Friendly and performant
-  details: Easy-to-use python interface wrapping fast JIT compiled code. In-out convenience methods for transposing graphs from and to NetworkX.
+- title: Urban analysis
+  details: Tools for fine-grained network and land-use analysis. Assess the precursors for vibrant neighbourhoods.
+- title: Pedestrian-focused
+  details: Rigorous methods developed specifically for hyperlocal analysis at the pedestrian scale.
+- title: Friendly & performant
+  details: Python interface wrapping fast JIT compiled code. In-out convenience methods for transposing graphs from and to NetworkX.
 footer: AGPLv3 | Copyright © 2018-present Gareth Simons
 meta:
   - name: description
