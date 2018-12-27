@@ -6,33 +6,72 @@ from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 
 
-def test_check_data_map():
+def test_check_numerical_data_map():
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G = graphs.networkX_edge_defaults(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-    data_dict = mock.mock_data(G)
-    D = layers.Data_Layer_From_Dict(data_dict)
+    numeric_data_dict = mock.mock_numeric_data(G)
+    D_numeric = layers.Numeric_Layer_From_Dict(numeric_data_dict)
 
     # should throw error if not assigned
     with pytest.raises(ValueError):
-        checks.check_data_map(D._data)
+        checks.check_numerical_data_map(D_numeric._data)
 
     # should work if flag set to False
-    checks.check_data_map(D._data, check_assigned=False)
+    checks.check_numerical_data_map(D_numeric._data, check_assigned=False)
 
     # assign then check that it runs as intended
-    D.assign_to_network(N, 400)
-    checks.check_data_map(D._data)
+    D_numeric.assign_to_network(N, 400)
+    checks.check_numerical_data_map(D_numeric._data)
 
     # catch invalid dimensionality
     with pytest.raises(ValueError):
-        checks.check_data_map(D._data[:, :-1])
+        checks.check_numerical_data_map(D_numeric._data[:, :-1])
 
-    # catch missing data classes
+    # check for malformed data
     with pytest.raises(ValueError):
-        D._data[:, 3] = np.nan
-        checks.check_data_map(D._data)
+        D_numeric._data[:, 3][0] = np.inf
+        checks.check_numerical_data_map(D_numeric._data)
+
+
+def test_check_categorical_data_map():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    categoric_data_dict = mock.mock_landuse_data(G)
+    D_categoric = layers.Landuse_Layer_From_Dict(categoric_data_dict)
+
+    # should throw error if not assigned
+    with pytest.raises(ValueError):
+        checks.check_categorical_data_map(D_categoric._data)
+
+    # should work if flag set to False
+    checks.check_categorical_data_map(D_categoric._data, check_assigned=False)
+
+    # assign then check that it runs as intended
+    D_categoric.assign_to_network(N, 400)
+    checks.check_categorical_data_map(D_categoric._data)
+
+    # catch invalid dimensionality
+    with pytest.raises(ValueError):
+        checks.check_categorical_data_map(D_categoric._data[:, :-1])
+
+    # check for malformed data
+    t = D_categoric._data[:, 3][0]
+    # NaN
+    with pytest.raises(ValueError):
+        D_categoric._data[:, 3][0] = np.nan
+        checks.check_categorical_data_map(D_categoric._data)
+    # negatives
+    with pytest.raises(ValueError):
+        D_categoric._data[:, 3][0] = -t
+        checks.check_categorical_data_map(D_categoric._data)
+    # floats
+    with pytest.raises(ValueError):
+        D_categoric._data[:, 3][0] = 1.2345
+        checks.check_categorical_data_map(D_categoric._data)
 
 
 def test_check_trim_maps():
@@ -86,20 +125,17 @@ def test_check_network_types():
     # catch corrupted edge references from node map
     corrupted_nodes = N._nodes.copy()
     corrupted_nodes[1][3] = 4
-    checks.check_network_types(corrupted_nodes, N._edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(corrupted_nodes, N._edges)
     # catch corrupted node references from edge map
     # first out of order
     corrupted_edges = N._edges.copy()
     corrupted_edges[1][0] = 1
-    checks.check_network_types(N._nodes, corrupted_edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(N._nodes, corrupted_edges)
     # greater than sequential step
     corrupted_edges = N._edges.copy()
     corrupted_edges[3][0] = 2
-    checks.check_network_types(N._nodes, corrupted_edges, check_integrity=False)  # shouldn't raise
     with pytest.raises(ValueError):
         checks.check_network_types(N._nodes, corrupted_edges)
     # catch NaN or negative values

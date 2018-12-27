@@ -193,8 +193,8 @@ def test_metrics_to_dict():
     dict_check(metrics_dict, N)
 
     # check with data metrics
-    data_dict = mock.mock_data(G)
-    D = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1])
+    data_dict = mock.mock_landuse_data(G)
+    D = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1])
     D.assign_to_network(N, max_dist=400)
     D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'])
     metrics_dict = N.metrics_to_dict()

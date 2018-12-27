@@ -44,24 +44,15 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     return data_dict_copy
 
 
-def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray, tuple]:
+def numerical_data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
 
-    # extract data classes, if present, and convert to ints
-    logger.info('Extracting data classes, if present')
-    classes_raw = set([v['class'] for v in data_dict.values() if 'class' in v])
-    # use sklearn's label encoder
-    le = LabelEncoder()
-    le.fit(list(classes_raw))
-    # map the int encodings to the respective classes
-    classes_raw = le.inverse_transform(range(len(classes_raw)))
-
-    data_labels = []
+    data_uids = []
     data_map = np.full((len(data_dict), 6), np.nan)
     for i, (k, v) in enumerate(data_dict.items()):
         # set key to data labels
-        data_labels.append(k)
+        data_uids.append(k)
         # DATA MAP INDEX POSITION 0 = x coordinate
         if 'x' not in v:
             raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
@@ -75,18 +66,116 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray, tuple]:
             data_map[i][2] = v['live']
         else:
             data_map[i][2] = True
-        # DATA MAP INDEX POSITION 3 = optional data class - leave as np.nan if not present
-        if 'class' in v:
-            data_map[i][3] = le.transform([v['class']])[0]
+        # DATA MAP INDEX POSITION 3 = optional numeric class - leave as np.nan if not present
+        if 'numeric' in v:
+            data_map[i][3] = v['numeric']
         # DATA MAP INDEX POSITION 4 = assigned network index - leave as default np.nan
         # pass
         # DATA MAP INDEX POSITION 5 = distance from assigned network index - leave as default np.nan
         # pass
 
-    return tuple(data_labels), data_map, tuple(classes_raw)
+    return tuple(data_uids), data_map
 
 
-class Data_Layer:
+def categorical_data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray, tuple]:
+    if not isinstance(data_dict, dict):
+        raise TypeError('This method requires dictionary object.')
+
+    # extract data classes, if present, and convert to ints
+    logger.info('Extracting data classes, if present')
+    classes_raw = set([v['class'] for v in data_dict.values() if 'class' in v])
+    # use sklearn's label encoder
+    le = LabelEncoder()
+    le.fit(list(classes_raw))
+    # map the int encodings to the respective classes
+    classes_raw = le.inverse_transform(range(len(classes_raw)))
+
+    data_uids, data_map = numerical_data_map_from_dict(data_dict)
+    # for the most part, similar to numerical_dict
+    for i, v in enumerate(data_dict.values()):
+        # DATA MAP INDEX POSITION 3 = optional categorical class - leave as np.nan if not present
+        if 'class' in v:
+            data_map[i][3] = le.transform([v['class']])[0]
+
+    return data_uids, data_map, tuple(classes_raw)
+
+
+class Numeric_Layer:
+    '''
+    Use for numerical spatial data - used for aggregating and calculating things like land-values
+
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - categorical class or numerical data
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
+    '''
+
+    def __init__(self,
+                 data_uids: Union[list, tuple, np.ndarray],
+                 data_map: np.ndarray):
+        self._uids = data_uids  # original labels / indices for each data point
+        self._data = data_map  # data map per above
+
+        self._Network = None
+
+        # checks
+        checks.check_numerical_data_map(self._data, check_assigned=False)
+
+        if len(self._uids) != len(self._data):
+            raise ValueError('The number of data labels does not match the number of data points.')
+
+    @property
+    def uids(self):
+        return self._uids
+
+    @property
+    def x_arr(self):
+        return self._data[:, 0]
+
+    @property
+    def y_arr(self):
+        return self._data[:, 1]
+
+    @property
+    def live(self):
+        return self._data[:, 2]
+
+    @property
+    def numeric_data(self):
+        return self._data[:, 3]
+
+    @property
+    def Network(self):
+        return self._Network
+
+    def assign_to_network(self, Network_Layer, max_dist):
+        self._Network = Network_Layer
+        data.assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
+
+
+class Numeric_Layer_From_Dict(Numeric_Layer):
+
+    def __init__(self, data_dict: dict):
+        data_uids, data_map = numerical_data_map_from_dict(data_dict)
+
+        super().__init__(data_uids, data_map)
+
+
+class Landuse_Layer:
+    '''
+    Use for categorical landuse data - used for running mixed-use and land-use accessibility calculations
+
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - categorical class or numerical data
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
+    '''
 
     def __init__(self,
                  data_uids: Union[list, tuple, np.ndarray],
@@ -94,16 +183,6 @@ class Data_Layer:
                  class_labels: Union[list, tuple, np.ndarray],
                  cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
                  qs: Union[list, tuple, np.ndarray] = None):
-
-        '''
-        DATA MAP:
-        0 - x
-        1 - y
-        2 - live
-        3 - data class - integer form encoded from original raw classes
-        4 - assigned network index - nearest
-        5 - assigned network index - next-nearest
-        '''
 
         self._uids = data_uids  # original labels / indices for each data point
         self._data = data_map  # data map per above
@@ -114,7 +193,7 @@ class Data_Layer:
         self._Network = None
 
         # checks
-        checks.check_data_map(self._data, check_assigned=False)
+        checks.check_categorical_data_map(self._data, check_assigned=False)
 
         if len(self._uids) != len(self._data):
             raise ValueError('The number of data labels does not match the number of data points.')
@@ -279,13 +358,13 @@ class Data_Layer:
         return self.compute_landuses(accessibility_labels=accessibility_labels)
 
 
-class Data_Layer_From_Dict(Data_Layer):
+class Landuse_Layer_From_Dict(Landuse_Layer):
 
     def __init__(self,
                  data_dict: dict,
                  cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
                  qs: Union[list, tuple, np.ndarray] = None
                  ):
-        data_uids, data_map, class_labels = data_map_from_dict(data_dict)
+        data_uids, data_map, class_labels = categorical_data_map_from_dict(data_dict)
 
         super().__init__(data_uids, data_map, class_labels, cl_disparity_wt_matrix, qs)

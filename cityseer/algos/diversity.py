@@ -413,13 +413,14 @@ def local_landuses(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - data class
+    3 - categorical class or numerical data
     4 - assigned network index - nearest
     5 - assigned network index - next-nearest
     '''
     checks.check_network_types(node_map, edge_map)
 
-    checks.check_data_map(data_map)  # raises ValueError data points are not assigned to a network
+    # raises ValueError data points are not assigned to a network
+    checks.check_categorical_data_map(data_map, check_assigned=True)
 
     checks.check_distances_and_betas(distances, betas)
 

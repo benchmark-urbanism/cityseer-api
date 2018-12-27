@@ -7,9 +7,9 @@ from numba import njit
 def_min_thresh_wt = 0.01831563888873418
 
 
-# @cc.export('check_data_map', 'void(float64[:,:])')
+# @cc.export('check_numerical_data_map', 'void(float64[:,:])')
 @njit
-def check_data_map(data_map: np.ndarray, check_assigned=True):
+def check_numerical_data_map(data_map: np.ndarray, check_assigned=True):
     '''
     DATA MAP:
     0 - x
@@ -24,14 +24,43 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
         raise ValueError(
             'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
 
-    if not np.all(np.isfinite(data_map[:, 3])) or not np.all(data_map[:, 3] >= 0):
-        print('missing data classes')
-        raise ValueError('Data map contains points with missing data classes.')
+    if check_assigned:
+        # check that data map has been assigned
+        if np.all(np.isnan(data_map[:, 4])):
+            raise ValueError('Data map has not been assigned to a network.')
+
+    for num in data_map[:, 3]:
+        if np.isinf(num):
+            raise ValueError('Data map numeric data must consist of either floats or NaNs.')
+
+
+# @cc.export('check_categorical_data_map', 'void(float64[:,:])')
+@njit
+def check_categorical_data_map(data_map: np.ndarray, check_assigned=True):
+    '''
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - data class
+    4 - assigned network index - nearest
+    5 - assigned network index - next-nearest
+    '''
+    # other checks - e.g. checking for single dimensional arrays, are tricky with numba
+    if not data_map.ndim == 2 or not data_map.shape[1] == 6:
+        raise ValueError(
+            'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
 
     if check_assigned:
         # check that data map has been assigned
         if np.all(np.isnan(data_map[:, 4])):
             raise ValueError('Data map has not been assigned to a network.')
+
+    for cl in data_map[:, 3]:
+        if not np.isfinite(cl) or not cl >= 0:
+            raise ValueError('Data map contains points with missing data classes.')
+        if int(cl) != cl:
+            raise ValueError('Data map contains non-integer class-codes.')
 
 
 # @cc.export('check_trim_maps', '(float64[:], float64[:])')
@@ -68,7 +97,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 # @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
 @njit
-def check_network_types(node_map: np.ndarray, edge_map: np.ndarray, check_integrity=True):
+def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
     '''
     NODE MAP:
     0 - x
@@ -92,25 +121,23 @@ def check_network_types(node_map: np.ndarray, edge_map: np.ndarray, check_integr
         raise ValueError(
             'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
-    # check integrity is optional because when used iteratively from a loop it is computationally expensive
-    if check_integrity:
-        # check sequential and reciprocal node to edge map indices
-        edge_counter = 0
-        for n_idx in range(len(node_map)):
-            # in the event of isolated nodes, there will be no corresponding edge index
-            e_idx = node_map[n_idx][3]
-            if np.isnan(e_idx):
-                continue
-            # the edge index should match the sequential edge counter
-            if e_idx != edge_counter:
-                raise ValueError('Mismatched node / edge maps encountered.')
-            while edge_counter < len(edge_map):
-                start = edge_map[edge_counter][0]
-                if start != n_idx:
-                    break
-                edge_counter += 1
-        if edge_counter != len(edge_map):
-            raise ValueError('Mismatched node and edge maps encountered.')
+    # check sequential and reciprocal node to edge map indices
+    edge_counter = 0
+    for n_idx in range(len(node_map)):
+        # in the event of isolated nodes, there will be no corresponding edge index
+        e_idx = node_map[n_idx][3]
+        if np.isnan(e_idx):
+            continue
+        # the edge index should match the sequential edge counter
+        if e_idx != edge_counter:
+            raise ValueError('Mismatched node / edge maps encountered.')
+        while edge_counter < len(edge_map):
+            start = edge_map[edge_counter][0]
+            if start != n_idx:
+                break
+            edge_counter += 1
+    if edge_counter != len(edge_map):
+        raise ValueError('Mismatched node and edge maps encountered.')
 
     if not np.all(np.isfinite(node_map[:, 4])) or not np.all(node_map[:, 4] >= 0):
         raise ValueError('Invalid node weights encountered. All weights should be greater than or equal to zero.')

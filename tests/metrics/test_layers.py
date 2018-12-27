@@ -12,46 +12,76 @@ from cityseer.util import mock, graphs
 def test_dict_wgs_to_utm():
     # check that node coordinates are correctly converted
     G_utm, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G_utm)
+    landuse_dict = mock.mock_landuse_data(G_utm)
+    numerical_dict = mock.mock_numeric_data(G_utm)
 
-    data_dict_wgs = copy.deepcopy(data_dict)
-    for k, v in data_dict_wgs.items():
-        x = v['x']
-        y = v['y']
-        y, x = utm.to_latlon(y, x, 30, 'U')
-        data_dict_wgs[k]['x'] = x
-        data_dict_wgs[k]['y'] = y
+    for dict in [landuse_dict, numerical_dict]:
+        # create a test dictionary
+        test_dict = copy.deepcopy(dict)
+        # cast to lat, lon
+        for k, v in test_dict.items():
+            x = v['x']
+            y = v['y']
+            y, x = utm.to_latlon(y, x, 30, 'U')
+            test_dict[k]['x'] = x
+            test_dict[k]['y'] = y
 
-    data_dict_converted = layers.dict_wgs_to_utm(data_dict_wgs)
+        # convert back
+        dict_converted = layers.dict_wgs_to_utm(test_dict)
 
-    for k in data_dict.keys():
-        # rounding can be tricky
-        assert abs(data_dict[k]['x'] - data_dict_converted[k]['x']) < 0.01
-        assert abs(data_dict[k]['y'] - data_dict_converted[k]['y']) < 0.01
+        # check that round-trip converted match with reasonable proximity given rounding errors
+        for k in dict.keys():
+            # rounding can be tricky
+            assert np.allclose(dict[k]['x'], dict_converted[k]['x'])
+            assert np.allclose(dict[k]['y'], dict_converted[k]['y'])
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
         G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
-        data_dict_wgs = mock.mock_data(G_wgs)
-        for k in data_dict_wgs.keys():
-            del data_dict_wgs[k][attr]
+        test_dict = mock.mock_landuse_data(G_wgs)
+        for k in test_dict.keys():
+            del test_dict[k][attr]
             break
         # check that missing attribute throws an error
         with pytest.raises(AttributeError):
-            layers.dict_wgs_to_utm(data_dict_wgs)
+            layers.dict_wgs_to_utm(test_dict)
 
     # check that non WGS coordinates throw error
     G_utm, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G_utm)
+    landuse_dict = mock.mock_landuse_data(G_utm)
     with pytest.raises(AttributeError):
-        layers.dict_wgs_to_utm(data_dict)
+        layers.dict_wgs_to_utm(landuse_dict)
 
 
-def test_data_map_from_dict():
+def test_numerical_data_map_from_dict():
     # generate mock data
     G, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_numeric_data(G)
+    data_uids, data_map = layers.numerical_data_map_from_dict(data_dict)
+
+    assert len(data_uids) == len(data_map) == len(data_dict)
+
+    for d_label, d in zip(data_uids, data_map):
+        assert d[0] == data_dict[d_label]['x']
+        assert d[1] == data_dict[d_label]['y']
+        assert d[2] == data_dict[d_label]['live']
+        assert d[3] == data_dict[d_label]['numeric']
+        assert np.isnan(d[4])
+        assert np.isnan(d[5])
+
+    # check that missing attributes throw errors
+    for attr in ['x', 'y']:
+        for k in data_dict.keys():
+            del data_dict[k][attr]
+        with pytest.raises(AttributeError):
+            layers.numerical_data_map_from_dict(data_dict)
+
+
+def test_categorical_data_map_from_dict():
+    # generate mock data
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_landuse_data(G)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
 
     assert len(data_uids) == len(data_map) == len(data_dict)
 
@@ -70,20 +100,58 @@ def test_data_map_from_dict():
         for k in data_dict.keys():
             del data_dict[k][attr]
         with pytest.raises(AttributeError):
-            layers.data_map_from_dict(data_dict)
+            layers.categorical_data_map_from_dict(data_dict)
 
 
-def test_Data_Layer():
+def test_Numerical_Layer():
     G, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_numeric_data(G)
+    data_uids, data_map = layers.numerical_data_map_from_dict(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    numerical_data = data_map[:, 3]
+
+    # test against Numerical_Layer internal process
+    D = layers.Numeric_Layer(data_uids, data_map)
+    assert D.uids == data_uids
+    assert np.allclose(D._data, data_map, equal_nan=True)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.numeric_data, numerical_data)
+
+
+def test_Numerical_Layer_From_Dict():
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_numeric_data(G)
+    data_uids, data_map = layers.numerical_data_map_from_dict(data_dict)
+    x_arr = data_map[:, 0]
+    y_arr = data_map[:, 1]
+    live = data_map[:, 2]
+    numerical_data = data_map[:, 3]
+
+    # test against Numerical_Layer_From_Dict's internal process
+    D = layers.Numeric_Layer_From_Dict(data_dict)
+    assert D.uids == data_uids
+    assert np.allclose(D._data, data_map, equal_nan=True)
+    assert np.array_equal(D.x_arr, x_arr)
+    assert np.array_equal(D.y_arr, y_arr)
+    assert np.array_equal(D.live, live)
+    assert np.array_equal(D.numeric_data, numerical_data)
+
+
+def test_Landuse_Layer():
+    G, pos = mock.mock_graph()
+    data_dict = mock.mock_landuse_data(G)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
     live = data_map[:, 2]
     class_codes = data_map[:, 3]
 
     # test against Data_Layer internal process
-    D = layers.Data_Layer(data_uids, data_map, class_labels)
+    D = layers.Landuse_Layer(data_uids, data_map, class_labels)
     assert D.uids == data_uids
     assert np.allclose(D._data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
@@ -93,17 +161,17 @@ def test_Data_Layer():
     assert np.array_equal(D.class_codes, class_codes)
 
 
-def test_Data_Layer_From_Dict():
+def test_Landuse_Layer_From_Dict():
     G, pos = mock.mock_graph()
-    data_dict = mock.mock_data(G)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_landuse_data(G)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
     live = data_map[:, 2]
     class_codes = data_map[:, 3]
 
     # test against Data_Layer_From_Dict's internal process
-    D = layers.Data_Layer_From_Dict(data_dict)
+    D = layers.Landuse_Layer_From_Dict(data_dict)
     assert D.uids == data_uids
     assert np.allclose(D._data, data_map, equal_nan=True)
     assert D.class_labels == class_labels
@@ -128,9 +196,9 @@ def test_compute_landuses():
     node_map = N._nodes
     edge_map = N._edges
 
-    data_dict = mock.mock_data(G)
+    data_dict = mock.mock_landuse_data(G)
     qs = np.array([0, 1, 2])
-    D = layers.Data_Layer_From_Dict(data_dict, qs=qs)
+    D = layers.Landuse_Layer_From_Dict(data_dict, qs=qs)
 
     # check single metrics independently against underlying
     N_temp = copy.deepcopy(N)
@@ -227,7 +295,7 @@ def test_compute_landuses():
                 ac_metrics = ac_codes[ac_keys]
 
                 N_temp = copy.deepcopy(N)
-                D_temp = layers.Data_Layer_From_Dict(data_dict, mock_disparity_wt_matrix, qs)
+                D_temp = layers.Landuse_Layer_From_Dict(data_dict, mock_disparity_wt_matrix, qs)
                 D_temp.assign_to_network(N_temp, max_dist=500)
                 D_temp.compute_landuses(mixed_use_metrics=list(mu_h_metrics) + list(mu_o_metrics),
                                         accessibility_labels=ac_metrics)
@@ -267,12 +335,12 @@ def test_compute_landuses():
     G_dual = graphs.networkX_to_dual(G)
 
     N_dual = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=True)
-    D_dual = layers.Data_Layer_From_Dict(data_dict)
+    D_dual = layers.Landuse_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual, max_dist=500)
     D_dual.compute_landuses(mixed_use_metrics=['shannon'], accessibility_labels=['c'])
 
     N_dual_sidestep = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=False)
-    D_dual = layers.Data_Layer_From_Dict(data_dict)
+    D_dual = layers.Landuse_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual_sidestep, max_dist=500)
     D_dual.compute_landuses(mixed_use_metrics=['shannon'], accessibility_labels=['c'])
 
@@ -290,7 +358,7 @@ def test_compute_landuses():
         D.compute_landuses(accessibility_labels=['spelling_typo'])
     # check that unassigned data layer flags
     with pytest.raises(ValueError):
-        D_new = layers.Data_Layer_From_Dict(data_dict)
+        D_new = layers.Landuse_Layer_From_Dict(data_dict)
         D_new.compute_landuses(mixed_use_metrics=['shannon'])
 
 
@@ -307,16 +375,16 @@ def network_generator():
 def test_hill_diversity():
     for G, distances, betas, angular in network_generator():
 
-        data_dict = mock.mock_data(G)
+        data_dict = mock.mock_landuse_data(G)
 
         # easy version
         N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_easy = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_easy = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_diversity()
         # custom version
         N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_full = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_full = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_landuses(mixed_use_metrics=['hill'])
 
@@ -330,16 +398,16 @@ def test_hill_diversity():
 def test_hill_branch_wt_diversity():
     for G, distances, betas, angular in network_generator():
 
-        data_dict = mock.mock_data(G)
+        data_dict = mock.mock_landuse_data(G)
 
         # easy version
         N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_easy = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_easy = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_branch_wt_diversity()
         # custom version
         N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_full = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_full = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_landuses(mixed_use_metrics=['hill_branch_wt'])
 
@@ -353,16 +421,16 @@ def test_hill_branch_wt_diversity():
 def test_hill_pairwise_wt_diversity():
     for G, distances, betas, angular in network_generator():
 
-        data_dict = mock.mock_data(G)
+        data_dict = mock.mock_landuse_data(G)
 
         # easy version
         N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_easy = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_easy = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_pairwise_wt_diversity()
         # custom version
         N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_full = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_full = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_landuses(mixed_use_metrics=['hill_pairwise_wt'])
 
@@ -376,16 +444,16 @@ def test_hill_pairwise_wt_diversity():
 def test_compute_accessibilities():
     for G, distances, betas, angular in network_generator():
 
-        data_dict = mock.mock_data(G)
+        data_dict = mock.mock_landuse_data(G)
 
         # easy version
         N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_easy = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_easy = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_accessibilities(['c'])
         # custom version
         N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
-        D_full = layers.Data_Layer_From_Dict(data_dict, qs=[0, 1, 2])
+        D_full = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1, 2])
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_landuses(accessibility_labels=['c'])
 

@@ -120,8 +120,8 @@ def test_local_landuses():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # setup data
-    data_dict = mock.mock_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_landuse_data(G, random_seed=13)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
 
     # set parameters
@@ -265,8 +265,8 @@ def test_local_landuses():
     # setup dual data
     G_dual = graphs.networkX_to_dual(G)
     node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
-    data_dict_dual = mock.mock_data(G, random_seed=13)
-    data_uids_dual, data_map_dual, class_labels_dual = layers.data_map_from_dict(data_dict_dual)
+    data_dict_dual = mock.mock_landuse_data(G, random_seed=13)
+    data_uids_dual, data_map_dual, class_labels_dual = layers.categorical_data_map_from_dict(data_dict_dual)
     data_map_dual = data.assign_to_network(data_map_dual, node_map_dual, edge_map_dual, 500)
     mock_matrix = np.full((len(class_labels_dual), len(class_labels_dual)), 1)
 

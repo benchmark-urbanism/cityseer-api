@@ -171,15 +171,14 @@ def mock_graph(wgs84_coords=False):
     return G, pos
 
 
-def mock_data(G, num=50, random_seed=None):
-    if random_seed:
-        np.random.seed(seed=random_seed)
+def get_graph_extents(G):
 
     # get min and maxes for x and y
     min_x = np.inf
     max_x = -np.inf
     min_y = np.inf
     max_y = -np.inf
+
     for n, d in G.nodes(data=True):
         if d['x'] < min_x:
             min_x = d['x']
@@ -190,6 +189,15 @@ def mock_data(G, num=50, random_seed=None):
         if d['y'] > max_y:
             max_y = d['y']
 
+    return min_x, min_y, max_x, max_y
+
+
+def mock_landuse_data(G, num=50, random_seed=None):
+    if random_seed:
+        np.random.seed(seed=random_seed)
+
+    min_x, min_y, max_x, max_y = get_graph_extents(G)
+
     data_dict = {}
     random_class_str = 'abcdefghijk'
     for i in range(num):
@@ -198,6 +206,24 @@ def mock_data(G, num=50, random_seed=None):
             'y': np.random.uniform(int(min_y), int(max_y)),
             'live': bool(np.random.randint(0, 1)),
             'class': random_class_str[np.random.randint(0, len(random_class_str) - 1)]
+        }
+
+    return data_dict
+
+
+def mock_numeric_data(G, num=50, random_seed=None):
+    if random_seed:
+        np.random.seed(seed=random_seed)
+
+    min_x, min_y, max_x, max_y = get_graph_extents(G)
+
+    data_dict = {}
+    for i in range(num):
+        data_dict[i] = {
+            'x': np.random.uniform(int(min_x), int(max_x)),
+            'y': np.random.uniform(int(min_y), int(max_y)),
+            'live': bool(np.random.randint(0, 1)),
+            'numeric': np.random.uniform(low=0, high=100000)
         }
 
     return data_dict

@@ -11,8 +11,8 @@ def test_radial_filter():
     G = graphs.networkX_edge_defaults(G)
 
     # generate some data
-    data_dict = mock.mock_data(G)
-    D = layers.Data_Layer_From_Dict(data_dict)
+    data_dict = mock.mock_landuse_data(G)
+    D = layers.Landuse_Layer_From_Dict(data_dict)
 
     # test the filter
     src_x = G.nodes[0]['x']
@@ -61,8 +61,8 @@ def test_nearest_idx():
     N = networks.Network_Layer_From_NetworkX(G, distances=[100])
 
     # generate some data
-    data_dict = mock.mock_data(G)
-    D = layers.Data_Layer_From_Dict(data_dict)
+    data_dict = mock.mock_landuse_data(G)
+    D = layers.Landuse_Layer_From_Dict(data_dict)
 
     # test the filter - iterating each point in data map
     for d in D._data:
@@ -96,8 +96,8 @@ def test_assign_to_network():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
-    data_dict = mock.mock_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_landuse_data(G, random_seed=13)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
 
     # override data point 0 and 1's locations for test cases
     data_map[0][:2] = [6001000, 600350]
@@ -185,8 +185,8 @@ def test_aggregate_to_src_idx():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
-    data_dict = mock.mock_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.data_map_from_dict(data_dict)
+    data_dict = mock.mock_landuse_data(G, random_seed=13)
+    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
 
     for max_dist in [400, 750]:
 

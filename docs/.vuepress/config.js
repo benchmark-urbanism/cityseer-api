@@ -45,7 +45,6 @@ module.exports = {
     sidebarDepth: 1,
     sidebar: [
       ['/modules/', 'cityseer/'],
-      ['/modules/algos/', 'cityseer/algos/'],
       ['/modules/metrics/', 'cityseer/metrics/'],
       ['/modules/util/', 'cityseer/util/']
     ],
