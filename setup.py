@@ -22,7 +22,7 @@ from setuptools import setup
 
 setup (
     name = 'cityseer',
-    version='0.3.0',
+    version='0.4.0',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',

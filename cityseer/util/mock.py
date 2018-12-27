@@ -234,7 +234,7 @@ def mock_species_diversity(random_seed=None):
         np.random.seed(seed=random_seed)
 
     for n in range(1, 50, 5):
-        data = np.random.random_integers(1, 10, n)
+        data = np.random.randint(1, 10, n)
         unique = np.unique(data)
         counts = np.zeros_like(unique)
         for i, u in enumerate(unique):

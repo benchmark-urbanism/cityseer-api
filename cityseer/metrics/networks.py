@@ -82,21 +82,26 @@ class Network_Layer:
 
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
-            if self._distances == []:
-                raise ValueError('An empty list of distances was provided. Please provide at least one distance.')
             if isinstance(self._distances, (int, float)):
                 self._distances = [self._distances]
-            if not isinstance(self._distances, (list, tuple, np.ndarray)):
-                raise TypeError('Please provide a distance or a list, tuple, or numpy.ndarray of distances.')
+            if isinstance(self._distances, (list, tuple, np.ndarray)):
+                if len(self._distances) == 0:
+                    raise ValueError('Please provide at least one distance.')
+            else:
+                raise TypeError('Please provide a distance, or a list, tuple, or numpy.ndarray of distances.')
             # generate the betas
             self._betas = []
             for d in self._distances:
                 self._betas.append(np.log(self._min_threshold_wt) / d)
-
         # if betas, generate the distances
         elif self._betas is not None and self._distances is None:
-            if self._betas == []:
-                raise ValueError('An empty list of betas was provided. Please provide at least one value of beta.')
+            if isinstance(self._betas, (int, float)):
+                self._betas = [self._betas]
+            if isinstance(self._betas, (list, tuple, np.ndarray)):
+                if len(self._betas) == 0:
+                    raise ValueError('Please provide at least one beta.')
+            else:
+                raise TypeError('Please provide a beta, or a list, tuple, or numpy.ndarray of betas.')
             self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
         else:
             raise ValueError('Please provide either distances or betas, but not both.')

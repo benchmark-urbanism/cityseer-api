@@ -93,6 +93,8 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
 
 class Data_Layer:
     '''
+    #TODO: possible future enhancement - load multiple overlays and compute at once?
+
     DATA MAP:
     0 - x
     1 - y
@@ -160,9 +162,6 @@ class Data_Layer:
 
         # warn if no qs provided
         if qs is None:
-            logger.warning(
-                'This method has been called without any values of q: '
-                'At least one value of q is required if making use of any "hill" mixed use metrics.')
             qs = ()
         if isinstance(qs, (int, float)):
             qs = (qs)
@@ -170,9 +169,6 @@ class Data_Layer:
             raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
 
         if cl_disparity_wt_matrix is None:
-            logger.warning(
-                'No class disparity weights matrix provided: '
-                'This is required if making use of the "hill_pairwise_disparity" or "raos_pairwise_disparity" measures.')
             cl_disparity_wt_matrix = [[]]
         elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
                 cl_disparity_wt_matrix.ndim != 2 or \
