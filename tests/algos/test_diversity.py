@@ -120,15 +120,17 @@ def test_local_landuses():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # setup data
-    data_dict = mock.mock_landuse_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
+    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
 
     # set parameters
     betas = np.array([-0.02, -0.01, -0.005, -0.0025])
     distances = networks.distance_from_beta(betas)
     qs = np.array([0, 1, 2])
-    mock_matrix = np.full((len(class_labels), len(class_labels)), 1)
+    mock_categorical = mock.mock_categorical_data(len(data_map))
+    landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
+    mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
 
     # set the keys - add shuffling to be sure various orders work
     hill_keys = np.arange(4)
@@ -142,6 +144,7 @@ def test_local_landuses():
         diversity.local_landuses(node_map,
                                  edge_map,
                                  data_map,
+                                 landuse_encodings,
                                  distances,
                                  betas,
                                  qs=qs,
@@ -170,7 +173,7 @@ def test_local_landuses():
     ac_5_w = ac_data_wt[np.where(ac_keys == 5)][0]
 
     # test manual metrics against all nodes
-    mu_max_unique = int(data_map[:, 3].max() + 1)
+    mu_max_unique = len(landuse_classes)
     # test against various distances
     for d_idx in range(len(distances)):
         dist_cutoff = distances[d_idx]
@@ -178,7 +181,7 @@ def test_local_landuses():
 
         for src_idx in range(len(G)):
 
-            reachable_classes_trim, reachable_classes_dist_trim, _data_trim_to_full_idx_map = \
+            reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = \
                 data.aggregate_to_src_idx(src_idx,
                                           node_map,
                                           edge_map,
@@ -197,12 +200,12 @@ def test_local_landuses():
             a_2_w = 0
             a_5_w = 0
 
-            for i in range(len(reachable_classes_trim)):
+            for i in range(len(reachable_data_idx)):
                 # classes outside of dist_cutoff will be assigned np.inf
-                cl_dist = reachable_classes_dist_trim[i]
+                cl_dist = reachable_data_dist[i]
                 if np.isinf(cl_dist):
                     continue
-                cl = int(reachable_classes_trim[i])
+                cl = landuse_encodings[int(reachable_data_idx[i])]
                 # double check distance is within threshold
                 assert cl_dist <= dist_cutoff
                 # update the class counts
@@ -265,15 +268,18 @@ def test_local_landuses():
     # setup dual data
     G_dual = graphs.networkX_to_dual(G)
     node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
-    data_dict_dual = mock.mock_landuse_data(G, random_seed=13)
-    data_uids_dual, data_map_dual, class_labels_dual = layers.categorical_data_map_from_dict(data_dict_dual)
+    data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
+    data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
     data_map_dual = data.assign_to_network(data_map_dual, node_map_dual, edge_map_dual, 500)
-    mock_matrix = np.full((len(class_labels_dual), len(class_labels_dual)), 1)
+    mock_categorical = mock.mock_categorical_data(len(data_map_dual))
+    landuse_classes_dual, landuse_encodings_dual = layers.encode_categorical(mock_categorical)
+    mock_matrix = np.full((len(landuse_classes_dual), len(landuse_classes_dual)), 1)
 
     mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual = \
         diversity.local_landuses(node_map_dual,
                                  edge_map_dual,
                                  data_map_dual,
+                                 landuse_encodings_dual,
                                  distances,
                                  betas,
                                  qs=qs,
@@ -287,6 +293,7 @@ def test_local_landuses():
         diversity.local_landuses(node_map_dual,
                                  edge_map_dual,
                                  data_map_dual,
+                                 landuse_encodings_dual,
                                  distances,
                                  betas,
                                  qs=qs,
@@ -306,6 +313,7 @@ def test_local_landuses():
         diversity.local_landuses(node_map_dual,
                                  edge_map_dual,
                                  data_map_dual,
+                                 landuse_encodings_dual,
                                  distances,
                                  betas,
                                  qs=np.array([]),
@@ -318,6 +326,7 @@ def test_local_landuses():
             diversity.local_landuses(node_map_dual,
                                      edge_map_dual,
                                      data_map_dual,
+                                     landuse_encodings_dual,
                                      distances,
                                      betas,
                                      qs=qs,
@@ -332,7 +341,7 @@ def test_local_landuses():
                                        ([1], [1], [-1]),
                                        ([4], [1], [1]),  # out of range
                                        ([1], [3], [1]),
-                                       ([1], [1], [data_map_dual[:, 3].max() + 1]),
+                                       ([1], [1], [max(landuse_encodings) + 1]),
                                        ([1, 1], [1], [1]),  # duplicates
                                        ([1], [1, 1], [1]),
                                        ([1], [1], [1, 1])]:
@@ -340,6 +349,7 @@ def test_local_landuses():
             diversity.local_landuses(node_map_dual,
                                      edge_map_dual,
                                      data_map_dual,
+                                     landuse_encodings_dual,
                                      distances,
                                      betas,
                                      qs=qs,

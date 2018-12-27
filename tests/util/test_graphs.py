@@ -392,10 +392,12 @@ def test_networkX_from_graph_maps():
     # check with metrics dictionary
     N = networks.Network_Layer_From_NetworkX(G, distances=[500, 1000])
     N.harmonic_closeness()
-    data_dict = mock.mock_landuse_data(G)
-    D = layers.Landuse_Layer_From_Dict(data_dict, qs=[0, 1])
+    data_dict = mock.mock_data_dict(G)
+    landuse_labels = mock.mock_categorical_data(len(data_dict))
+    D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_landuses(mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'])
+    D.compute_landuses(landuse_labels, mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'],
+                       qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,

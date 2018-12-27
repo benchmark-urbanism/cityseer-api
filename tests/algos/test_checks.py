@@ -6,72 +6,59 @@ from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 
 
-def test_check_numerical_data_map():
-    G, pos = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-    numeric_data_dict = mock.mock_numeric_data(G)
-    D_numeric = layers.Numeric_Layer_From_Dict(numeric_data_dict)
-
-    # should throw error if not assigned
-    with pytest.raises(ValueError):
-        checks.check_numerical_data_map(D_numeric._data)
-
-    # should work if flag set to False
-    checks.check_numerical_data_map(D_numeric._data, check_assigned=False)
-
-    # assign then check that it runs as intended
-    D_numeric.assign_to_network(N, 400)
-    checks.check_numerical_data_map(D_numeric._data)
-
-    # catch invalid dimensionality
-    with pytest.raises(ValueError):
-        checks.check_numerical_data_map(D_numeric._data[:, :-1])
+def test_check_numerical_data():
+    mock_numerical = mock.mock_numerical_data(50)
 
     # check for malformed data
     with pytest.raises(ValueError):
-        D_numeric._data[:, 3][0] = np.inf
-        checks.check_numerical_data_map(D_numeric._data)
+        mock_numerical[0] = np.inf
+        checks.check_numerical_data(mock_numerical)
 
 
-def test_check_categorical_data_map():
-    G, pos = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
-    categoric_data_dict = mock.mock_landuse_data(G)
-    D_categoric = layers.Landuse_Layer_From_Dict(categoric_data_dict)
-
-    # should throw error if not assigned
-    with pytest.raises(ValueError):
-        checks.check_categorical_data_map(D_categoric._data)
-
-    # should work if flag set to False
-    checks.check_categorical_data_map(D_categoric._data, check_assigned=False)
-
-    # assign then check that it runs as intended
-    D_categoric.assign_to_network(N, 400)
-    checks.check_categorical_data_map(D_categoric._data)
-
-    # catch invalid dimensionality
-    with pytest.raises(ValueError):
-        checks.check_categorical_data_map(D_categoric._data[:, :-1])
+def test_check_categorical_data():
+    mock_categorical = mock.mock_categorical_data(50)
+    data_classes, data_encoding = layers.encode_categorical(mock_categorical)
 
     # check for malformed data
-    t = D_categoric._data[:, 3][0]
-    # NaN
-    with pytest.raises(ValueError):
-        D_categoric._data[:, 3][0] = np.nan
-        checks.check_categorical_data_map(D_categoric._data)
+    t = data_encoding[0]
     # negatives
     with pytest.raises(ValueError):
-        D_categoric._data[:, 3][0] = -t
-        checks.check_categorical_data_map(D_categoric._data)
+        data_encoding[0] = -t
+        checks.check_categorical_data(data_encoding)
+    # NaN
+    with pytest.raises(ValueError):
+        data_encoding[0] = np.nan
+        checks.check_categorical_data(data_encoding)
     # floats
     with pytest.raises(ValueError):
-        D_categoric._data[:, 3][0] = 1.2345
-        checks.check_categorical_data_map(D_categoric._data)
+        data_encoding_float = np.full(len(data_encoding), np.nan)
+        data_encoding_float[:] = data_encoding[:].astype(np.float)
+        data_encoding_float[0] = 1.2345
+        checks.check_categorical_data(data_encoding_float)
+
+
+def test_check_data_map():
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)
+    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    data_dict = mock.mock_data_dict(G)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
+
+    # should throw error if not assigned
+    with pytest.raises(ValueError):
+        checks.check_data_map(data_map)
+
+    # should work if flag set to False
+    checks.check_data_map(data_map, check_assigned=False)
+
+    # assign then check that it runs as intended
+    data_map = data.assign_to_network(data_map, N._nodes, N._edges, max_dist=400)
+    checks.check_data_map(data_map)
+
+    # catch invalid dimensionality
+    with pytest.raises(ValueError):
+        checks.check_data_map(data_map[:, :-1])
 
 
 def test_check_trim_maps():

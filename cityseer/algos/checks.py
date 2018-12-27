@@ -7,44 +7,32 @@ from numba import njit
 def_min_thresh_wt = 0.01831563888873418
 
 
-# @cc.export('check_numerical_data_map', 'void(float64[:,:])')
 @njit
-def check_numerical_data_map(data_map: np.ndarray, check_assigned=True):
-    '''
-    DATA MAP:
-    0 - x
-    1 - y
-    2 - live
-    3 - data class
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
-    '''
-    # other checks - e.g. checking for single dimensional arrays, are tricky with numba
-    if not data_map.ndim == 2 or not data_map.shape[1] == 6:
-        raise ValueError(
-            'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
-
-    if check_assigned:
-        # check that data map has been assigned
-        if np.all(np.isnan(data_map[:, 4])):
-            raise ValueError('Data map has not been assigned to a network.')
-
-    for num in data_map[:, 3]:
+def check_numerical_data(data_arr: np.ndarray):
+    for num in data_arr:
         if np.isinf(num):
             raise ValueError('Data map numeric data must consist of either floats or NaNs.')
 
 
-# @cc.export('check_categorical_data_map', 'void(float64[:,:])')
 @njit
-def check_categorical_data_map(data_map: np.ndarray, check_assigned=True):
+def check_categorical_data(data_arr: np.ndarray):
+    for cl in data_arr:
+        if not np.isfinite(cl) or not cl >= 0:
+            raise ValueError('Data map contains points with missing data classes.')
+        if int(cl) != cl:
+            raise ValueError('Data map contains non-integer class-codes.')
+
+
+# @cc.export('check_data_map', 'void(float64[:,:])')
+@njit
+def check_data_map(data_map: np.ndarray, check_assigned=True):
     '''
     DATA MAP:
     0 - x
     1 - y
     2 - live
-    3 - data class
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
+    3 - assigned network index - nearest
+    4 - assigned network index - next-nearest
     '''
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
     if not data_map.ndim == 2 or not data_map.shape[1] == 6:
@@ -53,14 +41,8 @@ def check_categorical_data_map(data_map: np.ndarray, check_assigned=True):
 
     if check_assigned:
         # check that data map has been assigned
-        if np.all(np.isnan(data_map[:, 4])):
+        if np.all(np.isnan(data_map[:, 3])):
             raise ValueError('Data map has not been assigned to a network.')
-
-    for cl in data_map[:, 3]:
-        if not np.isfinite(cl) or not cl >= 0:
-            raise ValueError('Data map contains points with missing data classes.')
-        if int(cl) != cl:
-            raise ValueError('Data map contains non-integer class-codes.')
 
 
 # @cc.export('check_trim_maps', '(float64[:], float64[:])')

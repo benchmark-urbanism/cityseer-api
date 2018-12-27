@@ -387,6 +387,7 @@ def raos_quadratic_diversity(class_counts: np.ndarray,
 def local_landuses(node_map: np.ndarray,
                    edge_map: np.ndarray,
                    data_map: np.ndarray,
+                   landuse_encodings: np.ndarray,
                    distances: np.ndarray,
                    betas: np.ndarray,
                    qs: np.ndarray = np.array([]),
@@ -413,16 +414,20 @@ def local_landuses(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - categorical class or numerical data
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
+    3 - assigned network index - nearest
+    4 - assigned network index - next-nearest
     '''
     checks.check_network_types(node_map, edge_map)
 
     # raises ValueError data points are not assigned to a network
-    checks.check_categorical_data_map(data_map, check_assigned=True)
+    checks.check_data_map(data_map, check_assigned=True)
+
+    checks.check_categorical_data(landuse_encodings)
 
     checks.check_distances_and_betas(distances, betas)
+
+    if len(landuse_encodings) != len(data_map):
+        raise ValueError('The number of landuse encodings does not match the number of data points.')
 
     # negative qs caught by hill diversity methods
 
@@ -436,7 +441,7 @@ def local_landuses(node_map: np.ndarray,
     if len(mixed_use_other_keys) != 0 and (mixed_use_other_keys.min() < 0 or mixed_use_other_keys.max() > 2):
         raise ValueError('Mixed-use "other" keys out of range of 0:3.')
 
-    max_ac_key = data_map[:, 3].max()
+    max_ac_key = landuse_encodings.max()
     if len(accessibility_keys) != 0 and (accessibility_keys.min() < 0 or accessibility_keys.max() > max_ac_key):
         raise ValueError('Negative accessibility key encountered. Use positive keys corresponding to class encodings.')
 
@@ -480,7 +485,7 @@ def local_landuses(node_map: np.ndarray,
     netw_n = len(node_map)
     d_n = len(distances)
     q_n = len(qs)
-    mu_max_unique_cl = int(data_map[:, 3].max() + 1)
+    mu_max_unique_cl = int(landuse_encodings.max() + 1)
     global_max_dist = distances.max()
     netw_nodes_live = node_map[:, 2]
 
@@ -506,50 +511,46 @@ def local_landuses(node_map: np.ndarray,
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
         # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_classes_trim, reachable_classes_dist_trim, _data_trim_to_full_idx_map = \
-            data.aggregate_to_src_idx(src_idx,
-                                      node_map,
-                                      edge_map,
-                                      data_map,
-                                      global_max_dist,
-                                      angular)
+        reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = data.aggregate_to_src_idx(src_idx,
+                                                                                                        node_map,
+                                                                                                        edge_map,
+                                                                                                        data_map,
+                                                                                                        global_max_dist,
+                                                                                                        angular)
 
         # counts of each class type (array length per max unique classes - not just those within max distance)
         classes_counts = np.full((d_n, mu_max_unique_cl), 0)
         # nearest of each class type (likewise)
         classes_nearest = np.full((d_n, mu_max_unique_cl), np.inf)
         # iterate the reachable non-unique classes and deduce reachable unique class counts and corresponding distances
-        for i in range(len(reachable_classes_trim)):
+        for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
             # some classes will be NaN if beyond max threshold distance - so check for infinity
             # this happens when within radial max distance, but beyond network max distance
-            cl_dist = reachable_classes_dist_trim[i]
-            if np.isinf(cl_dist):
+            if np.isinf(data_dist):
                 continue
             # get the class category in integer form
             # remember that all class codes were encoded to sequential integers - these correspond to the array indices
-            cl = int(reachable_classes_trim[i])
+            cl_code = int(landuse_encodings[int(data_idx)])
             # iterate the distance dimensions
-            for d_idx in range(len(distances)):
-                d = distances[d_idx]
-                b = betas[d_idx]
+            for d_idx, (d, b) in enumerate(zip(distances, betas)):
                 # increment class counts at respective distances - but only if the distance is less than the current d
-                if cl_dist <= d:
-                    classes_counts[d_idx][cl] += 1
+                if data_dist <= d:
+                    classes_counts[d_idx][cl_code] += 1
                     # if distance is nearer, update the nearest distance array too
-                    if cl_dist < classes_nearest[d_idx][cl]:
-                        classes_nearest[d_idx][cl] = cl_dist
+                    if data_dist < classes_nearest[d_idx][cl_code]:
+                        classes_nearest[d_idx][cl_code] = data_dist
                     # if within distance, and if in accessibility keys, then aggregate accessibility too
                     for ac_idx, ac_code in enumerate(accessibility_keys):
-                        if ac_code == cl:
+                        if ac_code == cl_code:
                             accessibility_data[ac_idx][d_idx][src_idx] += 1
-                            accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * cl_dist)
+                            accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * data_dist)
                             # if a match was found, then no need to check others
                             break
 
         # mixed uses can be calculated now that the local class counts are aggregated
         # iterate the distances and betas
-        for d_idx in range(len(distances)):
-            b = betas[d_idx]
+        for d_idx, b in enumerate(betas):
+
             cl_counts = classes_counts[d_idx]
             cl_nearest = classes_nearest[d_idx]
 
@@ -604,5 +605,7 @@ def local_landuses(node_map: np.ndarray,
     for i, k in enumerate(mixed_use_other_keys):
         mu_other_k_int[i] = k
 
-    return mixed_use_hill_data[mu_hill_k_int], mixed_use_other_data[mu_other_k_int], \
-           accessibility_data, accessibility_data_wt
+    return mixed_use_hill_data[mu_hill_k_int], \
+           mixed_use_other_data[mu_other_k_int], \
+           accessibility_data, \
+           accessibility_data_wt

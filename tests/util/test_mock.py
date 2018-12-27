@@ -26,9 +26,9 @@ def test_mock_graph():
             assert 'y' in d and isinstance(d['y'], (int, float))
 
 
-def test_mock_data():
+def test_mock_data_dict():
     G, pos = mock.mock_graph()
-    data = mock.mock_landuse_data(G)
+    data = mock.mock_data_dict(G)
 
     min_x = np.inf
     max_x = -np.inf
@@ -49,39 +49,26 @@ def test_mock_data():
         assert 'x' in v and isinstance(v['y'], (int, float))
         assert 'y' in v and isinstance(v['y'], (int, float))
         assert 'live' in v and isinstance(v['live'], bool)
-        assert 'class' in v and isinstance(v['class'], str)
-        assert v['class'] in 'abcdefghijk'
         assert v['x'] >= min_x and v['x'] <= max_x
         assert v['y'] >= min_y and v['y'] <= max_y
 
 
-def test_mock_numeric_data():
-    G, pos = mock.mock_graph()
-    data = mock.mock_numeric_data(G)
+def test_mock_categorical_data():
+    cat_d = mock.mock_categorical_data(50)
+    assert len(cat_d) == 50
 
-    min_x = np.inf
-    max_x = -np.inf
-    min_y = np.inf
-    max_y = -np.inf
-    for n, d in G.nodes(data=True):
-        if d['x'] < min_x:
-            min_x = d['x']
-        if d['x'] > max_x:
-            max_x = d['x']
-        if d['y'] < min_y:
-            min_y = d['y']
-        if d['y'] > max_y:
-            max_y = d['y']
+    for c in cat_d:
+        assert isinstance(c, str)
+        assert c in 'abcdefghijk'
 
-    for v in data.values():
-        # check that attributes are present
-        assert 'x' in v and isinstance(v['y'], (int, float))
-        assert 'y' in v and isinstance(v['y'], (int, float))
-        assert 'live' in v and isinstance(v['live'], bool)
-        assert 'numeric' in v and isinstance(v['numeric'], float)
-        assert 0 < v['numeric'] <= 100000
-        assert v['x'] >= min_x and v['x'] <= max_x
-        assert v['y'] >= min_y and v['y'] <= max_y
+
+def test_mock_numerical_data():
+    num_d = mock.mock_numerical_data(50)
+    assert len(num_d) == 50
+
+    for n in num_d:
+        assert isinstance(n, float)
+        assert 0 <= n <= 100000
 
 
 def test_mock_species_diversity():

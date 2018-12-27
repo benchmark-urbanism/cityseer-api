@@ -106,9 +106,8 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
     0 - x
     1 - y
     2 - live
-    3 - data class
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
+    3 - assigned network index - nearest
+    4 - assigned network index - next-nearest
     '''
 
     if data_map is not None:
@@ -119,11 +118,13 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
 
         cm = plt.get_cmap('hsv')
         cols = [cm(i / len(data_map)) for i in range(len(data_map))]
-        for i, (x, y, cl, nearest_netw_idx, next_n_netw_idx) in \
-                enumerate(zip(data_map[:, 0], data_map[:, 1], data_map[:, 3], data_map[:, 4], data_map[:, 5])):
+        for i, (x, y, nearest_netw_idx, next_n_netw_idx) in \
+                enumerate(zip(data_map[:, 0],
+                              data_map[:, 1],
+                              data_map[:, 3],
+                              data_map[:, 4])):
 
-            ax1.annotate('cl:' + str(int(cl)), xy=(x, y), size=8, color='red')
-            ax2.annotate('idx:' + str(int(i)), xy=(x, y), size=8, color='red')
+            ax2.annotate(str(int(i)), xy=(x, y), size=8, color='red')
 
             # if the data points have been assigned network indices
             if not np.isnan(nearest_netw_idx):

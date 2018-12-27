@@ -100,9 +100,8 @@ def assign_to_network(data_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - data class
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
+    3 - assigned network index - nearest
+    4 - assigned network index - next-nearest
     '''
 
     checks.check_network_types(node_map, edge_map)
@@ -311,10 +310,10 @@ def assign_to_network(data_map: np.ndarray,
         # print(f'[{data_idx}, {nearest}, {next_nearest}],')
 
         # set in the data map
-        data_map[data_idx][4] = nearest  # adj_idx
+        data_map[data_idx][3] = nearest  # adj_idx
         # in some cases next nearest will be NaN
         # this is mostly in situations where it works to leave as NaN - e.g. access off dead-ends...
-        data_map[data_idx][5] = next_nearest  # next_adj_idx
+        data_map[data_idx][4] = next_nearest  # next_adj_idx
 
     print('...done')
 
@@ -338,9 +337,8 @@ def aggregate_to_src_idx(src_idx: int,
 
     d_x_arr = data_map[:, 0]
     d_y_arr = data_map[:, 1]
-    d_data = data_map[:, 3]
-    d_assign_nearest = data_map[:, 4]
-    d_assign_next_nearest = data_map[:, 5]
+    d_assign_nearest = data_map[:, 3]
+    d_assign_next_nearest = data_map[:, 4]
 
     # filter the network by distance
     netw_trim_to_full, netw_full_to_trim = radial_filter(src_x, src_y, netw_x_arr, netw_y_arr, max_dist)
@@ -364,8 +362,8 @@ def aggregate_to_src_idx(src_idx: int,
     data_trim_to_full_idx_map, _data_full_to_trim_idx_map = radial_filter(src_x, src_y, d_x_arr, d_y_arr, max_dist)
 
     # prepare the new data arrays
-    reachable_data_trim = np.full(len(data_trim_to_full_idx_map), np.nan)
-    reachable_data_dist_trim = np.full(len(data_trim_to_full_idx_map), np.inf)
+    reachable_data_idx = np.full(len(data_trim_to_full_idx_map), np.nan)
+    reachable_data_dist = np.full(len(data_trim_to_full_idx_map), np.inf)
 
     # iterate the distance trimmed data points
     for i, data_idx_full in enumerate(data_trim_to_full_idx_map):
@@ -387,8 +385,8 @@ def aggregate_to_src_idx(src_idx: int,
                 dist = map_distance_trim[netw_trim_idx] + d_d
                 # only assign distance if within max distance
                 if dist <= max_dist:
-                    reachable_data_trim[i] = d_data[data_idx]
-                    reachable_data_dist_trim[i] = dist
+                    reachable_data_idx[i] = data_idx
+                    reachable_data_dist[i] = dist
 
         # the next-nearest may offer a closer route depending on the direction the shortest path approaches from
         if np.isfinite(d_assign_next_nearest[data_idx]):
@@ -404,12 +402,12 @@ def aggregate_to_src_idx(src_idx: int,
                 dist = map_distance_trim[netw_trim_idx] + d_d
                 # only assign distance if within max distance
                 # AND only if closer than other direction
-                if dist <= max_dist and dist < reachable_data_dist_trim[i]:
-                    reachable_data_trim[i] = d_data[data_idx]
-                    reachable_data_dist_trim[i] = dist
+                if dist <= max_dist and dist < reachable_data_dist[i]:
+                    reachable_data_idx[i] = data_idx
+                    reachable_data_dist[i] = dist
 
     # note that some entries will be nan values if the max distance was exceeded
-    return reachable_data_trim, reachable_data_dist_trim, data_trim_to_full_idx_map
+    return reachable_data_idx, reachable_data_dist, data_trim_to_full_idx_map
 
 
 @njit
@@ -437,14 +435,13 @@ def local_numeric(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - categorical class or numerical data
-    4 - assigned network index - nearest
-    5 - assigned network index - next-nearest
+    3 - assigned network index - nearest
+    4 - assigned network index - next-nearest
     '''
     checks.check_network_types(node_map, edge_map)
 
     # raises ValueError data points are not assigned to a network
-    checks.check_numerical_data_map(data_map, check_assigned=True)
+    checks.check_data_map(data_map, check_assigned=True)
 
     checks.check_distances_and_betas(distances, betas)
 

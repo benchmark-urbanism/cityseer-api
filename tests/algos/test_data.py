@@ -11,8 +11,8 @@ def test_radial_filter():
     G = graphs.networkX_edge_defaults(G)
 
     # generate some data
-    data_dict = mock.mock_landuse_data(G)
-    D = layers.Landuse_Layer_From_Dict(data_dict)
+    data_dict = mock.mock_data_dict(G)
+    D = layers.Data_Layer_From_Dict(data_dict)
 
     # test the filter
     src_x = G.nodes[0]['x']
@@ -61,8 +61,8 @@ def test_nearest_idx():
     N = networks.Network_Layer_From_NetworkX(G, distances=[100])
 
     # generate some data
-    data_dict = mock.mock_landuse_data(G)
-    D = layers.Landuse_Layer_From_Dict(data_dict)
+    data_dict = mock.mock_data_dict(G)
+    D = layers.Data_Layer_From_Dict(data_dict)
 
     # test the filter - iterating each point in data map
     for d in D._data:
@@ -96,8 +96,8 @@ def test_assign_to_network():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
-    data_dict = mock.mock_landuse_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
+    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     # override data point 0 and 1's locations for test cases
     data_map[0][:2] = [6001000, 600350]
@@ -108,57 +108,57 @@ def test_assign_to_network():
     data_map_test_500 = data.assign_to_network(data_map_test_500, node_map, edge_map, 500)
     targets = [[0, 45, 30],
                [1, 30, 45],
-               [2, 23, 21],
-               [3, 32, 35],
-               [4, 25, 26],
-               [5, 3, 4],
-               [6, 50, np.nan],
-               [7, 13, 9],
-               [8, 30, 45],
-               [9, 43, 10],
-               [10, 43, 44],
-               [11, 24, 20],
-               [12, 19, 22],
-               [13, 51, np.nan],
-               [14, 14, 11],
-               [15, 16, 19],
-               [16, 49, np.nan],
-               [17, 10, 43],
-               [18, 43, 42],
-               [19, 19, 16],
-               [20, 43, 10],
-               [21, 15, np.nan],
-               [22, 16, 0],
-               [23, 49, np.nan],
-               [24, 31, 0],
-               [25, 29, 28],
-               [26, 45, 30],
-               [27, 36, 41],
-               [28, 41, 40],
-               [29, 16, 19],
-               [30, 10, 43],
-               [31, 49, np.nan],
-               [32, 47, np.nan],
-               [33, 36, 37],
-               [34, 14, np.nan],
-               [35, 14, np.nan],
-               [36, 10, 43],
-               [37, 30, 45],
-               [38, 29, 25],
-               [39, 43, 10],
-               [40, 45, 30],
-               [41, 5, 2],
+               [2, 30, 45],
+               [3, 17, 20],
+               [4, 18, 17],
+               [5, 49.0, np.nan],
+               [6, 14, 10],
+               [7, 3, 4],
+               [8, 49.0, np.nan],
+               [9, 10, 43],
+               [10, 45, 30],
+               [11, 13, 9],
+               [12, 43, 10],
+               [13, 20, 17],
+               [14, 10, 14],
+               [15, 45, 30],
+               [16, 19, 22],
+               [17, 50.0, np.nan],
+               [18, 43, 10],
+               [19, 48.0, np.nan],
+               [20, 7, 3],
+               [21, 45, 30],
+               [22, 37, 36],
+               [23, 1, 2],
+               [24, 45, 30],
+               [25, 19, 22],
+               [26, 43, 10],
+               [27, 43, 10],
+               [28, 30, 29],
+               [29, 2, 5],
+               [30, 44, 45],
+               [31, 47.0, np.nan],
+               [32, 43, 10],
+               [33, 51.0, np.nan],
+               [34, 29, 28],
+               [35, 40, 39],
+               [36, 30, 45],
+               [37, 12, 11],
+               [38, 43, 10],
+               [39, 16, 19],
+               [40, 30, 45],
+               [41, 11, 6],
                [42, 43, 10],
-               [43, 10, 43],
-               [44, 20, 17],
-               [45, 30, 45],
+               [43, 34, 32],
+               [44, 47.0, np.nan],
+               [45, 26, 25],
                [46, 43, 10],
-               [47, 27, 22],
-               [48, 2, 5],
-               [49, 29, 30]]
+               [47, 45, 30],
+               [48, 49.0, np.nan],
+               [49, 19, 16]]
     for i in range(len(data_map_test_500)):
-        assert data_map_test_500[i][4] == targets[i][1]
-        assert np.allclose(data_map_test_500[i][5], targets[i][2], equal_nan=True)
+        assert data_map_test_500[i][3] == targets[i][1]
+        assert np.allclose(data_map_test_500[i][4], targets[i][2], equal_nan=True)
 
     # for debugging
     # from cityseer.util import plot
@@ -167,14 +167,14 @@ def test_assign_to_network():
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
     data_map_test_0 = data.assign_to_network(data_map_test_0, node_map, edge_map, max_dist=0)
+    assert np.all(np.isnan(data_map_test_0[:, 3]))
     assert np.all(np.isnan(data_map_test_0[:, 4]))
-    assert np.all(np.isnan(data_map_test_0[:, 5]))
 
     # max distance of 2000 should return no NaN for nearest
     # there will be some NaN for next nearest
     data_map_test_2000 = data_map.copy()
     data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_map, edge_map, max_dist=2000)
-    assert not np.any(np.isnan(data_map_test_2000[:, 4]))
+    assert not np.any(np.isnan(data_map_test_2000[:, 3]))
 
 
 def test_aggregate_to_src_idx():
@@ -185,8 +185,8 @@ def test_aggregate_to_src_idx():
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
-    data_dict = mock.mock_landuse_data(G, random_seed=13)
-    data_uids, data_map, class_labels = layers.categorical_data_map_from_dict(data_dict)
+    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     for max_dist in [400, 750]:
 
@@ -198,7 +198,7 @@ def test_aggregate_to_src_idx():
             for src_idx in range(len(node_map)):
 
                 # aggregate to src...
-                reachable_classes_trim, reachable_classes_dist_trim, data_trim_to_full = \
+                reachable_data_idx, reachable_data_dist, data_trim_to_full = \
                     data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map_temp, max_dist, angular=angular)
 
                 # now compare to manual checks on distances:
@@ -256,15 +256,15 @@ def test_aggregate_to_src_idx():
 
                         # get the trim index, and check the integrity of the distances and classes
                         d_trim_idx = int(data_full_to_trim[d_full_idx])
-                        cl = reachable_classes_trim[d_trim_idx]
-                        dist = reachable_classes_dist_trim[d_trim_idx]
+                        reachable_idx = reachable_data_idx[d_trim_idx]
+                        reachable_dist = reachable_data_dist[d_trim_idx]
 
                         # get the distance via the nearest assigned index
                         nearest_dist = np.inf
                         # if a nearest node has been assigned
-                        if np.isfinite(data_map_temp[d_full_idx][4]):
+                        if np.isfinite(data_map_temp[d_full_idx][3]):
                             # get the full index for the assigned network node
-                            netw_full_idx = int(data_map_temp[d_full_idx][4])
+                            netw_full_idx = int(data_map_temp[d_full_idx][3])
                             # if this node is within the radial cutoff distance:
                             if np.isfinite(netw_full_to_trim[netw_full_idx]):
                                 # get the network node's trim index
@@ -279,9 +279,9 @@ def test_aggregate_to_src_idx():
                         # also get the distance via the next nearest assigned index
                         next_nearest_dist = np.inf
                         # if a nearest node has been assigned
-                        if np.isfinite(data_map_temp[d_full_idx][5]):
+                        if np.isfinite(data_map_temp[d_full_idx][4]):
                             # get the full index for the assigned network node
-                            netw_full_idx = int(data_map_temp[d_full_idx][5])
+                            netw_full_idx = int(data_map_temp[d_full_idx][4])
                             # if this node is within the radial cutoff distance:
                             if np.isfinite(netw_full_to_trim[netw_full_idx]):
                                 # get the network node's trim index
@@ -294,17 +294,13 @@ def test_aggregate_to_src_idx():
                                 next_nearest_dist = d_d + n_d
 
                         # now check distance integrity
-                        if np.isinf(dist):
+                        if np.isinf(reachable_dist):
+                            assert np.isnan(reachable_idx)
                             assert nearest_dist > max_dist and next_nearest_dist > max_dist
                         else:
-                            assert dist <= max_dist
+                            assert not np.isnan(reachable_idx)
+                            assert reachable_dist <= max_dist
                             if nearest_dist < next_nearest_dist:
-                                assert dist == nearest_dist
+                                assert reachable_dist == nearest_dist
                             else:
-                                assert dist == next_nearest_dist
-
-                        # check the class integrity
-                        if np.isfinite(dist):
-                            assert cl == data_map_temp[d_full_idx][3]
-                        else:
-                            assert np.isnan(cl)
+                                assert reachable_dist == next_nearest_dist
