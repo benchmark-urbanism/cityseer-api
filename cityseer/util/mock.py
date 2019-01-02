@@ -2,6 +2,7 @@
 Generate a graph for testing and documentation purposes.
 '''
 import logging
+from typing import Tuple
 
 import networkx as nx
 import numpy as np
@@ -11,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def mock_graph(wgs84_coords=False):
+def mock_graph(wgs84_coords: bool = False) -> Tuple[nx.Graph, dict]:
     '''
     Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
     :return: NetworkX graph
@@ -171,7 +172,7 @@ def mock_graph(wgs84_coords=False):
     return G, pos
 
 
-def get_graph_extents(G):
+def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
 
     # get min and maxes for x and y
     min_x = np.inf
@@ -192,7 +193,7 @@ def get_graph_extents(G):
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(G, num=50, random_seed=None):
+def mock_data_dict(G: nx.Graph, num: int = 50, random_seed: int = None) -> dict:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
@@ -210,7 +211,7 @@ def mock_data_dict(G, num=50, random_seed=None):
     return data_dict
 
 
-def mock_categorical_data(n):
+def mock_categorical_data(n: int) -> np.ndarray:
     random_class_str = 'abcdefghijk'
     d = []
 
@@ -220,7 +221,7 @@ def mock_categorical_data(n):
     return np.array(d)
 
 
-def mock_numerical_data(n):
+def mock_numerical_data(n: int) -> np.ndarray:
     d = []
 
     for i in range(n):
@@ -229,7 +230,7 @@ def mock_numerical_data(n):
     return np.array(d)
 
 
-def mock_species_diversity(random_seed=None):
+def mock_species_diversity(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
