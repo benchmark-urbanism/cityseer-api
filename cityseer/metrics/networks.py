@@ -78,7 +78,7 @@ class Network_Layer:
         if len(self._uids) != len(self._nodes):
             raise ValueError('The number of indices does not match the number of nodes.')
 
-        checks.check_network_types(self._nodes, self._edges)
+        checks.check_network_maps(self._nodes, self._edges)
 
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:

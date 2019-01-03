@@ -93,7 +93,7 @@ def test_check_trim_maps():
         checks.check_trim_maps(trim_to_full_idx_map, corrupt_full_to_trim)
 
 
-def test_check_network_types():
+def test_check_network_maps():
     # network maps
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -106,42 +106,42 @@ def test_check_network_types():
 
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
-        checks.check_network_types(N._nodes[:, :-1], N._edges)
+        checks.check_network_maps(N._nodes[:, :-1], N._edges)
     with pytest.raises(ValueError):
-        checks.check_network_types(N._nodes, N._edges[:, :-1])
+        checks.check_network_maps(N._nodes, N._edges[:, :-1])
     # catch corrupted edge references from node map
     corrupted_nodes = N._nodes.copy()
     corrupted_nodes[1][3] = 4
     with pytest.raises(ValueError):
-        checks.check_network_types(corrupted_nodes, N._edges)
+        checks.check_network_maps(corrupted_nodes, N._edges)
     # catch corrupted node references from edge map
     # first out of order
     corrupted_edges = N._edges.copy()
     corrupted_edges[1][0] = 1
     with pytest.raises(ValueError):
-        checks.check_network_types(N._nodes, corrupted_edges)
+        checks.check_network_maps(N._nodes, corrupted_edges)
     # greater than sequential step
     corrupted_edges = N._edges.copy()
     corrupted_edges[3][0] = 2
     with pytest.raises(ValueError):
-        checks.check_network_types(N._nodes, corrupted_edges)
+        checks.check_network_maps(N._nodes, corrupted_edges)
     # catch NaN or negative values
     for x in [np.nan, -1]:
         # invalid weights
         corrupted_nodes = N._nodes.copy()
         corrupted_nodes[0][4] *= x
         with pytest.raises(ValueError):
-            checks.check_network_types(corrupted_nodes, N._edges)
+            checks.check_network_maps(corrupted_nodes, N._edges)
         # invalid weights
         corrupted_edges = N._edges.copy()
         corrupted_edges[0][2] *= x
         with pytest.raises(ValueError):
-            checks.check_network_types(N._nodes, corrupted_edges)
+            checks.check_network_maps(N._nodes, corrupted_edges)
         # invalid weights
         corrupted_edges = N._edges.copy()
         corrupted_edges[0][3] *= x
         with pytest.raises(ValueError):
-            checks.check_network_types(N._nodes, corrupted_edges)
+            checks.check_network_maps(N._nodes, corrupted_edges)
 
 
 def test_check_distances_and_betas():

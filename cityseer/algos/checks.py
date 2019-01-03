@@ -79,7 +79,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 # @cc.export('check_network_types', '(float64[:,:], float64[:,:])')
 @njit
-def check_network_types(node_map: np.ndarray, edge_map: np.ndarray):
+def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
     '''
     NODE MAP:
     0 - x

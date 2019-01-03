@@ -194,7 +194,7 @@ def local_centrality(node_map: np.ndarray,
     3 - impedance
     '''
 
-    checks.check_network_types(node_map, edge_map)
+    checks.check_network_maps(node_map, edge_map)
 
     checks.check_distances_and_betas(distances, betas)
 

@@ -310,7 +310,7 @@ def test_graph_maps_from_networkX():
     # plot.plot_graph_maps(node_uids, node_map, edge_map)
 
     # run check
-    checks.check_network_types(node_map, edge_map)
+    checks.check_network_maps(node_map, edge_map)
     # check lengths
     assert len(node_uids) == len(node_map) == G_test.number_of_nodes()
     assert len(edge_map) == G_test.number_of_edges() * 2
@@ -396,8 +396,8 @@ def test_networkX_from_graph_maps():
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_landuses(landuse_labels, mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'],
-                       qs=[0, 1])
+    D.compute_aggregated(landuse_labels, mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'],
+                         qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,

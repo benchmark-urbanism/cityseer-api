@@ -527,7 +527,7 @@ def networkX_from_graph_maps(node_uids: Union[tuple, list],
                              metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
-    checks.check_network_types(node_map, edge_map)
+    checks.check_network_maps(node_map, edge_map)
 
     if networkX_graph is not None:
         logger.info('Reusing existing graph as backbone.')

@@ -1,15 +1,12 @@
-'''
-
-'''
 import logging
-from typing import Tuple, Union
+from typing import Tuple, List, Union
 
 import numpy as np
 import utm
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
-from cityseer.algos import data, checks, diversity
+from cityseer.algos import data, checks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -93,8 +90,6 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
 
 class Data_Layer:
     '''
-    #TODO: possible future enhancement - load multiple overlays and compute at once?
-
     DATA MAP:
     0 - x
     1 - y
@@ -141,12 +136,12 @@ class Data_Layer:
         self._Network = Network_Layer
         data.assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
 
-    def compute_landuses(self,
-                         landuse_labels: Union[list, tuple, np.ndarray],
-                         mixed_use_metrics: Union[list, tuple] = None,
-                         accessibility_labels: Union[list, tuple] = None,
-                         cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
-                         qs: Union[list, tuple, np.ndarray] = None):
+    def compute_aggregated(self,
+                           landuse_labels: Union[list, tuple, np.ndarray] = None,
+                           mixed_use_metrics: Union[list, tuple] = None,
+                           accessibility_labels: Union[list, tuple] = None,
+                           cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
+                           qs: Union[list, tuple, np.ndarray] = None):
         '''
         This method provides full access to the underlying diversity.local_landuses method
         '''
@@ -154,33 +149,6 @@ class Data_Layer:
         if self.Network is None:
             raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
 
-        if len(landuse_labels) != len(self._data):
-            raise ValueError('The number of landuse labels should match the number of data points.')
-
-        # get the landuse encodings
-        landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
-
-        # warn if no qs provided
-        if qs is None:
-            qs = ()
-        if isinstance(qs, (int, float)):
-            qs = (qs)
-        if not isinstance(qs, (list, tuple, np.ndarray)):
-            raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
-
-        if cl_disparity_wt_matrix is None:
-            cl_disparity_wt_matrix = [[]]
-        elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
-                cl_disparity_wt_matrix.ndim != 2 or \
-                cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
-                len(cl_disparity_wt_matrix) != len(landuse_classes):
-            raise TypeError(
-                'Disparity weights must be a pairwise NxN matrix in list, tuple, or numpy.ndarray form. '
-                'The number of edge-wise elements should match the number of unique class labels.')
-
-        # checks on parameter integrity occur in underlying method
-
-        # extrapolate the requested mixed use measures
         mixed_uses_options = ['hill',
                               'hill_branch_wt',
                               'hill_pairwise_wt',
@@ -188,91 +156,139 @@ class Data_Layer:
                               'shannon',
                               'gini_simpson',
                               'raos_pairwise_disparity']
-        mixed_use_hill_keys = []
-        mixed_use_other_keys = []
-        if mixed_use_metrics is not None:
-            for mu in mixed_use_metrics:
-                if mu not in mixed_uses_options:
-                    raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
-                idx = mixed_uses_options.index(mu)
-                if idx < 4:
-                    mixed_use_hill_keys.append(idx)
-                else:
-                    mixed_use_other_keys.append(idx - 4)
 
-        accessibility_keys = []
-        if accessibility_labels is not None:
-            for ac_label in accessibility_labels:
-                if ac_label not in landuse_classes:
-                    logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
-                else:
-                    accessibility_keys.append(landuse_classes.index(ac_label))
+        if landuse_labels is None:
+            landuse_classes = ()
+            landuse_encodings = ()
+            qs = ()
+            mixed_use_hill_keys = ()
+            mixed_use_other_keys = ()
+            accessibility_keys = ()
+            cl_disparity_wt_matrix = [[]]  # (()) causes error because numpy conversion creates single dimension array
 
-        mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
-            diversity.local_landuses(self.Network._nodes,
-                                     self.Network._edges,
-                                     self._data,
-                                     landuse_encodings,
-                                     np.array(self.Network.distances),
-                                     np.array(self.Network.betas),
-                                     np.array(qs),
-                                     np.array(mixed_use_hill_keys),
-                                     np.array(mixed_use_other_keys),
-                                     np.array(accessibility_keys),
-                                     np.array(cl_disparity_wt_matrix),
-                                     self.Network.angular)
+        # remember, most checks on parameter integrity occur in underlying method
+        # so, don't duplicate here
+        else:
+            if len(landuse_labels) != len(self._data):
+                raise ValueError('The number of landuse labels should match the number of data points.')
+
+            # get the landuse encodings
+            landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
+
+            # if necessary, check the disparity matrix
+            if cl_disparity_wt_matrix is None:
+                cl_disparity_wt_matrix = [[]]
+            elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
+                    cl_disparity_wt_matrix.ndim != 2 or \
+                    cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
+                    len(cl_disparity_wt_matrix) != len(landuse_classes):
+                raise TypeError(
+                    'Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. '
+                    'The number of edge-wise elements should match the number of unique class labels.')
+
+            # warn if no qs provided
+            if qs is None:
+                qs = ()
+            if isinstance(qs, (int, float)):
+                qs = (qs)
+            if not isinstance(qs, (list, tuple, np.ndarray)):
+                raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
+
+            # extrapolate the requested mixed use measures
+            mixed_use_hill_keys = []
+            mixed_use_other_keys = []
+            if mixed_use_metrics is not None:
+                for mu in mixed_use_metrics:
+                    if mu not in mixed_uses_options:
+                        raise ValueError(
+                            f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
+                    idx = mixed_uses_options.index(mu)
+                    if idx < 4:
+                        mixed_use_hill_keys.append(idx)
+                    else:
+                        mixed_use_other_keys.append(idx - 4)
+
+            accessibility_keys = []
+            if accessibility_labels is not None:
+                for ac_label in accessibility_labels:
+                    if ac_label not in landuse_classes:
+                        logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
+                    else:
+                        accessibility_keys.append(landuse_classes.index(ac_label))
+
+        # call the underlying method
+        mixed_use_hill_data, mixed_use_other_data, \
+        accessibility_data, accessibility_data_wt = \
+            data.local_aggregator(self.Network._nodes,
+                                  self.Network._edges,
+                                  self._data,
+                                  distances=np.array(self.Network.distances),
+                                  betas=np.array(self.Network.betas),
+                                  landuse_encodings=np.array(landuse_encodings),
+                                  qs=np.array(qs),
+                                  mixed_use_hill_keys=np.array(mixed_use_hill_keys),
+                                  mixed_use_other_keys=np.array(mixed_use_other_keys),
+                                  accessibility_keys=np.array(accessibility_keys),
+                                  cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
+                                  angular=self.Network.angular)
 
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite
         # unpack mixed use hill
-        if mixed_use_hill_keys is not None:
-            for mu_h_idx, mu_h_key in enumerate(mixed_use_hill_keys):
-                mu_h_label = mixed_uses_options[mu_h_key]
-                if mu_h_label not in self.Network.metrics['mixed_uses']:
-                    self.Network.metrics['mixed_uses'][mu_h_label] = {}
-                for q_idx, q_key in enumerate(qs):
-                    self.Network.metrics['mixed_uses'][mu_h_label][q_key] = {}
-                    for d_idx, d_key in enumerate(self.Network.distances):
-                        self.Network.metrics['mixed_uses'][mu_h_label][q_key][d_key] = \
-                            mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
-        # unpack mixed use other
-        if mixed_use_other_keys is not None:
-            for mu_o_idx, mu_o_key in enumerate(mixed_use_other_keys):
-                mu_o_label = mixed_uses_options[mu_o_key + 4]
-                if mu_o_label not in self.Network.metrics['mixed_uses']:
-                    self.Network.metrics['mixed_uses'][mu_o_label] = {}
-                # no qs
+        for mu_h_idx, mu_h_key in enumerate(mixed_use_hill_keys):
+            mu_h_label = mixed_uses_options[mu_h_key]
+            if mu_h_label not in self.Network.metrics['mixed_uses']:
+                self.Network.metrics['mixed_uses'][mu_h_label] = {}
+            for q_idx, q_key in enumerate(qs):
+                self.Network.metrics['mixed_uses'][mu_h_label][q_key] = {}
                 for d_idx, d_key in enumerate(self.Network.distances):
-                    self.Network.metrics['mixed_uses'][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
+                    self.Network.metrics['mixed_uses'][mu_h_label][q_key][d_key] = \
+                        mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
+
+        # unpack mixed use other
+        for mu_o_idx, mu_o_key in enumerate(mixed_use_other_keys):
+            mu_o_label = mixed_uses_options[mu_o_key + 4]
+            if mu_o_label not in self.Network.metrics['mixed_uses']:
+                self.Network.metrics['mixed_uses'][mu_o_label] = {}
+            # no qs
+            for d_idx, d_key in enumerate(self.Network.distances):
+                self.Network.metrics['mixed_uses'][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
+
         # unpack accessibility data
         for ac_idx, ac_code in enumerate(accessibility_keys):
             ac_label = landuse_classes[ac_code]  # ac_code is index of ac_label
-            for k, data in zip(['non_weighted', 'weighted'], [accessibility_data, accessibility_data_wt]):
+            for k, ac_data in zip(['non_weighted', 'weighted'], [accessibility_data, accessibility_data_wt]):
                 if ac_label not in self.Network.metrics['accessibility'][k]:
                     self.Network.metrics['accessibility'][k][ac_label] = {}
                 for d_idx, d_key in enumerate(self.Network.distances):
-                    self.Network.metrics['accessibility'][k][ac_label][d_key] = data[ac_idx][d_idx]
+                    self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
 
     def hill_diversity(self,
-                       data_classes: Union[list, tuple, np.ndarray],
+                       landuse_labels: Union[list, tuple, np.ndarray],
                        qs: Union[list, tuple, np.ndarray] = None):
-        return self.compute_landuses(data_classes, mixed_use_metrics=['hill'], qs=qs)
+        return self.compute_aggregated(landuse_labels, mixed_use_metrics=['hill'], qs=qs)
 
     def hill_branch_wt_diversity(self,
-                                 data_classes: Union[list, tuple, np.ndarray],
+                                 landuse_labels: Union[list, tuple, np.ndarray],
                                  qs: Union[list, tuple, np.ndarray] = None):
-        return self.compute_landuses(data_classes, mixed_use_metrics=['hill_branch_wt'], qs=qs)
-
-    def hill_pairwise_wt_diversity(self,
-                                   data_classes: Union[list, tuple, np.ndarray],
-                                   qs: Union[list, tuple, np.ndarray] = None):
-        return self.compute_landuses(data_classes, mixed_use_metrics=['hill_pairwise_wt'], qs=qs)
+        return self.compute_aggregated(landuse_labels, mixed_use_metrics=['hill_branch_wt'], qs=qs)
 
     def compute_accessibilities(self,
-                                data_classes,
+                                landuse_labels: Union[list, tuple, np.ndarray],
                                 accessibility_labels: Union[list, tuple]):
-        return self.compute_landuses(data_classes, accessibility_labels=accessibility_labels)
+        return self.compute_aggregated(landuse_labels, accessibility_labels=accessibility_labels)
 
+    def compute_stats_multiple(self,
+                               names: Union[list, tuple],
+                               values: Union[List[Union[list, tuple, np.ndarray]],
+                                             Tuple[Union[list, tuple, np.ndarray]]]):
+        pass
+
+    def compute_stats_single(self,
+                             name: str,
+                             values: Union[list, tuple, np.ndarray]):
+
+        return self.compute_aggregated(tuple(name), values=tuple(values))
 
 class Data_Layer_From_Dict(Data_Layer):
 
