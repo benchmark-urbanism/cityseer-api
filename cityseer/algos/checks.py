@@ -9,9 +9,12 @@ def_min_thresh_wt = 0.01831563888873418
 
 @njit
 def check_numerical_data(data_arr: np.ndarray):
-    for num in data_arr:
+    if not data_arr.ndim == 2:
+        raise ValueError('The numeric data array must have a dimensionality 2, '
+                         'consisting of the number of respective data arrays x the length of data points.')
+    for num in np.nditer(data_arr):
         if np.isinf(num):
-            raise ValueError('Data map numeric data must consist of either floats or NaNs.')
+            raise ValueError('The numeric data values must consist of either floats or NaNs.')
 
 
 @njit

@@ -10,8 +10,14 @@ def test_check_numerical_data():
     mock_numerical = mock.mock_numerical_data(50)
 
     # check for malformed data
+    # single dimension
     with pytest.raises(ValueError):
-        mock_numerical[0] = np.inf
+        corrupt_numerical = mock_numerical[0]
+        assert corrupt_numerical.ndim == 1
+        checks.check_numerical_data(corrupt_numerical)
+    # catch infinites
+    with pytest.raises(ValueError):
+        mock_numerical[0][0] = np.inf
         checks.check_numerical_data(mock_numerical)
 
 

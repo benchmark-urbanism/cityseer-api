@@ -227,7 +227,8 @@ def mock_numerical_data(n: int) -> np.ndarray:
     for i in range(n):
         d.append(np.random.uniform(low=0, high=100000))
 
-    return np.array(d)
+    # return a 2d array
+    return np.array([d])
 
 
 def mock_species_diversity(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:

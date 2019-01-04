@@ -141,7 +141,10 @@ class Data_Layer:
                            mixed_use_metrics: Union[list, tuple] = None,
                            accessibility_labels: Union[list, tuple] = None,
                            cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
-                           qs: Union[list, tuple, np.ndarray] = None):
+                           qs: Union[list, tuple, np.ndarray] = None
+                           # TODO: add statistics layers names
+                           # TODO: add statistics layers data arrays
+                           ):
         '''
         This method provides full access to the underlying diversity.local_landuses method
         '''
@@ -262,6 +265,8 @@ class Data_Layer:
                     self.Network.metrics['accessibility'][k][ac_label] = {}
                 for d_idx, d_key in enumerate(self.Network.distances):
                     self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
+
+        # TODO: unpack statistics data to network layer
 
     def hill_diversity(self,
                        landuse_labels: Union[list, tuple, np.ndarray],

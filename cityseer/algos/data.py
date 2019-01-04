@@ -422,6 +422,7 @@ def local_aggregator(node_map: np.ndarray,
                      mixed_use_other_keys: np.ndarray = np.array([]),
                      accessibility_keys: np.ndarray = np.array([]),
                      cl_disparity_wt_matrix: np.ndarray = np.array([[]]),
+                     numerical_arrays: np.ndarray = np.array([[]]),
                      angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
@@ -445,26 +446,35 @@ def local_aggregator(node_map: np.ndarray,
     4 - assigned network index - next-nearest
     '''
     checks.check_network_maps(node_map, edge_map)
-
-    # raises ValueError data points are not assigned to a network
-    checks.check_data_map(data_map, check_assigned=True)
-
+    checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
+    checks.check_numerical_data(numerical_arrays)
+    checks.check_categorical_data(landuse_encodings)
+
+    # flags
+    compute_numerical = False
+    compute_landuses = False
+
+    # check integrity of parameters
+    if len(numerical_arrays) != 0:
+        compute_numerical = True
+        if numerical_arrays.shape[1] != len(data_map):
+            raise ValueError('The length of the numerical data array do not match the length of the data map.')
 
     if len(landuse_encodings) == 0:
         if len(mixed_use_hill_keys) != 0 or len(mixed_use_other_keys) != 0 or len(accessibility_keys) != 0:
             raise ValueError('Mixed use metrics or land-use accessibilities require an array of landuse labels.')
-    else:
-        checks.check_categorical_data(landuse_encodings)
-
-    if len(landuse_encodings) != len(data_map):
+    elif len(landuse_encodings) != len(data_map):
         raise ValueError('The number of landuse encodings does not match the number of data points.')
 
     # negative qs caught by hill diversity methods
 
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
-        raise ValueError(
-            'Neither mixed-use nor accessibility keys specified, please specify at least one metric to compute.')
+        if len(numerical_arrays) == 0:
+            raise ValueError(
+                'Neither mixed-use nor accessibility keys specified, please specify at least one metric to compute.')
+    else:
+        compute_landuses = True
 
     if len(mixed_use_hill_keys) != 0 and (mixed_use_hill_keys.min() < 0 or mixed_use_hill_keys.max() > 3):
         raise ValueError('Mixed-use "hill" keys out of range of 0:4.')
@@ -526,6 +536,10 @@ def local_aggregator(node_map: np.ndarray,
     mixed_use_other_data = np.full((3, d_n, netw_n), np.nan)  # 3 dim
     accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
+    numerical_data_mean = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
+    numerical_data_mean_wt = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
+    numerical_data_variance = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
+    numerical_data_variance_wt = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
     for src_idx in range(netw_n):
@@ -549,83 +563,168 @@ def local_aggregator(node_map: np.ndarray,
                                                                                                    global_max_dist,
                                                                                                    angular)
 
-        # counts of each class type (array length per max unique classes - not just those within max distance)
-        classes_counts = np.full((d_n, mu_max_unique_cl), 0)
-        # nearest of each class type (likewise)
-        classes_nearest = np.full((d_n, mu_max_unique_cl), np.inf)
-        # iterate the reachable non-unique classes and deduce reachable unique class counts and corresponding distances
-        for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
-            # some classes will be NaN if beyond max threshold distance - so check for infinity
-            # this happens when within radial max distance, but beyond network max distance
-            if np.isinf(data_dist):
-                continue
-            # get the class category in integer form
-            # remember that all class codes were encoded to sequential integers - these correspond to the array indices
-            cl_code = int(landuse_encodings[int(data_idx)])
-            # iterate the distance dimensions
-            for d_idx, (d, b) in enumerate(zip(distances, betas)):
-                # increment class counts at respective distances - but only if the distance is less than the current d
-                if data_dist <= d:
-                    classes_counts[d_idx][cl_code] += 1
-                    # if distance is nearer, update the nearest distance array too
-                    if data_dist < classes_nearest[d_idx][cl_code]:
-                        classes_nearest[d_idx][cl_code] = data_dist
-                    # if within distance, and if in accessibility keys, then aggregate accessibility too
-                    for ac_idx, ac_code in enumerate(accessibility_keys):
-                        if ac_code == cl_code:
-                            accessibility_data[ac_idx][d_idx][src_idx] += 1
-                            accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * data_dist)
-                            # if a match was found, then no need to check others
-                            break
+        # LANDUSES
+        if compute_landuses:
+            # counts of each class type (array length per max unique classes - not just those within max distance)
+            classes_counts = np.full((d_n, mu_max_unique_cl), 0)
+            # nearest of each class type (likewise)
+            classes_nearest = np.full((d_n, mu_max_unique_cl), np.inf)
+            # iterate the reachable indices and related distances
+            for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+                # some indices will be NaN if beyond max threshold distance - so check for infinity
+                # this happens when within radial max distance, but beyond network max distance
+                if np.isinf(data_dist):
+                    continue
+                # get the class category in integer form
+                # all class codes were encoded to sequential integers - these correspond to the array indices
+                cl_code = int(landuse_encodings[int(data_idx)])
+                # iterate the distance dimensions
+                for d_idx, (d, b) in enumerate(zip(distances, betas)):
+                    # increment class counts at respective distances if the distance is less than current d
+                    if data_dist <= d:
+                        classes_counts[d_idx][cl_code] += 1
+                        # if distance is nearer, update the nearest distance array too
+                        if data_dist < classes_nearest[d_idx][cl_code]:
+                            classes_nearest[d_idx][cl_code] = data_dist
+                        # if within distance, and if in accessibility keys, then aggregate accessibility too
+                        for ac_idx, ac_code in enumerate(accessibility_keys):
+                            if ac_code == cl_code:
+                                accessibility_data[ac_idx][d_idx][src_idx] += 1
+                                accessibility_data_wt[ac_idx][d_idx][src_idx] += np.exp(b * data_dist)
+                                # if a match was found, then no need to check others
+                                break
 
-        # mixed uses can be calculated now that the local class counts are aggregated
-        # iterate the distances and betas
-        for d_idx, b in enumerate(betas):
+            # mixed uses can be calculated now that the local class counts are aggregated
+            # iterate the distances and betas
+            for d_idx, b in enumerate(betas):
 
-            cl_counts = classes_counts[d_idx]
-            cl_nearest = classes_nearest[d_idx]
+                cl_counts = classes_counts[d_idx]
+                cl_nearest = classes_nearest[d_idx]
 
-            # mu keys determine which metrics to compute
-            # don't confuse with indices
-            # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys
-            for mu_hill_key in mixed_use_hill_keys:
+                # mu keys determine which metrics to compute
+                # don't confuse with indices
+                # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys
+                for mu_hill_key in mixed_use_hill_keys:
 
-                for q_idx, q_key in enumerate(qs):
+                    for q_idx, q_key in enumerate(qs):
 
-                    if mu_hill_key == 0:
-                        mixed_use_hill_data[0][q_idx][d_idx][src_idx] = \
-                            diversity.hill_diversity(cl_counts, q_key)
+                        if mu_hill_key == 0:
+                            mixed_use_hill_data[0][q_idx][d_idx][src_idx] = \
+                                diversity.hill_diversity(cl_counts, q_key)
 
-                    elif mu_hill_key == 1:
-                        mixed_use_hill_data[1][q_idx][d_idx][src_idx] = \
-                            diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        elif mu_hill_key == 1:
+                            mixed_use_hill_data[1][q_idx][d_idx][src_idx] = \
+                                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
-                    elif mu_hill_key == 2:
-                        mixed_use_hill_data[2][q_idx][d_idx][src_idx] = \
-                            diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        elif mu_hill_key == 2:
+                            mixed_use_hill_data[2][q_idx][d_idx][src_idx] = \
+                                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
-                    # land-use classification disparity hill diversity
-                    # the wt matrix can be used without mapping because cl_counts is based on all classes
-                    # regardless of whether they are reachable
-                    elif mu_hill_key == 3:
-                        mixed_use_hill_data[3][q_idx][d_idx][src_idx] = \
-                            diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
-                                                                        wt_matrix=cl_disparity_wt_matrix,
-                                                                        q=q_key)
+                        # land-use classification disparity hill diversity
+                        # the wt matrix can be used without mapping because cl_counts is based on all classes
+                        # regardless of whether they are reachable
+                        elif mu_hill_key == 3:
+                            mixed_use_hill_data[3][q_idx][d_idx][src_idx] = \
+                                diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
+                                                                            wt_matrix=cl_disparity_wt_matrix,
+                                                                            q=q_key)
 
-            for mu_other_key in mixed_use_other_keys:
+                for mu_other_key in mixed_use_other_keys:
 
-                if mu_other_key == 0:
-                    mixed_use_other_data[0][d_idx][src_idx] = \
-                        diversity.shannon_diversity(cl_counts)
+                    if mu_other_key == 0:
+                        mixed_use_other_data[0][d_idx][src_idx] = \
+                            diversity.shannon_diversity(cl_counts)
 
-                elif mu_other_key == 1:
-                    mixed_use_other_data[1][d_idx][src_idx] = \
-                        diversity.gini_simpson_diversity(cl_counts)
+                    elif mu_other_key == 1:
+                        mixed_use_other_data[1][d_idx][src_idx] = \
+                            diversity.gini_simpson_diversity(cl_counts)
 
-                elif mu_other_key == 2:
-                    mixed_use_other_data[2][d_idx][src_idx] = \
-                        diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+                    elif mu_other_key == 2:
+                        mixed_use_other_data[2][d_idx][src_idx] = \
+                            diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+
+        # IDW
+        # the order of the loops matters because the nested aggregations happen per distance per numerical array
+        if compute_numerical:
+
+            # iterate the numerical arrays dimension
+            for num_idx in range(len(numerical_arrays)):
+
+                # TODO: switch out the loops by using multidimensional (over distance) aggs
+                # iterate the distance dimensions
+                for d_idx, (d, b) in enumerate(zip(distances, betas)):
+
+                    # IDW: aggregate the items weighted by distance, then divide by similarly aggregated distances
+                    agg_mean = np.nan
+                    agg_count = 0
+                    agg_mean_wt = np.nan
+                    agg_count_wt = 0
+
+                    # iterate the reachable indices and related distances
+                    for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+                        # some indices will be NaN if beyond max threshold distance - so check for infinity
+                        # this happens when within radial max distance, but beyond network max distance
+                        if np.isinf(data_dist):
+                            continue
+
+                        # increment aggregations at respective distances if the distance is less than current d
+                        if data_dist <= d:
+
+                            # some values will be NaN
+                            num = numerical_arrays[num_idx][data_idx]
+                            if np.isnan(num):
+                                continue
+
+                            # aggregate
+                            if np.isnan(agg_mean):
+                                agg_mean = num
+                                agg_mean_wt = np.exp(data_dist * b)
+                                agg_count = 1
+                                agg_count_wt = np.exp(data_dist * b)
+                            else:
+                                agg_mean += num
+                                agg_mean_wt += np.exp(data_dist * b)
+                                agg_count += 1
+                                agg_count_wt += np.exp(data_dist * b)
+
+                    # now the mean is known and the variance can be calculated
+                    agg_mean = agg_mean / agg_count
+                    agg_mean_wt = agg_mean_wt / agg_count_wt
+
+                    # TODO: calculate variance
+                    # IDW: aggregate the items weighted by distance, then divide by similarly aggregated distances
+                    agg_variance = np.nan
+                    agg_count = 0
+                    agg_mean_wt = np.nan
+                    agg_count_wt = 0
+
+                    # iterate the reachable indices and related distances
+                    for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+                        # some indices will be NaN if beyond max threshold distance - so check for infinity
+                        # this happens when within radial max distance, but beyond network max distance
+                        if np.isinf(data_dist):
+                            continue
+
+                        # increment aggregations at respective distances if the distance is less than current d
+                        if data_dist <= d:
+
+                            # some values will be NaN
+                            num = numerical_arrays[num_idx][data_idx]
+                            if np.isnan(num):
+                                continue
+
+                            # aggregate
+                            if np.isnan(agg_mean):
+                                agg_mean = num
+                                agg_mean_wt = np.exp(data_dist * b)
+                                agg_count = 1
+                                agg_count_wt = np.exp(data_dist * b)
+                            else:
+                                agg_mean += num
+                                agg_mean_wt += np.exp(data_dist * b)
+                                agg_count += 1
+                                agg_count_wt += np.exp(data_dist * b)
+
 
     print('...done')
 
