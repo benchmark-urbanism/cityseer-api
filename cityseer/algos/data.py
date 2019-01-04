@@ -423,7 +423,8 @@ def local_aggregator(node_map: np.ndarray,
                      accessibility_keys: np.ndarray = np.array([]),
                      cl_disparity_wt_matrix: np.ndarray = np.array([[]]),
                      numerical_arrays: np.ndarray = np.array([[]]),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                     np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -526,6 +527,7 @@ def local_aggregator(node_map: np.ndarray,
     netw_n = len(node_map)
     d_n = len(distances)
     q_n = len(qs)
+    n_n = len(numerical_arrays)
     mu_max_unique_cl = int(landuse_encodings.max() + 1)
     global_max_dist = distances.max()
     netw_nodes_live = node_map[:, 2]
@@ -534,12 +536,19 @@ def local_aggregator(node_map: np.ndarray,
     # hill mixed uses are structured separately to take values of q into account
     mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), np.nan)  # 4 dim
     mixed_use_other_data = np.full((3, d_n, netw_n), np.nan)  # 3 dim
+
     accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
-    numerical_data_mean = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
-    numerical_data_mean_wt = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
-    numerical_data_variance = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
-    numerical_data_variance_wt = np.full((len(numerical_arrays), d_n, netw_n), np.nan)
+
+    # stats
+    agg_mean = np.full((n_n, d_n, netw_n), np.nan)
+    agg_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
+
+    agg_count = np.full((n_n, d_n, netw_n), np.nan)  # use np.nan instead of 0 to avoid division by zero issues
+    agg_count_wt = np.full((n_n, d_n, netw_n), np.nan)
+
+    agg_variance = np.full((n_n, d_n, netw_n), np.nan)
+    agg_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
     for src_idx in range(netw_n):
@@ -647,84 +656,90 @@ def local_aggregator(node_map: np.ndarray,
         # the order of the loops matters because the nested aggregations happen per distance per numerical array
         if compute_numerical:
 
-            # iterate the numerical arrays dimension
-            for num_idx in range(len(numerical_arrays)):
+            # iterate the reachable indices and related distances
+            for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+                # some indices will be NaN if beyond max threshold distance - so check for infinity
+                # this happens when within radial max distance, but beyond network max distance
+                if np.isinf(data_dist):
+                    continue
 
-                # TODO: switch out the loops by using multidimensional (over distance) aggs
-                # iterate the distance dimensions
-                for d_idx, (d, b) in enumerate(zip(distances, betas)):
+                # iterate the numerical arrays dimension
+                for num_idx in range(n_n):
 
-                    # IDW: aggregate the items weighted by distance, then divide by similarly aggregated distances
-                    agg_mean = np.nan
-                    agg_count = 0
-                    agg_mean_wt = np.nan
-                    agg_count_wt = 0
+                    # some values will be NaN
+                    num = numerical_arrays[num_idx][data_idx]
+                    if np.isnan(num):
+                        continue
 
-                    # iterate the reachable indices and related distances
-                    for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
-                        # some indices will be NaN if beyond max threshold distance - so check for infinity
-                        # this happens when within radial max distance, but beyond network max distance
-                        if np.isinf(data_dist):
-                            continue
+                    # iterate the distance dimensions
+                    for d_idx, (d, b) in enumerate(zip(distances, betas)):
 
-                        # increment aggregations at respective distances if the distance is less than current d
+                        # increment mean aggregations at respective distances if the distance is less than current d
                         if data_dist <= d:
 
-                            # some values will be NaN
-                            num = numerical_arrays[num_idx][data_idx]
-                            if np.isnan(num):
-                                continue
-
                             # aggregate
-                            if np.isnan(agg_mean):
-                                agg_mean = num
-                                agg_mean_wt = np.exp(data_dist * b)
-                                agg_count = 1
-                                agg_count_wt = np.exp(data_dist * b)
+                            if np.isnan(agg_mean[num_idx][d_idx][src_idx]):
+                                agg_mean[num_idx][d_idx][src_idx] = num
+                                agg_count[num_idx][d_idx][src_idx] = 1
+                                agg_mean_wt[num_idx][d_idx][src_idx] = num * np.exp(data_dist * b)
+                                agg_count_wt[num_idx][d_idx][src_idx] = np.exp(data_dist * b)
                             else:
-                                agg_mean += num
-                                agg_mean_wt += np.exp(data_dist * b)
-                                agg_count += 1
-                                agg_count_wt += np.exp(data_dist * b)
+                                agg_mean[num_idx][d_idx][src_idx] += num
+                                agg_count[num_idx][d_idx][src_idx] += 1
+                                agg_mean_wt[num_idx][d_idx][src_idx] += num * np.exp(data_dist * b)
+                                agg_count_wt[num_idx][d_idx][src_idx] += np.exp(data_dist * b)
 
-                    # now the mean is known and the variance can be calculated
-                    agg_mean = agg_mean / agg_count
-                    agg_mean_wt = agg_mean_wt / agg_count_wt
+            # finalise mean calculations - this is happening for a single src_idx, so fairly fast
+            for num_idx in range(n_n):
+                for d_idx in range(d_n):
+                    agg_mean[num_idx][d_idx][src_idx] = \
+                        agg_mean[num_idx][d_idx][src_idx] / agg_count[num_idx][d_idx][src_idx]
+                    agg_mean_wt[num_idx][d_idx][src_idx] = \
+                        agg_mean_wt[num_idx][d_idx][src_idx] / agg_count_wt[num_idx][d_idx][src_idx]
 
-                    # TODO: calculate variance
-                    # IDW: aggregate the items weighted by distance, then divide by similarly aggregated distances
-                    agg_variance = np.nan
-                    agg_count = 0
-                    agg_mean_wt = np.nan
-                    agg_count_wt = 0
+            # IDW: calculate variances - counts are already computed per above
+            # iterate the reachable indices and related distances
+            for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+                # some indices will be NaN if beyond max threshold distance - so check for infinity
+                # this happens when within radial max distance, but beyond network max distance
+                if np.isinf(data_dist):
+                    continue
 
-                    # iterate the reachable indices and related distances
-                    for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
-                        # some indices will be NaN if beyond max threshold distance - so check for infinity
-                        # this happens when within radial max distance, but beyond network max distance
-                        if np.isinf(data_dist):
-                            continue
+                # iterate the numerical arrays dimension
+                for num_idx in range(n_n):
 
-                        # increment aggregations at respective distances if the distance is less than current d
+                    # some values will be NaN
+                    num = numerical_arrays[num_idx][data_idx]
+                    if np.isnan(num):
+                        continue
+
+                    # iterate the distance dimensions
+                    for d_idx, (d, b) in enumerate(zip(distances, betas)):
+
+
+
+                        # increment variance aggregations at respective distances if the distance is less than current d
                         if data_dist <= d:
 
-                            # some values will be NaN
-                            num = numerical_arrays[num_idx][data_idx]
-                            if np.isnan(num):
-                                continue
-
                             # aggregate
-                            if np.isnan(agg_mean):
-                                agg_mean = num
-                                agg_mean_wt = np.exp(data_dist * b)
-                                agg_count = 1
-                                agg_count_wt = np.exp(data_dist * b)
+                            if np.isnan(agg_variance[num_idx][d_idx][src_idx]):
+                                agg_variance[num_idx][d_idx][src_idx] = \
+                                    np.square(num - agg_mean[num_idx][d_idx][src_idx])
+                                agg_variance_wt[num_idx][d_idx][src_idx] = \
+                                    np.square(num - agg_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
                             else:
-                                agg_mean += num
-                                agg_mean_wt += np.exp(data_dist * b)
-                                agg_count += 1
-                                agg_count_wt += np.exp(data_dist * b)
+                                agg_variance[num_idx][d_idx][src_idx] += \
+                                    np.square(num - agg_mean[num_idx][d_idx][src_idx])
+                                agg_variance_wt[num_idx][d_idx][src_idx] += \
+                                    np.square(num - agg_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
 
+            # finalise variance calculations
+            for num_idx in range(n_n):
+                for d_idx in range(d_n):
+                    agg_variance[num_idx][d_idx][src_idx] = \
+                        agg_variance[num_idx][d_idx][src_idx] / agg_count[num_idx][d_idx][src_idx]
+                    agg_variance_wt[num_idx][d_idx][src_idx] = \
+                        agg_variance_wt[num_idx][d_idx][src_idx] / agg_count_wt[num_idx][d_idx][src_idx]
 
     print('...done')
 
@@ -740,4 +755,8 @@ def local_aggregator(node_map: np.ndarray,
     return mixed_use_hill_data[mu_hill_k_int], \
            mixed_use_other_data[mu_other_k_int], \
            accessibility_data, \
-           accessibility_data_wt
+           accessibility_data_wt, \
+           agg_mean, \
+           agg_mean_wt, \
+           agg_variance, \
+           agg_variance_wt
