@@ -423,8 +423,8 @@ def local_aggregator(node_map: np.ndarray,
                      accessibility_keys: np.ndarray = np.array([]),
                      cl_disparity_wt_matrix: np.ndarray = np.array([[]]),
                      numerical_arrays: np.ndarray = np.array([[]]),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                     np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                     np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -449,24 +449,23 @@ def local_aggregator(node_map: np.ndarray,
     checks.check_network_maps(node_map, edge_map)
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
-    checks.check_numerical_data(numerical_arrays)
-    checks.check_categorical_data(landuse_encodings)
-
-    # flags
-    compute_numerical = False
-    compute_landuses = False
 
     # check integrity of parameters
-    if len(numerical_arrays) != 0:
+    compute_numerical = False
+    if numerical_arrays.shape[1] != 0:
         compute_numerical = True
         if numerical_arrays.shape[1] != len(data_map):
-            raise ValueError('The length of the numerical data array do not match the length of the data map.')
+            raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
+        checks.check_numerical_data(numerical_arrays)
 
+    compute_landuses = False
     if len(landuse_encodings) == 0:
         if len(mixed_use_hill_keys) != 0 or len(mixed_use_other_keys) != 0 or len(accessibility_keys) != 0:
             raise ValueError('Mixed use metrics or land-use accessibilities require an array of landuse labels.')
     elif len(landuse_encodings) != len(data_map):
         raise ValueError('The number of landuse encodings does not match the number of data points.')
+    else:
+        checks.check_categorical_data(landuse_encodings)
 
     # negative qs caught by hill diversity methods
 
@@ -477,15 +476,18 @@ def local_aggregator(node_map: np.ndarray,
     else:
         compute_landuses = True
 
-    if len(mixed_use_hill_keys) != 0 and (mixed_use_hill_keys.min() < 0 or mixed_use_hill_keys.max() > 3):
-        raise ValueError('Mixed-use "hill" keys out of range of 0:4.')
+    if len(mixed_use_hill_keys) != 0:
+        if (mixed_use_hill_keys.min() < 0 or mixed_use_hill_keys.max() > 3):
+            raise ValueError('Mixed-use "hill" keys out of range of 0:4.')
 
-    if len(mixed_use_other_keys) != 0 and (mixed_use_other_keys.min() < 0 or mixed_use_other_keys.max() > 2):
-        raise ValueError('Mixed-use "other" keys out of range of 0:3.')
+    if len(mixed_use_other_keys) != 0:
+        if (mixed_use_other_keys.min() < 0 or mixed_use_other_keys.max() > 2):
+            raise ValueError('Mixed-use "other" keys out of range of 0:3.')
 
-    max_ac_key = landuse_encodings.max()
-    if len(accessibility_keys) != 0 and (accessibility_keys.min() < 0 or accessibility_keys.max() > max_ac_key):
-        raise ValueError('Negative accessibility key encountered. Use positive keys corresponding to class encodings.')
+    if len(accessibility_keys) != 0:
+        max_ac_key = landuse_encodings.max()
+        if (accessibility_keys.min() < 0 or accessibility_keys.max() > max_ac_key):
+            raise ValueError('Negative or out of range accessibility key encountered. Keys must match class encodings.')
 
     for i in range(len(mixed_use_hill_keys)):
         for j in range(len(mixed_use_hill_keys)):
@@ -528,7 +530,6 @@ def local_aggregator(node_map: np.ndarray,
     d_n = len(distances)
     q_n = len(qs)
     n_n = len(numerical_arrays)
-    mu_max_unique_cl = int(landuse_encodings.max() + 1)
     global_max_dist = distances.max()
     netw_nodes_live = node_map[:, 2]
 
@@ -541,14 +542,17 @@ def local_aggregator(node_map: np.ndarray,
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
 
     # stats
-    agg_mean = np.full((n_n, d_n, netw_n), np.nan)
-    agg_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
+    stats_mean = np.full((n_n, d_n, netw_n), np.nan)
+    stats_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
 
-    agg_count = np.full((n_n, d_n, netw_n), np.nan)  # use np.nan instead of 0 to avoid division by zero issues
-    agg_count_wt = np.full((n_n, d_n, netw_n), np.nan)
+    stats_count = np.full((n_n, d_n, netw_n), np.nan)  # use np.nan instead of 0 to avoid division by zero issues
+    stats_count_wt = np.full((n_n, d_n, netw_n), np.nan)
 
-    agg_variance = np.full((n_n, d_n, netw_n), np.nan)
-    agg_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
+    stats_variance = np.full((n_n, d_n, netw_n), np.nan)
+    stats_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
+
+    stats_max = np.full((n_n, d_n, netw_n), np.nan)
+    stats_min = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
     for src_idx in range(netw_n):
@@ -574,6 +578,7 @@ def local_aggregator(node_map: np.ndarray,
 
         # LANDUSES
         if compute_landuses:
+            mu_max_unique_cl = int(landuse_encodings.max() + 1)
             # counts of each class type (array length per max unique classes - not just those within max distance)
             classes_counts = np.full((d_n, mu_max_unique_cl), 0)
             # nearest of each class type (likewise)
@@ -667,7 +672,7 @@ def local_aggregator(node_map: np.ndarray,
                 for num_idx in range(n_n):
 
                     # some values will be NaN
-                    num = numerical_arrays[num_idx][data_idx]
+                    num = numerical_arrays[num_idx][int(data_idx)]
                     if np.isnan(num):
                         continue
 
@@ -678,24 +683,34 @@ def local_aggregator(node_map: np.ndarray,
                         if data_dist <= d:
 
                             # aggregate
-                            if np.isnan(agg_mean[num_idx][d_idx][src_idx]):
-                                agg_mean[num_idx][d_idx][src_idx] = num
-                                agg_count[num_idx][d_idx][src_idx] = 1
-                                agg_mean_wt[num_idx][d_idx][src_idx] = num * np.exp(data_dist * b)
-                                agg_count_wt[num_idx][d_idx][src_idx] = np.exp(data_dist * b)
+                            if np.isnan(stats_mean[num_idx][d_idx][src_idx]):
+                                stats_mean[num_idx][d_idx][src_idx] = num
+                                stats_count[num_idx][d_idx][src_idx] = 1
+                                stats_mean_wt[num_idx][d_idx][src_idx] = num * np.exp(data_dist * b)
+                                stats_count_wt[num_idx][d_idx][src_idx] = np.exp(data_dist * b)
                             else:
-                                agg_mean[num_idx][d_idx][src_idx] += num
-                                agg_count[num_idx][d_idx][src_idx] += 1
-                                agg_mean_wt[num_idx][d_idx][src_idx] += num * np.exp(data_dist * b)
-                                agg_count_wt[num_idx][d_idx][src_idx] += np.exp(data_dist * b)
+                                stats_mean[num_idx][d_idx][src_idx] += num
+                                stats_count[num_idx][d_idx][src_idx] += 1
+                                stats_mean_wt[num_idx][d_idx][src_idx] += num * np.exp(data_dist * b)
+                                stats_count_wt[num_idx][d_idx][src_idx] += np.exp(data_dist * b)
+
+                            if np.isnan(stats_max[num_idx][d_idx][src_idx]):
+                                stats_max[num_idx][d_idx][src_idx] = num
+                            elif num > stats_max[num_idx][d_idx][src_idx]:
+                                stats_max[num_idx][d_idx][src_idx] = num
+
+                            if np.isnan(stats_min[num_idx][d_idx][src_idx]):
+                                stats_min[num_idx][d_idx][src_idx] = num
+                            elif num < stats_min[num_idx][d_idx][src_idx]:
+                                stats_min[num_idx][d_idx][src_idx] = num
 
             # finalise mean calculations - this is happening for a single src_idx, so fairly fast
             for num_idx in range(n_n):
                 for d_idx in range(d_n):
-                    agg_mean[num_idx][d_idx][src_idx] = \
-                        agg_mean[num_idx][d_idx][src_idx] / agg_count[num_idx][d_idx][src_idx]
-                    agg_mean_wt[num_idx][d_idx][src_idx] = \
-                        agg_mean_wt[num_idx][d_idx][src_idx] / agg_count_wt[num_idx][d_idx][src_idx]
+                    stats_mean[num_idx][d_idx][src_idx] = \
+                        stats_mean[num_idx][d_idx][src_idx] / stats_count[num_idx][d_idx][src_idx]
+                    stats_mean_wt[num_idx][d_idx][src_idx] = \
+                        stats_mean_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
 
             # IDW: calculate variances - counts are already computed per above
             # iterate the reachable indices and related distances
@@ -709,37 +724,35 @@ def local_aggregator(node_map: np.ndarray,
                 for num_idx in range(n_n):
 
                     # some values will be NaN
-                    num = numerical_arrays[num_idx][data_idx]
+                    num = numerical_arrays[num_idx][int(data_idx)]
                     if np.isnan(num):
                         continue
 
                     # iterate the distance dimensions
                     for d_idx, (d, b) in enumerate(zip(distances, betas)):
 
-
-
                         # increment variance aggregations at respective distances if the distance is less than current d
                         if data_dist <= d:
 
                             # aggregate
-                            if np.isnan(agg_variance[num_idx][d_idx][src_idx]):
-                                agg_variance[num_idx][d_idx][src_idx] = \
-                                    np.square(num - agg_mean[num_idx][d_idx][src_idx])
-                                agg_variance_wt[num_idx][d_idx][src_idx] = \
-                                    np.square(num - agg_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
+                            if np.isnan(stats_variance[num_idx][d_idx][src_idx]):
+                                stats_variance[num_idx][d_idx][src_idx] = \
+                                    np.square(num - stats_mean[num_idx][d_idx][src_idx])
+                                stats_variance_wt[num_idx][d_idx][src_idx] = \
+                                    np.square(num - stats_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
                             else:
-                                agg_variance[num_idx][d_idx][src_idx] += \
-                                    np.square(num - agg_mean[num_idx][d_idx][src_idx])
-                                agg_variance_wt[num_idx][d_idx][src_idx] += \
-                                    np.square(num - agg_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
+                                stats_variance[num_idx][d_idx][src_idx] += \
+                                    np.square(num - stats_mean[num_idx][d_idx][src_idx])
+                                stats_variance_wt[num_idx][d_idx][src_idx] += \
+                                    np.square(num - stats_mean_wt[num_idx][d_idx][src_idx]) * np.exp(data_dist * b)
 
             # finalise variance calculations
             for num_idx in range(n_n):
                 for d_idx in range(d_n):
-                    agg_variance[num_idx][d_idx][src_idx] = \
-                        agg_variance[num_idx][d_idx][src_idx] / agg_count[num_idx][d_idx][src_idx]
-                    agg_variance_wt[num_idx][d_idx][src_idx] = \
-                        agg_variance_wt[num_idx][d_idx][src_idx] / agg_count_wt[num_idx][d_idx][src_idx]
+                    stats_variance[num_idx][d_idx][src_idx] = \
+                        stats_variance[num_idx][d_idx][src_idx] / stats_count[num_idx][d_idx][src_idx]
+                    stats_variance_wt[num_idx][d_idx][src_idx] = \
+                        stats_variance_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
 
     print('...done')
 
@@ -756,7 +769,9 @@ def local_aggregator(node_map: np.ndarray,
            mixed_use_other_data[mu_other_k_int], \
            accessibility_data, \
            accessibility_data_wt, \
-           agg_mean, \
-           agg_mean_wt, \
-           agg_variance, \
-           agg_variance_wt
+           stats_mean, \
+           stats_mean_wt, \
+           stats_variance, \
+           stats_variance_wt, \
+           stats_max, \
+           stats_min

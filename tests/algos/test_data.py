@@ -307,7 +307,7 @@ def test_aggregate_to_src_idx():
                                 assert reachable_dist == next_nearest_dist
 
 
-def test_local_aggregator():
+def test_local_aggregator_categorical_components():
     # load the test graph
     G, pos = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
@@ -335,13 +335,14 @@ def test_local_aggregator():
     ac_keys = np.array([1, 2, 5])
     np.random.shuffle(ac_keys)
 
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt = \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
+    stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
                               distances,
                               betas,
-                              landuse_encodings,
+                              landuse_encodings=landuse_encodings,
                               qs=qs,
                               mixed_use_hill_keys=hill_keys,
                               mixed_use_other_keys=non_hill_keys,
@@ -470,7 +471,8 @@ def test_local_aggregator():
     landuse_classes_dual, landuse_encodings_dual = layers.encode_categorical(mock_categorical)
     mock_matrix = np.full((len(landuse_classes_dual), len(landuse_classes_dual)), 1)
 
-    mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual = \
+    mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual, stats_mean, stats_mean_wt, \
+    stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map_dual,
                               edge_map_dual,
                               data_map_dual,
@@ -484,7 +486,8 @@ def test_local_aggregator():
                               cl_disparity_wt_matrix=mock_matrix,
                               angular=True)
 
-    mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep = \
+    mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep, \
+    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map_dual,
                               edge_map_dual,
                               data_map_dual,
@@ -541,9 +544,8 @@ def test_local_aggregator():
                                   mixed_use_other_keys=np.array(o_key),
                                   angular=False)
 
-    # check that problematic keys are caught
-    for mu_h_key, mu_o_key, ac_key in [([], [], []),  # missing
-                                       ([-1], [1], [1]),  # negatives
+    # check that problematic mixed use and accessibility keys are caught
+    for mu_h_key, mu_o_key, ac_key in [([-1], [1], [1]),  # negatives
                                        ([1], [-1], [1]),
                                        ([1], [1], [-1]),
                                        ([4], [1], [1]),  # out of range
@@ -563,3 +565,62 @@ def test_local_aggregator():
                                   mixed_use_hill_keys=np.array(mu_h_key),
                                   mixed_use_other_keys=np.array(mu_o_key),
                                   accessibility_keys=np.array(ac_key))
+
+
+def test_local_aggregator_numerical_components():
+    # load the test graph
+    G, pos = mock.mock_graph()
+    G = graphs.networkX_simple_geoms(G)
+    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+
+    # setup data
+    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
+
+    # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
+    betas = np.array([-0.00125])
+    distances = networks.distance_from_beta(betas)
+    mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
+
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
+    stats_variance, stats_variance_wt, stats_max, stats_min = \
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              numerical_arrays=mock_numerical,
+                              angular=False)
+
+    # non connected portions of the graph will have different stats
+    # used manual data plots from test_assign_to_network() to see which nodes the data points are assigned to
+    # connected graph is from 0 to 48 -> assigned data points are all except 5, 8, 17, 33, 48
+    connected_nodes_idx = list(range(49))
+    # and the respective data assigned to connected portion of the graph
+    connected_data_idx = [i for i in range(len(data_dict)) if i not in [5, 8, 17, 33, 48]]
+    # isolated node = 49 -> assigned data points = 5, 8, 48
+    # isolated nodes = 50 & 51 -> assigned data points = 17, 33
+    for stats_idx in range(len(mock_numerical)):
+        for d_idx in range(len(distances)):
+            # max
+            assert np.allclose(stats_max[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].max())
+            assert np.allclose(stats_max[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].max())
+            assert np.allclose(stats_max[stats_idx][d_idx][connected_nodes_idx],
+                               mock_numerical[stats_idx][connected_data_idx].max())
+            # min
+            assert np.allclose(stats_min[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].min())
+            assert np.allclose(stats_min[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].min())
+            assert np.allclose(stats_min[stats_idx][d_idx][connected_nodes_idx],
+                               mock_numerical[stats_idx][connected_data_idx].min())
+            # mean
+            assert np.allclose(stats_mean[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].mean())
+            assert np.allclose(stats_mean[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].mean())
+            assert np.allclose(stats_mean[stats_idx][d_idx][connected_nodes_idx],
+                               mock_numerical[stats_idx][connected_data_idx].mean())
+            # variance
+            assert np.allclose(stats_variance[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].var())
+            assert np.allclose(stats_variance[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].var())
+            assert np.allclose(stats_variance[stats_idx][d_idx][connected_nodes_idx],
+                               mock_numerical[stats_idx][connected_data_idx].var())

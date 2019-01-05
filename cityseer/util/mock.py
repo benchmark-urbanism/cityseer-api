@@ -193,7 +193,7 @@ def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(G: nx.Graph, num: int = 50, random_seed: int = None) -> dict:
+def mock_data_dict(G: nx.Graph, length: int = 50, random_seed: int = None) -> dict:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
@@ -201,7 +201,7 @@ def mock_data_dict(G: nx.Graph, num: int = 50, random_seed: int = None) -> dict:
 
     data_dict = {}
 
-    for i in range(num):
+    for i in range(length):
         data_dict[i] = {
             'x': np.random.uniform(int(min_x), int(max_x)),
             'y': np.random.uniform(int(min_y), int(max_y)),
@@ -211,24 +211,35 @@ def mock_data_dict(G: nx.Graph, num: int = 50, random_seed: int = None) -> dict:
     return data_dict
 
 
-def mock_categorical_data(n: int) -> np.ndarray:
+def mock_categorical_data(length: int, random_seed: int = None) -> np.ndarray:
+    if random_seed is not None:
+        np.random.seed(seed=random_seed)
+
     random_class_str = 'abcdefghijk'
     d = []
 
-    for i in range(n):
+    for i in range(length):
         d.append(random_class_str[np.random.randint(0, len(random_class_str) - 1)])
 
     return np.array(d)
 
 
-def mock_numerical_data(n: int) -> np.ndarray:
-    d = []
+def mock_numerical_data(length: int, num_arrs: int = 1, random_seed: int = None) -> np.ndarray:
+    if random_seed is not None:
+        np.random.seed(seed=random_seed)
 
-    for i in range(n):
-        d.append(np.random.uniform(low=0, high=100000))
+    num_data = []
+
+    for i in range(num_arrs):
+        data = []
+
+        for i in range(length):
+            data.append(np.random.uniform(low=0, high=100000))
+
+        num_data.append(data)
 
     # return a 2d array
-    return np.array([d])
+    return np.array(num_data)
 
 
 def mock_species_diversity(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:

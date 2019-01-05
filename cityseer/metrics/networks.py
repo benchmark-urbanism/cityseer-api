@@ -70,7 +70,8 @@ class Network_Layer:
             'accessibility': {
                 'non_weighted': {},
                 'weighted': {}
-            }
+            },
+            'stats': {}
         }
         self._networkX = None
 
@@ -194,6 +195,14 @@ class Network_Layer:
                     m[uid]['accessibility'][cat][cl_key] = {}
                     for d_key, d_val in cl_val.items():
                         m[uid]['accessibility'][cat][cl_key][d_key] = d_val[i]
+
+            m[uid]['stats'] = {}
+            for th_key, th_val in self.metrics['stats'].items():
+                m[uid]['stats'][th_key] = {}
+                for stat_key, stat_val in th_val.items():
+                    m[uid]['stats'][th_key][stat_key] = {}
+                    for d_key, d_val in stat_val.items():
+                        m[uid]['stats'][th_key][stat_key][d_key] = d_val[i]
 
         return m
 

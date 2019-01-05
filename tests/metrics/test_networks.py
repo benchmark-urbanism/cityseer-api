@@ -173,6 +173,11 @@ def dict_check(m_dict, Network):
                 for d_key, d_val in cl_val.items():
                     assert d_val[i] == m_dict[uid]['accessibility'][cat][cl_key][d_key]
 
+        for th_key, th_val in Network.metrics['stats'].items():
+            for stat_key, stat_val in th_val.items():
+                for d_key, d_val in stat_val.items():
+                    # some NaN so use np.allclose
+                    assert np.allclose(d_val[i], m_dict[uid]['stats'][th_key][stat_key][d_key], equal_nan=True)
 
 def test_metrics_to_dict():
 
@@ -195,10 +200,15 @@ def test_metrics_to_dict():
     # check with data metrics
     data_dict = mock.mock_data_dict(G)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
+    numerical_data = mock.mock_numerical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_aggregated(landuse_labels, mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'],
-                         qs=[0, 1])
+    D.compute_aggregated(landuse_labels,
+                         mixed_use_metrics=['hill', 'shannon'],
+                         accessibility_labels=['a', 'c'],
+                         qs=[0, 1],
+                         numerical_labels=['boo'],
+                         numerical_arrays=numerical_data)
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 

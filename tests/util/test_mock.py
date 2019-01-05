@@ -63,12 +63,17 @@ def test_mock_categorical_data():
 
 
 def test_mock_numerical_data():
-    num_d = mock.mock_numerical_data(50)
-    assert len(num_d) == 50
+    for length in [50, 100]:
+        for num_arrs in range(1, 3):
 
-    for n in num_d:
-        assert isinstance(n, float)
-        assert 0 <= n <= 100000
+            num_d = mock.mock_numerical_data(length=length, num_arrs=num_arrs)
+            assert num_d.shape[0] == num_arrs
+            assert num_d.shape[1] == length
+
+            for arr in num_d:
+                for n in arr:
+                    assert isinstance(n, float)
+                    assert 0 <= n <= 100000
 
 
 def test_mock_species_diversity():

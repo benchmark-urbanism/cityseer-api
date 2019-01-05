@@ -122,8 +122,9 @@ def test_Data_Layer_From_Dict():
     assert np.array_equal(D.live, live)
 
 
-def test_compute_aggregated():
+def test_compute_aggregated_landuses():
     '''
+    Test landuse components
     Underlying method also tested via diversity.test_local_landuses()
     '''
 
@@ -152,7 +153,8 @@ def test_compute_aggregated():
     D.compute_aggregated(landuse_labels, mixed_use_metrics=['hill_branch_wt'], qs=qs)
     # test against underlying method
     data_map = D._data
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt = \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
+    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -172,7 +174,8 @@ def test_compute_aggregated():
     D.compute_aggregated(landuse_labels, mixed_use_metrics=['gini_simpson'])
     # test against underlying method
     data_map = D._data
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt = \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
+    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -189,7 +192,8 @@ def test_compute_aggregated():
     D.compute_aggregated(landuse_labels, accessibility_labels=['c'])
     # test against underlying method
     data_map = D._data
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt = \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
+    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -253,7 +257,8 @@ def test_compute_aggregated():
                                           qs=qs)
 
                 # test against underlying method
-                mu_data_hill, mu_data_other, ac_data, ac_data_wt = \
+                mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
+                stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
                     data.local_aggregator(node_map,
                                           edge_map,
                                           data_map,
@@ -300,8 +305,8 @@ def test_compute_aggregated():
     assert not np.array_equal(N_dual.metrics['mixed_uses']['shannon'][2000],
                               N_dual_sidestep.metrics['mixed_uses']['shannon'][2000])
     # non-weighted will in some cases still be equal (still full counted albeit different routes)
-    assert not np.array_equal(N_dual.metrics['accessibility']['non_weighted']['c'][2000],
-                              N_dual_sidestep.metrics['accessibility']['non_weighted']['c'][2000])
+    # assert not np.array_equal(N_dual.metrics['accessibility']['non_weighted']['c'][2000],
+    # N_dual_sidestep.metrics['accessibility']['non_weighted']['c'][2000])
     assert not np.array_equal(N_dual.metrics['accessibility']['weighted']['c'][2000],
                               N_dual_sidestep.metrics['accessibility']['weighted']['c'][2000])
 
@@ -310,12 +315,52 @@ def test_compute_aggregated():
         D.compute_aggregated(landuse_labels[-1], mixed_use_metrics=['shannon'])
     with pytest.raises(ValueError):
         D.compute_aggregated(landuse_labels, mixed_use_metrics=['spelling_typo'])
-    with pytest.raises(ValueError):
-        D.compute_aggregated(landuse_labels, accessibility_labels=['spelling_typo'])
+    # don't check accessibility_labels for typos - because only warning is triggered (not all labels will be in all data)
     # check that unassigned data layer flags
     with pytest.raises(ValueError):
         D_new = layers.Data_Layer_From_Dict(data_dict)
         D_new.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'])
+
+    '''
+    Test stats component
+    '''
+
+    data_dict = mock.mock_data_dict(G)
+    D = layers.Data_Layer_From_Dict(data_dict)
+    N_temp = copy.deepcopy(N)
+    D.assign_to_network(N_temp, max_dist=500)
+
+    # generate some mock landuse data
+    mock_numeric = mock.mock_numerical_data(len(data_dict), num_arrs=2)
+
+    # generate stats
+    D.compute_aggregated(numerical_labels=['boo', 'baa'], numerical_arrays=mock_numeric)
+
+    # test against underlying method
+    data_map = D._data
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
+    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              numerical_arrays=mock_numeric)
+
+    stats_keys = ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
+    stats_data = [stats_max, stats_min, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt]
+
+    for num_idx, num_label in enumerate(['boo', 'baa']):
+        for s_key, stats in zip(stats_keys, stats_data):
+            for d_idx, d_key in enumerate(distances):
+                assert np.array_equal(N_temp.metrics['stats'][num_label][s_key][d_key], stats[num_idx][d_idx])
+
+    # check that mismatching label and array lengths are caught
+    for labels, arrs in ((['a'], mock_numeric),  # mismatching lengths
+                         (['a', 'b'], None),  # missing arrays
+                         (None, mock_numeric)):  # missing labels
+        with pytest.raises(ValueError):
+            D.compute_aggregated(numerical_labels=labels, numerical_arrays=arrs)
 
 
 def network_generator():
