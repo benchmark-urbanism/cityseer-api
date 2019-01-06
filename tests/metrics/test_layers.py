@@ -445,3 +445,53 @@ def test_compute_accessibilities():
             for wt in ['weighted', 'non_weighted']:
                 assert np.array_equal(N_easy.metrics['accessibility'][wt]['c'][d],
                                       N_full.metrics['accessibility'][wt]['c'][d])
+
+
+def test_compute_stats_single():
+    for G, distances, betas, angular in network_generator():
+
+        data_dict = mock.mock_data_dict(G)
+        numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=1)
+
+        # easy version
+        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        D_easy = layers.Data_Layer_From_Dict(data_dict)
+        D_easy.assign_to_network(N_easy, max_dist=500)
+        D_easy.compute_stats_single('boo', numeric_data[0])
+        # custom version
+        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        D_full = layers.Data_Layer_From_Dict(data_dict)
+        D_full.assign_to_network(N_full, max_dist=500)
+        D_full.compute_aggregated(numerical_labels=['boo'], numerical_arrays=numeric_data)
+
+        # compare
+        for n_label in ['boo']:
+            for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:
+                for dist in distances:
+                    assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
+                                       N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)
+
+
+def test_compute_stats_multiple():
+    for G, distances, betas, angular in network_generator():
+
+        data_dict = mock.mock_data_dict(G)
+        numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=2)
+
+        # easy version
+        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        D_easy = layers.Data_Layer_From_Dict(data_dict)
+        D_easy.assign_to_network(N_easy, max_dist=500)
+        D_easy.compute_stats_multiple(['boo', 'baa'], numeric_data)
+        # custom version
+        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        D_full = layers.Data_Layer_From_Dict(data_dict)
+        D_full.assign_to_network(N_full, max_dist=500)
+        D_full.compute_aggregated(numerical_labels=['boo', 'baa'], numerical_arrays=numeric_data)
+
+        # compare
+        for n_label in ['boo', 'baa']:
+            for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:
+                for dist in distances:
+                    assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
+                                       N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)

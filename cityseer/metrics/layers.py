@@ -324,17 +324,18 @@ class Data_Layer:
                                 accessibility_labels: Union[list, tuple]):
         return self.compute_aggregated(landuse_labels, accessibility_labels=accessibility_labels)
 
-    def compute_stats_multiple(self,
-                               names: Union[list, tuple],
-                               values: Union[List[Union[list, tuple, np.ndarray]],
-                                             Tuple[Union[list, tuple, np.ndarray]]]):
-        pass
-
     def compute_stats_single(self,
-                             name: str,
-                             values: Union[list, tuple, np.ndarray]):
+                             numerical_label: str,
+                             numerical_array: Union[list, tuple, np.ndarray]):
 
-        return self.compute_aggregated(tuple(name), values=tuple(values))
+        return self.compute_aggregated(numerical_labels=[numerical_label], numerical_arrays=[numerical_array])
+
+    def compute_stats_multiple(self,
+                               numerical_labels: List[str],
+                               numerical_arrays: Union[list, tuple, np.ndarray]):
+
+        return self.compute_aggregated(numerical_labels=numerical_labels, numerical_arrays=numerical_arrays)
+
 
 class Data_Layer_From_Dict(Data_Layer):
 
