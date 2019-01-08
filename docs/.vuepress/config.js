@@ -34,6 +34,7 @@ module.exports = {
     anchor: true,
     extendMarkdown: md => {}
   },
+  theme: 'dark',
   themeConfig: {
     displayAllHeaders: true,
     lastUpdated: true,

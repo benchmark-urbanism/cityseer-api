@@ -4504,10 +4504,19 @@ loader-utils@^0.2.16:
     json5 "^0.5.0"
     object-assign "^4.0.1"
 
-loader-utils@^1.0.2, loader-utils@^1.1.0:
+loader-utils@^1.0.2:
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/loader-utils/-/loader-utils-1.2.2.tgz#fcfcb6b4109b2358c3df160b2254f0496b261a36"
   integrity sha512-Xjb++b55GPoVV1ct93EodsswWEErveAqGhhwujIshShtjIKdPpdpveriwNCNsuVo1zQ1ukmPUszK44C9RD7TCg==
+  dependencies:
+    big.js "^5.2.2"
+    emojis-list "^2.0.0"
+    json5 "^1.0.1"
+
+loader-utils@^1.1.0:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/loader-utils/-/loader-utils-1.2.3.tgz#1ff5dc6911c9f0a062531a4c04b609406108c2c7"
+  integrity sha512-fkpz8ejdnEMG3s37wGL07iSBDg99O9D5yflE9RGNH3hRdx9SOwYfnGYdZOUIZitN8E+E2vkq3MUMYMvPYl5ZZA==
   dependencies:
     big.js "^5.2.2"
     emojis-list "^2.0.0"
@@ -7575,7 +7584,12 @@ vuepress-html-webpack-plugin@^3.2.0:
     toposort "^1.0.0"
     util.promisify "1.0.0"
 
-vuepress@^1.0.0-alpha.20:
+vuepress-theme-dark@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-dark/-/vuepress-theme-dark-0.1.0.tgz#a16820565358d6872cf113785ddc985df00d8792"
+  integrity sha512-at7uteDbeIlTghp+45nPuR9zYS568j/hyDKZzpVdy/w287UgEt4GsKnVBdzMuJ0qqtSVll0pLaL+C5al7uN4vQ==
+
+vuepress@^1.0.0-alpha.30:
   version "1.0.0-alpha.30"
   resolved "https://registry.yarnpkg.com/vuepress/-/vuepress-1.0.0-alpha.30.tgz#6f615fb568fef04ea0bb4231e33b2cb87f4c0eee"
   integrity sha512-f2A5dVYKgEO37Pzr2RCCoP4H1soiwoaIxlE6rGoLMSmqxetg+tfbm4x1a73LOEmsQ+zF0ztdcKpoYD6qBseTKw==
@@ -7583,17 +7597,17 @@ vuepress@^1.0.0-alpha.20:
     "@vuepress/core" "^1.0.0-alpha.30"
     "@vuepress/theme-default" "^1.0.0-alpha.30"
 
-vuetify-loader@^1.0.8:
-  version "1.0.8"
-  resolved "https://registry.yarnpkg.com/vuetify-loader/-/vuetify-loader-1.0.8.tgz#db99b7325d0336acae3970d411bf7237b27d52bf"
-  integrity sha512-JbZhJqKsZCyBVHh7v4J2ECJPplJlYFnLIgEL4WPvOaaW5QWZ1YAZT2iA8AA/TcBD65Cxg3Ky9lr0r/wJtOMo9w==
+vuetify-loader@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/vuetify-loader/-/vuetify-loader-1.1.1.tgz#3e3a553c9be038d642092cd87715b5bc10602c6d"
+  integrity sha512-ham+JNmVY7L+nSJSY8DeMLhLZq4ognl4db6sm8j5aKVbeaZTDPNmmoeFxogSfSpRQ5Ly50rWwO6gPbSOvCoodg==
   dependencies:
     loader-utils "^1.1.0"
 
 vuetify@^1.3.12:
-  version "1.3.15"
-  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-1.3.15.tgz#8ef70a931d38093072775fd5a323b7ec882a45c6"
-  integrity sha512-4xpSvvz2OPwf8L9grz4clsgRswvw8xRJKe1xGmUi26gvbXllqPAMtiMt84vwXoGWYCb7dhnj/bWZ6h3Wj8lNLg==
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-1.4.0.tgz#ad5446a319cf4b090d3e14f9c3ee2ac53d545415"
+  integrity sha512-Q6b5VrkGIhPTN+r/uw6P5UTYVQy0h3d4vRW5363qHTgzQfyYQk8BDlJNCTJj0Zu/z3aBq79zbyF88jbLlV9vxQ==
 
 watchpack@^1.5.0:
   version "1.6.0"

@@ -7,11 +7,11 @@ actionText: Get Started →
 actionLink: /modules/
 features:
 - title: Urban analysis
-  details: Tools for fine-grained network and land-use analysis. Assess the precursors for vibrant neighbourhoods.
+  details: Tools for fine-grained network and land-use analysis. Assess the morphological precursors for vibrant neighbourhoods.
 - title: Pedestrian-focused
   details: Rigorous methods developed specifically for hyperlocal analysis at the pedestrian scale.
 - title: Friendly & performant
-  details: Python interface wrapping fast JIT compiled code. In-out convenience methods for transposing graphs from and to NetworkX.
+  details: Python interface wrapping fast JIT compiled code. In-out convenience methods for NetworkX.
 footer: AGPLv3 | Copyright © 2018-present Gareth Simons
 meta:
   - name: description

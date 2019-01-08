@@ -9,14 +9,12 @@
 Installation
 ------------
 
-```
-pip3 install cityseer
+```python
+pip install cityseer
 ```
 
 Modules
 -------
-
-### [/algos/](algos/README.md)
 
 ### [/metrics/](metrics/README.md)
 
