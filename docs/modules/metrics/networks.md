@@ -14,6 +14,7 @@ distance\_from\_beta() <Chip text='v0.1+'/>
 A convenience method mapping $-\beta$ decay parameters to equivalent $d_{max}$ distance thresholds at a specified minimum weight of $w_{min}$, which can then be passed to [`centrality.compute_centrality`](#compute-centrality).
 
 <FuncHeading>Parameters</FuncHeading>
+
 <FuncElement name="beta" type="float, list[float], numpy.ndarray">
 
 $-\beta$ value/s to convert to distance thresholds $d_{max}$.

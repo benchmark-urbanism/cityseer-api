@@ -1,5 +1,5 @@
 <template>
-    <div class="theme-color-text border-bottom heading-style">
+    <div class="heading-style">
         <slot></slot>
     </div>
 </template>
@@ -11,7 +11,9 @@
         margin 10px 0
         font-size 14px
         font-weight 500
-
+        border-bottom-style solid
+        border-color $accentColor
+        border-width 2px
 </style>
 
 <script>

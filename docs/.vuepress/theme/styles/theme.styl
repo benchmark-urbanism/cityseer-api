@@ -1,0 +1,185 @@
+html, body
+  background-color $deep-grey
+  color $white
+
+.search-box
+  input
+    background-color $deep-grey
+    color $white
+
+  .suggestions
+    background-color $white
+    border 0
+
+  .suggestion
+    a
+      color $mid-grey
+
+    &.focused
+      background-color $near-white
+
+      a
+        color $deep-grey
+
+.algolia-search-wrapper
+  .algolia-autocomplete
+    .ds-dropdown-menu
+      border: 0
+      background-color $near-white
+
+      &:before
+        background-color $white
+        border: 0;
+
+@media (min-width: $MQMobile)
+  .dropdown-wrapper
+    .nav-dropdown
+      background-color $white
+      border 0
+
+      .dropdown-item
+        h4
+          border-top-color $borderColor
+
+.sw-update-popup
+  background-color $white
+  border 0
+
+.navbar
+  background-color $mid-grey
+
+  .site-name
+    color $near-white
+
+  .links
+    background-color $mid-grey
+
+.page-edit
+  .edit-link
+    a
+      color $light-grey
+
+      &:hover,
+      &:focus
+        color $white
+
+  .last-updated
+    .prefix
+      color $light-grey
+
+    .time
+      color $light-grey
+
+h2
+  border-bottom-color $light-grey
+
+hr
+  border-top-color $light-grey
+
+.page-nav
+  .inner
+    color $light-grey
+    border-top-color $light-grey
+
+.sidebar
+  background-color $deep-grey
+
+  .nav-links
+  a.sidebar-link
+    color $near-white
+
+    &:hover,
+    &:focus,
+    &.active
+      color $white
+
+  .sidebar-heading
+    color $near-white
+
+    &.open,
+    &:hover
+      color $white
+
+.nav-links
+  a
+    color $near-white
+
+    &:hover,
+    &:focus,
+    &.router-link-active
+      color $white
+
+.home
+  .hero
+    .description
+      color $white
+
+    .action-button
+      border 0
+
+  .features,
+  .footer
+    border-top-color $light-grey
+
+  .feature
+    h2
+      color $white
+
+    p
+      color $white
+
+  .footer
+    color $near-white
+
+kbd
+  background $mid-grey
+
+blockquote
+  color $mid-grey
+
+tr
+  &:nth-child(2n)
+    background-color $mid-grey
+
+.content
+  font-size 14px
+
+  code
+    background-color $mid-grey
+    color $white
+
+  a
+    code
+      background-color $near-white
+      color $secondary
+
+  .custom-block
+    background-color $white
+    color $deep-grey
+
+    &.tip
+      border-color $success
+
+      .custom-block-title
+        color $deep-grey
+
+      a
+        color $accentColor
+
+    &.warning
+      border-color $info
+
+      .custom-block-title
+        color $deep-grey
+
+      a
+        color $accentColor
+
+    &.danger
+      .custom-block-title
+        color $deep-grey
+
+      a
+        color $accentColor
+      border-color $accentColor
+

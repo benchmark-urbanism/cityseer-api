@@ -1,9 +1,5 @@
 ---
 
-#Add overview and some examples of how to use methods
-
-#Add html API
-
 ---
 
 Installation
@@ -23,5 +19,7 @@ Modules
 
 License
 -------
+
+Attribution is required.
 
 AGPLv3 | Copyright © 2018-present Gareth Simons

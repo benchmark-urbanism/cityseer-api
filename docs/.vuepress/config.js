@@ -34,8 +34,9 @@ module.exports = {
     anchor: true,
     extendMarkdown: md => {}
   },
-  theme: 'dark',
+  extend: '@vuepress/theme-default',
   themeConfig: {
+    logo: '/square_logo.png',
     displayAllHeaders: true,
     lastUpdated: true,
     nav: [

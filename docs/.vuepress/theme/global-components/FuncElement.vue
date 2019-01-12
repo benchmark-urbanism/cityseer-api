@@ -5,7 +5,7 @@
             <v-flex class="xs12 md4">
                 <v-layout class="row wrap">
 
-                    <v-flex class="xs12 subheading theme-color-intense elem-name-style">
+                    <v-flex class="xs12 subheading elem-name-style">
                         {{ name }}
                     </v-flex>
 
@@ -31,11 +31,14 @@
         font-family monospace
         font-weight bold
 
+    .small-text
+        font-size 12px
+
 </style>
 
 <script>
   // use absolute paths -> see bug https://github.com/vuejs/vuepress/issues/451
-  import { VLayout, VFlex } from '../../../node_modules/vuetify/lib'
+  import { VFlex, VLayout } from '../../../../node_modules/vuetify/lib'
 
   export default {
     name: 'DisplayFunction',

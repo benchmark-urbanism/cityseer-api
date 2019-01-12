@@ -1,11 +1,5 @@
 // variables only in palette.styl per Vuepress docs
 
-html, body
-  background-color #333
-
-.navbar
-  background-color #333
-
 $primary = #0091ea
 $accent = #64c1ff
 $info = #0064b7
@@ -14,14 +8,24 @@ $warning = #9a0007
 $error = #ffffff
 $success = #2e7d32
 
+$deep-grey = #333
+$mid-grey = #444
+$light-grey = #999
+$near-white = #ddd
+$white = #fff
+
 $accentColor = $secondary
-$textColor = #2c3e50
-$borderColor = #eaecef
-$codeBgColor = #282c34
-$arrowBgColor = #ccc
+$textColor = #3B3B3B
+$borderColor = $light-grey
+$codeBgColor = #3B3B3B
+$arrowBgColor = #aaa
 
 $navbarHeight = 3.6rem
 $sidebarWidth = 16rem
 $contentWidth = 740px
 
 $lightBackground = lighten($codeBgColor, 95%)
+
+$MQNarrow = 959px
+$MQMobile = 719px
+$MQMobileNarrow = 419px

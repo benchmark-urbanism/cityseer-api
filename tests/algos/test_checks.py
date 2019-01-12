@@ -26,10 +26,9 @@ def test_check_categorical_data():
     data_classes, data_encoding = layers.encode_categorical(mock_categorical)
 
     # check for malformed data
-    t = data_encoding[0]
     # negatives
     with pytest.raises(ValueError):
-        data_encoding[0] = -t
+        data_encoding[0] = -1
         checks.check_categorical_data(data_encoding)
     # NaN
     with pytest.raises(ValueError):

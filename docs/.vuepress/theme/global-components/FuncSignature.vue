@@ -1,5 +1,5 @@
 <template>
-    <div class="theme-color-intense light-background sig-style">
+    <div class="sig-style">
         <slot></slot>
     </div>
 </template>
@@ -12,6 +12,8 @@
         font-size 18px
         font-family monospace
         font-weight bold
+        color $white
+        background-color $mid-grey
 
 </style>
 
