@@ -1,11 +1,71 @@
 html, body
   background-color $deep-grey
-  color $white
+  color $textColor
+  font-size 14px
+  font-weight lighter
+
+h2
+  border-color $light-grey
+  border-width 1px
+
+hr
+  border-top-color $light-grey
+
+kbd
+  background $mid-grey
+
+blockquote
+  color $textColor
+
+tr
+  &:nth-child(2n)
+    background-color $mid-grey
+
+.content
+
+  code
+    padding 0.2em 0.5em
+    background-color $mid-grey
+    color $textColor
+    font-weight bolder
+
+  a
+    code
+      background-color $mid-grey
+      color $secondary
+
+  .custom-block
+    background-color $white
+    color $deep-grey
+    border-top-right-radius 10px
+    border-bottom-right-radius 10px
+
+    code
+      background-color $near-white
+      color $deep-grey
+
+    a
+      color $accentColor
+
+      code
+        color $accentColor
+
+    .custom-block-title
+      color $mid-grey
+
+    &.tip
+      border-color $success
+
+    &.warning
+      border-color $info
+
+    &.danger
+      border-color $accentColor
 
 .search-box
   input
     background-color $deep-grey
-    color $white
+    color $textColor
 
   .suggestions
     background-color $white
@@ -39,7 +99,7 @@ html, body
 
       .dropdown-item
         h4
-          border-top-color $borderColor
+          border-top-color $light-grey
 
 .sw-update-popup
   background-color $white
@@ -49,6 +109,7 @@ html, body
   background-color $mid-grey
 
   .site-name
+    visibility hidden
     color $near-white
 
   .links
@@ -61,7 +122,7 @@ html, body
 
       &:hover,
       &:focus
-        color $white
+        color $textColor
 
   .last-updated
     .prefix
@@ -69,12 +130,6 @@ html, body
 
     .time
       color $light-grey
-
-h2
-  border-bottom-color $light-grey
-
-hr
-  border-top-color $light-grey
 
 .page-nav
   .inner
@@ -84,21 +139,26 @@ hr
 .sidebar
   background-color $deep-grey
 
-  .nav-links
-  a.sidebar-link
-    color $near-white
+  .sidebar-link
+    font-size 14px
+    font-weight lighter
 
-    &:hover,
-    &:focus,
     &.active
-      color $white
+      color $textColor
+      font-weight bold
+
+  .sidebar-sub-header
+    .sidebar-link
+      &.active
+        color $accentColor
+        font-weight inherit
 
   .sidebar-heading
-    color $near-white
+    color purple
 
     &.open,
     &:hover
-      color $white
+      color $textColor
 
 .nav-links
   a
@@ -107,12 +167,17 @@ hr
     &:hover,
     &:focus,
     &.router-link-active
-      color $white
+      color $textColor
 
 .home
   .hero
+    h1
+      visibility hidden
+
     .description
-      color $white
+      font-size 26px
+      font-weight 200
+      color $light-grey
 
     .action-button
       border 0
@@ -123,63 +188,14 @@ hr
 
   .feature
     h2
-      color $white
+      color $textColor
+      font-size 22px
+      font-weight 400
 
     p
-      color $white
+      color $textColor
 
   .footer
     color $near-white
 
-kbd
-  background $mid-grey
-
-blockquote
-  color $mid-grey
-
-tr
-  &:nth-child(2n)
-    background-color $mid-grey
-
-.content
-  font-size 14px
-
-  code
-    background-color $mid-grey
-    color $white
-
-  a
-    code
-      background-color $near-white
-      color $secondary
-
-  .custom-block
-    background-color $white
-    color $deep-grey
-
-    &.tip
-      border-color $success
-
-      .custom-block-title
-        color $deep-grey
-
-      a
-        color $accentColor
-
-    &.warning
-      border-color $info
-
-      .custom-block-title
-        color $deep-grey
-
-      a
-        color $accentColor
-
-    &.danger
-      .custom-block-title
-        color $deep-grey
-
-      a
-        color $accentColor
-      border-color $accentColor
 

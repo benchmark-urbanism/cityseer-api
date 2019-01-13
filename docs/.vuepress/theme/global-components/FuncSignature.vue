@@ -8,15 +8,12 @@
 
     .sig-style
         margin 30px 0
-        padding 1em
+        padding 1.1em
         font-size 18px
         font-family monospace
         font-weight bold
         color $white
         background-color $mid-grey
+        border-radius 10px
 
 </style>
-
-<script>
-
-</script>

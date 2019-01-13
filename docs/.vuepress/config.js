@@ -36,13 +36,13 @@ module.exports = {
   },
   extend: '@vuepress/theme-default',
   themeConfig: {
-    logo: '/square_logo.png',
+    logo: '/round_logo.png',
     displayAllHeaders: true,
     lastUpdated: true,
     nav: [
       {text: 'home', link: '/'},
       {text: 'modules', link: '/modules/'},
-      {text: 'cityseer.io', link: 'https://cityseer.io/'},
+      {text: 'cityseer.io', link: 'https://cityseer.io/'}
     ],
     sidebarDepth: 1,
     sidebar: [
@@ -61,7 +61,7 @@ module.exports = {
       updatePopup: true
     }
   },
-  evergreen: true,
+  //evergreen: true,
   configureWebpack: (config, isServer) => {
     if (!isServer) {
       // mutate the config for client

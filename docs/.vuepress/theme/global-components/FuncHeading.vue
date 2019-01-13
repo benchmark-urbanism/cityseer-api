@@ -13,9 +13,6 @@
         font-weight 500
         border-bottom-style solid
         border-color $accentColor
-        border-width 2px
+        border-width 1px
 </style>
 
-<script>
-
-</script>
