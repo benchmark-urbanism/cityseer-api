@@ -84,9 +84,15 @@ Modules
 ### [/util/](util/README.md)
 
 
-License
--------
+Development
+----------
+
+
+License & Attribution
+---------------------
 
 Attribution is required.
 
-AGPLv3 | Copyright © 2018-present Gareth Simons
+Apache License v2.0 + Commons Clause License v1.0
+
+Copyright © 2018-present Gareth Simons
