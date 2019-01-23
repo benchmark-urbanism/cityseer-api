@@ -378,7 +378,7 @@ def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     return g_dual
 
 
-def networkX_edge_defaults(networkX_graph: nx.Graph) -> nx.Graph:
+def networkX_edge_params_from_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''

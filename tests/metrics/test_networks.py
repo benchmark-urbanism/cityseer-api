@@ -27,9 +27,9 @@ def test_distance_from_beta():
 
 
 def test_Network_Layer():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
 
     # manual graph maps for comparison
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
@@ -100,9 +100,9 @@ def test_Network_Layer():
 
 
 def test_Network_Layer_From_NetworkX():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]
@@ -180,10 +180,9 @@ def dict_check(m_dict, Network):
                     assert np.allclose(d_val[i], m_dict[uid]['stats'][th_key][stat_key][d_key], equal_nan=True)
 
 def test_metrics_to_dict():
-
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     # create a network layer and run some metrics
     N = networks.Network_Layer_From_NetworkX(G, distances=[500, 1000])
 
@@ -217,9 +216,9 @@ def test_to_networkX():
     # also see test_graphs.test_networkX_from_graph_maps for underlying graph maps version
 
     # check round trip to and from graph maps results in same graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
     for n in G.nodes():
@@ -258,9 +257,9 @@ def test_compute_centrality():
     Underlying method also tested via test_networks.test_network_centralities
     '''
 
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
 
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
@@ -363,9 +362,9 @@ def network_generator():
     for betas in [[-0.008], [-0.008, -0.002]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
-            G, pos = mock.mock_graph()
+            G = mock.mock_graph()
             G = graphs.networkX_simple_geoms(G)
-            G = graphs.networkX_edge_defaults(G)
+            G = graphs.networkX_edge_params_from_geoms(G)
             yield G, distances, betas, angular
 
 

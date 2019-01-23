@@ -7,9 +7,9 @@ from cityseer.util import graphs, mock
 
 
 def test_radial_filter():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
 
     # generate some data
     data_dict = mock.mock_data_dict(G)
@@ -56,9 +56,9 @@ def test_radial_filter():
 
 
 def test_nearest_idx():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     N = networks.Network_Layer_From_NetworkX(G, distances=[100])
 
     # generate some data
@@ -86,14 +86,14 @@ def test_nearest_idx():
 
 def test_assign_to_network():
     # generate network
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
 
     # create additional dead-end scenario
     G.remove_edge(14, 15)
     G.remove_edge(15, 28)
 
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
@@ -180,9 +180,9 @@ def test_assign_to_network():
 
 def test_aggregate_to_src_idx():
     # generate network
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # generate data
@@ -309,9 +309,9 @@ def test_aggregate_to_src_idx():
 
 def test_local_aggregator_categorical_components():
     # load the test graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # setup data
@@ -569,9 +569,9 @@ def test_local_aggregator_categorical_components():
 
 def test_local_aggregator_numerical_components():
     # load the test graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # setup data

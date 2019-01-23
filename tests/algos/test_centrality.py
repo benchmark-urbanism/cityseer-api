@@ -20,9 +20,9 @@ def test_shortest_path_tree():
         return list(reversed(s_path))
 
     # load the test graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
 
     # test all shortest paths against networkX version of dijkstra
@@ -161,9 +161,9 @@ def test_local_centrality():
     '''
 
     # load the test graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)  # set default edge attributes
+    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
     node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
 
     # Test centrality methods where possible against NetworkX - i.e. harmonic closeness and betweenness

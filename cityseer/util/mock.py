@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def mock_graph(wgs84_coords: bool = False) -> Tuple[nx.Graph, dict]:
+def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
     '''
     Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
     :return: NetworkX graph
@@ -160,7 +160,6 @@ def mock_graph(wgs84_coords: bool = False) -> Tuple[nx.Graph, dict]:
 
     G.add_edges_from(edges)
 
-    pos = {}
     for n, d in G.nodes(data=True):
         x = d['x']
         y = d['y']
@@ -169,7 +168,7 @@ def mock_graph(wgs84_coords: bool = False) -> Tuple[nx.Graph, dict]:
         G.nodes[n]['x'] = x
         G.nodes[n]['y'] = y
 
-    return G, pos
+    return G
 
 
 def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:

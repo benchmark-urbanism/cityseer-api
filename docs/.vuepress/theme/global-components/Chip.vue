@@ -1,5 +1,5 @@
 <template>
-    <div :class=" { important }" class="chip-style">
+    <div :class="{ important }" class="chip-style">
         {{ text }}
     </div>
 </template>

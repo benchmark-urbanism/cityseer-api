@@ -4,9 +4,8 @@
     "docs:build": "vuepress build docs"
   },
   "dependencies": {
-    "@vuepress/theme-default": "1.0.0-alpha.30",
-    "vuepress": "^1.0.0-alpha.31",
-    "vuetify": "1.4.1"
+    "vuepress": "^1.0.0-alpha.32",
+    "vuetify": "1.4.2"
   },
   "devDependencies": {
     "markdown-it": "8.4.2",

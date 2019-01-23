@@ -5,11 +5,8 @@ from cityseer.util import mock
 
 
 def test_mock_graph():
-    G, pos = mock.mock_graph()
-    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
-
-    # debugging
-    # plot.plot_graphs(primal=G)
+    G = mock.mock_graph()
+    G_wgs = mock.mock_graph(wgs84_coords=True)
 
     for g in [G, G_wgs]:
         assert g.number_of_nodes() == 52
@@ -25,9 +22,12 @@ def test_mock_graph():
             assert 'x' in d and isinstance(d['y'], (int, float))
             assert 'y' in d and isinstance(d['y'], (int, float))
 
+    # from cityseer.util import plot
+    # plot.plot_networkX(G)
+
 
 def test_mock_data_dict():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     data = mock.mock_data_dict(G)
 
     min_x = np.inf

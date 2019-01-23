@@ -9,7 +9,7 @@ from cityseer.util import mock, graphs
 
 
 def test_networkX_simple_geoms():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G_geoms = graphs.networkX_simple_geoms(G)
 
     for s, e in G.edges():
@@ -21,7 +21,7 @@ def test_networkX_simple_geoms():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G, pos_wgs = mock.mock_graph(wgs84_coords=True)
+        G_wgs = mock.mock_graph(wgs84_coords=True)
         for n in G.nodes():
             # delete attribute from first node and break
             del G.nodes[n][attr]
@@ -33,8 +33,8 @@ def test_networkX_simple_geoms():
 
 def test_networkX_wgs_to_utm():
     # check that node coordinates are correctly converted
-    G_utm, pos = mock.mock_graph()
-    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
+    G_utm = mock.mock_graph()
+    G_wgs = mock.mock_graph(wgs84_coords=True)
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
@@ -42,10 +42,10 @@ def test_networkX_wgs_to_utm():
         assert abs(d['y'] - G_converted.nodes[n]['y']) < 0.01
 
     # check that edge coordinates are correctly converted
-    G_utm, pos = mock.mock_graph()
+    G_utm = mock.mock_graph()
     G_utm = graphs.networkX_simple_geoms(G_utm)
 
-    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = mock.mock_graph(wgs84_coords=True)
     G_wgs = graphs.networkX_simple_geoms(G_wgs)
 
     G_converted = graphs.networkX_wgs_to_utm(G_wgs)
@@ -53,7 +53,7 @@ def test_networkX_wgs_to_utm():
         assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
 
     # check that non-LineString geoms throw an error
-    G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = mock.mock_graph(wgs84_coords=True)
     for s, e in G_wgs.edges():
         G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
     with pytest.raises(TypeError):
@@ -61,7 +61,7 @@ def test_networkX_wgs_to_utm():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
+        G_wgs = mock.mock_graph(wgs84_coords=True)
         for n in G_wgs.nodes():
             # delete attribute from first node and break
             del G_wgs.nodes[n][attr]
@@ -71,7 +71,7 @@ def test_networkX_wgs_to_utm():
             graphs.networkX_wgs_to_utm(G_wgs)
 
     # check that non WGS coordinates throw error
-    G_utm, pos = mock.mock_graph()
+    G_utm = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_wgs_to_utm(G_utm)
 
@@ -80,7 +80,7 @@ def test_networkX_remove_straight_intersections():
     # TODO: add test for self-loops
 
     # test that redundant (straight) intersections are removed
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
     G_messy = G.copy()
 
@@ -129,19 +129,19 @@ def test_networkX_remove_straight_intersections():
 
 def test_networkX_decompose():
     # check that missing geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
         graphs.networkX_decompose(G, 20)
 
     # test decomposition
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
 
     G_decompose = graphs.networkX_decompose(G, 20)
@@ -149,11 +149,11 @@ def test_networkX_decompose():
     assert nx.number_of_edges(G_decompose) == 653
 
     # check that geoms are correctly flipped
-    G_forward, pos = mock.mock_graph()
+    G_forward = mock.mock_graph()
     G_forward = graphs.networkX_simple_geoms(G_forward)
     G_forward_decompose = graphs.networkX_decompose(G_forward, 20)
 
-    G_backward, pos = mock.mock_graph()
+    G_backward = mock.mock_graph()
     G_backward = graphs.networkX_simple_geoms(G_backward)
     for i, (s, e, d) in enumerate(G_backward.edges(data=True)):
         # flip each third geom
@@ -167,7 +167,7 @@ def test_networkX_decompose():
         assert d['y'] == G_backward_decompose.nodes[n]['y']
 
     # test that geom coordinate mismatch throws an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     for attr in ['x', 'y']:
         for n in G.nodes():
             G.nodes[n][attr] = G.nodes[n][attr] + 1
@@ -178,12 +178,12 @@ def test_networkX_decompose():
 
 def test_networkX_to_dual():
     # check that missing geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_to_dual(G)
 
     # check that non-LineString geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
@@ -191,7 +191,7 @@ def test_networkX_to_dual():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G, pos = mock.mock_graph()
+        G = mock.mock_graph()
         for n in G.nodes():
             # delete attribute from first node and break
             del G.nodes[n][attr]
@@ -201,7 +201,7 @@ def test_networkX_to_dual():
             graphs.networkX_to_dual(G)
 
     # test dual
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
 
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
@@ -248,21 +248,21 @@ def test_networkX_to_dual():
 
 def test_networkX_edge_defaults():
     # check that missing geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_edge_defaults(G)
+        graphs.networkX_edge_params_from_geoms(G)
 
     # check that non-LineString geoms throw an error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
-        graphs.networkX_edge_defaults(G)
+        graphs.networkX_edge_params_from_geoms(G)
 
     # test edge defaults
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G_edge_defaults = graphs.networkX_edge_defaults(G)
+    G_edge_defaults = graphs.networkX_edge_params_from_geoms(G)
     for s, e, d in G.edges(data=True):
         assert d['geom'].length == G_edge_defaults[s][e]['length']
         assert d['geom'].length == G_edge_defaults[s][e]['impedance']
@@ -270,13 +270,13 @@ def test_networkX_edge_defaults():
 
 def test_networkX_m_weighted_nodes():
     # check that missing length attribute throws error
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     with pytest.raises(AttributeError):
         graphs.networkX_m_weighted_nodes(G)
 
     # test length weighted nodes
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     G = graphs.networkX_m_weighted_nodes(G)
     for n, d in G.nodes(data=True):
         agg_length = 0
@@ -289,12 +289,12 @@ def test_graph_maps_from_networkX():
     # TODO: add test for self-loops
 
     # template graph
-    G_template, pos = mock.mock_graph()
+    G_template = mock.mock_graph()
     G_template = graphs.networkX_simple_geoms(G_template)
 
     # test maps vs. networkX
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_defaults(G_test)
+    G_test = graphs.networkX_edge_params_from_geoms(G_test)
     # set some random 'live' statuses
     for n in G_test.nodes():
         G_test.nodes[n]['live'] = bool(np.random.randint(0, 1))
@@ -328,7 +328,7 @@ def test_graph_maps_from_networkX():
     # check that missing node attributes throw an error
     G_test = G_template.copy()
     for attr in ['x', 'y']:
-        G_test = graphs.networkX_edge_defaults(G_test)
+        G_test = graphs.networkX_edge_params_from_geoms(G_test)
         for n in G_test.nodes():
             # delete attribute from first node and break
             del G_test.nodes[n][attr]
@@ -339,7 +339,7 @@ def test_graph_maps_from_networkX():
     # check that missing edge attributes throw an error
     G_test = G_template.copy()
     for attr in ['length', 'impedance']:
-        G_test = graphs.networkX_edge_defaults(G_test)
+        G_test = graphs.networkX_edge_params_from_geoms(G_test)
         for s, e in G_test.edges():
             # delete attribute from first edge and break
             del G_test[s][e][attr]
@@ -349,7 +349,7 @@ def test_graph_maps_from_networkX():
 
     # check that invalid lengths are caught
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_defaults(G_test)
+    G_test = graphs.networkX_edge_params_from_geoms(G_test)
     # corrupt length attribute and break
     for corrupt_val in [0, -1, -np.inf, np.nan]:
         for s, e in G_test.edges():
@@ -360,7 +360,7 @@ def test_graph_maps_from_networkX():
 
     # check that invalid impedances are caught
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_defaults(G_test)
+    G_test = graphs.networkX_edge_params_from_geoms(G_test)
     # corrupt impedance attribute and break
     for corrupt_val in [-1, -np.inf, np.nan]:
         for s, e in G_test.edges():
@@ -374,9 +374,9 @@ def test_networkX_from_graph_maps():
     # also see test_networks.test_to_networkX for tests on implementation via Network layer
 
     # check round trip to and from graph maps results in same graph
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
     for n in G.nodes():

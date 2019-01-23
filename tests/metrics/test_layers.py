@@ -11,7 +11,7 @@ from cityseer.util import mock, graphs
 
 def test_dict_wgs_to_utm():
     # check that node coordinates are correctly converted
-    G_utm, pos = mock.mock_graph()
+    G_utm = mock.mock_graph()
     data_dict_utm = mock.mock_data_dict(G_utm)
 
     # create a test dictionary
@@ -35,7 +35,7 @@ def test_dict_wgs_to_utm():
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
-        G_wgs, pos_wgs = mock.mock_graph(wgs84_coords=True)
+        G_wgs = mock.mock_graph(wgs84_coords=True)
         data_dict_wgs = mock.mock_data_dict(G_wgs)
         for k in data_dict_wgs.keys():
             del data_dict_wgs[k][attr]
@@ -65,7 +65,7 @@ def test_encode_categorical():
 
 def test_data_map_from_dict():
     # generate mock data
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     data_dict = mock.mock_data_dict(G)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
@@ -87,7 +87,7 @@ def test_data_map_from_dict():
 
 
 def test_Data_Layer():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     data_dict = mock.mock_data_dict(G)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
@@ -105,7 +105,7 @@ def test_Data_Layer():
 
 
 def test_Data_Layer_From_Dict():
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     data_dict = mock.mock_data_dict(G)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
@@ -128,9 +128,9 @@ def test_compute_aggregated_landuses():
     Underlying method also tested via diversity.test_local_landuses()
     '''
 
-    G, pos = mock.mock_graph()
+    G = mock.mock_graph()
     G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_defaults(G)
+    G = graphs.networkX_edge_params_from_geoms(G)
 
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
@@ -367,9 +367,9 @@ def network_generator():
     for betas in [[-0.008], [-0.008, -0.002]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
-            G, pos = mock.mock_graph()
+            G = mock.mock_graph()
             G = graphs.networkX_simple_geoms(G)
-            G = graphs.networkX_edge_defaults(G)
+            G = graphs.networkX_edge_params_from_geoms(G)
             yield G, distances, betas, angular
 
 
