@@ -1,7 +1,7 @@
 const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
 
 module.exports = {
-  base: '/cityseer-api/',
+  base: '/docs/',
   title: 'Cityseer API Docs',
   description: 'Computational tools for urban analysis',
   head: [
@@ -37,18 +37,54 @@ module.exports = {
   extend: '@vuepress/theme-default',
   themeConfig: {
     logo: '/round_logo.png',
-    displayAllHeaders: true,
     lastUpdated: true,
     nav: [
       {text: 'home', link: '/'},
-      {text: 'modules', link: '/modules/'},
+      {text: 'docs', link: '/modules/quickstart'},
       {text: 'cityseer.io', link: 'https://cityseer.io/'}
     ],
+    displayAllHeaders: false,
+    activeHeaderLinks: true,
     sidebarDepth: 1,
     sidebar: [
-      ['/modules/', 'cityseer/'],
-      ['/modules/metrics/', 'cityseer/metrics/'],
-      ['/modules/util/', 'cityseer/util/']
+      {
+        title: '',
+        collapsable: false,
+        children: [
+          '/',
+          'quickstart'
+        ]
+      },
+      {
+        title: 'algos',
+        collapsable: false,
+        children: [
+          ['/algos/', 'algos'],
+          ['/algos/centrality', 'algos.centrality'],
+          ['/algos/checks', 'algos.checks'],
+          ['/algos/data', 'algos.data'],
+          ['/algos/diversity', 'algos.diversity']
+        ]
+      },
+      {
+        title: 'metrics',
+        collapsable: false,
+        children: [
+          ['/metrics/', 'metrics'],
+          ['/metrics/layers', 'metrics.layers'],
+          ['/metrics/networks', 'metrics.networks']
+        ]
+      },
+      {
+        title: 'util',
+        collapsable: false,
+        children: [
+          ['/util/', 'util'],
+          ['/util/graphs', 'util.graphs'],
+          ['/util/mock', 'util.mock'],
+          ['/util/plot', 'util.plot']
+        ]
+      }
     ],
     repo: 'cityseer/cityseer-api',
     repoLabel: 'github',
