@@ -8,7 +8,7 @@ from cityseer.util import mock
 
 def test_hill_diversity():
     # test hill diversity against scipy entropy
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
         # check hill q=1 - this can be tested against scipy because hill q=1 is exponential of entropy
         assert np.allclose(diversity.hill_diversity(counts, q=1), np.exp(entropy(probs)))
         # check that hill q<1 and q>1 is reasonably close to scipy entropy
@@ -22,7 +22,7 @@ def test_hill_diversity():
 
 def test_hill_diversity_branch_distance_wt():
     # test against hill diversity by setting all weights = 1
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
 
         non_weights = np.full(len(counts), 1)
         non_beta = -0
@@ -42,8 +42,7 @@ def test_hill_diversity_branch_distance_wt():
 
 
 def test_hill_diversity_pairwise_distance_wt():
-
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
 
         non_weights = np.full(len(counts), 1)
         non_beta = -0
@@ -63,8 +62,7 @@ def test_hill_diversity_pairwise_distance_wt():
 
 
 def test_hill_diversity_pairwise_matrix_wt():
-
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
 
         non_matrix = np.full((len(counts), len(counts)), 1)
 
@@ -88,7 +86,7 @@ def test_gini_simpson_diversity():
     USED FOR RESEARCH PURPOSES ONLY
     '''
     # just run for now to check against unexpectedly thrown errors
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
         diversity.gini_simpson_diversity(counts)
 
 
@@ -97,7 +95,7 @@ def test_shannon_diversity():
     USED FOR RESEARCH PURPOSES ONLY
     '''
     # test against scipy entropy
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
         assert abs(entropy(probs) - diversity.shannon_diversity(probs)) < 0.0000000001
 
 
@@ -106,6 +104,6 @@ def test_raos_quadratic_diversity():
     USED FOR RESEARCH PURPOSES ONLY
     '''
     # just run for now to check against unexpectedly thrown errors
-    for counts, probs in mock.mock_species_diversity():
+    for counts, probs in mock.mock_species_data():
         mock_matrix = np.full((len(counts), len(counts)), 1)
         diversity.raos_quadratic_diversity(counts, mock_matrix)

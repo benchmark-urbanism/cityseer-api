@@ -136,11 +136,6 @@ This method assumes that all graph preparation, e.g. cleaning and simplification
 When calculating local network centralities, it is best-practice to buffer the global network by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to a boundary roll-off effect.
 :::
 
-::: danger Important
-Graph decomposition provides a more granular representation of variations along street lengths. However, setting the `decompose` parameter too small in relation to the size of the graph can increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for many cases. On the other-hand, it may be feasible to go as small as possible for very small networks, such as building circulation networks.
-:::
-
-
 compute\_centrality()
 ---------------------
 

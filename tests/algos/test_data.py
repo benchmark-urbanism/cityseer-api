@@ -8,8 +8,8 @@ from cityseer.util import graphs, mock
 
 def test_radial_filter():
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
 
     # generate some data
     data_dict = mock.mock_data_dict(G)
@@ -57,9 +57,9 @@ def test_radial_filter():
 
 def test_nearest_idx():
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[100])
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    N = networks.Network_Layer_From_nX(G, distances=[100])
 
     # generate some data
     data_dict = mock.mock_data_dict(G)
@@ -87,14 +87,14 @@ def test_nearest_idx():
 def test_assign_to_network():
     # generate network
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
+    G = graphs.nX_simple_geoms(G)
 
     # create additional dead-end scenario
     G.remove_edge(14, 15)
     G.remove_edge(15, 28)
 
-    G = graphs.networkX_edge_params_from_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    G = graphs.nX_auto_edge_params(G)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
 
     # generate data
     data_dict = mock.mock_data_dict(G, random_seed=13)
@@ -181,9 +181,9 @@ def test_assign_to_network():
 def test_aggregate_to_src_idx():
     # generate network
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
 
     # generate data
     data_dict = mock.mock_data_dict(G, random_seed=13)
@@ -310,9 +310,9 @@ def test_aggregate_to_src_idx():
 def test_local_aggregator_categorical_components():
     # load the test graph
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
 
     # setup data
     data_dict = mock.mock_data_dict(G, random_seed=13)
@@ -462,8 +462,8 @@ def test_local_aggregator_categorical_components():
     # here the emphasis is simply on checking that the angular instruction gets chained through
 
     # setup dual data
-    G_dual = graphs.networkX_to_dual(G)
-    node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
+    G_dual = graphs.nX_to_dual(G)
+    node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
     data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
     data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
     data_map_dual = data.assign_to_network(data_map_dual, node_map_dual, edge_map_dual, 500)
@@ -570,9 +570,9 @@ def test_local_aggregator_categorical_components():
 def test_local_aggregator_numerical_components():
     # load the test graph
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
 
     # setup data
     data_dict = mock.mock_data_dict(G, random_seed=13)

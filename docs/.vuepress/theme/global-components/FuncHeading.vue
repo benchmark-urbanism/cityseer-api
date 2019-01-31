@@ -12,7 +12,7 @@
         font-size 14px
         font-weight 500
         border-bottom-style solid
-        border-color $accentColor
+        border-color $borderColor
         border-width 1px
 </style>
 

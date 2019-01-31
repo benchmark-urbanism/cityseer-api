@@ -7,19 +7,21 @@ import numpy as np
 from shapely import geometry
 
 
-def plot_networkX_primal_or_dual(primal: nx.Graph = None, dual: nx.Graph = None):
-
+def plot_nX_primal_or_dual(primal: nx.Graph = None,
+                           dual: nx.Graph = None,
+                           path: str = None,
+                           labels: bool = False):
     if primal is not None:
         pos_primal = {}
         for n, d in primal.nodes(data=True):
             pos_primal[n] = (d['x'], d['y'])
         nx.draw(primal, pos_primal,
-                with_labels=True,
-                font_size=7,
+                with_labels=labels,
+                font_size=5,
                 font_color='w',
                 font_weight='bold',
                 node_color='#d32f2f',
-                node_size=150,
+                node_size=75,
                 node_shape='o',
                 edge_color='w',
                 width=1,
@@ -30,21 +32,24 @@ def plot_networkX_primal_or_dual(primal: nx.Graph = None, dual: nx.Graph = None)
         for n, d in dual.nodes(data=True):
             pos_dual[n] = (d['x'], d['y'])
         nx.draw(dual, pos_dual,
-                with_labels=True,
-                font_size=7,
+                with_labels=labels,
+                font_size=5,
                 node_color='#0064b7',
-                node_size=150,
+                node_size=75,
                 node_shape='d',
                 edge_color='w',
                 width=1,
                 alpha=0.95)
 
-    plt.gcf().set_facecolor("#2e2e2e")
-    plt.show(facecolor='b', transparent=True)
+    if path:
+        plt.savefig(path, facecolor='#2e2e2e', dpi=150)
+    else:
+        plt.gcf().set_facecolor("#2e2e2e")
+        plt.show(facecolor='#2e2e2e')
 
 
-def plot_networkX(networkX_graph: nx.Graph):
-    return plot_networkX_primal_or_dual(primal=networkX_graph)
+def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False):
+    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels)
 
 
 def plot_graph_maps(node_uids: [list, tuple, np.ndarray],

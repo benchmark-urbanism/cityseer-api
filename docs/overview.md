@@ -32,29 +32,31 @@ print(nx.info(G))
 '''
 # let's plot the network
 from cityseer.util import plot
-plot.plot_networkX(G)
+plot.plot_nX(G)
 ```
 
 <img src="./simple_graph.png" alt="Example graph" class="centre">
 
-Network edges require `length` and `impedance` attributes. These can be set manually, but for complicated road geometries it may be easier to assign `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries to the edge `geom` attributes instead, from which the `length` and `impedance` attributes can be deduced automatically by using the [`networkX_edge_params_from_geoms`]() method. If you simply need straight-line geometries spanning from node to node, then use the [`networkX_simple_geoms`]() method to generate the simple edge geometries on your behalf:
+Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it may be easier to generate these automatically:
+- If the network assumes simple straight-line links from node to node, then use the [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) method to generate simple edge geometries. This method auto-populates the edge `geom` attributes, allowing the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method to be used for generating the `length` and `impedance` attributes.
+- For cases where the network contains complex road geometries: `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries can be assigned to the edge `geom` attributes. The `length` and `impedance` attributes can then be deduced using the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method.
 
 ```python
 from cityseer.util import graphs
 # provide your own shapely geometries if you need precise street lengths / angles
 # else, auto-generate simple geometries from the start to end node of each network edge
-G = graphs.networkX_simple_geoms(G)
+G = graphs.nX_simple_geoms(G)
 
 # auto-set edge length and impedance attributes from the geoms
-G = graphs.networkX_edge_params_from_geoms(G)
+G = graphs.nX_auto_edge_params(G)
 ```
 
-`cityseer` network layers are used for network centrality computations and also provide the backbone for landuse and numerical analysis workflows. `NetworkX` graphs can be converted to `cityseer` `Network` layers through use of the [`Network_Layer_From_NetworkX`]() method. It is then possible to call a variety of network centrality methods using
+`cityseer` network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. `NetworkX` graphs can be converted to `cityseer` `Network` layers through use of the [`Network_Layer_From_nX`]() method. It is then possible to call a variety of network centrality methods using
 
 ```python
 from cityseer.metrics import networks
 # create a Network layer
-N = networks.Network_Layer_From_NetworkX(G, distances=[200, 400, 800, 1600], angular=False)
+N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600], angular=False)
 # one of several easy-wrapper methods for computing centrality
 N.harmonic_closeness()
 # the full underlying method allows the computation of various centralities at once, e.g.

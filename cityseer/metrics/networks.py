@@ -208,7 +208,7 @@ class Network_Layer:
 
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
-        return graphs.networkX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
+        return graphs.nX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
 
     def compute_centrality(self,
                            close_metrics: Union[list, tuple] = None,
@@ -285,7 +285,7 @@ class Network_Layer:
         return self.compute_centrality(between_metrics=['betweenness_gravity'])
 
 
-class Network_Layer_From_NetworkX(Network_Layer):
+class Network_Layer_From_nX(Network_Layer):
 
     def __init__(self,
                  networkX_graph: nx.Graph,
@@ -293,7 +293,7 @@ class Network_Layer_From_NetworkX(Network_Layer):
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
-        node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(networkX_graph)
+        node_uids, node_map, edge_map = graphs.graph_maps_from_nX(networkX_graph)
 
         super().__init__(node_uids,
                          node_map,

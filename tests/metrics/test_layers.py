@@ -129,12 +129,12 @@ def test_compute_aggregated_landuses():
     '''
 
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
 
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
-    N = networks.Network_Layer_From_NetworkX(G, distances)
+    N = networks.Network_Layer_From_nX(G, distances)
     node_map = N._nodes
     edge_map = N._edges
 
@@ -290,14 +290,14 @@ def test_compute_aggregated_landuses():
                                               ac_data_wt[ac_idx][d_idx])
 
     # check that angular gets passed through
-    G_dual = graphs.networkX_to_dual(G)
+    G_dual = graphs.nX_to_dual(G)
 
-    N_dual = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=True)
+    N_dual = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=True)
     D_dual = layers.Data_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual, max_dist=500)
     D_dual.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'], accessibility_labels=['c'])
 
-    N_dual_sidestep = networks.Network_Layer_From_NetworkX(G_dual, distances=[2000], angular=False)
+    N_dual_sidestep = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=False)
     D_dual = layers.Data_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual_sidestep, max_dist=500)
     D_dual.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'], accessibility_labels=['c'])
@@ -368,8 +368,8 @@ def network_generator():
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
             G = mock.mock_graph()
-            G = graphs.networkX_simple_geoms(G)
-            G = graphs.networkX_edge_params_from_geoms(G)
+            G = graphs.nX_simple_geoms(G)
+            G = graphs.nX_auto_edge_params(G)
             yield G, distances, betas, angular
 
 
@@ -380,13 +380,13 @@ def test_hill_diversity():
         landuse_labels = mock.mock_categorical_data(len(data_dict))
 
         # easy version
-        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_diversity(landuse_labels, qs=[0, 1, 2])
 
         # custom version
-        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_metrics=['hill'], qs=[0, 1, 2])
@@ -405,13 +405,13 @@ def test_hill_branch_wt_diversity():
         landuse_labels = mock.mock_categorical_data(len(data_dict))
 
         # easy version
-        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 
         # custom version
-        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_metrics=['hill_branch_wt'], qs=[0, 1, 2])
@@ -430,12 +430,12 @@ def test_compute_accessibilities():
         landuse_labels = mock.mock_categorical_data(len(data_dict))
 
         # easy version
-        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_accessibilities(landuse_labels, ['c'])
         # custom version
-        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, accessibility_labels=['c'])
@@ -454,12 +454,12 @@ def test_compute_stats_single():
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=1)
 
         # easy version
-        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_single('boo', numeric_data[0])
         # custom version
-        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(numerical_labels=['boo'], numerical_arrays=numeric_data)
@@ -479,12 +479,12 @@ def test_compute_stats_multiple():
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=2)
 
         # easy version
-        N_easy = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_multiple(['boo', 'baa'], numeric_data)
         # custom version
-        N_full = networks.Network_Layer_From_NetworkX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(numerical_labels=['boo', 'baa'], numerical_arrays=numeric_data)

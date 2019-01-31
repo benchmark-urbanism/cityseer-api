@@ -8,9 +8,9 @@ from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs
 
 
-def test_networkX_simple_geoms():
+def test_nX_simple_geoms():
     G = mock.mock_graph()
-    G_geoms = graphs.networkX_simple_geoms(G)
+    G_geoms = graphs.nX_simple_geoms(G)
 
     for s, e in G.edges():
         line_geom = geometry.LineString([
@@ -28,14 +28,14 @@ def test_networkX_simple_geoms():
             break
         # check that missing attribute throws an error
         with pytest.raises(AttributeError):
-            graphs.networkX_simple_geoms(G)
+            graphs.nX_simple_geoms(G)
 
 
-def test_networkX_wgs_to_utm():
+def test_nX_wgs_to_utm():
     # check that node coordinates are correctly converted
     G_utm = mock.mock_graph()
     G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_converted = graphs.networkX_wgs_to_utm(G_wgs)
+    G_converted = graphs.nX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
         assert abs(d['x'] - G_converted.nodes[n]['x']) < 0.01
@@ -43,12 +43,12 @@ def test_networkX_wgs_to_utm():
 
     # check that edge coordinates are correctly converted
     G_utm = mock.mock_graph()
-    G_utm = graphs.networkX_simple_geoms(G_utm)
+    G_utm = graphs.nX_simple_geoms(G_utm)
 
     G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_wgs = graphs.networkX_simple_geoms(G_wgs)
+    G_wgs = graphs.nX_simple_geoms(G_wgs)
 
-    G_converted = graphs.networkX_wgs_to_utm(G_wgs)
+    G_converted = graphs.nX_wgs_to_utm(G_wgs)
     for s, e, d in G_utm.edges(data=True):
         assert round(d['geom'].length, 1) == round(G_converted[s][e]['geom'].length, 1)
 
@@ -57,7 +57,7 @@ def test_networkX_wgs_to_utm():
     for s, e in G_wgs.edges():
         G_wgs[s][e]['geom'] = geometry.Point([G_wgs.nodes[s]['x'], G_wgs.nodes[s]['y']])
     with pytest.raises(TypeError):
-        graphs.networkX_wgs_to_utm(G_wgs)
+        graphs.nX_wgs_to_utm(G_wgs)
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
@@ -68,20 +68,20 @@ def test_networkX_wgs_to_utm():
             break
         # check that missing attribute throws an error
         with pytest.raises(AttributeError):
-            graphs.networkX_wgs_to_utm(G_wgs)
+            graphs.nX_wgs_to_utm(G_wgs)
 
     # check that non WGS coordinates throw error
     G_utm = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_wgs_to_utm(G_utm)
+        graphs.nX_wgs_to_utm(G_utm)
 
 
-def test_networkX_remove_straight_intersections():
+def test_nX_remove_filler_nodes():
     # TODO: add test for self-loops
 
     # test that redundant (straight) intersections are removed
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
+    G = graphs.nX_simple_geoms(G)
     G_messy = G.copy()
 
     # complexify the graph - write changes to new graph to avoid in-place iteration errors
@@ -105,7 +105,7 @@ def test_networkX_remove_straight_intersections():
             G_messy.add_edge(e, f'{s}-{e}', geom=graphs.substring(line_geom, 0.5, 1, normalized=True))
 
     # simplify and test
-    G_simplified = graphs.networkX_remove_straight_intersections(G_messy)
+    G_simplified = graphs.nX_remove_filler_nodes(G_messy)
     assert G_simplified.nodes == G.nodes
     assert G_simplified.edges == G.edges
     for s, e, d in G_simplified.edges(data=True):
@@ -117,50 +117,50 @@ def test_networkX_remove_straight_intersections():
         if i % 2 == 0:
             del G_attr[s][e]['geom']
     with pytest.raises(AttributeError):
-        graphs.networkX_remove_straight_intersections(G_attr)
+        graphs.nX_remove_filler_nodes(G_attr)
 
     # check that non-LineString geoms throw an error
     G_attr = G_messy.copy()
     for s, e in G_attr.edges():
         G_attr[s][e]['geom'] = geometry.Point([G_attr.nodes[s]['x'], G_attr.nodes[s]['y']])
     with pytest.raises(AttributeError):
-        graphs.networkX_remove_straight_intersections(G_attr)
+        graphs.nX_remove_filler_nodes(G_attr)
 
 
-def test_networkX_decompose():
+def test_nX_decompose():
     # check that missing geoms throw an error
     G = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_decompose(G, 20)
+        graphs.nX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
     G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
-        graphs.networkX_decompose(G, 20)
+        graphs.nX_decompose(G, 20)
 
     # test decomposition
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
+    G = graphs.nX_simple_geoms(G)
 
-    G_decompose = graphs.networkX_decompose(G, 20)
+    G_decompose = graphs.nX_decompose(G, 20)
     assert nx.number_of_nodes(G_decompose) == 632
     assert nx.number_of_edges(G_decompose) == 653
 
     # check that geoms are correctly flipped
     G_forward = mock.mock_graph()
-    G_forward = graphs.networkX_simple_geoms(G_forward)
-    G_forward_decompose = graphs.networkX_decompose(G_forward, 20)
+    G_forward = graphs.nX_simple_geoms(G_forward)
+    G_forward_decompose = graphs.nX_decompose(G_forward, 20)
 
     G_backward = mock.mock_graph()
-    G_backward = graphs.networkX_simple_geoms(G_backward)
+    G_backward = graphs.nX_simple_geoms(G_backward)
     for i, (s, e, d) in enumerate(G_backward.edges(data=True)):
         # flip each third geom
         if i % 3 == 0:
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
-    G_backward_decompose = graphs.networkX_decompose(G_backward, 20)
+    G_backward_decompose = graphs.nX_decompose(G_backward, 20)
 
     for n, d in G_forward_decompose.nodes(data=True):
         assert d['x'] == G_backward_decompose.nodes[n]['x']
@@ -173,21 +173,21 @@ def test_networkX_decompose():
             G.nodes[n][attr] = G.nodes[n][attr] + 1
             break
         with pytest.raises(AttributeError):
-            graphs.networkX_decompose(G, 20)
+            graphs.nX_decompose(G, 20)
 
 
-def test_networkX_to_dual():
+def test_nX_to_dual():
     # check that missing geoms throw an error
     G = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_to_dual(G)
+        graphs.nX_to_dual(G)
 
     # check that non-LineString geoms throw an error
     G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
-        graphs.networkX_to_dual(G)
+        graphs.nX_to_dual(G)
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
@@ -198,11 +198,11 @@ def test_networkX_to_dual():
             break
         # check that missing attribute throws an error
         with pytest.raises(AttributeError):
-            graphs.networkX_to_dual(G)
+            graphs.nX_to_dual(G)
 
     # test dual
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
+    G = graphs.nX_simple_geoms(G)
 
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
     for i, (s, e, d) in enumerate(G.edges(data=True)):
@@ -224,7 +224,7 @@ def test_networkX_to_dual():
         if i % 3 == 0:
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
-    G_dual = graphs.networkX_to_dual(G)
+    G_dual = graphs.nX_to_dual(G)
 
     # from cityseer.util import plot
     # plot.plot_networkX_primal_or_dual(primal=G, dual=G_dual)
@@ -246,38 +246,38 @@ def test_networkX_to_dual():
     # plot.plot_networkX_graphs(primal=G, dual=G_dual)
 
 
-def test_networkX_edge_defaults():
+def test_nX_auto_edge_params():
     # check that missing geoms throw an error
     G = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_edge_params_from_geoms(G)
+        graphs.nX_auto_edge_params(G)
 
     # check that non-LineString geoms throw an error
     G = mock.mock_graph()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
-        graphs.networkX_edge_params_from_geoms(G)
+        graphs.nX_auto_edge_params(G)
 
     # test edge defaults
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G_edge_defaults = graphs.networkX_edge_params_from_geoms(G)
+    G = graphs.nX_simple_geoms(G)
+    G_edge_defaults = graphs.nX_auto_edge_params(G)
     for s, e, d in G.edges(data=True):
         assert d['geom'].length == G_edge_defaults[s][e]['length']
         assert d['geom'].length == G_edge_defaults[s][e]['impedance']
 
 
-def test_networkX_m_weighted_nodes():
+def test_nX_m_weighted_nodes():
     # check that missing length attribute throws error
     G = mock.mock_graph()
     with pytest.raises(AttributeError):
-        graphs.networkX_m_weighted_nodes(G)
+        graphs.nX_m_weighted_nodes(G)
 
     # test length weighted nodes
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    G = graphs.networkX_m_weighted_nodes(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    G = graphs.nX_m_weighted_nodes(G)
     for n, d in G.nodes(data=True):
         agg_length = 0
         for nb in G.neighbors(n):
@@ -285,16 +285,16 @@ def test_networkX_m_weighted_nodes():
         assert d['weight'] == agg_length
 
 
-def test_graph_maps_from_networkX():
-    # TODO: add test for self-loops
+def test_graph_maps_from_nX():
+    # TODO: add test for self-loops?
 
     # template graph
     G_template = mock.mock_graph()
-    G_template = graphs.networkX_simple_geoms(G_template)
+    G_template = graphs.nX_simple_geoms(G_template)
 
     # test maps vs. networkX
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_params_from_geoms(G_test)
+    G_test = graphs.nX_auto_edge_params(G_test)
     # set some random 'live' statuses
     for n in G_test.nodes():
         G_test.nodes[n]['live'] = bool(np.random.randint(0, 1))
@@ -302,9 +302,9 @@ def test_graph_maps_from_networkX():
     for s, e in G_test.edges():
         G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * np.random.random() * 2000
     # generate length weighted nodes
-    G_test = graphs.networkX_m_weighted_nodes(G_test)
+    G_test = graphs.nX_m_weighted_nodes(G_test)
     # generate test maps
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G_test)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_test)
     # debug plot
     # plot.plot_graphs(primal=G_test)
     # plot.plot_graph_maps(node_uids, node_map, edge_map)
@@ -328,55 +328,55 @@ def test_graph_maps_from_networkX():
     # check that missing node attributes throw an error
     G_test = G_template.copy()
     for attr in ['x', 'y']:
-        G_test = graphs.networkX_edge_params_from_geoms(G_test)
+        G_test = graphs.nX_auto_edge_params(G_test)
         for n in G_test.nodes():
             # delete attribute from first node and break
             del G_test.nodes[n][attr]
             break
         with pytest.raises(AttributeError):
-            graphs.graph_maps_from_networkX(G_test)
+            graphs.graph_maps_from_nX(G_test)
 
     # check that missing edge attributes throw an error
     G_test = G_template.copy()
     for attr in ['length', 'impedance']:
-        G_test = graphs.networkX_edge_params_from_geoms(G_test)
+        G_test = graphs.nX_auto_edge_params(G_test)
         for s, e in G_test.edges():
             # delete attribute from first edge and break
             del G_test[s][e][attr]
             break
         with pytest.raises(AttributeError):
-            graphs.graph_maps_from_networkX(G_test)
+            graphs.graph_maps_from_nX(G_test)
 
     # check that invalid lengths are caught
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_params_from_geoms(G_test)
+    G_test = graphs.nX_auto_edge_params(G_test)
     # corrupt length attribute and break
     for corrupt_val in [0, -1, -np.inf, np.nan]:
         for s, e in G_test.edges():
             G_test[s][e]['length'] = corrupt_val
             break
         with pytest.raises(AttributeError):
-            graphs.graph_maps_from_networkX(G_test)
+            graphs.graph_maps_from_nX(G_test)
 
     # check that invalid impedances are caught
     G_test = G_template.copy()
-    G_test = graphs.networkX_edge_params_from_geoms(G_test)
+    G_test = graphs.nX_auto_edge_params(G_test)
     # corrupt impedance attribute and break
     for corrupt_val in [-1, -np.inf, np.nan]:
         for s, e in G_test.edges():
             G_test[s][e]['length'] = corrupt_val
             break
         with pytest.raises(AttributeError):
-            graphs.graph_maps_from_networkX(G_test)
+            graphs.graph_maps_from_nX(G_test)
 
 
-def test_networkX_from_graph_maps():
+def test_nX_from_graph_maps():
     # also see test_networks.test_to_networkX for tests on implementation via Network layer
 
     # check round trip to and from graph maps results in same graph
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
     for n in G.nodes():
@@ -384,13 +384,13 @@ def test_networkX_from_graph_maps():
         G.nodes[n]['weight'] = np.random.random() * 2000
 
     # test directly from and to graph maps
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
-    G_round_trip = graphs.networkX_from_graph_maps(node_uids, node_map, edge_map)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
     assert G_round_trip.nodes == G.nodes
     assert G_round_trip.edges == G.edges
 
     # check with metrics dictionary
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500, 1000])
+    N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
     N.harmonic_closeness()
     data_dict = mock.mock_data_dict(G)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
@@ -400,18 +400,18 @@ def test_networkX_from_graph_maps():
                          qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone
-    G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,
-                                                        node_map,
-                                                        edge_map,
-                                                        metrics_dict=metrics_dict)
+    G_round_trip_data = graphs.nX_from_graph_maps(node_uids,
+                                                  node_map,
+                                                  edge_map,
+                                                  metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
     # with backbone
-    G_round_trip_data = graphs.networkX_from_graph_maps(node_uids,
-                                                        node_map,
-                                                        edge_map,
-                                                        networkX_graph=G,
-                                                        metrics_dict=metrics_dict)
+    G_round_trip_data = graphs.nX_from_graph_maps(node_uids,
+                                                  node_map,
+                                                  edge_map,
+                                                  networkX_graph=G,
+                                                  metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
 
@@ -420,9 +420,9 @@ def test_networkX_from_graph_maps():
     corrupt_G = G.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
-        graphs.networkX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=corrupt_G)
+        graphs.nX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=corrupt_G)
     # mismatching node uid
     with pytest.raises(AttributeError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
-        graphs.networkX_from_graph_maps(corrupt_node_uids, node_map, edge_map, networkX_graph=G)
+        graphs.nX_from_graph_maps(corrupt_node_uids, node_map, edge_map, networkX_graph=G)

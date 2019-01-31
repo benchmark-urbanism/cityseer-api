@@ -40,7 +40,7 @@ module.exports = {
     lastUpdated: true,
     nav: [
       {text: 'home', link: '/'},
-      {text: 'docs', link: '/modules/quickstart'},
+      {text: 'docs', link: '/overview'},
       {text: 'cityseer.io', link: 'https://cityseer.io/'}
     ],
     displayAllHeaders: false,
@@ -48,18 +48,16 @@ module.exports = {
     sidebarDepth: 1,
     sidebar: [
       {
-        title: '',
+        title: 'intro',
         collapsable: false,
         children: [
-          '/',
-          'quickstart'
+          ['overview', 'overview']
         ]
       },
       {
         title: 'algos',
         collapsable: false,
         children: [
-          ['/algos/', 'algos'],
           ['/algos/centrality', 'algos.centrality'],
           ['/algos/checks', 'algos.checks'],
           ['/algos/data', 'algos.data'],
@@ -70,7 +68,6 @@ module.exports = {
         title: 'metrics',
         collapsable: false,
         children: [
-          ['/metrics/', 'metrics'],
           ['/metrics/layers', 'metrics.layers'],
           ['/metrics/networks', 'metrics.networks']
         ]
@@ -79,7 +76,6 @@ module.exports = {
         title: 'util',
         collapsable: false,
         children: [
-          ['/util/', 'util'],
           ['/util/graphs', 'util.graphs'],
           ['/util/mock', 'util.mock'],
           ['/util/plot', 'util.plot']

@@ -44,9 +44,9 @@ def test_check_categorical_data():
 
 def test_check_data_map():
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    N = networks.Network_Layer_From_nX(G, distances=[500])
     data_dict = mock.mock_data_dict(G)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
@@ -68,9 +68,9 @@ def test_check_data_map():
 
 def test_check_trim_maps():
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    N = networks.Network_Layer_From_nX(G, distances=[500])
     trim_to_full_idx_map, full_to_trim_idx_map = \
         data.radial_filter(N.x_arr[0], N.y_arr[0], N.x_arr, N.y_arr, 500)
 
@@ -101,9 +101,9 @@ def test_check_trim_maps():
 def test_check_network_maps():
     # network maps
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    N = networks.Network_Layer_From_NetworkX(G, distances=[500])
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    N = networks.Network_Layer_From_nX(G, distances=[500])
 
     # from cityseer.util import plot
     # plot.plot_networkX_primal_or_dual(primal=G)

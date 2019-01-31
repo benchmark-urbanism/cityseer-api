@@ -241,7 +241,7 @@ def mock_numerical_data(length: int, num_arrs: int = 1, random_seed: int = None)
     return np.array(num_data)
 
 
-def mock_species_diversity(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
+def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 

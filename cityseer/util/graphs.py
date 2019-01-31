@@ -60,7 +60,7 @@ def substring(geom, start_dist, end_dist, normalized=False):
     return geometry.LineString(vertex_list)
 
 
-def networkX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -92,7 +92,7 @@ def networkX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -134,7 +134,7 @@ def networkX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_remove_straight_intersections(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -179,7 +179,7 @@ def networkX_remove_straight_intersections(networkX_graph: nx.Graph) -> nx.Graph
     return g_copy
 
 
-def networkX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
+def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -255,7 +255,7 @@ def networkX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Gra
     return g_copy
 
 
-def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
@@ -378,7 +378,7 @@ def networkX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     return g_dual
 
 
-def networkX_edge_params_from_geoms(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_auto_edge_params(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
@@ -404,7 +404,7 @@ def networkX_edge_params_from_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def networkX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -423,7 +423,7 @@ def networkX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
+def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
@@ -520,11 +520,11 @@ def graph_maps_from_networkX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarra
 Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
 
 
-def networkX_from_graph_maps(node_uids: Union[tuple, list],
-                             node_map: np.ndarray,
-                             edge_map: np.ndarray,
-                             networkX_graph: nx.Graph = None,
-                             metrics_dict: dict = None) -> nx.Graph:
+def nX_from_graph_maps(node_uids: Union[tuple, list],
+                       node_map: np.ndarray,
+                       edge_map: np.ndarray,
+                       networkX_graph: nx.Graph = None,
+                       metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
     checks.check_network_maps(node_map, edge_map)

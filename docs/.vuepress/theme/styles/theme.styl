@@ -5,11 +5,11 @@ html, body
   font-weight lighter
 
 h2
-  border-color $light-grey
-  border-width 1px
+  border-color $secondary
+  border-width 2px
 
 hr
-  border-top-color $light-grey
+  border-top-color $borderColor
 
 kbd
   background $mid-grey
@@ -99,7 +99,7 @@ tr
 
       .dropdown-item
         h4
-          border-top-color $light-grey
+          border-top-color $borderColor
 
 .sw-update-popup
   background-color $white
@@ -134,7 +134,7 @@ tr
 .page-nav
   .inner
     color $light-grey
-    border-top-color $light-grey
+    border-top-color $borderColor
 
 .sidebar
   background-color $deep-grey
@@ -187,7 +187,7 @@ tr
 
   .features,
   .footer
-    border-top-color $light-grey
+    border-top-color $borderColor
 
   .feature
     h2
@@ -206,5 +206,19 @@ tr
   display: block;
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
+}
+
+.left {
+  display: inline;
+  margin-left: 0;
+  margin-right: auto;
+  width: 50%;
+}
+
+.right {
+  display: inline;
+  margin-left: auto;
+  margin-right: 0;
   width: 50%;
 }

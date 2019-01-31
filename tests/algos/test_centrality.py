@@ -21,9 +21,9 @@ def test_shortest_path_tree():
 
     # load the test graph
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
 
     # test all shortest paths against networkX version of dijkstra
     x_arr = node_map[:, 0]
@@ -53,8 +53,8 @@ def test_shortest_path_tree():
                     assert map_impedance[j_trim] == map_distance[j_trim] == nx_dist[j]
 
     # angular impedance should take a simpler but longer path
-    G_dual = graphs.networkX_to_dual(G)
-    node_uids_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
+    G_dual = graphs.nX_to_dual(G)
+    node_uids_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
 
     # for debugging
     # from cityseer.util import plot
@@ -162,9 +162,9 @@ def test_local_centrality():
 
     # load the test graph
     G = mock.mock_graph()
-    G = graphs.networkX_simple_geoms(G)
-    G = graphs.networkX_edge_params_from_geoms(G)  # set default edge attributes
-    node_uids, node_map, edge_map = graphs.graph_maps_from_networkX(G)  # generate node and edge maps
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
 
     # Test centrality methods where possible against NetworkX - i.e. harmonic closeness and betweenness
     # Note that NetworkX improved closeness is not the same as derivation used in this package
@@ -377,8 +377,8 @@ def test_local_centrality():
     # here the emphasis is simply on checking that the angular instruction gets chained through
 
     # setup dual data
-    G_dual = graphs.networkX_to_dual(G)
-    node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_networkX(G_dual)
+    G_dual = graphs.nX_to_dual(G)
+    node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
 
     cl_dual, bt_dual = \
         centrality.local_centrality(node_map_dual,

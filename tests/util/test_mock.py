@@ -23,7 +23,7 @@ def test_mock_graph():
             assert 'y' in d and isinstance(d['y'], (int, float))
 
     # from cityseer.util import plot
-    # plot.plot_networkX(G)
+    # plot.plot_nX(G)
 
 
 def test_mock_data_dict():
@@ -76,7 +76,7 @@ def test_mock_numerical_data():
                     assert 0 <= n <= 100000
 
 
-def test_mock_species_diversity():
-    for counts, probs in mock.mock_species_diversity():
+def test_mock_species_data():
+    for counts, probs in mock.mock_species_data():
         assert np.array_equal(counts / counts.sum(), probs)
         assert round(probs.sum(), 8) == 1
