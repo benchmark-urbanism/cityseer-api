@@ -1,7 +1,7 @@
 const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
 
 module.exports = {
-  base: '/',
+  base: '/cityseer/',
   title: 'Cityseer API Docs',
   description: 'Computational tools for urban analysis',
   head: [
