@@ -8,7 +8,7 @@
 cityseer.util.graphs
 ====================
 
-A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs. Note that `cityseer`'s network data structures can be created and manipulated directly, where so desired.
+A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
 
 nX\_simple\_geoms

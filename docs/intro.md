@@ -2,6 +2,14 @@
 
 ---
 
+Cityseer <Chip text="beta" :important="true"/>
+--------
+
+`cityseer` is a collection of computational tools for fine-grained network and land-use analysis. It is useful for assessing the morphological precursors to vibrant neighbourhoods. It makes use of rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
+
+The use of `python` facilitates interaction with popular tools for network, geospatial, and scientific data analysis, i.e. [`networkX`](https://networkx.github.io/), [`shapely`](https://shapely.readthedocs.io), [`numpy`](http://www.numpy.org/), etc. The underlying algorithms are designed for efficient large-scale urban analysis and have been implemented with fast [`numba`](https://numba.pydata.org/) JIT compiled code.
+
+
 Installation
 ------------
 
@@ -9,6 +17,7 @@ Installation
 ```bash
 pip install cityseer
 ```
+
 
 Quickstart
 ----------
@@ -37,9 +46,9 @@ plot.plot_nX(G)
 
 <img src="./graph_simple.png" alt="Example graph" class="centre">
 
-Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it may be easier to generate these automatically:
-- If the network assumes simple straight-line links from node to node, then use the [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) method to generate simple edge geometries. This method auto-populates the edge `geom` attributes, allowing the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method to be used for generating the `length` and `impedance` attributes.
-- For cases where the network contains complex road geometries: `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries can be assigned to the edge `geom` attributes. The `length` and `impedance` attributes can then be deduced using the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method.
+Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it is often easier to assign a `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometry to the edge `geom` attribute, from which the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method can generate the `length` and `impedance` edge attributes automatically.
+
+If the network uses simple straight-line edges (links) from node to node, then use the [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) method to generate the edge `geom` attributes automatically:
 
 ```python
 from cityseer.util import graphs
@@ -50,6 +59,8 @@ G = graphs.nX_simple_geoms(G)
 # auto-set edge length and impedance attributes from the geoms
 G = graphs.nX_auto_edge_params(G)
 ```
+
+
 
 `cityseer` network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. `NetworkX` graphs can be converted to `cityseer` `Network` layers through use of the [`Network_Layer_From_nX`]() method. It is then possible to call a variety of network centrality methods using
 
@@ -104,8 +115,12 @@ N.metrics_to_dict()
 ```
 
 
-Development
-----------
+Issues & Development
+--------------------
+
+Please report issues to the [`issues`](https://github.com/cityseer/cityseer-api/issues) page of the `cityseer` `github` repo.
+
+Code related suggestions and pull requests are welcome. Please discuss proposals through prior to implementation.
 
 
 License & Attribution
@@ -113,6 +128,8 @@ License & Attribution
 
 Attribution is required.
 
-Apache License v2.0 + Commons Clause License v1.0
+Personal and educational usage is encouraged. Please take the time to report issues and provide feedback on which new features may be beneficial for your use-cases.
 
-Copyright © 2018-present Gareth Simons
+[Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.html) + [Commons Clause License v1.0](https://commonsclause.org/)
+
+Copyright © 2018-present Gareth Simons & Cityseer Ltd.

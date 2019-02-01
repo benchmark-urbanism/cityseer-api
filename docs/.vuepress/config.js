@@ -1,7 +1,7 @@
 const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
 
 module.exports = {
-  base: '/docs/',
+  base: '/',
   title: 'Cityseer API Docs',
   description: 'Computational tools for urban analysis',
   head: [
@@ -40,7 +40,7 @@ module.exports = {
     lastUpdated: true,
     nav: [
       {text: 'home', link: '/'},
-      {text: 'docs', link: '/overview'},
+      {text: 'docs', link: '/intro'},
       {text: 'cityseer.io', link: 'https://cityseer.io/'}
     ],
     displayAllHeaders: false,
@@ -48,10 +48,10 @@ module.exports = {
     sidebarDepth: 1,
     sidebar: [
       {
-        title: 'intro',
+        title: 'overview',
         collapsable: false,
         children: [
-          ['overview', 'overview']
+          ['intro', 'intro']
         ]
       },
       {

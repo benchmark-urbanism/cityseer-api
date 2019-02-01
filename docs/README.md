@@ -6,7 +6,7 @@ heroImage: /logo.png
 heroText: visibility hidden
 tagline: Computational tools for urban analysis
 actionText: Get Started →
-actionLink: overview.md
+actionLink: intro.md
 features:
 - title: Urban analysis
   details: Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.
