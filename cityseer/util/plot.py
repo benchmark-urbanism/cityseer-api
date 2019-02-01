@@ -37,7 +37,8 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
                 node_color='#0064b7',
                 node_size=75,
                 node_shape='d',
-                edge_color='w',
+                edge_color='#999999',
+                style='dashed',
                 width=1,
                 alpha=0.95)
 

@@ -2,7 +2,7 @@
 General graph manipulation
 '''
 import logging
-from typing import Union, List, Tuple
+from typing import Union, Tuple
 
 import networkx as nx
 import numpy as np
@@ -64,7 +64,7 @@ def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
-    logger.info('Converting networkX graph from WGS to UTM.')
+    logger.info('Generating simple (straight) edge geometries.')
     g_copy = networkX_graph.copy()
 
     # unpack coordinates and build simple edge geoms
@@ -517,9 +517,6 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     return tuple(node_uids), node_map, edge_map
 
 
-Data_Tuple = List[Tuple[str, Union[list, tuple, np.ndarray]]]
-
-
 def nX_from_graph_maps(node_uids: Union[tuple, list],
                        node_map: np.ndarray,
                        edge_map: np.ndarray,
@@ -561,6 +558,9 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
         for uid, metrics in tqdm(metrics_dict.items()):
+            if uid not in g_copy:
+                raise AttributeError(
+                    f'Node uid {uid} not found in graph. Data dictionary uids must match those supplied with the node and edge maps.')
             g_copy.nodes[uid]['metrics'] = metrics
 
     return g_copy

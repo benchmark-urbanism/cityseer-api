@@ -30,6 +30,15 @@ A `NetworkX` graph with `x` and `y` attributes.
 
 </FuncElement>
 
+```python
+from cityseer.util import mock, graphs
+
+G = mock.mock_graph()
+```
+
+<img src="./graph_example.png" alt="Example graph" class="centre">
+
+
 
 mock\_data\_dict
 ----------------
@@ -132,7 +141,7 @@ mock\_species\_data
 
 <FuncSignature>mock_species_data(random_seed=None)</FuncSignature>
 
-A generator function returning a series of randomly generated counts and corresponding probabilities for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes".
+A generator function returning a series of randomly generated counts and corresponding probabilities for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
 
 <FuncHeading>Parameters</FuncHeading>
 

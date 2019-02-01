@@ -35,7 +35,7 @@ from cityseer.util import plot
 plot.plot_nX(G)
 ```
 
-<img src="./simple_graph.png" alt="Example graph" class="centre">
+<img src="./graph_simple.png" alt="Example graph" class="centre">
 
 Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it may be easier to generate these automatically:
 - If the network assumes simple straight-line links from node to node, then use the [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) method to generate simple edge geometries. This method auto-populates the edge `geom` attributes, allowing the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method to be used for generating the `length` and `impedance` attributes.
