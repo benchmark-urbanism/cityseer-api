@@ -96,7 +96,7 @@ class Network_Layer:
                 self._betas.append(np.log(self._min_threshold_wt) / d)
         # if betas, generate the distances
         elif self._betas is not None and self._distances is None:
-            if isinstance(self._betas, (int, float)):
+            if isinstance(self._betas, (float)):
                 self._betas = [self._betas]
             if isinstance(self._betas, (list, tuple, np.ndarray)):
                 if len(self._betas) == 0:

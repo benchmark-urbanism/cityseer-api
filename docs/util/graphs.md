@@ -39,7 +39,7 @@ nX\_wgs\_to\_utm
 
 <FuncSignature>nX_wgs_to_utm(networkX_graph)</FuncSignature>
 
-Converts `x` and `y` node coordinates from [WGS84](https://epsg.io/4326) to UTM cartesian coordinates. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+Converts `x` and `y` node coordinates from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to a local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -119,7 +119,7 @@ G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 ```
 
-<img src="./graph_simple.png" alt="Example graph" class="left"><img src="./graph_decomposed.png" alt="Example decomposed graph" class="right">
+<img src="../plots/graph_simple.png" alt="Example graph" class="left"><img src="../plots/graph_decomposed.png" alt="Example decomposed graph" class="right">
 
 _Simple graph (left) and the equivalent $100m$ decomposed graph (right)._
 
@@ -162,7 +162,7 @@ G_simple = graphs.nX_simple_geoms(G)
 G_dual = graphs.nX_to_dual(G_simple)
 ```
 
-<img src="./graph_dual.png" alt="Example dual graph" class="centre">
+<img src="../plots/graph_dual.png" alt="Example dual graph" class="centre">
 
 _Dual graph (blue) overlaid on the source primal graph (red). Edge `length` and angular `impedance` attributes are set automatically from the `geom` attribute's length and total angular change._
 
@@ -286,7 +286,15 @@ A 2d numpy array containing the graph's edges. The indices of the second dimensi
 nX\_from\_graph\_maps
 ---------------------
 
-<FuncSignature>nX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=None, metrics_dict=None)</FuncSignature>
+<FuncSignature>
+<pre>
+nX_from_graph_maps(node_uids,
+                   node_map,
+                   edge_map,
+                   networkX_graph=None,
+                   metrics_dict=None)
+</pre>
+</FuncSignature>
 
 Transposes `cityseer` graph maps into a `networkX` graph.
 

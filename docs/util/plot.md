@@ -13,7 +13,15 @@ Convenience methods for crude plotting. This module is predominately used for vi
 
 plot\_nX\_primal\_or\_dual
 --------------------------
-<FuncSignature>plot_nX_primal_or_dual(primal=None, dual=None, path=None, labels=False)</FuncSignature>
+<FuncSignature>
+<pre>
+plot_nX_primal_or_dual(primal=None,
+                       dual=None,
+                       path=None,
+                       labels=False)
+</pre>
+</FuncSignature>
+
 Plot either or both primal and dual representations of `networkX` graphs.
 
 <FuncHeading>Parameters</FuncHeading>
@@ -68,7 +76,15 @@ Whether to display node labels.
 
 plot\_graph\_maps
 -----------------
-<FuncSignature>plot_graph_maps(node_uids, node_map, edge_map, data_map, poly)</FuncSignature>
+<FuncSignature>
+<pre>
+plot_graph_maps(node_uids,
+                node_map,
+                edge_map,
+                data_map,
+                poly)
+</pre>
+</FuncSignature>
 
 Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision.
 

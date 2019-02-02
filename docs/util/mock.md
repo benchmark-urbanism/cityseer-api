@@ -36,7 +36,7 @@ from cityseer.util import mock, graphs
 G = mock.mock_graph()
 ```
 
-<img src="./graph_example.png" alt="Example graph" class="centre">
+<img src="../plots/graph_example.png" alt="Example graph" class="centre">
 
 
 

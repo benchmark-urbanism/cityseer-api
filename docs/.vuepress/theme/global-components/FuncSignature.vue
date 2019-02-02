@@ -16,4 +16,10 @@
         background-color $mid-grey
         border-radius 10px
 
+    // necessary for when wrapping signatures with <pre></pre> tags for spacing
+    .sig-style
+        pre
+            margin 0
+            padding 0
+
 </style>

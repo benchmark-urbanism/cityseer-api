@@ -44,7 +44,7 @@ from cityseer.util import plot
 plot.plot_nX(G)
 ```
 
-<img src="./graph_simple.png" alt="Example graph" class="centre">
+<img src="./plots/graph.png" alt="Example graph" class="centre">
 
 Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it is often easier to assign a `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometry to the edge `geom` attribute, from which the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method can generate the `length` and `impedance` edge attributes automatically.
 
@@ -120,15 +120,13 @@ Issues & Development
 
 Please report issues to the [`issues`](https://github.com/cityseer/cityseer-api/issues) page of the `cityseer` `github` repo.
 
-Code related suggestions and pull requests are welcome. Please discuss proposals through prior to implementation.
+Suggestions, contributions, and pull requests are welcome. Please discuss significant proposals prior to implementation.
 
 
 License & Attribution
 ---------------------
 
 Attribution is required.
-
-Personal and educational usage is encouraged. Please take the time to report issues and provide feedback on which new features may be beneficial for your use-cases.
 
 [Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.html) + [Commons Clause License v1.0](https://commonsclause.org/)
 
