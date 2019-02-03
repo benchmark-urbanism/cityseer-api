@@ -306,7 +306,10 @@ def local_centrality(node_map: np.ndarray,
                         for cl_key in closeness_keys:
                             # 1 - farness_impedance - aggregated impedances
                             if cl_key == 1:
-                                closeness_data[1][d_idx][src_idx] += impedance / cl_weight
+                                if cl_weight == 0:
+                                    closeness_data[1][d_idx][src_idx] += np.inf
+                                else:
+                                    closeness_data[1][d_idx][src_idx] += impedance / cl_weight
                             # 3 - harmonic closeness - sum of inverse weights
                             elif cl_key == 3:
                                 if impedance == 0:
@@ -373,6 +376,7 @@ def local_centrality(node_map: np.ndarray,
                 for src_idx in range(len(node_map)):
                     # ignore 0 / 0 situations where no proximate nodes or zero impedance
                     if closeness_data[2][d_idx][src_idx] != 0:
+                        # node density squared / farness
                         closeness_data[4][d_idx][src_idx] = \
                             closeness_data[0][d_idx][src_idx] ** 2 / closeness_data[2][d_idx][src_idx]
 

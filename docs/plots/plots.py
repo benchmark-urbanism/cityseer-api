@@ -13,24 +13,55 @@ G = mock.mock_graph()
 plot.plot_nX(G, path='graph.png', labels=True)
 
 # mock module
+plt.cla()
 plt.clf()
 plot.plot_nX(G, path='graph_example.png', labels=True)
 
 # graph module
+plt.cla()
 plt.clf()
 plot.plot_nX(G, path='graph_simple.png', labels=False)
 
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 
+plt.cla()
 plt.clf()
 plot.plot_nX(G_decomposed, path='graph_decomposed.png', labels=False)
 
+plt.cla()
 plt.clf()
 G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False)
 
 # networks module
+
+# before and after plots
+from cityseer.metrics import networks
+from cityseer.util import mock, graphs
+
+# prepare a mock graph
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+G = graphs.nX_auto_edge_params(G)
+
+plt.cla()
+plt.clf()
+plot.plot_nX(G, path='graph_before.png', labels=True)
+
+# generate the network layer and compute some metrics
+N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
+# compute some-or-other metrics
+N.harmonic_closeness()
+# convert back to networkX
+G_post = N.to_networkX()
+
+plt.cla()
+plt.clf()
+plot.plot_nX(G_post, path='graph_after.png', labels=True)
+
+# beta decays
+plt.cla()
 plt.clf()
 fig, ax = plt.subplots(1, 1, figsize=(5, 2.5))
 

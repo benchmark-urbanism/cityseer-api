@@ -115,8 +115,8 @@ N.metrics_to_dict()
 ```
 
 
-Issues & Development
---------------------
+Issues & Contributions
+----------------------
 
 Please report issues to the [`issues`](https://github.com/cityseer/cityseer-api/issues) page of the `cityseer` `github` repo.
 

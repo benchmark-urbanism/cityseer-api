@@ -55,16 +55,6 @@ module.exports = {
         ]
       },
       {
-        title: 'algos',
-        collapsable: false,
-        children: [
-          ['/algos/centrality', 'algos.centrality'],
-          ['/algos/checks', 'algos.checks'],
-          ['/algos/data', 'algos.data'],
-          ['/algos/diversity', 'algos.diversity']
-        ]
-      },
-      {
         title: 'metrics',
         collapsable: false,
         children: [
