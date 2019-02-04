@@ -99,9 +99,8 @@ def assign_to_network(data_map: np.ndarray,
     DATA MAP:
     0 - x
     1 - y
-    2 - live
-    3 - assigned network index - nearest
-    4 - assigned network index - next-nearest
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
     '''
 
     checks.check_network_maps(node_map, edge_map)
@@ -310,10 +309,10 @@ def assign_to_network(data_map: np.ndarray,
         # print(f'[{data_idx}, {nearest}, {next_nearest}],')
 
         # set in the data map
-        data_map[data_idx][3] = nearest  # adj_idx
+        data_map[data_idx][2] = nearest  # adj_idx
         # in some cases next nearest will be NaN
         # this is mostly in situations where it works to leave as NaN - e.g. access off dead-ends...
-        data_map[data_idx][4] = next_nearest  # next_adj_idx
+        data_map[data_idx][3] = next_nearest  # next_adj_idx
 
     print('...done')
 
@@ -337,8 +336,8 @@ def aggregate_to_src_idx(src_idx: int,
 
     d_x_arr = data_map[:, 0]
     d_y_arr = data_map[:, 1]
-    d_assign_nearest = data_map[:, 3]
-    d_assign_next_nearest = data_map[:, 4]
+    d_assign_nearest = data_map[:, 2]
+    d_assign_next_nearest = data_map[:, 3]
 
     # filter the network by distance
     netw_trim_to_full, netw_full_to_trim = radial_filter(src_x, src_y, netw_x_arr, netw_y_arr, max_dist)
@@ -442,9 +441,8 @@ def local_aggregator(node_map: np.ndarray,
     DATA MAP:
     0 - x
     1 - y
-    2 - live
-    3 - assigned network index - nearest
-    4 - assigned network index - next-nearest
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
     '''
     checks.check_network_maps(node_map, edge_map)
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network

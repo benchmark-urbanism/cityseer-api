@@ -37,13 +37,13 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     3 - assigned network index - next-nearest
     '''
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
-    if not data_map.ndim == 2 or not data_map.shape[1] == 6:
+    if not data_map.ndim == 2 or not data_map.shape[1] == 4:
         raise ValueError(
-            'The data map must have a dimensionality of Nx6, with the first four indices consisting of x, y, live, and class attributes. Indices 5 and 6, if populated, correspond to the nearest and next-nearest network nodes.')
+            'The data map must have a dimensionality of Nx4, with the first two indices consisting of x, y coordinates. Indices 2 and 3, if populated, correspond to the nearest and next-nearest network nodes.')
 
     if check_assigned:
         # check that data map has been assigned
-        if np.all(np.isnan(data_map[:, 3])):
+        if np.all(np.isnan(data_map[:, 2])):
             raise ValueError('Data map has not been assigned to a network.')
 
 

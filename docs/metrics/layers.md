@@ -43,8 +43,8 @@ data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=0)
 for i, (key, value) in enumerate(data_dict_WGS.items()):
     print(key, value)
     # prints:
-    # 0 {'x': -1.458369781174891, 'y': 54.14683122127234, 'live': False}
-    # 1 {'x': -1.457436968983548, 'y': 54.144993424483964, 'live': False}
+    # 0 {'x': -1.458369781174891, 'y': 54.14683122127234}
+    # 1 {'x': -1.457436968983548, 'y': 54.144993424483964}
     if i == 1:
         break
         
@@ -54,8 +54,8 @@ data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
 for i, (key, value) in enumerate(data_dict_UTM.items()):
     print(key, value)
     # prints:
-    # 0 {'x': 6000956.463188213, 'y': 600693.4059810264, 'live': False}
-    # 1 {'x': 6000753.336609659, 'y': 600758.7916663144, 'live': False}
+    # 0 {'x': 6000956.463188213, 'y': 600693.4059810264}
+    # 1 {'x': 6000753.336609659, 'y': 600758.7916663144}
     if i == 1:
         break
 ```
@@ -124,13 +124,11 @@ A dictionary representing distinct data points, where each `key` represents a `u
 example_data_dict = {
     'uid_01': {
         'x': 6000956.463188213,
-        'y': 600693.4059810264,
-        'live': True
+        'y': 600693.4059810264
     },
     'uid_02': {
         'x': 6000753.336609659,
-        'y': 600758.7916663144,
-        'live': False
+        'y': 600758.7916663144
     }
 }
 ```

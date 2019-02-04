@@ -59,15 +59,14 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
     DATA MAP:
     0 - x
     1 - y
-    2 - live
-    3 - assigned network index - nearest
-    4 - assigned network index - next-nearest
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
     '''
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
 
     data_uids = []
-    data_map = np.full((len(data_dict), 6), np.nan)
+    data_map = np.full((len(data_dict), 4), np.nan)
     for i, (k, v) in enumerate(data_dict.items()):
         # set key to data labels
         data_uids.append(k)
@@ -79,11 +78,6 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
         if 'y' not in v:
             raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
         data_map[i][1] = v['y']
-        # DATA MAP INDEX POSITION 2 = live or not
-        if 'live' in v:
-            data_map[i][2] = v['live']
-        else:
-            data_map[i][2] = True
 
     return tuple(data_uids), data_map
 
@@ -93,9 +87,8 @@ class Data_Layer:
     DATA MAP:
     0 - x
     1 - y
-    2 - live
-    3 - assigned network index - nearest
-    4 - assigned network index - next-nearest
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
     '''
 
     def __init__(self,
@@ -123,10 +116,6 @@ class Data_Layer:
     @property
     def y_arr(self):
         return self._data[:, 1]
-
-    @property
-    def live(self):
-        return self._data[:, 2]
 
     @property
     def Network(self):

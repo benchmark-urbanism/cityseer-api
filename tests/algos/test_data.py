@@ -158,8 +158,8 @@ def test_assign_to_network():
                [48, 49.0, np.nan],
                [49, 19, 16]]
     for i in range(len(data_map_test_500)):
-        assert data_map_test_500[i][3] == targets[i][1]
-        assert np.allclose(data_map_test_500[i][4], targets[i][2], equal_nan=True)
+        assert data_map_test_500[i][2] == targets[i][1]
+        assert np.allclose(data_map_test_500[i][3], targets[i][2], equal_nan=True)
 
     # for debugging
     # from cityseer.util import plot
@@ -168,14 +168,14 @@ def test_assign_to_network():
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
     data_map_test_0 = data.assign_to_network(data_map_test_0, node_map, edge_map, max_dist=0)
+    assert np.all(np.isnan(data_map_test_0[:, 2]))
     assert np.all(np.isnan(data_map_test_0[:, 3]))
-    assert np.all(np.isnan(data_map_test_0[:, 4]))
 
     # max distance of 2000 should return no NaN for nearest
     # there will be some NaN for next nearest
     data_map_test_2000 = data_map.copy()
     data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_map, edge_map, max_dist=2000)
-    assert not np.any(np.isnan(data_map_test_2000[:, 3]))
+    assert not np.any(np.isnan(data_map_test_2000[:, 2]))
 
 
 def test_aggregate_to_src_idx():
@@ -263,9 +263,9 @@ def test_aggregate_to_src_idx():
                         # get the distance via the nearest assigned index
                         nearest_dist = np.inf
                         # if a nearest node has been assigned
-                        if np.isfinite(data_map_temp[d_full_idx][3]):
+                        if np.isfinite(data_map_temp[d_full_idx][2]):
                             # get the full index for the assigned network node
-                            netw_full_idx = int(data_map_temp[d_full_idx][3])
+                            netw_full_idx = int(data_map_temp[d_full_idx][2])
                             # if this node is within the radial cutoff distance:
                             if np.isfinite(netw_full_to_trim[netw_full_idx]):
                                 # get the network node's trim index
@@ -280,9 +280,9 @@ def test_aggregate_to_src_idx():
                         # also get the distance via the next nearest assigned index
                         next_nearest_dist = np.inf
                         # if a nearest node has been assigned
-                        if np.isfinite(data_map_temp[d_full_idx][4]):
+                        if np.isfinite(data_map_temp[d_full_idx][3]):
                             # get the full index for the assigned network node
-                            netw_full_idx = int(data_map_temp[d_full_idx][4])
+                            netw_full_idx = int(data_map_temp[d_full_idx][3])
                             # if this node is within the radial cutoff distance:
                             if np.isfinite(netw_full_to_trim[netw_full_idx]):
                                 # get the network node's trim index

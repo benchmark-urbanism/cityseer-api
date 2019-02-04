@@ -74,9 +74,8 @@ def test_data_map_from_dict():
     for d_label, d in zip(data_uids, data_map):
         assert d[0] == data_dict[d_label]['x']
         assert d[1] == data_dict[d_label]['y']
-        assert d[2] == data_dict[d_label]['live']
+        assert np.isnan(d[2])
         assert np.isnan(d[3])
-        assert np.isnan(d[4])
 
     # check that missing attributes throw errors
     for attr in ['x', 'y']:
@@ -92,8 +91,6 @@ def test_Data_Layer():
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
-    live = data_map[:, 2]
-    class_codes = data_map[:, 3]
 
     # test against Data_Layer internal process
     D = layers.Data_Layer(data_uids, data_map)
@@ -101,7 +98,6 @@ def test_Data_Layer():
     assert np.allclose(D._data, data_map, equal_nan=True)
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
-    assert np.array_equal(D.live, live)
 
 
 def test_Data_Layer_From_Dict():
@@ -110,8 +106,6 @@ def test_Data_Layer_From_Dict():
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
-    live = data_map[:, 2]
-    class_codes = data_map[:, 3]
 
     # test against Data_Layer_From_Dict's internal process
     D = layers.Data_Layer_From_Dict(data_dict)
@@ -119,7 +113,6 @@ def test_Data_Layer_From_Dict():
     assert np.allclose(D._data, data_map, equal_nan=True)
     assert np.array_equal(D.x_arr, x_arr)
     assert np.array_equal(D.y_arr, y_arr)
-    assert np.array_equal(D.live, live)
 
 
 def test_compute_aggregated_landuses():
