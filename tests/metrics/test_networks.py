@@ -384,6 +384,22 @@ def test_harmonic_closeness():
                                   N_full.metrics['centrality']['harmonic'][d])
 
 
+def test_improved_closeness():
+    for G, distances, betas, angular in network_generator():
+
+        # easy version
+        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy.improved_closeness()
+        # custom version
+        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full.compute_centrality(close_metrics=['improved'])
+
+        # compare
+        for d in distances:
+            assert np.array_equal(N_easy.metrics['centrality']['improved'][d],
+                                  N_full.metrics['centrality']['improved'][d])
+
+
 def test_gravity():
     for G, distances, betas, angular in network_generator():
 

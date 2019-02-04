@@ -275,6 +275,9 @@ class Network_Layer:
     def harmonic_closeness(self):
         return self.compute_centrality(close_metrics=['harmonic'])
 
+    def improved_closeness(self):
+        return self.compute_centrality(close_metrics=['improved'])
+
     def gravity(self):
         return self.compute_centrality(close_metrics=['gravity'])
 

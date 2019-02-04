@@ -376,7 +376,7 @@ N.compute\_centrality
 
 <FuncSignature>N.compute_centrality(close_metrics=None, between_metrics=None)</FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`N.gravity`](#n-gravity), [`N.harmonic closeness`](#n-harmonic-closeness), [`N.betweenness`](#n-betweenness), or [`N.weighted betweenness`](##n-betweenness-gravity) methods.
+This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`N.gravity`](#n-gravity), [`N.harmonic closeness`](#n-harmonic-closeness), [`N.improved closeness`](#n-improved-closeness), [`N.betweenness`](#n-betweenness), or [`N.weighted betweenness`](##n-betweenness-gravity) methods.
 
 The calculated metrics will be written to the `Network_Layer` and are accessible from the `metrics` property, using the following pattern:
  
@@ -435,8 +435,12 @@ A list of strings, containing any combination of the following `key` values:
 | betweenness | $$\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)}$$ | The default $w=1$ reduces to betweenness centrality within the $d_{max}$ threshold constraint. For betweenness measures, $w$ is a blended average of the weights for any $j$, $k$ node pair passing through node $i$. | 
 | betweenness_gravity | $$\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(-\beta \cdot d[j,k])$$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
 
+::: warning Note
+The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity`, perform similarly in most situations. `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly once values decrease below $1$. `improved` centrality is more robust because all reachable nodes are summed prior to the division step. `gravity` centrality is the most robust method in this regards, and also offers a graceful and tunable representation of distance decays via the negative exponential function.
+:::
+
 ::: tip Hint
-The following four methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [N.compute_centrality](#n-compute-centrality) method directly. 
+The following methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [N.compute_centrality](#n-compute-centrality) method directly. 
 :::
 
 
@@ -450,6 +454,19 @@ Compute harmonic closeness. See [N.compute_centrality](#n-compute-centrality) fo
 The data key is `harmonic`, e.g.:
 
 `Network_Layer.metrics['centrality']['harmonic'][<<distance key>>][<<node idx>>]`
+
+
+N.improved\_closeness
+---------------------
+
+<FuncSignature>N.improved_closeness()</FuncSignature>
+
+Compute improved closeness. See [N.compute_centrality](#n-compute-centrality) for more information.
+
+The data key is `improved`, e.g.:
+
+`Network_Layer.metrics['centrality']['improved'][<<distance key>>][<<node idx>>]`
+
 
 N.gravity
 ---------
