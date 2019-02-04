@@ -242,9 +242,9 @@ It is generally not necessary to use this method directly. This method will be c
 
 A `networkX` graph.
 
-`x` and `y` node attributes are required. `weight` and `live` node attributes are optional.
+`x` and `y` node attributes are required. The `weight` node attribute is optional, and a default of `1` will be used if not present. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
-`length` and `impedance` edge attributes are required.
+`length` and `impedance` edge attributes are required. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
 </FuncElement>
 
@@ -257,7 +257,7 @@ A tuple of node ids corresponding to the node identifiers in the source `network
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond to the following:
+A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -271,7 +271,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension correspond to the following:
+A 2d numpy array representing the graph's edges. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -312,7 +312,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension should correspond to the following:
+A 2d numpy array representing the graph's nodes. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -326,7 +326,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension should correspond to the following:
+A 2d numpy array representing the graph's edges. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|

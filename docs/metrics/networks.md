@@ -19,7 +19,7 @@ distance_from_beta(beta,
 Maps decay parameters $-\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
 ::: danger Caution
-It is generally not necessary to use this method directly. This method will be called internally when invoking [Network_Layer](/metrics/networks.html#network-layer) or [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx).
+It is generally not necessary to utilise this method directly. It will be called internally, if necessary, when invoking [Network_Layer](/metrics/networks.html#network-layer) or [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx).
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -37,7 +37,7 @@ The cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.
 
 <FuncHeading>Returns</FuncHeading>
 
-<FuncElement name="betas" type="numpy.ndarray">
+<FuncElement name="distances" type="numpy.ndarray">
 
 A numpy array of distance thresholds $d_{max}$.
 
@@ -54,16 +54,15 @@ print(d_max)  # prints: array([400., 200.])
 
 ```
 
-Weighted measures such sa gravity, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+Weighted measures such as gravity, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
 
 $$weight = exp(-\beta \cdot distance)$$
 
-The strength of the decay is controlled by the $-\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances.
-For example, if $-\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\\%$ and a location $400m$ away would be weighted at $13.5\\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity. It becomes computationally expensive to consider locations farther away than a selected cutoff weight $w_{min}$, which corresponds to the maximum distance threshold $d_{max}$.
+The strength of the decay is controlled by the $-\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $-\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\\%$ and a location $400m$ away would be weighted at $13.5\\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
 
 <img src="../plots/betas.png" alt="Example beta decays" class="centre">
 
-[Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this method will be used to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
+[Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this method will be called in order to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
 
 $$-\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
 
@@ -76,7 +75,7 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 | $-0.005$ | $800m$ |
 | $-0.0025$ | $1600m$ |
 
-People may be more or less willing to walk based on the specific purpose of the trip and the pedestrian-friendliness of the urban context: customised decays can be modelled by specifying the desired $-\beta$ values and the $w_{min}$ at which to cap the distance thresholds, for example:
+Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
 
 | $-\beta$ | $w_{min}$ | $d_{max}$ |
 |----------|----------|----------|
@@ -101,12 +100,11 @@ Network_Layer(node_uids,
 </pre>
 </FuncSignature>
 
-Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. Use [`Network_Layer_From_nX`](#network-layer-from-nx) instead, when converting directly from a `NetworkX` graph to a `Network_Layer`.
+Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`Network_Layer_From_nX`](#network-layer-from-nx) should be used instead if converting from a `NetworkX` graph to a `Network_Layer`.
 
-A `Network_Layer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $-\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [distance_from_beta](#distance-from-beta) for more information.
+A `Network_Layer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $-\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [distance_from_beta](#distance-from-beta) for more information. These distances and betas will be used for any subsequent centrality and land-use calculations.
 
 ```python
-
 from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
@@ -138,7 +136,7 @@ A tuple of node ids corresponding to the node identifiers.
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond to the following:
+A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -152,7 +150,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension correspond to the following:
+A 2d numpy array representing the graph's edges. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -165,7 +163,7 @@ A 2d numpy array representing the graph's edges. The indices of the second dimen
 
 <FuncElement name="distances" type="int, float, list, tuple, np.ndarray">
 
-A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
+A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
 
 </FuncElement>
 
@@ -183,7 +181,7 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 <FuncElement name="angular" type="bool">
 
-Set the `angular` parameter to `True` when using angular impedances. This adds a step to the shortest-path algorithm, which prevents the side-stepping of sharp angular turns.
+Set the `angular` parameter to `True` if using angular impedances. Angular impedances can sidestep sharp turn, potentially leading to misleading results. Setting `angular=True` adds a step to the shortest-path algorithm, which prevents this behaviour.
 
 </FuncElement>
 
@@ -198,25 +196,21 @@ A `Network_Layer`.
 
 ### Node attributes
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. Use [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) if required in order to convert from WGS84 `lng`, `lat` geographic coordinates to a local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to a local UTM `x`, `y` projected coordinate system.
 
-The `live` node attribute is optional, but recommended. It is used for identifying nodes falling within the original boundary of interest as opposed to those that fall within the surrounding buffered area. (That is assuming you have buffered your extents! See the hint box.) Centrality calculations are only performed for `live` nodes, thus reducing frivolous computation. Note that the algorithms still have access to the full buffered network.
+When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects. The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area. If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered, then set all nodes to `live=True`.
 
-The `idx` node attribute maps the current node to the starting edge-index for associated out-edges. Note that there may be more than one edge associated with any particular node. 
+The `idx` node attribute maps the current node to the starting edge-index for associated out-edges. Note that there may be more than one edge associated with any particular node. These are represented in sequential order in the `edge_map`, and therefore only the first such edge is identified by the `idx` node attribute. 
 
-The `weight` parameter allows centrality calculations to be weighted by external considerations, e.g. edge lengths, building density, etc. Where weights are not to be considered, they should be set to a default value of `1`.
+The `weight` parameter allows centrality calculations to be weighted by external considerations, e.g. adjacent edge lengths, building density, etc. Set to a default value of `1` for all nodes if weights are not to be considered.
 
 ### Edge attributes
 
-The start and end edge `idx` attributes point to the corresponding node indices in the node map.
+The start and end edge `idx` attributes point to the corresponding node indices in the `node_map`.
 
-The `length` edge attribute always corresponds to the edge lengths in metres. This is used when calculating the distances traversed by shortest-path algorithms so that the maximum distance thresholds can be enforced.
+The `length` edge attribute should always corresponds to the edge lengths in metres. This is used when calculating the distances traversed by shortest-path algorithms so that the maximum distance thresholds $d_{max}$ can be enforced.
 
-The `impedance` edge attribute represents the friction to movement across the network: it is used by the shortest-path algorithm when calculating the shortest-routes from each origin node $i$ to all surrounding nodes $j$. For shortest-path centralities, the `impedance` attribute will generally have the same value as the `length` attribute, but this need not be the case. One such example is simplest-path centralities, where impedance represents the angular change in the direction.
-
-::: tip Hint
-When calculating local network centralities, it is best-practice to buffer the global network by a distance equal to the maximum distance threshold to be considered. This prevents misleading results arising due to boundary roll-off effects.
-:::
+The `impedance` edge attribute represents the friction to movement across the network: it is used by the shortest-path algorithm when calculating the shortest-routes from each origin node $i$ to all surrounding nodes $j$. For shortest-path centralities, the `impedance` attribute will generally have the same value as the `length` attribute, but this need not be the case. One such example is simplest-path centralities, where `impedance` represents the angular change in the direction.
 
 
 Network\_Layer\_From\_nX
@@ -232,7 +226,7 @@ Network_Layer_From_nX(networkX_graph,
 </pre>
 </FuncSignature>
 
-Transposes a `networkX` graph a `Network_Layer`. This `class` simplifies the conversion of `NetworkX` graphs by calling [`graph_maps_from_nX`](/util/graphs.html#graph-maps-from-nx) internally and then instancing a [`Network_Layer`](#network-layer) class.
+Directly transposes a `networkX` graph into a `Network_Layer`. This `class` simplifies the conversion of `NetworkX` graphs by calling [`graph_maps_from_nX`](/util/graphs.html#graph-maps-from-nx) internally, after which it instances and returns a [`Network_Layer`](#network-layer) class.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -240,15 +234,15 @@ Transposes a `networkX` graph a `Network_Layer`. This `class` simplifies the con
 
 A `networkX` graph.
 
-`x` and `y` node attributes are required. `weight` and `live` node attributes are optional.
+`x` and `y` node attributes are required. The `weight` node attribute is optional, and a default of `1` will be used if not present. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
-`length` and `impedance` edge attributes are required.
+`length` and `impedance` edge attributes are required. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
 </FuncElement>
 
 <FuncElement name="distances" type="int, float, list, tuple, np.ndarray">
 
-A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
+A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
 
 </FuncElement>
 
@@ -266,7 +260,7 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 <FuncElement name="angular" type="bool">
 
-Set the `angular` parameter to `True` when using angular impedances. This adds a step to the shortest-path algorithm, which prevents the side-stepping of sharp angular turns.
+Set the `angular` parameter to `True` if using angular impedances. Angular impedances can sidestep sharp turn, potentially leading to misleading results. Setting `angular=True` adds a step to the shortest-path algorithm, which prevents this behaviour.
 
 </FuncElement>
 
@@ -278,7 +272,7 @@ A `Network_Layer`.
 
 </FuncElement>
 
-Please refer to the parent [`Network_Layer`](#network-layer) class for more information.
+Refer to the parent [`Network_Layer`](#network-layer) class for additional information.
 
 
 N.metrics\_to\_dict
@@ -290,7 +284,7 @@ N.metrics\_to\_dict
 
 <FuncElement name="metrics_dict" type="dict">
 
-Unpacks all calculated metrics from the  `Network_Layer` class into a `python` dictionary. The dictionary `keys` will correspond to the node `uids`.
+Unpacks all calculated metrics from the  `Network_Layer.metrics` property into a `python` dictionary. The dictionary `keys` will correspond to the node `uids`.
 
 </FuncElement>
 
@@ -330,7 +324,7 @@ N.to\_networkX
 
 <FuncSignature>Network_Layer.to_networkX()</FuncSignature>
 
-Converts a `Network Layer` to a `networkX` graph.
+Transposes a `Network_Layer` into a `networkX` graph. This method calls [nX_from_graph_maps](/util/graphs.html#nx-from-graph-maps) internally.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -340,7 +334,7 @@ A `networkX` graph.
 
 `x`, `y`, `live`, `weight` node attributes will be copied from the `node_map` to the graph nodes. `length` and `impedance` attributes will be copied from the `edge_map` to the graph edges. 
 
-Any data from computed metrics will be copied to the graph.
+Any data from computed metrics will be copied to each of the graph's nodes.
 
 </FuncElement>
 
@@ -382,9 +376,9 @@ N.compute\_centrality
 
 <FuncSignature>N.compute_centrality(close_metrics=None, between_metrics=None)</FuncSignature>
 
-Wraps underlying `numba` optimised functions for computing network centralities. Provides access to all available methods, which are computed simultaneously for any required combinations (and distances), which has potentially significant speed implications. Situations requiring only a single measure, can make use of the simplified [`N.gravity`](#n-gravity), [`N.harmonic closeness`](#n-harmonic-closeness), [`N.betweenness`](#n-betweenness), or [`N.weighted betweenness`](##n-betweenness-gravity) methods.
+This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`N.gravity`](#n-gravity), [`N.harmonic closeness`](#n-harmonic-closeness), [`N.betweenness`](#n-betweenness), or [`N.weighted betweenness`](##n-betweenness-gravity) methods.
 
-The calculated metrics will be written to the `Network_Layer` and is accessible from the `metrics` property, using the following pattern:
+The calculated metrics will be written to the `Network_Layer` and are accessible from the `metrics` property, using the following pattern:
  
 `Network_Layer.metrics['centrality'][<<centrality key>>][<<distance key>>][<<node idx>>]`
 
@@ -401,13 +395,13 @@ G = graphs.nX_auto_edge_params(G)
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 N.compute_centrality(close_metrics=['harmonic'])
 
-# distance idx: any of the distance with which the Network_Layer was initialised
+# distance idx: any of the distances with which the Network_Layer was initialised
 distance_idx = 200
 # let's select a random node idx
 random_idx = 6
 
-# the data is directly available at N.metrics
-# in this case we need the 'harmonic' key and any of the initialised distances
+# the data is available at N.metrics
+# in this case we need the 'harmonic' key
 print(N.metrics['centrality']['harmonic'][distance_idx][random_idx])
 # prints: 0.02312025367905132
 ```
@@ -422,11 +416,11 @@ A list of strings, containing any combination of the following `key` values:
 
 | key | formula | notes |
 |-----|---------|-------|
-| node_density | $$\sum_{j\neq{i}} w_{j}$$ | The default $w=1$ reduces to a simple node count, however, this is technically a density measure because of the $d_{max}$ threshold constraint. Setting $w$ equal to street lengths converts the measure to a street density measure. |
+| node_density | $$\sum_{j\neq{i}} w_{j}$$ | The default $w=1$ reduces to a simple node count, however, this is technically a density measure because of the $d_{max}$ threshold constraint. Setting $w$ equal to adjacent street lengths converts this measure into a street density metric. |
 | farness_impedance | $$\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
 | farness_distance | $$\sum_{j\neq{i}}d_{(i,j)}$$ | A summation of distances in metres within $d_{max}$. |
-| harmonic | $$\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in this context.) |
-| improved | $$\frac{(N-1)\_{w_{j}}^2}{\sum_{j\neq{i}}d_{(i,j)}}$$ | A simplified variant of _"improved" closeness_. Like _harmonic closeness_, this variant behaves appropriately on localised implementations. |
+| harmonic | $$\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
+| improved | $$\frac{(N-1)\_{i}^2}{\sum_{j\neq{i}}w_{(i,j)}}$$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
 | gravity | $$\sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
 | cycles | $$\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
 
@@ -442,7 +436,7 @@ A list of strings, containing any combination of the following `key` values:
 | betweenness_gravity | $$\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(-\beta \cdot d[j,k])$$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
 
 ::: tip Hint
-The following four methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality, it may be substantially faster to compute all variants at once by using the underlying [N.compute_centrality](#n-compute-centrality) method directly. 
+The following four methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [N.compute_centrality](#n-compute-centrality) method directly. 
 :::
 
 
@@ -453,7 +447,7 @@ N.harmonic\_closeness
 
 Compute harmonic closeness. See [N.compute_centrality](#n-compute-centrality) for more information.
 
-The data key is `harmonic`, e.g.
+The data key is `harmonic`, e.g.:
 
 `Network_Layer.metrics['centrality']['harmonic'][<<distance key>>][<<node idx>>]`
 
@@ -464,7 +458,7 @@ N.gravity
 
 Compute gravity centrality. See [N.compute_centrality](#n-compute-centrality) for more information.
 
-The data key is `gravity`, e.g.
+The data key is `gravity`, e.g.:
 
 `Network_Layer.metrics['centrality']['gravity'][<<distance key>>][<<node idx>>]`
 
@@ -475,7 +469,7 @@ N.betweenness
 
 Compute betweenness. See [N.compute_centrality](#n-compute-centrality) for more information.
 
-The data key is `betweenness`, e.g.
+The data key is `betweenness`, e.g.:
 
 `Network_Layer.metrics['centrality']['betweenness'][<<distance key>>][<<node idx>>]`
 
@@ -486,6 +480,6 @@ N.betweenness\_gravity
 
 Compute gravity weighted betweenness. See [N.compute_centrality](#n-compute-centrality) for more information.
 
-The data key is `betweenness_gravity`, e.g.
+The data key is `betweenness_gravity`, e.g.:
 
 `Network_Layer.metrics['centrality']['betweenness_gravity'][<<distance key>>][<<node idx>>]`
