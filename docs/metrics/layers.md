@@ -20,7 +20,7 @@ Converts a data dictionary's `x` and `y` values from [WGS84](https://epsg.io/432
 
 <FuncElement name="data_dict" type="dict">
 
-A dictionary where each `key` pair represents a distinct data point `uid` and the corresponding `x` and `y` values.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary of `key-value` pairs consisting of `x` and `y` coordinate attributes.
 
 </FuncElement>
 
@@ -117,7 +117,7 @@ It is generally not necessary to use this method directly. This method will be c
 
 <FuncElement name="data_dict" type="dict">
 
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary of `key-value` pairs: the `x` and `y` attributes represent the spatial coordinates in a projected coordinate system. The `live` attribute is optional, with `live=True` representing data points that fall within the original unbuffered area of interest, and `live=False` representing data points that fall within a surrounding buffered area.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary of `key-value` pairs consisting of `x` and `y` coordinate attributes. The coordinates must be in a projected coordinate system matching that of the [`Network_Layer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
 
 ```python
 
@@ -136,19 +136,34 @@ example_data_dict = {
 </FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
-<FuncElement name="node_uids" type="tuple">
+<FuncElement name="data_uids" type="tuple">
 
-A tuple of node ids corresponding to the node identifiers in the source `networkX` graph.
+A tuple of data `uids` corresponding to the data point identifiers in the source `data_dict`.
 
 </FuncElement>
 
+<FuncElement name="data_map" type="np.ndarray">
 
+A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
+
+| idx | property |
+|-----|:----------|
+| 0 | `x` coordinate |
+| 1 | `y` coordinate |
+| 2 | assigned network index - nearest |
+| 3 | assigned network index - next-nearest | 
+
+The arrays at indices `2` and `3` will be initialised with `np.nan`.
+
+</FuncElement>
 
 
 Data\_Layer <Chip text="class"/>
 -----------
 
 <FuncSignature>Data_Layer(data_uids, data_map)</FuncSignature>
+
+Data layers represent 
 
 
 @assign\_to\_network

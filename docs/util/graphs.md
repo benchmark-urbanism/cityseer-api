@@ -251,7 +251,7 @@ A `networkX` graph.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_uids" type="tuple">
 
-A tuple of node ids corresponding to the node identifiers in the source `networkX` graph.
+A tuple of node `uids` corresponding to the node identifiers in the source `networkX` graph.
 
 </FuncElement>
 
