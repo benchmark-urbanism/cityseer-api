@@ -69,7 +69,7 @@ For the use of a specified random seed.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="dict" type="dict">
 
-A dictionary containing data elements. The number of elements will match the `length` parameter. Each element will contain `x`, `y` and `live` attributes.
+A dictionary where each entry consists of a `key` representing a distinct data point `uid`, and corresponding `x`, `y` and `live` values.
 
 </FuncElement>
 

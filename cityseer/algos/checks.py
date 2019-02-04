@@ -33,9 +33,8 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     DATA MAP:
     0 - x
     1 - y
-    2 - live
-    3 - assigned network index - nearest
-    4 - assigned network index - next-nearest
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
     '''
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
     if not data_map.ndim == 2 or not data_map.shape[1] == 6:

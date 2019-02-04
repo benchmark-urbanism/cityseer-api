@@ -39,7 +39,7 @@ nX\_wgs\_to\_utm
 
 <FuncSignature>nX_wgs_to_utm(networkX_graph)</FuncSignature>
 
-Converts `x` and `y` node coordinates from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to a local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -52,7 +52,7 @@ A `networkX` graph with `x` and `y` node attributes in the WGS84 coordinate syst
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph with `x` and `y` node attributes converted to the UTM coordinate system. Edge `geom` attributes will also be converted, if found.
+A `networkX` graph with `x` and `y` node attributes converted to the local UTM coordinate system. Edge `geom` attributes will also be converted, if found.
 
 </FuncElement>
 
@@ -220,7 +220,7 @@ Returns a `NetworkX` graph with an added `weight` node attribute, which will be 
 
 </FuncElement>
 
-::: warning Note
+::: tip Hint
 Certain centrality calculations can be weighted by street-lengths, which helps to mitigate undesirable side-effects arising as a function of varied node densities due to the topological representation of the graph. Weighted nodes achieve a similar effect to graph decomposition, and it is likely sufficient to use one or the other instead of both. Decomposition is generally preferable because it offers a more granular representation that accommodates variations in intensities along street-fronts.
 :::
 
@@ -230,9 +230,9 @@ graph\_maps\_from\_nX
 
 <FuncSignature>graph_maps_from_nX(networkX_graph)</FuncSignature>
 
-Transposes a `networkX` graph into numpy arrays for use by `cityseer`.
+Transposes a `networkX` graph into `numpy` arrays for use by `Network_Layer` classes.
 
-::: danger Caution
+::: warning Note
 It is generally not necessary to use this method directly. This method will be called internally when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
 :::
 
@@ -298,7 +298,7 @@ nX_from_graph_maps(node_uids,
 
 Transposes `cityseer` graph maps into a `networkX` graph.
 
-::: danger Caution
+::: warning Note
 It is generally not necessary to use this method directly. This method will be called internally when invoking [Network_Layer.to_networkX](/metrics/networks.html#to-networkX)
 :::
 

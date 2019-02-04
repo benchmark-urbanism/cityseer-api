@@ -74,7 +74,7 @@ Whether to display node labels.
 </FuncElement>
 
 
-plot\_graph\_maps
+plot\_graph\_maps <Chip text="unstable" :important="true"/>
 -----------------
 <FuncSignature>
 <pre>
@@ -86,7 +86,7 @@ plot_graph_maps(node_uids,
 </pre>
 </FuncSignature>
 
-Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision.
+Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision pending short-term development requirements.
 
 <FuncHeading>Parameters</FuncHeading>
 <FuncElement name="node_uids" type="[list, tuple, np.ndarray]">
