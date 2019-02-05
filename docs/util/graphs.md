@@ -257,7 +257,7 @@ A tuple of node `uids` corresponding to the node identifiers in the source `netw
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -271,7 +271,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's edges. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -312,7 +312,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension should correspond as follows:
+A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -326,7 +326,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension should correspond as follows:
+A 2d `numpy` array representing the graph's edges. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|

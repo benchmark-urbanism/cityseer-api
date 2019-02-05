@@ -51,11 +51,13 @@ module.exports = {
         title: 'overview',
         collapsable: false,
         children: [
-          ['intro', 'intro']
+          ['intro', 'intro'],
+          ['attribution', 'attribution'],
+          ['license', 'license']
         ]
       },
       {
-        title: 'metrics',
+        title: 'cityseer.metrics',
         collapsable: false,
         children: [
           ['/metrics/layers', 'metrics.layers'],
@@ -63,7 +65,7 @@ module.exports = {
         ]
       },
       {
-        title: 'util',
+        title: 'cityseer.util',
         collapsable: false,
         children: [
           ['/util/graphs', 'util.graphs'],

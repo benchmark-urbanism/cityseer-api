@@ -396,7 +396,7 @@ def test_nX_from_graph_maps():
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_aggregated(landuse_labels, mixed_use_metrics=['hill', 'shannon'], accessibility_labels=['a', 'c'],
+    D.compute_aggregated(landuse_labels, mixed_use_keys=['hill', 'shannon'], accessibility_keys=['a', 'c'],
                          qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone

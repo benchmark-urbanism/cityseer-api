@@ -129,15 +129,15 @@ print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name="node_uids" type="tuple">
+<FuncElement name="node_uids" type="list, tuple">
 
-A tuple of node ids corresponding to the node identifiers.
+A `list` or `tuple` of node identifiers corresponding to each nodes. This list must be in the same order and of the same length as the `node_map`.
 
 </FuncElement>
 
 <FuncElement name="node_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's nodes. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -151,7 +151,7 @@ A 2d numpy array representing the graph's nodes. The indices of the second dimen
 
 <FuncElement name="edge_map" type="np.ndarray">
 
-A 2d numpy array representing the graph's edges. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's edges. The indices of the second dimension correspond as follows:
 
 | idx | property |
 |-----|:----------|
@@ -315,11 +315,35 @@ _A `networkX` graph before conversion to a `Network Layer` (left) and after conv
 
 <FuncSignature>Network_Layer.compute_centrality(close_metrics=None, between_metrics=None)</FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity`](#n-gravity), [`@harmonic closeness`](#n-harmonic-closeness), [`@improved closeness`](#n-improved-closeness), [`@betweenness`](#n-betweenness), or [`@weighted betweenness`](##n-betweenness-gravity) methods.
+This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity`](#gravity), [`@harmonic_closeness`](#harmonic-closeness), [`@improved_closeness`](#improved-closeness), [`@betweenness`](#betweenness), or [`@weighted_betweenness`](#betweenness-gravity) methods.
 
-The calculated metrics will be written to the `Network_Layer` and are accessible from the `metrics` property, using the following pattern:
- 
+The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
+
 `Network_Layer.metrics['centrality'][<<centrality key>>][<<distance key>>][<<node idx>>]`
+
+For example, if `node_density`, `improved`, and `cycles` are computed at $800m$ and $1600m$, then the dictionary will assume the following structure:
+ 
+```python
+# example structure
+Network_Layer.metrics = {
+    'centrality': {
+        'node_density': {
+            800: [...],
+            1600: [...]
+        },
+        'improved': {
+            800: [...],
+            1600: [...]
+        },
+        'cycles': {
+            800: [...],
+            1600: [...]
+        }
+    }
+}
+```
+
+A full working example:
 
 ```python
 from cityseer.metrics import networks
@@ -332,6 +356,8 @@ G = graphs.nX_auto_edge_params(G)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
+# compute a centrality measure
+# note that in this case N.harmonic_closeness() would do exactly the same
 N.compute_centrality(close_metrics=['harmonic'])
 
 # distance idx: any of the distances with which the Network_Layer was initialised
@@ -344,6 +370,8 @@ random_idx = 6
 print(N.metrics['centrality']['harmonic'][distance_idx][random_idx])
 # prints: 0.02312025367905132
 ```
+
+Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](#to-networkx).
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -379,7 +407,7 @@ The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity`, pe
 :::
 
 ::: tip Hint
-The following methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [@compute_centrality](#n-compute-centrality) method directly. 
+The following methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [@compute_centrality](#compute-centrality) method directly. 
 :::
 
 
@@ -388,7 +416,7 @@ The following methods are simplified wrappers for some of the more commonly used
 
 <FuncSignature>Network_Layer.harmonic_closeness()</FuncSignature>
 
-Compute harmonic closeness. See [@compute_centrality](#n-compute-centrality) for more information.
+Compute harmonic closeness. See [@compute_centrality](#compute-centrality) for more information.
 
 The data key is `harmonic`, e.g.:
 
@@ -400,7 +428,7 @@ The data key is `harmonic`, e.g.:
 
 <FuncSignature>Network_Layer.improved_closeness()</FuncSignature>
 
-Compute improved closeness. See [@compute_centrality](#n-compute-centrality) for more information.
+Compute improved closeness. See [@compute_centrality](#compute-centrality) for more information.
 
 The data key is `improved`, e.g.:
 
@@ -412,7 +440,7 @@ The data key is `improved`, e.g.:
 
 <FuncSignature>Network_Layer.gravity()</FuncSignature>
 
-Compute gravity centrality. See [@compute_centrality](#n-compute-centrality) for more information.
+Compute gravity centrality. See [@compute_centrality](#compute-centrality) for more information.
 
 The data key is `gravity`, e.g.:
 
@@ -423,7 +451,7 @@ The data key is `gravity`, e.g.:
 
 <FuncSignature>Network_Layer.betweenness()</FuncSignature>
 
-Compute betweenness. See [@compute_centrality](#n-compute-centrality) for more information.
+Compute betweenness. See [@compute_centrality](#compute-centrality) for more information.
 
 The data key is `betweenness`, e.g.:
 
@@ -434,7 +462,7 @@ The data key is `betweenness`, e.g.:
 
 <FuncSignature>Network_Layer.betweenness_gravity()</FuncSignature>
 
-Compute gravity weighted betweenness. See [@compute_centrality](#n-compute-centrality) for more information.
+Compute gravity weighted betweenness. See [@compute_centrality](#compute-centrality) for more information.
 
 The data key is `betweenness_gravity`, e.g.:
 
@@ -465,7 +493,7 @@ A `networkX` graph.
 
 `x` and `y` node attributes are required. The `weight` node attribute is optional, and a default of `1` will be used if not present. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
-`length` and `impedance` edge attributes are required. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
+`length` and `impedance` edge attributes are required. See [`Network_Layer`](#network-layer) for more information.
 
 </FuncElement>
 

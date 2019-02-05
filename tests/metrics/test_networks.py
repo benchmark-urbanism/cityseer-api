@@ -203,11 +203,11 @@ def test_metrics_to_dict():
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
     D.compute_aggregated(landuse_labels,
-                         mixed_use_metrics=['hill', 'shannon'],
-                         accessibility_labels=['a', 'c'],
+                         mixed_use_keys=['hill', 'shannon'],
+                         accessibility_keys=['a', 'c'],
                          qs=[0, 1],
-                         numerical_labels=['boo'],
-                         numerical_arrays=numerical_data)
+                         stats_keys=['boo'],
+                         stats_data_arrs=numerical_data)
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 

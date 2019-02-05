@@ -126,6 +126,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
     This means that the walking distance to a landuse impacts how strongly it contributes to diversity
 
     Functional diversity takes the pairwise form, thus distances are based on pairwise i to j distances via the node k
+    Remember these are already distilled species counts - so it is OK to use closest distance to each species
 
     This is different to the non-pairwise form of the phylogenetic version which simply takes singular distance k to i
     '''

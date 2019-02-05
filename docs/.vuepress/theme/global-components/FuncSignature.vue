@@ -13,7 +13,7 @@
         font-family monospace
         font-weight bold
         color $white
-        background-color $mid-grey
+        background-color $deep-grey
         border-radius 10px
 
     // necessary for when wrapping signatures with <pre></pre> tags for spacing

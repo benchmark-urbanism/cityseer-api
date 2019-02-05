@@ -60,9 +60,7 @@ G = graphs.nX_simple_geoms(G)
 G = graphs.nX_auto_edge_params(G)
 ```
 
-
-
-`cityseer` network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. `NetworkX` graphs can be converted to `cityseer` `Network` layers through use of the [`Network_Layer_From_nX`]() method. It is then possible to call a variety of network centrality methods using
+ layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. `NetworkX` graphs can be converted to `cityseer` `Network` layers through use of the [`Network_Layer_From_nX`]() method. It is then possible to call a variety of network centrality methods using
 
 ```python
 from cityseer.metrics import networks
@@ -122,12 +120,3 @@ Please report issues to the [`issues`](https://github.com/cityseer/cityseer-api/
 
 Suggestions, contributions, and pull requests are welcome. Please discuss significant proposals prior to implementation.
 
-
-License & Attribution
----------------------
-
-Attribution is required.
-
-[Apache License v2.0](https://www.apache.org/licenses/LICENSE-2.0.html) + [Commons Clause License v1.0](https://commonsclause.org/)
-
-Copyright © 2018-present Gareth Simons & Cityseer Ltd.

@@ -115,7 +115,7 @@ def test_Data_Layer_From_Dict():
     assert np.array_equal(D.y_arr, y_arr)
 
 
-def test_compute_aggregated_landuses():
+def test_compute_aggregated():
     '''
     Test landuse components
     Underlying method also tested via diversity.test_local_landuses()
@@ -143,7 +143,7 @@ def test_compute_aggregated_landuses():
     landuse_classes, landuse_encodings = layers.encode_categorical(landuse_labels)
 
     # generate landuses
-    D.compute_aggregated(landuse_labels, mixed_use_metrics=['hill_branch_wt'], qs=qs)
+    D.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
@@ -164,7 +164,7 @@ def test_compute_aggregated_landuses():
 
     N_temp = copy.deepcopy(N)
     D.assign_to_network(N_temp, max_dist=500)
-    D.compute_aggregated(landuse_labels, mixed_use_metrics=['gini_simpson'])
+    D.compute_aggregated(landuse_labels, mixed_use_keys=['gini_simpson'])
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
@@ -182,7 +182,7 @@ def test_compute_aggregated_landuses():
 
     N_temp = copy.deepcopy(N)
     D.assign_to_network(N_temp, max_dist=500)
-    D.compute_aggregated(landuse_labels, accessibility_labels=['c'])
+    D.compute_aggregated(landuse_labels, accessibility_keys=['c'])
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
@@ -244,8 +244,8 @@ def test_compute_aggregated_landuses():
                 D_temp = layers.Data_Layer_From_Dict(data_dict)
                 D_temp.assign_to_network(N_temp, max_dist=500)
                 D_temp.compute_aggregated(landuse_labels,
-                                          mixed_use_metrics=list(mu_h_metrics) + list(mu_o_metrics),
-                                          accessibility_labels=ac_metrics,
+                                          mixed_use_keys=list(mu_h_metrics) + list(mu_o_metrics),
+                                          accessibility_keys=ac_metrics,
                                           cl_disparity_wt_matrix=mock_disparity_wt_matrix,
                                           qs=qs)
 
@@ -288,12 +288,12 @@ def test_compute_aggregated_landuses():
     N_dual = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=True)
     D_dual = layers.Data_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual, max_dist=500)
-    D_dual.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'], accessibility_labels=['c'])
+    D_dual.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'], accessibility_keys=['c'])
 
     N_dual_sidestep = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=False)
     D_dual = layers.Data_Layer_From_Dict(data_dict)
     D_dual.assign_to_network(N_dual_sidestep, max_dist=500)
-    D_dual.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'], accessibility_labels=['c'])
+    D_dual.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'], accessibility_keys=['c'])
 
     assert not np.array_equal(N_dual.metrics['mixed_uses']['shannon'][2000],
                               N_dual_sidestep.metrics['mixed_uses']['shannon'][2000])
@@ -305,14 +305,14 @@ def test_compute_aggregated_landuses():
 
     # most integrity checks happen in underlying method, though check here for mismatching labels length and typos
     with pytest.raises(ValueError):
-        D.compute_aggregated(landuse_labels[-1], mixed_use_metrics=['shannon'])
+        D.compute_aggregated(landuse_labels[-1], mixed_use_keys=['shannon'])
     with pytest.raises(ValueError):
-        D.compute_aggregated(landuse_labels, mixed_use_metrics=['spelling_typo'])
+        D.compute_aggregated(landuse_labels, mixed_use_keys=['spelling_typo'])
     # don't check accessibility_labels for typos - because only warning is triggered (not all labels will be in all data)
     # check that unassigned data layer flags
     with pytest.raises(ValueError):
         D_new = layers.Data_Layer_From_Dict(data_dict)
-        D_new.compute_aggregated(landuse_labels, mixed_use_metrics=['shannon'])
+        D_new.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'])
 
     '''
     Test stats component
@@ -327,7 +327,7 @@ def test_compute_aggregated_landuses():
     mock_numeric = mock.mock_numerical_data(len(data_dict), num_arrs=2)
 
     # generate stats
-    D.compute_aggregated(numerical_labels=['boo', 'baa'], numerical_arrays=mock_numeric)
+    D.compute_aggregated(stats_keys=['boo', 'baa'], stats_data_arrs=mock_numeric)
 
     # test against underlying method
     data_map = D._data
@@ -353,7 +353,7 @@ def test_compute_aggregated_landuses():
                          (['a', 'b'], None),  # missing arrays
                          (None, mock_numeric)):  # missing labels
         with pytest.raises(ValueError):
-            D.compute_aggregated(numerical_labels=labels, numerical_arrays=arrs)
+            D.compute_aggregated(stats_keys=labels, stats_data_arrs=arrs)
 
 
 def network_generator():
@@ -382,7 +382,7 @@ def test_hill_diversity():
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
-        D_full.compute_aggregated(landuse_labels, mixed_use_metrics=['hill'], qs=[0, 1, 2])
+        D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill'], qs=[0, 1, 2])
 
         # compare
         for d in distances:
@@ -407,7 +407,7 @@ def test_hill_branch_wt_diversity():
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
-        D_full.compute_aggregated(landuse_labels, mixed_use_metrics=['hill_branch_wt'], qs=[0, 1, 2])
+        D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=[0, 1, 2])
 
         # compare
         for d in distances:
@@ -431,7 +431,7 @@ def test_compute_accessibilities():
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
-        D_full.compute_aggregated(landuse_labels, accessibility_labels=['c'])
+        D_full.compute_aggregated(landuse_labels, accessibility_keys=['c'])
 
         # compare
         for d in distances:
@@ -455,7 +455,7 @@ def test_compute_stats_single():
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
-        D_full.compute_aggregated(numerical_labels=['boo'], numerical_arrays=numeric_data)
+        D_full.compute_aggregated(stats_keys=['boo'], stats_data_arrs=numeric_data)
 
         # compare
         for n_label in ['boo']:
@@ -480,7 +480,7 @@ def test_compute_stats_multiple():
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
-        D_full.compute_aggregated(numerical_labels=['boo', 'baa'], numerical_arrays=numeric_data)
+        D_full.compute_aggregated(stats_keys=['boo', 'baa'], stats_data_arrs=numeric_data)
 
         # compare
         for n_label in ['boo', 'baa']:

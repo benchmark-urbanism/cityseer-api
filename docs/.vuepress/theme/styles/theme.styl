@@ -1,8 +1,8 @@
 html, body
-  background-color $deep-grey
+  background-color $theme-grey
   color $textColor
   font-size 14px
-  font-weight lighter
+  font-weight 300
 
 h2
   border-color $secondary
@@ -12,37 +12,37 @@ hr
   border-top-color $borderColor
 
 kbd
-  background $mid-grey
+  background $deep-grey
 
 blockquote
   color $textColor
 
 tr
   &:nth-child(2n)
-    background-color $mid-grey
+    background-color $deep-grey
 
 .content
 
   code
     padding 0.2em 0.5em
-    background-color $mid-grey
+    background-color $deep-grey
     color $textColor
     font-weight bolder
 
   a
     code
-      background-color $mid-grey
+      background-color $deep-grey
       color $secondary
 
   .custom-block
     background-color $white
-    color $deep-grey
+    color $theme-grey
     border-top-right-radius 10px
     border-bottom-right-radius 10px
 
     code
       background-color $near-white
-      color $deep-grey
+      color $theme-grey
 
     a
       color $accentColor
@@ -51,7 +51,7 @@ tr
         color $accentColor
 
     .custom-block-title
-      color $mid-grey
+      color $deep-grey
 
     &.tip
       border-color $success
@@ -64,7 +64,7 @@ tr
 
 .search-box
   input
-    background-color $deep-grey
+    background-color $theme-grey
     color $textColor
 
   .suggestions
@@ -73,13 +73,13 @@ tr
 
   .suggestion
     a
-      color $mid-grey
+      color $deep-grey
 
     &.focused
       background-color $near-white
 
       a
-        color $deep-grey
+        color $theme-grey
 
 .algolia-search-wrapper
   .algolia-autocomplete
@@ -106,14 +106,14 @@ tr
   border 0
 
 .navbar
-  background-color $mid-grey
+  background-color $deep-grey
 
   .site-name
     visibility hidden
     color $near-white
 
   .links
-    background-color $mid-grey
+    background-color $deep-grey
 
 .page-edit
   .edit-link
@@ -137,11 +137,11 @@ tr
     border-top-color $borderColor
 
 .sidebar
-  background-color $deep-grey
+  background-color $theme-grey
 
   .sidebar-link
     font-size 14px
-    font-weight lighter
+    font-weight 300
 
     &.active
       color $textColor
@@ -202,23 +202,26 @@ tr
     color $near-white
 
 // for centering images
-.centre {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
-}
+.centre
+  display: block
+  margin-top: 20px
+  margin-bottom: 10px
+  margin-left: auto
+  margin-right: auto
+  width: 100%
 
-.left {
-  display: inline;
-  margin-left: 0;
-  margin-right: auto;
-  width: 50%;
-}
+.left
+  display: inline
+  margin-top: 20px
+  margin-bottom: 10px
+  margin-left: 0
+  margin-right: auto
+  width: 50%
 
-.right {
-  display: inline;
-  margin-left: auto;
-  margin-right: 0;
-  width: 50%;
-}
+.right
+  display: inline
+  margin-top: 20px
+  margin-bottom: 10px
+  margin-left: auto
+  margin-right: 0
+  width: 50%

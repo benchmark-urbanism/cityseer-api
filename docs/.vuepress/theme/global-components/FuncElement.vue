@@ -1,8 +1,8 @@
 <template>
     <div>
-        <v-layout class="row wrap align-center">
+        <v-layout class="row wrap param">
 
-            <v-flex class="xs12 md4">
+            <v-flex class="xs12 md4 align-self-start">
                 <v-layout class="row wrap">
 
                     <v-flex class="xs12 subheading elem-name-style">
@@ -33,6 +33,13 @@
 
     .small-text
         font-size 12px
+
+    .param
+        margin-top 30px
+        margin-bottom 30px
+
+    p
+        margin-top 0
 
 </style>
 
