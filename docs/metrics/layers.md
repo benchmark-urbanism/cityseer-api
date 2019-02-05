@@ -176,9 +176,11 @@ Data\_Layer <Chip text="class"/>
 
 <FuncSignature>Data_Layer(data_uids, data_map)</FuncSignature>
 
-Data layers represent the locations of data points. By assigning a `Data_Layer` to a `Network_Layer` it becomes possible to calculate various mixed-use and land-use accessibility measures, as well as a range of spatially sensitive statistics. These measures are computed directly over the street network, which is more contextually sensitive than methods based on crow-flies aggregation methods.
+Data layers represent the locations of data points. By assigning a `Data_Layer` to a `Network_Layer` it then becomes possible to calculate various mixed-use and land-use accessibility measures, as well as a range of spatially sensitive statistics. These measures are computed directly over the street network, which is more contextually sensitive than methods based on crow-flies aggregation methods.
 
 The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
+
+Note that in many cases, the [`Data_Layer_From_Dict`](#data-layer-from-dict) class will provide a more convenient alternative for instantiating this class.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -257,19 +259,89 @@ Data_Layer.compute_aggregated(landuse_labels,
 
 This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`compute_accessibilities`](#compute-accessibilities), [`compute_stats_single`](#compute-stats-single), and [`compute_stats_multiple`](#compute-stats-multiple) methods.
 
-The data is aggregated and computed relative to the `Network Layer` nodes, which means that centrality, mixed-use, accessibility, and statistical aggregations are all generated from the same locations and can be correlated or otherwise compared. The outputs of the calculations are accordingly written to the same `Network_Layer.metrics` dictionary used for `Network_Layer` centrality methods.
+The data is aggregated and computed relative to the `Network Layer` nodes, which means that centrality, mixed-use, accessibility, and statistical aggregations are all generated from the same locations and can be correlated or otherwise compared. The outputs of the calculations are accordingly written to the same `Network_Layer.metrics` dictionary used for `Network_Layer` centrality methods, and will be categorised by the respective keys and parameters.
 
-The data will be packaged using the respective mixed-use, accessibility, and stats keys
+For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a `valuations` stats keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
 
 ```python
-N.metrics = {
-    'centrality': {
-        ''
+Network_Layer.metrics = {
+    'mixed_uses': {
+        # note that hill measures have q keys
+        'hill': {
+            # here, q=0
+            0: {
+                800: [...],
+                1600: [...]
+            },
+            # here, q=1
+            1: {
+                800: [...],
+                1600: [...]
+            }
+        },
+        # non-hill measures do not have q keys
+        'shannon': {
+            800: [...],
+            1600: [...]
+        }
+    },
+    'accessibility': {
+        # accessibility keys are computed in both weighted and unweighted forms
+        'weighted': {
+            'shops': {
+                800: [...],
+                1600: [...]
+            },
+            'factories': {
+                800: [...],
+                1600: [...]
+            }
+        },
+        'non_weighted': {
+            'shops': {
+                800: [...],
+                1600: [...]
+            },
+            'factories': {
+                800: [...],
+                1600: [...]
+            }
+        }
+    },
+    'stats': {
+        # stats grouped by each stats key
+        'valuations': {
+            # each stat will have the following key-value pairs
+            'max': {
+                800: [...],
+                1600: [...]
+            },
+            'min': {
+                800: [...],
+                1600: [...]
+            },
+            'mean': {
+                800: [...],
+                1600: [...]
+            },
+            'mean_weighted': {
+                800: [...],
+                1600: [...]
+            },
+            'variance': {
+                800: [...],
+                1600: [...]
+            },
+            'variance_weighted': {
+                800: [...],
+                1600: [...]
+            }
+        }
     }
-
-
 }
 ```
+
+A working example:
 
 ```python
 from cityseer.metrics import networks, layers
@@ -284,7 +356,7 @@ G = graphs.nX_auto_edge_params(G)
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 
 # prepare a mock data dictionary
-data_dict = mock.mock_data_dict(G)
+data_dict = mock.mock_data_dict(G, random_seed=0)
 # prepare some mock land-use classifications
 landuses = mock.mock_categorical_data(len(data_dict), random_seed=0)
 # let's also prepare some numerical data
@@ -295,7 +367,7 @@ L = layers.Data_Layer_From_Dict(data_dict)
 # assign to the network
 L.assign_to_network(N, max_dist=500)
 # compute some metrics
-L.compute_aggregated(landuse_labels=landuses, 
+L.compute_aggregated(landuse_labels=landuses,
                      mixed_use_keys=['hill'],
                      qs=[0, 1],
                      accessibility_keys=['a', 'b'],
@@ -312,56 +384,62 @@ distance_idx = 200
 # q index: any of the invoked q parameters
 q_idx = 0
 # a node idx
-node_idx = 13
+node_idx = 0
 
 # the data is available at N.metrics
 print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
-# prints: 2.0
+# prints: 5.0
 print(N.metrics['accessibility']['weighted']['a'][distance_idx][node_idx])
-# prints: 0.15299096749397945
+# prints: 0.029644648160004214
 print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-# prints: 37858.35776874283
+# prints: 20291.217189203908
 ```
 
 Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx).
+
+::: danger Caution
+
+Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where consistent schemas have been used.
+
+:::
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
-A set of landuse labels corresponding to the length and order of the data points, and should generally consist of `str` or `int` values. This parameter is only required if computing mixed-uses or land-use accessibilities.
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if computing mixed-uses or land-use accessibilities.
 
 </FuncElement>
 
 <FuncElement name="mixed_use_keys" type="list, tuple">
 
-An optional list of strings describing which mixed-use metrics to compute, containing any combination of `key` values in the following table.
+An optional list of strings describing which mixed-use metrics to compute, containing any combination of `key` values from the following table.
 
 </FuncElement>
 
 | key | formula | notes |
 |-----|---------|-------|
-| hill | $$\Big(\sum_{i}^{S}p_{i}^q\Big)^{1/(1-q)}\ q\geq0,\ q\neq1$$ $$lim_{q\to1}\ exp\Big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\Big)$$ | Hill diversity. This is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct landuses. |
-| hill_branch_wt | $$\Bigg[\sum_{i}^{S}d_{i}\bigg(\frac{p_{i}}{\bar{T}}\bigg)^{q} \Bigg]^{1/(1-q)}$$ $$\bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular landuse. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential weight where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)|
-| hill_pairwise_disparity | $$\Bigg[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \bigg(  \frac{p_{i} p_{j}}{Q} \bigg)^{q} \Bigg]^{1/(1-q)}$$ $$Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct landuse combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential weight where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).) |
-| hill_pairwise_disparity | $$\Bigg[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \bigg(  \frac{p_{i} p_{j}}{Q} \bigg)^{q} \Bigg]^{1/(1-q)}$$ $$Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between landuses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. |
+| hill | $$\Big(\sum_{i}^{S}p_{i}^q\Big)^{1/(1-q)}\ q\geq0,\ q\neq1$$ $$lim_{q\to1}\ exp\Big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\Big)$$ | Hill diversity. This is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses. |
+| hill_branch_wt | $$\Bigg[\sum_{i}^{S}d_{i}\bigg(\frac{p_{i}}{\bar{T}}\bigg)^{q} \Bigg]^{1/(1-q)}$$ $$\bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential weight where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)|
+| hill_pairwise_disparity | $$\Bigg[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \bigg(  \frac{p_{i} p_{j}}{Q} \bigg)^{q} \Bigg]^{1/(1-q)}$$ $$Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential weight where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).) |
+| hill_pairwise_disparity | $$\Bigg[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \bigg(  \frac{p_{i} p_{j}}{Q} \bigg)^{q} \Bigg]^{1/(1-q)}$$ $$Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. |
 | shannon | $$-\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or _information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species. |
 | gini_simpson | $$1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle. It places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species. |
 | raos_pairwise_disparity | $$\sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversiy is a pairwise disparity index and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`. |
 
 ::: tip Hint
-The available choices of land-use diversity measures can seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice unless you have reason to use another.
+The available choices of land-use diversity measures can seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice unless there is reason to use another.
 :::
 
 <FuncElement name="accessibility_keys" type="list, tuple">
 
-An optional `list` or `tuple` of landuses for which to calculate accessibility. The landuse descriptors should match those used in the `landuse_labels` parameter. The calculations will be performed in both `weighted` and `non_weighted` variants.
+An optional `list` or `tuple` of land-uses for which to calculate accessibilities. The land-use keys for which to compute accessibilies. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
 
 </FuncElement>
 
 <FuncElement name="cl_disparity_wt_matrix" type="list, tuple, np.ndarray">
 
-A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct landuses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of landuses should match those implicitly generated by [`encode_categorical`](#encode-categorical). 
+A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by [`encode_categorical`](#encode-categorical). 
 
 </FuncElement>
 
@@ -373,26 +451,73 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
 
 <FuncElement name="stats_keys" type="list, tuple">
 
-A `list` or `tuple` of keys representing the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary under these keys. Where a single 
+A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary under these keys. This parameter is required if computing stats for a `stats_data_arrs` parameter.
 
 </FuncElement>
 
 <FuncElement name="stats_data_arrs" type="list, tuple, np.ndarray">
 
- 
+A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `Data_Layer`.
 
 </FuncElement>
+
+```python
+# for a Data_Layer containg 5 data points
+stats_keys = ['valuations', 'floors', 'occupants']
+stats_data_arrs = [
+    [50000, 60000, 55000, 42000, 46000],  # valuations
+    [3, 3, 2, 3, 5],  # floors
+    [420, 300, 220, 250, 600]  # occupants
+]
+```
+
 
 @hill\_diversity
 ----------------
 
 <FuncSignature>Data_Layer.hill_diversity(landuse_labels, qs)</FuncSignature>
 
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [@compute_aggregated](#compute-aggregated) for additional information.
+
+<FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
+
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial".
+
+</FuncElement>
+
+<FuncElement name="qs" type="list, tuple, np.ndarray">
+
+The values of `q` for which to compute Hill diversity.
+
+</FuncElement>
+
+The data key is `hill`, e.g.:
+
+`Network_Layer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`
+
 
 @hill\_branch\_wt\_diversity
 ----------------------------
 
 <FuncSignature>Data_Layer.hill_branch_wt_diversity(landuse_labels, qs)</FuncSignature>
+
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [@compute_aggregated](#compute-aggregated) for additional information.
+
+<FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
+
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial".
+
+</FuncElement>
+
+<FuncElement name="qs" type="list, tuple, np.ndarray">
+
+The values of `q` for which to compute Hill diversity.
+
+</FuncElement>
+
+The data key is `hill_branch_wt`, e.g.:
+
+`Network_Layer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`
 
 
 @compute\_accessibilities
@@ -405,6 +530,25 @@ Data_Layer.compute_accessibilities(landuse_labels,
 </pre>
 </FuncSignature>
 
+Compute land-use accessibilities for the specified land-use classification keys. See [@compute_aggregated](#compute-aggregated) for additional information.
+
+<FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
+
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial".
+
+</FuncElement>
+
+<FuncElement name="accessibility_keys" type="list, tuple">
+
+The land-use keys for which to compute accessibilies. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
+
+</FuncElement>
+
+The data keys will correspond to the accessibility keys provided, e.g. where computing `retail` accessibility:
+
+`Network_Layer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
+
 
 @compute\_stats\_single
 -----------------------
@@ -413,6 +557,25 @@ Data_Layer.compute_accessibilities(landuse_labels,
 Data_Layer.compute_stats_single(stats_key, stats_data_arr)
 </pre>
 </FuncSignature>
+
+Compute stats for a single `stats_key` parameter.
+
+<FuncElement name="stats_key" type="str">
+
+A `str` key describing the stats computed for the `stats_data_arr` parameter. The computed stats will be saved to the `N.metrics` dictionary under this key.
+
+</FuncElement>
+
+<FuncElement name="stats_data_arr" type="list, tuple, np.ndarray">
+
+A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `Data_Layer`.
+
+</FuncElement>
+
+The data key will correspond to the `stats_key` parameter, e.g. where using `occupants` as the key:
+
+`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+
 
 @compute\_stats\_multiple
 -------------------------
@@ -423,10 +586,66 @@ Data_Layer.compute_stats_multiple(stats_keys, stats_data_arr)
 </pre>
 </FuncSignature>
 
+<FuncElement name="stats_keys" type="list, tuple">
+
+A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary under these keys.
+
+</FuncElement>
+
+<FuncElement name="stats_data_arrs" type="list, tuple, np.ndarray">
+
+A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `Data_Layer`.
+
+</FuncElement>
+
+```python
+# for a Data_Layer containg 5 data points
+stats_keys = ['valuations', 'floors', 'occupants']
+stats_data_arrs = [
+    [50000, 60000, 55000, 42000, 46000],  # valuations
+    [3, 3, 2, 3, 5],  # floors
+    [420, 300, 220, 250, 600]  # occupants
+]
+```
+
+The data keys will correspond to the `stats_keys` parameter, per the above example:
+
+`Network_Layer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+
 
 Data_Layer_From_Dict <Chip text="class"/>
 --------------------
 
 <FuncSignature>Data_Layer_From_Dict(data_dict)</FuncSignature>
 
-Directly transposes an appropriately prepared data dictionary into a `Data_Layer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`Data_Layer`](#data-layer) class.
+Directly transposes an appropriately prepared data dictionary into a `Data_Layer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`Data_Layer`](#data-layer) class, which can be referenced for more information.
+
+<FuncElement name="data_dict" type="dict">
+
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary of `key-value` pairs consisting of `x` and `y` coordinate attributes. The coordinates must be in a projected coordinate system matching that of the [`Network_Layer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
+
+```python
+
+example_data_dict = {
+    'uid_01': {
+        'x': 6000956.463188213,
+        'y': 600693.4059810264
+    },
+    'uid_02': {
+        'x': 6000753.336609659,
+        'y': 600758.7916663144
+    }
+}
+```
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+
+<FuncElement name="Data_Layer" type="class">
+
+A `Data_Layer`.
+
+</FuncElement>

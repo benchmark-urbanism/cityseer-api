@@ -321,7 +321,7 @@ The computed metrics will be written to a dictionary available at the `Network_L
 
 `Network_Layer.metrics['centrality'][<<centrality key>>][<<distance key>>][<<node idx>>]`
 
-For example, if `node_density`, `improved`, and `cycles` are computed at $800m$ and $1600m$, then the dictionary will assume the following structure:
+For example, if `node_density`, `improved`, and `cycles` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
  
 ```python
 # example structure
@@ -343,7 +343,7 @@ Network_Layer.metrics = {
 }
 ```
 
-A full working example:
+A working example:
 
 ```python
 from cityseer.metrics import networks
@@ -416,7 +416,7 @@ The following methods are simplified wrappers for some of the more commonly used
 
 <FuncSignature>Network_Layer.harmonic_closeness()</FuncSignature>
 
-Compute harmonic closeness. See [@compute_centrality](#compute-centrality) for more information.
+Compute harmonic closeness. See [@compute_centrality](#compute-centrality) for additional information.
 
 The data key is `harmonic`, e.g.:
 
@@ -428,7 +428,7 @@ The data key is `harmonic`, e.g.:
 
 <FuncSignature>Network_Layer.improved_closeness()</FuncSignature>
 
-Compute improved closeness. See [@compute_centrality](#compute-centrality) for more information.
+Compute improved closeness. See [@compute_centrality](#compute-centrality) for additional information.
 
 The data key is `improved`, e.g.:
 
@@ -440,7 +440,7 @@ The data key is `improved`, e.g.:
 
 <FuncSignature>Network_Layer.gravity()</FuncSignature>
 
-Compute gravity centrality. See [@compute_centrality](#compute-centrality) for more information.
+Compute gravity centrality. See [@compute_centrality](#compute-centrality) for additional information.
 
 The data key is `gravity`, e.g.:
 
@@ -451,7 +451,7 @@ The data key is `gravity`, e.g.:
 
 <FuncSignature>Network_Layer.betweenness()</FuncSignature>
 
-Compute betweenness. See [@compute_centrality](#compute-centrality) for more information.
+Compute betweenness. See [@compute_centrality](#compute-centrality) for additional information.
 
 The data key is `betweenness`, e.g.:
 
@@ -462,7 +462,7 @@ The data key is `betweenness`, e.g.:
 
 <FuncSignature>Network_Layer.betweenness_gravity()</FuncSignature>
 
-Compute gravity weighted betweenness. See [@compute_centrality](#compute-centrality) for more information.
+Compute gravity weighted betweenness. See [@compute_centrality](#compute-centrality) for additional information.
 
 The data key is `betweenness_gravity`, e.g.:
 
