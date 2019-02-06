@@ -119,7 +119,7 @@ G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 ```
 
-<img src="../plots/graph_simple.png" alt="Example graph" class="left"><img src="../plots/graph_decomposed.png" alt="Example decomposed graph" class="right">
+<img src="/plots/graph_simple.png" alt="Example graph" class="left"><img src="/plots/graph_decomposed.png" alt="Example decomposed graph" class="right">
 
 _Simple graph (left) and the equivalent $100m$ decomposed graph (right)._
 
@@ -162,7 +162,7 @@ G_simple = graphs.nX_simple_geoms(G)
 G_dual = graphs.nX_to_dual(G_simple)
 ```
 
-<img src="../plots/graph_dual.png" alt="Example dual graph" class="centre">
+<img src="/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
 
 _Dual graph (blue) overlaid on the source primal graph (red). Edge `length` and angular `impedance` attributes are set automatically from the `geom` attribute's length and total angular change._
 

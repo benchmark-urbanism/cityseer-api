@@ -17,11 +17,6 @@ plt.cla()
 plt.clf()
 plot.plot_nX(G, path='graph_example.png', labels=True)
 
-# graph module
-plt.cla()
-plt.clf()
-plot.plot_nX(G, path='graph_simple.png', labels=False)
-
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 

@@ -86,7 +86,7 @@ plot_graph_maps(node_uids,
 </pre>
 </FuncSignature>
 
-Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision pending short-term development requirements.
+Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms.
 
 <FuncHeading>Parameters</FuncHeading>
 <FuncElement name="node_uids" type="[list, tuple, np.ndarray]">

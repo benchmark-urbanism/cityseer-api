@@ -87,6 +87,7 @@ module.exports = {
   },
   //evergreen: true,
   configureWebpack: (config, isServer) => {
+    // Vuepress is SSR - isServer refers to whether server or client side
     if (!isServer) {
       // mutate the config for client
       config.plugins.push(new VuetifyLoaderPlugin())

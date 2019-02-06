@@ -451,6 +451,7 @@ def test_compute_stats_single():
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_single('boo', numeric_data[0])
+
         # custom version
         N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
         D_full = layers.Data_Layer_From_Dict(data_dict)
@@ -463,6 +464,10 @@ def test_compute_stats_single():
                 for dist in distances:
                     assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
                                        N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)
+
+        # check that non-single dimension arrays are caught
+        with pytest.raises(ValueError):
+            D_easy.compute_stats_single('boo', numeric_data)
 
 
 def test_compute_stats_multiple():

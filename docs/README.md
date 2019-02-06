@@ -13,7 +13,7 @@ features:
 - title: Pedestrian-focused
   details: Rigorous network-based methods developed specifically for hyperlocal analysis at the pedestrian scale.
 - title: Friendly & performant
-  details: Python interface wrapping fast JIT compiled code. In-out convenience methods for NetworkX.
+  details: Python package with core algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.
 footer: Copyright © 2018-present Gareth Simons
 meta:
   - name: description

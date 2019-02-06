@@ -7,6 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 from cityseer.algos import data, checks
+from cityseer.metrics import networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -121,7 +122,9 @@ class Data_Layer:
     def Network(self):
         return self._Network
 
-    def assign_to_network(self, Network_Layer, max_dist):
+    def assign_to_network(self,
+                          Network_Layer: networks.Network_Layer,
+                          max_dist: [int, float]):
         self._Network = Network_Layer
         data.assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
 
@@ -310,17 +313,21 @@ class Data_Layer:
 
     def compute_accessibilities(self,
                                 landuse_labels: Union[list, tuple, np.ndarray],
-                                accessibility_labels: Union[list, tuple]):
-        return self.compute_aggregated(landuse_labels, accessibility_keys=accessibility_labels)
+                                accessibility_keys: Union[list, tuple]):
+        return self.compute_aggregated(landuse_labels, accessibility_keys=accessibility_keys)
 
     def compute_stats_single(self,
                              stats_key: str,
                              stats_data_arr: Union[list, tuple, np.ndarray]):
 
+        if stats_data_arr.ndim != 1:
+            raise ValueError(
+                'The stats_data_arr must be a single dimensional array with a length corresponding to the number of data points in the Data_Layer.')
+
         return self.compute_aggregated(stats_keys=[stats_key], stats_data_arrs=[stats_data_arr])
 
     def compute_stats_multiple(self,
-                               stats_keys: List[str],
+                               stats_keys: Union[list, tuple],
                                stats_data_arrs: Union[list, tuple, np.ndarray]):
 
         return self.compute_aggregated(stats_keys=stats_keys, stats_data_arrs=stats_data_arrs)

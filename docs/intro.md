@@ -5,9 +5,9 @@
 Cityseer <Chip text="beta"/>
 --------
 
-`cityseer` is a collection of computational tools for fine-grained network and land-use analysis. It is useful for assessing the morphological precursors to vibrant neighbourhoods. It makes use of rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
+`cityseer` is a collection of computational tools for fine-grained network and land-use analysis, which are useful for assessing the morphological precursors to vibrant neighbourhoods. It makes use of rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
 
-The use of `python` facilitates interaction with popular tools for network, geospatial, and scientific data analysis, i.e. [`networkX`](https://networkx.github.io/), [`shapely`](https://shapely.readthedocs.io), [`numpy`](http://www.numpy.org/), etc. The underlying algorithms are designed for efficient large-scale urban analysis and have been implemented with fast [`numba`](https://numba.pydata.org/) JIT compiled code.
+The use of `python` facilitates interaction with popular tools for network, geospatial, and scientific data analysis, i.e. [`networkX`](https://networkx.github.io/), [`shapely`](https://shapely.readthedocs.io), and the [`numpy`](http://www.numpy.org/) stack. The underlying algorithms are designed for efficient large-scale urban analysis and have been implemented in [`numba`](https://numba.pydata.org/) JIT compiled code.
 
 
 Installation
@@ -44,7 +44,7 @@ from cityseer.util import plot
 plot.plot_nX(G)
 ```
 
-<img src="./plots/graph.png" alt="Example graph" class="centre">
+<img src="/plots/graph.png" alt="Example graph" class="centre" style="max-height:450px;">
 
 Network edges require `length` and `impedance` attributes. Whereas these can be set manually, it is often easier to assign a `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometry to the edge `geom` attribute, from which the [`graphs.nX_auto_edge_params`](/util/graphs.html#nx-auto-edge-params) method can generate the `length` and `impedance` edge attributes automatically.
 
