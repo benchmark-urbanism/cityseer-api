@@ -546,14 +546,16 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         x, y, live, edge_idx, wt = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y
-        g_copy.nodes[uid]['live'] = live
+        g_copy.nodes[uid]['live'] = bool(live)
         g_copy.nodes[uid]['weight'] = wt
 
     logger.info('Unpacking edge data.')
     for edge in tqdm(edge_map):
         start, end, length, impedance = edge
+        start_uid = node_uids[int(start)]
+        end_uid = node_uids[int(end)]
         # networkX will silently add new edges / data over existing edges
-        g_copy.add_edge(start, end, length=length, impedance=impedance)
+        g_copy.add_edge(start_uid, end_uid, length=length, impedance=impedance)
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')

@@ -415,6 +415,20 @@ def test_nX_from_graph_maps():
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
 
+    # test with decomposed
+    G_decomposed = graphs.nX_decompose(G, decompose_max=20)
+    # NB -> set live and weight explicitly - otherwise generated implicitly e.g. weight=1
+    # which means equality check won't work for nodes
+    for n in G_decomposed.nodes():
+        G_decomposed.nodes[n]['live'] = bool(np.random.randint(0, 1))
+        G_decomposed.nodes[n]['weight'] = np.random.random() * 2000
+
+    node_uids_d, node_map_d, edge_map_d = graphs.graph_maps_from_nX(G_decomposed)
+
+    G_round_trip_d = graphs.nX_from_graph_maps(node_uids_d, node_map_d, edge_map_d)
+    assert G_round_trip_d.nodes == G_decomposed.nodes
+    assert G_round_trip_d.edges == G_decomposed.edges
+
     # error checks for when using backbone graph:
     # mismatching numbers of nodes
     corrupt_G = G.copy()
