@@ -93,11 +93,12 @@ def test_assign_to_network():
     G.remove_edge(14, 15)
     G.remove_edge(15, 28)
 
-    G = graphs.nX_auto_edge_params(G)
+    # G = graphs.nX_auto_edge_params(G)
+    G = graphs.nX_decompose(G, 50)
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
 
     # generate data
-    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_dict = mock.mock_data_dict(G, random_seed=25)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     # override data point 0 and 1's locations for test cases
@@ -106,57 +107,62 @@ def test_assign_to_network():
 
     # 500m visually confirmed in plots
     data_map_test_500 = data_map.copy()
-    data_map_test_500 = data.assign_to_network(data_map_test_500, node_map, edge_map, 500)
-    targets = [[0, 45, 30],
-               [1, 30, 45],
-               [2, 30, 45],
-               [3, 17, 20],
-               [4, 18, 17],
-               [5, 49.0, np.nan],
-               [6, 14, 10],
-               [7, 3, 4],
-               [8, 49.0, np.nan],
-               [9, 10, 43],
-               [10, 45, 30],
-               [11, 13, 9],
-               [12, 43, 10],
-               [13, 20, 17],
-               [14, 10, 14],
-               [15, 45, 30],
-               [16, 19, 22],
-               [17, 50.0, np.nan],
-               [18, 43, 10],
-               [19, 48.0, np.nan],
-               [20, 7, 3],
-               [21, 45, 30],
-               [22, 37, 36],
-               [23, 1, 2],
-               [24, 45, 30],
-               [25, 19, 22],
-               [26, 43, 10],
-               [27, 43, 10],
-               [28, 30, 29],
-               [29, 2, 5],
-               [30, 44, 45],
-               [31, 47.0, np.nan],
-               [32, 43, 10],
-               [33, 51.0, np.nan],
-               [34, 29, 28],
-               [35, 40, 39],
-               [36, 30, 45],
-               [37, 12, 11],
-               [38, 43, 10],
-               [39, 16, 19],
-               [40, 30, 45],
-               [41, 11, 6],
-               [42, 43, 10],
-               [43, 34, 32],
-               [44, 47.0, np.nan],
-               [45, 26, 25],
-               [46, 43, 10],
-               [47, 45, 30],
-               [48, 49.0, np.nan],
-               [49, 19, 16]]
+    data_map_test_500 = data.assign_to_network(data_map_test_500,
+                                               node_map,
+                                               edge_map,
+                                               1000)
+    targets = [
+        [0, 180, 181],
+        [1, 177, 176],
+        [2, 219, 218],
+        [3, 48, 238],
+        [4, 194, 195],
+        [5, 219, 218],
+        [6, 53, 52],
+        [7, 67, 5],
+        [8, 70, 71],
+        [9, 87, 9],
+        [10, 56, 57],
+        [11, 91, 13],
+        [12, 0, 54],
+        [13, 93, 94],
+        [14, 186, 185],
+        [15, 116, 115],
+        [16, 48, 238],
+        [17, 2, 65],
+        [18, 17, 121],
+        [19, 153, 152],
+        [20, 78, 79],
+        [21, 2.0, np.nan],
+        [22, 166, 165],
+        [23, 2, 65],
+        [24, 78, 79],
+        [25, 83, 11],
+        [26, 103, 104],
+        [27, 19, 133],
+        [28, 129, 130],
+        [29, 238, 46],
+        [30, 73, 9],
+        [31, 183, 184],
+        [32, 175, 176],
+        [33, 90, 89],
+        [34, 209, 208],
+        [35, 105, 106],
+        [36, 39, 211],
+        [37, 153, 25],
+        [38, 83, 82],
+        [39, 2.0, np.nan],
+        [40, 115, 116],
+        [41, 141, 21],
+        [42, 10, 92],
+        [43, 114, 113],
+        [44, 77, 5],
+        [45, 11, 83],
+        [46, 95, 94],
+        [47, 133, 19],
+        [48, 14.0, np.nan],
+        [49, 101, 100]
+    ]
     for i in range(len(data_map_test_500)):
         assert data_map_test_500[i][2] == targets[i][1]
         assert np.allclose(data_map_test_500[i][3], targets[i][2], equal_nan=True)

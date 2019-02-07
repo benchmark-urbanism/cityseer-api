@@ -127,7 +127,7 @@ def assign_to_network(data_map: np.ndarray,
         ang_a = calculate_rotation_smallest(d_coords - a_coords, b_coords - a_coords)
         ang_b = calculate_rotation_smallest(d_coords - b_coords, a_coords - b_coords)
 
-        # assume offset street segment if either is significantly greater than 90 (in which case offset from road)
+        # assume offset street segment if either is significantly greater than 90 (in which case sideways offset from road)
         if ang_a > 110 or ang_b > 110:
             return np.inf, np.nan, np.nan
 
@@ -143,10 +143,17 @@ def assign_to_network(data_map: np.ndarray,
         a = np.sqrt(s * (s - side_a) * (s - side_b) * (s - base))
         # area is 1/2 base * h, so h = area / (0.5 * base)
         h = a / (0.5 * base)
+        # NOTE - the height of the triangle may be less than the distance to the nodes
+        # happens due to offset segments: can cause wrong assignment where adjacent segments have same triangle height
+        # in this case, set to length of closest node so that h (minimum distance) is still meaningful
         # return indices in order of nearest then next nearest
         if side_a < side_b:
+            if ang_a > 90:
+                h = side_a
             return h, netw_idx_a, netw_idx_b
         else:
+            if ang_b > 90:
+                h = side_b
             return h, netw_idx_b, netw_idx_a
 
     def closest_intersections(d_coords, pr_map, end_node):
@@ -272,6 +279,7 @@ def assign_to_network(data_map: np.ndarray,
             if dist > max_dist:
                 pred_map[int(nb_idx)] = node_idx
                 d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(nb_idx))
+                # if the distance to the street edge is less than the nearest node, or than the prior closest edge
                 if d < min_dist:
                     min_dist = d
                     nearest = n
@@ -286,13 +294,16 @@ def assign_to_network(data_map: np.ndarray,
                 break
 
             # ignore the following conditions while backtracking
-            # if backtracking, the current node's predecessor will be the new neighbour
+            # (if backtracking, the current node's predecessor will be equal to the new neighbour)
             if nb_idx != pred_map[node_idx]:
-
-                # if the new nb node has already been visited
-                # or if it is the original starting node
+                # if the new nb node has already been visited then terminate, this prevent infinite loops
+                # or, if the algorithm has circled the block back to the original starting node
                 if not np.isnan(pred_map[int(nb_idx)]) or nb_idx == min_idx:
-                    pred_map[int(nb_idx)] = node_idx
+                    # set the final predecessor, BUT ONLY if re-encountered the original node
+                    # this would otherwise occlude routes (e.g. backtracks) that have passed the same node twice
+                    # (such routes are still able to recover the closest edge)
+                    if nb_idx == min_idx:
+                        pred_map[int(nb_idx)] = node_idx
                     d, n, n_n = closest_intersections(data_coords[data_idx], pred_map, int(nb_idx))
                     if d < min_dist:
                         nearest = n
