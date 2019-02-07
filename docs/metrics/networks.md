@@ -20,7 +20,7 @@ distance_from_beta(beta,
 Maps decay parameters $-\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
 ::: warning Note
-It is generally not necessary to utilise this method directly. It will be called internally, if necessary, when invoking [Network_Layer](/metrics/networks.html#network-layer) or [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx).
+It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [Network_Layer](/metrics/networks.html#network-layer) or [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx).
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -63,7 +63,7 @@ The strength of the decay is controlled by the $-\beta$ parameter, which reflect
 
 <img src="/plots/betas.png" alt="Example beta decays" class="centre">
 
-[Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this method will be called in order to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
+[Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
 
 $$-\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
 
@@ -307,7 +307,7 @@ print(G_post.nodes[random_uid]['metrics']['centrality']['harmonic'][200])
 
 <img src="/plots/graph_before.png" alt="Graph before conversion" class="left"><img src="/plots/graph_after.png" alt="graph after conversion back to networkX" class="right">
 
-_A `networkX` graph before conversion to a `Network Layer` (left) and after conversion back to `networkX` (right)._
+_A `networkX` graph before conversion to a `Network_Layer` (left) and after conversion back to `networkX` (right)._
 
 
 @compute\_centrality

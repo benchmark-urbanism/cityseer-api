@@ -8,7 +8,7 @@
 cityseer.util.mock
 ==================
 
-A collection of methods for the generation of mock data. This module is predominately used for writing code tests.
+A collection of functions for the generation of mock data. This module is predominately used for writing code tests.
 
 
 mock\_graph

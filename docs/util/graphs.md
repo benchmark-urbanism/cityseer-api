@@ -16,7 +16,7 @@ nX\_simple\_geoms
 
 <FuncSignature>nX_simple_geoms(networkX_graph)</FuncSignature>
 
-Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. The edge geometry will be stored to the edge `geom` attribute. The [nX_auto_edge_params](#nx-auto-edge-params) method can then be used to auto-generate edge `length` and `impedance` attributes.
+Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. The edge geometry will be stored to the edge `geom` attribute. The [nX_auto_edge_params](#nx-auto-edge-params) function can then be used to auto-generate edge `length` and `impedance` attributes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -107,7 +107,7 @@ The maximum length threshold for decomposed edges.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`.
+A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will be set to match the lengths of the new edges.
 
 </FuncElement>
 
@@ -179,7 +179,7 @@ nX\_auto\_edge\_params
 Generates edge `length` and `impedance` attributes from the `geom` edge attribute.
 
 ::: danger Caution
-Do not use this method on dual graphs. Dual graphs prepared with [nX_to_dual](#nx-to-dual) will already have `length` and `impedance` edge attributes set.
+Do not use this function on dual graphs. Dual graphs prepared with [nX_to_dual](#nx-to-dual) will already have `length` and `impedance` edge attributes set, and calling this function would overwrite the angular impedance attributes. It is also not necessary to call this method on decomposed graphs, because [nX_decompose](#nx-decompose) will set the `length` and `impedance` attributes as part of the process of decomposition.
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -233,7 +233,7 @@ graph\_maps\_from\_nX
 Transposes a `networkX` graph into `numpy` arrays for use by `Network_Layer` classes.
 
 ::: warning Note
-It is generally not necessary to use this method directly. This method will be called internally when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -299,7 +299,7 @@ nX_from_graph_maps(node_uids,
 Transposes `cityseer` graph maps into a `networkX` graph.
 
 ::: warning Note
-It is generally not necessary to use this method directly. This method will be called internally when invoking [Network_Layer.to_networkX](/metrics/networks.html#to-networkX)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [Network_Layer.to_networkX](/metrics/networks.html#to-networkX)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -339,7 +339,7 @@ A 2d `numpy` array representing the graph's edges. The indices of the second dim
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_uids`. If not provided, then a new `networkX` graph will be returned. This method is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph.
+An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_uids`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph.
 
 </FuncElement>
 

@@ -101,9 +101,9 @@ def test_assign_to_network():
     data_dict = mock.mock_data_dict(G, random_seed=25)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
-    # override data point 0 and 1's locations for test cases
-    data_map[0][:2] = [6001000, 600350]
-    data_map[1][:2] = [6001170, 600445]
+    # override data point locations for test cases vis-a-vis isolated nodes and isolated edges
+    data_map[18][:2] = [6000730, 600914]
+    data_map[39][:2] = [6000450, 600609]
 
     # 500m visually confirmed in plots
     data_map_test_500 = data_map.copy()
@@ -112,8 +112,8 @@ def test_assign_to_network():
                                                edge_map,
                                                1000)
     targets = [
-        [0, 180, 181],
-        [1, 177, 176],
+        [0, 159, 158],
+        [1, 42, 224],
         [2, 219, 218],
         [3, 48, 238],
         [4, 194, 195],
@@ -130,7 +130,7 @@ def test_assign_to_network():
         [15, 116, 115],
         [16, 48, 238],
         [17, 2, 65],
-        [18, 17, 121],
+        [18, 51, 241],
         [19, 153, 152],
         [20, 78, 79],
         [21, 2.0, np.nan],
@@ -151,7 +151,7 @@ def test_assign_to_network():
         [36, 39, 211],
         [37, 153, 25],
         [38, 83, 82],
-        [39, 2.0, np.nan],
+        [39, 49.0, np.nan],
         [40, 115, 116],
         [41, 141, 21],
         [42, 10, 92],
@@ -168,8 +168,8 @@ def test_assign_to_network():
         assert np.allclose(data_map_test_500[i][3], targets[i][2], equal_nan=True)
 
     # for debugging
-    # from cityseer.util import plot
-    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map_test_500)
+    from cityseer.util import plot
+    plot.plot_graph_maps(node_uids, node_map, edge_map, data_map_test_500)
 
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()

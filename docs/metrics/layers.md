@@ -51,13 +51,13 @@ from cityseer.metrics import layers
 # let's generate a mock data dictionary
 G_wgs = mock.mock_graph(wgs84_coords=True)
 # mock_data_dict takes on the same extents on the graph parameter
-data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=0)
+data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=25)
 # the dictionary now contains wgs coordinates
 for i, (key, value) in enumerate(data_dict_WGS.items()):
     print(key, value)
     # prints:
-    # 0 {'x': -1.458369781174891, 'y': 54.14683122127234}
-    # 1 {'x': -1.457436968983548, 'y': 54.144993424483964}
+    # 0 {'x': -1.4528142077605772, 'y': 54.145396945391695, 'live': False}
+    # 1 {'x': -1.463037735961814, 'y': 54.1411197101806, 'live': False}
     if i == 1:
         break
         
@@ -67,8 +67,8 @@ data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
 for i, (key, value) in enumerate(data_dict_UTM.items()):
     print(key, value)
     # prints:
-    # 0 {'x': 6000956.463188213, 'y': 600693.4059810264}
-    # 1 {'x': 6000753.336609659, 'y': 600758.7916663144}
+    # 0 {'x': 6000804.828421302, 'y': 601059.7404369968, 'live': False}
+    # 1 {'x': 6000314.41378748, 'y': 600402.3539826316, 'live': False}
     if i == 1:
         break
 ```
@@ -82,7 +82,7 @@ encode\_categorical
 Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique elements.
 
 ::: warning Note
-It is generally not necessary to utilise this method directly. It will be called implicitly if calculating land-use metrics.
+It is generally not necessary to utilise this function directly. It will be called implicitly if calculating land-use metrics.
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -125,7 +125,7 @@ data\_map\_from\_dict
 Converts a data dictionary into a `numpy` array for use by `Data_Layer` classes.
 
 ::: warning Note
-It is generally not necessary to use this method directly. This method will be called implicitly when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
+It is generally not necessary to use this function directly. This function will be called implicitly when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -239,16 +239,17 @@ The maximum distance to consider when assigning respective data points to the ne
 
 </FuncElement>
 
-::: warning Note
-
-Note that the precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/util/graphs.html#nx-decompose)). Decomposition also offers a more granular representation of variations in metrics along street lengths.
-
-:::
-
 ::: tip Hint
-The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block — from which it is able to identify the closest adjacent street edge. If the `max_dist` is too small, then the algorithm is hampered from finding nodes and searching far enough "around the block". A distance of $\approx 500m$ may provide a good starting point. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Converseley, if most of the data points are satisfactorily assigned but computational demands seem too great, then this distance may be decreased.
+The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max-dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 500m$ provides a good starting point.
 :::
 
+::: warning Note
+The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/util/graphs.html#nx-decompose)), which offers the further benefit of a more granular representation of variations in metrics along street-fronts.
+:::
+
+<img src="/plots/assignment.png" alt="Example assignment of data to a network" class="left"><img src="/plots/assignment_decomposed.png" alt="Example assignment on a decomposed network" class="right">
+
+_Assignment of data to network nodes becomes more contextually precise on decomposed graphs (right) as opposed to non-decomposed graphs (left)._
 
 @compute\_aggregated
 ---------------------
@@ -364,11 +365,11 @@ G = graphs.nX_auto_edge_params(G)
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 
 # prepare a mock data dictionary
-data_dict = mock.mock_data_dict(G, random_seed=0)
+data_dict = mock.mock_data_dict(G, random_seed=25)
 # prepare some mock land-use classifications
-landuses = mock.mock_categorical_data(len(data_dict), random_seed=0)
+landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
 # let's also prepare some numerical data
-stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=0)
+stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
 
 # generate a data layer
 L = layers.Data_Layer_From_Dict(data_dict)
@@ -378,7 +379,7 @@ L.assign_to_network(N, max_dist=500)
 L.compute_aggregated(landuse_labels=landuses,
                      mixed_use_keys=['hill'],
                      qs=[0, 1],
-                     accessibility_keys=['a', 'b'],
+                     accessibility_keys=['c', 'd', 'e'],
                      stats_keys=['mock_stat'],
                      stats_data_arrs=stats_data)
 # note that the above measures can be run individually using simplified interfaces, e.g.
@@ -396,11 +397,13 @@ node_idx = 0
 
 # the data is available at N.metrics
 print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
-# prints: 5.0
-print(N.metrics['accessibility']['weighted']['a'][distance_idx][node_idx])
-# prints: 0.029644648160004214
+# prints: 4.0
+print(N.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
+# prints: 0.019168845139732035
+print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
+# prints: 1.0
 print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-# prints: 20291.217189203908
+# prints: 47135.72553719515
 ```
 
 Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx).

@@ -3,19 +3,26 @@ from os import path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs, plot
 
 plt.style.use('./matplotlibrc')
 
 base_path = path.dirname(__file__)
 
+# INTRO PLOT
 G = mock.mock_graph()
 plot.plot_nX(G, path='graph.png', labels=True)
 
-# mock module
+# MOCK MODULE
 plt.cla()
 plt.clf()
-plot.plot_nX(G, path='graph_example.png', labels=True)
+plot.plot_nX(G, path='graph_example.png', labels=True)  # WITH LABELS
+
+# GRAPH MODULE
+plt.cla()
+plt.clf()
+plot.plot_nX(G, path='graph_simple.png', labels=False)  # NO LABELS
 
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
@@ -29,12 +36,8 @@ plt.clf()
 G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False)
 
-# networks module
-
+# NETWORKS MODULE
 # before and after plots
-from cityseer.metrics import networks
-from cityseer.util import mock, graphs
-
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
@@ -55,7 +58,33 @@ plt.cla()
 plt.clf()
 plot.plot_nX(G_post, path='graph_after.png', labels=True)
 
-# beta decays
+# LAYERS MODULE
+# show assignment to network
+# random seed 25
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+G = graphs.nX_auto_edge_params(G)
+N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
+
+data_dict = mock.mock_data_dict(G, random_seed=25)
+L = layers.Data_Layer_From_Dict(data_dict)
+L.assign_to_network(N, max_dist=500)
+
+plt.cla()
+plt.clf()
+plot.plot_assignment(N, L, path='assignment.png')
+
+G_decomposed = graphs.nX_decompose(G, 50)
+N_decomposed = networks.Network_Layer_From_nX(G_decomposed, distances=[200, 400, 800, 1600])
+
+L = layers.Data_Layer_From_Dict(data_dict)
+L.assign_to_network(N_decomposed, max_dist=500)
+
+plt.cla()
+plt.clf()
+plot.plot_assignment(N_decomposed, L, path='assignment_decomposed.png')
+
+# BETA DECAYS
 plt.cla()
 plt.clf()
 fig, ax = plt.subplots(1, 1, figsize=(5, 2.5))

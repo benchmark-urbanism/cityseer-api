@@ -8,7 +8,7 @@
 cityseer.util.plot
 ==================
 
-Convenience methods for crude plotting. This module is predominately used for visual verification of behaviour in code tests.
+Convenience functions for crude plotting. This module is predominately used for visual verification of behaviour in code tests.
 
 
 plot\_nX\_primal\_or\_dual
@@ -74,6 +74,46 @@ Whether to display node labels.
 </FuncElement>
 
 
+plot\_assignment
+----------------
+
+<FuncSignature>
+<pre>
+plot_assignment(Network_Layer, 
+                Data_Layer,
+                path=None,
+                labels=False)
+</pre>
+</FuncSignature>
+
+Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
+
+<FuncHeading>Parameters</FuncHeading>
+<FuncElement name="Network_Layer" type="networks.Network_Layer">
+
+A [`Network_Layer`](/metrics/networks.html#network-layer).
+
+</FuncElement>
+
+<FuncElement name="Data_Layer" type="layers.Data_Layer">
+
+A [`Data_Layer`](/metrics/layers.html#data-layer).
+
+</FuncElement>
+
+<FuncElement name="path" type="str">
+
+An optional filepath: if provided, the image will be saved to the path instead of being displayed.
+
+</FuncElement>
+
+<FuncElement name="labels" type="bool">
+
+Whether to display node labels.
+
+</FuncElement>
+
+
 plot\_graph\_maps <Chip text="unstable" :important="true"/>
 -----------------
 <FuncSignature>
@@ -86,7 +126,7 @@ plot_graph_maps(node_uids,
 </pre>
 </FuncSignature>
 
-Plot a graph from raw `cityseer` data structures. Note that this method is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms.
+Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms.
 
 <FuncHeading>Parameters</FuncHeading>
 <FuncElement name="node_uids" type="[list, tuple, np.ndarray]">
