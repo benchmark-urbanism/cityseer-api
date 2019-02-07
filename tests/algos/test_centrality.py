@@ -155,6 +155,38 @@ def test_shortest_path_tree():
                                       angular=False)
 
 
+def decomposed_centrality_check():
+    # needs a large enough beta so that distance thresholds aren't encountered
+    betas = np.array([-0.0008])
+    distances = networks.distance_from_beta(betas)
+
+    # test a decomposed graph
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    G_decomposed = graphs.nX_decompose(G, 20)  # decomposition will auto-populate length and impedance
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_decomposed)  # generate node and edge maps
+
+    closeness_data, betweenness_data = \
+        centrality.local_centrality(node_map,
+                                    edge_map,
+                                    distances,
+                                    betas,
+                                    np.array([3]),  # harmonic key
+                                    np.array([0]),  # betweenness key
+                                    angular=False)
+
+    # test harmonic closeness vs NetworkX
+    nx_harm_cl = nx.harmonic_centrality(G_decomposed, distance='impedance')
+    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
+    assert np.allclose(nx_harm_cl, closeness_data[0][0])  # first item, first distance
+
+    # test betweenness vs NetworkX
+    # set endpoint counting to false and do not normalise
+    nx_betw = nx.betweenness_centrality(G_decomposed, weight='impedance', endpoints=False, normalized=False)
+    nx_betw = np.array([v for v in nx_betw.values()])
+    assert np.array_equal(nx_betw, betweenness_data[0][0])  # first item, first distance
+
+
 def test_local_centrality():
     '''
     Also tested indirectly via test_networks.test_compute_centrality
@@ -170,7 +202,8 @@ def test_local_centrality():
     # Note that NetworkX improved closeness is not the same as derivation used in this package
     # Note that NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
 
-    betas = np.array([-0.02, -0.01, -0.005, -0.0025])
+    # needs a large enough beta so that distance thresholds aren't encountered
+    betas = np.array([-0.02, -0.01, -0.005, -0.0008])
     distances = networks.distance_from_beta(betas)
 
     # set the keys - add shuffling to be sure various orders work
@@ -219,6 +252,10 @@ def test_local_centrality():
     nx_betw = np.array([v for v in nx_betw.values()])
     assert np.array_equal(nx_betw, betweenness[3])
 
+    # also test against decomposed
+    decomposed_centrality_check()
+
+    ###
     # test manual metrics against all nodes
     x_arr = node_map[:, 0]
     y_arr = node_map[:, 1]

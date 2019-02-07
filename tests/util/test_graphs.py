@@ -148,6 +148,21 @@ def test_nX_decompose():
     assert nx.number_of_nodes(G_decompose) == 632
     assert nx.number_of_edges(G_decompose) == 653
 
+    # check that total lengths and impedances are the same
+    G_lens = 0
+    G_imp = 0
+    G_simple = graphs.nX_auto_edge_params(G)
+    for s, e, e_data in G_simple.edges(data=True):
+        G_lens += e_data['length']
+        G_imp += e_data['impedance']
+    G_d_lens = 0
+    G_d_imp = 0
+    for s, e, e_data in G_decompose.edges(data=True):
+        G_d_lens += e_data['length']
+        G_d_imp += e_data['impedance']
+    assert np.allclose(G_lens, G_d_lens)
+    assert np.allclose(G_imp, G_d_imp)
+
     # check that geoms are correctly flipped
     G_forward = mock.mock_graph()
     G_forward = graphs.nX_simple_geoms(G_forward)
