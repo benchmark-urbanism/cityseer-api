@@ -178,7 +178,7 @@ Data\_Layer <Chip text="class"/>
 
 <FuncSignature>Data_Layer(data_uids, data_map)</FuncSignature>
 
-Data layers represent the locations of data points. By assigning a `Data_Layer` to a `Network_Layer` it then becomes possible to calculate various mixed-use and land-use accessibility measures, as well as a range of spatially sensitive statistics. These measures are computed directly over the street network, which is more contextually sensitive than methods based on crow-flies aggregation methods.
+Categorical data, such as land-use classifications, and numerical data can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on crude crow-flies aggregation methods.
 
 The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
@@ -221,7 +221,7 @@ A `Data_Layer`.
 
 Once created, a [`Data_Layer`](#data-layer) should be assigned to a [`Network_Layer`](#network-layer). The `Network_Layer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `Network_Layer`.
 
-The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that accurately describes distances over the network to data points, relative to the direction of approach.
+The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
 
 <FuncSignature>Data_Layer.assign_to_network(Network_Layer, max_dist)</FuncSignature>
 
@@ -240,7 +240,7 @@ The maximum distance to consider when assigning respective data points to the ne
 </FuncElement>
 
 ::: tip Hint
-The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max-dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 500m$ provides a good starting point.
+The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max-dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
 :::
 
 ::: warning Note

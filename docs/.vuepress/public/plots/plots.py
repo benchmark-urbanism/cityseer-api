@@ -10,15 +10,21 @@ plt.style.use('./matplotlibrc')
 
 base_path = path.dirname(__file__)
 
+#
+#
 # INTRO PLOT
 G = mock.mock_graph()
 plot.plot_nX(G, path='graph.png', labels=True)
 
+#
+#
 # MOCK MODULE
 plt.cla()
 plt.clf()
 plot.plot_nX(G, path='graph_example.png', labels=True)  # WITH LABELS
 
+#
+#
 # GRAPH MODULE
 plt.cla()
 plt.clf()
@@ -36,6 +42,8 @@ plt.clf()
 G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False)
 
+#
+#
 # NETWORKS MODULE
 # before and after plots
 # prepare a mock graph
@@ -58,6 +66,8 @@ plt.cla()
 plt.clf()
 plot.plot_nX(G_post, path='graph_after.png', labels=True)
 
+#
+#
 # LAYERS MODULE
 # show assignment to network
 # random seed 25
@@ -84,6 +94,8 @@ plt.cla()
 plt.clf()
 plot.plot_assignment(N_decomposed, L, path='assignment_decomposed.png')
 
+#
+#
 # BETA DECAYS
 plt.cla()
 plt.clf()
