@@ -22,18 +22,18 @@ from setuptools import setup
 
 setup (
     name = 'cityseer',
-    version='0.5.0',
+    version='0.6.0',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
     project_urls={
-        "Bug Tracker": "https://github.com/cityseer/cityseer-api/issues",
-        "Documentation": "https://github.com/cityseer/cityseer-api",
-        "Source Code": "https://github.com/cityseer/cityseer-api",
+        "Bug Tracker": "https://github.com/cityseer/cityseer/issues",
+        "Documentation": "https://cityseer.github.io/cityseer/",
+        "Source Code": "https://github.com/cityseer/cityseer",
     },
     author='Gareth Simons',
     author_email='gareth@cityseer.io',
-    license='AGPL-3.0',
+    license='Apache 2.0 + "Commons Clause" License Condition v1.0',
     install_requires=[
         'numpy',
         'numba',
@@ -44,7 +44,7 @@ setup (
         'matplotlib',
         'sklearn'
     ],
-    ext_package='cityseer.algos',  # NB -> sets output directory for extension modules
+    # ext_package='cityseer.algos',  # NB -> sets output directory for extension modules
     # some sort of issue with AOT precompilation - using njit for now...
     ext_modules = [
         # centrality.cc.distutils_extension(),
