@@ -36,6 +36,10 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     '''
+    # catch zero length data maps
+    if len(data_map) == 0:
+        raise ValueError('Zero length data map')
+
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
     if not data_map.ndim == 2 or not data_map.shape[1] == 4:
         raise ValueError(
@@ -97,13 +101,19 @@ def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
     3 - impedance
     '''
 
+    # catch zero length node or edge maps
+    if len(node_map) == 0:
+        raise ValueError('Zero length node map')
+    if len(edge_map) == 0:
+        raise ValueError('Zero length edge map')
+
     if not node_map.ndim == 2 or not node_map.shape[1] == 5:
         raise ValueError(
-            'The node map must have a dimensionality of Nx5, consisting of x, y, live, link idx, and weight attributes.')
+            'The node map must have a dimensionality of Nx5, consisting of x, y, live, edge idx, and weight attributes.')
 
     if not edge_map.ndim == 2 or not edge_map.shape[1] == 4:
         raise ValueError(
-            'The link map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
+            'The edge map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
 
     # check sequential and reciprocal node to edge map indices
     edge_counter = 0

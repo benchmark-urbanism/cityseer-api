@@ -61,6 +61,11 @@ def test_check_data_map():
     data_map = data.assign_to_network(data_map, N._nodes, N._edges, max_dist=400)
     checks.check_data_map(data_map)
 
+    # catch zero length data arrays
+    empty_2d_arr = np.full((0, 4), np.nan)
+    with pytest.raises(ValueError):
+        checks.check_data_map(empty_2d_arr)
+
     # catch invalid dimensionality
     with pytest.raises(ValueError):
         checks.check_data_map(data_map[:, :-1])
@@ -108,6 +113,14 @@ def test_check_network_maps():
     # from cityseer.util import plot
     # plot.plot_networkX_primal_or_dual(primal=G)
     # plot.plot_graph_maps(N.uids, N._nodes, N._edges)
+
+    # catch zero length node and edge arrays
+    empty_node_arr = np.full((0, 5), np.nan)
+    with pytest.raises(ValueError):
+        checks.check_network_maps(empty_node_arr, N._edges)
+    empty_edge_arr = np.full((0, 4), np.nan)
+    with pytest.raises(ValueError):
+        checks.check_network_maps(N._nodes, empty_edge_arr)
 
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
