@@ -233,6 +233,7 @@ class Network_Layer:
                 if cl not in closeness_options:
                     raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
                 closeness_keys.append(closeness_options.index(cl))
+            logger.info(f'Computing closeness measures: {", ".join(close_metrics)}')
 
         betweenness_options = ['betweenness',
                                'betweenness_gravity']
@@ -243,6 +244,7 @@ class Network_Layer:
                     raise ValueError(
                         f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
                 betweenness_keys.append(betweenness_options.index(bt))
+            logger.info(f'Computing betweenness measures: {", ".join(between_metrics)}')
 
         closeness_data, betweenness_data = centrality.local_centrality(
             self._nodes,

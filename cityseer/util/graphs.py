@@ -246,8 +246,8 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
             # increment the step and node id
             prior_node_id = new_node_id
             step += step_size
-        # set the last link manually to avoid rounding errors at end of LineString
-        # the nodes already exist, so just add link
+        # set the last edge manually to avoid rounding errors at end of LineString
+        # the nodes already exist, so just add edge
         line_segment = substring(line_geom, step, line_geom.length)
         l = line_segment.length
         g_copy.add_edge(prior_node_id, e, length=l, impedance=l)
@@ -451,7 +451,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     logger.info('Generating data arrays')
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
-    # prepare the node and link maps
+    # prepare the node and edge maps
     node_uids = []
     node_map = np.full((g_copy.number_of_nodes(), 5), np.nan)  # float - for consistency
     edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
@@ -487,7 +487,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             node_map[i][4] = d['weight']
         else:
             node_map[i][4] = 1
-        # follow all out links and add these to the edge_map
+        # follow all out edges and add these to the edge_map
         # this happens for both directions
         for nb in g_copy.neighbors(n):
             # EDGE MAP INDEX POSITION 0 = start node
@@ -511,7 +511,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
                 raise AttributeError(
                     f'Impedance attribute {imp} for edge {i}-{nb} must be a finite positive value or positive infinity.')
             edge_map[edge_idx][3] = imp
-            # increment the link_idx
+            # increment the edge_idx
             edge_idx += 1
 
     return tuple(node_uids), node_map, edge_map

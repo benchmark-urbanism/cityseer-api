@@ -140,6 +140,8 @@ class Data_Layer:
                                                   np.ndarray] = None):
         '''
         This method provides full access to the underlying diversity.local_landuses method
+
+        Try not to duplicate underlying type or signature checks here
         '''
 
         if self.Network is None:
@@ -160,7 +162,7 @@ class Data_Layer:
             raise ValueError('An equal number of stats labels and stats data arrays is required.')
 
         if stats_data_arrs is None:
-            stats_data_arrs = np.array([[]])
+            stats_data_arrs = np.full((0, 0), np.nan)
         elif not isinstance(stats_data_arrs, (list, tuple, np.ndarray)):
             raise ValueError('Stats data must be in the form of a list, tuple, or numpy array.')
         else:
@@ -171,6 +173,10 @@ class Data_Layer:
                 raise ValueError('The length of all data arrays must match the number of data points.')
 
         if landuse_labels is None:
+            if mixed_use_keys or accessibility_keys:
+                raise ValueError(
+                    'Computation of mixed use or accessibility measures requires the landuse_labels parameter.')
+
             landuse_classes = ()
             landuse_encodings = ()
             qs = ()
@@ -190,7 +196,7 @@ class Data_Layer:
 
             # if necessary, check the disparity matrix
             if cl_disparity_wt_matrix is None:
-                cl_disparity_wt_matrix = [[]]
+                cl_disparity_wt_matrix = np.full((0, 0), np.nan)
             elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
                     cl_disparity_wt_matrix.ndim != 2 or \
                     cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
@@ -220,6 +226,7 @@ class Data_Layer:
                         mu_hill_keys.append(idx)
                     else:
                         mu_other_keys.append(idx - 4)
+                logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
 
             acc_keys = []
             if accessibility_keys is not None:
@@ -228,6 +235,10 @@ class Data_Layer:
                         logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
                     else:
                         acc_keys.append(landuse_classes.index(ac_label))
+                logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+
+        if stats_keys is not None:
+            logger.info(f'Computing stats for: {", ".join(stats_keys)}')
 
         # call the underlying method
         mixed_use_hill_data, mixed_use_other_data, \

@@ -61,7 +61,7 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
         plt.savefig(path, facecolor=background, dpi=150)
     else:
         plt.gcf().set_facecolor(background)
-        plt.show(facecolor=background)
+        plt.show()
 
 
 def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False):
@@ -121,7 +121,7 @@ def plot_assignment(Network_Layer,
         plt.savefig(path, facecolor=background, dpi=150)
     else:
         plt.gcf().set_facecolor(background)
-        plt.show(facecolor=background)
+        plt.show()
 
 
 def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
@@ -129,8 +129,8 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
                     edge_map: np.ndarray,
                     data_map: np.ndarray = None,
                     poly: geometry.Polygon = None):
-    # the links are bi-directional - therefore duplicated per directional from-to edge
-    # use two axes to check each copy of links
+    # the edges are bi-directional - therefore duplicated per directional from-to edge
+    # use two axes to check each copy of edges
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
 
     # set extents
@@ -236,4 +236,4 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
                 ax1.plot([p_x, x], [p_y, y], c=info, lw=0.75, ls='--')
 
     plt.gcf().set_facecolor(background)
-    plt.show(facecolor=background)
+    plt.show()

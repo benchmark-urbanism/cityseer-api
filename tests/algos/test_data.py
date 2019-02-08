@@ -168,8 +168,8 @@ def test_assign_to_network():
         assert np.allclose(data_map_test_500[i][3], targets[i][2], equal_nan=True)
 
     # for debugging
-    from cityseer.util import plot
-    plot.plot_graph_maps(node_uids, node_map, edge_map, data_map_test_500)
+    # from cityseer.util import plot
+    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map_test_500)
 
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
@@ -311,6 +311,117 @@ def test_aggregate_to_src_idx():
                                 assert reachable_dist == nearest_dist
                             else:
                                 assert reachable_dist == next_nearest_dist
+
+
+def test_local_aggregator_signatures():
+    # load the test graph
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+
+    # setup data
+    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
+
+    # set parameters
+    betas = np.array([-0.02, -0.01, -0.005, -0.0025])
+    distances = networks.distance_from_beta(betas)
+    qs = np.array([0, 1, 2])
+    mock_categorical = mock.mock_categorical_data(len(data_map))
+    landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
+
+    # check that empty land_use encodings are caught
+    with pytest.raises(ValueError):
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              mixed_use_hill_keys=np.array([0]))
+
+    # check that unequal land_use encodings vs data map lengths are caught
+    with pytest.raises(ValueError):
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              landuse_encodings=landuse_encodings[:-1],
+                              mixed_use_other_keys=np.array([0]))
+
+    # check that no provided metrics flags
+    with pytest.raises(ValueError):
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              landuse_encodings=landuse_encodings)
+
+    # check that missing qs flags
+    with pytest.raises(ValueError):
+        data.local_aggregator(node_map,
+                              edge_map,
+                              data_map,
+                              distances,
+                              betas,
+                              mixed_use_hill_keys=np.array([0]),
+                              landuse_encodings=landuse_encodings)
+
+    # check that problematic mixed use and accessibility keys are caught
+    for mu_h_key, mu_o_key, ac_key in [
+        # negatives
+        ([-1], [1], [1]),
+        ([1], [-1], [1]),
+        ([1], [1], [-1]),
+        # out of range
+        ([4], [1], [1]),
+        ([1], [3], [1]),
+        ([1], [1], [max(landuse_encodings) + 1]),
+        # duplicates
+        ([1, 1], [1], [1]),
+        ([1], [1, 1], [1]),
+        ([1], [1], [1, 1])]:
+        with pytest.raises(ValueError):
+            data.local_aggregator(node_map,
+                                  edge_map,
+                                  data_map,
+                                  distances,
+                                  betas,
+                                  landuse_encodings,
+                                  qs=qs,
+                                  mixed_use_hill_keys=np.array(mu_h_key),
+                                  mixed_use_other_keys=np.array(mu_o_key),
+                                  accessibility_keys=np.array(ac_key))
+
+    for h_key, o_key in (([3], []), ([], [2])):
+        # check that missing matrix is caught for disparity weighted indices
+        with pytest.raises(ValueError):
+            data.local_aggregator(node_map,
+                                  edge_map,
+                                  data_map,
+                                  distances,
+                                  betas,
+                                  landuse_encodings=landuse_encodings,
+                                  qs=qs,
+                                  mixed_use_hill_keys=np.array(h_key),
+                                  mixed_use_other_keys=np.array(o_key))
+
+        # check that non-square disparity matrix is caught
+        mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
+        with pytest.raises(ValueError):
+            data.local_aggregator(node_map,
+                                  edge_map,
+                                  data_map,
+                                  distances,
+                                  betas,
+                                  landuse_encodings=landuse_encodings,
+                                  qs=qs,
+                                  mixed_use_hill_keys=np.array(h_key),
+                                  mixed_use_other_keys=np.array(o_key),
+                                  cl_disparity_wt_matrix=mock_matrix[:-1])
 
 
 def test_local_aggregator_categorical_components():
@@ -511,66 +622,6 @@ def test_local_aggregator_categorical_components():
     assert not np.allclose(mu_other_dual, mu_other_dual_sidestep)
     assert not np.allclose(ac_dual, ac_dual_sidestep)
     assert not np.allclose(ac_wt_dual, ac_wt_dual_sidestep)
-
-    # check that empty land_use encodings are caught
-    with pytest.raises(ValueError):
-        data.local_aggregator(node_map_dual,
-                              edge_map_dual,
-                              data_map_dual,
-                              distances,
-                              betas,
-                              landuse_encodings=np.array([]),
-                              qs=np.array([]),
-                              mixed_use_hill_keys=np.array([0]),
-                              angular=False)
-
-    # check that missing qs are caught for hill metrics
-    with pytest.raises(ValueError):
-        data.local_aggregator(node_map_dual,
-                              edge_map_dual,
-                              data_map_dual,
-                              distances,
-                              betas,
-                              landuse_encodings=landuse_encodings_dual,
-                              qs=np.array([]),
-                              mixed_use_hill_keys=np.array([0]),
-                              angular=False)
-
-    # check that missing matrix is caught for disparity weighted indices
-    for h_key, o_key in (([3], []), ([], [2])):
-        with pytest.raises(ValueError):
-            data.local_aggregator(node_map_dual,
-                                  edge_map_dual,
-                                  data_map_dual,
-                                  distances,
-                                  betas,
-                                  landuse_encodings=landuse_encodings_dual,
-                                  qs=qs,
-                                  mixed_use_hill_keys=np.array(h_key),
-                                  mixed_use_other_keys=np.array(o_key),
-                                  angular=False)
-
-    # check that problematic mixed use and accessibility keys are caught
-    for mu_h_key, mu_o_key, ac_key in [([-1], [1], [1]),  # negatives
-                                       ([1], [-1], [1]),
-                                       ([1], [1], [-1]),
-                                       ([4], [1], [1]),  # out of range
-                                       ([1], [3], [1]),
-                                       ([1], [1], [max(landuse_encodings) + 1]),
-                                       ([1, 1], [1], [1]),  # duplicates
-                                       ([1], [1, 1], [1]),
-                                       ([1], [1], [1, 1])]:
-        with pytest.raises(ValueError):
-            data.local_aggregator(node_map_dual,
-                                  edge_map_dual,
-                                  data_map_dual,
-                                  distances,
-                                  betas,
-                                  landuse_encodings_dual,
-                                  qs=qs,
-                                  mixed_use_hill_keys=np.array(mu_h_key),
-                                  mixed_use_other_keys=np.array(mu_o_key),
-                                  accessibility_keys=np.array(ac_key))
 
 
 def test_local_aggregator_numerical_components():

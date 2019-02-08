@@ -431,8 +431,8 @@ def local_aggregator(node_map: np.ndarray,
                      mixed_use_hill_keys: np.ndarray = np.array([]),
                      mixed_use_other_keys: np.ndarray = np.array([]),
                      accessibility_keys: np.ndarray = np.array([]),
-                     cl_disparity_wt_matrix: np.ndarray = np.array([[]]),
-                     numerical_arrays: np.ndarray = np.array([[]]),
+                     cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
+                     numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
                      angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                      np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
@@ -459,14 +459,7 @@ def local_aggregator(node_map: np.ndarray,
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
 
-    # check integrity of parameters
-    compute_numerical = False
-    if numerical_arrays.shape[1] != 0:
-        compute_numerical = True
-        if numerical_arrays.shape[1] != len(data_map):
-            raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
-        checks.check_numerical_data(numerical_arrays)
-
+    # check landuse encodings
     compute_landuses = False
     if len(landuse_encodings) == 0:
         if len(mixed_use_hill_keys) != 0 or len(mixed_use_other_keys) != 0 or len(accessibility_keys) != 0:
@@ -476,15 +469,21 @@ def local_aggregator(node_map: np.ndarray,
     else:
         checks.check_categorical_data(landuse_encodings)
 
-    # negative qs caught by hill diversity methods
-
+    # catch completely missing metrics
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
         if len(numerical_arrays) == 0:
             raise ValueError(
-                'Neither mixed-use nor accessibility keys specified, please specify at least one metric to compute.')
+                'No metrics specified, please specify at least one metric to compute.')
     else:
         compute_landuses = True
 
+    # catch missing qs
+    if len(mixed_use_hill_keys) != 0 and len(qs) == 0:
+        raise ValueError('Hill diversity measures require that at least one value of q is specified.')
+
+    # negative qs caught by hill diversity methods
+
+    # check various problematic key combinations
     if len(mixed_use_hill_keys) != 0:
         if (mixed_use_hill_keys.min() < 0 or mixed_use_hill_keys.max() > 3):
             raise ValueError('Mixed-use "hill" keys out of range of 0:4.')
@@ -522,17 +521,27 @@ def local_aggregator(node_map: np.ndarray,
                 if i_key == j_key:
                     raise ValueError('Duplicate accessibility key.')
 
-    for k in mixed_use_hill_keys:
-        if len(qs) == 0:
-            raise ValueError('All hill diversity measures require that at least one value of q is specified.')
-        if k == 3:
-            if len(cl_disparity_wt_matrix) == 0:
-                raise ValueError('Hill pairwise disparity require a class disparity weights matrix.')
+    def disp_check(disp_matrix):
+        # the length of the disparity matrix vis-a-vis unique landuses is tested in underlying diversity functions
+        if disp_matrix.ndim != 2 or disp_matrix.shape[0] != disp_matrix.shape[1]:
+            raise ValueError('The disparity matrix must be a square NxN matrix.')
+        if len(disp_matrix) == 0:
+            raise ValueError('Hill disparity and Rao pairwise measures requires a class disparity weights matrix.')
 
+    # check that missing or malformed disparity weights matrices are caught
+    for k in mixed_use_hill_keys:
+        if k == 3:  # hill disparity
+            disp_check(cl_disparity_wt_matrix)
     for k in mixed_use_other_keys:
-        if k == 2:
-            if len(cl_disparity_wt_matrix) == 0:
-                raise ValueError('Rao pairwise disparity requires a class disparity weights matrix.')
+        if k == 2:  # raos pairwise
+            disp_check(cl_disparity_wt_matrix)
+
+    compute_numerical = False
+    if len(numerical_arrays) != 0:
+        compute_numerical = True
+        if numerical_arrays.shape[1] != len(data_map):
+            raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
+        checks.check_numerical_data(numerical_arrays)
 
     # establish variables
     netw_n = len(node_map)
