@@ -61,7 +61,7 @@ $$weight = exp(-\beta \cdot distance)$$
 
 The strength of the decay is controlled by the $-\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $-\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\\%$ and a location $400m$ away would be weighted at $13.5\\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
 
-<img src="/plots/betas.png" alt="Example beta decays" class="centre">
+<img src="../images/plots/betas.png" alt="Example beta decays" class="centre">
 
 [Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
 
@@ -305,7 +305,7 @@ print(G_post.nodes[random_uid]['metrics']['centrality']['harmonic'][200])
 # prints: 0.02312025367905132
 ```
 
-<img src="/plots/graph_before.png" alt="Graph before conversion" class="left"><img src="/plots/graph_after.png" alt="graph after conversion back to networkX" class="right">
+<img src="../images/plots/graph_before.png" alt="Graph before conversion" class="left"><img src="../images/plots/graph_after.png" alt="graph after conversion back to networkX" class="right">
 
 _A `networkX` graph before conversion to a `Network_Layer` (left) and after conversion back to `networkX` (right)._
 

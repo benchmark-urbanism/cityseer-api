@@ -47,12 +47,12 @@ plot.plot_nX(G, labels=True)
 # NOTE: this code block combines with the following blocks for a continuous example
 ```
 
-<img src="/plots/graph.png" alt="Example graph" class="centre" style="max-height:500px;">
+<img src="./images/plots/graph.png" alt="Example graph" class="centre" style="max-height:500px;">
 
 The [`util.graphs`](/util/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` graphs, including
 [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) for coordinate conversions; [`nX_remove_filler_nodes`](/util/graphs.html#nx-remove-filler-nodes) for graph cleanup; [`nX_decompose`](/util/graphs.html#nx-decompose) for generating granular graph typologies; and [`nX_to_dual`](/util/graphs.html#nx-to-dual) for casting a primal graph representation to its dual. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. If working with simple graph representations — straight-line edges between nodes — then [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) can generate these geometries for you. The benefit to the use of raw geoms is that the geometry of the network is kept distinct from the topology, and the geometries can therefore be manipulated separately from topological transformations.
 
-<img src="/plots/graph_decomposed.png" alt="Example decomposed graph" class="left"><img src="/plots/graph_dual.png" alt="Example dual graph" class="right">
+<img src="./images/plots/graph_decomposed.png" alt="Example decomposed graph" class="left"><img src="./images/plots/graph_dual.png" alt="Example dual graph" class="right">
 
 _A decomposed variant of the graph (left) and a primal / dual transformation of the graph (right)._
 
@@ -93,7 +93,7 @@ N.compute_centrality(close_metrics=['improved', 'gravity', 'cycles'],
                      between_metrics=['betweenness_gravity'])
 ```
 
-<img src="/qgis/imp_close_800.png" alt="Improved Closeness 800m" class="centre">
+<img src="./images/qgis/imp_close_800.png" alt="Improved Closeness 800m" class="centre">
 
 _$800m$ improved closeness centrality for inner London._
 
@@ -116,7 +116,7 @@ D.assign_to_network(N, max_dist=400)
 
 The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
 
-<img src="/plots/assignment.png" alt="Example assignment of data to a network" class="left"><img src="/plots/assignment_decomposed.png" alt="Example assignment on a decomposed network" class="right">
+<img src="./images/plots/assignment.png" alt="Example assignment of data to a network" class="left"><img src="./images/plots/assignment_decomposed.png" alt="Example assignment on a decomposed network" class="right">
 
 _Data assigned to the network (left); note that assignment becomes more contextually precise on decomposed graphs (right)._
 
@@ -141,7 +141,7 @@ mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
 D.compute_stats_single(stats_key='valuations', stats_data_arr=mock_valuations_data[0])
 ```
 
-<img src="/qgis/mu_hill_branch_wt_400.png" alt="Distance weighted hill diversity 400m" class="centre">
+<img src="./images/qgis/mu_hill_branch_wt_400.png" alt="Distance weighted hill diversity 400m" class="centre">
 
 _$400m$ weighted mixed-uses (hill diversity) for inner London._
 
