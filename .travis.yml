@@ -27,7 +27,7 @@ deploy:
   password:  # travis encrypt your-password-here
     secure: "N1weXgA39BXgtEY9xzUVVUsLHWtGc1/djqdz7uyJ+z9DyHBuNP+lZshE2GKvPV3Glk4RNlSJxeH1PwRZ5kmwjNpJBj/WZXCt0CI8jNHQtHKpH13C7jV376VcQBdN5CNaBgWkr71G0Zy43Xg7FXx5GBaQbpiUeCAHyNWlDBBqSRhimuOSdwliv5HnsGqPiSQvec5xyy1l6BauxZG6bw5NaPjkWLDpjh0IUfGFbRgiAWzA8Ox+04q3UM9wv7WYk//In4pPRnbqbju/HT9AqwuzwnCBlog2ltaHeDZaj1/xEDaP7gjkNZGtNRrpZoX/bdWf/xEFPBt9ZGvsOGq5utX5BbgojfZDKei0X1qzIN9k+YbFeljcPN82NPoKjFwYFZYguFGtR22EguQ8YNlnwa4VnDeTQTn5CnD7yxSDTnLb9P8YPWsEKdZnzWcTpvNrGrxI1sqHAuKpPWN9azIj6vhG9FPFYjQWO3rCNhNsRpwOAWN+WTA9PApPwVCp6JidBlzHVPB7cxfixDxeITbN3+C/LwIHNWA9rCAxc1bnjHV62bJnQHELMMl/WIY3uGriVDqFW13S4h6NSdoPN7H+l2BirrJ5NJe47W0dpgG8FtzCMADPD/HbmVyQiO4quuDEY6ZVQapkin3hHCIN/7bGRpDLPuUFans23Cou4YivtVn7HY8="
   distributions: "sdist bdist_wheel"  # default is only sdist, so upload linux wheel as well
-  skip-existing: true
+  skip_existing: true
 # for deploying docs
 - provider: pages
   on:
