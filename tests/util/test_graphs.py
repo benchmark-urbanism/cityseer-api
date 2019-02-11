@@ -126,6 +126,18 @@ def test_nX_remove_filler_nodes():
     with pytest.raises(AttributeError):
         graphs.nX_remove_filler_nodes(G_attr)
 
+    # catch non-touching Linestrings
+    G_corr = G_messy.copy()
+    for s, e in G_corr.edges():
+        geom = G_corr[s][e]['geom']
+        start = list(geom.coords[0])
+        end = list(geom.coords[1])
+        # corrupt a point
+        start[0] = start[0] - 1
+        G_corr[s][e]['geom'] = geometry.LineString([start, end])
+    with pytest.raises(AttributeError):
+        graphs.nX_remove_filler_nodes(G_corr)
+
 
 def test_nX_decompose():
     # check that missing geoms throw an error
