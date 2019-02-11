@@ -209,9 +209,15 @@ The `weight` parameter allows centrality calculations to be weighted by external
 
 The start and end edge `idx` attributes point to the corresponding node indices in the `node_map`.
 
-The `length` edge attribute should always corresponds to the edge lengths in metres. This is used when calculating the distances traversed by shortest-path algorithms so that the maximum distance thresholds $d_{max}$ can be enforced.
+The `length` edge attribute should always correspond to the edge lengths in metres. This is used when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths traversed by the algorithm as opposed to crow-flies distances.
 
-The `impedance` edge attribute represents the friction to movement across the network: it is used by the shortest-path algorithm when calculating the shortest-routes from each origin node $i$ to all surrounding nodes $j$. For shortest-path centralities, the `impedance` attribute will generally have the same value as the `length` attribute, but this need not be the case. One such example is simplest-path centralities, where `impedance` represents the angular change in the direction.
+The `impedance` edge attribute represents the friction to movement across the network: it is used by the shortest-path algorithm when calculating the shortest-routes from each origin node $i$ to all surrounding nodes $j$ within the respective $d_{max}$ distance thresholds. For shortest-path centralities, the `impedance` attribute will generally assume the same value as the `length` attribute. This need not be the case; for example, simplest-path centralities assume an angular `impedance` attribute representing the angular change in direction across the length of a street segment (on the dual graph).
+
+::: tip Hint
+
+It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance` parameter values to `np.inf`. Note that this may substantially increase the computational time required for the completion of the algorithms on large networks.
+
+:::
 
 
 @metrics\_to\_dict

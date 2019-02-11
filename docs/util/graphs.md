@@ -127,6 +127,12 @@ _Simple graph (left) and the equivalent $100m$ decomposed graph (right)._
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller $20m$, and $50m$ may already be sufficient for the majority of cases.
 :::
 
+::: tip Hint
+
+This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
+
+:::
+
 
 nX\_to\_dual
 ------------
@@ -170,6 +176,11 @@ _Dual graph (blue) overlaid on the source primal graph (red). Edge `length` and 
 Shortest-path centralities decompose more gracefully than angular-based simplest-path centralities for pedestrian walking distances, at which scale they also demonstrate stronger correlations to mixed-uses.
 :::
 
+::: tip Hint
+
+This function will automatically orient the `geom` attribute LineStrings in the correct direction when splitting and welding; i.e. there is no need to order the geometry's coordinates in a particular direction.
+
+:::
 
 nX\_auto\_edge\_params
 ----------------------
@@ -179,7 +190,7 @@ nX\_auto\_edge\_params
 Generates edge `length` and `impedance` attributes from the `geom` edge attribute.
 
 ::: danger Caution
-Do not use this function on dual graphs. Dual graphs prepared with [nX_to_dual](#nx-to-dual) will already have `length` and `impedance` edge attributes set, and calling this function would overwrite the angular impedance attributes. It is also not necessary to call this method on decomposed graphs, because [nX_decompose](#nx-decompose) will set the `length` and `impedance` attributes as part of the process of decomposition.
+Do not use this function on dual graphs. Dual graphs prepared with [nX_to_dual](#nx-to-dual) will already have `length` and `impedance` edge attributes set, and calling this function would consequently overwrite the angular impedance attributes. It is also not necessary to call this method on decomposed graphs, because [nX_decompose](#nx-decompose) will set the `length` and `impedance` attributes as part of the process of decomposition.
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -221,7 +232,7 @@ Returns a `NetworkX` graph with an added `weight` node attribute, which will be 
 </FuncElement>
 
 ::: tip Hint
-Certain centrality calculations can be weighted by street-lengths, which helps to mitigate undesirable side-effects arising as a function of varied node densities due to the topological representation of the graph. Weighted nodes achieve a similar effect to graph decomposition, and it is likely sufficient to use one or the other instead of both. Decomposition is generally preferable because it offers a more granular representation that accommodates variations in intensities along street-fronts.
+Certain centrality calculations can be weighted by street-lengths, which helps to mitigate undesirable side-effects arising as a function of varied node densities due to the topological representation of the graph. That said, weighted nodes achieve a similar effect to graph decomposition, which is generally preferable because it offers a more granular representation of edges, thereby accommodating variations in intensities along street-fronts.
 :::
 
 
