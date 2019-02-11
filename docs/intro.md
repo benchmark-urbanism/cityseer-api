@@ -1,4 +1,6 @@
 ---
+prev: false
+next: false
 ---
 
 <RenderMath></RenderMath>
@@ -14,11 +16,14 @@ The use of `python` facilitates interaction with popular tools for network, geos
 Installation
 ------------
 
-The `cityseer` python package can be installed via `pip`:
+The `cityseer` `python` package can be installed via `pip`:
 ```bash
 pip install cityseer
 ```
 
+`cityseer` code tests are run against `python 3.7`.
+
+[![Build Status](https://travis-ci.com/cityseer/cityseer.svg?branch=master)](https://travis-ci.com/cityseer/cityseer)
 
 Quickstart
 ----------

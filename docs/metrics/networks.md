@@ -1,4 +1,6 @@
 ---
+prev: false
+next: false
 ---
 
 <RenderMath></RenderMath>

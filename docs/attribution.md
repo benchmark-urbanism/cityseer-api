@@ -1,6 +1,11 @@
-Attribution is required.
+---
+prev: false
+next: false
+---
 
-Imagery or data outputs of any form should clearly display the `cityseer` logo (take your pick from below) and a link to the documentation website.
+Attribution with a link to the documentation website is required.
+
+Visual outputs (plots, maps, etc.) should legibly display one of the following `cityseer` logos:
 
 <img src="./images/logos/cityseer_logo_white.png" alt="cityseer white logo" class="centre" style="max-width:500px;">
 
