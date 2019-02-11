@@ -172,7 +172,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             # add new edge
             merged_line = ops.linemerge([geom_a, geom_b])
             if merged_line.type != 'LineString':
-                raise TypeError(
+                raise AttributeError(
                     f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
             g_copy.add_edge(nb_a, nb_b, geom=merged_line)
 
