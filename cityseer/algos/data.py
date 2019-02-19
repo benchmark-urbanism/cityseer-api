@@ -730,7 +730,8 @@ def local_aggregator(node_map: np.ndarray,
                     stats_mean_wt[num_idx][d_idx][src_idx] = \
                         stats_mean_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
 
-            # IDW: calculate variances - counts are already computed per above
+            # calculate variances - counts are already computed per above
+            # weighted version is IDW by division through equivalently weighted counts above
             # iterate the reachable indices and related distances
             for i, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
                 # some indices will be NaN if beyond max threshold distance - so check for infinity
