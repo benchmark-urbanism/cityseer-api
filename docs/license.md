@@ -1,6 +1,5 @@
 ---
-prev: false
-next: false
+
 ---
 
 [“Commons Clause” License Condition v1.0](https://commonsclause.org/)

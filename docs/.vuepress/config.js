@@ -26,9 +26,9 @@ module.exports = {
     }]
   ],
   plugins: [
-    // require('./plugins/MathParser.js')
+    // for now, overriding back-to-top color in theme.styl file...
+    '@vuepress/back-to-top'
   ],
-  serviceWorker: true,
   markdown: {
     lineNumbers: true,
     anchor: true,
@@ -85,7 +85,7 @@ module.exports = {
       updatePopup: true
     }
   },
-  //evergreen: true,
+  evergreen: true,
   configureWebpack: (config, isServer) => {
     // Vuepress is SSR - isServer refers to whether server or client side
     if (!isServer) {

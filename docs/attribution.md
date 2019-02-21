@@ -1,6 +1,5 @@
 ---
-prev: false
-next: false
+
 ---
 
 Attribution with a link to the documentation website is required.
