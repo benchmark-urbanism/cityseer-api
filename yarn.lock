@@ -7605,10 +7605,10 @@ vuepress-html-webpack-plugin@^3.2.0:
     toposort "^1.0.0"
     util.promisify "1.0.0"
 
-vuepress-theme-cityseer@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.1.1.tgz#49d950bd6cadd448a2debae5a0f045fddec33767"
-  integrity sha512-tE8qs5V10yIlQQh+8OpQLdiD0HAYeR3wXGK5Uy1XXs2RosI0vaZMvt29+S3dLOmshE90mDR+8WRhxsABiUxvgA==
+vuepress-theme-cityseer@^0.1.2:
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.1.5.tgz#a7b2a9053848786c59eac149485e8ae2d87a6a7f"
+  integrity sha512-mhOwT4XKTfl9aVUn4GfGDt8j62+b1vrNVYWS3F0Z2yroueQmkC0pB6TMI5p7GaPFYWlpa5W0I0TleR2yAcjkTA==
   dependencies:
     "@vuepress/plugin-back-to-top" "^1.0.0-alpha.0"
     "@vuepress/theme-default" "^1.0.0-alpha.39"
