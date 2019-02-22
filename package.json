@@ -6,7 +6,7 @@
   "dependencies": {},
   "devDependencies": {
     "standard": "12.0.1",
-    "vuepress": "^1.0.0-alpha.37",
-    "vuepress-theme-cityseer": "^0.1.2"
+    "vuepress": "1.0.0-alpha.37",
+    "vuepress-theme-cityseer": "0.1.16"
   }
 }

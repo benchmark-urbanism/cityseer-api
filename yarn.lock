@@ -775,7 +775,7 @@
     source-map "~0.6.1"
     vue-template-es2015-compiler "^1.8.2"
 
-"@vuepress/core@^1.0.0-alpha.39":
+"@vuepress/core@^1.0.0-alpha.37":
   version "1.0.0-alpha.39"
   resolved "https://registry.yarnpkg.com/@vuepress/core/-/core-1.0.0-alpha.39.tgz#0a1bd7d30e36baab279cbdd97ab5d830311f3e6a"
   integrity sha512-brniVm6ISHfKzLGeS9nCjZ1uu4M4ZDIYd1d9KhzlElSE8URJQVqQWAOQTv2Kk6kRpN+tbLPH+kRooSU5dlPj/Q==
@@ -893,7 +893,7 @@
     semver "^5.5.0"
     upath "^1.1.0"
 
-"@vuepress/theme-default@^1.0.0-alpha.39":
+"@vuepress/theme-default@^1.0.0-alpha.37", "@vuepress/theme-default@^1.0.0-alpha.39":
   version "1.0.0-alpha.39"
   resolved "https://registry.yarnpkg.com/@vuepress/theme-default/-/theme-default-1.0.0-alpha.39.tgz#5638d04768f5b71c83c28f5a750374e8b3f949f4"
   integrity sha512-Qwyob+Ep4C8kZsiNUC/fNZ5Ayfd4mKftZAr3XvcRa58xc7PkP/dtzQ1alPNp3GTZaAXldwMxqRegmY7s6Vgf/Q==
@@ -7605,10 +7605,10 @@ vuepress-html-webpack-plugin@^3.2.0:
     toposort "^1.0.0"
     util.promisify "1.0.0"
 
-vuepress-theme-cityseer@^0.1.2:
-  version "0.1.15"
-  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.1.15.tgz#226c9775185f0b5692c473168d5d6cd5dc3f1114"
-  integrity sha512-0HLcio3KZCkgmvZjQ7iC5WNvrbsGJQuUBt+Dk4jGXGLkN9MsR+r5yACH4AV3c/cGVgXwUT6+Gns/AwWrFhHXhg==
+vuepress-theme-cityseer@0.1.16:
+  version "0.1.16"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.1.16.tgz#3a62e7e812dfe9c47077f7d17d18a63da69e8565"
+  integrity sha512-u5LvMixRpUuS12w09728bwJychcDcrc1CK4RqEGITMlVpPG3iNmaNHRvApCZoJtKYs57ONF+zTQpQuv2UObZOA==
   dependencies:
     "@vuepress/plugin-back-to-top" "^1.0.0-alpha.0"
     "@vuepress/theme-default" "^1.0.0-alpha.39"
@@ -7616,13 +7616,13 @@ vuepress-theme-cityseer@^0.1.2:
     vuetify "^1.5.2"
     vuetify-loader "^1.2.1"
 
-vuepress@^1.0.0-alpha.37:
-  version "1.0.0-alpha.39"
-  resolved "https://registry.yarnpkg.com/vuepress/-/vuepress-1.0.0-alpha.39.tgz#2d2a1e6baf2d7350d39d8922769db7c994597f43"
-  integrity sha512-8aI1zDCZD9OkJLMg3gSdKf7rP1yY0+CW88gfJ9Ge66XUyY/mNE9+JAqFA7y+6G/lhbfVedBss4SAFCBaL6AWBA==
+vuepress@1.0.0-alpha.37:
+  version "1.0.0-alpha.37"
+  resolved "https://registry.yarnpkg.com/vuepress/-/vuepress-1.0.0-alpha.37.tgz#3a3a67926aae5df9897dac83ab46360bc2092db5"
+  integrity sha512-fCwa+3j295dXDfNIyoNPX7xOZoeIyHG04kSW32qeS4mjpx7aETYhVr7ME5Rg3bwros6q+Neunsj9UJvF7bsl2Q==
   dependencies:
-    "@vuepress/core" "^1.0.0-alpha.39"
-    "@vuepress/theme-default" "^1.0.0-alpha.39"
+    "@vuepress/core" "^1.0.0-alpha.37"
+    "@vuepress/theme-default" "^1.0.0-alpha.37"
     cac "^6.3.9"
 
 vuetify-loader@^1.2.1:
