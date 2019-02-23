@@ -2,8 +2,6 @@
 
 ---
 
-<RenderMath></RenderMath>
-
 cityseer.metrics.centrality
 ===========================
 

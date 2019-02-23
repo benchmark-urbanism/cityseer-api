@@ -2,9 +2,6 @@
 
 ---
 
-<RenderMath></RenderMath>
-
-
 cityseer.util.plot
 ==================
 
