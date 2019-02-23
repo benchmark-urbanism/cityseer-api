@@ -2,9 +2,10 @@
 
 ---
 
+<RenderMath></RenderMath>
+
 cityseer.metrics.centrality
 ===========================
-
 
 distance\_from\_beta
 --------------------

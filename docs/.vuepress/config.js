@@ -9,7 +9,6 @@ module.exports = {
       crossorigin: 'anonymous'
     }]
   ],
-  plugins: [],
   markdown: {
     lineNumbers: true,
     anchor: true,
@@ -72,17 +71,31 @@ module.exports = {
 }
 
 /*
-// using auto-render katex function from own component to load math in pages
-// created plugin for parsing front matter data for functions
+// auto-render katex clashes with prev / next links
 
-// https://github.com/cben/mathdown/wiki/math-in-markdown
-// mathjax simply converts delimeters to latex compatible form
-// md.use(require('markdown-it-mathjax')())
 
-markdown-it-mathjax - simply parses delimeters and converts to latex standard - can then run katex in browser?
+markdown-it-mathjax - parses delimeters and converts to latex standard
+
+  md.use(require('markdown-it-mathjax')())
+
+- need to include CDN link to mathjax script
+
+    ['script', {
+      defer: true,
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML',
+      crossorigin: 'anonymous'
+    }]
+
+- doesn't update formulas when changing pages...
+
+
 markdown-it-math - texzilla renders to mathML - doesn't work with chrome
-  - with katex it renders everything doubly - MUST INCLUDE CSS LINK!!!
-  - buggy loading - trying web scripts
+- with katex it renders everything doubly - MUST INCLUDE CSS LINK!!!
+- buggy loading - trying web scripts
+
+markdown-it-asciimath - not compatible with latex syntax
+markdown-it-simplemath - no rendering function
+markdown-it-synapse-math - small adaptation of markdown-it-math
 
 All of the katex based methods seem to cause a major bottleneck with webpack-dev-serve, but build OK
 markdown-it-texmath - causes some sort of odd performance bottleneck
@@ -91,11 +104,21 @@ md.use(require('markdown-it-texmath').use(require('katex')), {
         delimiters: 'dollars'
       })
 
-markdown-it-katex - katex less comprehensive but fast - plugin duplicates everything and not maintained
-markdown-it-asciimath - not compatible with latex syntax
-markdown-it-simplemath - no rendering function
-markdown-it-synapse-math - small adaptation of markdown-it-math
+    ['link', {
+      rel: 'stylesheet',
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.css',
+      integrity: 'sha384-9eLZqc9ds8eNjO3TmqPeYcDj8n+Qfa4nuSiGYa6DjLNcv9BtN69ZIulL9+8CqC9Y',
+      crossorigin: 'anonymous'
+    }],
+
+markdown-it-katex - not maintained
+
 @iktakahiro/markdown-it-katex
+
+  md.use(require('@iktakahiro/markdown-it-katex'))
+
+@neilsustc/markdown-it-katex
+
 
 
 */
