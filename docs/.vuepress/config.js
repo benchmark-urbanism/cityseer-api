@@ -4,9 +4,7 @@ module.exports = {
   description: 'Computational tools for urban analysis',
   head: [
     ['script', {
-      defer: true,
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML',
-      crossorigin: 'anonymous'
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
     }]
   ],
   markdown: {
@@ -86,7 +84,9 @@ markdown-it-mathjax - parses delimeters and converts to latex standard
       crossorigin: 'anonymous'
     }]
 
-- doesn't update formulas when changing pages...
+- doesn't update formulas when changing pages... so need to add MathRendere module
+
+- still doesn't always parse math in modules...!
 
 
 markdown-it-math - texzilla renders to mathML - doesn't work with chrome
