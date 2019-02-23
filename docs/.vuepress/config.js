@@ -3,10 +3,9 @@ module.exports = {
   title: 'Cityseer API Docs',
   description: 'Computational tools for urban analysis',
   head: [
-    ['link', {
-      rel: 'stylesheet',
-      href: 'https://cdn.jsdelivr.net/npm/katex@0.10.1/dist/katex.min.css',
-      integrity: 'sha384-dbVIfZGuN1Yq7/1Ocstc1lUEm+AT+/rCkibIcC/OmWo5f0EA48Vf8CytHzGrSwbQ',
+    ['script', {
+      defer: true,
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML',
       crossorigin: 'anonymous'
     }]
   ],
@@ -15,9 +14,7 @@ module.exports = {
     lineNumbers: true,
     anchor: true,
     extendMarkdown: md => {
-      md.use(require('markdown-it-texmath').use(require('katex')), {
-        delimiters: 'dollars'
-      })
+      md.use(require('markdown-it-mathjax')())
     }
   },
   theme: 'vuepress-theme-cityseer',
@@ -73,3 +70,32 @@ module.exports = {
   },
   evergreen: true
 }
+
+/*
+// using auto-render katex function from own component to load math in pages
+// created plugin for parsing front matter data for functions
+
+// https://github.com/cben/mathdown/wiki/math-in-markdown
+// mathjax simply converts delimeters to latex compatible form
+// md.use(require('markdown-it-mathjax')())
+
+markdown-it-mathjax - simply parses delimeters and converts to latex standard - can then run katex in browser?
+markdown-it-math - texzilla renders to mathML - doesn't work with chrome
+  - with katex it renders everything doubly - MUST INCLUDE CSS LINK!!!
+  - buggy loading - trying web scripts
+
+All of the katex based methods seem to cause a major bottleneck with webpack-dev-serve, but build OK
+markdown-it-texmath - causes some sort of odd performance bottleneck
+
+md.use(require('markdown-it-texmath').use(require('katex')), {
+        delimiters: 'dollars'
+      })
+
+markdown-it-katex - katex less comprehensive but fast - plugin duplicates everything and not maintained
+markdown-it-asciimath - not compatible with latex syntax
+markdown-it-simplemath - no rendering function
+markdown-it-synapse-math - small adaptation of markdown-it-math
+@iktakahiro/markdown-it-katex
+
+
+*/
