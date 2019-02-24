@@ -6,7 +6,9 @@
   export default {
     name: 'RenderMath',
     mounted () {
-      window.MathJax.Hub.Queue(['Typeset', MathJax.Hub])
+      setTimeout(() => {
+        window.MathJax.Hub.Queue(['Typeset', MathJax.Hub])
+      }, 100)
     }
   }
 </script>
