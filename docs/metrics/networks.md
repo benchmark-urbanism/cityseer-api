@@ -393,7 +393,7 @@ A list of strings, containing any combination of the following `key` values:
 | farness_impedance | $$\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
 | farness_distance | $$\sum_{j\neq{i}}d_{(i,j)}$$ | A summation of distances in metres within $d_{max}$. |
 | harmonic | $$\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
-| improved | $$\frac{(N-1)\_{i}^2}{\sum_{j\neq{i}}w_{(i,j)}}$$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
+| improved | $$\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(i,j)}}$$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
 | gravity | $$\sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
 | cycles | $$\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
 
