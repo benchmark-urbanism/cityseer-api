@@ -1,7 +1,3 @@
-branches:
-  only:
-    - master
-
 # below three lines: workaround prior to official 3.7 support: https://docs.travis-ci.com/user/languages/python/
 dist: xenial
 language: python
