@@ -19,7 +19,9 @@ background = '#2e2e2e'
 def plot_nX_primal_or_dual(primal: nx.Graph = None,
                            dual: nx.Graph = None,
                            path: str = None,
-                           labels: bool = False):
+                           labels: bool = False,
+                           primal_colour: (tuple, list, np.ndarray) = None,
+                           dual_colour: (tuple, list, np.ndarray) = None):
     alpha = 0.75
     node_size = 30
     if labels:
@@ -27,15 +29,25 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
         node_size = 70
 
     if primal is not None:
+
         pos_primal = {}
         for n, d in primal.nodes(data=True):
             pos_primal[n] = (d['x'], d['y'])
+
+        if primal_colour is not None:
+            if not (len(primal_colour) == 1 or len(primal_colour) == len(primal)):
+                raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
+                                 'the number of nodes in the graph.')
+            node_color = primal_colour
+        else:
+            node_color = secondary
+
         nx.draw(primal, pos_primal,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
                 font_weight='bold',
-                node_color=secondary,
+                node_color=node_color,
                 node_size=node_size,
                 node_shape='o',
                 edge_color='w',
@@ -43,13 +55,23 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
                 alpha=alpha)
 
     if dual is not None:
+
         pos_dual = {}
         for n, d in dual.nodes(data=True):
             pos_dual[n] = (d['x'], d['y'])
+
+        if dual_colour is not None:
+            if not (len(dual_colour) == 1 or len(dual_colour) == len(dual)):
+                raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
+                                 'the number of nodes in the graph.')
+            node_color = dual_colour
+        else:
+            node_color = info
+
         nx.draw(dual, pos_dual,
                 with_labels=labels,
                 font_size=5,
-                node_color=info,
+                node_color=node_color,
                 node_size=node_size,
                 node_shape='d',
                 edge_color='#999999',
@@ -64,8 +86,8 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
         plt.show()
 
 
-def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False):
-    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels)
+def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None):
+    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour)
 
 
 def plot_assignment(Network_Layer,

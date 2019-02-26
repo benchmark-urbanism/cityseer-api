@@ -1,6 +1,7 @@
 from os import path
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
 from cityseer.metrics import networks, layers
@@ -93,6 +94,35 @@ L.assign_to_network(N_decomposed, max_dist=500)
 plt.cla()
 plt.clf()
 plot.plot_assignment(N_decomposed, L, path='assignment_decomposed.png')
+
+#
+#
+# PLOT MODULE
+# generate a graph and compute gravity
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+G = graphs.nX_decompose(G, 50)
+N = networks.Network_Layer_From_nX(G, distances=[800])
+N.gravity()
+G_after = N.to_networkX()
+
+# let's extract and normalise the values
+vals = []
+for node, data in G_after.nodes(data=True):
+    vals.append(data['metrics']['centrality']['gravity'][800])
+
+# let's create a custom colourmap using matplotlib
+cmap = LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+
+# normalise vals and cast to colour
+vals = np.array(vals)
+vals = (vals - vals.min()) / (vals.max() - vals.min())
+cols = cmap(vals)
+
+# plot
+plt.cla()
+plt.clf()
+plot.plot_nX(G_after, path='graph_colour.png', labels=False, colour=cols)
 
 #
 #

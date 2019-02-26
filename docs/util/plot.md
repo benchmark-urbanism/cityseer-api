@@ -17,7 +17,9 @@ plot\_nX\_primal\_or\_dual
 plot_nX_primal_or_dual(primal=None,
                        dual=None,
                        path=None,
-                       labels=False)
+                       labels=False,
+                       primal_colour=None,
+                       dual_colour=None)
 </pre>
 </FuncSignature>
 
@@ -48,9 +50,35 @@ Whether to display node labels.
 
 </FuncElement>
 
+<FuncElement name="primal_colour" type="str, list, tuple, np.ndarray">
+
+Primal node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+
+</FuncElement>
+
+<FuncElement name="dual_colour" type="str, list, tuple, np.ndarray">
+
+Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+
+</FuncElement>
+
+```python
+from cityseer.util import mock, graphs, plot
+
+G = mock.mock_graph()
+G_simple = graphs.nX_simple_geoms(G)
+G_dual = graphs.nX_to_dual(G_simple)
+plot.plot_nX_primal_or_dual(G_simple, G_dual, labels=False)
+```
+
+<img src="../images/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
+
+_Dual graph (blue) overlaid on the source primal graph (red)._
+
+
 plot\_nX
 --------
-<FuncSignature>plot_nX(networkX_graph, path=None, labels=False)</FuncSignature>
+<FuncSignature>plot_nX(networkX_graph, path=None, labels=False, colour=None)</FuncSignature>
 Plot a `networkX` graph.
 
 <FuncHeading>Parameters</FuncHeading>
@@ -71,6 +99,47 @@ An optional filepath: if provided, the image will be saved to the path instead o
 Whether to display node labels.
 
 </FuncElement>
+
+<FuncElement name="colour" type="str, list, tuple, np.ndarray">
+
+Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+
+</FuncElement>
+
+```python
+import numpy as np
+from cityseer.util import mock, graphs, plot
+from cityseer.metrics import networks
+from matplotlib.colors import LinearSegmentedColormap
+
+# generate a graph and compute gravity
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+G = graphs.nX_decompose(G, 50)
+N = networks.Network_Layer_From_nX(G, distances=[800])
+N.gravity()
+G_after = N.to_networkX()
+
+# let's extract and normalise the values
+vals = []
+for node, data in G_after.nodes(data=True):
+    vals.append(data['metrics']['centrality']['gravity'][800])
+    
+# let's create a custom colourmap using matplotlib
+cmap = LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+
+# normalise vals and cast to colour
+vals = np.array(vals)
+vals = (vals - vals.min()) / (vals.max() - vals.min())
+cols = cmap(vals)
+
+# plot
+plot.plot_nX(G_after, labels=False, colour=cols)
+```
+
+<img src="../images/plots/graph_colour.png" alt="Example colour plot" class="centre" style="max-height:450px;">
+
+_Gravity colour plot._
 
 
 plot\_assignment
