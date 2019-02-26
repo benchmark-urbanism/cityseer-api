@@ -12,6 +12,6 @@ The use of `python` facilitates interaction with popular tools for network, geos
 Release Log
 ----------
 
-### v0.6.7
+### v0.6.8
 - Added colour option for nX plots
 - Switched docs math renderer to `vuepress-plugin-mathjax`
