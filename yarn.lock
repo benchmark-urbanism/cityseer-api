@@ -7618,9 +7618,9 @@ vuepress-html-webpack-plugin@^3.2.0:
     util.promisify "1.0.0"
 
 vuepress-plugin-mathjax@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.1.0.tgz#395a99622f45b005866ba41bb80cf01a8af10c05"
-  integrity sha512-lhvcDZAHF71fkCDxE+5Q9Y6NnzMDbr+/sB6uyWAaOR+++y2MgcBSqlzW2quabTiSQWiJBtSVmZ076pQMBi6+ow==
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.1.2.tgz#35bea63f41978221fa52c9f07d05d13c5c2d6dd7"
+  integrity sha512-YzUMENz1LOdXYokVwPs5nTj89HhCLZ46k7+fUHlAbFhdN1szJVYD+NJXs13YiYhL45Z9pM31OCWR0EIaTk0ZLw==
   dependencies:
     mathjax3 "^3.0.0-beta.3"
 
