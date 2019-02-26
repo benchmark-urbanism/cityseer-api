@@ -1,4 +1,5 @@
-# cityseer
+cityseer
+========
 
 [![Build Status](https://travis-ci.com/cityseer/cityseer.svg?branch=master)](https://travis-ci.com/cityseer/cityseer)
 
@@ -8,3 +9,9 @@ The use of `python` facilitates interaction with popular tools for network, geos
 
 [Documentation](https://cityseer.github.io/cityseer)
 
+Release Log
+----------
+
+### v0.6.7
+- Added colour option for nX plots
+- Switched docs math renderer to `vuepress-plugin-mathjax`
