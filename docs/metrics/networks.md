@@ -2,8 +2,6 @@
 
 ---
 
-<RenderMath></RenderMath>
-
 cityseer.metrics.centrality
 ===========================
 
@@ -388,14 +386,14 @@ A list of strings, containing any combination of the following `key` values:
 </FuncElement>
 
 | key | formula | notes |
-|-----|---------|-------|
-| node_density | $$\sum_{j\neq{i}} w_{j}$$ | The default $w=1$ reduces to a simple node count, however, this is technically a density measure because of the $d_{max}$ threshold constraint. Setting $w$ equal to adjacent street lengths converts this measure into a street density metric. |
-| farness_impedance | $$\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
-| farness_distance | $$\sum_{j\neq{i}}d_{(i,j)}$$ | A summation of distances in metres within $d_{max}$. |
-| harmonic | $$\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
-| improved | $$\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(i,j)}}$$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
-| gravity | $$\sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
-| cycles | $$\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
+|-----|:--------:|-------|
+| node_density | $\displaystyle\sum_{j\neq{i}} w_{j}$ | The default $w=1$ reduces to a simple node count, however, this is technically a density measure because of the $d_{max}$ threshold constraint. Setting $w$ equal to adjacent street lengths converts this measure into a street density metric. |
+| farness_impedance | $\displaystyle\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
+| farness_distance | $\displaystyle\sum_{j\neq{i}}d_{(i,j)}$ | A summation of distances in metres within $d_{max}$. |
+| harmonic | $\displaystyle\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
+| improved | $\displaystyle\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(i,j)}}$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
+| gravity | $\displaystyle \sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
+| cycles | $\displaystyle\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
 
 <FuncElement name="between_metrics" type="list[str], tuple[str]">
 
@@ -404,9 +402,9 @@ A list of strings, containing any combination of the following `key` values:
 </FuncElement>
 
 | key | formula | notes |
-|-----|---------|-------|
-| betweenness | $$\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)}$$ | The default $w=1$ reduces to betweenness centrality within the $d_{max}$ threshold constraint. For betweenness measures, $w$ is a blended average of the weights for any $j$, $k$ node pair passing through node $i$. | 
-| betweenness_gravity | $$\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(-\beta \cdot d[j,k])$$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
+|-----|:-------:|-------|
+| betweenness | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)}$ | The default $w=1$ reduces to betweenness centrality within the $d_{max}$ threshold constraint. For betweenness measures, $w$ is a blended average of the weights for any $j$, $k$ node pair passing through node $i$. | 
+| betweenness_gravity | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(-\beta \cdot d[j,k])$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
 
 ::: warning Note
 The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity`, perform similarly in most situations. `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly once values decrease below $1$. `improved` centrality is more robust because all reachable nodes are summed prior to the division step. `gravity` centrality is the most robust method in this regards, and also offers a graceful and tunable representation of distance decays via the negative exponential function.

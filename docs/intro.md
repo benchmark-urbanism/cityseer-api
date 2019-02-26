@@ -2,8 +2,6 @@
 
 ---
 
-<RenderMath></RenderMath>
-
 Cityseer <Chip text="beta"/>
 --------
 
