@@ -2,18 +2,14 @@ module.exports = {
   base: '/cityseer/',  // must match github pages publish URL
   title: 'Cityseer API Docs',
   description: 'Computational tools for urban analysis',
-  head: [
-    ['script', {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
-    }]
-  ],
   markdown: {
     lineNumbers: true,
     anchor: true,
-    extendMarkdown: md => {
-      md.use(require('markdown-it-mathjax')())
-    }
+    extendMarkdown: md => {}
   },
+  plugins: ['mathjax', {
+    showError: true
+  }],
   theme: 'vuepress-theme-cityseer',
   themeConfig: {
     logo: '/round_logo.png',
