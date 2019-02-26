@@ -43,7 +43,6 @@ deploy:
 - provider: pages
   on:
     branch: master  # only build on master branch
-    tags: false  # only build for tagged pushes
   local-dir: docs/.vuepress/dist
   target-branch: gh-pages
   skip-cleanup: true
