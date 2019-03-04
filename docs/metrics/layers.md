@@ -122,7 +122,7 @@ data\_map\_from\_dict
 Converts a data dictionary into a `numpy` array for use by `Data_Layer` classes.
 
 ::: warning Note
-It is generally not necessary to use this function directly. This function will be called implicitly when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
+It is generally not necessary to use this function directly. This function will be called implicitly when invoking [Data_Layer_From_Dict](#data-layer-from-dict)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
