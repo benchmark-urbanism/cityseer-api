@@ -18,7 +18,7 @@ yarn-error.log*
 node_modules/
 
 # Docs
-!docs/.vuepress/dist
+docs/.vuepress/dist
 
 # Distribution / packaging
 .Python
