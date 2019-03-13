@@ -43,7 +43,6 @@ deploy:
   target-branch: gh-pages
   skip-cleanup: true
   github-token: $GITHUB_TOKEN  # Generate personal token in github, then set in travis settings page as a secure variable
-  keep-history: true
 # - provider: releases  # github releases
 #   api_key: $GITHUB_TOKEN
 #   file: "FILE TO UPLOAD"
