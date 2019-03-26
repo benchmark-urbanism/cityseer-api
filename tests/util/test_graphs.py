@@ -38,8 +38,8 @@ def test_nX_wgs_to_utm():
     G_converted = graphs.nX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
-        assert abs(d['x'] - G_converted.nodes[n]['x']) < 0.01
-        assert abs(d['y'] - G_converted.nodes[n]['y']) < 0.01
+        assert np.allclose(d['x'], G_converted.nodes[n]['x'])
+        assert np.allclose(d['y'], G_converted.nodes[n]['y'])
 
     # check that edge coordinates are correctly converted
     G_utm = mock.mock_graph()

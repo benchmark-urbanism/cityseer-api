@@ -104,19 +104,20 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
         # x coordinate
         if 'x' not in d:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        x = d['x']
+        lng = d['x']
         # y coordinate
         if 'y' not in d:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        y = d['y']
+        lat = d['y']
         # check for unintentional use of conversion
-        if x > 180 or y > 90:
+        if abs(lng) > 180 or abs(lat) > 90:
             raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
-        # remember - accepts and returns in y, x order
-        y, x = utm.from_latlon(y, x)[:2]
+        # be cognisant of parameter and return order
+        # returns in easting, northing order
+        easting, northing = utm.from_latlon(lat, lng)[:2]
         # write back to graph
-        g_copy.nodes[n]['x'] = x
-        g_copy.nodes[n]['y'] = y
+        g_copy.nodes[n]['x'] = easting
+        g_copy.nodes[n]['y'] = northing
 
     # if line geom property provided, then convert as well
     logger.info('Processing edge geom coordinates, if present.')
@@ -126,8 +127,9 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
             line_geom = d['geom']
             if line_geom.type != 'LineString':
                 raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
-            # convert the coords to UTM - remember to flip back to lng, lat
-            utm_coords = [utm.from_latlon(lat, lng)[:2][::-1] for lng, lat in line_geom.coords]
+            # be cognisant of parameter and return order
+            # returns in easting, northing order
+            utm_coords = [utm.from_latlon(lat, lng)[:2] for lng, lat in line_geom.coords]
             # write back to edge
             g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
 

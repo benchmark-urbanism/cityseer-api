@@ -25,19 +25,20 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
         # x coordinate
         if 'x' not in v:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {k}.')
-        x = v['x']
+        lng = v['x']
         # y coordinate
         if 'y' not in v:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at data dictionary key {k}.')
-        y = v['y']
+        lat = v['y']
         # check for unintentional use of conversion
-        if x > 180 or y > 90:
+        if abs(lng) > 180 or abs(lat) > 90:
             raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
-        # remember - accepts and returns in y, x order
-        y, x = utm.from_latlon(y, x)[:2]
+        # be cognisant of parameter and return order
+        # returns in easting, northing order
+        easting, northing = utm.from_latlon(lat, lng)[:2]
         # write back to graph
-        data_dict_copy[k]['x'] = x
-        data_dict_copy[k]['y'] = y
+        data_dict_copy[k]['x'] = easting
+        data_dict_copy[k]['y'] = northing
 
     return data_dict_copy
 

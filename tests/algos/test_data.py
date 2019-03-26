@@ -102,15 +102,16 @@ def test_assign_to_network():
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     # override data point locations for test cases vis-a-vis isolated nodes and isolated edges
-    data_map[18][:2] = [6000730, 600914]
-    data_map[39][:2] = [6000450, 600609]
+    data_map[18][:2] = [701200, 5719400]
+    data_map[39][:2] = [700750, 5720025]
+    data_map[26][:2] = [700400, 5719500]
 
     # 500m visually confirmed in plots
     data_map_test_500 = data_map.copy()
     data_map_test_500 = data.assign_to_network(data_map_test_500,
                                                node_map,
                                                edge_map,
-                                               1000)
+                                               max_dist=1600)
     targets = [
         [0, 159, 158],
         [1, 42, 224],
@@ -130,7 +131,7 @@ def test_assign_to_network():
         [15, 116, 115],
         [16, 48, 238],
         [17, 2, 65],
-        [18, 51, 241],
+        [18, 177, 178],
         [19, 153, 152],
         [20, 78, 79],
         [21, 2.0, np.nan],
@@ -138,7 +139,7 @@ def test_assign_to_network():
         [23, 2, 65],
         [24, 78, 79],
         [25, 83, 11],
-        [26, 103, 104],
+        [26, 49.0, np.nan],
         [27, 19, 133],
         [28, 129, 130],
         [29, 238, 46],
@@ -151,7 +152,7 @@ def test_assign_to_network():
         [36, 39, 211],
         [37, 153, 25],
         [38, 83, 82],
-        [39, 49.0, np.nan],
+        [39, 239.0, np.nan],
         [40, 115, 116],
         [41, 141, 21],
         [42, 10, 92],

@@ -18,11 +18,13 @@ def test_dict_wgs_to_utm():
     test_dict = copy.deepcopy(data_dict_utm)
     # cast to lat, lon
     for k, v in test_dict.items():
-        x = v['x']
-        y = v['y']
-        y, x = utm.to_latlon(y, x, 30, 'U')
-        test_dict[k]['x'] = x
-        test_dict[k]['y'] = y
+        easting = v['x']
+        northing = v['y']
+        # be cognisant of parameter and return order
+        # returns in lat lng order
+        lat, lng = utm.to_latlon(easting, northing, 30, 'U')
+        test_dict[k]['x'] = lng
+        test_dict[k]['y'] = lat
 
     # convert back
     dict_converted = layers.dict_wgs_to_utm(test_dict)
