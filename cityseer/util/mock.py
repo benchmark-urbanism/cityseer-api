@@ -75,7 +75,12 @@ def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
         (49, {'x': 700400, 'y': 5719550}),
         # isolated edge
         (50, {'x': 700700, 'y': 5720100}),
-        (51, {'x': 700700, 'y': 5719900})
+        (51, {'x': 700700, 'y': 5719900}),
+        # disconnected looping component
+        (52, {'x': 700400, 'y': 5719650}),
+        (53, {'x': 700500, 'y': 5719550}),
+        (54, {'x': 700400, 'y': 5719450}),
+        (55, {'x': 700300, 'y': 5719550})
     ]
 
     G.add_nodes_from(nodes)
@@ -155,7 +160,12 @@ def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
         (46, 47),
         (46, 48),
         # isolated edge
-        (50, 51)
+        (50, 51),
+        # disconnected looping component
+        (52, 53),
+        (53, 54),
+        (54, 55),
+        (55, 52)
     ]
 
     G.add_edges_from(edges)

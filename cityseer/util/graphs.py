@@ -143,13 +143,60 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     logger.info(f'Simplifying graph intersections.')
     g_copy = networkX_graph.copy()
 
-    # remove self-edges, otherwise nx.degree includes self-loops
-    for s, e in nx.selfloop_edges(g_copy):
-        g_copy.remove_edge(s, e)
+    removed_nodes = set()
+    def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node):
+
+        # if the next node has a degree of 2, then follow the chain
+        # for disconnected components, check that the next node is not back at the start node...
+        if nx.degree(_G, next_node) == 2 and next_node != start_node:
+            # next node becomes new current
+            _new_curr = next_node
+            # add next node to delete list
+            agg_del_nodes.append(next_node)
+            # get its neighbours
+            _a, _b = list(nx.neighbors(networkX_graph, next_node))
+            # proceed to the new_next node
+            if _a == curr_node:
+                _new_next = _b
+            else:
+                _new_next = _a
+            # get the geom and weld
+            if 'geom' not in _G[_new_curr][_new_next]:
+                raise AttributeError(f'Missing "geom" attribute for edge {_new_curr}-{_new_next}')
+            new_geom = _G[_new_curr][_new_next]['geom']
+            if new_geom.type != 'LineString':
+                raise AttributeError(f'Expecting LineString geometry but found {new_geom.type} geometry.')
+            # when welding an isolated circular component, the ops linemerge will potentially weld onto the wrong end
+            # i.e. start-side instead of end-side... so orient and merge manually
+            if _new_next == start_node:
+                s_x = _G.nodes[start_node]['x']
+                s_y = _G.nodes[start_node]['y']
+                # check geom coordinates directionality - flip agg_geom and new_geom to wind in same direction
+                # the new geom should end at the start coordinate
+                if not (s_x, s_y) == new_geom.coords[-1][:2]:
+                    new_geom = geometry.LineString(new_geom.coords[::-1])
+                if not (s_x, s_y) == agg_geom.coords[0][:2]:
+                    agg_geom = geometry.LineString(agg_geom.coords[::-1])
+                # now concatenate
+                _new_agg_geom = geometry.LineString(list(agg_geom.coords) + list(new_geom.coords))
+            else:
+                _new_agg_geom = ops.linemerge([agg_geom, new_geom])
+            if _new_agg_geom.type != 'LineString':
+                raise AttributeError(
+                    f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}. Check that the adjacent LineStrings in the vicinity of {curr_node}-{next_node} are not corrupted.')
+            return recursive_weld(_G, start_node, _new_agg_geom, agg_del_nodes, _new_curr, _new_next)
+        else:
+            end_node = next_node
+            return agg_geom, agg_del_nodes, end_node
 
     # iterate the nodes and weld edges where encountering simple intersections
     # use the original graph so as to write changes to new graph
     for n in networkX_graph.nodes():
+
+        # some nodes will already have been removed via recursive function
+        if n in removed_nodes:
+            continue
+
         if nx.degree(networkX_graph, n) == 2:
 
             # get neighbours and geoms either side
@@ -161,22 +208,42 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             geom_a = networkX_graph[n][nb_a]['geom']
             if geom_a.type != 'LineString':
                 raise AttributeError(f'Expecting LineString geometry but found {geom_a.type} geometry.')
+            # start the A direction recursive weld
+            agg_geom_a, agg_del_nodes_a, end_node_a = recursive_weld(networkX_graph, n, geom_a, [], n, nb_a)
+
+            # only follow geom B if geom A doesn't return a looping disconnected component
+            # e.g. circular disconnected walkway
+            if end_node_a == n:
+                logger.warning(f'Disconnected looping component encountered around {n}')
+                # in this case, do not remove the starting node because it suspends the loop
+                g_copy.remove_nodes_from(agg_del_nodes_a)
+                removed_nodes.update(agg_del_nodes_a)
+                g_copy.add_edge(n, n, geom=agg_geom_a)
+                continue
+
             # geom B
             if 'geom' not in networkX_graph[n][nb_b]:
                 raise AttributeError(f'Missing "geom" attribute for edge {n}-{nb_b}')
             geom_b = networkX_graph[n][nb_b]['geom']
             if geom_b.type != 'LineString':
                 raise AttributeError(f'Expecting LineString geometry but found {geom_b.type} geometry.')
+            # start the B direction recursive weld
+            agg_geom_b, agg_del_nodes_b, end_node_b = recursive_weld(networkX_graph, n, geom_b, [], n, nb_b)
 
-            # remove old node - edges are removed implicitly
-            g_copy.remove_node(n)
+            # remove old nodes - edges are removed implicitly
+            agg_del_nodes = agg_del_nodes_a + agg_del_nodes_b
+            # also remove origin node n
+            agg_del_nodes.append(n)
+            g_copy.remove_nodes_from(agg_del_nodes)
+            removed_nodes.update(agg_del_nodes)
 
             # add new edge
-            merged_line = ops.linemerge([geom_a, geom_b])
+            # disconnected self-loops are caught above, so no need to check for orientation vis-a-vis linemerge
+            merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
             if merged_line.type != 'LineString':
                 raise AttributeError(
                     f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
-            g_copy.add_edge(nb_a, nb_b, geom=merged_line)
+            g_copy.add_edge(end_node_a, end_node_b, geom=merged_line)
 
     return g_copy
 

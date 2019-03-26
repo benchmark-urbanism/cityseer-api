@@ -9,11 +9,12 @@ def test_mock_graph():
     G_wgs = mock.mock_graph(wgs84_coords=True)
 
     for g in [G, G_wgs]:
-        assert g.number_of_nodes() == 52
-        assert g.number_of_edges() == 73
+        assert g.number_of_nodes() == 56
+        assert g.number_of_edges() == 77
         assert nx.average_degree_connectivity(g) == {
-            3: 3.0,
             4: 3.0,
+            3: 3.0,
+            2: 2.0,
             1: 2.0,
             0: 0
         }

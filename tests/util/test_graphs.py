@@ -77,7 +77,6 @@ def test_nX_wgs_to_utm():
 
 
 def test_nX_remove_filler_nodes():
-    # TODO: add test for self-loops
 
     # test that redundant (straight) intersections are removed
     G = mock.mock_graph()
@@ -99,17 +98,73 @@ def test_nX_remove_filler_nodes():
                 line_geom = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
             # remove old edge
             G_messy.remove_edge(s, e)
-            # add new edges
+            # new midpoint 'x' and 'y' coordinates
             # TODO: change to ops.substring once shapely 1.7 released (bug fix)
-            G_messy.add_edge(s, f'{s}-{e}', geom=graphs.substring(line_geom, 0, 0.5, normalized=True))
-            G_messy.add_edge(e, f'{s}-{e}', geom=graphs.substring(line_geom, 0.5, 1, normalized=True))
+            s_geom = graphs.substring(line_geom, 0, 0.5, normalized=True)
+            e_geom = graphs.substring(line_geom, 0.5, 1, normalized=True)
+            # looking for the non-matching coordinates
+            mid_x, mid_y = s_geom.coords[-1][:2]
+            # add new edges
+            G_messy.add_edge(s, f'{s}-{e}', geom=s_geom)
+            G_messy.add_edge(e, f'{s}-{e}', geom=e_geom)
+            G_messy.nodes[f'{s}-{e}']['x'] = mid_x
+            G_messy.nodes[f'{s}-{e}']['y'] = mid_y
+
+    # test recursive weld by manually adding a chained series of orphan nodes
+    geom = G[10][43]['geom']
+    geom_a = graphs.substring(geom, 0, 0.25, normalized=True)
+    G_messy.add_edge(10, 't_1', geom=geom_a)
+    a_x, a_y = geom_a.coords[-1][:2]
+    G_messy.nodes['t_1']['x'] = a_x
+    G_messy.nodes['t_1']['y'] = a_y
+    geom_b = graphs.substring(geom, 0.25, 0.5, normalized=True)
+    G_messy.add_edge('t_1', 't_2', geom=geom_b)
+    b_x, b_y = geom_b.coords[-1][:2]
+    G_messy.nodes['t_2']['x'] = b_x
+    G_messy.nodes['t_2']['y'] = b_y
+    geom_c = graphs.substring(geom, 0.5, 0.75, normalized=True)
+    G_messy.add_edge('t_2', 't_3', geom=geom_c)
+    c_x, c_y = geom_c.coords[-1][:2]
+    G_messy.nodes['t_3']['x'] = c_x
+    G_messy.nodes['t_3']['y'] = c_y
+    geom_d = graphs.substring(geom, 0.75, 1.0, normalized=True)
+    G_messy.add_edge('t_3', 43, geom=geom_d)
+    # remove original geom
+    G_messy.remove_edge(10, 43)
+
+    # from cityseer.util import plot
+    # plot.plot_nX(G_messy, labels=True)
 
     # simplify and test
     G_simplified = graphs.nX_remove_filler_nodes(G_messy)
-    assert G_simplified.nodes == G.nodes
-    assert G_simplified.edges == G.edges
+    # plot.plot_nX(G_simplified, labels=True)
+
+    # check that the simplified version matches the original un-messified version
+    # but note the simplified version will have the disconnected loop of 52-53-54-55 now condensed to only #52
+    g_nodes = set(G.nodes)
+    g_nodes = g_nodes.difference([53, 54, 55])
+    assert list(g_nodes).sort() == list(G_simplified.nodes).sort()
+    g_edges = set(G.edges)
+    g_edges = g_edges.difference([(52, 53), (53, 54), (54, 55), (52, 55)])  # condensed edges
+    g_edges = g_edges.union([(52, 52)])  # the new self loop
+    assert list(g_edges).sort() == list(G_simplified.edges).sort()
+
+    # check the integrity of the edges
     for s, e, d in G_simplified.edges(data=True):
+        # ignore the new self-looping disconnected edge
+        if s == 52 and e == 52:
+            continue
         assert G_simplified[s][e]['geom'].length == G[s][e]['geom'].length
+    # manually check that the new self-looping edge is equal in length to its original segments
+    l = 0
+    for s, e in [(52, 53), (53, 54), (54, 55), (52, 55)]:
+        l += G[s][e]['geom'].length
+    assert l == G_simplified[52][52]['geom'].length
+
+    # check that all nodes still have 'x' and 'y' keys
+    for n, d in G_simplified.nodes(data=True):
+        assert 'x' in d
+        assert 'y' in d
 
     # check that missing geoms throw an error
     G_attr = G_messy.copy()
@@ -155,10 +210,16 @@ def test_nX_decompose():
     # test decomposition
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
+    # first clean the graph to strip disconnected looping component
+    # this gives a start == end node situation for testing
+    G_simple = graphs.nX_remove_filler_nodes(G)
+    G_decompose = graphs.nX_decompose(G_simple, 20)
 
-    G_decompose = graphs.nX_decompose(G, 20)
-    assert nx.number_of_nodes(G_decompose) == 632
-    assert nx.number_of_edges(G_decompose) == 653
+    # from cityseer.util import plot
+    # plot.plot_nX(G_simple, labels=True)
+    # plot.plot_nX(G_decompose)
+    assert nx.number_of_nodes(G_decompose) == 661
+    assert nx.number_of_edges(G_decompose) == 682
 
     # check that total lengths and impedances are the same
     G_lens = 0
@@ -254,15 +315,15 @@ def test_nX_to_dual():
     G_dual = graphs.nX_to_dual(G)
 
     # from cityseer.util import plot
-    # plot.plot_networkX_primal_or_dual(primal=G, dual=G_dual)
+    # plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
 
     # dual nodes should equal primal edges
     assert G_dual.number_of_nodes() == G.number_of_edges()
-    # all new nodes should have in-out-degrees of 4
+    # all new nodes should have in-out-degrees of 4 except for following conditions:
     for n in G_dual.nodes():
         if n in ['50_51']:
             assert nx.degree(G_dual, n) == 0
-        elif n in ['46_47', '46_48']:
+        elif n in ['46_47', '46_48', '52_55', '52_53', '53_54', '54_55']:
             assert nx.degree(G_dual, n) == 2
         elif n in ['19_22', '22_23', '22_27', '22_46']:
             assert nx.degree(G_dual, n) == 5

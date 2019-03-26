@@ -104,7 +104,7 @@ def test_assign_to_network():
     # override data point locations for test cases vis-a-vis isolated nodes and isolated edges
     data_map[18][:2] = [701200, 5719400]
     data_map[39][:2] = [700750, 5720025]
-    data_map[26][:2] = [700400, 5719500]
+    data_map[26][:2] = [700400, 5719525]
 
     # 500m visually confirmed in plots
     data_map_test_500 = data_map.copy()
@@ -113,56 +113,56 @@ def test_assign_to_network():
                                                edge_map,
                                                max_dist=1600)
     targets = [
-        [0, 159, 158],
-        [1, 42, 224],
-        [2, 219, 218],
-        [3, 48, 238],
-        [4, 194, 195],
-        [5, 219, 218],
-        [6, 53, 52],
-        [7, 67, 5],
-        [8, 70, 71],
-        [9, 87, 9],
-        [10, 56, 57],
-        [11, 91, 13],
-        [12, 0, 54],
-        [13, 93, 94],
-        [14, 186, 185],
-        [15, 116, 115],
-        [16, 48, 238],
-        [17, 2, 65],
-        [18, 177, 178],
-        [19, 153, 152],
-        [20, 78, 79],
+        [0, 163, 162],
+        [1, 42, 228],
+        [2, 223, 222],
+        [3, 48, 242],
+        [4, 198, 199],
+        [5, 223, 222],
+        [6, 57, 56],
+        [7, 71, 5],
+        [8, 74, 75],
+        [9, 91, 9],
+        [10, 60, 61],
+        [11, 95, 13],
+        [12, 0, 58],
+        [13, 97, 98],
+        [14, 190, 189],
+        [15, 120, 119],
+        [16, 48, 242],
+        [17, 2, 69],
+        [18, 181, 182],
+        [19, 157, 156],
+        [20, 82, 83],
         [21, 2.0, np.nan],
-        [22, 166, 165],
-        [23, 2, 65],
-        [24, 78, 79],
-        [25, 83, 11],
+        [22, 170, 169],
+        [23, 246, 52],
+        [24, 82, 83],
+        [25, 87, 11],
         [26, 49.0, np.nan],
-        [27, 19, 133],
-        [28, 129, 130],
-        [29, 238, 46],
-        [30, 73, 9],
-        [31, 183, 184],
-        [32, 175, 176],
-        [33, 90, 89],
-        [34, 209, 208],
-        [35, 105, 106],
-        [36, 39, 211],
-        [37, 153, 25],
-        [38, 83, 82],
-        [39, 239.0, np.nan],
-        [40, 115, 116],
-        [41, 141, 21],
-        [42, 10, 92],
-        [43, 114, 113],
-        [44, 77, 5],
-        [45, 11, 83],
-        [46, 95, 94],
-        [47, 133, 19],
+        [27, 19, 137],
+        [28, 133, 134],
+        [29, 242, 46],
+        [30, 77, 9],
+        [31, 187, 188],
+        [32, 179, 180],
+        [33, 94, 93],
+        [34, 213, 212],
+        [35, 109, 110],
+        [36, 39, 215],
+        [37, 157, 25],
+        [38, 87, 86],
+        [39, 243.0, np.nan],
+        [40, 119, 120],
+        [41, 145, 21],
+        [42, 10, 96],
+        [43, 118, 117],
+        [44, 81, 5],
+        [45, 11, 87],
+        [46, 99, 98],
+        [47, 137, 19],
         [48, 14.0, np.nan],
-        [49, 101, 100]
+        [49, 105, 104]
     ]
     for i in range(len(data_map_test_500)):
         assert data_map_test_500[i][2] == targets[i][1]
@@ -636,6 +636,9 @@ def test_local_aggregator_numerical_components():
     data_dict = mock.mock_data_dict(G, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
+    # for debugging
+    # from cityseer.util import plot
+    # plot.plot_graph_maps(node_uids, node_map, edge_map, data_map)
 
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     betas = np.array([-0.00125])
@@ -657,28 +660,39 @@ def test_local_aggregator_numerical_components():
     # connected graph is from 0 to 48 -> assigned data points are all except 5, 8, 17, 33, 48
     connected_nodes_idx = list(range(49))
     # and the respective data assigned to connected portion of the graph
-    connected_data_idx = [i for i in range(len(data_dict)) if i not in [5, 8, 17, 33, 48]]
-    # isolated node = 49 -> assigned data points = 5, 8, 48
+    connected_data_idx = [i for i in range(len(data_dict)) if i not in [5, 8, 9, 17, 18, 29, 33, 38, 48]]
+    # isolated node = 49 -> assigned no data points
     # isolated nodes = 50 & 51 -> assigned data points = 17, 33
+    # isolated loop = 52, 53, 54, 55 -> assigned data points = 5, 8, 9, 18, 29, 38, 48
+    isolated_nodes_idx = [52, 53, 54, 55]
+    isolated_data_idx = [5, 8, 9, 18, 29, 38, 48]
     for stats_idx in range(len(mock_numerical)):
         for d_idx in range(len(distances)):
             # max
-            assert np.allclose(stats_max[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].max())
+            assert np.isnan(stats_max[stats_idx][d_idx][49])
             assert np.allclose(stats_max[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].max())
+            assert np.allclose(stats_max[stats_idx][d_idx][isolated_nodes_idx],
+                               mock_numerical[stats_idx][isolated_data_idx].max())
             assert np.allclose(stats_max[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].max())
             # min
-            assert np.allclose(stats_min[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].min())
+            assert np.isnan(stats_min[stats_idx][d_idx][49])
             assert np.allclose(stats_min[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].min())
+            assert np.allclose(stats_min[stats_idx][d_idx][isolated_nodes_idx],
+                               mock_numerical[stats_idx][isolated_data_idx].min())
             assert np.allclose(stats_min[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].min())
             # mean
-            assert np.allclose(stats_mean[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].mean())
+            assert np.isnan(stats_mean[stats_idx][d_idx][49])
             assert np.allclose(stats_mean[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].mean())
+            assert np.allclose(stats_mean[stats_idx][d_idx][isolated_nodes_idx],
+                               mock_numerical[stats_idx][isolated_data_idx].mean())
             assert np.allclose(stats_mean[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].mean())
             # variance
-            assert np.allclose(stats_variance[stats_idx][d_idx][49], mock_numerical[stats_idx][[5, 8, 48]].var())
+            assert np.isnan(stats_variance[stats_idx][d_idx][49])
             assert np.allclose(stats_variance[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].var())
+            assert np.allclose(stats_variance[stats_idx][d_idx][isolated_nodes_idx],
+                               mock_numerical[stats_idx][isolated_data_idx].var())
             assert np.allclose(stats_variance[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].var())
