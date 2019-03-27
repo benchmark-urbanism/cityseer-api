@@ -380,7 +380,7 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
         s_half_geom, e_half_geom = get_half_geoms(networkX_graph, s, e)
 
         # create a new dual node corresponding to the current primal edge
-        s_e = sorted([s, e])
+        s_e = sorted([str(s), str(e)])
         hub_node_dual = f'{s_e[0]}_{s_e[1]}'
         x, y = s_half_geom.coords[-1][:2]
         g_dual.add_node(hub_node_dual, x=x, y=y)
@@ -406,7 +406,7 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
                 spoke_half_geom, _discard_geom = get_half_geoms(networkX_graph, n_side, nb)
 
                 # add the neighbouring primal edge as dual node
-                s_nb = sorted([n_side, nb])
+                s_nb = sorted([str(n_side), str(nb)])
                 spoke_node_dual = f'{s_nb[0]}_{s_nb[1]}'
                 x, y = spoke_half_geom.coords[-1][:2]
                 g_dual.add_node(spoke_node_dual, x=x, y=y)

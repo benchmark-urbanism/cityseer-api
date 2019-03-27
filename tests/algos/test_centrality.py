@@ -61,7 +61,7 @@ def test_shortest_path_tree():
     # plot.plot_networkX_primal_or_dual(primal=G, dual=G_dual)
 
     # source and target are the same for either
-    src = node_uids_dual.index('6_11')
+    src = node_uids_dual.index('11_6')
     target = node_uids_dual.index('39_40')
     # generate trim and full index maps
     x_arr = node_map_dual[:, 0]
@@ -85,7 +85,7 @@ def test_shortest_path_tree():
     path_transpose_a = [node_uids_dual[n] for n in path_a]
     # takes 1597m route via long outside segment
     # map_distance_a[int(full_to_trim_idx_map[node_labels.index('39_40')])]
-    assert path_transpose_a == ['6_11', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
+    assert path_transpose_a == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
 
     # SHORTEST PATH: override angular impedances with true distances
     edge_map_m = edge_map_dual.copy()
@@ -103,12 +103,10 @@ def test_shortest_path_tree():
     path_transpose_m = [node_uids_dual[n] for n in path_m]
     # takes 1345m route shorter route
     # map_distance_m[int(full_to_trim_idx_map[node_labels.index('39_40')])]
-    assert path_transpose_m == ['6_11', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39',
-                                '39_40']
-
+    assert path_transpose_m == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39', '39_40']
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src = node_uids_dual.index('10_43')
-    target = node_uids_dual.index('5_10')
+    target = node_uids_dual.index('10_5')
     map_impedance_ns, map_distance_ns, map_pred_ns, cycles_ns = centrality.shortest_path_tree(node_map_dual,
                                                                                               edge_map_dual,
                                                                                               src,
@@ -119,7 +117,7 @@ def test_shortest_path_tree():
     # find path
     path_ns = find_path(map_pred_ns, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_ns = [node_uids_dual[n] for n in path_ns]
-    assert path_transpose_ns == ['10_43', '5_10']
+    assert path_transpose_ns == ['10_43', '10_5']
 
     # WITH SIDESTEPS - set angular flag to False
     map_impedance_s, map_distance_s, map_pred_s, cycles_s = centrality.shortest_path_tree(node_map_dual,
@@ -132,7 +130,7 @@ def test_shortest_path_tree():
     # find path
     path_s = find_path(map_pred_s, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_s = [node_uids_dual[n] for n in path_s]
-    assert path_transpose_s == ['10_43', '10_14', '5_10']
+    assert path_transpose_s == ['10_43', '10_14', '10_5']
 
     # check that out of range src index raises error
     with pytest.raises(ValueError):
