@@ -171,7 +171,7 @@ G_metrics = N.to_networkX()
 N.metrics_to_dict()
 ```
 
-The data can then be passed to data analysis or plotting methods, for example, let's plot gravity and mixed uses for the above-used mock data at a $400m$ walking threshold:
+The data can then be passed to data analysis or plotting methods. For example, the [`util.plot`](/util/plot.html) module could be used to plot gravity and mixed uses for the above mock data:
 
 ```python
 # let's plot gravity and mixed uses
@@ -193,7 +193,7 @@ gravity_cols = cmap(gravity_vals)
 # plot gravity
 plot.plot_nX(G_metrics, labels=False, colour=gravity_cols)
 
-# plot hill mixed uses
+# plot distance-weighted hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
 plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels)

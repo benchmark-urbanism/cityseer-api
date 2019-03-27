@@ -5,7 +5,7 @@
 cityseer.util.plot
 ==================
 
-Convenience functions for basic plotting. This module is predominately used for visual verification of behaviour in code tests, however, custom behaviour can be achieved when directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
+Convenience functions for basic plotting. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) / [`matplotlib`](https://matplotlib.org) figures.
 
 
 plot\_nX\_primal\_or\_dual
