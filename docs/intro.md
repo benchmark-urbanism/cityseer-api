@@ -36,11 +36,11 @@ G = mock.mock_graph()
 '''
 import networkx as nx
 print(nx.info(G))
-# Name:
+# Name: 
 # Type: Graph
-# Number of nodes: 52
-# Number of edges: 73
-# Average degree:   2.8077
+# Number of nodes: 56
+# Number of edges: 77
+# Average degree:   2.7500
 '''
 # let's plot the network
 from cityseer.util import plot
@@ -54,9 +54,9 @@ plot.plot_nX(G, labels=True)
 The [`util.graphs`](/util/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` graphs, including
 [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) for coordinate conversions; [`nX_remove_filler_nodes`](/util/graphs.html#nx-remove-filler-nodes) for graph cleanup; [`nX_decompose`](/util/graphs.html#nx-decompose) for generating granular graph typologies; and [`nX_to_dual`](/util/graphs.html#nx-to-dual) for casting a primal graph representation to its dual. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. If working with simple graph representations — straight-line edges between nodes — then [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) can generate these geometries for you. The benefit to the use of raw geoms is that the geometry of the network is kept distinct from the topology, and the geometries can therefore be manipulated separately from topological transformations.
 
-<img src="./images/plots/graph_decomposed.png" alt="Example decomposed graph" class="left"><img src="./images/plots/graph_dual.png" alt="Example dual graph" class="right">
+<img src="./images/plots/graph_decomposed.png" alt="Example 100m decomposed graph" class="left"><img src="./images/plots/graph_dual.png" alt="Example dual graph" class="right">
 
-_A decomposed variant of the graph (left) and a primal / dual transformation of the graph (right)._
+_A $100m$ decomposed variant of the graph (left) and an example primal / dual transformation of the (undecomposed) graph (right)._
 
 Before conversion to a [`Network_Layer`](/metrics/networks.html#network-layer), the `networkX` graph must first be furnished with `length` and `impedance` edge attributes. These can be generated in one of several ways:
 
@@ -76,6 +76,9 @@ G = graphs.nX_simple_geoms(G)
 
 # auto-set edge length and impedance attributes from the geoms
 G = graphs.nX_auto_edge_params(G)
+
+# or decompose (or cast to dual), which will also auto-set the params
+G = graphs.nX_decompose(G, 20)
 ```
 
 Once prepared, the `networkX` graph can be transformed into a [`Network_Layer`](/metrics/networks.html#network-layer) by invoking [`Network_Layer_From_nX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
@@ -168,11 +171,42 @@ G_metrics = N.to_networkX()
 N.metrics_to_dict()
 ```
 
+The data can then be passed to data analysis or plotting methods, for example, let's plot gravity and mixed uses for the above-used mock data at a $400m$ walking threshold:
+
+```python
+# let's plot gravity and mixed uses
+from matplotlib import colors
+
+gravity_vals = []
+mixed_uses_vals = []
+for node, data in G_metrics.nodes(data=True):
+    gravity_vals.append(data['metrics']['centrality']['gravity'][400])
+    mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
+
+# custom colourmap
+cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+
+# normalise the values
+gravity_vals = colors.Normalize()(gravity_vals)
+# cast against the colour map
+gravity_cols = cmap(gravity_vals)
+# plot gravity
+plot.plot_nX(G_metrics, labels=False, colour=gravity_cols)
+
+# plot hill mixed uses
+mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
+mixed_uses_cols = cmap(mixed_uses_vals)
+plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels)
+```
+
+<img src="./images/plots/intro_gravity.png" alt="Example gravity plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
+
+_$400m$ gravity (left) and $400m$ branch-weighted mixed-uses plot (right) on a $20m$ decomposed graph._
+
 
 Issues & Contributions
 ----------------------
 
 Please report issues to the [`issues`](https://github.com/cityseer/cityseer-api/issues) page of the `cityseer` `github` repo.
 
-Suggestions, contributions, and pull requests are welcome. Please discuss significant proposals prior to implementation.
-
+Feature requests, contributions, and pull requests are welcome. Please discuss significant proposals prior to implementation.

@@ -2,9 +2,11 @@
 These plot methods are mainly for testing and debugging
 '''
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import networkx as nx
 import numpy as np
 from shapely import geometry
+from cityseer.metrics import layers
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -38,16 +40,16 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
             if not (len(primal_colour) == 1 or len(primal_colour) == len(primal)):
                 raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
                                  'the number of nodes in the graph.')
-            node_color = primal_colour
+            node_colour = primal_colour
         else:
-            node_color = secondary
+            node_colour = secondary
 
         nx.draw(primal, pos_primal,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
                 font_weight='bold',
-                node_color=node_color,
+                node_color=node_colour,
                 node_size=node_size,
                 node_shape='o',
                 edge_color='w',
@@ -64,14 +66,14 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
             if not (len(dual_colour) == 1 or len(dual_colour) == len(dual)):
                 raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
                                  'the number of nodes in the graph.')
-            node_color = dual_colour
+            node_colour = dual_colour
         else:
-            node_color = info
+            node_colour = info
 
         nx.draw(dual, pos_dual,
                 with_labels=labels,
                 font_size=5,
-                node_color=node_color,
+                node_color=node_colour,
                 node_size=node_size,
                 node_shape='d',
                 edge_color='#999999',
@@ -93,34 +95,57 @@ def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, co
 def plot_assignment(Network_Layer,
                     Data_Layer,
                     path: str = None,
-                    labels: bool = False):
+                    node_colour: (list, tuple, np.ndarray) = None,
+                    node_labels: bool = False,
+                    data_labels: (list, tuple, np.ndarray) = None):
+
     # extract NetworkX
     Graph = Network_Layer.to_networkX()
+
+    if node_colour is not None:
+        if not (len(node_colour) == 1 or len(node_colour) == len(Graph)):
+            raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
+                             'the number of nodes in the graph.')
+        node_colour = node_colour
+    else:
+        node_colour = secondary
 
     # do a simple plot - don't provide path
     pos = {}
     for n, d in Graph.nodes(data=True):
         pos[n] = (d['x'], d['y'])
     nx.draw(Graph, pos,
-            with_labels=labels,
+            with_labels=node_labels,
             font_size=5,
             font_color='w',
             font_weight='bold',
-            node_color=secondary,
+            node_color=node_colour,
             node_size=30,
             node_shape='o',
             edge_color='w',
             width=1,
             alpha=0.75)
 
+    if data_labels is None:
+        data_colour = info
+        data_cmap = None
+    else:
+        # generate categorical colormap
+        d_classes, d_encodings = layers.encode_categorical(data_labels)
+        data_colour = colors.Normalize()(d_encodings)
+        data_cmap = 'Dark2'  # Set1
+
     # overlay data map
     plt.scatter(x=Data_Layer._data[:, 0],
                 y=Data_Layer._data[:, 1],
-                c=info,
+                c=data_colour,
+                cmap=data_cmap,
                 s=30,
                 edgecolors='white',
                 lw=0.5,
                 alpha=0.95)
+
+    # draw assignment
     for i, (x, y, nearest_netw_idx, next_n_netw_idx) in \
             enumerate(zip(Data_Layer._data[:, 0],
                           Data_Layer._data[:, 1],

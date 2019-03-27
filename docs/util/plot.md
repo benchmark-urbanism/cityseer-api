@@ -105,10 +105,9 @@ Node colour or colours. When passing a list of colours, the number of colours sh
 </FuncElement>
 
 ```python
-import numpy as np
 from cityseer.util import mock, graphs, plot
 from cityseer.metrics import networks
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import colors
 
 # generate a graph and compute gravity
 G = mock.mock_graph()
@@ -124,11 +123,10 @@ for node, data in G_after.nodes(data=True):
     vals.append(data['metrics']['centrality']['gravity'][800])
     
 # let's create a custom colourmap using matplotlib
-cmap = LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
-
-# normalise vals and cast to colour
-vals = np.array(vals)
-vals = (vals - vals.min()) / (vals.max() - vals.min())
+cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+# normalise the values
+vals = colors.Normalize()(vals)
+# cast against the colour map
 cols = cmap(vals)
 
 # plot
@@ -137,7 +135,7 @@ plot.plot_nX(G_after, labels=False, colour=cols)
 
 <img src="../images/plots/graph_colour.png" alt="Example colour plot" class="centre" style="max-height:450px;">
 
-_Gravity colour plot._
+_$800m$ gravity colour plot on a $50m$ decomposed graph._
 
 
 plot\_assignment
@@ -148,7 +146,9 @@ plot\_assignment
 plot_assignment(Network_Layer, 
                 Data_Layer,
                 path=None,
-                labels=False)
+                node_colour=None,
+                node_labels=False,
+                data_labels=None)
 </pre>
 </FuncSignature>
 
@@ -173,11 +173,27 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 </FuncElement>
 
-<FuncElement name="labels" type="bool">
+<FuncElement name="node_colour" type="str, list, tuple, np.ndarray">
 
-Whether to display node labels.
+Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
 
 </FuncElement>
+
+<FuncElement name="node_labels" type="bool">
+
+Whether to plot the node labels.
+
+</FuncElement>
+
+<FuncElement name="data_labels" type="list, tuple, np.ndarray">
+
+An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `Data_Layer`.
+
+</FuncElement>
+
+<img src="../images/plots/assignment_plot.png" alt="Example assignment plot" class="centre" style="max-height:450px;">
+
+_An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
 
 
 plot\_graph\_maps <Chip text="unstable" :important="true"/>

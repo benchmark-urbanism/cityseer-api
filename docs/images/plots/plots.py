@@ -1,7 +1,7 @@
 from os import path
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import colors
 import numpy as np
 
 from cityseer.metrics import networks, layers
@@ -17,11 +17,48 @@ base_path = path.dirname(__file__)
 G = mock.mock_graph()
 plot.plot_nX(G, path='graph.png', labels=True)
 
+# INTRO EXAMPLE PLOTS
+G = graphs.nX_simple_geoms(G)
+G = graphs.nX_decompose(G, 20)
+
+N = networks.Network_Layer_From_nX(G, distances=[400])
+N.gravity()
+
+data_dict = mock.mock_data_dict(G, random_seed=25)
+D = layers.Data_Layer_From_Dict(data_dict)
+D.assign_to_network(N, max_dist=400)
+landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
+D.hill_branch_wt_diversity(landuse_labels, qs=[0])
+G_metrics = N.to_networkX()
+
+gravity_vals = []
+mixed_uses_vals = []
+for node, data in G_metrics.nodes(data=True):
+    gravity_vals.append(data['metrics']['centrality']['gravity'][400])
+    mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
+
+# custom colourmap
+cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+gravity_vals = colors.Normalize()(gravity_vals)
+gravity_cols = cmap(gravity_vals)
+plt.cla()
+plt.clf()
+plot.plot_nX(G_metrics, path='intro_gravity.png', labels=False, colour=gravity_cols)
+
+# plot hill mixed uses
+mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
+mixed_uses_cols = cmap(mixed_uses_vals)
+plt.cla()
+plt.clf()
+plot.plot_assignment(N, D, path='intro_mixed_uses.png', node_colour=mixed_uses_cols, data_labels=landuse_labels)
+
 #
 #
 # MOCK MODULE
 plt.cla()
 plt.clf()
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
 plot.plot_nX(G, path='graph_example.png', labels=True)  # WITH LABELS
 
 #
@@ -111,18 +148,24 @@ vals = []
 for node, data in G_after.nodes(data=True):
     vals.append(data['metrics']['centrality']['gravity'][800])
 
-# let's create a custom colourmap using matplotlib
-cmap = LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
-
-# normalise vals and cast to colour
-vals = np.array(vals)
-vals = (vals - vals.min()) / (vals.max() - vals.min())
+cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+vals = colors.Normalize()(vals)
 cols = cmap(vals)
 
 # plot
 plt.cla()
 plt.clf()
 plot.plot_nX(G_after, path='graph_colour.png', labels=False, colour=cols)
+
+# assignment plot
+data_dict = mock.mock_data_dict(G, random_seed=25)
+D = layers.Data_Layer_From_Dict(data_dict)
+D.assign_to_network(N, max_dist=400)
+landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
+
+plt.cla()
+plt.clf()
+plot.plot_assignment(N, D, path='assignment_plot.png', data_labels=landuse_labels)
 
 #
 #

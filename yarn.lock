@@ -7623,10 +7623,10 @@ vuepress-plugin-mathjax@1.2.2:
     mathjax3 "^3.0.0-beta.3"
     vuepress-mergeable "^1.0.0"
 
-vuepress-theme-cityseer@0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.2.1.tgz#c23d4f26d6e9a04135a1ca117467def4feb67362"
-  integrity sha512-OYNS2yJ2SFX7GOxe0qnSiTetZPmK3oEthCbql3CuXjFzYAgCfD8Rf0rDJQ74b3mbviJ3x6pThG3ZEhWOZEitGw==
+vuepress-theme-cityseer@0.2.4:
+  version "0.2.4"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.2.4.tgz#a5feeed2394b41794507bb70a2b89e0e7231ae7c"
+  integrity sha512-7EFf0yfEyjotybwydqX2QMACJXFSs1Bp0GfmsmtbRnAjN0pH4jjQ/0etuyOYeJo9ITiri5doQ7Ue0UgGZ/OZkQ==
   dependencies:
     "@vuepress/plugin-back-to-top" "^1.0.0-alpha.0"
     "@vuepress/theme-default" "^1.0.0-alpha.39"
