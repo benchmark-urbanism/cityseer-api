@@ -317,7 +317,12 @@ _A `networkX` graph before conversion to a `Network_Layer` (left) and after conv
 @compute\_centrality
 ---------------------
 
-<FuncSignature>Network_Layer.compute_centrality(close_metrics=None, between_metrics=None)</FuncSignature>
+<FuncSignature>
+<pre>
+Network_Layer.compute_centrality(close_metrics=None,
+                                 between_metrics=None)
+</pre>
+</FuncSignature>
 
 This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity`](#gravity), [`@harmonic_closeness`](#harmonic-closeness), [`@improved_closeness`](#improved-closeness), [`@betweenness`](#betweenness), or [`@weighted_betweenness`](#betweenness-gravity) methods.
 
@@ -326,7 +331,7 @@ The computed metrics will be written to a dictionary available at the `Network_L
 `Network_Layer.metrics['centrality'][<<centrality key>>][<<distance key>>][<<node idx>>]`
 
 For example, if `node_density`, `improved`, and `cycles` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
- 
+
 ```python
 # example structure
 Network_Layer.metrics = {
