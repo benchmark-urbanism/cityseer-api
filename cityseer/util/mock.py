@@ -170,19 +170,15 @@ def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
 
     G.add_edges_from(edges)
 
-    for n, d in G.nodes(data=True):
-        x = d['x']
-        y = d['y']
-        if wgs84_coords:
-            easting = x
-            northing = y
+    if wgs84_coords:
+        for n, d in G.nodes(data=True):
+            easting = d['x']
+            northing = d['y']
             # be cognisant of parameter and return order
             # returns in lat, lng order
             lat, lng = utm.to_latlon(easting, northing, 30, 'U')
-            x = lng
-            y = lat
-        G.nodes[n]['x'] = x
-        G.nodes[n]['y'] = y
+            G.nodes[n]['x'] = lng
+            G.nodes[n]['y'] = lat
 
     return G
 

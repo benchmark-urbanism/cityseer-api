@@ -166,6 +166,55 @@ def test_nX_remove_filler_nodes():
         assert 'x' in d
         assert 'y' in d
 
+    # lollipop test - where looping component (all nodes == degree 2) suspend off a node with degree > 2
+    # lollipops are handled slightly differently from isolated looping components (all nodes == degree 2)
+    # there are no lollipops in the mock graph, so create one here
+
+    # generate graph
+    G_lollipop = nx.Graph()
+    nodes = [
+        (1, {'x': 700400, 'y': 5719750}),
+        (2, {'x': 700400, 'y': 5719650}),
+        (3, {'x': 700500, 'y': 5719550}),
+        (4, {'x': 700400, 'y': 5719450}),
+        (5, {'x': 700300, 'y': 5719550})
+    ]
+    G_lollipop.add_nodes_from(nodes)
+    edges = [
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 5),
+        (5, 2)
+    ]
+    G_lollipop.add_edges_from(edges)
+
+    # add edge geoms
+    G_lollipop = graphs.nX_simple_geoms(G_lollipop)
+
+    # flip some geometry
+    G_lollipop[2][5]['geom'] = geometry.LineString(G_lollipop[2][5]['geom'].coords[::-1])
+    # simplify
+    G_lollipop_simpl = graphs.nX_remove_filler_nodes(G_lollipop)
+
+    # check integrity of graph
+    assert nx.number_of_nodes(G_lollipop_simpl) == 2
+    assert nx.number_of_edges(G_lollipop_simpl) == 2
+
+    # geoms should still be same cumulative length
+    before_len = 0
+    for s, e, d in G_lollipop.edges(data=True):
+        before_len += d['geom'].length
+    after_len = 0
+    for s, e, d in G_lollipop_simpl.edges(data=True):
+        after_len += d['geom'].length
+    assert before_len == after_len
+    print(before_len, after_len)
+    # end point of stick should match start / end point of lollipop
+    assert G_lollipop_simpl[1][2]['geom'].coords[-1] == G_lollipop_simpl[2][2]['geom'].coords[0]
+    # start and end point of lollipop should match
+    assert G_lollipop_simpl[2][2]['geom'].coords[0] == G_lollipop_simpl[2][2]['geom'].coords[-1]
+
     # check that missing geoms throw an error
     G_attr = G_messy.copy()
     for i, (s, e) in enumerate(G_attr.edges()):

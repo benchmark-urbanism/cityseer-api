@@ -142,8 +142,24 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
 
     logger.info(f'Simplifying graph intersections.')
     g_copy = networkX_graph.copy()
-
     removed_nodes = set()
+
+    def manual_weld(_G, _start_node, _geom_a, _geom_b):
+        s_x = _G.nodes[_start_node]['x']
+        s_y = _G.nodes[_start_node]['y']
+        # check geom coordinates directionality - flip to wind in same direction
+        # i.e. _geom_a should start at _start_node whereas _geom_b should end at _start_node
+        if not (s_x, s_y) == _geom_a.coords[0][:2]:
+            _geom_a = geometry.LineString(_geom_a.coords[::-1])
+        if not (s_x, s_y) == _geom_b.coords[-1][:2]:
+            _geom_b = geometry.LineString(_geom_b.coords[::-1])
+        # now concatenate
+        _new_agg_geom = geometry.LineString(list(_geom_a.coords) + list(_geom_b.coords))
+        # check
+        assert _new_agg_geom.coords[0] == (s_x, s_y)
+        assert _new_agg_geom.coords[-1] == (s_x, s_y)
+        return _new_agg_geom
+
     def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node):
 
         # if the next node has a degree of 2, then follow the chain
@@ -169,21 +185,13 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             # when welding an isolated circular component, the ops linemerge will potentially weld onto the wrong end
             # i.e. start-side instead of end-side... so orient and merge manually
             if _new_next == start_node:
-                s_x = _G.nodes[start_node]['x']
-                s_y = _G.nodes[start_node]['y']
-                # check geom coordinates directionality - flip agg_geom and new_geom to wind in same direction
-                # the new geom should end at the start coordinate
-                if not (s_x, s_y) == new_geom.coords[-1][:2]:
-                    new_geom = geometry.LineString(new_geom.coords[::-1])
-                if not (s_x, s_y) == agg_geom.coords[0][:2]:
-                    agg_geom = geometry.LineString(agg_geom.coords[::-1])
-                # now concatenate
-                _new_agg_geom = geometry.LineString(list(agg_geom.coords) + list(new_geom.coords))
+                _new_agg_geom = manual_weld(_G, start_node, new_geom, agg_geom)
             else:
                 _new_agg_geom = ops.linemerge([agg_geom, new_geom])
             if _new_agg_geom.type != 'LineString':
                 raise AttributeError(
-                    f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}. Check that the adjacent LineStrings in the vicinity of {curr_node}-{next_node} are not corrupted.')
+                    f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}.'
+                    f'Check that the adjacent LineStrings in the vicinity of {curr_node}-{next_node} are not corrupted.')
             return recursive_weld(_G, start_node, _new_agg_geom, agg_del_nodes, _new_curr, _new_next)
         else:
             end_node = next_node
@@ -211,7 +219,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             # start the A direction recursive weld
             agg_geom_a, agg_del_nodes_a, end_node_a = recursive_weld(networkX_graph, n, geom_a, [], n, nb_a)
 
-            # only follow geom B if geom A doesn't return a looping disconnected component
+            # only follow geom B if geom A doesn't return an isolated (disconnected) looping component
             # e.g. circular disconnected walkway
             if end_node_a == n:
                 logger.warning(f'Disconnected looping component encountered around {n}')
@@ -237,12 +245,21 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             g_copy.remove_nodes_from(agg_del_nodes)
             removed_nodes.update(agg_del_nodes)
 
-            # add new edge
-            # disconnected self-loops are caught above, so no need to check for orientation vis-a-vis linemerge
-            merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
+            # merge the lines
+            # disconnected self-loops are caught above per geom a, i.e. where the whole loop is degree == 2
+            # however, lollipop scenarios are not, so weld manually
+            # lollipop scenarios are where a looping component (all degrees == 2) suspends off a node with degree > 2
+            if end_node_a == end_node_b:
+                merged_line = manual_weld(networkX_graph, end_node_a, agg_geom_a, agg_geom_b)
+            else:
+                merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
+
+            # run checks
             if merged_line.type != 'LineString':
                 raise AttributeError(
                     f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
+
+            # add new edge
             g_copy.add_edge(end_node_a, end_node_b, geom=merged_line)
 
     return g_copy
