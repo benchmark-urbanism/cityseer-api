@@ -142,7 +142,7 @@ D.compute_aggregated(landuse_labels,
 
 # let's generate some numerical data
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
-# compute max, min, mean, mean-weighted, range, and range-weighted
+# compute max, min, mean, mean-weighted, variance, and variance-weighted
 D.compute_stats_single(stats_key='valuations', stats_data_arr=mock_valuations_data[0])
 ```
 
