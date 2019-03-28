@@ -8,6 +8,6 @@
     "standard": "12.0.1",
     "vuepress": "^1.0.0-alpha.44",
     "vuepress-plugin-mathjax": "1.2.2",
-    "vuepress-theme-cityseer": "0.2.4"
+    "vuepress-theme-cityseer": "0.3.0"
   }
 }

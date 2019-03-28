@@ -2,7 +2,7 @@
 
 ---
 
-Cityseer <Chip text="beta"/>
+cityseer <Chip text="beta"/>
 --------
 
 `cityseer` is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
@@ -85,7 +85,7 @@ Once prepared, the `networkX` graph can be transformed into a [`Network_Layer`](
 
 The [`@compute_centrality`](/metrics/networks.html#compute-centrality) method wraps underlying numba optimised functions that compute a range of centrality methods. These are performed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simpler [`@gravity`](/metrics/networks.html#gravity), [`@harmonic_closeness`](/metrics/networks.html#harmonic-closeness), [`@improved_closeness`](/metrics/networks.html#improved-closeness), [`@betweenness`](/metrics/networks.html#betweenness), or [`@weighted_betweenness`](/metrics/networks.html#betweenness-gravity) methods. 
 
-The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [@metrics_to_dict](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [@to_networkX](/metrics/networks.html#to-networkx) method.
+The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`@metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`@to_networkX`](/metrics/networks.html#to-networkx) method.
 
 ```python
 from cityseer.metrics import networks
@@ -201,7 +201,7 @@ plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labe
 
 <img src="./images/plots/intro_gravity.png" alt="Example gravity plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
 
-_$400m$ gravity (left) and $400m$ branch-weighted mixed-uses plot (right) on a $20m$ decomposed graph._
+_$400m$ gravity (left) and $400m$ branch-weighted mixed-uses (right) plots on a $20m$ decomposed graph._
 
 
 Issues & Contributions

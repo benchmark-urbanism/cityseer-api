@@ -847,10 +847,10 @@
   dependencies:
     lodash.throttle "^4.1.1"
 
-"@vuepress/plugin-back-to-top@^1.0.0-alpha.0":
-  version "1.0.0-alpha.0"
-  resolved "https://registry.yarnpkg.com/@vuepress/plugin-back-to-top/-/plugin-back-to-top-1.0.0-alpha.0.tgz#401513b39d5dd081f49404c35ab6f51002c1cca0"
-  integrity sha512-Ll7AdL/Lnnqft73NVJlnlZQeWurJ4U6dfeBsbcJjnywrldQ3M4nVdXWxXVCpMOILxpIuzEPhS60sudk93rVtgQ==
+"@vuepress/plugin-back-to-top@^1.0.0-alpha.44":
+  version "1.0.0-alpha.44"
+  resolved "https://registry.yarnpkg.com/@vuepress/plugin-back-to-top/-/plugin-back-to-top-1.0.0-alpha.44.tgz#e480c23283118a8c90c3291ad1acbae593cf333c"
+  integrity sha512-h2jbvWEDwphoQQ6dq+dvEcFc4gbXFSuUgA7yqfQkqTdtxLnEOkFV5CXoUKhMMJyPR4PqBO6Z4n361BYpSvTwuQ==
   dependencies:
     lodash.debounce "^4.0.8"
 
@@ -902,7 +902,7 @@
     semver "^5.5.0"
     upath "^1.1.0"
 
-"@vuepress/theme-default@^1.0.0-alpha.39", "@vuepress/theme-default@^1.0.0-alpha.44":
+"@vuepress/theme-default@^1.0.0-alpha.44":
   version "1.0.0-alpha.44"
   resolved "https://registry.yarnpkg.com/@vuepress/theme-default/-/theme-default-1.0.0-alpha.44.tgz#48f973dc52a83a9c64292ec15c2c341111bb28c4"
   integrity sha512-a2OXi1Z73Ix2gZuFxwnpiwLG8AxrvRBLM8gzNjHh1VEd5YGOFaTh6wt/QHcuFmuUDCvH56HNBprTwTBYv9tHxA==
@@ -7623,13 +7623,13 @@ vuepress-plugin-mathjax@1.2.2:
     mathjax3 "^3.0.0-beta.3"
     vuepress-mergeable "^1.0.0"
 
-vuepress-theme-cityseer@0.2.4:
-  version "0.2.4"
-  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.2.4.tgz#a5feeed2394b41794507bb70a2b89e0e7231ae7c"
-  integrity sha512-7EFf0yfEyjotybwydqX2QMACJXFSs1Bp0GfmsmtbRnAjN0pH4jjQ/0etuyOYeJo9ITiri5doQ7Ue0UgGZ/OZkQ==
+vuepress-theme-cityseer@0.3.0:
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.3.0.tgz#f1593d32e0320d6094dff2f3e1f8bb2da6207c5e"
+  integrity sha512-nflGTkKd41qnjibSDYBnxc+ppmVfzRKrRt3O/Rly0KNSGjDx44uy4rWc5/tabVJck/uNylHuNVn9Gq4M9ZkzxQ==
   dependencies:
-    "@vuepress/plugin-back-to-top" "^1.0.0-alpha.0"
-    "@vuepress/theme-default" "^1.0.0-alpha.39"
+    "@vuepress/plugin-back-to-top" "^1.0.0-alpha.44"
+    "@vuepress/theme-default" "^1.0.0-alpha.44"
     stylus-loader "3.0.2"
     vuetify "1.5.7"
     vuetify-loader "1.2.1"

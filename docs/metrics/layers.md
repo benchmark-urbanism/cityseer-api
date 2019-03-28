@@ -237,7 +237,7 @@ The maximum distance to consider when assigning respective data points to the ne
 </FuncElement>
 
 ::: tip Hint
-The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max-dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
+The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max_dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
 :::
 
 ::: warning Note
@@ -436,7 +436,7 @@ An optional list of strings describing which mixed-use metrics to compute, conta
 | raos_pairwise_disparity | $\displaystyle \sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`. |
 
 ::: tip Hint
-The available choices of land-use diversity measures can seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice unless there is reason to use another.
+The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice unless there is reason to use another.
 :::
 
 <FuncElement name="accessibility_keys" type="list, tuple">

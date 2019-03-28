@@ -15,9 +15,9 @@ module.exports = {
     logo: '/round_logo.png',
     lastUpdated: true,
     nav: [
-      {text: 'home', link: '/'},
-      {text: 'docs', link: '/intro'},
-      {text: 'cityseer.io', link: 'https://cityseer.io/'}
+      { text: 'home', link: '/' },
+      { text: 'docs', link: '/intro' },
+      { text: 'cityseer.io', link: 'https://cityseer.io/' }
     ],
     displayAllHeaders: false,
     activeHeaderLinks: true,
