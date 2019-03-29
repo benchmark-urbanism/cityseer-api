@@ -1,12 +1,12 @@
 import numpy as np
 from numba import njit
+from numba.pycc import CC
+
+cc = CC('diversity')
 
 
-# cc = CC('diversity')
-
-
-# @cc.export('hill_diversity', '(uint64[:], float64)')
-@njit
+@cc.export('hill_diversity', '(float64[:], float64)')
+@njit(cache=True)
 def hill_diversity(class_counts: np.ndarray, q: float) -> float:
     '''
     Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
@@ -44,8 +44,8 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
         return D ** (1 / (1 - q))  # return as equivalent species
 
 
-# @cc.export('hill_diversity_branch_generic', '(uint64[:], float64[:], float64)')
-@njit
+@cc.export('hill_diversity_branch_distance_wt', '(float64[:], float64[:], float64, float64)')
+@njit(cache=True)
 def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
                                       class_distances: np.array,
                                       q: float,
@@ -110,7 +110,8 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
         return PD  # / T
 
 
-@njit
+@cc.export('hill_diversity_pairwise_distance_wt', '(float64[:], float64[:], float64, float64)')
+@njit(cache=True)
 def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
                                         class_distances: np.ndarray,
                                         q: float,
@@ -201,7 +202,8 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
 
 
-@njit
+@cc.export('hill_diversity_pairwise_matrix_wt', '(float64[:], float64[:,:], float64)')
+@njit(cache=True)
 def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
     '''
     This is the matrix version - requires a precomputed (e.g. disparity) matrix for all classes.
@@ -279,10 +281,10 @@ def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.nd
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
 
 
-# explicit return required, otherwise numba throws:
-# TypeError: invalid signature: 'str' instance not allowed
-# @cc.export('gini_simpson_diversity', 'float64(uint64[:])')
-@njit
+# explicit return required for single item signatures, otherwise numba throws:
+# TypeError: invalid signature: ...evaluates to 'Array' instead of tuple or Signature
+@cc.export('gini_simpson_diversity', 'float64(float64[:])')
+@njit(cache=True)
 def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     '''
     Gini-Simpson
@@ -307,8 +309,8 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     return 1 - G
 
 
-# @cc.export('shannon_diversity', 'float64(uint64[:])')
-@njit
+@cc.export('shannon_diversity', 'float64(float64[:])')
+@njit(cache=True)
 def shannon_diversity(class_counts: np.ndarray) -> float:
     '''
     Entropy
@@ -329,12 +331,12 @@ def shannon_diversity(class_counts: np.ndarray) -> float:
     return -H  # remember negative
 
 
-# @cc.export('raos_quadratic_diversity', '(uint64[:], float64[:,:], float64, float64)')
-@njit
+@cc.export('raos_quadratic_diversity', '(float64[:], float64[:,:], float64, float64)')
+@njit(cache=True)
 def raos_quadratic_diversity(class_counts: np.ndarray,
                              wt_matrix: np.array,
-                             alpha: float = 1,
-                             beta: float = 1) -> float:
+                             alpha: float,
+                             beta: float) -> float:
     '''
     Rao's quadratic - bias corrected and based on disparity
 

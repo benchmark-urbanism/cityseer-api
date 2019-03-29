@@ -10,14 +10,14 @@ def test_hill_diversity():
     # test hill diversity against scipy entropy
     for counts, probs in mock.mock_species_data():
         # check hill q=1 - this can be tested against scipy because hill q=1 is exponential of entropy
-        assert np.allclose(diversity.hill_diversity(counts, q=1), np.exp(entropy(probs)))
+        assert np.allclose(diversity.hill_diversity(counts, 1), np.exp(entropy(probs)))
         # check that hill q<1 and q>1 is reasonably close to scipy entropy
         # (different internal computation)
         assert np.allclose(diversity.hill_diversity(counts, 0.99999999), np.exp(entropy(probs)))
         assert np.allclose(diversity.hill_diversity(counts, 1.00000001), np.exp(entropy(probs)))
         # check for malformed q
         with pytest.raises(ValueError):
-            diversity.hill_diversity(counts, q=-1)
+            diversity.hill_diversity(counts, -1)
 
 
 def test_hill_diversity_branch_distance_wt():
@@ -32,13 +32,13 @@ def test_hill_diversity_branch_distance_wt():
 
         # check for malformed signatures
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts[:-1], non_weights, q=1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts[:-1], non_weights, 1, -0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights[:-1], q=1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights[:-1], 1, -0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=1, beta=0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights, 1, 0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=-1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights, -1, -0.005)
 
 
 def test_hill_diversity_pairwise_distance_wt():
@@ -52,13 +52,13 @@ def test_hill_diversity_pairwise_distance_wt():
 
         # check for malformed signatures
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts[:-1], non_weights, q=1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts[:-1], non_weights, 1, -0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights[:-1], q=1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights[:-1], 1, -0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=1, beta=0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, 1, 0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=-1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, -1, -0.005)
 
 
 def test_hill_diversity_pairwise_matrix_wt():
@@ -72,13 +72,13 @@ def test_hill_diversity_pairwise_matrix_wt():
 
         # check for malformed signatures
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_matrix_wt(counts[:-1], non_matrix, q=1)
+            diversity.hill_diversity_pairwise_matrix_wt(counts[:-1], non_matrix, 1)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix[:-1], q=1)
+            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix[:-1], 1)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix[:, :-1], q=1)
+            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix[:, :-1], 1)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix, q=-1)
+            diversity.hill_diversity_pairwise_matrix_wt(counts, non_matrix, -1)
 
 
 def test_gini_simpson_diversity():
@@ -96,7 +96,7 @@ def test_shannon_diversity():
     '''
     # test against scipy entropy
     for counts, probs in mock.mock_species_data():
-        assert abs(entropy(probs) - diversity.shannon_diversity(probs)) < 0.0000000001
+        assert np.allclose(entropy(probs), diversity.shannon_diversity(probs))
 
 
 def test_raos_quadratic_diversity():
@@ -106,4 +106,4 @@ def test_raos_quadratic_diversity():
     # just run for now to check against unexpectedly thrown errors
     for counts, probs in mock.mock_species_data():
         mock_matrix = np.full((len(counts), len(counts)), 1)
-        diversity.raos_quadratic_diversity(counts, mock_matrix)
+        diversity.raos_quadratic_diversity(counts, mock_matrix, 1, 1)

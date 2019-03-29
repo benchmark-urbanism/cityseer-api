@@ -71,7 +71,8 @@ def test_nearest_idx():
         d_y = d[1]
 
         # find the closest point on the network
-        min_idx, min_dist = data.find_nearest(d_x, d_y, N.x_arr, N.y_arr, max_dist=500)
+        # src_x, src_y, x_arr, y_arr, max_dist
+        min_idx, min_dist = data.find_nearest(d_x, d_y, N.x_arr, N.y_arr, 500)
 
         # check that no other indices are nearer
         for i, n in enumerate(N._nodes):
@@ -108,10 +109,8 @@ def test_assign_to_network():
 
     # 500m visually confirmed in plots
     data_map_test_500 = data_map.copy()
-    data_map_test_500 = data.assign_to_network(data_map_test_500,
-                                               node_map,
-                                               edge_map,
-                                               max_dist=1600)
+    # data_map, node_map, edge_map, max_dist
+    data_map_test_500 = data.assign_to_network(data_map_test_500, node_map, edge_map, 1600)
     targets = [
         [0, 163, 162],
         [1, 42, 228],
@@ -174,14 +173,16 @@ def test_assign_to_network():
 
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
-    data_map_test_0 = data.assign_to_network(data_map_test_0, node_map, edge_map, max_dist=0)
+    # data_map, node_map, edge_map, max_dist
+    data_map_test_0 = data.assign_to_network(data_map_test_0, node_map, edge_map, 0)
     assert np.all(np.isnan(data_map_test_0[:, 2]))
     assert np.all(np.isnan(data_map_test_0[:, 3]))
 
     # max distance of 2000 should return no NaN for nearest
     # there will be some NaN for next nearest
     data_map_test_2000 = data_map.copy()
-    data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_map, edge_map, max_dist=2000)
+    # data_map, node_map, edge_map, max_dist
+    data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_map, edge_map, 2000)
     assert not np.any(np.isnan(data_map_test_2000[:, 2]))
 
 
@@ -200,14 +201,21 @@ def test_aggregate_to_src_idx():
 
         # in this case, use same assignment max dist as search max dist
         data_map_temp = data_map.copy()
-        data_map_temp = data.assign_to_network(data_map_temp, node_map, edge_map, max_dist=max_dist)
+        # data_map, node_map, edge_map, max_dist
+        data_map_temp = data.assign_to_network(data_map_temp, node_map, edge_map, max_dist)
 
         for angular in [True, False]:
             for src_idx in range(len(node_map)):
 
                 # aggregate to src...
+                # src_idx
+                # node_map
+                # edge_map
+                # data_map
+                # max_dist
+                # angular
                 reachable_data_idx, reachable_data_dist, data_trim_to_full = \
-                    data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map_temp, max_dist, angular=angular)
+                    data.aggregate_to_src_idx(src_idx, node_map, edge_map, data_map_temp, max_dist, angular)
 
                 # now compare to manual checks on distances:
 
@@ -239,14 +247,21 @@ def test_aggregate_to_src_idx():
                                                                           max_dist)
 
                 # get the network distances
+                # node_map
+                # edge_map
+                # src_idx
+                # trim_to_full_idx_map
+                # full_to_trim_idx_map
+                # max_dist
+                # angular
                 map_impedance_trim, map_distance_trim, map_pred_trim, _cycles_trim = \
                     centrality.shortest_path_tree(node_map,
                                                   edge_map,
                                                   src_idx,
                                                   netw_trim_to_full,
                                                   netw_full_to_trim,
-                                                  max_dist=max_dist,
-                                                  angular=angular)
+                                                  max_dist,
+                                                  angular)
 
                 # verify distances vs. the max
                 for d_full_idx in range(len(data_map_temp)):
@@ -324,6 +339,7 @@ def test_local_aggregator_signatures():
     # setup data
     data_dict = mock.mock_data_dict(G, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
+    # data_map, node_map, edge_map, max_dist
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
 
     # set parameters
@@ -333,6 +349,19 @@ def test_local_aggregator_signatures():
     mock_categorical = mock.mock_categorical_data(len(data_map))
     landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
 
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     # check that empty land_use encodings are caught
     with pytest.raises(ValueError):
         data.local_aggregator(node_map,
@@ -340,7 +369,14 @@ def test_local_aggregator_signatures():
                               data_map,
                               distances,
                               betas,
-                              mixed_use_hill_keys=np.array([0]))
+                              np.array([]),
+                              np.array([]),
+                              np.array([0]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     # check that unequal land_use encodings vs data map lengths are caught
     with pytest.raises(ValueError):
@@ -349,8 +385,14 @@ def test_local_aggregator_signatures():
                               data_map,
                               distances,
                               betas,
-                              landuse_encodings=landuse_encodings[:-1],
-                              mixed_use_other_keys=np.array([0]))
+                              landuse_encodings[:-1],
+                              np.array([]),
+                              np.array([]),
+                              np.array([0]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     # check that no provided metrics flags
     with pytest.raises(ValueError):
@@ -359,7 +401,14 @@ def test_local_aggregator_signatures():
                               data_map,
                               distances,
                               betas,
-                              landuse_encodings=landuse_encodings)
+                              landuse_encodings,
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     # check that missing qs flags
     with pytest.raises(ValueError):
@@ -368,9 +417,28 @@ def test_local_aggregator_signatures():
                               data_map,
                               distances,
                               betas,
-                              mixed_use_hill_keys=np.array([0]),
-                              landuse_encodings=landuse_encodings)
+                              landuse_encodings,
+                              np.array([]),
+                              np.array([0]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     # check that problematic mixed use and accessibility keys are caught
     for mu_h_key, mu_o_key, ac_key in [
         # negatives
@@ -392,10 +460,13 @@ def test_local_aggregator_signatures():
                                   distances,
                                   betas,
                                   landuse_encodings,
-                                  qs=qs,
-                                  mixed_use_hill_keys=np.array(mu_h_key),
-                                  mixed_use_other_keys=np.array(mu_o_key),
-                                  accessibility_keys=np.array(ac_key))
+                                  qs,
+                                  np.array(mu_h_key),
+                                  np.array(mu_o_key),
+                                  np.array(ac_key),
+                                  np.array(np.full((0, 0), np.nan)),
+                                  np.array(np.full((0, 0), np.nan)),
+                                  False)
 
     for h_key, o_key in (([3], []), ([], [2])):
         # check that missing matrix is caught for disparity weighted indices
@@ -405,10 +476,14 @@ def test_local_aggregator_signatures():
                                   data_map,
                                   distances,
                                   betas,
-                                  landuse_encodings=landuse_encodings,
-                                  qs=qs,
-                                  mixed_use_hill_keys=np.array(h_key),
-                                  mixed_use_other_keys=np.array(o_key))
+                                  landuse_encodings,
+                                  qs,
+                                  np.array(h_key),
+                                  np.array(o_key),
+                                  np.array([]),
+                                  np.array(np.full((0, 0), np.nan)),
+                                  np.array(np.full((0, 0), np.nan)),
+                                  False)
 
         # check that non-square disparity matrix is caught
         mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
@@ -418,11 +493,14 @@ def test_local_aggregator_signatures():
                                   data_map,
                                   distances,
                                   betas,
-                                  landuse_encodings=landuse_encodings,
-                                  qs=qs,
-                                  mixed_use_hill_keys=np.array(h_key),
-                                  mixed_use_other_keys=np.array(o_key),
-                                  cl_disparity_wt_matrix=mock_matrix[:-1])
+                                  landuse_encodings,
+                                  qs,
+                                  np.array(h_key),
+                                  np.array(o_key),
+                                  np.array([]),
+                                  mock_matrix[:-1],
+                                  np.array(np.full((0, 0), np.nan)),
+                                  False)
 
 
 def test_local_aggregator_categorical_components():
@@ -435,6 +513,7 @@ def test_local_aggregator_categorical_components():
     # setup data
     data_dict = mock.mock_data_dict(G, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
+    # data_map, node_map, edge_map, max_dist
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
 
     # set parameters
@@ -453,6 +532,19 @@ def test_local_aggregator_categorical_components():
     ac_keys = np.array([1, 2, 5])
     np.random.shuffle(ac_keys)
 
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
@@ -460,13 +552,14 @@ def test_local_aggregator_categorical_components():
                               data_map,
                               distances,
                               betas,
-                              landuse_encodings=landuse_encodings,
-                              qs=qs,
-                              mixed_use_hill_keys=hill_keys,
-                              mixed_use_other_keys=non_hill_keys,
-                              accessibility_keys=ac_keys,
-                              cl_disparity_wt_matrix=mock_matrix,
-                              angular=False)
+                              landuse_encodings,
+                              qs,
+                              hill_keys,
+                              non_hill_keys,
+                              ac_keys,
+                              mock_matrix,
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     # hill
     hill = mu_data_hill[np.where(hill_keys == 0)][0]
@@ -495,12 +588,19 @@ def test_local_aggregator_categorical_components():
 
         for src_idx in range(len(G)):
 
+            # src_idx
+            # node_map
+            # edge_map
+            # data_map
+            # max_dist
+            # angular
             reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = \
                 data.aggregate_to_src_idx(src_idx,
                                           node_map,
                                           edge_map,
                                           data_map,
-                                          dist_cutoff)
+                                          dist_cutoff,
+                                          False)
 
             # counts of each class type (array length per max unique classes - not just those within max distance)
             cl_counts = np.full(mu_max_unique, 0)
@@ -538,42 +638,39 @@ def test_local_aggregator_categorical_components():
                     a_5_nw += 1
                     a_5_w += np.exp(beta * cl_dist)
 
-            assert ac_1_nw[d_idx][src_idx] == a_1_nw
-            assert ac_2_nw[d_idx][src_idx] == a_2_nw
-            assert ac_5_nw[d_idx][src_idx] == a_5_nw
-
-            assert ac_1_w[d_idx][src_idx] == a_1_w
-            assert ac_2_w[d_idx][src_idx] == a_2_w
-            assert ac_5_w[d_idx][src_idx] == a_5_w
-
-            assert hill[0][d_idx][src_idx] == diversity.hill_diversity(cl_counts, 0)
-            assert hill[1][d_idx][src_idx] == diversity.hill_diversity(cl_counts, 1)
-            assert hill[2][d_idx][src_idx] == diversity.hill_diversity(cl_counts, 2)
-
-            assert hill_branch_wt[0][d_idx][src_idx] == \
-                   diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta)
-            assert hill_branch_wt[1][d_idx][src_idx] == \
-                   diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta)
-            assert hill_branch_wt[2][d_idx][src_idx] == \
-                   diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta)
-
-            assert hill_pw_wt[0][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 0, beta)
-            assert hill_pw_wt[1][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 1, beta)
-            assert hill_pw_wt[2][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 2, beta)
-
-            assert hill_disp_wt[0][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 0)
-            assert hill_disp_wt[1][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 1)
-            assert hill_disp_wt[2][d_idx][src_idx] == \
-                   diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 2)
-
-            assert shannon[d_idx][src_idx] == diversity.shannon_diversity(cl_counts)
-            assert gini[d_idx][src_idx] == diversity.gini_simpson_diversity(cl_counts)
-            assert raos[d_idx][src_idx] == diversity.raos_quadratic_diversity(cl_counts, mock_matrix)
+            assert np.allclose(ac_1_nw[d_idx][src_idx], a_1_nw)
+            assert np.allclose(ac_2_nw[d_idx][src_idx], a_2_nw)
+            assert np.allclose(ac_5_nw[d_idx][src_idx], a_5_nw)
+            assert np.allclose(ac_1_w[d_idx][src_idx], a_1_w)
+            assert np.allclose(ac_2_w[d_idx][src_idx], a_2_w)
+            assert np.allclose(ac_5_w[d_idx][src_idx], a_5_w)
+            assert np.allclose(hill[0][d_idx][src_idx], diversity.hill_diversity(cl_counts, 0))
+            assert np.allclose(hill[1][d_idx][src_idx], diversity.hill_diversity(cl_counts, 1))
+            assert np.allclose(hill[2][d_idx][src_idx], diversity.hill_diversity(cl_counts, 2))
+            assert np.allclose(hill_branch_wt[0][d_idx][src_idx],
+                               diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta))
+            assert np.allclose(hill_branch_wt[1][d_idx][src_idx],
+                               diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta))
+            assert np.allclose(hill_branch_wt[2][d_idx][src_idx],
+                               diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta))
+            assert np.allclose(hill_pw_wt[0][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 0, beta))
+            assert np.allclose(hill_pw_wt[1][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 1, beta))
+            assert np.allclose(hill_pw_wt[2][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, 2, beta))
+            assert np.allclose(hill_disp_wt[0][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 0))
+            assert np.allclose(hill_disp_wt[1][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 1))
+            assert np.allclose(hill_disp_wt[2][d_idx][src_idx],
+                               diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, 2))
+            assert np.allclose(shannon[d_idx][src_idx],
+                               diversity.shannon_diversity(cl_counts))
+            assert np.allclose(gini[d_idx][src_idx],
+                               diversity.gini_simpson_diversity(cl_counts))
+            assert np.allclose(raos[d_idx][src_idx],
+                               diversity.raos_quadratic_diversity(cl_counts, mock_matrix, 1, 1))
 
     # check that angular is passed-through
     # actual angular tests happen in test_shortest_path_tree()
@@ -584,11 +681,25 @@ def test_local_aggregator_categorical_components():
     node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
     data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
     data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
+    # data_map, node_map, edge_map, max_dist
     data_map_dual = data.assign_to_network(data_map_dual, node_map_dual, edge_map_dual, 500)
     mock_categorical = mock.mock_categorical_data(len(data_map_dual))
     landuse_classes_dual, landuse_encodings_dual = layers.encode_categorical(mock_categorical)
     mock_matrix = np.full((len(landuse_classes_dual), len(landuse_classes_dual)), 1)
 
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map_dual,
@@ -597,12 +708,13 @@ def test_local_aggregator_categorical_components():
                               distances,
                               betas,
                               landuse_encodings_dual,
-                              qs=qs,
-                              mixed_use_hill_keys=hill_keys,
-                              mixed_use_other_keys=non_hill_keys,
-                              accessibility_keys=ac_keys,
-                              cl_disparity_wt_matrix=mock_matrix,
-                              angular=True)
+                              qs,
+                              hill_keys,
+                              non_hill_keys,
+                              ac_keys,
+                              mock_matrix,
+                              np.array(np.full((0, 0), np.nan)),
+                              True)
 
     mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep, \
     stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
@@ -612,12 +724,13 @@ def test_local_aggregator_categorical_components():
                               distances,
                               betas,
                               landuse_encodings_dual,
-                              qs=qs,
-                              mixed_use_hill_keys=hill_keys,
-                              mixed_use_other_keys=non_hill_keys,
-                              accessibility_keys=ac_keys,
-                              cl_disparity_wt_matrix=mock_matrix,
-                              angular=False)
+                              qs,
+                              hill_keys,
+                              non_hill_keys,
+                              ac_keys,
+                              mock_matrix,
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     assert not np.allclose(mu_hill_dual, mu_hill_dual_sidestep)
     assert not np.allclose(mu_other_dual, mu_other_dual_sidestep)
@@ -635,6 +748,7 @@ def test_local_aggregator_numerical_components():
     # setup data
     data_dict = mock.mock_data_dict(G, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
+    # data_map, node_map, edge_map, max_dist
     data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
     # for debugging
     # from cityseer.util import plot
@@ -645,6 +759,19 @@ def test_local_aggregator_numerical_components():
     distances = networks.distance_from_beta(betas)
     mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
 
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
@@ -652,8 +779,14 @@ def test_local_aggregator_numerical_components():
                               data_map,
                               distances,
                               betas,
-                              numerical_arrays=mock_numerical,
-                              angular=False)
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              mock_numerical,
+                              False)
 
     # non connected portions of the graph will have different stats
     # used manual data plots from test_assign_to_network() to see which nodes the data points are assigned to

@@ -3,9 +3,11 @@ import copy
 import numpy as np
 import pytest
 
-from cityseer.algos import checks, centrality
+from cityseer.algos import centrality
 from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs
+
+def_min_thresh_wt = 0.01831563888873418
 
 
 def test_distance_from_beta():
@@ -52,7 +54,7 @@ def test_Network_Layer():
             assert np.array_equal(N._edges, edge_map)
             assert np.array_equal(N.distances, distances)  # inferred automatically when only betas provided
             assert np.array_equal(N.betas, betas)  # inferred automatically when only distances provided
-            assert N.min_threshold_wt == checks.def_min_thresh_wt
+            assert N.min_threshold_wt == def_min_thresh_wt
             assert N.angular == angular
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
@@ -118,7 +120,7 @@ def test_Network_Layer_From_nX():
             assert np.array_equal(N._edges, edge_map)
             assert np.array_equal(N.distances, distances)  # inferred automatically when only betas provided
             assert np.array_equal(N.betas, betas)  # inferred automatically when only distances provided
-            assert N.min_threshold_wt == checks.def_min_thresh_wt
+            assert N.min_threshold_wt == def_min_thresh_wt
             assert N.angular == angular
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
@@ -271,22 +273,40 @@ def test_compute_centrality():
     N_temp = copy.deepcopy(N)
     N_temp.compute_centrality(close_metrics=['node_density'])
     # test against underlying method
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     cl_data, bt_data = centrality.local_centrality(node_map,
                                                    edge_map,
                                                    distances,
                                                    betas,
-                                                   closeness_keys=np.array([0]))
+                                                   np.array([0]),
+                                                   np.array([]),
+                                                   False)
     for d_idx, d_key in enumerate(distances):
         assert np.array_equal(N_temp.metrics['centrality']['node_density'][d_key], cl_data[0][d_idx])
 
     N_temp = copy.deepcopy(N)
     N_temp.compute_centrality(between_metrics=['betweenness'])
     # test against underlying method
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     cl_data, bt_data = centrality.local_centrality(node_map,
                                                    edge_map,
                                                    distances,
                                                    betas,
-                                                   betweenness_keys=np.array([0]))
+                                                   np.array([]),
+                                                   np.array([0]),
+                                                   False)
     for d_idx, d_key in enumerate(distances):
         assert np.array_equal(N_temp.metrics['centrality']['betweenness'][d_key], bt_data[0][d_idx])
 
@@ -324,12 +344,20 @@ def test_compute_centrality():
             N_temp = copy.deepcopy(N)
             N_temp.compute_centrality(close_metrics=cl_metrics, between_metrics=bt_metrics)
             # test against underlying method
+            # node_map
+            # edge_map
+            # distances
+            # betas
+            # closeness_keys
+            # betweenness_keys
+            # angular
             cl_data, bt_data = centrality.local_centrality(node_map,
                                                            edge_map,
                                                            distances,
                                                            betas,
-                                                           closeness_keys=cl_keys,
-                                                           betweenness_keys=bt_keys)
+                                                           cl_keys,
+                                                           bt_keys,
+                                                           False)
             for cl_idx, cl_m in enumerate(cl_metrics):
                 for d_idx, d_key in enumerate(distances):
                     assert np.array_equal(N_temp.metrics['centrality'][cl_m][d_key], cl_data[cl_idx][d_idx])

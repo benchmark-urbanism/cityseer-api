@@ -2,23 +2,24 @@ from typing import Tuple
 
 import numpy as np
 from numba import njit
+from numba.pycc import CC
 
 from cityseer.algos import data, checks
 
+cc = CC('centrality')
 
-# cc = CC('centrality')
 
-
-# @cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
-@njit
+# trim indices contain np.nan so must be float
+@cc.export('shortest_path_tree', '(float64[:,:], float64[:,:], uint64, float64[:], float64[:], float64, boolean)')
+@njit(cache=True)
 def shortest_path_tree(
         node_map: np.ndarray,
         edge_map: np.ndarray,
         src_idx: int,
         trim_to_full_idx_map: np.ndarray,
         full_to_trim_idx_map: np.ndarray,
-        max_dist: float = np.inf,
-        angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        max_dist: float,
+        angular: bool) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     All shortest paths to max network distance from source node
 
@@ -170,15 +171,15 @@ def shortest_path_tree(
     return map_impedance, map_distance, map_pred, cycles
 
 
-# @cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
-@njit
+@cc.export('local_centrality', '(float64[:,:], float64[:,:], float64[:], float64[:], uint64[:], uint64[:], boolean)')
+@njit(cache=True)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
                      betas: np.ndarray,
-                     closeness_keys: np.ndarray = np.array([]),
-                     betweenness_keys: np.ndarray = np.array([]),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+                     closeness_keys: np.ndarray,
+                     betweenness_keys: np.ndarray,
+                     angular: bool) -> Tuple[np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x

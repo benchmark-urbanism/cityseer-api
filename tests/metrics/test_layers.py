@@ -147,6 +147,19 @@ def test_compute_aggregated():
     # generate landuses
     D.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
     # test against underlying method
+    # node_map
+    # edge_map
+    # data_map
+    # distances
+    # betas
+    # landuse_encodings
+    # qs
+    # mixed_use_hill_keys
+    # mixed_use_other_keys
+    # accessibility_keys
+    # cl_disparity_wt_matrix
+    # numerical_arrays
+    # angular
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
     stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
@@ -156,8 +169,13 @@ def test_compute_aggregated():
                               distances,
                               betas,
                               landuse_encodings,
-                              qs=qs,
-                              mixed_use_hill_keys=np.array([1]))
+                              qs,
+                              np.array([1]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     for q_idx, q_key in enumerate(qs):
         for d_idx, d_key in enumerate(distances):
@@ -177,7 +195,13 @@ def test_compute_aggregated():
                               distances,
                               betas,
                               landuse_encodings,
-                              mixed_use_other_keys=np.array([1]))
+                              qs,
+                              np.array([]),
+                              np.array([1]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     for d_idx, d_key in enumerate(distances):
         assert np.array_equal(N_temp.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx])
@@ -195,7 +219,13 @@ def test_compute_aggregated():
                               distances,
                               betas,
                               landuse_encodings,
-                              accessibility_keys=np.array([landuse_classes.index('c')]))
+                              qs,
+                              np.array([]),
+                              np.array([]),
+                              np.array([landuse_classes.index('c')]),
+                              np.array(np.full((0, 0), np.nan)),
+                              np.array(np.full((0, 0), np.nan)),
+                              False)
 
     for d_idx, d_key in enumerate(distances):
         assert np.array_equal(N_temp.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx])
@@ -252,6 +282,19 @@ def test_compute_aggregated():
                                           qs=qs)
 
                 # test against underlying method
+                # node_map
+                # edge_map
+                # data_map
+                # distances
+                # betas
+                # landuse_encodings
+                # qs
+                # mixed_use_hill_keys
+                # mixed_use_other_keys
+                # accessibility_keys
+                # cl_disparity_wt_matrix
+                # numerical_arrays
+                # angular
                 mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
                 stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
                     data.local_aggregator(node_map,
@@ -260,11 +303,13 @@ def test_compute_aggregated():
                                           distances,
                                           betas,
                                           landuse_encodings,
-                                          qs=qs,
-                                          mixed_use_hill_keys=mu_h_keys,
-                                          mixed_use_other_keys=mu_o_keys,
-                                          accessibility_keys=ac_keys,
-                                          cl_disparity_wt_matrix=mock_disparity_wt_matrix)
+                                          qs,
+                                          mu_h_keys,
+                                          mu_o_keys,
+                                          ac_keys,
+                                          mock_disparity_wt_matrix,
+                                          np.array(np.full((0, 0), np.nan)),
+                                          False)
 
                 for mu_h_idx, mu_h_met in enumerate(mu_h_metrics):
                     for q_idx, q_key in enumerate(qs):
@@ -340,7 +385,14 @@ def test_compute_aggregated():
                               data_map,
                               distances,
                               betas,
-                              numerical_arrays=mock_numeric)
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array([]),
+                              np.array(np.full((0, 0), np.nan)),
+                              mock_numeric,
+                              False)
 
     stats_keys = ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
     stats_data = [stats_max, stats_min, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt]

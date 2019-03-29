@@ -2,15 +2,15 @@ from typing import Tuple
 
 import numpy as np
 from numba import njit
+from numba.pycc import CC
 
 from cityseer.algos import centrality, checks, diversity
 
+cc = CC('data')
 
-# cc = CC('data')
 
-
-# @cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
-@njit
+@cc.export('_generate_trim_to_full_map', '(float64[:], uint64)')
+@njit(cache=True)
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
     trim_to_full_idx_map = np.full(trim_count, np.nan)
@@ -27,7 +27,8 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
     return trim_to_full_idx_map
 
 
-@njit
+@cc.export('radial_filter', '(float64, float64, float64[:], float64[:], float64)')
+@njit(cache=True)
 def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
@@ -48,7 +49,8 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
     return trim_to_full_idx_map, full_to_trim_idx_map
 
 
-@njit
+@cc.export('find_nearest', '(float64, float64, float64[:], float64[:], float64)')
+@njit(cache=True)
 def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
@@ -67,8 +69,8 @@ def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarra
     return min_idx, min_dist
 
 
-# @cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64)')
-@njit
+@cc.export('assign_to_network', '(float64[:,:], float64[:,:], float64[:,:], float64)')
+@njit(cache=True)
 def assign_to_network(data_map: np.ndarray,
                       node_map: np.ndarray,
                       edge_map: np.ndarray,
@@ -330,14 +332,14 @@ def assign_to_network(data_map: np.ndarray,
     return data_map
 
 
-# @cc.export('aggregate_to_src_idx', '(uint64, float64, float64[:,:], float64[:,:], float64[:,:], float64[:,:], float64[:,:], boolean)')
-@njit
+@cc.export('aggregate_to_src_idx', '(uint64, float64[:,:], float64[:,:], float64[:,:], float64, boolean)')
+@njit(cache=True)
 def aggregate_to_src_idx(src_idx: int,
                          node_map: np.ndarray,
                          edge_map: np.ndarray,
                          data_map: np.ndarray,
                          max_dist: float,
-                         angular: bool = False):
+                         angular: bool):
     # this function is typically called iteratively, so do type checks from parent methods
 
     netw_x_arr = node_map[:, 0]
@@ -420,20 +422,35 @@ def aggregate_to_src_idx(src_idx: int,
     return reachable_data_idx, reachable_data_dist, data_trim_to_full_idx_map
 
 
-@njit
+# np.array([])
+# np.array(np.full((0, 0), np.nan))
+@cc.export('local_aggregator', '(float64[:,:], '
+                               'float64[:,:], '
+                               'float64[:,:], '
+                               'float64[:], '
+                               'float64[:], '
+                               'uint64[:], '
+                               'float64[:], '
+                               'uint64[:], '
+                               'uint64[:], '
+                               'uint64[:], '
+                               'float64[:,:], '
+                               'float64[:,:], '
+                               'boolean)')
+@njit(cache=True)
 def local_aggregator(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      data_map: np.ndarray,
                      distances: np.ndarray,
                      betas: np.ndarray,
-                     landuse_encodings: np.ndarray = np.array([]),
-                     qs: np.ndarray = np.array([]),
-                     mixed_use_hill_keys: np.ndarray = np.array([]),
-                     mixed_use_other_keys: np.ndarray = np.array([]),
-                     accessibility_keys: np.ndarray = np.array([]),
-                     cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                     numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                     landuse_encodings: np.ndarray,
+                     qs: np.ndarray,
+                     mixed_use_hill_keys: np.ndarray,
+                     mixed_use_other_keys: np.ndarray,
+                     accessibility_keys: np.ndarray,
+                     cl_disparity_wt_matrix: np.ndarray,
+                     numerical_arrays: np.ndarray,
+                     angular: bool) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                      np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
@@ -537,6 +554,7 @@ def local_aggregator(node_map: np.ndarray,
             disp_check(cl_disparity_wt_matrix)
 
     compute_numerical = False
+    # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan))
     if len(numerical_arrays) != 0:
         compute_numerical = True
         if numerical_arrays.shape[1] != len(data_map):
@@ -646,20 +664,18 @@ def local_aggregator(node_map: np.ndarray,
 
                         elif mu_hill_key == 1:
                             mixed_use_hill_data[1][q_idx][d_idx][src_idx] = \
-                                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q_key, b)
 
                         elif mu_hill_key == 2:
                             mixed_use_hill_data[2][q_idx][d_idx][src_idx] = \
-                                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q_key, b)
 
                         # land-use classification disparity hill diversity
                         # the wt matrix can be used without mapping because cl_counts is based on all classes
                         # regardless of whether they are reachable
                         elif mu_hill_key == 3:
                             mixed_use_hill_data[3][q_idx][d_idx][src_idx] = \
-                                diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
-                                                                            wt_matrix=cl_disparity_wt_matrix,
-                                                                            q=q_key)
+                                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, cl_disparity_wt_matrix, q_key)
 
                 for mu_other_key in mixed_use_other_keys:
 
@@ -673,7 +689,7 @@ def local_aggregator(node_map: np.ndarray,
 
                     elif mu_other_key == 2:
                         mixed_use_other_data[2][d_idx][src_idx] = \
-                            diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+                            diversity.raos_quadratic_diversity(cl_counts, cl_disparity_wt_matrix, 1, 1)
 
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array

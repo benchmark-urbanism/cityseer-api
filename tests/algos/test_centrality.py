@@ -37,13 +37,20 @@ def test_shortest_path_tree():
                                                                             y_arr,
                                                                             max_dist)
             # check shortest path maps
+            # node_map
+            # edge_map
+            # src_idx
+            # trim_to_full_idx_map
+            # full_to_trim_idx_map
+            # max_dist
+            # angular
             map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(node_map,
                                                                                           edge_map,
                                                                                           src,
                                                                                           trim_to_full_idx_map,
                                                                                           full_to_trim_idx_map,
-                                                                                          max_dist=max_dist,
-                                                                                          angular=False)
+                                                                                          max_dist,  # max_dist
+                                                                                          False)  # angular
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G, src, weight='impedance', cutoff=max_dist)
             for j in range(len(G)):
@@ -73,13 +80,20 @@ def test_shortest_path_tree():
                                                                     np.inf)
 
     # SIMPLEST PATH: get simplest path tree using angular impedance
+    # node_map
+    # edge_map
+    # src_idx
+    # trim_to_full_idx_map
+    # full_to_trim_idx_map
+    # max_dist
+    # angular
     map_impedance_a, map_distance_a, map_pred_a, cycles_a = centrality.shortest_path_tree(node_map_dual,
                                                                                           edge_map_dual,
                                                                                           src,
                                                                                           trim_to_full_idx_map,
                                                                                           full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=True)
+                                                                                          np.inf,  # max_dist
+                                                                                          True)  # angular
     # find path
     path_a = find_path(map_pred_a, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_a = [node_uids_dual[n] for n in path_a]
@@ -91,13 +105,20 @@ def test_shortest_path_tree():
     edge_map_m = edge_map_dual.copy()
     edge_map_m[:, 3] = edge_map_m[:, 2]
     # get shortest path tree using distance impedance
+    # node_map
+    # edge_map
+    # src_idx
+    # trim_to_full_idx_map
+    # full_to_trim_idx_map
+    # max_dist
+    # angular
     map_impedance_m, map_distance_m, map_pred_m, cycles_m = centrality.shortest_path_tree(node_map_dual,
                                                                                           edge_map_m,
                                                                                           src,
                                                                                           trim_to_full_idx_map,
                                                                                           full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=False)
+                                                                                          np.inf,  # max_dist
+                                                                                          False)  # angular
     # find path
     path_m = find_path(map_pred_m, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_m = [node_uids_dual[n] for n in path_m]
@@ -107,26 +128,40 @@ def test_shortest_path_tree():
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src = node_uids_dual.index('10_43')
     target = node_uids_dual.index('10_5')
+    # node_map
+    # edge_map
+    # src_idx
+    # trim_to_full_idx_map
+    # full_to_trim_idx_map
+    # max_dist
+    # angular
     map_impedance_ns, map_distance_ns, map_pred_ns, cycles_ns = centrality.shortest_path_tree(node_map_dual,
                                                                                               edge_map_dual,
                                                                                               src,
                                                                                               trim_to_full_idx_map,
                                                                                               full_to_trim_idx_map,
-                                                                                              max_dist=np.inf,
-                                                                                              angular=True)
+                                                                                              np.inf,  # max_dist
+                                                                                              True)  # angular
     # find path
     path_ns = find_path(map_pred_ns, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_ns = [node_uids_dual[n] for n in path_ns]
     assert path_transpose_ns == ['10_43', '10_5']
 
     # WITH SIDESTEPS - set angular flag to False
+    # node_map
+    # edge_map
+    # src_idx
+    # trim_to_full_idx_map
+    # full_to_trim_idx_map
+    # max_dist
+    # angular
     map_impedance_s, map_distance_s, map_pred_s, cycles_s = centrality.shortest_path_tree(node_map_dual,
                                                                                           edge_map_dual,
                                                                                           src,
                                                                                           trim_to_full_idx_map,
                                                                                           full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=False)
+                                                                                          np.inf,  # max_dist
+                                                                                          False)  # angular
     # find path
     path_s = find_path(map_pred_s, target, trim_to_full_idx_map, full_to_trim_idx_map)
     path_transpose_s = [node_uids_dual[n] for n in path_s]
@@ -134,23 +169,37 @@ def test_shortest_path_tree():
 
     # check that out of range src index raises error
     with pytest.raises(ValueError):
+        # node_map
+        # edge_map
+        # src_idx
+        # trim_to_full_idx_map
+        # full_to_trim_idx_map
+        # max_dist
+        # angular
         centrality.shortest_path_tree(node_map_dual,
                                       edge_map_dual,
                                       len(node_map_dual),
                                       trim_to_full_idx_map,
                                       full_to_trim_idx_map,
-                                      max_dist=np.inf,
-                                      angular=False)
+                                      np.inf,  # max_dist
+                                      False)  # angular
 
     # test that mismatching full_to_trim length raises error
     with pytest.raises(ValueError):
+        # node_map
+        # edge_map
+        # src_idx
+        # trim_to_full_idx_map
+        # full_to_trim_idx_map
+        # max_dist
+        # angular
         centrality.shortest_path_tree(node_map_dual,
                                       edge_map_dual,
                                       0,
                                       trim_to_full_idx_map,
                                       full_to_trim_idx_map[:-1],
-                                      max_dist=np.inf,
-                                      angular=False)
+                                      np.inf,  # max_dist
+                                      False)  # angular
 
 
 def decomposed_centrality_check():
@@ -171,7 +220,7 @@ def decomposed_centrality_check():
                                     betas,
                                     np.array([3]),  # harmonic key
                                     np.array([0]),  # betweenness key
-                                    angular=False)
+                                    False)  # angular
 
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_decomposed, distance='impedance')
@@ -218,6 +267,13 @@ def test_local_centrality():
     np.random.shuffle(betweenness_keys)
 
     # compute closeness and betweenness
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     closeness_data, betweenness_data = \
         centrality.local_centrality(node_map,
                                     edge_map,
@@ -225,7 +281,7 @@ def test_local_centrality():
                                     betas,
                                     closeness_keys,
                                     betweenness_keys,
-                                    angular=False)
+                                    False)  # angular
 
     node_density = closeness_data[np.where(closeness_keys == 0)][0]
     far_impedance = closeness_data[np.where(closeness_keys == 1)][0]
@@ -295,14 +351,21 @@ def test_local_centrality():
                                                                             dist_cutoff)
 
             # get shortest path maps
+            # node_map
+            # edge_map
+            # src_idx
+            # trim_to_full_idx_map
+            # full_to_trim_idx_map
+            # max_dist
+            # angular
             map_impedance_trim, map_distance_trim, map_pred_trim, cycles_trim = \
                 centrality.shortest_path_tree(node_map,
                                               edge_map,
                                               src_idx,
                                               trim_to_full_idx_map,
                                               full_to_trim_idx_map,
-                                              max_dist=dist_cutoff,
-                                              angular=False)
+                                              dist_cutoff,  # max_dist
+                                              False)  # angular
 
             for n_idx in G.nodes():
                 # skip self nodes
@@ -394,6 +457,13 @@ def test_local_centrality():
     closeness_keys.sort()
     betweenness_keys.sort()
     # compute
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     closeness_data_w, betweenness_data_w = \
         centrality.local_centrality(node_map_w,
                                     edge_map,
@@ -401,7 +471,7 @@ def test_local_centrality():
                                     betas,
                                     closeness_keys,
                                     betweenness_keys,
-                                    angular=False)
+                                    False)  # angular
     # unpack
     node_density_w, far_impedance_w, far_distance_w, harmonic_w, improved_w, gravity_w, cycles_w = \
         closeness_data_w[closeness_keys]
@@ -427,6 +497,13 @@ def test_local_centrality():
     G_dual = graphs.nX_to_dual(G)
     node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
 
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     cl_dual, bt_dual = \
         centrality.local_centrality(node_map_dual,
                                     edge_map_dual,
@@ -434,8 +511,15 @@ def test_local_centrality():
                                     betas,
                                     closeness_keys,
                                     betweenness_keys,
-                                    angular=True)
+                                    True)  # angular
 
+    # node_map
+    # edge_map
+    # distances
+    # betas
+    # closeness_keys
+    # betweenness_keys
+    # angular
     cl_dual_sidestep, bt_dual_sidestep = \
         centrality.local_centrality(node_map_dual,
                                     edge_map_dual,
@@ -443,7 +527,7 @@ def test_local_centrality():
                                     betas,
                                     closeness_keys,
                                     betweenness_keys,
-                                    angular=False)
+                                    False)  # angular
 
     assert not np.allclose(cl_dual, cl_dual_sidestep)
     assert not np.allclose(bt_dual, bt_dual_sidestep)
@@ -457,10 +541,17 @@ def test_local_centrality():
                            ([1, 1], [1]),  # duplicate
                            ([1], [1, 1])]:
         with pytest.raises(ValueError):
+            # node_map
+            # edge_map
+            # distances
+            # betas
+            # closeness_keys
+            # betweenness_keys
+            # angular
             centrality.local_centrality(node_map,
                                         edge_map,
                                         distances,
                                         betas,
                                         np.array(cl_key),
                                         np.array(bt_key),
-                                        angular=False)
+                                        False)  # angular
