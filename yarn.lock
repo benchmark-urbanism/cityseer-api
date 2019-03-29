@@ -7614,10 +7614,10 @@ vuepress-mergeable@^1.0.0:
   dependencies:
     deconstruct-merge "^1.1.0"
 
-vuepress-plugin-mathjax@1.2.2:
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.2.2.tgz#9529381f5fb32deabfd576fa8d9f12256e960113"
-  integrity sha512-ua0SS/0RDlzjcccnNn4klUFFJzWhq0nNlSndig8sKhlkpgLCbReeDoLCynptsutmdPvqTwwKnmraW6zETjtJCA==
+vuepress-plugin-mathjax@1.2.3:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.2.3.tgz#e7e370899fac85821d900b7baf79f0d21d3788ec"
+  integrity sha512-50nfWNB36u5VUm0nDQczxU+F2X97DgAoxxlIVMOZYED5BAeetGik52tWzVvTZRHTpFhB8pCoE7zrX4IZ4vMFhA==
   dependencies:
     lru-cache "^5.1.1"
     mathjax3 "^3.0.0-beta.3"
