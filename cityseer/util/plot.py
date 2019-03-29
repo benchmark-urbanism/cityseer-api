@@ -3,11 +3,10 @@ These plot methods are mainly for testing and debugging
 '''
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from networkx import Graph, draw
+import networkx as nx
 import numpy as np
-from shapely.geometry import Polygon
-from cityseer.metrics.layers import encode_categorical
-
+from shapely import geometry
+from cityseer.metrics import layers
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -19,8 +18,8 @@ success = '#2e7d32'
 background = '#2e2e2e'
 
 
-def plot_nX_primal_or_dual(primal: Graph = None,
-                           dual: Graph = None,
+def plot_nX_primal_or_dual(primal: nx.Graph = None,
+                           dual: nx.Graph = None,
                            path: str = None,
                            labels: bool = False,
                            primal_colour: (tuple, list, np.ndarray) = None,
@@ -45,7 +44,7 @@ def plot_nX_primal_or_dual(primal: Graph = None,
         else:
             node_colour = secondary
 
-        draw(primal, pos_primal,
+        nx.draw(primal, pos_primal,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
@@ -71,7 +70,7 @@ def plot_nX_primal_or_dual(primal: Graph = None,
         else:
             node_colour = info
 
-        draw(dual, pos_dual,
+        nx.draw(dual, pos_dual,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
@@ -91,7 +90,7 @@ def plot_nX_primal_or_dual(primal: Graph = None,
         plt.show()
 
 
-def plot_nX(networkX_graph: Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None):
+def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None):
     return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour)
 
 
@@ -117,7 +116,7 @@ def plot_assignment(Network_Layer,
     pos = {}
     for n, d in Graph.nodes(data=True):
         pos[n] = (d['x'], d['y'])
-    draw(Graph, pos,
+    nx.draw(Graph, pos,
             with_labels=node_labels,
             font_size=5,
             font_color='w',
@@ -134,7 +133,7 @@ def plot_assignment(Network_Layer,
         data_cmap = None
     else:
         # generate categorical colormap
-        d_classes, d_encodings = encode_categorical(data_labels)
+        d_classes, d_encodings = layers.encode_categorical(data_labels)
         data_colour = colors.Normalize()(d_encodings)
         data_cmap = 'Dark2'  # Set1
 
@@ -178,7 +177,7 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
                     node_map: np.ndarray,
                     edge_map: np.ndarray,
                     data_map: np.ndarray = None,
-                    poly: Polygon = None):
+                    poly: geometry.Polygon = None):
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))

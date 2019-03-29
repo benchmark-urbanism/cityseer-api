@@ -4,21 +4,21 @@ Generate a graph for testing and documentation purposes.
 import logging
 from typing import Tuple
 
+import networkx as nx
 import numpy as np
-from networkx import Graph
-from utm import to_latlon
+import utm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def mock_graph(wgs84_coords: bool = False) -> Graph:
+def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
     '''
     Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
     :return: NetworkX graph
     '''
 
-    G = Graph()
+    G = nx.Graph()
 
     nodes = [
         (0, {'x': 700700, 'y': 5719700}),
@@ -176,14 +176,14 @@ def mock_graph(wgs84_coords: bool = False) -> Graph:
             northing = d['y']
             # be cognisant of parameter and return order
             # returns in lat, lng order
-            lat, lng = to_latlon(easting, northing, 30, 'U')
+            lat, lng = utm.to_latlon(easting, northing, 30, 'U')
             G.nodes[n]['x'] = lng
             G.nodes[n]['y'] = lat
 
     return G
 
 
-def get_graph_extents(G: Graph) -> Tuple[float, float, float, float]:
+def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
 
     # get min and maxes for x and y
     min_x = np.inf
@@ -204,7 +204,7 @@ def get_graph_extents(G: Graph) -> Tuple[float, float, float, float]:
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(G: Graph, length: int = 50, random_seed: int = None) -> dict:
+def mock_data_dict(G: nx.Graph, length: int = 50, random_seed: int = None) -> dict:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 

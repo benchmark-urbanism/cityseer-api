@@ -3,12 +3,7 @@ from typing import Tuple
 import numpy as np
 from numba import njit
 
-from cityseer.algos.centrality import shortest_path_tree
-from cityseer.algos.checks import check_network_maps, check_data_map, check_distances_and_betas, \
-    check_numerical_data, check_categorical_data
-from cityseer.algos.diversity import hill_diversity, hill_diversity_branch_distance_wt,\
-    hill_diversity_pairwise_distance_wt, hill_diversity_pairwise_matrix_wt,\
-    shannon_diversity, gini_simpson_diversity, raos_quadratic_diversity
+from cityseer.algos import centrality, checks, diversity
 
 
 # cc = CC('data')
@@ -108,7 +103,7 @@ def assign_to_network(data_map: np.ndarray,
     3 - assigned network index - next-nearest
     '''
 
-    check_network_maps(node_map, edge_map)
+    checks.check_network_maps(node_map, edge_map)
 
     def calculate_rotation(point_a, point_b):
         # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
@@ -364,13 +359,13 @@ def aggregate_to_src_idx(src_idx: int,
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is check later
     _map_impedance_trim, map_distance_trim, _map_pred_trim, _cycles_trim = \
-        shortest_path_tree(node_map,
-                            edge_map,
-                            src_idx,
-                            netw_trim_to_full,
-                            netw_full_to_trim,
-                            max_dist=max_dist,
-                            angular=angular)  # turn off checks! This is called iteratively...
+        centrality.shortest_path_tree(node_map,
+                                      edge_map,
+                                      src_idx,
+                                      netw_trim_to_full,
+                                      netw_full_to_trim,
+                                      max_dist=max_dist,
+                                      angular=angular)  # turn off checks! This is called iteratively...
 
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
@@ -460,9 +455,9 @@ def local_aggregator(node_map: np.ndarray,
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     '''
-    check_network_maps(node_map, edge_map)
-    check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
-    check_distances_and_betas(distances, betas)
+    checks.check_network_maps(node_map, edge_map)
+    checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
+    checks.check_distances_and_betas(distances, betas)
 
     # check landuse encodings
     compute_landuses = False
@@ -472,7 +467,7 @@ def local_aggregator(node_map: np.ndarray,
     elif len(landuse_encodings) != len(data_map):
         raise ValueError('The number of landuse encodings does not match the number of data points.')
     else:
-        check_categorical_data(landuse_encodings)
+        checks.check_categorical_data(landuse_encodings)
 
     # catch completely missing metrics
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
@@ -546,7 +541,7 @@ def local_aggregator(node_map: np.ndarray,
         compute_numerical = True
         if numerical_arrays.shape[1] != len(data_map):
             raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
-        check_numerical_data(numerical_arrays)
+        checks.check_numerical_data(numerical_arrays)
 
     # establish variables
     netw_n = len(node_map)
@@ -647,22 +642,22 @@ def local_aggregator(node_map: np.ndarray,
 
                         if mu_hill_key == 0:
                             mixed_use_hill_data[0][q_idx][d_idx][src_idx] = \
-                                hill_diversity(cl_counts, q_key)
+                                diversity.hill_diversity(cl_counts, q_key)
 
                         elif mu_hill_key == 1:
                             mixed_use_hill_data[1][q_idx][d_idx][src_idx] = \
-                                hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
                         elif mu_hill_key == 2:
                             mixed_use_hill_data[2][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
 
                         # land-use classification disparity hill diversity
                         # the wt matrix can be used without mapping because cl_counts is based on all classes
                         # regardless of whether they are reachable
                         elif mu_hill_key == 3:
                             mixed_use_hill_data[3][q_idx][d_idx][src_idx] = \
-                                hill_diversity_pairwise_matrix_wt(cl_counts,
+                                diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
                                                                             wt_matrix=cl_disparity_wt_matrix,
                                                                             q=q_key)
 
@@ -670,15 +665,15 @@ def local_aggregator(node_map: np.ndarray,
 
                     if mu_other_key == 0:
                         mixed_use_other_data[0][d_idx][src_idx] = \
-                            shannon_diversity(cl_counts)
+                            diversity.shannon_diversity(cl_counts)
 
                     elif mu_other_key == 1:
                         mixed_use_other_data[1][d_idx][src_idx] = \
-                            gini_simpson_diversity(cl_counts)
+                            diversity.gini_simpson_diversity(cl_counts)
 
                     elif mu_other_key == 2:
                         mixed_use_other_data[2][d_idx][src_idx] = \
-                            raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+                            diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
 
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array

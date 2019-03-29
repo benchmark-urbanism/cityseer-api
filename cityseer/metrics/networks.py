@@ -4,19 +4,18 @@ Centrality methods
 import logging
 from typing import Union
 
-from networkx import Graph
+import networkx as nx
 import numpy as np
 
-from cityseer.algos.centrality import local_centrality
-from cityseer.algos.checks import def_min_thresh_wt, check_network_maps
-from cityseer.util.graphs import nX_from_graph_maps, graph_maps_from_nX
+from cityseer.algos import centrality, checks
+from cityseer.util import graphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def distance_from_beta(beta: Union[float, list, np.ndarray],
-                       min_threshold_wt: float = def_min_thresh_wt) -> np.ndarray:
+                       min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     # cast to list form
     if isinstance(beta, (int, float)):
         beta = [beta]
@@ -40,7 +39,7 @@ class Network_Layer:
                  edge_map: np.ndarray,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
 
         '''
@@ -80,7 +79,7 @@ class Network_Layer:
         if len(self._uids) != len(self._nodes):
             raise ValueError('The number of indices does not match the number of nodes.')
 
-        check_network_maps(self._nodes, self._edges)
+        checks.check_network_maps(self._nodes, self._edges)
 
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
@@ -209,16 +208,16 @@ class Network_Layer:
 
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
-        return nX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
+        return graphs.nX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
 
     def compute_centrality(self,
                            close_metrics: Union[list, tuple] = None,
                            between_metrics: Union[list, tuple] = None):
         '''
-        This method provides full access to the underlying local_centrality method
+        This method provides full access to the underlying centrality.local_centrality method
         '''
 
-        # see local_centrality for integrity checks on closeness and betweenness keys
+        # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
 
         closeness_options = ['node_density',
@@ -247,7 +246,7 @@ class Network_Layer:
                 betweenness_keys.append(betweenness_options.index(bt))
             logger.info(f'Computing betweenness measures: {", ".join(between_metrics)}')
 
-        closeness_data, betweenness_data = local_centrality(
+        closeness_data, betweenness_data = centrality.local_centrality(
             self._nodes,
             self._edges,
             np.array(self._distances),
@@ -294,12 +293,12 @@ class Network_Layer:
 class Network_Layer_From_nX(Network_Layer):
 
     def __init__(self,
-                 networkX_graph: Graph,
+                 networkX_graph: nx.Graph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
-        node_uids, node_map, edge_map = graph_maps_from_nX(networkX_graph)
+        node_uids, node_map, edge_map = graphs.graph_maps_from_nX(networkX_graph)
 
         super().__init__(node_uids,
                          node_map,

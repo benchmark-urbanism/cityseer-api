@@ -1,15 +1,14 @@
 '''
 General graph manipulation
 '''
-from os import environ
+import os
 import logging
 from typing import Union, Tuple
 
-from networkx import Graph, neighbors, degree, selfloop_edges, convert_node_labels_to_integers
+import networkx as nx
 import numpy as np
-from utm import from_latlon
-from shapely.geometry import LineString, Point
-from shapely.ops import linemerge
+import utm
+from shapely import geometry, ops
 from tqdm import tqdm
 
 from cityseer.algos import checks
@@ -19,13 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 tqdm_suppress = False
-if 'GCP_PROJECT' in environ:
+if 'GCP_PROJECT' in os.environ:
     tqdm_suppress = True
 
 
 # TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658. Note, also used from test_networkX_remove_straight_intersections()
 def substring(geom, start_dist, end_dist, normalized=False):
-    assert (isinstance(geom, LineString))
+    assert (isinstance(geom, geometry.LineString))
 
     # Filter out cases in which to return a point
     if start_dist == end_dist:
@@ -51,7 +50,7 @@ def substring(geom, start_dist, end_dist, normalized=False):
     vertex_list = [(start_point.x, start_point.y)]
     coords = list(geom.coords)
     for p in coords:
-        pd = geom.project(Point(p))
+        pd = geom.project(geometry.Point(p))
         if pd <= min_dist:
             pass
         elif min_dist < pd < max_dist:
@@ -64,11 +63,11 @@ def substring(geom, start_dist, end_dist, normalized=False):
     if start_dist > end_dist:
         vertex_list = reversed(vertex_list)
 
-    return LineString(vertex_list)
+    return geometry.LineString(vertex_list)
 
 
-def nX_simple_geoms(networkX_graph: Graph) -> Graph:
-    if not isinstance(networkX_graph, Graph):
+def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Generating simple (straight) edge geometries.')
@@ -94,13 +93,13 @@ def nX_simple_geoms(networkX_graph: Graph) -> Graph:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {e}.')
         e_y = g_copy.nodes[e]['y']
 
-        g_copy[s][e]['geom'] = LineString([[s_x, s_y], [e_x, e_y]])
+        g_copy[s][e]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
 
     return g_copy
 
 
-def nX_wgs_to_utm(networkX_graph: Graph) -> Graph:
-    if not isinstance(networkX_graph, Graph):
+def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting networkX graph from WGS to UTM.')
@@ -121,7 +120,7 @@ def nX_wgs_to_utm(networkX_graph: Graph) -> Graph:
             raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = from_latlon(lat, lng)[:2]
+        easting, northing = utm.from_latlon(lat, lng)[:2]
         # write back to graph
         g_copy.nodes[n]['x'] = easting
         g_copy.nodes[n]['y'] = northing
@@ -136,15 +135,15 @@ def nX_wgs_to_utm(networkX_graph: Graph) -> Graph:
                 raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # be cognisant of parameter and return order
             # returns in easting, northing order
-            utm_coords = [from_latlon(lat, lng)[:2] for lng, lat in line_geom.coords]
+            utm_coords = [utm.from_latlon(lat, lng)[:2] for lng, lat in line_geom.coords]
             # write back to edge
-            g_copy[s][e]['geom'] = LineString(utm_coords)
+            g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
 
     return g_copy
 
 
-def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
-    if not isinstance(networkX_graph, Graph):
+def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info(f'Simplifying graph intersections.')
@@ -157,11 +156,11 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
         # check geom coordinates directionality - flip to wind in same direction
         # i.e. _geom_a should start at _start_node whereas _geom_b should end at _start_node
         if not (s_x, s_y) == _geom_a.coords[0][:2]:
-            _geom_a = LineString(_geom_a.coords[::-1])
+            _geom_a = geometry.LineString(_geom_a.coords[::-1])
         if not (s_x, s_y) == _geom_b.coords[-1][:2]:
-            _geom_b = LineString(_geom_b.coords[::-1])
+            _geom_b = geometry.LineString(_geom_b.coords[::-1])
         # now concatenate
-        _new_agg_geom = LineString(list(_geom_a.coords) + list(_geom_b.coords))
+        _new_agg_geom = geometry.LineString(list(_geom_a.coords) + list(_geom_b.coords))
         # check
         assert _new_agg_geom.coords[0] == (s_x, s_y)
         assert _new_agg_geom.coords[-1] == (s_x, s_y)
@@ -171,13 +170,13 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
 
         # if the next node has a degree of 2, then follow the chain
         # for disconnected components, check that the next node is not back at the start node...
-        if degree(_G, next_node) == 2 and next_node != start_node:
+        if nx.degree(_G, next_node) == 2 and next_node != start_node:
             # next node becomes new current
             _new_curr = next_node
             # add next node to delete list
             agg_del_nodes.append(next_node)
             # get its neighbours
-            _a, _b = list(neighbors(networkX_graph, next_node))
+            _a, _b = list(nx.neighbors(networkX_graph, next_node))
             # proceed to the new_next node
             if _a == curr_node:
                 _new_next = _b
@@ -194,7 +193,7 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
             if _new_next == start_node:
                 _new_agg_geom = manual_weld(_G, start_node, new_geom, agg_geom)
             else:
-                _new_agg_geom = linemerge([agg_geom, new_geom])
+                _new_agg_geom = ops.linemerge([agg_geom, new_geom])
             if _new_agg_geom.type != 'LineString':
                 raise AttributeError(
                     f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}.'
@@ -212,10 +211,10 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
         if n in removed_nodes:
             continue
 
-        if degree(networkX_graph, n) == 2:
+        if nx.degree(networkX_graph, n) == 2:
 
             # get neighbours and geoms either side
-            nb_a, nb_b = list(neighbors(networkX_graph, n))
+            nb_a, nb_b = list(nx.neighbors(networkX_graph, n))
 
             # geom A
             if 'geom' not in networkX_graph[n][nb_a]:
@@ -259,7 +258,7 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
             if end_node_a == end_node_b:
                 merged_line = manual_weld(networkX_graph, end_node_a, agg_geom_a, agg_geom_b)
             else:
-                merged_line = linemerge([agg_geom_a, agg_geom_b])
+                merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
 
             # run checks
             if merged_line.type != 'LineString':
@@ -272,8 +271,8 @@ def nX_remove_filler_nodes(networkX_graph: Graph) -> Graph:
     return g_copy
 
 
-def nX_decompose(networkX_graph: Graph, decompose_max: float) -> Graph:
-    if not isinstance(networkX_graph, Graph):
+def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info(f'Decomposing graph to maximum edge lengths of {decompose_max}.')
@@ -301,7 +300,7 @@ def nX_decompose(networkX_graph: Graph, decompose_max: float) -> Graph:
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2]:
-            line_geom = LineString(line_geom.coords[::-1])
+            line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
         if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
             raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
@@ -348,16 +347,16 @@ def nX_decompose(networkX_graph: Graph, decompose_max: float) -> Graph:
     return g_copy
 
 
-def nX_to_dual(networkX_graph: Graph) -> Graph:
+def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
 
-    if not isinstance(networkX_graph, Graph):
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting graph to dual with angular impedances.')
-    g_dual = Graph()
+    g_dual = nx.Graph()
 
     def get_half_geoms(g, a_node, b_node):
         '''
@@ -386,7 +385,7 @@ def nX_to_dual(networkX_graph: Graph) -> Graph:
                 f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
         if not (a_x, a_y) == line_geom.coords[0][:2]:
-            line_geom = LineString(line_geom.coords[::-1])
+            line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
         if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
             raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
@@ -420,7 +419,7 @@ def nX_to_dual(networkX_graph: Graph) -> Graph:
         for n_side, half_geom in zip([s, e], [s_half_geom, e_half_geom]):
 
             # add the spoke edges on the dual
-            for nb in neighbors(networkX_graph, n_side):
+            for nb in nx.neighbors(networkX_graph, n_side):
 
                 # don't follow neighbour back to current edge combo
                 if nb in [s, e]:
@@ -443,7 +442,7 @@ def nX_to_dual(networkX_graph: Graph) -> Graph:
                     g_dual.nodes[spoke_node_dual]['live'] = live
 
                 # weld the lines
-                merged_line = linemerge([half_geom, spoke_half_geom])
+                merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
                     raise TypeError(
                         f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
@@ -471,12 +470,12 @@ def nX_to_dual(networkX_graph: Graph) -> Graph:
     return g_dual
 
 
-def nX_auto_edge_params(networkX_graph: Graph) -> Graph:
+def nX_auto_edge_params(networkX_graph: nx.Graph) -> nx.Graph:
     '''
     Not to be used on angular graphs - would overwrite angular impedance
     '''
 
-    if not isinstance(networkX_graph, Graph):
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Generating default edge attributes from edge geoms.')
@@ -497,8 +496,8 @@ def nX_auto_edge_params(networkX_graph: Graph) -> Graph:
     return g_copy
 
 
-def nX_m_weighted_nodes(networkX_graph: Graph) -> Graph:
-    if not isinstance(networkX_graph, Graph):
+def nX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Generating default edge attributes from edge geoms.')
@@ -516,21 +515,21 @@ def nX_m_weighted_nodes(networkX_graph: Graph) -> Graph:
     return g_copy
 
 
-def graph_maps_from_nX(networkX_graph: Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
+def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
     - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
     '''
 
-    if not isinstance(networkX_graph, Graph):
+    if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Preparing node and edge arrays from networkX graph.')
     g_copy = networkX_graph.copy()
 
-    # remove self-edges, otherwise degree includes self-loops
-    for s, e in selfloop_edges(g_copy):
+    # remove self-edges, otherwise nx.degree includes self-loops
+    for s, e in nx.selfloop_edges(g_copy):
         g_copy.remove_edge(s, e)
 
     logger.info('Preparing graph')
@@ -539,11 +538,11 @@ def graph_maps_from_nX(networkX_graph: Graph) -> Tuple[tuple, np.ndarray, np.nda
         # writing to 'labels' in case conversion to integers method interferes with order
         g_copy.nodes[n]['label'] = n
         # sum edges
-        total_out_degrees += degree(g_copy, n)
+        total_out_degrees += nx.degree(g_copy, n)
 
     logger.info('Generating data arrays')
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
-    g_copy = convert_node_labels_to_integers(g_copy, 0)
+    g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and edge maps
     node_uids = []
     node_map = np.full((g_copy.number_of_nodes(), 5), np.nan)  # float - for consistency
@@ -571,7 +570,7 @@ def graph_maps_from_nX(networkX_graph: Graph) -> Tuple[tuple, np.ndarray, np.nda
         # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
         # NB - if an isolated node, then this should be np.nan
         # otherwise it will refer to the incorrect edge since the edge won't be iterated below
-        if degree(g_copy, i) == 0:
+        if nx.degree(g_copy, i) == 0:
             node_map[i][3] = np.nan
         else:
             node_map[i][3] = edge_idx
@@ -613,8 +612,8 @@ def graph_maps_from_nX(networkX_graph: Graph) -> Tuple[tuple, np.ndarray, np.nda
 def nX_from_graph_maps(node_uids: Union[tuple, list],
                        node_map: np.ndarray,
                        edge_map: np.ndarray,
-                       networkX_graph: Graph = None,
-                       metrics_dict: dict = None) -> Graph:
+                       networkX_graph: nx.Graph = None,
+                       metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
     checks.check_network_maps(node_map, edge_map)
@@ -630,7 +629,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                     f'Node uid {uid} not found in graph. If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
     else:
         logger.info('No existing graph found, creating new.')
-        g_copy = Graph()
+        g_copy = nx.Graph()
         for uid in node_uids:
             g_copy.add_node(uid)
 
@@ -643,7 +642,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         g_copy.nodes[uid]['weight'] = wt
 
     logger.info('Unpacking edge data.')
-    for edge in tqdm(edge_map):
+    for edge in tqdm(edge_map, disable=tqdm_suppress):
         start, end, length, impedance = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]
