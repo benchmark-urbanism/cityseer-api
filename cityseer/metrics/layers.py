@@ -1,16 +1,24 @@
+import os
 import logging
 from typing import Tuple, List, Union
 
 import numpy as np
-import utm
+from utm import from_latlon
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
-from cityseer.algos import data, checks
-from cityseer.metrics import networks
+from cityseer.algos.data import assign_to_network, local_aggregator
+from cityseer.algos.checks import check_data_map
+from cityseer.metrics.networks import Network_Layer
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+tqdm_suppress = False
+if 'GCP_PROJECT' in os.environ:
+    tqdm_suppress = True
 
 
 def dict_wgs_to_utm(data_dict: dict) -> dict:
@@ -21,7 +29,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     data_dict_copy = data_dict.copy()
 
     logger.info('Processing node x, y coordinates.')
-    for k, v in tqdm(data_dict_copy.items()):
+    for k, v in tqdm(data_dict_copy.items(), disable=tqdm_suppress):
         # x coordinate
         if 'x' not in v:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {k}.')
@@ -35,7 +43,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
             raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng)[:2]
+        easting, northing = from_latlon(lat, lng)[:2]
         # write back to graph
         data_dict_copy[k]['x'] = easting
         data_dict_copy[k]['y'] = northing
@@ -102,7 +110,7 @@ class Data_Layer:
         self._Network = None
 
         # checks
-        checks.check_data_map(self._data, check_assigned=False)
+        check_data_map(self._data, check_assigned=False)
 
         if len(self._uids) != len(self._data):
             raise ValueError('The number of data labels does not match the number of data points.')
@@ -124,10 +132,10 @@ class Data_Layer:
         return self._Network
 
     def assign_to_network(self,
-                          Network_Layer: networks.Network_Layer,
+                          Network_Layer: Network_Layer,
                           max_dist: [int, float]):
         self._Network = Network_Layer
-        data.assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
+        assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
 
     def compute_aggregated(self,
                            landuse_labels: Union[list, tuple, np.ndarray] = None,
@@ -246,7 +254,7 @@ class Data_Layer:
         accessibility_data, accessibility_data_wt, \
         stats_mean, stats_mean_wt, \
         stats_variance, stats_variance_wt, \
-        stats_max, stats_min = data.local_aggregator(self.Network._nodes,
+        stats_max, stats_min = local_aggregator(self.Network._nodes,
                                                      self.Network._edges,
                                                      self._data,
                                                      distances=np.array(self.Network.distances),

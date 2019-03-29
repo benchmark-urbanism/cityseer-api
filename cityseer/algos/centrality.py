@@ -3,7 +3,8 @@ from typing import Tuple
 import numpy as np
 from numba import njit
 
-from cityseer.algos import data, checks
+from cityseer.algos.data import radial_filter
+from cityseer.algos.checks import check_network_maps, check_distances_and_betas
 
 
 # cc = CC('centrality')
@@ -194,9 +195,9 @@ def local_centrality(node_map: np.ndarray,
     3 - impedance
     '''
 
-    checks.check_network_maps(node_map, edge_map)
+    check_network_maps(node_map, edge_map)
 
-    checks.check_distances_and_betas(distances, betas)
+    check_distances_and_betas(distances, betas)
 
     if len(closeness_keys) == 0 and len(betweenness_keys) == 0:
         raise ValueError(
@@ -254,7 +255,7 @@ def local_centrality(node_map: np.ndarray,
         # filter the graph by distance
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x,
+        trim_to_full_idx_map, full_to_trim_idx_map = radial_filter(src_x,
                                                                         src_y,
                                                                         x_arr,
                                                                         y_arr,
