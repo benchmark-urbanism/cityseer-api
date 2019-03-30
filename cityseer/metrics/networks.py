@@ -13,11 +13,9 @@ from cityseer.util import graphs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def_min_thresh_wt = 0.01831563888873418
-
 
 def distance_from_beta(beta: Union[float, list, np.ndarray],
-                       min_threshold_wt: float = def_min_thresh_wt) -> np.ndarray:
+                       min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     # cast to list form
     if isinstance(beta, (int, float)):
         beta = [beta]
@@ -41,7 +39,7 @@ class Network_Layer:
                  edge_map: np.ndarray,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
 
         '''
@@ -298,7 +296,7 @@ class Network_Layer_From_nX(Network_Layer):
                  networkX_graph: nx.Graph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = def_min_thresh_wt,
+                 min_threshold_wt: float = checks.def_min_thresh_wt,
                  angular: bool = False):
         node_uids, node_map, edge_map = graphs.graph_maps_from_nX(networkX_graph)
 

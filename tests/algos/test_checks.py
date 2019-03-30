@@ -17,7 +17,7 @@ def test_check_numerical_data():
         checks.check_numerical_data(corrupt_numerical)
     # catch infinites
     with pytest.raises(ValueError):
-        mock_numerical[-1][-1] = np.inf
+        mock_numerical[0][0] = np.inf
         checks.check_numerical_data(mock_numerical)
 
 
@@ -52,23 +52,23 @@ def test_check_data_map():
 
     # should throw error if not assigned
     with pytest.raises(ValueError):
-        checks.check_data_map(data_map, True)
+        checks.check_data_map(data_map)
 
     # should work if flag set to False
-    checks.check_data_map(data_map, False)
+    checks.check_data_map(data_map, check_assigned=False)
 
     # assign then check that it runs as intended
-    data_map = data.assign_to_network(data_map, N._nodes, N._edges, 400)
-    checks.check_data_map(data_map, True)
+    data_map = data.assign_to_network(data_map, N._nodes, N._edges, max_dist=400)
+    checks.check_data_map(data_map)
 
     # catch zero length data arrays
     empty_2d_arr = np.full((0, 4), np.nan)
     with pytest.raises(ValueError):
-        checks.check_data_map(empty_2d_arr, False)
+        checks.check_data_map(empty_2d_arr)
 
     # catch invalid dimensionality
     with pytest.raises(ValueError):
-        checks.check_data_map(data_map[:, :-1], False)
+        checks.check_data_map(data_map[:, :-1])
 
 
 def test_check_trim_maps():

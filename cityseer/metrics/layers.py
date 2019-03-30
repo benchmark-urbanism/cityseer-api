@@ -1,5 +1,5 @@
-import logging
 import os
+import logging
 from typing import Tuple, List, Union
 
 import numpy as np
@@ -108,7 +108,7 @@ class Data_Layer:
         self._Network = None
 
         # checks
-        checks.check_data_map(self._data, False)  # don't check assigned
+        checks.check_data_map(self._data, check_assigned=False)
 
         if len(self._uids) != len(self._data):
             raise ValueError('The number of data labels does not match the number of data points.')

@@ -1,13 +1,10 @@
 import numpy as np
 from numba import njit
-from numba.pycc import CC
-
-cc = CC('checks')
 
 
-# explicit return required for single item signatures, otherwise numba throws:
-# TypeError: invalid signature: ...evaluates to 'Array' instead of tuple or Signature
-@cc.export('check_numerical_data', 'void(float64[:,:])')
+def_min_thresh_wt = 0.01831563888873418
+
+
 @njit(cache=True)
 def check_numerical_data(data_arr: np.ndarray):
     if not data_arr.ndim == 2:
@@ -18,7 +15,6 @@ def check_numerical_data(data_arr: np.ndarray):
             raise ValueError('The numeric data values must consist of either floats or NaNs.')
 
 
-@cc.export('check_categorical_data', 'void(uint64[:])')
 @njit(cache=True)
 def check_categorical_data(data_arr: np.ndarray):
     for cl in data_arr:
@@ -28,9 +24,8 @@ def check_categorical_data(data_arr: np.ndarray):
             raise ValueError('Data map contains non-integer class-codes.')
 
 
-@cc.export('check_data_map', '(float64[:,:], boolean)')
 @njit(cache=True)
-def check_data_map(data_map: np.ndarray, check_assigned: bool):
+def check_data_map(data_map: np.ndarray, check_assigned=True):
     '''
     DATA MAP:
     0 - x
@@ -53,7 +48,6 @@ def check_data_map(data_map: np.ndarray, check_assigned: bool):
             raise ValueError('Data map has not been assigned to a network.')
 
 
-@cc.export('check_trim_maps', '(float64[:], float64[:])')
 @njit(cache=True)
 def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
     if len(trim_to_full) > len(full_to_trim):
@@ -85,7 +79,6 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
             'The length of the trim-to-full map does not match the number of active elements in the full-to-trim map.')
 
 
-@cc.export('check_network_maps', '(float64[:,:], float64[:,:])')
 @njit(cache=True)
 def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
     '''
@@ -146,7 +139,6 @@ def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
             'Invalid edge impedance encountered. All edge impedances should be greater than or equal to zero.')
 
 
-@cc.export('check_distances_and_betas', '(float64[:], float64[:])')
 @njit(cache=True)
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) == 0:
