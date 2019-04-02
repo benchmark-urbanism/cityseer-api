@@ -1,10 +1,10 @@
 '''
 General graph manipulation
 '''
-import os
 import logging
-from typing import Union, Tuple
+import os
 import uuid
+from typing import Union, Tuple
 
 import networkx as nx
 import numpy as np
@@ -16,7 +16,6 @@ from cityseer.algos import checks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 tqdm_suppress = False
 if 'GCP_PROJECT' in os.environ:
@@ -143,11 +142,32 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
+def nX_remove_dangling_nodes(networkX_graph: nx.Graph, despine: float = 25, remove_disconnected: bool = True) -> nx.Graph:
+
+    logger.info(f'Removing dangling nodes.')
+    g_copy = networkX_graph.copy()
+
+    if remove_disconnected:
+        connected_components = list(nx.connected_component_subgraphs(g_copy))
+        g_copy = sorted(connected_components, key=len, reverse=True)[0]
+
+    if despine:
+        remove_nodes = []
+        for n, d in tqdm(g_copy.nodes(data=True), disable=tqdm_suppress):
+            if nx.degree(g_copy, n) == 1:
+                nb = list(nx.neighbors(g_copy, n))[0]
+                if g_copy[n][nb]['geom'].length <= despine:
+                    remove_nodes.append(n)
+        g_copy.remove_nodes_from(remove_nodes)
+
+    return g_copy
+
+
 def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
-    logger.info(f'Simplifying graph intersections.')
+    logger.info(f'Removing filler nodes.')
     g_copy = networkX_graph.copy()
     removed_nodes = set()
 
@@ -206,7 +226,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
 
     # iterate the nodes and weld edges where encountering simple intersections
     # use the original graph so as to write changes to new graph
-    for n in networkX_graph.nodes():
+    for n in tqdm(networkX_graph.nodes(), disable=tqdm_suppress):
 
         # some nodes will already have been removed via recursive function
         if n in removed_nodes:
@@ -272,17 +292,25 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def nX_merge_adjacent_nodes(networkX_graph: nx.Graph, buffer_dist) -> nx.Graph:
+def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
-    logger.info(f'Merging adjacent nodes.')
+    logger.info(f'Consolidating network.')
     g_copy = networkX_graph.copy()
 
     # create an STRtree
     points = []
-    for n, n_d in networkX_graph.nodes(data=True):
-        p = geometry.Point(n_d['x'], n_d['y'])
+    for n, n_d in g_copy.nodes(data=True):
+        # x coordinate
+        if 'x' not in networkX_graph.nodes[n]:
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+        x = networkX_graph.nodes[n]['x']
+        # y coordinate
+        if 'y' not in networkX_graph.nodes[n]:
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
+        y = networkX_graph.nodes[n]['y']
+        p = geometry.Point(x, y)
         p.uid = n
         points.append(p)
     tree = strtree.STRtree(points)
@@ -295,51 +323,49 @@ def nX_merge_adjacent_nodes(networkX_graph: nx.Graph, buffer_dist) -> nx.Graph:
     n_n_template = uuid.uuid4().hex.upper()[0:3]
     n_n_count = 0
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
-    for n, n_d in networkX_graph.nodes(data=True):
+    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=tqdm_suppress):
+        # if already consolidated from an adjacent node, and if not crawling, then it is OK to continue
+        if n in removed_nodes and not crawl:
+            continue
         # get all other nodes within buffer distance
         js = tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
-        # don't want self-node (also returned)
+        # if only self-node, then continue
         if len(js) <= 1:
             continue
-        # if the present node has already been removed:
-        # check if the presently returned nodes have been processed into an existent parent
-        # i.e. from an adjacent node
-        # this is intentional behaviour because in some cases a batch of nodes won't necessarily have been merged
-        # from one-side or the other
-        # check if already removed
+        # when crawling and if already consolidated from an adjacent node:
+        # check if the presently returned nodes match the existing parent, if so, no need to continue
         if n in removed_nodes:
-            # if so, check for existing parent
+            # check existing parent's member nodes
             p_n = removed_nodes[n]
-            # if existing parent's members match, there is no need to continue
+            # if these match exactly, then it is OK to continue
             if parent_nodes[p_n] == set([j.uid for j in js]):
                 continue
-        # otherwise, create a new parent node name
+        # otherwise, go ahead and consolidate
+        # create a new parent node name
         parent_node_name = f'{n_n_template}_{n_n_count}'
         n_n_count += 1
-        # keep track of the uids to be consolidated
+        # keep track of the uids to be consolidated - this can contain parents
         node_group_uids = set()
-        # also keep track of the geoms to be consolidated, which may contain nested consolidations
-        node_group_geoms = set()
+        # keep track of the original member uids to be consolidated - this does not contain parents
+        node_group_members = set()
         # iterate geoms within buffer
         for j in js:
-            # do not remove nodes with out degrees <= 1
-            if nx.degree(networkX_graph, j.uid) <= 1:
-                continue
             if j.uid not in removed_nodes:
                 # if not already in the removed nodes, go ahead and add the point
                 node_group_uids.add(j.uid)
-                node_group_geoms.add(j.uid)
+                node_group_members.add(j.uid)
                 # add to the removed_nodes dict and point to new parent node uid
                 removed_nodes[j.uid] = parent_node_name
-            else:
+            # only recursively consolidate through parents if crawling:
+            elif crawl:
                 # if already removed, go fetch the respective parent uid
                 old_parent_uid = removed_nodes[j.uid]
                 # note that in some cases, the parent members will already have been registered and deleted
-                # so this step is only done if still present
+                # so this step is only necessary if still present
                 if old_parent_uid in parent_nodes:
                     node_group_uids.add(old_parent_uid)
-                    parent_members = parent_nodes[old_parent_uid]
-                    node_group_geoms.update(parent_members)
+                    parent_members = parent_nodes[old_parent_uid]  # the members associated with the old parent
+                    node_group_members.update(parent_members)  # add the existing members to the new parent's members
                     # update child nodes to new parent
                     for m in parent_members:
                         removed_nodes[m] = parent_node_name
@@ -348,17 +374,23 @@ def nX_merge_adjacent_nodes(networkX_graph: nx.Graph, buffer_dist) -> nx.Graph:
         if not node_group_uids:
             continue
         # set the members for the new parent node
-        parent_nodes[parent_node_name] = node_group_geoms
-        # aggregate the nodes and set the new centroid
+        parent_nodes[parent_node_name] = node_group_members
+        # set the new parent's centroid:
+        # A) only set from nodes in the original graph, not from consolidated parents
+        # B) use the highest degree nodes in the nbunch to preserve topology
+        highest_degree = 0
+        for n_uid in node_group_members:
+            if n_uid in networkX_graph:
+                if nx.degree(networkX_graph, n_uid) > highest_degree:
+                    highest_degree = nx.degree(networkX_graph, n_uid)
+        # aggregate the highest degree nodes and set the new parent centroid
         node_geoms = []
-        for n_uid in node_group_geoms:
-            # x coordinate
-            if 'x' not in networkX_graph.nodes[n_uid]:
-                raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+        for n_uid in node_group_members:
+            if n_uid not in networkX_graph:
+                continue
+            if nx.degree(networkX_graph, n_uid) != highest_degree:
+                continue
             x = networkX_graph.nodes[n_uid]['x']
-            # y coordinate
-            if 'y' not in networkX_graph.nodes[n_uid]:
-                raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
             y = networkX_graph.nodes[n_uid]['y']
             # append geom
             node_geoms.append(geometry.Point(x, y))
@@ -378,7 +410,7 @@ def nX_merge_adjacent_nodes(networkX_graph: nx.Graph, buffer_dist) -> nx.Graph:
                     line_geom = g_copy[uid][nb_uid]['geom']
                     if line_geom.type != 'LineString':
                         raise TypeError(
-                            f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+                            f'Expecting LineString geometry but found {line_geom.type} geometry for edge {uid}-{nb_uid}.')
                     # first orient geom in correct direction
                     s_x = g_copy.nodes[uid]['x']
                     s_y = g_copy.nodes[uid]['y']

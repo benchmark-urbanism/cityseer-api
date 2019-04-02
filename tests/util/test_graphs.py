@@ -76,12 +76,10 @@ def test_nX_wgs_to_utm():
         graphs.nX_wgs_to_utm(G_utm)
 
 
-def test_nX_remove_filler_nodes():
+def make_messy_graph(G):
 
-    # test that redundant (straight) intersections are removed
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G_messy = G.copy()
+    # test that redundant (sraight) intersections are removed
+    G_messy = G.copy(G)
 
     # complexify the graph - write changes to new graph to avoid in-place iteration errors
     for i, (s, e, d) in enumerate(G.edges(data=True)):
@@ -131,6 +129,48 @@ def test_nX_remove_filler_nodes():
     G_messy.add_edge('t_3', 43, geom=geom_d)
     # remove original geom
     G_messy.remove_edge(10, 43)
+
+    return G_messy
+
+
+def test_nX_remove_dangling_nodes():
+
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    G_messy = make_messy_graph(G)
+
+    # no despining or disconnected components removal
+    G_post = graphs.nX_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False)
+    assert G_post.nodes == G_messy.nodes
+    assert G_post.edges == G_messy.edges
+
+    # check that all single neighbour nodes have been removed if geom less than despine distance
+    G_post = graphs.nX_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=False)
+    for n in G_messy.nodes():
+        if nx.degree(G_messy, n) == 1:
+            nb = list(nx.neighbors(G_messy, n))[0]
+            if G_messy[n][nb]['geom'].length <= 100:
+                assert (n, nb) not in G_post.edges
+            else:
+                assert (n, nb) in G_post.edges
+
+    # check that disconnected components are removed
+    G_post = graphs.nX_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True)
+    pre_components = list(nx.connected_component_subgraphs(G_messy))
+    post_components = list(nx.connected_component_subgraphs(G_post))
+    assert len(post_components) == 1
+    biggest_component = sorted(pre_components, key=len, reverse=True)[0]
+    post_component = post_components[0]
+    assert biggest_component.nodes == post_component.nodes
+    assert biggest_component.edges == post_component.edges
+
+
+def test_nX_remove_filler_nodes():
+
+    # test that redundant intersections are removed, i.e. where degree == 2
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    G_messy = make_messy_graph(G)
 
     # from cityseer.util import plot
     # plot.plot_nX(G_messy, labels=True)
@@ -209,7 +249,6 @@ def test_nX_remove_filler_nodes():
     for s, e, d in G_lollipop_simpl.edges(data=True):
         after_len += d['geom'].length
     assert before_len == after_len
-    print(before_len, after_len)
     # end point of stick should match start / end point of lollipop
     assert G_lollipop_simpl[1][2]['geom'].coords[-1] == G_lollipop_simpl[2][2]['geom'].coords[0]
     # start and end point of lollipop should match
@@ -241,6 +280,127 @@ def test_nX_remove_filler_nodes():
         G_corr[s][e]['geom'] = geometry.LineString([start, end])
     with pytest.raises(AttributeError):
         graphs.nX_remove_filler_nodes(G_corr)
+
+
+def test_nX_merge_adjacent_nodes():
+
+    # create a test graph
+    G = nx.Graph()
+    nodes = [
+        (0, {'x': 700620, 'y': 5719720}),
+        (1, {'x': 700620, 'y': 5719700}),
+        (2, {'x': 700660, 'y': 5719720}),
+        (3, {'x': 700660, 'y': 5719700}),
+        (4, {'x': 700660, 'y': 5719660}),
+        (5, {'x': 700700, 'y': 5719800}),
+        (6, {'x': 700720, 'y': 5719800}),
+        (7, {'x': 700700, 'y': 5719720}),
+        (8, {'x': 700720, 'y': 5719720}),
+        (9, {'x': 700700, 'y': 5719700}),
+        (10, {'x': 700720, 'y': 5719700}),
+        (11, {'x': 700700, 'y': 5719620}),
+        (12, {'x': 700720, 'y': 5719620}),
+        (13, {'x': 700760, 'y': 5719760}),
+        (14, {'x': 700800, 'y': 5719760}),
+        (15, {'x': 700780, 'y': 5719720}),
+        (16, {'x': 700780, 'y': 5719700}),
+        (17, {'x': 700840, 'y': 5719720}),
+        (18, {'x': 700840, 'y': 5719700})]
+    edges = [
+        (0, 2),
+        (0, 2),
+        (1, 3),
+        (2, 3),
+        (2, 7),
+        (3, 4),
+        (3, 9),
+        (5, 7),
+        (6, 8),
+        (7, 8),
+        (7, 9),
+        (8, 10),
+        (8, 15),
+        (9, 11),
+        (9, 10),
+        (10, 12),
+        (10, 16),
+        (13, 14),
+        (13, 15),
+        (14, 15),
+        (15, 16),
+        (15, 17),
+        (16, 18)
+    ]
+    G.add_nodes_from(nodes)
+    G.add_edges_from(edges)
+
+    # behaviour confirmed visually
+    # from cityseer.util import plot
+    # plot.plot_nX(G, labels=True)
+
+    G = graphs.nX_simple_geoms(G)
+    # simplify first to test lollipop self-loop from node 15
+    G = graphs.nX_remove_filler_nodes(G)
+    # plot.plot_nX(G, labels=True)
+    G = graphs.nX_decompose(G, 50)
+    # plot.plot_nX(G, labels=True)
+    G_merged = graphs.nX_consolidate(G, buffer_dist=25)
+    # plot.plot_nX(G_merged, labels=True)
+
+    assert G_merged.number_of_nodes() == 14
+    assert G_merged.number_of_edges() == 14
+
+    node_coords = []
+    for n, d in G_merged.nodes(data=True):
+        node_coords.append((d['x'], d['y']))
+    assert node_coords == [
+        (700660, 5719660),
+        (700799.2961812733, 5719758.592362546),
+        (700760.7038187267, 5719758.592362546),
+        (700620.0, 5719710.0),
+        (700660.0, 5719700.0),
+        (700710.0, 5719800.0),
+        (700710.0, 5719710.0),
+        (700710.0, 5719620.0),
+        (700780.0, 5719720.0),
+        (700840.0, 5719710.0),
+        (700710.0, 5719760.0),
+        (700750.0, 5719710.0),
+        (700710.0, 5719660.0),
+        (700810.0, 5719710.0)]
+
+    edge_lens = []
+    for s, e, d in G_merged.edges(data=True):
+        edge_lens.append(d['geom'].length)
+    assert edge_lens == [
+        40.0,
+        43.14757303390519,
+        43.147573033043194,
+        43.147573033043194,
+        41.23105625617661,
+        50.99019513592785,
+        40.0,
+        50.0,
+        40.0,
+        50.0,
+        40.0,
+        31.622776601683793,
+        31.622776601683793,
+        30.0]
+
+    # visual tests on OSM data
+    # G_wgs = mock.mock_osm_graph()
+    # G_utm = graphs.nX_wgs_to_utm(G_wgs)
+    # G = graphs.nX_simple_geoms(G_utm)
+    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+    # G = graphs.nX_remove_dangling_nodes(G)
+    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+    # G = graphs.nX_remove_filler_nodes(G)
+    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+    # G = graphs.nX_decompose(G, 30)
+    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+    # G = graphs.nX_consolidate(G, buffer_dist=14, crawl=False)
+    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
 
 
 def test_nX_decompose():

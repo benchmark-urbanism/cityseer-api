@@ -131,14 +131,16 @@ Once the data has been assigned, the [`@compute_aggregated`](/metrics/layers.htm
 # landuse labels can be used to generate mixed-use and land-use accessibility measures
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 # example easy-wrapper method for computing mixed-uses
-D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1])
+# the hill q paramater controls the emphasis on unique land-uses vs. balanced preponderances thereof
+D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # example easy-wrapper method for computing accessibilities
+# the keys correspond to keys present in the landuse data for which accessibilities will be computed
 D.compute_accessibilities(landuse_labels, accessibility_keys=['a', 'c'])
 # or compute multiple measures at once, e.g.:
 D.compute_aggregated(landuse_labels,
                      mixed_use_keys=['hill', 'shannon'],
-                     accessibility_keys=['a', 'b'],
-                     qs=[0, 1])
+                     accessibility_keys=['a', 'c'],
+                     qs=[0, 1, 2])
 
 # let's generate some numerical data
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)

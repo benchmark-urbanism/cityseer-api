@@ -23,7 +23,11 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
                            path: str = None,
                            labels: bool = False,
                            primal_colour: (tuple, list, np.ndarray) = None,
-                           dual_colour: (tuple, list, np.ndarray) = None):
+                           dual_colour: (tuple, list, np.ndarray) = None,
+                           **kwargs):
+
+    plt.figure(**kwargs)
+
     alpha = 0.75
     node_size = 30
     if labels:
@@ -84,14 +88,14 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
                 alpha=alpha)
 
     if path:
-        plt.savefig(path, facecolor=background, dpi=150)
+        plt.savefig(path, facecolor=background)
     else:
         plt.gcf().set_facecolor(background)
         plt.show()
 
 
-def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None):
-    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour)
+def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None, **kwargs):
+    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour, **kwargs)
 
 
 def plot_assignment(Network_Layer,
