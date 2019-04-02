@@ -17,7 +17,8 @@ plot_nX_primal_or_dual(primal=None,
                        path=None,
                        labels=False,
                        primal_colour=None,
-                       dual_colour=None)
+                       dual_colour=None,
+                       **figure_kwargs)
 </pre>
 </FuncSignature>
 
@@ -60,6 +61,14 @@ Dual node colour or colours. When passing a list of colours, the number of colou
 
 </FuncElement>
 
+</FuncElement>
+
+<FuncElement name="figure_kwargs" type="key=value pairs">
+
+`key=value` pairs which will be passed to the `matplotlib` figure parameters. If provided, these `kwargs` are used to override the default figure size or dpi parameters.
+
+</FuncElement>
+
 ```python
 from cityseer.util import mock, graphs, plot
 
@@ -76,7 +85,16 @@ _Dual graph (blue) overlaid on the source primal graph (red)._
 
 plot\_nX
 --------
-<FuncSignature>plot_nX(networkX_graph, path=None, labels=False, colour=None)</FuncSignature>
+<FuncSignature>
+<pre>
+plot_nX(networkX_graph,
+        path=None,
+        labels=False,
+        colour=None,
+        **figure_kwargs)
+</pre>
+</FuncSignature>
+
 Plot a `networkX` graph.
 
 <FuncHeading>Parameters</FuncHeading>
@@ -101,6 +119,12 @@ Whether to display node labels.
 <FuncElement name="colour" type="str, list, tuple, np.ndarray">
 
 Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+
+</FuncElement>
+
+<FuncElement name="figure_kwargs" type="key=value pairs">
+
+`key=value` pairs which will be passed to the `matplotlib` figure parameters. If provided, these `kwargs` are used to override the default figure size or dpi parameters.
 
 </FuncElement>
 

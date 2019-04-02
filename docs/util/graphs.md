@@ -54,18 +54,59 @@ A `networkX` graph with `x` and `y` node attributes converted to the local UTM c
 </FuncElement>
 
 
-nX\_remove\_filler\_nodes
--------------------------
+nX\_remove\_dangling\_nodes <Chip text="v0.8.0"/>
+---------------------------
 
-<FuncSignature>nX_remove_filler_nodes(networkX_graph)</FuncSignature>
+<FuncSignature>
+<pre>
+nX_remove_dangling_nodes(networkX_graph,
+                         despine=25,
+                         remove_disconnected=True)
+</pre>
+</FuncSignature>
 
-Removes frivolous nodes where $degree=2$: such nodes represent no route-choices other than continuing-on to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a single new edge, with the `geom` attributes welded together.
+Optionally removes short dead-ends and disconnected graph components, which may be prevalent on poor quality network datasets.
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph with `x` and `y` node attributes and `geom` edge attributes containing `LineString` geoms.
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
+
+</FuncElement>
+
+<FuncElement name="despine" type="float">
+
+The maximum cutoff distance for removal of dead-ends. Use `0` where no de-spining should occur.
+
+</FuncElement>
+
+<FuncElement name="remove_disconnected" type="bool">
+
+Whether to remove disconnected components. When set to `True`, only the largest connected component will be returned.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="graph" type="nx.Graph">
+
+A `networkX` graph with disconnected components optionally removed, and dead-ends removed where less than the `despine` distance.
+
+</FuncElement>
+
+
+nX\_remove\_filler\_nodes
+-------------------------
+
+<FuncSignature>nX_remove_filler_nodes(networkX_graph)</FuncSignature>
+
+Removes frivolous nodes where $degree=2$: such nodes represent no route-choices other than continuing-on to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new unified edge. The `geom` attributes welded together.
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name="networkX_graph" type="nx.Graph">
+
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
 
 </FuncElement>
 
@@ -81,6 +122,41 @@ Frivolous nodes may be prevalent in poor quality datasets, or in situations wher
 :::
 
 
+nX\_consolidate <Chip text="v0.8.0"/>
+---------------
+
+<FuncSignature>nX_consolidate(networkX_graph, buffer_dist=14, crawl=False)</FuncSignature>
+
+Consolidates nearby nodes within a set buffer distance. This can be useful for situations such as cleaning-up intersections or de-duplicating split roadways.
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name="networkX_graph" type="nx.Graph">
+
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
+
+</FuncElement>
+
+<FuncElement name="buffer_dist" type="float">
+
+The buffer distance to be used for consolidating nearby nodes.
+
+</FuncElement>
+
+<FuncElement name="crawl" type="bool">
+
+Whether to permit recursive consolidation.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="graph" type="nx.Graph">
+
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the centroid of the highest degree constituent nodes. 
+
+</FuncElement>
+
+
 nX\_decompose
 -------------
 
@@ -92,7 +168,7 @@ Decomposes a graph so that no edge is longer than a set maximum. Decomposition p
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph with `x` and `y` node attributes and `geom` edge attributes containing `LineString` geoms. Optional `live` node attributes.
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms. Optional `live` node attributes.
 
 </FuncElement>
 <FuncElement name="decompose_max" type="nx.Graph">
@@ -142,7 +218,7 @@ Converts a primal graph representation, where intersections are represented as n
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph with `x` and `y` node attributes and `geom` edge attributes containing `LineString` geoms. Optional `live` node attributes.
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms. Optional `live` node attributes.
 
 </FuncElement>
 
@@ -179,6 +255,7 @@ This function will automatically orient the `geom` attribute LineStrings in the 
 
 :::
 
+
 nX\_auto\_edge\_params
 ----------------------
 
@@ -194,7 +271,7 @@ Do not use this function on dual graphs. Dual graphs prepared with [nX_to_dual](
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph with `geom` edge attributes containing `shapely` `LineString` geoms.
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
 
 </FuncElement>
 
@@ -217,7 +294,7 @@ Adds a `weight` node attribute and sets the value to the aggregate half-lengths 
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph with `geom` edge attributes containing `shapely` `LineString` geoms.
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
 
 </FuncElement>
 
@@ -248,7 +325,7 @@ It is generally not necessary to use this function directly. This function will 
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
-A `networkX` graph.
+A `networkX` graph in UTM coordinates.
 
 `x` and `y` node attributes are required. The `weight` node attribute is optional, and a default of `1` will be used if not present. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 

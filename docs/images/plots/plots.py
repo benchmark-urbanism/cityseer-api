@@ -15,7 +15,7 @@ base_path = path.dirname(__file__)
 #
 # INTRO PLOT
 G = mock.mock_graph()
-plot.plot_nX(G, path='graph.png', labels=True)
+plot.plot_nX(G, path='graph.png', labels=True, dpi=150)
 
 # INTRO EXAMPLE PLOTS
 G = graphs.nX_simple_geoms(G)
@@ -43,7 +43,7 @@ gravity_vals = colors.Normalize()(gravity_vals)
 gravity_cols = cmap(gravity_vals)
 plt.cla()
 plt.clf()
-plot.plot_nX(G_metrics, path='intro_gravity.png', labels=False, colour=gravity_cols)
+plot.plot_nX(G_metrics, path='intro_gravity.png', labels=False, colour=gravity_cols, dpi=150)
 
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
@@ -59,26 +59,26 @@ plt.cla()
 plt.clf()
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-plot.plot_nX(G, path='graph_example.png', labels=True)  # WITH LABELS
+plot.plot_nX(G, path='graph_example.png', labels=True, dpi=150)  # WITH LABELS
 
 #
 #
 # GRAPH MODULE
 plt.cla()
 plt.clf()
-plot.plot_nX(G, path='graph_simple.png', labels=False)  # NO LABELS
+plot.plot_nX(G, path='graph_simple.png', labels=False, dpi=150)  # NO LABELS
 
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 
 plt.cla()
 plt.clf()
-plot.plot_nX(G_decomposed, path='graph_decomposed.png', labels=False)
+plot.plot_nX(G_decomposed, path='graph_decomposed.png', labels=False, dpi=150)
 
 plt.cla()
 plt.clf()
 G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False)
+plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False, dpi=150)
 
 #
 #
@@ -91,7 +91,7 @@ G = graphs.nX_auto_edge_params(G)
 
 plt.cla()
 plt.clf()
-plot.plot_nX(G, path='graph_before.png', labels=True)
+plot.plot_nX(G, path='graph_before.png', labels=True, dpi=150)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
@@ -102,7 +102,7 @@ G_post = N.to_networkX()
 
 plt.cla()
 plt.clf()
-plot.plot_nX(G_post, path='graph_after.png', labels=True)
+plot.plot_nX(G_post, path='graph_after.png', labels=True, dpi=150)
 
 #
 #
@@ -155,7 +155,7 @@ cols = cmap(vals)
 # plot
 plt.cla()
 plt.clf()
-plot.plot_nX(G_after, path='graph_colour.png', labels=False, colour=cols)
+plot.plot_nX(G_after, path='graph_colour.png', labels=False, colour=cols, dpi=150)
 
 # assignment plot
 data_dict = mock.mock_data_dict(G, random_seed=25)

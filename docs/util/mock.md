@@ -133,7 +133,7 @@ A 2d `numpy` array containing numerical data elements. The first dimension corre
 
 
 mock\_species\_data
-------------------------
+-------------------
 
 <FuncSignature>mock_species_data(random_seed=None)</FuncSignature>
 
@@ -183,3 +183,43 @@ for counts, probs in mock.mock_species_data():
 # etc.
 
 ```
+
+
+mock\_osm\_graph
+----------------
+
+<FuncSignature>mock_osm_graph()</FuncSignature>
+
+Generates a `NetworkX` graph for testing or experimentation based on [`Open Street Map`](https://www.openstreetmap.org) data.
+
+::: warning Note
+Note that this graph contains [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates. Use [`graphs.nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) to cast the graph to the local UTM projected coordinate system.
+:::
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="G" type="nx.Graph">
+
+A `NetworkX` graph with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
+
+</FuncElement>
+
+
+mock\_osm\_data
+---------------
+
+<FuncSignature>mock_osm_data()</FuncSignature>
+
+Returns a `JSON` string representing a typical [`Open Street Map`](https://www.openstreetmap.org) response. Used for the purpose of testing.
+
+::: tip Hint
+
+Where the intent is to derive a graph from this data: use [`mock_osm_graph`](#mock-osm-graph) instead.
+
+:::
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="osm_json" type="str">
+
+A `JSON` string representing OSM `nodes` and `ways` data.
+
+</FuncElement>
