@@ -100,7 +100,7 @@ nX\_remove\_filler\_nodes
 
 <FuncSignature>nX_remove_filler_nodes(networkX_graph)</FuncSignature>
 
-Removes frivolous nodes where $degree=2$: such nodes represent no route-choices other than continuing-on to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new unified edge. The `geom` attributes welded together.
+Removes frivolous nodes where $degree=2$: such nodes represent no route-choices other than continuing-on to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new unified edge, with `geom` attributes welded together.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -152,7 +152,7 @@ Whether to permit recursive consolidation.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the centroid of the highest degree constituent nodes. 
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the highest degree constituent nodes. 
 
 </FuncElement>
 
