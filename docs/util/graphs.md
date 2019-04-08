@@ -34,15 +34,21 @@ Returns a `networkX` graph with `shapely` [`Linestring`](https://shapely.readthe
 nX\_wgs\_to\_utm
 ----------------
 
-<FuncSignature>nX_wgs_to_utm(networkX_graph)</FuncSignature>
+<FuncSignature>nX_wgs_to_utm(networkX_graph, force_zone_number=None)</FuncSignature>
 
-Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour when a graph spans a UTM boundary.
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name="networkX_graph" type="nx.Graph">
 
 A `networkX` graph with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
+
+</FuncElement>
+
+<FuncElement name="force_zone_number" type="int">
+
+An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution, because mismatched UTM zones may introduce substantial distortions in the results. 
 
 </FuncElement>
 

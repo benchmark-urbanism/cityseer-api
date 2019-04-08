@@ -98,12 +98,16 @@ def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
+def nX_wgs_to_utm(networkX_graph: nx.Graph, force_zone_number=None) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
     logger.info('Converting networkX graph from WGS to UTM.')
     g_copy = networkX_graph.copy()
+
+    zone_number = None
+    if force_zone_number is not None:
+        zone_number = force_zone_number
 
     logger.info('Processing node x, y coordinates.')
     for n, d in tqdm(g_copy.nodes(data=True), disable=tqdm_suppress):
@@ -118,9 +122,12 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
             raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+        # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
+        if zone_number is None:
+            zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng)[:2]
+        easting, northing = utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2]
         # write back to graph
         g_copy.nodes[n]['x'] = easting
         g_copy.nodes[n]['y'] = northing
@@ -135,7 +142,7 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph) -> nx.Graph:
                 raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
             # be cognisant of parameter and return order
             # returns in easting, northing order
-            utm_coords = [utm.from_latlon(lat, lng)[:2] for lng, lat in line_geom.coords]
+            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2] for lng, lat in line_geom.coords]
             # write back to edge
             g_copy[s][e]['geom'] = geometry.LineString(utm_coords)
 

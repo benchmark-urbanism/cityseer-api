@@ -75,6 +75,42 @@ def test_nX_wgs_to_utm():
     with pytest.raises(AttributeError):
         graphs.nX_wgs_to_utm(G_utm)
 
+    # check that non-matching UTM zones are coerced to the same zone
+    # this scenario spans two UTM zones
+    G_wgs_b = nx.Graph()
+    nodes = [
+        (1, {'x': -0.0005, 'y': 51.572}),
+        (2, {'x': -0.0005, 'y': 51.571}),
+        (3, {'x': 0.0005, 'y': 51.570}),
+        (4, {'x': -0.0005, 'y': 51.569}),
+        (5, {'x': -0.0015, 'y': 51.570})
+    ]
+    G_wgs_b.add_nodes_from(nodes)
+    edges = [
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 5),
+        (5, 2)
+    ]
+    G_wgs_b.add_edges_from(edges)
+    G_utm_30 = graphs.nX_wgs_to_utm(G_wgs_b)
+    G_utm_30 = graphs.nX_simple_geoms(G_utm_30)
+
+    # if not consistently coerced to UTM zone, the distances from 2-3 and 3-4 will be over 400km
+    for s, e, d in G_utm_30.edges(data=True):
+        assert d['geom'].length < 200
+
+    # check that explicit zones are respectively coerced
+    G_utm_31 = graphs.nX_wgs_to_utm(G_wgs_b, force_zone_number=31)
+    G_utm_31 = graphs.nX_simple_geoms(G_utm_31)
+    for n, d in G_utm_31.nodes(data=True):
+        assert d['x'] != G_utm_30.nodes[n]['x']
+
+    # from cityseer.util import plot
+    # plot.plot_nX(G_wgs_b, labels=True)
+    # plot.plot_nX(G_utm_b, labels=True)
+
 
 def make_messy_graph(G):
 
