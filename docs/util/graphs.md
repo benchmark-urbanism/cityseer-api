@@ -48,7 +48,7 @@ A `networkX` graph with `x` and `y` node attributes in the WGS84 coordinate syst
 
 <FuncElement name="force_zone_number" type="int">
 
-An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution, because mismatched UTM zones may introduce substantial distortions in the results. 
+An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results. 
 
 </FuncElement>
 
