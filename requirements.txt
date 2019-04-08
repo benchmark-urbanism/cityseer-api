@@ -6,6 +6,4 @@ networkx
 tqdm
 matplotlib
 sklearn
-scipy
 pytest
-scikit-build
