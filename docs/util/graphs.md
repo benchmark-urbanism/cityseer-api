@@ -131,7 +131,7 @@ Frivolous nodes may be prevalent in poor quality datasets, or in situations wher
 nX\_consolidate <Chip text="v0.8.3"/>
 ---------------
 
-<FuncSignature>nX_consolidate(networkX_graph, buffer_dist=14, by_neighbour=False)</FuncSignature>
+<FuncSignature>nX_consolidate(networkX_graph, buffer_dist=14, by_neighbours=False)</FuncSignature>
 
 Consolidates nearby nodes within a set buffer distance. This can be useful for situations such as cleaning-up intersections or de-duplicating split roadways.
 
@@ -149,7 +149,7 @@ The buffer distance to be used for consolidating nearby nodes.
 
 </FuncElement>
 
-<FuncElement name="by_neighbour" type="bool">
+<FuncElement name="by_neighbours" type="bool">
 
 When set to `False`, the merging method is strictly spatial. When set to `True`, nodes are merged only when they also have adjacent neighbours within the buffer distance. This method better preserves graph topology.
 
