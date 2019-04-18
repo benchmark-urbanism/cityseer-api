@@ -318,7 +318,7 @@ def test_nX_remove_filler_nodes():
         graphs.nX_remove_filler_nodes(G_corr)
 
 
-def test_nX_merge_adjacent_nodes():
+def test_nX_consolidate():
 
     # create a test graph
     G = nx.Graph()
@@ -380,62 +380,65 @@ def test_nX_merge_adjacent_nodes():
     # plot.plot_nX(G, labels=True)
     G = graphs.nX_decompose(G, 50)
     # plot.plot_nX(G, labels=True)
-    G_merged = graphs.nX_consolidate(G, buffer_dist=25)
-    # plot.plot_nX(G_merged, labels=True)
+    G_merged = graphs.nX_consolidate(G, buffer_dist=25, by_neighbours=False)
+    G_merged_nb = graphs.nX_consolidate(G, buffer_dist=25, by_neighbours=True)
 
-    assert G_merged.number_of_nodes() == 14
-    assert G_merged.number_of_edges() == 14
+    for g in [G_merged, G_merged_nb]:
+        # plot.plot_nX(g, labels=True)
 
-    node_coords = []
-    for n, d in G_merged.nodes(data=True):
-        node_coords.append((d['x'], d['y']))
-    assert node_coords == [
-        (700660, 5719660),
-        (700799.2961812733, 5719758.592362546),
-        (700760.7038187267, 5719758.592362546),
-        (700620.0, 5719710.0),
-        (700660.0, 5719700.0),
-        (700710.0, 5719800.0),
-        (700710.0, 5719710.0),
-        (700710.0, 5719620.0),
-        (700780.0, 5719720.0),
-        (700840.0, 5719710.0),
-        (700710.0, 5719760.0),
-        (700750.0, 5719710.0),
-        (700710.0, 5719660.0),
-        (700810.0, 5719710.0)]
+        assert g.number_of_nodes() == 14
+        assert g.number_of_edges() == 14
 
-    edge_lens = []
-    for s, e, d in G_merged.edges(data=True):
-        edge_lens.append(d['geom'].length)
-    assert edge_lens == [
-        40.0,
-        43.14757303390519,
-        43.147573033043194,
-        43.147573033043194,
-        41.23105625617661,
-        50.99019513592785,
-        40.0,
-        50.0,
-        40.0,
-        50.0,
-        40.0,
-        31.622776601683793,
-        31.622776601683793,
-        30.0]
+        node_coords = []
+        for n, d in g.nodes(data=True):
+            node_coords.append((d['x'], d['y']))
+        assert node_coords == [
+            (700660, 5719660),
+            (700799.2961812733, 5719758.592362546),
+            (700760.7038187267, 5719758.592362546),
+            (700620.0, 5719710.0),
+            (700660.0, 5719700.0),
+            (700710.0, 5719800.0),
+            (700710.0, 5719710.0),
+            (700710.0, 5719620.0),
+            (700780.0, 5719720.0),
+            (700840.0, 5719710.0),
+            (700710.0, 5719760.0),
+            (700750.0, 5719710.0),
+            (700710.0, 5719660.0),
+            (700810.0, 5719710.0)]
+
+        edge_lens = []
+        for s, e, d in g.edges(data=True):
+            edge_lens.append(d['geom'].length)
+        assert edge_lens == [
+            40.0,
+            43.14757303390519,
+            43.147573033043194,
+            43.147573033043194,
+            41.23105625617661,
+            50.99019513592785,
+            40.0,
+            50.0,
+            40.0,
+            50.0,
+            40.0,
+            31.622776601683793,
+            31.622776601683793,
+            30.0]
 
     # visual tests on OSM data
+    # from cityseer.util import plot
     # G_wgs = mock.mock_osm_graph()
     # G_utm = graphs.nX_wgs_to_utm(G_wgs)
     # G = graphs.nX_simple_geoms(G_utm)
-    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
     # G = graphs.nX_remove_dangling_nodes(G)
-    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
     # G = graphs.nX_remove_filler_nodes(G)
     # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G = graphs.nX_decompose(G, 30)
+    # G = graphs.nX_consolidate(G, buffer_dist=14, by_neighbours=True)
     # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G = graphs.nX_consolidate(G, buffer_dist=14, crawl=False)
+    # G = graphs.nX_decompose(G, 25)
+    # G = graphs.nX_consolidate(G, buffer_dist=14, by_neighbours=True)
     # plot.plot_nX(G, figsize=(20, 20), dpi=150)
 
 

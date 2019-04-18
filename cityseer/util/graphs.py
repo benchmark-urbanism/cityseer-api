@@ -12,6 +12,8 @@ import utm
 from shapely import geometry, ops, strtree
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+
 from cityseer.algos import checks
 
 logging.basicConfig(level=logging.INFO)
@@ -299,7 +301,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.Graph:
+def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, by_neighbours=False) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
@@ -329,10 +331,11 @@ def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.
     # label and increment new node identifiers
     n_n_template = uuid.uuid4().hex.upper()[0:3]
     n_n_count = 0
+
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=tqdm_suppress):
         # if already consolidated from an adjacent node, and if not crawling, then it is OK to continue
-        if n in removed_nodes and not crawl:
+        if n in removed_nodes:
             continue
         # get all other nodes within buffer distance
         js = tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
@@ -347,41 +350,104 @@ def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.
             # if these match exactly, then it is OK to continue
             if parent_nodes[p_n] == set([j.uid for j in js]):
                 continue
-        # otherwise, go ahead and consolidate
-        # create a new parent node name
-        parent_node_name = f'{n_n_template}_{n_n_count}'
-        n_n_count += 1
+
+        # create a new parent node name - only used if match found
+        parent_node_name = None
         # keep track of the uids to be consolidated - this can contain parents
         node_group_uids = set()
         # keep track of the original member uids to be consolidated - this does not contain parents
         node_group_members = set()
-        # iterate geoms within buffer
-        for j in js:
-            if j.uid not in removed_nodes:
-                # if not already in the removed nodes, go ahead and add the point
-                node_group_uids.add(j.uid)
-                node_group_members.add(j.uid)
-                # add to the removed_nodes dict and point to new parent node uid
-                removed_nodes[j.uid] = parent_node_name
-            # only recursively consolidate through parents if crawling:
-            elif crawl:
-                # if already removed, go fetch the respective parent uid
-                old_parent_uid = removed_nodes[j.uid]
-                # note that in some cases, the parent members will already have been registered and deleted
-                # so this step is only necessary if still present
-                if old_parent_uid in parent_nodes:
-                    node_group_uids.add(old_parent_uid)
-                    parent_members = parent_nodes[old_parent_uid]  # the members associated with the old parent
-                    node_group_members.update(parent_members)  # add the existing members to the new parent's members
-                    # update child nodes to new parent
-                    for m in parent_members:
-                        removed_nodes[m] = parent_node_name
-                    # then remove old parent
-                    del parent_nodes[old_parent_uid]
+
+        # default distance based method
+        if not by_neighbours:
+            # iterate geoms within buffer
+            # this will include the self-node
+            for j in js:
+                if j.uid not in removed_nodes:
+                    if parent_node_name is None:
+                        parent_node_name = f'{n_n_template}_{n_n_count}'
+                        n_n_count += 1
+                    # if not already in the removed nodes, go ahead and add the point
+                    node_group_uids.add(j.uid)
+                    node_group_members.add(j.uid)
+                    # add to the removed_nodes dict and point to new parent node uid
+                    removed_nodes[j.uid] = parent_node_name
+
+        # neighbour method only merges if neighbours are also within buffer distance
+        else:
+            nbs = list(nx.neighbors(networkX_graph, n))
+            for j in js:
+                # only review if not already in the removed nodes,
+                if j.uid not in removed_nodes:
+                    # ignore self-node
+                    if j.uid == n:
+                        continue
+                    # matching can happen in one of several situations, so use a flag
+                    matched = False
+                    # cross check n's neighbours against j's neighbours
+                    # if they respectively have neighbours within buffer dist of each other
+                    # then add
+                    oth_nbs = list(nx.neighbors(networkX_graph, j.uid))
+                    for nb in nbs:
+                        # if j.uid is a direct neighbour, then ignore
+                        if nb == j.uid:
+                            continue
+                        nb_d = networkX_graph.nodes[nb]
+                        p_n_nb = geometry.Point(nb_d['x'], nb_d['y'])
+                        for o_nb in oth_nbs:
+                            # don't match against origin node
+                            if o_nb == n:
+                                continue
+                            o_nb_d = networkX_graph.nodes[o_nb]
+                            p_j_nb = geometry.Point(o_nb_d['x'], o_nb_d['y'])
+                            if p_n_nb.distance(p_j_nb) < buffer_dist:
+                                matched = True
+                                break
+                            # if no match on end-points, check nearest points
+                            p_n = geometry.Point(networkX_graph.nodes[n]['x'], networkX_graph.nodes[n]['y'])
+                            p_j = geometry.Point(networkX_graph.nodes[j.uid]['x'], networkX_graph.nodes[j.uid]['y'])
+                            base_span = p_n.distance(p_j)
+                            # check against geom2
+                            geom2 = networkX_graph[j.uid][o_nb]['geom']
+                            nearest_a = ops.nearest_points(p_n_nb, geom2)[1]
+                            dist_a = p_n_nb.distance(nearest_a)
+                            max_factor = 1.1
+                            if dist_a < buffer_dist \
+                                    and dist_a < base_span * max_factor \
+                                    and nearest_a != p_j:
+                                matched = True
+                                break
+                            # check against geom1
+                            geom1 = networkX_graph[n][nb]['geom']
+                            nearest_b = ops.nearest_points(p_j_nb, geom1)[1]
+                            dist_b = p_j_nb.distance(nearest_b)
+                            if dist_b < buffer_dist \
+                                    and dist_b < base_span * max_factor \
+                                    and nearest_b != p_n:
+                                matched = True
+                                break
+                        if matched:
+                            break
+                    if matched:
+                        if parent_node_name is None:
+                            parent_node_name = f'{n_n_template}_{n_n_count}'
+                            n_n_count += 1
+                        # go ahead and add the point
+                        node_group_uids.add(j.uid)
+                        node_group_members.add(j.uid)
+                        # add to the removed_nodes dict and point to new parent node uid
+                        removed_nodes[j.uid] = parent_node_name
+                        # also add self node, this may happen multiple times
+                        node_group_uids.add(n)
+                        node_group_members.add(n)
+                        # add to the removed_nodes dict and point to new parent node uid
+                        removed_nodes[n] = parent_node_name
+
         if not node_group_uids:
             continue
         # set the members for the new parent node
         parent_nodes[parent_node_name] = node_group_members
+
         # set the new parent's centroid:
         # A) only set from nodes in the original graph, not from consolidated parents
         # B) use the highest degree nodes in the nbunch to preserve topology
@@ -390,6 +456,7 @@ def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.
             if n_uid in networkX_graph:
                 if nx.degree(networkX_graph, n_uid) > highest_degree:
                     highest_degree = nx.degree(networkX_graph, n_uid)
+
         # aggregate the highest degree nodes and set the new parent centroid
         node_geoms = []
         for n_uid in node_group_members:
@@ -435,8 +502,14 @@ def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, crawl=False) -> nx.
         g_copy.remove_nodes_from(node_group_uids)
         for s, e, geom in new_edge_data:
             # don't add edge duplicates from respectively merged nodes
-            if not (s, e) in g_copy.edges():
+            if (s, e) not in g_copy.edges():
                 g_copy.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
+            # however, do add if substantially different geom...
+            else:
+                diff = g_copy[s][e]['geom'].length - geom.length
+                if abs(diff) > buffer_dist:
+                    g_copy.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
+
     return g_copy
 
 
