@@ -131,7 +131,14 @@ Frivolous nodes may be prevalent in poor quality datasets, or in situations wher
 nX\_consolidate <Chip text="v0.8.3"/>
 ---------------
 
-<FuncSignature>nX_consolidate(networkX_graph, buffer_dist=14, by_neighbours=False)</FuncSignature>
+
+<FuncSignature>
+<pre>
+nX_consolidate(networkX_graph,
+               buffer_dist=14,
+               by_neighbours=False)
+</pre>
+</FuncSignature>
 
 Consolidates nearby nodes within a set buffer distance. This can be useful for situations such as cleaning-up intersections or de-duplicating split roadways.
 
