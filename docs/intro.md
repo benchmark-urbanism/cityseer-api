@@ -154,7 +154,7 @@ _$400m$ weighted mixed-uses (hill diversity) for inner London._
 
 _Ordnance Survey Open Roads and Point of Interest data \[Contains OS data © Crown copyright and database right 2019; This material includes data licensed from PointX© Database Right/Copyright 2019\]._
 
-The data is aggregated and computed over the street network relative to the `Network Layer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the some locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+The data is aggregated and computed over the street network relative to the `Network Layer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
 ```python
 # access the data arrays at the respective keys, e.g.

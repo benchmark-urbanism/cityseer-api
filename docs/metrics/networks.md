@@ -180,7 +180,7 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 <FuncElement name="angular" type="bool">
 
-Set the `angular` parameter to `True` if using angular impedances. Angular impedances can sidestep sharp turn, potentially leading to misleading results. Setting `angular=True` adds a step to the shortest-path algorithm, which prevents this behaviour.
+Set the `angular` parameter to `True` if using angular impedances. Angular impedances can allow shortest-path algorithms to sidestep sharp turns, potentially causing misleading results. Setting `angular=True` will forestall this behaviour.
 
 </FuncElement>
 
@@ -195,7 +195,7 @@ A `Network_Layer`.
 
 ### Node attributes
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng_`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects. The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area. If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered, then set all nodes to `live=True`.
 
@@ -396,7 +396,7 @@ A list of strings, containing any combination of the following `key` values:
 | farness_impedance | $\displaystyle\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
 | farness_distance | $\displaystyle\sum_{j\neq{i}}d_{(i,j)}$ | A summation of distances in metres within $d_{max}$. |
 | harmonic | $\displaystyle\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
-| improved | $\displaystyle\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(i,j)}}$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
+| improved | $\displaystyle\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(j)}}$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
 | gravity | $\displaystyle \sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
 | cycles | $\displaystyle\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
 
