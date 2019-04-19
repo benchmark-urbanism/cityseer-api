@@ -433,15 +433,16 @@ def test_nX_consolidate():
     # G_wgs = mock.mock_osm_graph()
     # G_utm = graphs.nX_wgs_to_utm(G_wgs)
     # G = graphs.nX_simple_geoms(G_utm)
-    # G = graphs.nX_remove_dangling_nodes(G)
     # G = graphs.nX_remove_filler_nodes(G)
+    # G = graphs.nX_remove_dangling_nodes(G)
     # G_decomp = graphs.nX_decompose(G, 25)
     # from cityseer.util import plot
     # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=14)
+    # G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=15)
     # plot.plot_nX(G_spatial, figsize=(20, 20), dpi=150)
-    # d_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
-    # plot.plot_nX(d_parallel, figsize=(20, 20), dpi=150)
+    # G_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
+    # G_parallel = graphs.nX_consolidate_spatial(G_parallel, buffer_dist=10)
+    # plot.plot_nX(G_parallel, figsize=(20, 20), dpi=150)
 
 
 def test_nX_decompose():

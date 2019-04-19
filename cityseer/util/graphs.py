@@ -433,6 +433,67 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph, buffer_dist: float = 14) ->
     return g_copy
 
 
+def _find_parallel(_networkX_graph: nx.Graph, _line_start_nd, _line_end_nd, _parallel_nd, _buffer_dist):
+
+    line_geom = _networkX_graph[_line_start_nd][_line_end_nd]['geom']
+    p_x = _networkX_graph.nodes[_parallel_nd]['x']
+    p_y = _networkX_graph.nodes[_parallel_nd]['y']
+    parallel_point = geometry.Point(p_x, p_y)
+
+    # returns tuple of nearest from respective input geom
+    # want the nearest point on the line at index 1
+    nearest_point = ops.nearest_points(parallel_point, line_geom)[1]
+
+    # check if the distance from the parallel point to the nearest point is within buffer distance
+    if parallel_point.distance(nearest_point) > _buffer_dist:
+        return None
+
+    # in some cases the line will be pointing away, but is still short enough to be within max
+    # in these cases, check that the closest point is not actually the start of the line geom (or very near to it)
+    s_x = _networkX_graph.nodes[_line_start_nd]['x']
+    s_y = _networkX_graph.nodes[_line_start_nd]['y']
+    line_start_point = geometry.Point(s_x, s_y)
+    if nearest_point.distance(line_start_point) < 1:
+        return None
+
+    # if a valid nearest point has been found, go ahead and split the geom
+    # use a snap because rounding precision errors will otherwise cause issues
+    split_geoms = ops.split(ops.snap(line_geom, nearest_point, 0.01), nearest_point)
+    # if (relatively rare) the split is still not successful
+    if len(split_geoms) != 2:
+        logger.warning(f'Attempt to split line geom for {_line_start_nd}-{_line_end_nd} did not return two geoms: '
+                       f'{split_geoms}')
+        return None
+    # otherwise, unpack the geoms
+    part_a, part_b = split_geoms
+    # generate a new node name by concatenating the source nodes
+    new_nd_name = f'{_line_start_nd}_{_line_end_nd}'
+    _networkX_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
+    _networkX_graph.add_edge(_line_start_nd, new_nd_name)
+    _networkX_graph.add_edge(_line_end_nd, new_nd_name)
+    if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
+        _networkX_graph[_line_start_nd][new_nd_name]['geom'] = part_a
+        _networkX_graph[_line_start_nd][new_nd_name]['length'] = part_a.length
+        _networkX_graph[_line_start_nd][new_nd_name]['impedance'] = part_a.length
+        _networkX_graph[_line_end_nd][new_nd_name]['geom'] = part_b
+        _networkX_graph[_line_end_nd][new_nd_name]['length'] = part_b.length
+        _networkX_graph[_line_end_nd][new_nd_name]['impedance'] = part_b.length
+    else:
+        # double check matching geoms
+        if (s_x, s_y) != part_b.coords[0][:2] and (s_x, s_y) != part_b.coords[-1][:2]:
+            raise ValueError('Unable to match split geoms to existing nodes')
+        _networkX_graph[_line_start_nd][new_nd_name]['geom'] = part_b
+        _networkX_graph[_line_start_nd][new_nd_name]['length'] = part_b.length
+        _networkX_graph[_line_start_nd][new_nd_name]['impedance'] = part_b.length
+        _networkX_graph[_line_end_nd][new_nd_name]['geom'] = part_a
+        _networkX_graph[_line_end_nd][new_nd_name]['length'] = part_a.length
+        _networkX_graph[_line_end_nd][new_nd_name]['impedance'] = part_a.length
+
+    # the existing edge should be removed later to avoid in-place errors during loop cycle
+    # also return the parallel point and the newly paired parallel node
+    return (_line_start_nd, _line_end_nd), (parallel_point, new_nd_name)
+
+
 def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
@@ -518,99 +579,34 @@ def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -
                     # if not, then check along length of lines
                     # this is necessary for situations where certain lines are broken by other links
                     # i.e. where nodes are out of lock-step
-                    n_point = geometry.Point(g_copy.nodes[n]['x'], g_copy.nodes[n]['y'])
-                    # j_point already exists
-                    # the distance between these forms a basis for later comparison
-                    base_span = n_point.distance(j_point)
-                    tolerance = base_span * 1.2
-                    # check whether the closest part of the n to neighbour line segment
-                    # is within a tolerance of the j node neighbour
-                    n_nb_line = g_copy[n][n_nb]['geom']
-                    nearest = ops.nearest_points(j_nb_point, n_nb_line)[1]  # returns tuple of nearest from either geom
-                    dist = j_nb_point.distance(nearest)
-                    # accept as match if:
-                    # 1) less than buffer distance, or
-                    # 2) within max factor of base span
-                    # 3) and not the start node of the line segment (i.e. n node)
-                    # as would be case if line is actually projecting in other direction
-                    if dist < buffer_dist and dist < tolerance:
-                        # in some cases the line will be pointing away, but is short enough that still within max
-                        # in these cases, check that the closest point is not actually the start of the line geom
-                        if nearest.distance(n_point) > 1:
-                            # split the line geom based on the match location
-                            # then add to the post processing list to be merged
-                            split_geoms = ops.split(ops.snap(n_nb_line, nearest, 0.01), nearest)
-                            if len(split_geoms) != 2:
-                                logger.warning(f'Attempt to split line geom for {n}-{n_nb} did not return two geoms: '
-                                               f'{split_geoms}')
-                            else:
-                                part_a, part_b = split_geoms
-                                new_nd_name = f'{n}_{n_nb}'
-                                # remove later so as not to mess with edges in-place while iterating loop cycle
-                                removals.append((n, n_nb))
-                                # add new node and split edges
-                                g_copy.add_node(new_nd_name, x=nearest.x, y=nearest.y)
-                                g_copy.add_edge(n, new_nd_name)
-                                g_copy.add_edge(n_nb, new_nd_name)
-                                # orient the split geoms and attach to the correct edges, respectively
-                                s_x, s_y = (g_copy.nodes[n]['x'], g_copy.nodes[n]['y'])
-                                if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
-                                    g_copy[n][new_nd_name]['geom'] = part_a
-                                    g_copy[n_nb][new_nd_name]['geom'] = part_b
-                                else:
-                                    assert (s_x, s_y) == part_b.coords[0][:2] or (s_x, s_y) == part_b.coords[-1][:2]
-                                    g_copy[n][new_nd_name]['geom'] = part_b
-                                    g_copy[n_nb][new_nd_name]['geom'] = part_a
-                                # merge newly paired nodes
-                                merge_pairs.append((j_nb, new_nd_name))
-                                matched = True
-                                break
+                    # check first for j_nb point against n - n_nb line geom
+                    response = _find_parallel(g_copy, n, n_nb, j_nb, buffer_dist)
+                    if response is not None:
+                        removal_pair, merge_pair = response
+                        removals.append(removal_pair)
+                        merge_pairs.append(merge_pair)
+                        matched = True
+                        break
+                    # similarly check for n_nb point against j - j_nb line geom
+                    response = _find_parallel(g_copy, j, j_nb, n_nb, buffer_dist)
+                    if response is not None:
+                        removal_pair, merge_pair = response
+                        removals.append(removal_pair)
+                        merge_pairs.append(merge_pair)
+                        matched = True
+                        break
 
-                    # similarly check if the j line segment is within tolerance of the n node's neighbour
-                    j_nb_line = g_copy[j][j_nb]['geom']
-                    nearest = ops.nearest_points(n_nb_point, j_nb_line)[1]  # returns tuple of nearest from either geom
-                    dist = n_nb_point.distance(nearest)
-
-                    # TODO: split into a function to remove duplication vs. above...?
-                    if dist < buffer_dist and dist < tolerance:
-                        if nearest.distance(j_point) > 1:
-                            split_geoms = ops.split(ops.snap(j_nb_line, nearest, 0.01), nearest)
-                            if len(split_geoms) != 2:
-                                logger.warning(f'Attempt to split line geom for {j}-{j_nb} did not return two geoms: '
-                                               f'{split_geoms}')
-                            else:
-                                part_a, part_b = split_geoms
-                                new_nd_name = f'{j}_{j_nb}'
-                                removals.append((j, j_nb))
-                                g_copy.add_node(new_nd_name, x=nearest.x, y=nearest.y)
-                                g_copy.add_edge(j, new_nd_name)
-                                g_copy.add_edge(j_nb, new_nd_name)
-                                s_x, s_y = (g_copy.nodes[j]['x'], g_copy.nodes[j]['y'])
-                                if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
-                                    g_copy[j][new_nd_name]['geom'] = part_a
-                                    g_copy[j_nb][new_nd_name]['geom'] = part_b
-                                else:
-                                    assert (s_x, s_y) == part_b.coords[0][:2] or (s_x, s_y) == part_b.coords[-1][:2]
-                                    g_copy[j][new_nd_name]['geom'] = part_b
-                                    g_copy[j_nb][new_nd_name]['geom'] = part_a
-
-                                # add to post-process q
-                                merge_pairs.append((n_nb, new_nd_name))
-                                matched = True
-                                break
+                # break out if match found
                 if matched:
                     break
+
+            # if successful match, go ahead and add a new parent node, and merge n and j
             if matched:
                 if parent_node_name is None:
                     parent_node_name = f'{n_n_template}_{n_n_count}'
                     n_n_count += 1
-                # go ahead and add the point
-                node_group.add(j)
-                # add to the removed_nodes dict and point to new parent node uid
-                removed_nodes.add(j)
-                # also add self node
-                node_group.add(n)
-                removed_nodes.add(n)
+                node_group.update([n, j])
+                removed_nodes.update([n, j])
 
         for s, e in removals:
             # in some cases, the edge may not exist anymore
