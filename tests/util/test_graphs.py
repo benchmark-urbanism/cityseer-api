@@ -318,6 +318,7 @@ def test_nX_remove_filler_nodes():
         graphs.nX_remove_filler_nodes(G_corr)
 
 
+# this method tests both nX_consolidate_spatial and nX_consolidate_parallel
 def test_nX_consolidate():
 
     # create a test graph
@@ -380,10 +381,11 @@ def test_nX_consolidate():
     # plot.plot_nX(G, labels=True)
     G = graphs.nX_decompose(G, 50)
     # plot.plot_nX(G, labels=True)
-    G_merged = graphs.nX_consolidate(G, buffer_dist=25, by_neighbours=False)
-    G_merged_nb = graphs.nX_consolidate(G, buffer_dist=25, by_neighbours=True)
+    G_merged_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=25)
+    G_merged_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=25)
 
-    for g in [G_merged, G_merged_nb]:
+    for g in [G_merged_spatial, G_merged_parallel]:
+
         # plot.plot_nX(g, labels=True)
 
         assert g.number_of_nodes() == 14
@@ -397,11 +399,11 @@ def test_nX_consolidate():
             (700799.2961812733, 5719758.592362546),
             (700760.7038187267, 5719758.592362546),
             (700620.0, 5719710.0),
-            (700660.0, 5719700.0),
+            (700660.0, 5719710.0),
             (700710.0, 5719800.0),
             (700710.0, 5719710.0),
             (700710.0, 5719620.0),
-            (700780.0, 5719720.0),
+            (700780.0, 5719710.0),
             (700840.0, 5719710.0),
             (700710.0, 5719760.0),
             (700750.0, 5719710.0),
@@ -411,35 +413,35 @@ def test_nX_consolidate():
         edge_lens = []
         for s, e, d in g.edges(data=True):
             edge_lens.append(d['geom'].length)
-        assert edge_lens == [
-            40.0,
-            43.14757303390519,
-            43.147573033043194,
-            43.147573033043194,
-            41.23105625617661,
-            50.99019513592785,
-            40.0,
-            50.0,
-            40.0,
-            50.0,
-            40.0,
-            31.622776601683793,
-            31.622776601683793,
-            30.0]
+        assert edge_lens == [50.0,
+                             43.14757303390519,
+                             52.28346114756593,
+                             52.28346114756593,
+                             40.0,
+                             50.0,
+                             40.0,
+                             50.0,
+                             40.0,
+                             50.0,
+                             40.0,
+                             30.0,
+                             30.0,
+                             30.0]
 
     # visual tests on OSM data
-    # from cityseer.util import plot
+    # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
     # G_wgs = mock.mock_osm_graph()
     # G_utm = graphs.nX_wgs_to_utm(G_wgs)
     # G = graphs.nX_simple_geoms(G_utm)
     # G = graphs.nX_remove_dangling_nodes(G)
     # G = graphs.nX_remove_filler_nodes(G)
+    # G_decomp = graphs.nX_decompose(G, 25)
+    # from cityseer.util import plot
     # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G = graphs.nX_consolidate(G, buffer_dist=14, by_neighbours=True)
-    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G = graphs.nX_decompose(G, 25)
-    # G = graphs.nX_consolidate(G, buffer_dist=14, by_neighbours=True)
-    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+    # G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=14)
+    # plot.plot_nX(G_spatial, figsize=(20, 20), dpi=150)
+    # d_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
+    # plot.plot_nX(d_parallel, figsize=(20, 20), dpi=150)
 
 
 def test_nX_decompose():

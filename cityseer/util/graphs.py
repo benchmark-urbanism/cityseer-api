@@ -12,8 +12,6 @@ import utm
 from shapely import geometry, ops, strtree
 from tqdm import tqdm
 
-import matplotlib.pyplot as plt
-
 from cityseer.algos import checks
 
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +22,7 @@ if 'GCP_PROJECT' in os.environ:
     tqdm_suppress = True
 
 
-# TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658. Note, also used from test_networkX_remove_straight_intersections()
+# TODO: this corrected shapely function is temporary until the fix is released in Shapely 1.7 - submitted PR#658.
 def substring(geom, start_dist, end_dist, normalized=False):
     assert (isinstance(geom, geometry.LineString))
 
@@ -151,8 +149,9 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph, force_zone_number=None) -> nx.Graph:
     return g_copy
 
 
-def nX_remove_dangling_nodes(networkX_graph: nx.Graph, despine: float = 25, remove_disconnected: bool = True) -> nx.Graph:
-
+def nX_remove_dangling_nodes(networkX_graph: nx.Graph,
+                             despine: float = 25,
+                             remove_disconnected: bool = True) -> nx.Graph:
     logger.info(f'Removing dangling nodes.')
     g_copy = networkX_graph.copy()
 
@@ -293,7 +292,8 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             # run checks
             if merged_line.type != 'LineString':
                 raise AttributeError(
-                    f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
+                    f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
+                    f'Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
 
             # add new edge
             g_copy.add_edge(end_node_a, end_node_b, geom=merged_line)
@@ -301,40 +301,103 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     return g_copy
 
 
-def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, by_neighbours=False) -> nx.Graph:
-    if not isinstance(networkX_graph, nx.Graph):
-        raise TypeError('This method requires an undirected networkX graph.')
+def _dissolve_adjacent(_target_graph: nx.Graph,
+                       _parent_node_name: str,
+                       _node_group: Union[set, list, tuple]) -> nx.Graph:
 
-    logger.info(f'Consolidating network.')
-    g_copy = networkX_graph.copy()
+    # set the new centroid from the centroid of the node group's Multipoint:
+    node_geoms = []
+    for n_uid in _node_group:
+        x = _target_graph.nodes[n_uid]['x']
+        y = _target_graph.nodes[n_uid]['y']
+        node_geoms.append(geometry.Point(x, y))
+    c = geometry.MultiPoint(node_geoms).centroid
+    _target_graph.add_node(_parent_node_name, x=c.x, y=c.y)
 
+    # remove old nodes and reassign to new parent node
+    # first determine new edges
+    new_edge_data = []
+    for uid in _node_group:
+        for nb_uid in nx.neighbors(_target_graph, uid):
+            # drop geoms between merged nodes
+            # note that this will also drop self-loops
+            if uid in _node_group and nb_uid in _node_group:
+                continue
+            else:
+                if 'geom' not in _target_graph[uid][nb_uid]:
+                    raise AttributeError(f'Missing "geom" attribute for edge {uid}-{nb_uid}')
+                line_geom = _target_graph[uid][nb_uid]['geom']
+                if line_geom.type != 'LineString':
+                    raise TypeError(
+                        f'Expecting LineString geometry but found {line_geom.type} geometry for edge {uid}-{nb_uid}.')
+                # first orient geom in correct direction
+                s_x = _target_graph.nodes[uid]['x']
+                s_y = _target_graph.nodes[uid]['y']
+                # check geom coordinates directionality - flip if facing backwards direction
+                if not (s_x, s_y) == line_geom.coords[0][:2]:
+                    line_geom = geometry.LineString(line_geom.coords[::-1])
+                # double check that coordinates now face the forwards direction
+                if not (s_x, s_y) == line_geom.coords[0][:2]:
+                    raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {uid}-{nb_uid}')
+                # update geom starting point to new parent node's coordinates
+                coords = list(line_geom.coords)
+                coords[0] = (c.x, c.y)
+                new_line_geom = geometry.LineString(coords)
+                new_edge_data.append((_parent_node_name, nb_uid, new_line_geom))
+    # remove the nodes from the target graph, this will also implicitly drop related edges
+    _target_graph.remove_nodes_from(_node_group)
+    # add the edges
+    for s, e, geom in new_edge_data:
+        # don't add edge duplicates from respectively merged nodes
+        if (s, e) not in _target_graph.edges():
+            _target_graph.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
+        # however, do add if substantially different geom...
+        else:
+            diff = _target_graph[s][e]['geom'].length / geom.length
+            if abs(diff) > 1.25:
+                _target_graph.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
+
+    return _target_graph
+
+
+def _create_strtree(_graph: nx.Graph) -> strtree.STRtree:
     # create an STRtree
     points = []
-    for n, n_d in g_copy.nodes(data=True):
+    for n, n_d in _graph.nodes(data=True):
         # x coordinate
-        if 'x' not in networkX_graph.nodes[n]:
+        if 'x' not in _graph.nodes[n]:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        x = networkX_graph.nodes[n]['x']
+        x = _graph.nodes[n]['x']
         # y coordinate
-        if 'y' not in networkX_graph.nodes[n]:
+        if 'y' not in _graph.nodes[n]:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        y = networkX_graph.nodes[n]['y']
+        y = _graph.nodes[n]['y']
         p = geometry.Point(x, y)
         p.uid = n
         points.append(p)
-    tree = strtree.STRtree(points)
+    return strtree.STRtree(points)
 
-    # keep track of removed nodes, and the new parent nodes they point to
-    removed_nodes = {}
-    # keep track of the new nodes, and the consolidated nodes they represent
-    parent_nodes = {}
-    # label and increment new node identifiers
+
+def nX_consolidate_spatial(networkX_graph: nx.Graph, buffer_dist: float = 14) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
+        raise TypeError('This method requires an undirected networkX graph.')
+
+    logger.info(f'Consolidating network by distance buffer.')
+    g_copy = networkX_graph.copy()
+
+    # create an STRtree
+    tree = _create_strtree(networkX_graph)
+
+    # setup template for new node names
     n_n_template = uuid.uuid4().hex.upper()[0:3]
     n_n_count = 0
 
+    # keep track of removed nodes
+    removed_nodes = set()
+
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=tqdm_suppress):
-        # if already consolidated from an adjacent node, and if not crawling, then it is OK to continue
+        # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
         # get all other nodes within buffer distance
@@ -342,173 +405,229 @@ def nX_consolidate(networkX_graph: nx.Graph, buffer_dist=14, by_neighbours=False
         # if only self-node, then continue
         if len(js) <= 1:
             continue
-        # when crawling and if already consolidated from an adjacent node:
-        # check if the presently returned nodes match the existing parent, if so, no need to continue
-        if n in removed_nodes:
-            # check existing parent's member nodes
-            p_n = removed_nodes[n]
-            # if these match exactly, then it is OK to continue
-            if parent_nodes[p_n] == set([j.uid for j in js]):
-                continue
 
-        # create a new parent node name - only used if match found
+        # new parent node name - only used if match found
         parent_node_name = None
-        # keep track of the uids to be consolidated - this can contain parents
-        node_group_uids = set()
-        # keep track of the original member uids to be consolidated - this does not contain parents
-        node_group_members = set()
+        # keep track of the uids to be consolidated
+        node_group = set()
 
-        # default distance based method
-        if not by_neighbours:
-            # iterate geoms within buffer
-            # this will include the self-node
-            for j in js:
-                if j.uid not in removed_nodes:
-                    if parent_node_name is None:
-                        parent_node_name = f'{n_n_template}_{n_n_count}'
-                        n_n_count += 1
-                    # if not already in the removed nodes, go ahead and add the point
-                    node_group_uids.add(j.uid)
-                    node_group_members.add(j.uid)
-                    # add to the removed_nodes dict and point to new parent node uid
-                    removed_nodes[j.uid] = parent_node_name
+        # iterate geoms within buffer
+        # this includes the self-node, hence no special logic to handle
+        for j in js:
+            if j.uid in removed_nodes:
+                continue
+            # initialise the parent node name, if necessary
+            if parent_node_name is None:
+                parent_node_name = f'{n_n_template}_{n_n_count}'
+                n_n_count += 1
+            # if not already in the removed nodes, go ahead and add the point
+            node_group.add(j.uid)
+            # add to the removed_nodes dict and point to new parent node uid
+            removed_nodes.add(j.uid)
 
-        # neighbour method only merges if neighbours are also within buffer distance
-        else:
-            nbs = list(nx.neighbors(networkX_graph, n))
-            for j in js:
-                # only review if not already in the removed nodes,
-                if j.uid not in removed_nodes:
-                    # ignore self-node
-                    if j.uid == n:
-                        continue
-                    # matching can happen in one of several situations, so use a flag
-                    matched = False
-                    # cross check n's neighbours against j's neighbours
-                    # if they respectively have neighbours within buffer dist of each other
-                    # then add
-                    oth_nbs = list(nx.neighbors(networkX_graph, j.uid))
-                    for nb in nbs:
-                        # if j.uid is a direct neighbour, then ignore
-                        if nb == j.uid:
-                            continue
-                        nb_d = networkX_graph.nodes[nb]
-                        p_n_nb = geometry.Point(nb_d['x'], nb_d['y'])
-                        for o_nb in oth_nbs:
-                            # don't match against origin node
-                            if o_nb == n:
-                                continue
-                            o_nb_d = networkX_graph.nodes[o_nb]
-                            p_j_nb = geometry.Point(o_nb_d['x'], o_nb_d['y'])
-                            if p_n_nb.distance(p_j_nb) < buffer_dist:
-                                matched = True
-                                break
-                            # if no match on end-points, check nearest points
-                            p_n = geometry.Point(networkX_graph.nodes[n]['x'], networkX_graph.nodes[n]['y'])
-                            p_j = geometry.Point(networkX_graph.nodes[j.uid]['x'], networkX_graph.nodes[j.uid]['y'])
-                            base_span = p_n.distance(p_j)
-                            # check against geom2
-                            geom2 = networkX_graph[j.uid][o_nb]['geom']
-                            nearest_a = ops.nearest_points(p_n_nb, geom2)[1]
-                            dist_a = p_n_nb.distance(nearest_a)
-                            max_factor = 1.1
-                            if dist_a < buffer_dist \
-                                    and dist_a < base_span * max_factor \
-                                    and nearest_a != p_j:
-                                matched = True
-                                break
-                            # check against geom1
-                            geom1 = networkX_graph[n][nb]['geom']
-                            nearest_b = ops.nearest_points(p_j_nb, geom1)[1]
-                            dist_b = p_j_nb.distance(nearest_b)
-                            if dist_b < buffer_dist \
-                                    and dist_b < base_span * max_factor \
-                                    and nearest_b != p_n:
-                                matched = True
-                                break
-                        if matched:
-                            break
-                    if matched:
-                        if parent_node_name is None:
-                            parent_node_name = f'{n_n_template}_{n_n_count}'
-                            n_n_count += 1
-                        # go ahead and add the point
-                        node_group_uids.add(j.uid)
-                        node_group_members.add(j.uid)
-                        # add to the removed_nodes dict and point to new parent node uid
-                        removed_nodes[j.uid] = parent_node_name
-                        # also add self node, this may happen multiple times
-                        node_group_uids.add(n)
-                        node_group_members.add(n)
-                        # add to the removed_nodes dict and point to new parent node uid
-                        removed_nodes[n] = parent_node_name
-
-        if not node_group_uids:
+        if not node_group:
             continue
-        # set the members for the new parent node
-        parent_nodes[parent_node_name] = node_group_members
 
-        # set the new parent's centroid:
-        # A) only set from nodes in the original graph, not from consolidated parents
-        # B) use the highest degree nodes in the nbunch to preserve topology
-        highest_degree = 0
-        for n_uid in node_group_members:
-            if n_uid in networkX_graph:
-                if nx.degree(networkX_graph, n_uid) > highest_degree:
-                    highest_degree = nx.degree(networkX_graph, n_uid)
+        g_copy = _dissolve_adjacent(g_copy, parent_node_name, node_group)
 
-        # aggregate the highest degree nodes and set the new parent centroid
-        node_geoms = []
-        for n_uid in node_group_members:
-            if n_uid not in networkX_graph:
+    return g_copy
+
+
+def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -> nx.Graph:
+    if not isinstance(networkX_graph, nx.Graph):
+        raise TypeError('This method requires an undirected networkX graph.')
+
+    logger.info(f'Consolidating network by lineal neighbours.')
+    g_copy = networkX_graph.copy()
+
+    # create an STRtree
+    tree = _create_strtree(networkX_graph)
+
+    # setup template for new node names
+    n_n_template = uuid.uuid4().hex.upper()[0:3]
+    n_n_count = 0
+
+    # keep track of removed nodes
+    removed_nodes = set()
+
+    # keep track of manually split node locations for post-processing
+    merge_pairs = []
+
+    # iterate origin graph
+    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=tqdm_suppress):
+        # skip if already consolidated from an adjacent node
+        if n in removed_nodes:
+            continue
+        # get all other nodes within buffer distance
+        js = tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
+        # if only self-node, then continue
+        if len(js) <= 1:
+            continue
+
+        # new parent node name - only used if match found
+        parent_node_name = None
+        # keep track of the uids to be consolidated
+        node_group = set()
+        # delay removals until after each iteration of loop to avoid in-place modification errors
+        removals = []
+
+        # iterate each node's neighbours
+        # check if any of the neighbour's neighbours are within the buffer distance of other direct neighbours
+        # if so, parallel set of edges may have been found
+        nbs = list(nx.neighbors(g_copy, n))
+        for j_point in js:
+            j = j_point.uid
+            # ignore self-node
+            if j == n:
                 continue
-            if nx.degree(networkX_graph, n_uid) != highest_degree:
+            # only review if not already in the removed nodes,
+            if j in removed_nodes:
                 continue
-            x = networkX_graph.nodes[n_uid]['x']
-            y = networkX_graph.nodes[n_uid]['y']
-            # append geom
-            node_geoms.append(geometry.Point(x, y))
-        c = geometry.MultiPoint(node_geoms).centroid
-        g_copy.add_node(parent_node_name, x=c.x, y=c.y)
-        # now remove old nodes and reassign to new parent node
-        new_edge_data = []
-        for uid in node_group_uids:
-            for nb_uid in nx.neighbors(g_copy, uid):
-                # drop geoms between merged nodes
-                # note that this will also drop self-loops
-                if uid in node_group_uids and nb_uid in node_group_uids:
+            # matching can happen in one of several situations, so use a flag
+            matched = False
+            # cross check n's neighbours against j's neighbours
+            # if they have respective neighbours within buffer dist of each other, then merge
+            j_nbs = list(nx.neighbors(g_copy, j))
+            for n_nb in nbs:
+                # skip this neighbour if already removed
+                if n_nb in removed_nodes:
                     continue
-                else:
-                    if 'geom' not in g_copy[uid][nb_uid]:
-                        raise AttributeError(f'Missing "geom" attribute for edge {uid}-{nb_uid}')
-                    line_geom = g_copy[uid][nb_uid]['geom']
-                    if line_geom.type != 'LineString':
-                        raise TypeError(
-                            f'Expecting LineString geometry but found {line_geom.type} geometry for edge {uid}-{nb_uid}.')
-                    # first orient geom in correct direction
-                    s_x = g_copy.nodes[uid]['x']
-                    s_y = g_copy.nodes[uid]['y']
-                    # check geom coordinates directionality - flip if facing backwards direction
-                    if not (s_x, s_y) == line_geom.coords[0][:2]:
-                        line_geom = geometry.LineString(line_geom.coords[::-1])
-                    # double check that coordinates now face the forwards direction
-                    if not (s_x, s_y) == line_geom.coords[0][:2]:
-                        raise AttributeError(f'Edge geometry endpoint coordinate mismatch for edge {uid}-{nb_uid}')
-                    # update geom starting point to parent node's coordinates
-                    coords = list(line_geom.coords)
-                    coords[0] = (c.x, c.y)
-                    new_line_geom = geometry.LineString(coords)
-                    new_edge_data.append((parent_node_name, nb_uid, new_line_geom))
-        g_copy.remove_nodes_from(node_group_uids)
-        for s, e, geom in new_edge_data:
-            # don't add edge duplicates from respectively merged nodes
-            if (s, e) not in g_copy.edges():
-                g_copy.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
-            # however, do add if substantially different geom...
-            else:
-                diff = g_copy[s][e]['geom'].length - geom.length
-                if abs(diff) > buffer_dist:
-                    g_copy.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
+                # if j is a direct neighbour, then ignore
+                if n_nb == j:
+                    continue
+                # get the n node neighbour and create a point
+                n_nb_point = geometry.Point(g_copy.nodes[n_nb]['x'], g_copy.nodes[n_nb]['y'])
+                # compare against j node neighbours
+                for j_nb in j_nbs:
+                    # skip this neighbour if already removed
+                    if j_nb in removed_nodes:
+                        continue
+                    # don't match against origin node
+                    if j_nb == n:
+                        continue
+                    # if the respective neighbours are the same node, then match
+                    if n_nb == j_nb:
+                        matched = True
+                        break
+                    # otherwise, get the j node neighbour and create a point
+                    j_nb_point = geometry.Point(g_copy.nodes[j_nb]['x'], g_copy.nodes[j_nb]['y'])
+                    # check whether the neighbours are within the buffer distance of each other
+                    if n_nb_point.distance(j_nb_point) < buffer_dist:
+                        matched = True
+                        break
+                    # if not, then check along length of lines
+                    # this is necessary for situations where certain lines are broken by other links
+                    # i.e. where nodes are out of lock-step
+                    n_point = geometry.Point(g_copy.nodes[n]['x'], g_copy.nodes[n]['y'])
+                    # j_point already exists
+                    # the distance between these forms a basis for later comparison
+                    base_span = n_point.distance(j_point)
+                    tolerance = base_span * 1.2
+                    # check whether the closest part of the n to neighbour line segment
+                    # is within a tolerance of the j node neighbour
+                    n_nb_line = g_copy[n][n_nb]['geom']
+                    nearest = ops.nearest_points(j_nb_point, n_nb_line)[1]  # returns tuple of nearest from either geom
+                    dist = j_nb_point.distance(nearest)
+                    # accept as match if:
+                    # 1) less than buffer distance, or
+                    # 2) within max factor of base span
+                    # 3) and not the start node of the line segment (i.e. n node)
+                    # as would be case if line is actually projecting in other direction
+                    if dist < buffer_dist and dist < tolerance:
+                        # in some cases the line will be pointing away, but is short enough that still within max
+                        # in these cases, check that the closest point is not actually the start of the line geom
+                        if nearest.distance(n_point) > 1:
+                            # split the line geom based on the match location
+                            # then add to the post processing list to be merged
+                            split_geoms = ops.split(ops.snap(n_nb_line, nearest, 0.01), nearest)
+                            if len(split_geoms) != 2:
+                                logger.warning(f'Attempt to split line geom for {n}-{n_nb} did not return two geoms: '
+                                               f'{split_geoms}')
+                            else:
+                                part_a, part_b = split_geoms
+                                new_nd_name = f'{n}_{n_nb}'
+                                # remove later so as not to mess with edges in-place while iterating loop cycle
+                                removals.append((n, n_nb))
+                                # add new node and split edges
+                                g_copy.add_node(new_nd_name, x=nearest.x, y=nearest.y)
+                                g_copy.add_edge(n, new_nd_name)
+                                g_copy.add_edge(n_nb, new_nd_name)
+                                # orient the split geoms and attach to the correct edges, respectively
+                                s_x, s_y = (g_copy.nodes[n]['x'], g_copy.nodes[n]['y'])
+                                if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
+                                    g_copy[n][new_nd_name]['geom'] = part_a
+                                    g_copy[n_nb][new_nd_name]['geom'] = part_b
+                                else:
+                                    assert (s_x, s_y) == part_b.coords[0][:2] or (s_x, s_y) == part_b.coords[-1][:2]
+                                    g_copy[n][new_nd_name]['geom'] = part_b
+                                    g_copy[n_nb][new_nd_name]['geom'] = part_a
+                                # merge newly paired nodes
+                                merge_pairs.append((j_nb, new_nd_name))
+                                matched = True
+                                break
+
+                    # similarly check if the j line segment is within tolerance of the n node's neighbour
+                    j_nb_line = g_copy[j][j_nb]['geom']
+                    nearest = ops.nearest_points(n_nb_point, j_nb_line)[1]  # returns tuple of nearest from either geom
+                    dist = n_nb_point.distance(nearest)
+
+                    # TODO: split into a function to remove duplication vs. above...?
+                    if dist < buffer_dist and dist < tolerance:
+                        if nearest.distance(j_point) > 1:
+                            split_geoms = ops.split(ops.snap(j_nb_line, nearest, 0.01), nearest)
+                            if len(split_geoms) != 2:
+                                logger.warning(f'Attempt to split line geom for {j}-{j_nb} did not return two geoms: '
+                                               f'{split_geoms}')
+                            else:
+                                part_a, part_b = split_geoms
+                                new_nd_name = f'{j}_{j_nb}'
+                                removals.append((j, j_nb))
+                                g_copy.add_node(new_nd_name, x=nearest.x, y=nearest.y)
+                                g_copy.add_edge(j, new_nd_name)
+                                g_copy.add_edge(j_nb, new_nd_name)
+                                s_x, s_y = (g_copy.nodes[j]['x'], g_copy.nodes[j]['y'])
+                                if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
+                                    g_copy[j][new_nd_name]['geom'] = part_a
+                                    g_copy[j_nb][new_nd_name]['geom'] = part_b
+                                else:
+                                    assert (s_x, s_y) == part_b.coords[0][:2] or (s_x, s_y) == part_b.coords[-1][:2]
+                                    g_copy[j][new_nd_name]['geom'] = part_b
+                                    g_copy[j_nb][new_nd_name]['geom'] = part_a
+
+                                # add to post-process q
+                                merge_pairs.append((n_nb, new_nd_name))
+                                matched = True
+                                break
+                if matched:
+                    break
+            if matched:
+                if parent_node_name is None:
+                    parent_node_name = f'{n_n_template}_{n_n_count}'
+                    n_n_count += 1
+                # go ahead and add the point
+                node_group.add(j)
+                # add to the removed_nodes dict and point to new parent node uid
+                removed_nodes.add(j)
+                # also add self node
+                node_group.add(n)
+                removed_nodes.add(n)
+
+        for s, e in removals:
+            # in some cases, the edge may not exist anymore
+            if (s, e) in g_copy.edges():
+                g_copy.remove_edge(s, e)
+
+        if not node_group:
+            continue
+
+        g_copy = _dissolve_adjacent(g_copy, parent_node_name, node_group)
+
+    for pair in merge_pairs:
+        # in some cases one of the pair of nodes may not exist anymore
+        if pair[0] in g_copy and pair[1] in g_copy:
+            parent_node_name = f'{n_n_template}_{n_n_count}'
+            n_n_count += 1
+            g_copy = _dissolve_adjacent(g_copy, parent_node_name, pair)
 
     return g_copy
 
@@ -619,7 +738,8 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
         # test for geom
         if 'geom' not in edge_data:
             raise AttributeError(
-                f'No edge geom found for edge {a_node}-{b_node}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+                f'No edge geom found for edge {a_node}-{b_node}: '
+                f'Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = edge_data['geom']
         if line_geom.type != 'LineString':
@@ -687,7 +807,8 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
                     raise TypeError(
-                        f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
+                        f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
+                        f'Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
 
                 # iterate the coordinates and sum the calculate the angular change
                 sum_angles = 0
@@ -727,7 +848,8 @@ def nX_auto_edge_params(networkX_graph: nx.Graph) -> nx.Graph:
     for s, e, d in tqdm(g_copy.edges(data=True), disable=tqdm_suppress):
         if 'geom' not in d:
             raise AttributeError(
-                f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+                f'No edge geom found for edge {s}-{e}: '
+                f'Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
@@ -868,7 +990,8 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         for uid in node_uids:
             if uid not in g_copy:
                 raise AttributeError(
-                    f'Node uid {uid} not found in graph. If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
+                    f'Node uid {uid} not found in graph. '
+                    f'If passing a graph as backbone, the uids must match those supplied with the node and edge maps.')
     else:
         logger.info('No existing graph found, creating new.')
         g_copy = nx.Graph()
@@ -896,7 +1019,8 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         for uid, metrics in tqdm(metrics_dict.items(), disable=tqdm_suppress):
             if uid not in g_copy:
                 raise AttributeError(
-                    f'Node uid {uid} not found in graph. Data dictionary uids must match those supplied with the node and edge maps.')
+                    f'Node uid {uid} not found in graph. '
+                    f'Data dictionary uids must match those supplied with the node and edge maps.')
             g_copy.nodes[uid]['metrics'] = metrics
 
     return g_copy

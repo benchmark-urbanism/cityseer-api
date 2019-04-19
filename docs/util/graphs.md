@@ -128,19 +128,18 @@ Frivolous nodes may be prevalent in poor quality datasets, or in situations wher
 :::
 
 
-nX\_consolidate <Chip text="v0.8.3"/>
----------------
+nX\_consolidate\_spatial <Chip text="v0.8.4"/>
+------------------------
 
+<FuncSignature>nX_consolidate_spatial(networkX_graph, buffer_dist=14)</FuncSignature>
 
-<FuncSignature>
-<pre>
-nX_consolidate(networkX_graph,
-               buffer_dist=14,
-               by_neighbours=False)
-</pre>
-</FuncSignature>
+Consolidates nearby nodes within a specified spatial buffer distance.
 
-Consolidates nearby nodes within a set buffer distance. This can be useful for situations such as cleaning-up intersections or de-duplicating split roadways.
+::: tip Hint
+
+Compare with [`nX_consolidate_parallel`](#nx-consolidate-parallel).
+
+:::
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -156,16 +155,39 @@ The buffer distance to be used for consolidating nearby nodes.
 
 </FuncElement>
 
-<FuncElement name="by_neighbours" type="bool">
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="graph" type="nx.Graph">
 
-When set to `False`, the merging method is strictly spatial. When set to `True`, nodes are merged only when they also have adjacent neighbours within the buffer distance. This method better preserves graph topology.
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
+
+</FuncElement>
+
+
+nX\_consolidate\_parallel <Chip text="v0.8.4"/>
+-------------------------
+
+<FuncSignature>nX_consolidate_parallel(networkX_graph, buffer_dist=14)</FuncSignature>
+
+Consolidates nearby nodes within a spatial buffer distance, but only if adjacent nodes are found that are also within the buffer distance. This method targets parallel links and may better preserve overall network topology.
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name="networkX_graph" type="nx.Graph">
+
+A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms.
+
+</FuncElement>
+
+<FuncElement name="buffer_dist" type="float">
+
+The buffer distance to be used for consolidating nearby nodes.
 
 </FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the highest degree constituent nodes. 
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
 
 </FuncElement>
 
