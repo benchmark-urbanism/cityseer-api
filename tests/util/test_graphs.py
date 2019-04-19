@@ -430,19 +430,21 @@ def test_nX_consolidate():
 
     # visual tests on OSM data
     # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
-    # G_wgs = mock.mock_osm_graph()
-    # G_utm = graphs.nX_wgs_to_utm(G_wgs)
-    # G = graphs.nX_simple_geoms(G_utm)
-    # G = graphs.nX_remove_filler_nodes(G)
-    # G = graphs.nX_remove_dangling_nodes(G)
-    # G_decomp = graphs.nX_decompose(G, 25)
-    # from cityseer.util import plot
-    # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-    # G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=15)
-    # plot.plot_nX(G_spatial, figsize=(20, 20), dpi=150)
-    # G_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
-    # G_parallel = graphs.nX_consolidate_spatial(G_parallel, buffer_dist=10)
-    # plot.plot_nX(G_parallel, figsize=(20, 20), dpi=150)
+    g_1 = mock.mock_osm_graph()
+    g_2_data = mock.mock_osm_data(alt=True)
+    g_2 = mock.mock_osm_graph(osm_json=g_2_data)
+    for g in [g_1, g_2]:
+        G_utm = graphs.nX_wgs_to_utm(g)
+        G = graphs.nX_simple_geoms(G_utm)
+        G = graphs.nX_remove_filler_nodes(G)
+        G = graphs.nX_remove_dangling_nodes(G)
+        G_decomp = graphs.nX_decompose(G, 25)
+        # from cityseer.util import plot
+        # plot.plot_nX(G, figsize=(20, 20), dpi=150)
+        G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=15)
+        # plot.plot_nX(G_spatial, figsize=(20, 20), dpi=150)
+        G_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
+        # plot.plot_nX(G_parallel, figsize=(20, 20), dpi=150)
 
 
 def test_nX_decompose():

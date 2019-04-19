@@ -348,6 +348,10 @@ def _dissolve_adjacent(_target_graph: nx.Graph,
     _target_graph.remove_nodes_from(_node_group)
     # add the edges
     for s, e, geom in new_edge_data:
+        # when dealing with a collapsed linestring, this should be a rare occurance
+        if geom.length == 0:
+            logger.warning(f'Encountered a geom of length 0m: check edge {s}-{e}.')
+            continue
         # don't add edge duplicates from respectively merged nodes
         if (s, e) not in _target_graph.edges():
             _target_graph.add_edge(s, e, geom=geom, length=geom.length, impedance=geom.length)
@@ -498,7 +502,7 @@ def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
 
-    logger.info(f'Consolidating network by lineal neighbours.')
+    logger.info(f'Consolidating network by parallel edges.')
     g_copy = networkX_graph.copy()
 
     # create an STRtree

@@ -214,7 +214,7 @@ A `NetworkX` graph with `x` and `y` attributes in [WGS84](https://epsg.io/4326) 
 mock\_osm\_data
 ---------------
 
-<FuncSignature>mock_osm_data()</FuncSignature>
+<FuncSignature>mock_osm_data(alt=False)</FuncSignature>
 
 Returns a `JSON` string representing a typical [`Open Street Map`](https://www.openstreetmap.org) response. Used for the purpose of testing.
 
@@ -223,6 +223,13 @@ Returns a `JSON` string representing a typical [`Open Street Map`](https://www.o
 Where the intent is to derive a graph from this data: it is simpler to use [`mock_osm_graph`](#mock-osm-graph) instead, or else pass the resultant string to the aforementioned method's `osm_json` parameter.
 
 :::
+
+<FuncHeading>Parameters</FuncHeading>
+<FuncElement name="alt" type="bool">
+
+When set to `True`: provides an alternative set of OSM data.
+
+</FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="osm_json" type="str">
