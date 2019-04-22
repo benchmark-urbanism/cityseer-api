@@ -241,7 +241,7 @@ The `max_dist` parameter should not be set too small. There are two steps in the
 :::
 
 ::: warning Note
-The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/util/graphs.html#nx-decompose)), which offers the further benefit of a more granular representation of variations in metrics along street-fronts.
+The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/util/graphs.html#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
 :::
 
 <img src="../images/plots/assignment.png" alt="Example assignment of data to a network" class="left"><img src="../images/plots/assignment_decomposed.png" alt="Example assignment on a decomposed network" class="right">

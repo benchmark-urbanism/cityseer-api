@@ -168,7 +168,7 @@ nX\_consolidate\_parallel <Chip text="v0.8.4"/>
 
 <FuncSignature>nX_consolidate_parallel(networkX_graph, buffer_dist=14)</FuncSignature>
 
-Consolidates nearby nodes within a spatial buffer distance, but only if adjacent nodes are found that are also within the buffer distance. This method targets parallel links and may better preserve overall network topology.
+Consolidates nearby nodes within a spatial buffer distance, but only if adjacent nodes are found that are also within the buffer distance from each other. This method targets parallel links and may better preserve overall network topology.
 
 <FuncHeading>Parameters</FuncHeading>
 
