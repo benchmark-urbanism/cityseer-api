@@ -163,7 +163,7 @@ A `networkX` graph. Nodes located within the `buffer_dist` distance from other n
 </FuncElement>
 
 
-nX\_consolidate\_parallel <Chip text="v0.8.4"/>
+nX\_consolidate\_parallel <Chip text="v0.8.7"/>
 -------------------------
 
 <FuncSignature>nX_consolidate_parallel(networkX_graph, buffer_dist=14)</FuncSignature>

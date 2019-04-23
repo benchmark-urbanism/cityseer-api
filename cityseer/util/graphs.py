@@ -495,7 +495,7 @@ def _find_parallel(_networkX_graph: nx.Graph, _line_start_nd, _line_end_nd, _par
 
     # the existing edge should be removed later to avoid in-place errors during loop cycle
     # also return the parallel point and the newly paired parallel node
-    return (_line_start_nd, _line_end_nd), (parallel_point, new_nd_name)
+    return (_line_start_nd, _line_end_nd), (_parallel_nd, new_nd_name)
 
 
 def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -> nx.Graph:
