@@ -158,7 +158,7 @@ The buffer distance to be used for consolidating nearby nodes.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the highest-degree constituent nodes. 
 
 </FuncElement>
 
@@ -190,7 +190,7 @@ The buffer distance to be used for consolidating nearby nodes.
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
+A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes, but only if each node has respective neighbour nodes within the buffer distance of each other. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
 
 </FuncElement>
 
