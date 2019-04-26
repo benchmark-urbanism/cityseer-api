@@ -381,52 +381,94 @@ def test_nX_consolidate():
     # plot.plot_nX(G, labels=True)
     G = graphs.nX_decompose(G, 50)
     # plot.plot_nX(G, labels=True)
-    G_merged_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=25)
     G_merged_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=25)
+    # plot.plot_nX(G_merged_parallel, labels=True)
 
-    for g in [G_merged_spatial, G_merged_parallel]:
+    assert G_merged_parallel.number_of_nodes() == 14
+    assert G_merged_parallel.number_of_edges() == 14
 
-        # plot.plot_nX(g, labels=True)
+    node_coords = []
+    for n, d in G_merged_parallel.nodes(data=True):
+        node_coords.append((d['x'], d['y']))
+    assert node_coords == [
+        (700660, 5719660),
+        (700799.2961812733, 5719758.592362546),
+        (700760.7038187267, 5719758.592362546),
+        (700620.0, 5719710.0),
+        (700660.0, 5719710.0),
+        (700710.0, 5719800.0),
+        (700710.0, 5719710.0),
+        (700710.0, 5719620.0),
+        (700780.0, 5719710.0),
+        (700840.0, 5719710.0),
+        (700710.0, 5719760.0),
+        (700750.0, 5719710.0),
+        (700710.0, 5719660.0),
+        (700810.0, 5719710.0)]
 
-        assert g.number_of_nodes() == 14
-        assert g.number_of_edges() == 14
+    edge_lens = []
+    for s, e, d in G_merged_parallel.edges(data=True):
+        edge_lens.append(d['geom'].length)
+    assert edge_lens == [50.0,
+                         43.14757303390519,
+                         52.28346114756593,
+                         52.28346114756593,
+                         40.0,
+                         50.0,
+                         40.0,
+                         50.0,
+                         40.0,
+                         50.0,
+                         40.0,
+                         30.0,
+                         30.0,
+                         30.0]
 
-        node_coords = []
-        for n, d in g.nodes(data=True):
-            node_coords.append((d['x'], d['y']))
-        assert node_coords == [
-            (700660, 5719660),
-            (700799.2961812733, 5719758.592362546),
-            (700760.7038187267, 5719758.592362546),
-            (700620.0, 5719710.0),
-            (700660.0, 5719710.0),
-            (700710.0, 5719800.0),
-            (700710.0, 5719710.0),
-            (700710.0, 5719620.0),
-            (700780.0, 5719710.0),
-            (700840.0, 5719710.0),
-            (700710.0, 5719760.0),
-            (700750.0, 5719710.0),
-            (700710.0, 5719660.0),
-            (700810.0, 5719710.0)]
+    G_merged_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=25)
+    # plot.plot_nX(G_merged_spatial, labels=True)
 
-        edge_lens = []
-        for s, e, d in g.edges(data=True):
-            edge_lens.append(d['geom'].length)
-        assert edge_lens == [50.0,
-                             43.14757303390519,
-                             52.28346114756593,
-                             52.28346114756593,
-                             40.0,
-                             50.0,
-                             40.0,
-                             50.0,
-                             40.0,
-                             50.0,
-                             40.0,
-                             30.0,
-                             30.0,
-                             30.0]
+    assert G_merged_spatial.number_of_nodes() == 14
+    assert G_merged_spatial.number_of_edges() == 14
+
+    node_coords = []
+    for n, d in G_merged_spatial.nodes(data=True):
+        node_coords.append((d['x'], d['y']))
+    assert node_coords == [
+        (700660, 5719660),
+        (700799.2961812733, 5719758.592362546),
+        (700760.7038187267, 5719758.592362546),
+        (700620.0, 5719710.0),
+        (700660.0, 5719700.0),
+        (700710.0, 5719800.0),
+        (700710.0, 5719710.0),
+        (700710.0, 5719620.0),
+        (700780.0, 5719720.0),
+        (700840.0, 5719710.0),
+        (700710.0, 5719760.0),
+        (700750.0, 5719710.0),
+        (700710.0, 5719660.0),
+        (700810.0, 5719710.0)
+    ]
+
+    edge_lens = []
+    for s, e, d in G_merged_spatial.edges(data=True):
+        edge_lens.append(d['geom'].length)
+    assert edge_lens == [
+        40.0,
+        43.14757303390519,
+        43.147573033043194,
+        43.147573033043194,
+        41.23105625617661,
+        50.99019513592785,
+        40.0,
+        50.0,
+        40.0,
+        50.0,
+        40.0,
+        31.622776601683793,
+        31.622776601683793,
+        30.0
+    ]
 
     # visual tests on OSM data
     # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
