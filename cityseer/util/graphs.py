@@ -303,14 +303,37 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
 
 def _dissolve_adjacent(_target_graph: nx.Graph,
                        _parent_node_name: str,
-                       _node_group: Union[set, list, tuple]) -> nx.Graph:
+                       _node_group: Union[set, list, tuple],
+                       highest_degree=False) -> nx.Graph:
 
     # set the new centroid from the centroid of the node group's Multipoint:
     node_geoms = []
-    for n_uid in _node_group:
-        x = _target_graph.nodes[n_uid]['x']
-        y = _target_graph.nodes[n_uid]['y']
-        node_geoms.append(geometry.Point(x, y))
+    if not highest_degree:
+        for n_uid in _node_group:
+            x = _target_graph.nodes[n_uid]['x']
+            y = _target_graph.nodes[n_uid]['y']
+            node_geoms.append(geometry.Point(x, y))
+    # if by highest_degree, then find the centroid of the highest degree nodes
+    else:
+        highest_degree = 0
+        for n_uid in _node_group:
+            if n_uid in _target_graph:
+                if nx.degree(_target_graph, n_uid) > highest_degree:
+                    highest_degree = nx.degree(_target_graph, n_uid)
+
+        # aggregate the highest degree nodes
+        node_geoms = []
+        for n_uid in _node_group:
+            if n_uid not in _target_graph:
+                continue
+            if nx.degree(_target_graph, n_uid) != highest_degree:
+                continue
+            x = _target_graph.nodes[n_uid]['x']
+            y = _target_graph.nodes[n_uid]['y']
+            # append geom
+            node_geoms.append(geometry.Point(x, y))
+
+    # find the new centroid
     c = geometry.MultiPoint(node_geoms).centroid
     _target_graph.add_node(_parent_node_name, x=c.x, y=c.y)
 
@@ -432,7 +455,7 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph, buffer_dist: float = 14) ->
         if not node_group:
             continue
 
-        g_copy = _dissolve_adjacent(g_copy, parent_node_name, node_group)
+        g_copy = _dissolve_adjacent(g_copy, parent_node_name, node_group, highest_degree=True)
 
     return g_copy
 
