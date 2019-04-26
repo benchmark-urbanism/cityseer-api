@@ -162,6 +162,9 @@ A `networkX` graph. Nodes located within the `buffer_dist` distance from other n
 
 </FuncElement>
 
+<ImageModal :path="require('../images/plots/graph_messy.png')" alt='Example messy graph' caption='Raw OSM street network for Soho, London'></ImageModal>
+
+<ImageModal :path="require('../images/plots/graph_clean_spatial.png')" alt='Example cleaned graph' caption='Consolidated OSM street network for Soho, London. Compare with the nX_consolidate_parrallel method, below.'></ImageModal>
 
 nX\_consolidate\_parallel <Chip text="v0.8.7"/>
 -------------------------
@@ -190,6 +193,10 @@ The buffer distance to be used for consolidating nearby nodes.
 A `networkX` graph. Nodes located within the `buffer_dist` distance from other nodes will be consolidated into new parent nodes. The coordinates of the parent nodes will be derived from the aggregate centroid of the constituent nodes. 
 
 </FuncElement>
+
+<ImageModal :path="require('../images/plots/graph_messy.png')" alt='Example messy graph' caption='Raw OSM street network for Soho, London'></ImageModal>
+
+<ImageModal :path="require('../images/plots/graph_clean_parallel.png')" alt='Example cleaned graph' caption='Consolidated OSM street network for Soho, London. Notice that nX_consolidate_parallel better preserves the original street topology when compared to nX_consolidate_spatial.'></ImageModal>
 
 
 nX\_decompose

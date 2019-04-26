@@ -1,8 +1,8 @@
 from os import path
 
 import matplotlib.pyplot as plt
-from matplotlib import colors
 import numpy as np
+from matplotlib import colors
 
 from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs, plot
@@ -43,7 +43,7 @@ gravity_vals = colors.Normalize()(gravity_vals)
 gravity_cols = cmap(gravity_vals)
 plt.cla()
 plt.clf()
-plot.plot_nX(G_metrics, path='intro_gravity.png', labels=False, colour=gravity_cols, dpi=150)
+plot.plot_nX(G_metrics, path='intro_gravity.png', colour=gravity_cols, dpi=150)
 
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
@@ -66,19 +66,42 @@ plot.plot_nX(G, path='graph_example.png', labels=True, dpi=150)  # WITH LABELS
 # GRAPH MODULE
 plt.cla()
 plt.clf()
-plot.plot_nX(G, path='graph_simple.png', labels=False, dpi=150)  # NO LABELS
+plot.plot_nX(G, path='graph_simple.png', dpi=150)  # NO LABELS
 
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 
 plt.cla()
 plt.clf()
-plot.plot_nX(G_decomposed, path='graph_decomposed.png', labels=False, dpi=150)
+plot.plot_nX(G_decomposed, path='graph_decomposed.png', dpi=150)
 
 plt.cla()
 plt.clf()
 G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', labels=False, dpi=150)
+plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', dpi=150)
+
+# graph cleanup examples
+G_messy = mock.mock_osm_graph()
+G_messy = graphs.nX_wgs_to_utm(G_messy)
+G_messy = graphs.nX_simple_geoms(G_messy)
+G_messy = graphs.nX_remove_filler_nodes(G_messy)
+G_messy = graphs.nX_remove_dangling_nodes(G_messy)
+G_messy_decomp = graphs.nX_decompose(G_messy, 20)
+plt.cla()
+plt.clf()
+plot.plot_nX(G_messy_decomp, 'graph_messy.png', dpi=150, figsize=(20, 20))
+
+# spatial cleanup
+G_clean_spatial = graphs.nX_consolidate_spatial(G_messy_decomp)
+plt.cla()
+plt.clf()
+plot.plot_nX(G_clean_spatial, 'graph_clean_spatial.png', dpi=150, figsize=(20, 20))
+
+# parallel cleanup
+G_clean_parallel = graphs.nX_consolidate_parallel(G_messy_decomp)
+plt.cla()
+plt.clf()
+plot.plot_nX(G_clean_parallel, 'graph_clean_parallel.png', dpi=150, figsize=(20, 20))
 
 #
 #
@@ -155,7 +178,7 @@ cols = cmap(vals)
 # plot
 plt.cla()
 plt.clf()
-plot.plot_nX(G_after, path='graph_colour.png', labels=False, colour=cols, dpi=150)
+plot.plot_nX(G_after, path='graph_colour.png', colour=cols, dpi=150)
 
 # assignment plot
 data_dict = mock.mock_data_dict(G, random_seed=25)
