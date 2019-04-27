@@ -75,7 +75,7 @@ G_utm = graphs.nX_wgs_to_utm(G_wgs)
 plot.plot_nX(G_utm, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_raw.png')" alt='Raw OSM graph' caption='The raw OSM graph after conversion to UTM coordinates.'></ImageModal>
+<ImageModal :path="require('../images/plots/guides/cleaning/graph_raw.png')" alt='Raw OSM graph' caption='The raw OSM graph after conversion to UTM coordinates. © OpenStreetMap contributors.'></ImageModal>
 
 
 Deducing the network topology
@@ -102,7 +102,7 @@ G = graphs.nX_remove_dangling_nodes(G, despine=25, remove_disconnected=True)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_topo.png')" alt='OSM graph topology' caption='The OSM graph after conversion to a purer topological representation.'></ImageModal>
+<ImageModal :path="require('../images/plots/guides/cleaning/graph_topo.png')" alt='OSM graph topology' caption='The OSM graph after conversion to a purer topological representation. © OpenStreetMap contributors.'></ImageModal>
 
 ::: warning Note
 At this point it may initially appear that the roadway geometries have now gone missing. However, this information is still present in the `LineString` geometries assigned to each street edge. Put differently, the plotted representation is now topological, not geometric.
@@ -112,7 +112,9 @@ At this point it may initially appear that the roadway geometries have now gone 
 Refining the network
 --------------------
 
-The emphasis now shifts to evening out the intensity of nodes across the network, thus allowing for a more granular representation of data along streetfronts and reducing implicit distortions in network centrality methods which can arise due to varied intensities of nodes. This will be coupled with the consolidation of adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
+The emphasis now shifts to evening out the intensity of nodes across the network through the use of decomposition. This allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of small local distance thresholds, which may otherwise intersect longer street segments.
+ 
+This step is here coupled with the consolidation of adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
 ```python
 # decomposition of the network will even out the intensity of nodes
@@ -126,6 +128,6 @@ G = graphs.nX_consolidate_parallel(G, buffer_dist=15)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation.'></ImageModal>
+<ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
 
-The graph is now ready for analysis. Whereas by no means perfect, it is a substantial improvement against the original raw OSM data!
+The graph is now ready for analysis. Whereas by no means perfect, it is a substantial improvement (for the purpose of network analysis) against the original raw OSM data!
