@@ -27,7 +27,7 @@ from setuptools import setup
 
 setup (
     name = 'cityseer',
-    version='0.8.8',
+    version='0.8.9',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer-api',
