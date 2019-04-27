@@ -2,7 +2,7 @@ Graph cleaning
 ==============
 
 Certain sources of street network data offer high quality representations that work well for network analysis algorithms. The Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) dataset is a great example of such a dataset:
-- The network has been simplified to its essential topological structure: i.e. unnecessarily complex representations of intersections; on-ramps; split roadways; etc. have been reduced to a simpler representation concurring more readily with the essential topological structure of street networks. Network representations focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)) introduce an unnecessary level of complexity, serving to hinder rather than help network analysis algorithms: i.e. the extra extraneous detail can introduce unintuitive or irregular outcomes for shortest-path calculations;
+- The network has been simplified to its essential topological structure: i.e. unnecessarily complex representations of intersections; on-ramps; split roadways; etc. have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. Network representations focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)) introduce an unnecessary level of complexity, serving to hinder rather than help network analysis algorithms: i.e. the extra extraneous detail can introduce unintuitive or irregular outcomes for shortest-path calculations;
 - The topology of the network is kept distinct from the geometry of the streets. Oftentimes, as can be seen with [Open Street Map](https://www.openstreetmap.org), extra nodes have been added to streets for the purpose of representing geometric twists and turns along a roadway. These extra nodes do not represent the topological structure of the network (e.g. intersections) and can thus lead to substantial distortions in the derivation of network centrality measures;
 - Bonus: It is open and free to use!
 
@@ -71,7 +71,7 @@ from cityseer.util import graphs, plot
 G_wgs = graphs.nX_from_osm(osm_json=response.text)
 # cast the graph to UTM coordinates prior to processing
 G_utm = graphs.nX_wgs_to_utm(G_wgs)
-# let's plot, to see what we're dealing with
+
 plot.plot_nX(G_utm, figsize=(20, 20), dpi=150)
 ```
 
@@ -94,7 +94,7 @@ G = graphs.nX_simple_geoms(G_utm)
 # the new linestrings will be assigned to the newly consolidated topological links
 G = graphs.nX_remove_filler_nodes(G)
 # OSM graphs will often have "stubs", e.g. at entrances to buildings or parking lots
-# this will now be removed, and can be fine-tuned with the despine parameter.
+# these will now be removed, and can be fine-tuned with the despine parameter.
 # The removed_disconnected flag will removed isolated network components
 # i.e. disconnected portions of network that are not joined to the main street network
 G = graphs.nX_remove_dangling_nodes(G, despine=25, remove_disconnected=True)
