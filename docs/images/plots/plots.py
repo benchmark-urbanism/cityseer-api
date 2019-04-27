@@ -81,7 +81,8 @@ G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple, G_dual, 'graph_dual.png', dpi=150)
 
 # graph cleanup examples
-G_messy = mock.mock_osm_graph()
+osm_json = mock.mock_osm_data()
+G_messy = graphs.nX_from_osm(osm_json=osm_json)
 G_messy = graphs.nX_wgs_to_utm(G_messy)
 G_messy = graphs.nX_simple_geoms(G_messy)
 G_messy = graphs.nX_remove_filler_nodes(G_messy)
@@ -189,6 +190,7 @@ landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 plt.cla()
 plt.clf()
 plot.plot_assignment(N, D, path='assignment_plot.png', data_labels=landuse_labels)
+
 
 #
 #

@@ -33,6 +33,13 @@ module.exports = {
         ]
       },
       {
+        title: 'guide',
+        collapsable: false,
+        children: [
+          ['/guide/cleaning', 'graph cleaning']
+        ]
+      },
+      {
         title: 'cityseer.metrics',
         collapsable: false,
         children: [
