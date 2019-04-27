@@ -269,30 +269,6 @@ def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
         yield counts, probs
 
 
-def mock_osm_graph(osm_json=None) -> nx.Graph:
-
-    if osm_json is not None:
-        osm_json_data = osm_json
-    else:
-        osm_json_data = mock_osm_data()
-
-    osm_network_data = json.loads(osm_json_data)
-
-    G = nx.Graph()
-
-    for e in osm_network_data['elements']:
-        if e['type'] == 'node':
-            G.add_node(e['id'], x=e['lon'], y=e['lat'])
-
-    for e in osm_network_data['elements']:
-        if e['type'] == 'way':
-            count = len(e['nodes'])
-            for idx in range(count - 1):
-                G.add_edge(e['nodes'][idx], e['nodes'][idx + 1])
-
-    return G
-
-
 def mock_osm_data(alt=False) -> str:
 
     if not alt:

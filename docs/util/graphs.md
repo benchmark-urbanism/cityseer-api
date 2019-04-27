@@ -31,6 +31,32 @@ Returns a `networkX` graph with `shapely` [`Linestring`](https://shapely.readthe
 </FuncElement>
 
 
+nX\_from\_osm
+-------------
+
+<FuncSignature>nX_from_osm(osm_json)</FuncSignature>
+
+Generates a `NetworkX` graph from [`Open Street Map`](https://www.openstreetmap.org) data.
+
+::: danger Caution
+Note that graphs created from OSM data make use of [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates. Use in combination with [`graphs.nX_wgs_to_utm`](#nx-wgs-to-utm) to cast the graph to the local UTM projected coordinate system before subsequent processing.
+:::
+
+<FuncHeading>Parameters</FuncHeading>
+<FuncElement name="osm_json" type="str">
+
+A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), consisting of `nodes` and `ways`.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+<FuncElement name="G" type="nx.Graph">
+
+A `NetworkX` graph with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
+
+</FuncElement>
+
+
 nX\_wgs\_to\_utm
 ----------------
 

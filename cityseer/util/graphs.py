@@ -5,6 +5,7 @@ import logging
 import os
 import uuid
 from typing import Union, Tuple
+import json
 
 import networkx as nx
 import numpy as np
@@ -96,6 +97,25 @@ def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
         g_copy[s][e]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
 
     return g_copy
+
+
+def nX_from_osm(osm_json) -> nx.Graph:
+
+    osm_network_data = json.loads(osm_json)
+
+    G = nx.Graph()
+
+    for e in osm_network_data['elements']:
+        if e['type'] == 'node':
+            G.add_node(e['id'], x=e['lon'], y=e['lat'])
+
+    for e in osm_network_data['elements']:
+        if e['type'] == 'way':
+            count = len(e['nodes'])
+            for idx in range(count - 1):
+                G.add_edge(e['nodes'][idx], e['nodes'][idx + 1])
+
+    return G
 
 
 def nX_wgs_to_utm(networkX_graph: nx.Graph, force_zone_number=None) -> nx.Graph:

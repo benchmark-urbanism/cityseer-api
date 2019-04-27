@@ -185,42 +185,16 @@ for counts, probs in mock.mock_species_data():
 ```
 
 
-mock\_osm\_graph
-----------------
-
-<FuncSignature>mock_osm_graph(osm_json=None)</FuncSignature>
-
-Generates a `NetworkX` graph from [`Open Street Map`](https://www.openstreetmap.org) data.
-
-::: danger Caution
-Note that graphs created from OSM data make use of [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates. Use [`graphs.nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) to cast the graph to the local UTM projected coordinate system before subsequent processing.
-:::
-
-<FuncHeading>Parameters</FuncHeading>
-<FuncElement name="osm_json" type="str">
-
-An optional `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), consisting of `nodes` and `ways`. If provided, this will form the basis of the returned `networkX` graph; otherwise, mock data will be generated, implicitly, from [`mock_osm_data`](#mock-osm-data).
-
-</FuncElement>
-
-<FuncHeading>Returns</FuncHeading>
-<FuncElement name="G" type="nx.Graph">
-
-A `NetworkX` graph with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
-
-</FuncElement>
-
-
 mock\_osm\_data
 ---------------
 
 <FuncSignature>mock_osm_data(alt=False)</FuncSignature>
 
-Returns a `JSON` string representing a typical [`Open Street Map`](https://www.openstreetmap.org) response. Used for the purpose of testing.
+Returns a `JSON` string representing a typical [`Open Street Map`](https://www.openstreetmap.org) response. Used for testing purposes.
 
 ::: tip Hint
 
-Where the intent is to derive a graph from this data: it is simpler to use [`mock_osm_graph`](#mock-osm-graph) instead, or else pass the resultant string to the aforementioned method's `osm_json` parameter.
+Where the intent is to derive a graph from this data: use in combination with [`graphs.nX_from_osm`](/util/graphs.html#nx-from-osm).
 
 :::
 

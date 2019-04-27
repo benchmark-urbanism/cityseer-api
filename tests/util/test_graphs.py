@@ -31,6 +31,11 @@ def test_nX_simple_geoms():
             graphs.nX_simple_geoms(G)
 
 
+# TODO:
+def test_nX_from_osm():
+    pass
+
+
 def test_nX_wgs_to_utm():
     # check that node coordinates are correctly converted
     G_utm = mock.mock_graph()
@@ -472,9 +477,12 @@ def test_nX_consolidate():
 
     # visual tests on OSM data
     # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
-    g_1 = mock.mock_osm_graph()
-    g_2_data = mock.mock_osm_data(alt=True)
-    g_2 = mock.mock_osm_graph(osm_json=g_2_data)
+    osm_json = mock.mock_osm_data()
+    g_1 = graphs.nX_from_osm(osm_json=osm_json)
+
+    osm_json_alt = mock.mock_osm_data(alt=True)
+    g_2 = graphs.nX_from_osm(osm_json=osm_json_alt)
+
     for g in [g_1, g_2]:
         G_utm = graphs.nX_wgs_to_utm(g)
         G = graphs.nX_simple_geoms(G_utm)

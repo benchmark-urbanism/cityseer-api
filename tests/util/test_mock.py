@@ -83,9 +83,5 @@ def test_mock_species_data():
         assert round(probs.sum(), 8) == 1
 
 
-def test_mock_osm_graph():
-    pass
-
-
 def test_mock_osm_data():
     pass
