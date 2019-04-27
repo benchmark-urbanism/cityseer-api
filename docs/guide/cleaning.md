@@ -6,7 +6,7 @@ Certain sources of street network data offer high quality representations that w
 - The topology of the network is kept distinct from the geometry of the streets. Oftentimes, as can be seen with [Open Street Map](https://www.openstreetmap.org), extra nodes have been added to streets for the purpose of representing geometric twists and turns along a roadway. These extra nodes do not represent the topological structure of the network (e.g. intersections) and can thus lead to substantial distortions in the derivation of network centrality measures;
 - Bonus: It is open and free to use!
 
-However, the reality is that many indispensable sources of network information, particularly Open Street Map data, can be messy. This section describes how such sources can be cleaned and prepared for subsequent analysis.
+When a high-quality source is available, it may be best not to attempt additional cleanup unless there is a particular reason to do so. On the other-hand, many indispensable sources of network information, particularly Open Street Map data, can be messy (for the purposes of network analysis). This section describes how such sources can be cleaned and prepared for subsequent analysis.
 
 
 Downloading data
