@@ -62,7 +62,7 @@ You may want to experiment with the filtering applied to the OSM query. See the 
 Generating a graph
 ------------------
 
-Now that the data has been downloaded, `cityseer.util` can be used to load the data into a NetworkX graph. The graph should be converted from WGS to UTM coordinates prior to any further processing.
+Once the data has been downloaded, `cityseer.util` can be used to load the data into a NetworkX graph. The graph should be converted from WGS to UTM coordinates prior to any further processing.
 
 ```python
 from cityseer.util import graphs, plot
@@ -112,9 +112,9 @@ At this point it may initially appear that the roadway geometries have now gone 
 Refining the network
 --------------------
 
-The emphasis now shifts to evening out the intensity of nodes across the network through the use of decomposition. This allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of small local distance thresholds, which may otherwise intersect longer street segments.
+With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of the local distance thresholds, which may otherwise intersect longer street segments.
  
-This step is here coupled with the consolidation of adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
+The final step consolidates adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
 ```python
 # decomposition of the network will even out the intensity of nodes
