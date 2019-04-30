@@ -112,7 +112,7 @@ At this point it may initially appear that the roadway geometries have now gone 
 Refining the network
 --------------------
 
-With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of the local distance thresholds, which may otherwise intersect longer street segments.
+With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of the local distance thresholds, which may intersect longer street segments.
  
 The final step consolidates adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
