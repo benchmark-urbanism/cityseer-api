@@ -50,7 +50,7 @@ A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.
 </FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
-<FuncElement name="G" type="nx.Graph">
+<FuncElement name="graph" type="nx.Graph">
 
 A `NetworkX` graph with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
 
@@ -62,7 +62,7 @@ nX\_wgs\_to\_utm
 
 <FuncSignature>nX_wgs_to_utm(networkX_graph, force_zone_number=None)</FuncSignature>
 
-Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour when a graph spans a UTM boundary.
+Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -97,7 +97,7 @@ nX_remove_dangling_nodes(networkX_graph,
 </pre>
 </FuncSignature>
 
-Optionally removes short dead-ends and disconnected graph components, which may be prevalent on poor quality network datasets.
+Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network datasets.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -109,20 +109,20 @@ A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, a
 
 <FuncElement name="despine" type="float">
 
-The maximum cutoff distance for removal of dead-ends. Use `0` where no de-spining should occur.
+The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur.
 
 </FuncElement>
 
 <FuncElement name="remove_disconnected" type="bool">
 
-Whether to remove disconnected components. When set to `True`, only the largest connected component will be returned.
+Whether to remove disconnected components. If set to `True`, only the largest connected component will be returned.
 
 </FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="graph" type="nx.Graph">
 
-A `networkX` graph with disconnected components optionally removed, and dead-ends removed where less than the `despine` distance.
+A `networkX` graph with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
 
 </FuncElement>
 
