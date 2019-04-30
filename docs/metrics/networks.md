@@ -180,7 +180,7 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 <FuncElement name="angular" type="bool">
 
-Set the `angular` parameter to `True` if using angular impedances. Angular impedances can allow shortest-path algorithms to sidestep sharp turns, potentially causing misleading results. Setting `angular=True` will forestall this behaviour.
+Set the `angular` parameter to `True` if using angular impedances. Angular impedances can cause shortest-path algorithms to sidestep sharp turns, potentially resulting in misleading results. Setting `angular=True` will forestall this behaviour.
 
 </FuncElement>
 
@@ -526,7 +526,7 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 <FuncElement name="angular" type="bool">
 
-Set the `angular` parameter to `True` if using angular impedances. Angular impedances can sidestep sharp turn, potentially leading to misleading results. Setting `angular=True` adds a step to the shortest-path algorithm, which prevents this behaviour.
+Set the `angular` parameter to `True` if using angular impedances. Angular impedances can cause shortest-path algorithms to sidestep sharp turns, potentially leading to misleading results. Setting `angular=True` adds a step to the algorithm in order to prevent this behaviour.
 
 </FuncElement>
 
