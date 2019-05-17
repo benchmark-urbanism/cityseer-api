@@ -4,13 +4,14 @@ https://docs.python.org/3/distutils/setupscript.html
 https://scikit-build.readthedocs.io/en/latest/usage.html
 
 # manual deployment
-pip install --user --upgrade setuptools wheel
+pip install --upgrade setuptools wheel
 python setup.py sdist bdist_wheel
 pip install --upgrade twine
 TESTING REPO: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==0.7.6rc7
 OTHERWISE: twine upload dist/*
 '''
+
 from setuptools import setup
 
 setup (
