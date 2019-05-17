@@ -18,7 +18,7 @@ def test_radial_filter():
     # test the filter
     src_x = G.nodes[0]['x']
     src_y = G.nodes[0]['y']
-    for max_dist in [0, 200, 500, 750]:
+    for max_dist in [0, 200, 500, 750, np.inf]:
         trim_to_full_map, full_to_trim_map = \
             data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
 

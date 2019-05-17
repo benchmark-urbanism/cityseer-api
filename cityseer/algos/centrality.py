@@ -166,7 +166,7 @@ def shortest_path_tree(
     return map_impedance, map_distance, map_pred, cycles
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
@@ -247,6 +247,7 @@ def local_centrality(node_map: np.ndarray,
             continue
 
         # filter the graph by distance
+        # note that if global_max_dist == np.inf, then the radial_filter function basically returns np.arange(0.0, n)
         src_x = x_arr[src_idx]
         src_y = y_arr[src_idx]
         trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x,

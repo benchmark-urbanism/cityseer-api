@@ -9,18 +9,18 @@ from cityseer.algos import centrality, checks, diversity
 @njit(cache=True)
 def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) -> np.ndarray:
     # prepare the trim to full map
-    trim_to_full_idx_map = np.full(trim_count, np.nan)
+    trim_to_full_map = np.full(trim_count, np.nan)
 
     if trim_count == 0:
-        return trim_to_full_idx_map
+        return trim_to_full_map
 
     for i in range(len(full_to_trim_map)):
         trim_idx = full_to_trim_map[i]
         # if the full map has a finite value, then respectively map from the trimmed index to the full index
         if not np.isnan(trim_idx):
-            trim_to_full_idx_map[int(trim_idx)] = i
+            trim_to_full_map[int(trim_idx)] = i
 
-    return trim_to_full_idx_map
+    return trim_to_full_map
 
 
 @njit(cache=True)
@@ -30,18 +30,23 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
 
     # filter by distance
     total_count = len(x_arr)
-    full_to_trim_idx_map = np.full(total_count, np.nan)
 
-    trim_count = 0
-    for i in range(total_count):
-        dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
-        if dist <= max_dist:
-            full_to_trim_idx_map[int(i)] = trim_count
-            trim_count += 1
+    # if infinite max, then no need to check distances
+    if max_dist == np.inf:
+        full_to_trim_idx_map = np.arange(0.0, total_count)
+        trim_to_full_map = np.arange(0.0, total_count)
 
-    trim_to_full_idx_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
+    else:
+        full_to_trim_idx_map = np.full(total_count, np.nan)
+        trim_count = 0
+        for i in range(total_count):
+            dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
+            if dist <= max_dist:
+                full_to_trim_idx_map[int(i)] = trim_count
+                trim_count += 1
+        trim_to_full_map = _generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
 
-    return trim_to_full_idx_map, full_to_trim_idx_map
+    return trim_to_full_map, full_to_trim_idx_map
 
 
 @njit(cache=True)
