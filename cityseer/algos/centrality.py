@@ -166,7 +166,7 @@ def shortest_path_tree(
     return map_impedance, map_distance, map_pred, cycles
 
 
-@njit(cache=True, parallel=True)
+@njit(cache=True)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
@@ -268,8 +268,10 @@ def local_centrality(node_map: np.ndarray,
                                angular)
 
         # use corresponding indices for reachable verts
-        ind = np.where(np.isfinite(map_distance_trim))[0]
-        for to_idx_trim in ind:
+        for to_idx_trim in range(len(map_distance_trim)):
+
+            if not np.isfinite(map_distance_trim[to_idx_trim]):
+                continue
 
             # skip self node
             if to_idx_trim == full_to_trim_idx_map[src_idx]:
@@ -283,7 +285,8 @@ def local_centrality(node_map: np.ndarray,
 
             # calculate centralities starting with closeness
             if len(closeness_keys) != 0:
-                for d_idx, dist_cutoff in enumerate(distances):
+                for d_idx in range(len(distances)):
+                    dist_cutoff = distances[d_idx]
                     beta = betas[d_idx]
                     if dist <= dist_cutoff:
                         # closeness keys determine which metrics to compute
@@ -344,7 +347,8 @@ def local_centrality(node_map: np.ndarray,
                 if inter_idx_trim == full_to_trim_idx_map[src_idx]:
                     break
 
-                for d_idx, dist_cutoff in enumerate(distances):
+                for d_idx in range(len(distances)):
+                    dist_cutoff = distances[d_idx]
                     beta = betas[d_idx]
                     if dist <= dist_cutoff:
                         # betweenness map indices determine which metrics to compute
