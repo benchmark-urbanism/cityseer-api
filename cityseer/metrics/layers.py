@@ -5,7 +5,7 @@ from typing import Tuple, List, Union
 import numpy as np
 import utm
 from sklearn.preprocessing import LabelEncoder
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from cityseer.algos import data, checks
 from cityseer.metrics import networks

@@ -11,7 +11,7 @@ import networkx as nx
 import numpy as np
 import utm
 from shapely import geometry, ops, strtree
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from cityseer.algos import checks
 

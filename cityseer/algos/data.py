@@ -195,11 +195,11 @@ def assign_to_network(data_map: np.ndarray,
     data_x_arr = data_map[:, 0]
     data_y_arr = data_map[:, 1]
 
-    for data_idx in range(len(data_map)):
+    progress_state = 0
+    total_count = len(data_map)
+    for data_idx in range(total_count):
 
-        # numba no object mode can only handle basic printing
-        if data_idx % 10000 == 0:
-            print('...progress:', round(data_idx / len(data_map) * 100, 2), '%')
+        progress_state = checks.progress_bar(data_idx, total_count, progress_state, 20)
 
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
@@ -324,8 +324,6 @@ def assign_to_network(data_map: np.ndarray,
         # in some cases next nearest will be NaN
         # this is mostly in situations where it works to leave as NaN - e.g. access off dead-ends...
         data_map[data_idx][3] = next_nearest  # next_adj_idx
-
-    print('...done')
 
     return data_map
 
@@ -573,11 +571,10 @@ def local_aggregator(node_map: np.ndarray,
     stats_min = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
+    progress_state = 0
     for src_idx in range(netw_n):
 
-        # numba no object mode can only handle basic printing
-        if src_idx % 10000 == 0:
-            print('...progress:', round(src_idx / netw_n * 100, 2), '%')
+        progress_state = checks.progress_bar(src_idx, netw_n, progress_state, 20)
 
         # only compute for live nodes
         if not netw_nodes_live[src_idx]:
@@ -772,8 +769,6 @@ def local_aggregator(node_map: np.ndarray,
                         stats_variance[num_idx][d_idx][src_idx] / stats_count[num_idx][d_idx][src_idx]
                     stats_variance_wt[num_idx][d_idx][src_idx] = \
                         stats_variance_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
-
-    print('...done')
 
     # send the data back in the same types and same order as the original keys - convert to int for indexing
     mu_hill_k_int = np.full(len(mixed_use_hill_keys), 0)

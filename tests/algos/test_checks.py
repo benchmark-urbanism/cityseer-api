@@ -6,6 +6,16 @@ from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 
 
+def test_progress_bar():
+    progress_state = 0
+    for i in range(10):
+        progress_state = checks.progress_bar(i, 10, progress_state, 10)
+    # check that chunks > total raises
+    progress_state = 0
+    with pytest.raises(ValueError):
+        progress_state = checks.progress_bar(i, 10, progress_state, 20)
+
+
 def test_check_numerical_data():
     mock_numerical = mock.mock_numerical_data(50)
 
