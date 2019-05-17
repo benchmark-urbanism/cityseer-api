@@ -326,9 +326,9 @@ def test_compute_centrality():
                                 'farness_distance',
                                 'harmonic',
                                 'improved',
-                                'gravity',
+                                'gravity_index',
                                 'cycles'])
-    betweenness_types = np.array(['betweenness', 'betweenness_gravity'])
+    betweenness_types = np.array(['betweenness', 'betweenness_decay'])
 
     cl_random = np.arange(len(closeness_types))
     np.random.shuffle(cl_random)
@@ -430,27 +430,27 @@ def test_improved_closeness():
                                   N_full.metrics['centrality']['improved'][d])
 
 
-def test_gravity():
+def test_gravity_index():
     for G, distances, betas, angular in network_generator():
 
         # DISTANCES
         # easy version
         N_easy = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_easy.gravity()
+        N_easy.gravity_index()
         # easy version via betas
         N_easy_betas = networks.Network_Layer_From_nX(G, betas=betas, angular=angular)
-        N_easy_betas.gravity()
+        N_easy_betas.gravity_index()
         # custom version
         N_full = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_full.compute_centrality(close_metrics=['gravity'])
+        N_full.compute_centrality(close_metrics=['gravity_index'])
 
         # compare
         for d in distances:
-            gravity_easy = N_easy.metrics['centrality']['gravity'][d]
-            gravity_easy_betas = N_easy_betas.metrics['centrality']['gravity'][d]
-            gravity_full = N_full.metrics['centrality']['gravity'][d]
-            assert np.array_equal(gravity_easy, gravity_full)
-            assert np.array_equal(gravity_easy_betas, gravity_full)
+            gravity_index_easy = N_easy.metrics['centrality']['gravity_index'][d]
+            gravity_index_easy_betas = N_easy_betas.metrics['centrality']['gravity_index'][d]
+            gravity_index_full = N_full.metrics['centrality']['gravity_index'][d]
+            assert np.array_equal(gravity_index_easy, gravity_index_full)
+            assert np.array_equal(gravity_index_easy_betas, gravity_index_full)
 
 
 def test_betweenness():
@@ -469,24 +469,24 @@ def test_betweenness():
                                   N_full.metrics['centrality']['betweenness'][d])
 
 
-def test_betweenness_gravity():
+def test_betweenness_decay():
     for G, distances, betas, angular in network_generator():
 
         # DISTANCES
         # easy version
         N_easy = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_easy.betweenness_gravity()
+        N_easy.betweenness_decay()
         # easy version via betas
         N_easy_betas = networks.Network_Layer_From_nX(G, betas=betas, angular=angular)
-        N_easy_betas.betweenness_gravity()
+        N_easy_betas.betweenness_decay()
         # custom version
         N_full = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_full.compute_centrality(between_metrics=['betweenness_gravity'])
+        N_full.compute_centrality(between_metrics=['betweenness_decay'])
 
         # compare
         for d in distances:
-            between_gravity_easy = N_easy.metrics['centrality']['betweenness_gravity'][d]
-            between_gravity_easy_betas = N_easy_betas.metrics['centrality']['betweenness_gravity'][d]
-            between_gravity_full = N_full.metrics['centrality']['betweenness_gravity'][d]
+            between_gravity_easy = N_easy.metrics['centrality']['betweenness_decay'][d]
+            between_gravity_easy_betas = N_easy_betas.metrics['centrality']['betweenness_decay'][d]
+            between_gravity_full = N_full.metrics['centrality']['betweenness_decay'][d]
             assert np.array_equal(between_gravity_easy, between_gravity_full)
             assert np.array_equal(between_gravity_easy_betas, between_gravity_full)

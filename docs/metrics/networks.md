@@ -386,7 +386,7 @@ Network_Layer.compute_centrality(close_metrics=None,
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity`](#gravity), [`@harmonic_closeness`](#harmonic-closeness), [`@improved_closeness`](#improved-closeness), [`@betweenness`](#betweenness), or [`@weighted_betweenness`](#betweenness-gravity) methods.
+This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity_index`](#gravity-index), [`@harmonic_closeness`](#harmonic-closeness), [`@improved_closeness`](#improved-closeness), [`@betweenness`](#betweenness), or [`@betweenness_decay`](#betweenness-decay) methods.
 
 The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
 
@@ -459,8 +459,8 @@ A list of strings, containing any combination of the following `key` values:
 | farness_distance | $\displaystyle\sum_{j\neq{i}}d_{(i,j)}$ | A summation of distances in metres within $d_{max}$. |
 | harmonic | $\displaystyle\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
 | improved | $\displaystyle\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(j)}}$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
-| gravity | $\displaystyle \sum_{j\neq{i}} exp(-\beta \cdot d[i,j]) \cdot w_{j}$ | Reduces to _gravity centrality_ where $w=1$. Gravity is differentiated from other closeness centralities by the use of an explicit $-\beta$ parameter modelling distance decays. |
-| cycles | $\displaystyle\sum_{j\neq{i}}^{cycles} exp(-\beta \cdot d[i, j])$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
+| gravity index | $\displaystyle \sum_{j\neq{i}} exp(\beta \cdot d[i,j]) \cdot w_{j}$ | Reduces to the _gravity index_ where $w=1$. The gravity index is more correctly described as a spatial impedance metric and is differentiated from other closeness centralities by the use of an explicit $\beta$ parameter modelling distance decays. |
+| cycles | $\displaystyle\sum_{j\neq{i}}^{cycles} exp(\beta \cdot d[i, j])$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
 
 <FuncElement name="between_metrics" type="list[str], tuple[str]">
 
@@ -471,10 +471,10 @@ A list of strings, containing any combination of the following `key` values:
 | key | formula | notes |
 |-----|:-------:|-------|
 | betweenness | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)}$ | The default $w=1$ reduces to betweenness centrality within the $d_{max}$ threshold constraint. For betweenness measures, $w$ is a blended average of the weights for any $j$, $k$ node pair passing through node $i$. | 
-| betweenness_gravity | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(-\beta \cdot d[j,k])$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
+| betweenness_decay | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(\beta \cdot d[j,k])$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
 
 ::: warning Note
-The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity`, perform similarly in most situations. `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly once values decrease below $1$. `improved` centrality is more robust because all reachable nodes are summed prior to the division step. `gravity` centrality is the most robust method in this regards, and also offers a graceful and tunable representation of distance decays via the negative exponential function.
+The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity_index`, perform similarly in most situations. `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly once values decrease below $1$. `improved` centrality is more robust because all reachable nodes are summed prior to the division step. `gravity_index` centrality is the most robust method in this regards, and also offers a graceful and tunable representation of distance decays via the negative exponential function.
 :::
 
 ::: tip Hint
@@ -506,16 +506,16 @@ The data key is `improved`, e.g.:
 `Network_Layer.metrics['centrality']['improved'][<<distance key>>][<<node idx>>]`
 
 
-@gravity
----------
+@gravity_index <Chip text="renamed in v0.8.10"/>
+--------------
 
-<FuncSignature>Network_Layer.gravity()</FuncSignature>
+<FuncSignature>Network_Layer.gravity_index()</FuncSignature>
 
-Compute gravity centrality. See [@compute_centrality](#compute-centrality) for additional information.
+Compute the gravity index. See [@compute_centrality](#compute-centrality) for additional information.
 
-The data key is `gravity`, e.g.:
+The data key is `gravity_index`, e.g.:
 
-`Network_Layer.metrics['centrality']['gravity'][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['centrality']['gravity_index'][<<distance key>>][<<node idx>>]`
 
 @betweenness
 -------------
@@ -528,16 +528,16 @@ The data key is `betweenness`, e.g.:
 
 `Network_Layer.metrics['centrality']['betweenness'][<<distance key>>][<<node idx>>]`
 
-@betweenness\_gravity
-----------------------
+@betweenness\_decay <Chip text="renamed in v0.8.10"/>
+-------------------
 
-<FuncSignature>Network_Layer.betweenness_gravity()</FuncSignature>
+<FuncSignature>Network_Layer.betweenness_decay()</FuncSignature>
 
-Compute gravity weighted betweenness. See [@compute_centrality](#compute-centrality) for additional information.
+Compute betweenness taking spatial impedances into account. See [@compute_centrality](#compute-centrality) for additional information.
 
-The data key is `betweenness_gravity`, e.g.:
+The data key is `betweenness_decay`, e.g.:
 
-`Network_Layer.metrics['centrality']['betweenness_gravity'][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['centrality']['betweenness_decay'][<<distance key>>][<<node idx>>]`
 
 
 Network\_Layer\_From\_nX <Chip text="class"/>

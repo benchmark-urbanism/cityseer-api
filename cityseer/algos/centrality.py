@@ -313,7 +313,7 @@ def local_centrality(node_map: np.ndarray,
                                     closeness_data[3][d_idx][src_idx] += cl_weight / impedance
                             # 4 - improved closeness - alternate closeness = node density**2 / farness aggregated weights
                             # post-computed - so ignore here
-                            # 5 - gravity - sum of beta weighted distances
+                            # 5 - gravity index - sum of beta weighted distances
                             elif cl_key == 5:
                                 closeness_data[5][d_idx][src_idx] += np.exp(beta * dist) * cl_weight
                             # 6 - cycles - sum of cycles weighted by equivalent distances
@@ -352,9 +352,9 @@ def local_centrality(node_map: np.ndarray,
                             # 0 - betweenness
                             if bt_key == 0:
                                 betweenness_data[0][d_idx][inter_idx_full] += bt_weight
-                            # 1 - betweenness_gravity - sum of gravity weighted betweenness
+                            # 1 - betweenness_decay - sum of weighted betweenness
                             # distance is based on distance between from and to vertices
-                            # thus potential gravity via between vertex
+                            # thus potential spatial impedance via between vertex
                             elif bt_key == 1:
                                 betweenness_data[1][d_idx][inter_idx_full] += np.exp(beta * dist) * bt_weight
 

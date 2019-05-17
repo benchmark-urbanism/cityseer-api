@@ -232,11 +232,11 @@ def test_local_centrality():
     far_distance = closeness_data[np.where(closeness_keys == 2)][0]
     harmonic = closeness_data[np.where(closeness_keys == 3)][0]
     improved = closeness_data[np.where(closeness_keys == 4)][0]
-    gravity = closeness_data[np.where(closeness_keys == 5)][0]
+    gravity_index = closeness_data[np.where(closeness_keys == 5)][0]
     cycles = closeness_data[np.where(closeness_keys == 6)][0]
 
     betweenness = betweenness_data[np.where(betweenness_keys == 0)][0]
-    betweenness_gravity = betweenness_data[np.where(betweenness_keys == 1)][0]
+    betweenness_decay = betweenness_data[np.where(betweenness_keys == 1)][0]
 
     # test node density
     # node density count doesn't include self-node
@@ -382,10 +382,10 @@ def test_local_centrality():
         assert np.allclose(far_distance[d_idx], far_dist)
         assert np.allclose(harmonic[d_idx], harmonic_cl)
         assert np.allclose(improved[d_idx], improved_cl)
-        assert np.allclose(gravity[d_idx], grav)
+        assert np.allclose(gravity_index[d_idx], grav)
         assert np.allclose(cycles[d_idx], cyc)
         assert np.allclose(betweenness[d_idx], betw)
-        assert np.allclose(betweenness_gravity[d_idx], betw_wt)
+        assert np.allclose(betweenness_decay[d_idx], betw_wt)
 
     # check behaviour of weights
     node_map_w = node_map.copy()
@@ -403,9 +403,9 @@ def test_local_centrality():
                                     betweenness_keys,
                                     angular=False)
     # unpack
-    node_density_w, far_impedance_w, far_distance_w, harmonic_w, improved_w, gravity_w, cycles_w = \
+    node_density_w, far_impedance_w, far_distance_w, harmonic_w, improved_w, gravity_index_w, cycles_w = \
         closeness_data_w[closeness_keys]
-    betweenness_w, betweenness_gravity_w = betweenness_data_w[betweenness_keys]
+    betweenness_w, betweenness_decay_w = betweenness_data_w[betweenness_keys]
 
     # closenesss
     assert np.allclose(node_density, node_density_w / 2)  # should double
@@ -413,11 +413,11 @@ def test_local_centrality():
     assert np.allclose(far_distance, far_distance_w)  # should be no change
     assert np.allclose(harmonic, harmonic_w / 2)  # should double
     assert np.allclose(improved, improved_w / 4)  # should quadruple due to square of weighted node density
-    assert np.allclose(gravity, gravity_w / 2)  # should double
+    assert np.allclose(gravity_index, gravity_index_w / 2)  # should double
     assert np.allclose(cycles, cycles_w)  # should be no change
     # betweenness
     assert np.allclose(betweenness, betweenness_w / 2)  # should double
-    assert np.allclose(betweenness_gravity, betweenness_gravity_w / 2)  # should double
+    assert np.allclose(betweenness_decay, betweenness_decay_w / 2)  # should double
 
     # check that angular is passed-through
     # actual angular tests happen in test_shortest_path_tree()

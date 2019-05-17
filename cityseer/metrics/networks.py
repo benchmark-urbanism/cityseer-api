@@ -247,7 +247,7 @@ class Network_Layer:
                              'farness_distance',
                              'harmonic',
                              'improved',
-                             'gravity',
+                             'gravity_index',
                              'cycles']
         closeness_keys = []
         if close_metrics is not None:
@@ -258,7 +258,7 @@ class Network_Layer:
             logger.info(f'Computing closeness measures: {", ".join(close_metrics)}')
 
         betweenness_options = ['betweenness',
-                               'betweenness_gravity']
+                               'betweenness_decay']
         betweenness_keys = []
         if between_metrics is not None:
             for bt in between_metrics:
@@ -302,14 +302,14 @@ class Network_Layer:
     def improved_closeness(self):
         return self.compute_centrality(close_metrics=['improved'])
 
-    def gravity(self):
-        return self.compute_centrality(close_metrics=['gravity'])
+    def gravity_index(self):
+        return self.compute_centrality(close_metrics=['gravity_index'])
 
     def betweenness(self):
         return self.compute_centrality(between_metrics=['betweenness'])
 
-    def betweenness_gravity(self):
-        return self.compute_centrality(between_metrics=['betweenness_gravity'])
+    def betweenness_decay(self):
+        return self.compute_centrality(between_metrics=['betweenness_decay'])
 
 
 class Network_Layer_From_nX(Network_Layer):

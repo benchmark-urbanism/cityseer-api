@@ -83,7 +83,7 @@ G = graphs.nX_decompose(G, 20)
 
 Once prepared, the `networkX` graph can be transformed into a [`Network_Layer`](/metrics/networks.html#network-layer) by invoking [`Network_Layer_From_nX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`@compute_centrality`](/metrics/networks.html#compute-centrality) method wraps underlying numba optimised functions that compute a range of centrality methods. These are performed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simpler [`@gravity`](/metrics/networks.html#gravity), [`@harmonic_closeness`](/metrics/networks.html#harmonic-closeness), [`@improved_closeness`](/metrics/networks.html#improved-closeness), [`@betweenness`](/metrics/networks.html#betweenness), or [`@weighted_betweenness`](/metrics/networks.html#betweenness-gravity) methods. 
+The [`@compute_centrality`](/metrics/networks.html#compute-centrality) method wraps underlying numba optimised functions that compute a range of centrality methods. These are performed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simpler [`@gravity_index`](/metrics/networks.html#gravity_index), [`@harmonic_closeness`](/metrics/networks.html#harmonic-closeness), [`@improved_closeness`](/metrics/networks.html#improved-closeness), [`@betweenness`](/metrics/networks.html#betweenness), or [`@betweenness_decay`](/metrics/networks.html#betweenness-decay) methods. 
 
 The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`@metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`@to_networkX`](/metrics/networks.html#to-networkx) method.
 
@@ -94,8 +94,8 @@ N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600], angular=F
 # one of several easy-wrapper methods for computing centrality
 N.improved_closeness()
 # the full underlying method allows the computation of various centralities simultaneously, e.g.
-N.compute_centrality(close_metrics=['improved', 'gravity', 'cycles'],
-                     between_metrics=['betweenness_gravity'])
+N.compute_centrality(close_metrics=['improved', 'gravity_index', 'cycles'],
+                     between_metrics=['betweenness_decay'])
 ```
 
 <img src="./images/qgis/imp_close_800.png" alt="Improved Closeness 800m" class="centre">
@@ -161,7 +161,7 @@ The data is aggregated and computed over the street network relative to the `Net
 distance_idx = 800  # any of the initialised distances
 q_idx = 0  # q index: any of the invoked q parameters
 node_idx = 0  # a node idx
-print(N.metrics['centrality']['gravity'][distance_idx][node_idx])
+print(N.metrics['centrality']['gravity_index'][distance_idx][node_idx])
 # prints: 6.079301182438035
 print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
 # prints: 10.0
@@ -173,27 +173,27 @@ G_metrics = N.to_networkX()
 N.metrics_to_dict()
 ```
 
-The data can then be passed to data analysis or plotting methods. For example, the [`util.plot`](/util/plot.html) module could be used to plot gravity and mixed uses for the above mock data:
+The data can then be passed to data analysis or plotting methods. For example, the [`util.plot`](/util/plot.html) module could be used to plot the gravity index and mixed uses for the above mock data:
 
 ```python
-# let's plot gravity and mixed uses
+# plot the gravity index and mixed uses
 from matplotlib import colors
 
-gravity_vals = []
+gravity_index_vals = []
 mixed_uses_vals = []
 for node, data in G_metrics.nodes(data=True):
-    gravity_vals.append(data['metrics']['centrality']['gravity'][400])
+    gravity_index_vals.append(data['metrics']['centrality']['gravity_index'][400])
     mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
 
 # custom colourmap
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
 
 # normalise the values
-gravity_vals = colors.Normalize()(gravity_vals)
+gravity_index_vals = colors.Normalize()(gravity_index_vals)
 # cast against the colour map
-gravity_cols = cmap(gravity_vals)
-# plot gravity
-plot.plot_nX(G_metrics, labels=False, colour=gravity_cols)
+gravity_index_cols = cmap(gravity_index_vals)
+# plot gravity_index
+plot.plot_nX(G_metrics, labels=False, colour=gravity_index_cols)
 
 # plot distance-weighted hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
@@ -201,9 +201,9 @@ mixed_uses_cols = cmap(mixed_uses_vals)
 plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels)
 ```
 
-<img src="./images/plots/intro_gravity.png" alt="Example gravity plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
+<img src="./images/plots/intro_gravity_index.png" alt="Example gravity index plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
 
-_$400m$ gravity (left) and $400m$ branch-weighted mixed-uses (right) plots on a $20m$ decomposed graph._
+_$400m$ gravity_index (left) and $400m$ branch-weighted mixed-uses (right) plots on a $20m$ decomposed graph._
 
 
 Issues & Contributions
