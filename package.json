@@ -5,8 +5,9 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "@vuepress/core": "1.0.0-alpha.47",
     "standard": "12.0.1",
-    "vuepress": "^1.0.0-alpha.47",
+    "vuepress": "1.0.0-alpha.48",
     "vuepress-plugin-mathjax": "1.2.4",
     "vuepress-theme-cityseer": "^0.3.1"
   }
