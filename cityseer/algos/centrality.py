@@ -236,11 +236,10 @@ def local_centrality(node_map: np.ndarray,
     betweenness_data = np.full((2, d_n, n), 0.0)
 
     # iterate through each vert and calculate the shortest path tree
-    progress_state = 0
     for src_idx in range(n):
 
         # numba no object mode can only handle basic printing
-        progress_state = checks.progress_bar(src_idx, n, progress_state, 20)
+        checks.progress_bar(src_idx, n, 20)
 
         # only compute for live nodes
         if not nodes_live[src_idx]:

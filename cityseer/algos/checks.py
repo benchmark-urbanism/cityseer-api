@@ -7,16 +7,12 @@ def_min_thresh_wt = 0.01831563888873418
 
 
 @njit(cache=True)
-def progress_bar(current: int, total: int, progress_state: int, chunks: int):
+def progress_bar(current: int, total: int, chunks: int):
 
     if (chunks > total):
         raise ValueError('The number of chunks should not exceed the total.')
-    step_size = total / chunks
-    next_step = progress_state + step_size
-    if current + 1 >= next_step:
-        percentage = int(next_step / total * 100)
-        hash_count = int(next_step / step_size)
-        void_count = int(total / step_size) - hash_count
+
+    def print_msg(hash_count, void_count, percentage):
         msg = '|'
         for n in range(int(hash_count)):
             msg += '#'
@@ -24,9 +20,21 @@ def progress_bar(current: int, total: int, progress_state: int, chunks: int):
             msg += ' '
         msg += '|'
         print(msg, percentage, '%')
-        return next_step
-    else:
-        return progress_state
+
+    step_size = int(total / chunks)
+
+    if current == 0:
+        print_msg(0, int(total / step_size), 0)
+
+    if (current + 1) == total:
+        print_msg(int(total / step_size), 0, 100)
+
+    elif (current + 1) % step_size == 0:
+        percentage = int((current + 1) / total * 100)
+        hash_count = int((current + 1) / step_size)
+        void_count = int(total / step_size - hash_count)
+        print_msg(hash_count, void_count, percentage)
+
 
 
 @njit(cache=True)

@@ -7,13 +7,12 @@ from cityseer.util import graphs, mock
 
 
 def test_progress_bar():
-    progress_state = 0
-    for i in range(10):
-        progress_state = checks.progress_bar(i, 10, progress_state, 10)
+    for n, chunks in zip([1, 10, 100], [1, 3, 10]):
+        for i in range(n):
+            checks.progress_bar(i, n, chunks)
     # check that chunks > total raises
-    progress_state = 0
     with pytest.raises(ValueError):
-        progress_state = checks.progress_bar(i, 10, progress_state, 20)
+        checks.progress_bar(i, 10, 20)
 
 
 def test_check_numerical_data():

@@ -195,11 +195,10 @@ def assign_to_network(data_map: np.ndarray,
     data_x_arr = data_map[:, 0]
     data_y_arr = data_map[:, 1]
 
-    progress_state = 0
     total_count = len(data_map)
     for data_idx in range(total_count):
 
-        progress_state = checks.progress_bar(data_idx, total_count, progress_state, 20)
+        checks.progress_bar(data_idx, total_count, 20)
 
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
@@ -571,10 +570,9 @@ def local_aggregator(node_map: np.ndarray,
     stats_min = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
-    progress_state = 0
     for src_idx in range(netw_n):
 
-        progress_state = checks.progress_bar(src_idx, netw_n, progress_state, 20)
+        checks.progress_bar(src_idx, netw_n, 20)
 
         # only compute for live nodes
         if not netw_nodes_live[src_idx]:
