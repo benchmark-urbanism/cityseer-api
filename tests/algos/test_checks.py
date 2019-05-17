@@ -163,7 +163,7 @@ def test_check_network_maps():
 
 
 def test_check_distances_and_betas():
-    betas = np.array([-0.02, -0.01, -0.005, -0.0025])
+    betas = np.array([-0.02, -0.01, -0.005, -0.0025, -0.0])
     distances = np.array(networks.distance_from_beta(betas))
 
     # zero length arrays
@@ -177,15 +177,21 @@ def test_check_distances_and_betas():
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances, betas[:-1])
     # check that duplicates are caught
+    dup_betas = np.array([-0.02, -0.02])
+    dup_distances = np.array(networks.distance_from_beta(dup_betas))
     with pytest.raises(ValueError):
-        dup_betas = np.array([-0.02, -0.02])
-        dup_distances = np.array(networks.distance_from_beta(dup_betas))
         checks.check_distances_and_betas(dup_distances, dup_betas)
     # positive values of beta
+    betas_pos = betas.copy()
+    betas_pos[0] = 4
     with pytest.raises(ValueError):
-        betas[0] = 4
-        checks.check_distances_and_betas(distances, betas)
+        checks.check_distances_and_betas(distances, betas_pos)
+    # negative values of distance
+    distances_neg = distances.copy()
+    distances_neg[0] = -100
+    with pytest.raises(ValueError):
+        checks.check_distances_and_betas(distances_neg, betas)
     # inconsistent distances <-> betas
+    betas[1] = -0.03
     with pytest.raises(ValueError):
-        betas[0] = -0.04
         checks.check_distances_and_betas(distances, betas)

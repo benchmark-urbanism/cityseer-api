@@ -40,7 +40,8 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
     if not data_map.ndim == 2 or not data_map.shape[1] == 4:
         raise ValueError(
-            'The data map must have a dimensionality of Nx4, with the first two indices consisting of x, y coordinates. Indices 2 and 3, if populated, correspond to the nearest and next-nearest network nodes.')
+            'The data map must have a dimensionality of Nx4, with the first two indices consisting of x, y coordinates. '
+            'Indices 2 and 3, if populated, correspond to the nearest and next-nearest network nodes.')
 
     if check_assigned:
         # check that data map has been assigned
@@ -152,16 +153,23 @@ def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
 
     for i in range(len(distances)):
         for j in range(len(distances)):
-            if i != j:
+            if i > j:
                 if distances[i] == distances[j]:
                     raise ValueError('Duplicate distances provided. Please provide only one of each.')
 
-    for b in betas:
-        if b >= 0:
-            raise ValueError('Please provide the beta values with the leading negative.')
+    for d in distances:
+        if d <= 0:
+            raise ValueError('Please provide a positive distance value.')
 
-    threshold_min = np.exp(distances[0] * -betas[0])
+    for b in betas:
+        if b > 0:
+            raise ValueError('Please provide the beta value with the leading negative.')
+
+    threshold_min = np.exp(distances[0] * betas[0])
     for d, b in zip(distances, betas):
-        if not np.exp(d * -b) == threshold_min:
-            raise ValueError(
-                'Inconsistent threshold minimums, indicating that the relationship between the betas and distances is not consistent for all distance / beta pairs.')
+        if not np.exp(d * b) == threshold_min:
+            # handles edge case for infinity
+            if not (d, b) == (np.inf, -0.0):
+                raise ValueError(
+                    'Inconsistent threshold minimums, indicating that the relationship between the betas and distances '
+                    'is not consistent for all distance / beta pairs.')

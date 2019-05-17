@@ -15,17 +15,17 @@ distance_from_beta(beta,
 </pre>              
 </FuncSignature>
 
-Maps decay parameters $-\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
+Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
 ::: warning Note
-It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [Network_Layer](/metrics/networks.html#network-layer) or [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx).
+It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [Network_Layer](#network-layer) or [Network_Layer_From_nX](#network-layer-from-nx).
 :::
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name="beta" type="float, list[float], numpy.ndarray">
 
-$-\beta$ value/s to convert to distance thresholds $d_{max}$.
+$\beta$ value/s to convert to distance thresholds $d_{max}$.
 
 </FuncElement>
 <FuncElement name="min_threshold_wt" type="float">
@@ -53,21 +53,21 @@ print(d_max)  # prints: array([400., 200.])
 
 ```
 
-Weighted measures such as gravity, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
 
-$$weight = exp(-\beta \cdot distance)$$
+$$weight = exp(\beta \cdot distance)$$
 
-The strength of the decay is controlled by the $-\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $-\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\%$ and a location $400m$ away would be weighted at $13.5\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=-0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\%$ and a location $400m$ away would be weighted at $13.5\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
 
 <img src="../images/plots/betas.png" alt="Example beta decays" class="centre">
 
-[Network_Layer](/metrics/networks.html#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly. If using distances, then the $-\beta$ values will likewise be set automatically, using:
+[Network_Layer](#network-layer) and [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
-$$-\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
+$$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
 The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
 
-| $-\beta$ | $d_{max}$ |
+| $\beta$ | $d_{max}$ |
 |-----------|---------|
 | $-0.02$ | $200m$ |
 | $-0.01$ | $400m$ |
@@ -76,12 +76,74 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 
 Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
 
-| $-\beta$ | $w_{min}$ | $d_{max}$ |
+| $\beta$ | $w_{min}$ | $d_{max}$ |
 |----------|----------|----------|
 | $-0.02$ | $0.01$ | $230m$ |
 | $-0.01$ | $0.01$ | $461m$ |
 | $-0.005$ | $0.01$ | $921m$ |
 | $-0.0025$ | $0.01$ | $1842m$ |
+
+
+beta\_from\_distance <Chip text="v0.8.10"/>
+--------------------
+
+<FuncSignature>
+<pre>
+beta_from_distance(distance,
+                   min_threshold_wt=0.01831563888873418)
+</pre>              
+</FuncSignature>
+
+Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [distance_from_beta](#distance-from-beta) for additional discussion.
+
+::: warning Note
+It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [Network_Layer](#network-layer) or [Network_Layer_From_nX](#network-layer-from-nx).
+:::
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name="distance" type="float, list[float], numpy.ndarray">
+
+$d_{max}$ value/s to convert to decay parameters $\beta$.
+
+</FuncElement>
+<FuncElement name="min_threshold_wt" type="float">
+
+The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+
+<FuncElement name="betas" type="numpy.ndarray">
+
+A numpy array of decay parameters $\beta$.
+
+</FuncElement>
+
+```python
+
+from cityseer.metrics import networks
+# a list of betas
+distances = [400, 200]
+# convert to betas
+betas = networks.beta_from_distance(distances)
+print(betas)  # prints: array([-0.01, -0.02])
+
+```
+
+[Network_Layer](#network-layer) and [Network_Layer_From_nX](#network-layer-from-nx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+
+$$\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
+
+The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
+
+| $d_{max}$ | $\beta$ |
+|-----------|---------|
+| $200m$ | $-0.02$ |
+| $400m$ | $-0.01$ |
+| $800m$ | $-0.005$ |
+| $1600m$ | $-0.0025$ |
 
 
 Network\_Layer <Chip text="class"/>
@@ -101,7 +163,7 @@ Network_Layer(node_uids,
 
 Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`Network_Layer_From_nX`](#network-layer-from-nx) should be used instead if converting from a `NetworkX` graph to a `Network_Layer`.
 
-A `Network_Layer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $-\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [distance_from_beta](#distance-from-beta) for more information. These distances and betas will be used for any subsequent centrality and land-use calculations.
+A `Network_Layer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [distance_from_beta](#distance-from-beta) for more information. These distances and betas will be used for any subsequent centrality and land-use calculations.
 
 ```python
 from cityseer.metrics import networks
@@ -162,13 +224,13 @@ A 2d `numpy` array representing the graph's edges. The indices of the second dim
 
 <FuncElement name="distances" type="int, float, list, tuple, np.ndarray">
 
-A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
+A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
 
 </FuncElement>
 
 <FuncElement name="betas" type="float, list, tuple, np.ndarray">
 
-A $-\beta$, or `list`, `tuple`, or `numpy` array of $-\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 
 </FuncElement>
 
@@ -508,13 +570,13 @@ A `networkX` graph.
 
 <FuncElement name="distances" type="int, float, list, tuple, np.ndarray">
 
-A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $-\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
+A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
 
 </FuncElement>
 
 <FuncElement name="betas" type="float, list, tuple, np.ndarray">
 
-A $-\beta$, or `list`, `tuple`, or `numpy` array of $-\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 
 </FuncElement>
 

@@ -10,20 +10,50 @@ from cityseer.util import mock, graphs
 
 def test_distance_from_beta():
     # some basic checks - using float form
-    assert networks.distance_from_beta(-0.04) == np.array([100.])
-    assert networks.distance_from_beta(-0.0025) == np.array([1600.])
+    for b, d in zip([-0.04, -0.0025, -0.0], [100, 1600, np.inf]):
+        # simple straight check against corresponding distance
+        assert networks.distance_from_beta(b) == np.array([d])
+        # circular check
+        assert networks.beta_from_distance(networks.distance_from_beta(b)) == b
+        # array form check
+        assert networks.distance_from_beta(np.array([b])) == np.array([d])
     # check that custom min_threshold_wt works
     arr = networks.distance_from_beta(-0.04, min_threshold_wt=0.001)
     assert np.array_equal(arr, np.array([172.69388197455342]))
     # check on array form
-    arr = networks.distance_from_beta([-0.04, -0.0025])
-    assert np.array_equal(arr, np.array([100, 1600]))
-    # check that invalid beta types raises an error
+    arr = networks.distance_from_beta([-0.04, -0.0025, -0.0])
+    assert np.array_equal(arr, np.array([100, 1600, np.inf]))
+    # check for type error
     with pytest.raises(TypeError):
         networks.distance_from_beta('boo')
-    # check that positive betas raise an error
-    with pytest.raises(ValueError):
-        networks.distance_from_beta(0.04)
+    # check that invalid beta values raise an error
+    for b in [0.04, 0, -0]:
+        with pytest.raises(ValueError):
+            networks.distance_from_beta(b)
+
+
+def test_beta_from_distance():
+    # some basic checks
+    for d, b in zip([100, 1600, np.inf], [-0.04, -0.0025, -0.0]):
+        # simple straight check against corresponding distance
+        assert networks.beta_from_distance(d) == np.array([b])
+        # circular check
+        assert networks.distance_from_beta(networks.beta_from_distance(d)) == d
+        # array form check
+        assert networks.beta_from_distance(np.array([d])) == np.array([b])
+    # check that custom min_threshold_wt works
+    arr = networks.beta_from_distance(172.69388197455342, min_threshold_wt=0.001)
+    assert np.array_equal(arr, np.array([-0.04]))
+    # check on array form
+    arr = networks.beta_from_distance([100, 1600, np.inf])
+    assert np.array_equal(arr, np.array([-0.04, -0.0025, -0.0]))
+    # check for type error
+    with pytest.raises(TypeError):
+        networks.beta_from_distance('boo')
+    # check that invalid beta values raise an error
+    for d in [-100, 0]:
+        with pytest.raises(ValueError):
+            networks.beta_from_distance(d)
 
 
 def test_Network_Layer():
@@ -359,7 +389,7 @@ def test_compute_centrality():
 
 
 def network_generator():
-    for betas in [[-0.008], [-0.008, -0.002]]:
+    for betas in [[-0.008], [-0.008, -0.002, -0.0]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
             G = mock.mock_graph()

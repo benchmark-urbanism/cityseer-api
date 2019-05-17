@@ -23,12 +23,34 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
         raise TypeError('Please provide a beta or a list, tuple, or numpy.ndarray of betas.')
     # check that the betas do not have leading negatives
     for b in beta:
-        if b >= 0:
-            raise ValueError('Please provide the beta/s without the leading negative.')
+        if b > 0:
+            raise ValueError('Please provide the beta value with the leading negative.')
+        elif b == 0:
+            # ints have no concept of -0, so catch betas that are positive 0 or -0 (in int form)
+            # i.e. betas of -0.0 will successfully result in np.inf as opposed to -np.inf
+            if np.log(min_threshold_wt) / b == -np.inf:
+                raise ValueError('Please provide zeros in float form with a leading negative.')
     # cast to numpy
     beta = np.array(beta)
     # deduce the effective distance thresholds
     return np.log(min_threshold_wt) / beta
+
+
+def beta_from_distance(distance: Union[float, list, np.ndarray],
+                       min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
+    # cast to list form
+    if isinstance(distance, (int, float)):
+        distance = [distance]
+    if not isinstance(distance, (list, tuple, np.ndarray)):
+        raise TypeError('Please provide a distance or a list, tuple, or numpy.ndarray of distances.')
+    # check that the betas do not have leading negatives
+    for d in distance:
+        if d <= 0:
+            raise ValueError('Please provide a positive distance value.')
+    # cast to numpy
+    distance = np.array(distance)
+    # deduce the effective distance thresholds
+    return np.log(min_threshold_wt) / distance
 
 
 class Network_Layer:
@@ -91,9 +113,8 @@ class Network_Layer:
             else:
                 raise TypeError('Please provide a distance, or a list, tuple, or numpy.ndarray of distances.')
             # generate the betas
-            self._betas = []
-            for d in self._distances:
-                self._betas.append(np.log(self._min_threshold_wt) / d)
+            self._betas = beta_from_distance(self._distances,
+                                             min_threshold_wt=self._min_threshold_wt)
         # if betas, generate the distances
         elif self._betas is not None and self._distances is None:
             if isinstance(self._betas, (float)):
@@ -103,7 +124,8 @@ class Network_Layer:
                     raise ValueError('Please provide at least one beta.')
             else:
                 raise TypeError('Please provide a beta, or a list, tuple, or numpy.ndarray of betas.')
-            self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
+            self._distances = distance_from_beta(self._betas,
+                                                 min_threshold_wt=self._min_threshold_wt)
         else:
             raise ValueError('Please provide either distances or betas, but not both.')
 
