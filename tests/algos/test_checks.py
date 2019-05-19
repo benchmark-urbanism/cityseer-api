@@ -10,9 +10,8 @@ def test_progress_bar():
     for n, chunks in zip([1, 10, 100], [1, 3, 10]):
         for i in range(n):
             checks.progress_bar(i, n, chunks)
-    # check that chunks > total raises
-    with pytest.raises(ValueError):
-        checks.progress_bar(i, 10, 20)
+    # check that chunks > total doesn't raise
+    checks.progress_bar(10, 10, 20)
 
 
 def test_check_numerical_data():

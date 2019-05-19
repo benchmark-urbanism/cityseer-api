@@ -166,7 +166,11 @@ def shortest_path_tree(
     return map_impedance, map_distance, map_pred, cycles
 
 
-@njit(cache=True)
+# cache has to be set to false per Numba issue:
+# https://github.com/numba/numba/issues/3555
+# which prevents nested print function from working as intended
+# TODO: set to True once resolved
+@njit(cache=False)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
@@ -236,10 +240,11 @@ def local_centrality(node_map: np.ndarray,
     betweenness_data = np.full((2, d_n, n), 0.0)
 
     # iterate through each vert and calculate the shortest path tree
+    progress_chunks = int(n / 2000)
     for src_idx in range(n):
 
         # numba no object mode can only handle basic printing
-        checks.progress_bar(src_idx, n, 20)
+        checks.progress_bar(src_idx, n, progress_chunks)
 
         # only compute for live nodes
         if not nodes_live[src_idx]:

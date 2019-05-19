@@ -68,7 +68,11 @@ def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarra
     return min_idx, min_dist
 
 
-@njit(cache=True)
+# cache has to be set to false per Numba issue:
+# https://github.com/numba/numba/issues/3555
+# which prevents nested print function from working as intended
+# TODO: set to True once resolved
+@njit(cache=False)
 def assign_to_network(data_map: np.ndarray,
                       node_map: np.ndarray,
                       edge_map: np.ndarray,
@@ -196,9 +200,10 @@ def assign_to_network(data_map: np.ndarray,
     data_y_arr = data_map[:, 1]
 
     total_count = len(data_map)
+    progress_chunks = int(total_count / 2000)
     for data_idx in range(total_count):
 
-        checks.progress_bar(data_idx, total_count, 20)
+        checks.progress_bar(data_idx, total_count, progress_chunks)
 
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
@@ -416,7 +421,11 @@ def aggregate_to_src_idx(src_idx: int,
     return reachable_data_idx, reachable_data_dist, data_trim_to_full_idx_map
 
 
-@njit(cache=True)
+# cache has to be set to false per Numba issue:
+# https://github.com/numba/numba/issues/3555
+# which prevents nested print function from working as intended
+# TODO: set to True once resolved
+@njit(cache=False)
 def local_aggregator(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      data_map: np.ndarray,
@@ -570,9 +579,10 @@ def local_aggregator(node_map: np.ndarray,
     stats_min = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
+    progress_chunks = int(netw_n / 2000)
     for src_idx in range(netw_n):
 
-        checks.progress_bar(src_idx, netw_n, 20)
+        checks.progress_bar(src_idx, netw_n, progress_chunks)
 
         # only compute for live nodes
         if not netw_nodes_live[src_idx]:
