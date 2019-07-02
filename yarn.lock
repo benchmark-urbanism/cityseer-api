@@ -7815,19 +7815,19 @@ vuepress-plugin-container@^2.0.0:
   dependencies:
     markdown-it-container "^2.0.0"
 
-vuepress-plugin-mathjax@1.2.5:
-  version "1.2.5"
-  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.2.5.tgz#f8a05fb9a9ea8c2159c617313a08c44504d5232e"
-  integrity sha512-fiFlosBdATJBa9xgw4WgUm9oBgERlOQlhLU+aEqZX2cXKF+VOlbeDqthIPU0ptMh8+881S2Ccm9j9nDdOKCjAw==
+vuepress-plugin-mathjax@1.2.8:
+  version "1.2.8"
+  resolved "https://registry.yarnpkg.com/vuepress-plugin-mathjax/-/vuepress-plugin-mathjax-1.2.8.tgz#decec38e9dbb82de9cf79f042463fa4a56e25340"
+  integrity sha512-vtRyDsBviQJfMgHhjzsVY+Rnr4HyEnUCgCKof5FV2ZG+mVe+YECfhVAe1Zo24XkkYjS/FBMFLn/sz4s0p5iuuQ==
   dependencies:
     lru-cache "^5.1.1"
     mathjax3 "3.0.0-beta.3"
     vuepress-mergeable "^1.0.2"
 
-vuepress-theme-cityseer@0.3.2:
-  version "0.3.2"
-  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.3.2.tgz#9ddc10109c762bc9953c7171bafe37a82d0b0ba0"
-  integrity sha512-W13kdnEMjO1iiagDfspPUlQrw2GM2Q1/ZMd7LIyuMXy7E7lvRZL5Muz1kP1cYX5+1CuvIMMuAYlBbNn86/oaJQ==
+vuepress-theme-cityseer@0.3.7:
+  version "0.3.7"
+  resolved "https://registry.yarnpkg.com/vuepress-theme-cityseer/-/vuepress-theme-cityseer-0.3.7.tgz#aa00411baca9719591b3d77ef6a30922359af144"
+  integrity sha512-AGEtDQKF6R7xerbODjVNk4Op2KML+AqRpwZdWYylWBj2W4K2j9C6PAukgv8TLZNeFDnnX3GGfnybaPGDDGqilQ==
   dependencies:
     "@vuepress/plugin-back-to-top" "1.0.2"
     "@vuepress/theme-default" "1.0.2"
