@@ -128,7 +128,11 @@ class Data_Layer:
                           Network_Layer: networks.Network_Layer,
                           max_dist: [int, float]):
         self._Network = Network_Layer
-        data.assign_to_network(self._data, self.Network._nodes, self.Network._edges, max_dist)
+        data.assign_to_network(self._data,
+                               self.Network._nodes,
+                               self.Network._edges,
+                               max_dist,
+                               suppress_progress=checks.suppress_progress)
 
     def compute_aggregated(self,
                            landuse_labels: Union[list, tuple, np.ndarray] = None,
@@ -259,7 +263,8 @@ class Data_Layer:
                                                      accessibility_keys=np.array(acc_keys),
                                                      cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
                                                      numerical_arrays=stats_data_arrs,
-                                                     angular=self.Network.angular)
+                                                     angular=self.Network.angular,
+                                                     suppress_progress=checks.suppress_progress)
 
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite

@@ -289,7 +289,8 @@ class Network_Layer:
             np.array(self._betas),
             np.array(closeness_keys),
             np.array(betweenness_keys),
-            self._angular)
+            self._angular,
+            suppress_progress=checks.suppress_progress)
 
         # write the results
         # writing metrics to dictionary will check for pre-existing

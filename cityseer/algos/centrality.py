@@ -177,7 +177,8 @@ def local_centrality(node_map: np.ndarray,
                      betas: np.ndarray,
                      closeness_keys: np.ndarray = np.array([]),
                      betweenness_keys: np.ndarray = np.array([]),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+                     angular: bool = False,
+                     suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -244,7 +245,8 @@ def local_centrality(node_map: np.ndarray,
     for src_idx in range(n):
 
         # numba no object mode can only handle basic printing
-        checks.progress_bar(src_idx, n, progress_chunks)
+        if not suppress_progress:
+            checks.progress_bar(src_idx, n, progress_chunks)
 
         # only compute for live nodes
         if not nodes_live[src_idx]:

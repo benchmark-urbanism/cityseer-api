@@ -76,7 +76,8 @@ def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarra
 def assign_to_network(data_map: np.ndarray,
                       node_map: np.ndarray,
                       edge_map: np.ndarray,
-                      max_dist: float) -> np.ndarray:
+                      max_dist: float,
+                      suppress_progress: bool = False) -> np.ndarray:
     '''
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -203,7 +204,8 @@ def assign_to_network(data_map: np.ndarray,
     progress_chunks = int(total_count / 2000)
     for data_idx in range(total_count):
 
-        checks.progress_bar(data_idx, total_count, progress_chunks)
+        if not suppress_progress:
+            checks.progress_bar(data_idx, total_count, progress_chunks)
 
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
@@ -438,8 +440,9 @@ def local_aggregator(node_map: np.ndarray,
                      accessibility_keys: np.ndarray = np.array([]),
                      cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
                      numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                     angular: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                     np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                     angular: bool = False,
+                     suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -582,7 +585,8 @@ def local_aggregator(node_map: np.ndarray,
     progress_chunks = int(netw_n / 2000)
     for src_idx in range(netw_n):
 
-        checks.progress_bar(src_idx, netw_n, progress_chunks)
+        if not suppress_progress:
+            checks.progress_bar(src_idx, netw_n, progress_chunks)
 
         # only compute for live nodes
         if not netw_nodes_live[src_idx]:
