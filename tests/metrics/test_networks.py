@@ -128,6 +128,19 @@ def test_Network_Layer():
     with pytest.raises(ValueError):
         networks.Network_Layer(node_uids, node_map, edge_map, betas=[])
 
+    # check setter for weights
+    old_weights = N.weights
+    new_weights = np.copy(old_weights) * 2
+    N.weights = new_weights
+    assert np.allclose(N.weights, new_weights)
+    corrupted_weights = np.copy(new_weights)
+    for i in [-1, np.nan, np.inf]:
+        corrupted_weights[0] = i
+        with pytest.raises(ValueError):
+            N.weights = corrupted_weights
+    with pytest.raises(TypeError):
+        N.weights = 10
+
 
 def test_Network_Layer_From_nX():
     G = mock.mock_graph()

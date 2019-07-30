@@ -162,6 +162,20 @@ class Network_Layer:
         return self._nodes[:, 2]
 
     @property
+    def weights(self):
+        return self._nodes[:, 4]
+
+    @weights.setter
+    def weights(self, weights):
+        if not isinstance(weights, (list, tuple, np.ndarray)):
+            raise TypeError('Weights should consist of a list, tuple, or numpy.ndarray of weights.')
+        weights = np.array(weights)
+        if not weights.ndim == 1 or not weights.shape[0] == self._nodes.shape[0]:
+            raise ValueError('Weights should be a single dimensional array of the same length as the number of nodes.')
+        self._nodes[:, 4] = weights
+        checks.check_network_maps(self._nodes, self._edges)
+
+    @property
     def edge_lengths(self):
         return self._edges[:, 2]
 
