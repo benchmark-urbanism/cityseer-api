@@ -1,7 +1,7 @@
 numpy
 numba
 utm
-shapely>=1.7a1
+shapely>=1.7a2
 networkx
 tqdm
 matplotlib

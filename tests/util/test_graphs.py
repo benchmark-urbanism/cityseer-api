@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import pytest
-from shapely import geometry
+from shapely import geometry, ops
 
 from cityseer.algos import checks
 from cityseer.metrics import networks, layers
@@ -138,9 +138,8 @@ def make_messy_graph(G):
             # remove old edge
             G_messy.remove_edge(s, e)
             # new midpoint 'x' and 'y' coordinates
-            # TODO: change to ops.substring once shapely 1.7 released (bug fix)
-            s_geom = graphs.substring(line_geom, 0, 0.5, normalized=True)
-            e_geom = graphs.substring(line_geom, 0.5, 1, normalized=True)
+            s_geom = ops.substring(line_geom, 0, 0.5, normalized=True)
+            e_geom = ops.substring(line_geom, 0.5, 1, normalized=True)
             # looking for the non-matching coordinates
             mid_x, mid_y = s_geom.coords[-1][:2]
             # add new edges
@@ -151,22 +150,22 @@ def make_messy_graph(G):
 
     # test recursive weld by manually adding a chained series of orphan nodes
     geom = G[10][43]['geom']
-    geom_a = graphs.substring(geom, 0, 0.25, normalized=True)
+    geom_a = ops.substring(geom, 0, 0.25, normalized=True)
     G_messy.add_edge(10, 't_1', geom=geom_a)
     a_x, a_y = geom_a.coords[-1][:2]
     G_messy.nodes['t_1']['x'] = a_x
     G_messy.nodes['t_1']['y'] = a_y
-    geom_b = graphs.substring(geom, 0.25, 0.5, normalized=True)
+    geom_b = ops.substring(geom, 0.25, 0.5, normalized=True)
     G_messy.add_edge('t_1', 't_2', geom=geom_b)
     b_x, b_y = geom_b.coords[-1][:2]
     G_messy.nodes['t_2']['x'] = b_x
     G_messy.nodes['t_2']['y'] = b_y
-    geom_c = graphs.substring(geom, 0.5, 0.75, normalized=True)
+    geom_c = ops.substring(geom, 0.5, 0.75, normalized=True)
     G_messy.add_edge('t_2', 't_3', geom=geom_c)
     c_x, c_y = geom_c.coords[-1][:2]
     G_messy.nodes['t_3']['x'] = c_x
     G_messy.nodes['t_3']['y'] = c_y
-    geom_d = graphs.substring(geom, 0.75, 1.0, normalized=True)
+    geom_d = ops.substring(geom, 0.75, 1.0, normalized=True)
     G_messy.add_edge('t_3', 43, geom=geom_d)
     # remove original geom
     G_messy.remove_edge(10, 43)

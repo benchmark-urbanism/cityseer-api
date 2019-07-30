@@ -56,7 +56,7 @@ def check_numerical_data(data_arr: np.ndarray):
 @njit(cache=True)
 def check_categorical_data(data_arr: np.ndarray):
     for cl in data_arr:
-        if not np.isfinite(cl) or not cl >= 0:
+        if not np.isfinite(np.float(cl)) or not cl >= 0:
             raise ValueError('Data map contains points with missing data classes.')
         if int(cl) != cl:
             raise ValueError('Data map contains non-integer class-codes.')
