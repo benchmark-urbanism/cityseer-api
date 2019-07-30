@@ -14,11 +14,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-tqdm_suppress = False
-if 'GCP_PROJECT' in os.environ:
-    tqdm_suppress = True
-
-
 def dict_wgs_to_utm(data_dict: dict) -> dict:
     if not isinstance(data_dict, dict):
         raise TypeError('This method requires dictionary object.')
@@ -27,7 +22,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     data_dict_copy = data_dict.copy()
 
     logger.info('Processing node x, y coordinates.')
-    for k, v in tqdm(data_dict_copy.items(), disable=tqdm_suppress):
+    for k, v in tqdm(data_dict_copy.items(), disable=checks.suppress_progress):
         # x coordinate
         if 'x' not in v:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {k}.')

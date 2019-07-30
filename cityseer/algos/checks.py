@@ -1,9 +1,12 @@
+import os
 import numpy as np
 from numba import njit
 
-
 def_min_thresh_wt = 0.01831563888873418
 
+suppress_progress = False
+if 'GCP_PROJECT' in os.environ or 'SUPPRESS_PROGRESS' in os.environ:
+    suppress_progress = True
 
 # cache for parent functions has to be set to false per Numba issue:
 # https://github.com/numba/numba/issues/3555
@@ -12,35 +15,36 @@ def_min_thresh_wt = 0.01831563888873418
 @njit(cache=True)
 def progress_bar(current: int, total: int, chunks: int):
 
-    if chunks < 10:
-        chunks = 10
+    if not suppress_progress:
 
-    if chunks > total:
-        chunks = total
+        if chunks < 10:
+            chunks = 10
 
-    def print_msg(hash_count, void_count, percentage):
-        msg = '|'
-        for n in range(int(hash_count)):
-            msg += '#'
-        for n in range(int(void_count)):
-            msg += ' '
-        msg += '|'
-        print(msg, percentage, '%')
+        if chunks > total:
+            chunks = total
 
-    step_size = int(total / chunks)
+        def print_msg(hash_count, void_count, percentage):
+            msg = '|'
+            for n in range(int(hash_count)):
+                msg += '#'
+            for n in range(int(void_count)):
+                msg += ' '
+            msg += '|'
+            print(msg, percentage, '%')
 
-    if current == 0:
-        print_msg(0, int(total / step_size), 0)
+        step_size = int(total / chunks)
 
-    if (current + 1) == total:
-        print_msg(int(total / step_size), 0, 100)
+        if current == 0:
+            print_msg(0, int(total / step_size), 0)
 
-    elif (current + 1) % step_size == 0:
-        percentage = np.round((current + 1) / total * 100, 2)
-        hash_count = int((current + 1) / step_size)
-        void_count = int(total / step_size - hash_count)
-        print_msg(hash_count, void_count, percentage)
+        if (current + 1) == total:
+            print_msg(int(total / step_size), 0, 100)
 
+        elif (current + 1) % step_size == 0:
+            percentage = np.round((current + 1) / total * 100, 2)
+            hash_count = int((current + 1) / step_size)
+            void_count = int(total / step_size - hash_count)
+            print_msg(hash_count, void_count, percentage)
 
 
 @njit(cache=True)
