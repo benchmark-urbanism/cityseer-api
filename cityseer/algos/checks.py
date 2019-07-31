@@ -4,13 +4,13 @@ from numba import njit
 
 def_min_thresh_wt = 0.01831563888873418
 
-suppress_progress = False
+quiet_mode = False
 if 'GCP_PROJECT' in os.environ:
-    suppress_progress = True
+    quiet_mode = True
 
-if 'CITYSEER_SUPPRESS_PROGRESS_BARS' in os.environ:
-    if os.environ['CITYSEER_SUPPRESS_PROGRESS_BARS'].lower() in ['true', '1']:
-        suppress_progress = True
+if 'CITYSEER_QUIET_MODE' in os.environ:
+    if os.environ['CITYSEER_QUIET_MODE'].lower() in ['true', '1']:
+        quiet_mode = True
 
 # cache for parent functions has to be set to false per Numba issue:
 # https://github.com/numba/numba/issues/3555

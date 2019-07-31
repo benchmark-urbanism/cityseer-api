@@ -22,7 +22,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     data_dict_copy = data_dict.copy()
 
     logger.info('Processing node x, y coordinates.')
-    for k, v in tqdm(data_dict_copy.items(), disable=checks.suppress_progress):
+    for k, v in tqdm(data_dict_copy.items(), disable=checks.quiet_mode):
         # x coordinate
         if 'x' not in v:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {k}.')
@@ -132,7 +132,7 @@ class Data_Layer:
                                self.Network._nodes,
                                self.Network._edges,
                                max_dist,
-                               suppress_progress=checks.suppress_progress)
+                               suppress_progress=checks.quiet_mode)
 
     def compute_aggregated(self,
                            landuse_labels: Union[list, tuple, np.ndarray] = None,
@@ -232,7 +232,8 @@ class Data_Layer:
                         mu_hill_keys.append(idx)
                     else:
                         mu_other_keys.append(idx - 4)
-                logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
+                if not checks.quiet_mode:
+                    logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
 
             acc_keys = []
             if accessibility_keys is not None:
@@ -241,9 +242,10 @@ class Data_Layer:
                         logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
                     else:
                         acc_keys.append(landuse_classes.index(ac_label))
-                logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+                if not checks.quiet_mode:
+                    logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
 
-        if stats_keys is not None:
+        if stats_keys is not None and not checks.quiet_mode:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
 
         # call the underlying method
@@ -264,7 +266,7 @@ class Data_Layer:
                                                      cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
                                                      numerical_arrays=stats_data_arrs,
                                                      angular=self.Network.angular,
-                                                     suppress_progress=checks.suppress_progress)
+                                                     suppress_progress=checks.quiet_mode)
 
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite

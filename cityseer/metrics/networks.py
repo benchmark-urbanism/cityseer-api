@@ -269,7 +269,8 @@ class Network_Layer:
                 if cl not in closeness_options:
                     raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
                 closeness_keys.append(closeness_options.index(cl))
-            logger.info(f'Computing closeness measures: {", ".join(close_metrics)}')
+            if not checks.quiet_mode:
+                logger.info(f'Computing closeness measures: {", ".join(close_metrics)}')
 
         betweenness_options = ['betweenness',
                                'betweenness_decay']
@@ -280,7 +281,8 @@ class Network_Layer:
                     raise ValueError(
                         f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
                 betweenness_keys.append(betweenness_options.index(bt))
-            logger.info(f'Computing betweenness measures: {", ".join(between_metrics)}')
+            if not checks.quiet_mode:
+                logger.info(f'Computing betweenness measures: {", ".join(between_metrics)}')
 
         closeness_data, betweenness_data = centrality.local_centrality(
             self._nodes,
@@ -290,7 +292,7 @@ class Network_Layer:
             np.array(closeness_keys),
             np.array(betweenness_keys),
             self._angular,
-            suppress_progress=checks.suppress_progress)
+            suppress_progress=checks.quiet_mode)
 
         # write the results
         # writing metrics to dictionary will check for pre-existing

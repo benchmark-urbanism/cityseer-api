@@ -27,7 +27,7 @@ def nX_simple_geoms(networkX_graph: nx.Graph) -> nx.Graph:
     g_copy = networkX_graph.copy()
 
     # unpack coordinates and build simple edge geoms
-    for s, e in tqdm(g_copy.edges(), disable=checks.suppress_progress):
+    for s, e in tqdm(g_copy.edges(), disable=checks.quiet_mode):
 
         # start x coordinate
         if 'x' not in g_copy.nodes[s]:
@@ -82,7 +82,7 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph, force_zone_number=None) -> nx.Graph:
         zone_number = force_zone_number
 
     logger.info('Processing node x, y coordinates.')
-    for n, d in tqdm(g_copy.nodes(data=True), disable=checks.suppress_progress):
+    for n, d in tqdm(g_copy.nodes(data=True), disable=checks.quiet_mode):
         # x coordinate
         if 'x' not in d:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at node {n}.')
@@ -106,7 +106,7 @@ def nX_wgs_to_utm(networkX_graph: nx.Graph, force_zone_number=None) -> nx.Graph:
 
     # if line geom property provided, then convert as well
     logger.info('Processing edge geom coordinates, if present.')
-    for s, e, d in tqdm(g_copy.edges(data=True), disable=checks.suppress_progress):
+    for s, e, d in tqdm(g_copy.edges(data=True), disable=checks.quiet_mode):
         # check if geom present - optional step
         if 'geom' in d:
             line_geom = d['geom']
@@ -133,7 +133,7 @@ def nX_remove_dangling_nodes(networkX_graph: nx.Graph,
 
     if despine:
         remove_nodes = []
-        for n, d in tqdm(g_copy.nodes(data=True), disable=checks.suppress_progress):
+        for n, d in tqdm(g_copy.nodes(data=True), disable=checks.quiet_mode):
             if nx.degree(g_copy, n) == 1:
                 nb = list(nx.neighbors(g_copy, n))[0]
                 if g_copy[n][nb]['geom'].length <= despine:
@@ -206,7 +206,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
 
     # iterate the nodes and weld edges where encountering simple intersections
     # use the original graph so as to write changes to new graph
-    for n in tqdm(networkX_graph.nodes(), disable=checks.suppress_progress):
+    for n in tqdm(networkX_graph.nodes(), disable=checks.quiet_mode):
 
         # some nodes will already have been removed via recursive function
         if n in removed_nodes:
@@ -395,7 +395,7 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph, buffer_dist: float = 14) ->
     removed_nodes = set()
 
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
-    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.suppress_progress):
+    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
         # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
@@ -514,7 +514,7 @@ def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -
     merge_pairs = []
 
     # iterate origin graph
-    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.suppress_progress):
+    for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
         # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
@@ -635,7 +635,7 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
     g_copy = networkX_graph.copy()
 
     # note -> write to a duplicated graph to avoid in-place errors
-    for s, e, d in tqdm(networkX_graph.edges(data=True), disable=checks.suppress_progress):
+    for s, e, d in tqdm(networkX_graph.edges(data=True), disable=checks.quiet_mode):
         # test for x, y in start coordinates
         if 'x' not in networkX_graph.nodes[s] or 'y' not in networkX_graph.nodes[s]:
             raise AttributeError(f'Encountered node missing "x" or "y" coordinate attributes at node {s}.')
@@ -754,7 +754,7 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
         return a_half_geom, b_half_geom
 
     # iterate the primal graph's edges
-    for s, e, d in tqdm(networkX_graph.edges(data=True), disable=checks.suppress_progress):
+    for s, e, d in tqdm(networkX_graph.edges(data=True), disable=checks.quiet_mode):
 
         # get the first and second half geoms
         s_half_geom, e_half_geom = get_half_geoms(networkX_graph, s, e)
@@ -840,7 +840,7 @@ def nX_auto_edge_params(networkX_graph: nx.Graph) -> nx.Graph:
     g_copy = networkX_graph.copy()
 
     logger.info('Preparing graph')
-    for s, e, d in tqdm(g_copy.edges(data=True), disable=checks.suppress_progress):
+    for s, e, d in tqdm(g_copy.edges(data=True), disable=checks.quiet_mode):
         if 'geom' not in d:
             raise AttributeError(
                 f'No edge geom found for edge {s}-{e}: '
@@ -862,7 +862,7 @@ def nX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     logger.info('Generating default edge attributes from edge geoms.')
     g_copy = networkX_graph.copy()
 
-    for n in tqdm(g_copy.nodes(), disable=checks.suppress_progress):
+    for n in tqdm(g_copy.nodes(), disable=checks.quiet_mode):
         agg_length = 0
         for nb in g_copy.neighbors(n):
             # test for length attribute
@@ -893,7 +893,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
 
     logger.info('Preparing graph')
     total_out_degrees = 0
-    for n in tqdm(g_copy.nodes(), disable=checks.suppress_progress):
+    for n in tqdm(g_copy.nodes(), disable=checks.quiet_mode):
         # writing to 'labels' in case conversion to integers method interferes with order
         g_copy.nodes[n]['label'] = n
         # sum edges
@@ -908,7 +908,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     edge_map = np.full((total_out_degrees, 4), np.nan)  # float - allows for nan and inf
     edge_idx = 0
     # populate the nodes
-    for n, d in tqdm(g_copy.nodes(data=True), disable=checks.suppress_progress):
+    for n, d in tqdm(g_copy.nodes(data=True), disable=checks.quiet_mode):
         # label
         node_uids.append(d['label'])
         # cast to int for indexing
@@ -994,7 +994,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
             g_copy.add_node(uid)
 
     logger.info('Unpacking node data.')
-    for uid, node in tqdm(zip(node_uids, node_map), disable=checks.suppress_progress):
+    for uid, node in tqdm(zip(node_uids, node_map), disable=checks.quiet_mode):
         x, y, live, edge_idx, wt = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y
@@ -1002,7 +1002,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         g_copy.nodes[uid]['weight'] = wt
 
     logger.info('Unpacking edge data.')
-    for edge in tqdm(edge_map, disable=checks.suppress_progress):
+    for edge in tqdm(edge_map, disable=checks.quiet_mode):
         start, end, length, impedance = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]
@@ -1011,7 +1011,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
-        for uid, metrics in tqdm(metrics_dict.items(), disable=checks.suppress_progress):
+        for uid, metrics in tqdm(metrics_dict.items(), disable=checks.quiet_mode):
             if uid not in g_copy:
                 raise AttributeError(
                     f'Node uid {uid} not found in graph. '
