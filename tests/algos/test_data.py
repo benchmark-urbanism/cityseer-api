@@ -453,7 +453,7 @@ def test_local_aggregator_categorical_components():
     ac_keys = np.array([1, 2, 5])
     np.random.shuffle(ac_keys)
 
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
@@ -589,7 +589,7 @@ def test_local_aggregator_categorical_components():
     landuse_classes_dual, landuse_encodings_dual = layers.encode_categorical(mock_categorical)
     mock_matrix = np.full((len(landuse_classes_dual), len(landuse_classes_dual)), 1)
 
-    mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual, stats_mean, stats_mean_wt, \
+    mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map_dual,
                               edge_map_dual,
@@ -605,7 +605,7 @@ def test_local_aggregator_categorical_components():
                               angular=True)
 
     mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep, \
-    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+    stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map_dual,
                               edge_map_dual,
                               data_map_dual,
@@ -645,7 +645,7 @@ def test_local_aggregator_numerical_components():
     distances = networks.distance_from_beta(betas)
     mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
 
-    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_mean, stats_mean_wt, \
+    mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, \
     stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
@@ -682,6 +682,13 @@ def test_local_aggregator_numerical_components():
                                mock_numerical[stats_idx][isolated_data_idx].min())
             assert np.allclose(stats_min[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].min())
+            # sum
+            assert np.isnan(stats_sum[stats_idx][d_idx][49])
+            assert np.allclose(stats_sum[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].sum())
+            assert np.allclose(stats_sum[stats_idx][d_idx][isolated_nodes_idx],
+                               mock_numerical[stats_idx][isolated_data_idx].sum())
+            assert np.allclose(stats_sum[stats_idx][d_idx][connected_nodes_idx],
+                               mock_numerical[stats_idx][connected_data_idx].sum())
             # mean
             assert np.isnan(stats_mean[stats_idx][d_idx][49])
             assert np.allclose(stats_mean[stats_idx][d_idx][[50, 51]], mock_numerical[stats_idx][[17, 33]].mean())

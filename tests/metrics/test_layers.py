@@ -149,7 +149,7 @@ def test_compute_aggregated():
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
-    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+    stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -170,7 +170,7 @@ def test_compute_aggregated():
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
-    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+    stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -188,7 +188,7 @@ def test_compute_aggregated():
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
-    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+    stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -252,8 +252,8 @@ def test_compute_aggregated():
                                           qs=qs)
 
                 # test against underlying method
-                mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
-                stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+                mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_sum, stats_sum_wt, \
+                    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
                     data.local_aggregator(node_map,
                                           edge_map,
                                           data_map,
@@ -334,7 +334,7 @@ def test_compute_aggregated():
     # test against underlying method
     data_map = D._data
     mu_data_hill, mu_data_other, ac_data, ac_data_wt, \
-    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+    stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
                               data_map,
@@ -342,8 +342,8 @@ def test_compute_aggregated():
                               betas,
                               numerical_arrays=mock_numeric)
 
-    stats_keys = ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
-    stats_data = [stats_max, stats_min, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt]
+    stats_keys = ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
+    stats_data = [stats_max, stats_min, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt]
 
     for num_idx, num_label in enumerate(['boo', 'baa']):
         for s_key, stats in zip(stats_keys, stats_data):

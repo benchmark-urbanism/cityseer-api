@@ -267,7 +267,7 @@ This method wraps the underlying `numba` optimised functions for aggregating and
 
 The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
-For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a `valuations` stats keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
+For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a `valuations` stats keys are computed on a `Network Layer` instantiated with $800m$ and $1600m$ distance thresholds, then the dictionary would assume the following structure:
 
 ```python
 Network_Layer.metrics = {
@@ -323,6 +323,14 @@ Network_Layer.metrics = {
                 1600: [...]
             },
             'min': {
+                800: [...],
+                1600: [...]
+            },
+            'sum': {
+                800: [...],
+                1600: [...]
+            },
+            'sum_weighted': {
                 800: [...],
                 1600: [...]
             },
@@ -566,7 +574,7 @@ Data_Layer.compute_stats_single(stats_key, stats_data_arr)
 </pre>
 </FuncSignature>
 
-Compute stats for a single `stats_key` parameter.
+Compute stats for a single `stats_key` parameter. As with the landuse and mixed-use measures: stats will be computed for each distance that was specified when initialising the `Network_Layer`.
 
 <FuncElement name="stats_key" type="str">
 
@@ -583,6 +591,15 @@ A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corres
 The data key will correspond to the `stats_key` parameter, e.g. where using `occupants` as the key:
 
 `Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+
+
+::: tip Hint
+Per the above working example, the following stat types will be available for each `stats_key` for each of the computed distances:
+- `max` and `min`
+- `sum` and `sum_weighted`
+- `mean` and `mean_weighted`
+- `variance` and `variance_weighted`
+:::
 
 
 @compute\_stats\_multiple

@@ -442,7 +442,7 @@ def local_aggregator(node_map: np.ndarray,
                      numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
                      angular: bool = False,
                      suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -569,6 +569,9 @@ def local_aggregator(node_map: np.ndarray,
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
 
     # stats
+    stats_sum = np.full((n_n, d_n, netw_n), np.nan)
+    stats_sum_wt = np.full((n_n, d_n, netw_n), np.nan)
+
     stats_mean = np.full((n_n, d_n, netw_n), np.nan)
     stats_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
 
@@ -710,15 +713,15 @@ def local_aggregator(node_map: np.ndarray,
                         if data_dist <= d:
 
                             # aggregate
-                            if np.isnan(stats_mean[num_idx][d_idx][src_idx]):
-                                stats_mean[num_idx][d_idx][src_idx] = num
+                            if np.isnan(stats_sum[num_idx][d_idx][src_idx]):
+                                stats_sum[num_idx][d_idx][src_idx] = num
                                 stats_count[num_idx][d_idx][src_idx] = 1
-                                stats_mean_wt[num_idx][d_idx][src_idx] = num * np.exp(data_dist * b)
+                                stats_sum_wt[num_idx][d_idx][src_idx] = num * np.exp(data_dist * b)
                                 stats_count_wt[num_idx][d_idx][src_idx] = np.exp(data_dist * b)
                             else:
-                                stats_mean[num_idx][d_idx][src_idx] += num
+                                stats_sum[num_idx][d_idx][src_idx] += num
                                 stats_count[num_idx][d_idx][src_idx] += 1
-                                stats_mean_wt[num_idx][d_idx][src_idx] += num * np.exp(data_dist * b)
+                                stats_sum_wt[num_idx][d_idx][src_idx] += num * np.exp(data_dist * b)
                                 stats_count_wt[num_idx][d_idx][src_idx] += np.exp(data_dist * b)
 
                             if np.isnan(stats_max[num_idx][d_idx][src_idx]):
@@ -735,9 +738,9 @@ def local_aggregator(node_map: np.ndarray,
             for num_idx in range(n_n):
                 for d_idx in range(d_n):
                     stats_mean[num_idx][d_idx][src_idx] = \
-                        stats_mean[num_idx][d_idx][src_idx] / stats_count[num_idx][d_idx][src_idx]
+                        stats_sum[num_idx][d_idx][src_idx] / stats_count[num_idx][d_idx][src_idx]
                     stats_mean_wt[num_idx][d_idx][src_idx] = \
-                        stats_mean_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
+                        stats_sum_wt[num_idx][d_idx][src_idx] / stats_count_wt[num_idx][d_idx][src_idx]
 
             # calculate variances - counts are already computed per above
             # weighted version is IDW by division through equivalently weighted counts above
@@ -793,11 +796,8 @@ def local_aggregator(node_map: np.ndarray,
 
     return mixed_use_hill_data[mu_hill_k_int], \
            mixed_use_other_data[mu_other_k_int], \
-           accessibility_data, \
-           accessibility_data_wt, \
-           stats_mean, \
-           stats_mean_wt, \
-           stats_variance, \
-           stats_variance_wt, \
-           stats_max, \
-           stats_min
+           accessibility_data, accessibility_data_wt, \
+           stats_sum, stats_sum_wt, \
+           stats_mean, stats_mean_wt, \
+           stats_variance, stats_variance_wt, \
+           stats_max, stats_min

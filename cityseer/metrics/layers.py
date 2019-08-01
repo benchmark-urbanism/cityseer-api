@@ -251,6 +251,7 @@ class Data_Layer:
         # call the underlying method
         mixed_use_hill_data, mixed_use_other_data, \
         accessibility_data, accessibility_data_wt, \
+        stats_sum, stats_sum_wt, \
         stats_mean, stats_mean_wt, \
         stats_variance, stats_variance_wt, \
         stats_max, stats_min = data.local_aggregator(self.Network._nodes,
@@ -306,12 +307,16 @@ class Data_Layer:
                     self.Network.metrics['stats'][stats_key] = {}
                 for k, stats_data in zip(['max',
                                           'min',
+                                          'sum',
+                                          'sum_weighted',
                                           'mean',
                                           'mean_weighted',
                                           'variance',
                                           'variance_weighted'],
                                          [stats_max,
                                           stats_min,
+                                          stats_sum,
+                                          stats_sum_wt,
                                           stats_mean,
                                           stats_mean_wt,
                                           stats_variance,
