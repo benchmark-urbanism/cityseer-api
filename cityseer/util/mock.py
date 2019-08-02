@@ -234,7 +234,7 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
 
     d = []
     for i in range(length):
-        d.append(random_class_str[np.random.randint(0, len(random_class_str) - 1)])
+        d.append(random_class_str[np.random.randint(0, len(random_class_str))])
 
     return np.array(d)
 

@@ -61,14 +61,15 @@ def test_mock_categorical_data():
     assert len(cat_d) == 50
     # classes are generated randomly from max number of classes
     # i.e. situations do exist where the number of classes will be less than the max permitted
-    assert len(set(cat_d)) <= 10
+    # use large enough max to reduce likelihood of this triggering issue for test
+    assert len(set(cat_d)) == 10
 
     for c in cat_d:
         assert isinstance(c, str)
         assert c in string.ascii_lowercase
 
     cat_d = mock.mock_categorical_data(50, num_classes=3)
-    assert len(set(cat_d)) <= 3
+    assert len(set(cat_d)) == 3
 
     # test that an error is raised when requesting more than available max classes per asii_lowercase
     with pytest.raises(ValueError):
