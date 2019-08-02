@@ -72,7 +72,7 @@ A dictionary where each entry consists of a `key` representing a distinct data p
 
 mock\_categorical\_data
 -----------------------
-<FuncSignature>mock_categorical_data(length, random_seed=None)</FuncSignature>
+<FuncSignature>mock_categorical_data(length, num_classes=10, random_seed=None)</FuncSignature>
 
 Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.
 
@@ -81,6 +81,12 @@ Generates a `numpy` array containing mock categorical data for testing or experi
 <FuncElement name="length" type="int">
 
 The number of categorical elements to return in the array.
+
+</FuncElement>
+
+<FuncElement name="num_classes" type="int">
+
+The maximum number of unique classes to return in the randomly assigned categorical data. The classes are randomly generated from a pool of unique class labels of length `num_classes`. The number of returned unique classes will be less than or equal to `num_classes`.
 
 </FuncElement>
 

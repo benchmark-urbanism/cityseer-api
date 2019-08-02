@@ -3,7 +3,7 @@ Generate a graph for testing and documentation purposes.
 '''
 import logging
 from typing import Tuple
-import json
+import string
 
 import networkx as nx
 import numpy as np
@@ -223,13 +223,16 @@ def mock_data_dict(G: nx.Graph, length: int = 50, random_seed: int = None) -> di
     return data_dict
 
 
-def mock_categorical_data(length: int, random_seed: int = None) -> np.ndarray:
+def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int = None) -> np.ndarray:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
-    random_class_str = 'abcdefghijk'
-    d = []
+    random_class_str = string.ascii_lowercase
+    if num_classes > len(random_class_str):
+        raise ValueError(f'The requested {num_classes} classes exceeds the max available categorical classes: {len(random_class_str)}')
+    random_class_str = random_class_str[:num_classes]
 
+    d = []
     for i in range(length):
         d.append(random_class_str[np.random.randint(0, len(random_class_str) - 1)])
 

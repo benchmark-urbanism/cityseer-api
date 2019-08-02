@@ -1,5 +1,7 @@
 import networkx as nx
 import numpy as np
+import pytest
+import string
 
 from cityseer.util import mock
 
@@ -57,10 +59,20 @@ def test_mock_data_dict():
 def test_mock_categorical_data():
     cat_d = mock.mock_categorical_data(50)
     assert len(cat_d) == 50
+    # classes are generated randomly from max number of classes
+    # i.e. situations do exist where the number of classes will be less than the max permitted
+    assert len(set(cat_d)) <= 10
 
     for c in cat_d:
         assert isinstance(c, str)
-        assert c in 'abcdefghijk'
+        assert c in string.ascii_lowercase
+
+    cat_d = mock.mock_categorical_data(50, num_classes=3)
+    assert len(set(cat_d)) <= 3
+
+    # test that an error is raised when requesting more than available max classes per asii_lowercase
+    with pytest.raises(ValueError):
+        mock.mock_categorical_data(50, num_classes=len(string.ascii_lowercase) + 1)
 
 
 def test_mock_numerical_data():
