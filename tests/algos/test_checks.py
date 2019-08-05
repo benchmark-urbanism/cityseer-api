@@ -18,6 +18,7 @@ def test_check_numerical_data():
     mock_numerical = mock.mock_numerical_data(50)
 
     # check for malformed data
+    # difficult to catch int arrays without running into numba type checking errors
     # single dimension
     with pytest.raises(ValueError):
         corrupt_numerical = mock_numerical[0]

@@ -239,22 +239,15 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
     return np.array(d)
 
 
-def mock_numerical_data(length: int, num_arrs: int = 1, random_seed: int = None) -> np.ndarray:
+def mock_numerical_data(length: int, min: int = 0, max: int = 100000, num_arrs: int = 1, random_seed: int = None) -> np.ndarray:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
     num_data = []
-
     for i in range(num_arrs):
-        data = []
-
-        for i in range(length):
-            data.append(np.random.uniform(low=0, high=100000))
-
-        num_data.append(data)
-
+        num_data.append(np.random.randint(min, high=max, size=length))
     # return a 2d array
-    return np.array(num_data)
+    return np.array(num_data, dtype=float)
 
 
 def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:

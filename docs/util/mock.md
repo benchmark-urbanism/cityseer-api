@@ -106,7 +106,7 @@ A `numpy` array containing categorical data elements. The number of elements wil
 
 mock\_numerical\_data
 ---------------------
-<FuncSignature>mock_numerical_data(length, num_arrs=1, random_seed=None)</FuncSignature>
+<FuncSignature>mock_numerical_data(length, min=0, max=100000, num_arrs=1, random_seed=None)</FuncSignature>
 
 Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
 
@@ -115,6 +115,18 @@ Generates a 2d `numpy` array containing mock numerical data for testing or exper
 <FuncElement name="length" type="int">
 
 The number of categorical elements to return in the array.
+
+</FuncElement>
+
+<FuncElement name="min" type="int">
+
+The (inclusive) minimum value in the `min`, `max` range of randomly generated integers.
+
+</FuncElement>
+
+<FuncElement name="max" type="int">
+
+The (exclusive) maximum value in the `min`, `max` range of randomly generated integers.
 
 </FuncElement>
 
