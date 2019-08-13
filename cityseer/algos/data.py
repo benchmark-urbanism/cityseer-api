@@ -442,7 +442,7 @@ def local_aggregator(node_map: np.ndarray,
                      numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
                      angular: bool = False,
                      suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -801,3 +801,139 @@ def local_aggregator(node_map: np.ndarray,
            stats_mean, stats_mean_wt, \
            stats_variance, stats_variance_wt, \
            stats_max, stats_min
+
+
+# cache has to be set to false per Numba issue:
+# https://github.com/numba/numba/issues/3555
+# which prevents nested print function from working as intended
+# TODO: set to True once resolved
+@njit(cache=False)
+def singly_constrained(node_map: np.ndarray,
+                       edge_map: np.ndarray,
+                       data_map: np.ndarray,
+                       distances: np.ndarray,
+                       betas: np.ndarray,
+                       i_weights: np.ndarray,
+                       j_weights: np.ndarray,
+                       angular: bool = False,
+                       suppress_progress: bool = False) -> np.ndarray:
+    '''
+    - Keeping separate from local aggregator because singly-constrained origin / destination models computed separately
+    - Requires two iters, one to gather all k-nodes to per j node, then another to get the ratio of j / k attractiveness
+
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge indx
+    4 - weight
+
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - impedance
+
+    DATA MAP:
+    0 - x
+    1 - y
+    2 - assigned network index - nearest
+    3 - assigned network index - next-nearest
+    '''
+    checks.check_network_maps(node_map, edge_map)
+    checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
+    checks.check_distances_and_betas(distances, betas)
+
+    if len(i_weights) != len(node_map) or len(j_weights) != len(node_map):
+        raise ValueError('The i_weights and j_weights arrays must be the same length as the node_map.')
+
+    # establish variables
+    netw_n = len(node_map)
+    d_n = len(distances)
+    global_max_dist = np.max(distances)
+    netw_nodes_live = node_map[:, 2]
+
+    # aggregations
+    k_agg = np.full((d_n, netw_n), np.nan)
+    i_agg = np.full((d_n, netw_n), np.nan)
+
+    # iterate through each j vert and aggregate to the k_agg array
+    progress_chunks = int(netw_n / 2000)
+    for j_idx in range(netw_n):
+
+        if not suppress_progress:
+            checks.progress_bar(j_idx, netw_n, progress_chunks)
+
+        # only compute for live nodes
+        if not netw_nodes_live[j_idx]:
+            continue
+
+        # generate the reachable classes and their respective distances
+        # these are non-unique - i.e. simply the class of each data point within the maximum distance
+        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
+        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
+        reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = aggregate_to_src_idx(j_idx,
+                                                                                                   node_map,
+                                                                                                   edge_map,
+                                                                                                   data_map,
+                                                                                                   global_max_dist,
+                                                                                                   angular)
+
+        # aggregate the weighted j (all k) nodes
+
+        # iterate the reachable indices and related distances
+        for k_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+            # some indices will be NaN if beyond max threshold distance - so check for infinity
+            # this happens when within radial max distance, but beyond network max distance
+            if np.isinf(data_dist):
+                continue
+
+            # iterate the distance dimensions
+            for d_idx, (d, b) in enumerate(zip(distances, betas)):
+
+                # increment weighted k aggregations at respective distances if the distance is less than current d
+                if data_dist <= d:
+
+                    # aggregate
+                    k_agg[d_idx][j_idx] += j_weights[k_idx] * np.exp(data_dist * b)
+
+    # now, iterate through each i vert and aggregate
+    progress_chunks = int(netw_n / 2000)
+    for i_idx in range(netw_n):
+
+        if not suppress_progress:
+            checks.progress_bar(i_idx, netw_n, progress_chunks)
+
+        # only compute for live nodes
+        if not netw_nodes_live[i_idx]:
+            continue
+
+        # generate the reachable classes and their respective distances
+        # these are non-unique - i.e. simply the class of each data point within the maximum distance
+        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
+        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
+        reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = aggregate_to_src_idx(i_idx,
+                                                                                                   node_map,
+                                                                                                   edge_map,
+                                                                                                   data_map,
+                                                                                                   global_max_dist,
+                                                                                                   angular)
+
+        # aggregate the weighted j (all k) nodes
+
+        # iterate the reachable indices and related distances
+        for j_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+            # some indices will be NaN if beyond max threshold distance - so check for infinity
+            # this happens when within radial max distance, but beyond network max distance
+            if np.isinf(data_dist):
+                continue
+
+            # iterate the distance dimensions
+            for d_idx, (d, b) in enumerate(zip(distances, betas)):
+
+                # if the distance is less than current d
+                if data_dist <= d:
+                    # aggregate all j from each i, dividing through respective k aggregations
+                    i_agg[d_idx][i_idx] += i_weights[i_idx] * j_weights[j_idx] * np.exp(data_dist * b) / k_agg[j_idx]
+
+    return i_agg
