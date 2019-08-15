@@ -16,10 +16,10 @@ from setuptools import setup
 
 setup (
     name = 'cityseer',
-    version='0.8.19',
+    version='0.9.0.dev0',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description = 'Computational tools for urban analysis',
-    url='https://github.com/cityseer/cityseer-api',
+    url='https://github.com/cityseer/cityseer',
     project_urls={
         "Bug Tracker": "https://github.com/cityseer/cityseer/issues",
         "Documentation": "https://cityseer.github.io/cityseer/",

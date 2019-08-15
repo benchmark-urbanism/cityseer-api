@@ -357,6 +357,27 @@ class Data_Layer:
 
         return self.compute_aggregated(stats_keys=stats_keys, stats_data_arrs=stats_data_arrs)
 
+    def model_singly_constrained(self,
+                                 key: str,
+                                 i_weights: Union[list, tuple, np.ndarray],
+                                 j_weights: Union[list, tuple, np.ndarray]):
+
+        singly_constrained = data.singly_constrained(self.Network._nodes,
+                                                     self.Network._edges,
+                                                     self._data,
+                                                     distances=np.array(self.Network.distances),
+                                                     betas=np.array(self.Network.betas),
+                                                     i_weights=np.array(i_weights),
+                                                     j_weights=np.array(j_weights),
+                                                     angular=self.Network.angular,
+                                                     suppress_progress=checks.quiet_mode)
+
+        # write the results to the Network's metrics dict
+        if key not in self.Network.metrics['models']:
+            self.Network.metrics['models'][key] = {}
+        for d_idx, d_key in enumerate(self.Network.distances):
+            self.Network.metrics['models'][key][d_key] = singly_constrained[d_idx]
+
 
 class Data_Layer_From_Dict(Data_Layer):
 

@@ -442,7 +442,7 @@ def local_aggregator(node_map: np.ndarray,
                      numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
                      angular: bool = False,
                      suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     NODE MAP:
     0 - x
@@ -818,6 +818,8 @@ def singly_constrained(node_map: np.ndarray,
                        angular: bool = False,
                        suppress_progress: bool = False) -> np.ndarray:
     '''
+    #TODO: consider enhanced numerical checks for single vs. multi dimensional numerical data
+
     - Keeping separate from local aggregator because singly-constrained origin / destination models computed separately
     - Requires two iters, one to gather all k-nodes to per j node, then another to get the ratio of j / k attractiveness
 
@@ -855,49 +857,10 @@ def singly_constrained(node_map: np.ndarray,
 
     # aggregations
     k_agg = np.full((d_n, netw_n), np.nan)
-    i_agg = np.full((d_n, netw_n), np.nan)
+    j_flows = np.full((d_n, netw_n), np.nan)
 
-    # iterate through each j vert and aggregate to the k_agg array
-    progress_chunks = int(netw_n / 2000)
-    for j_idx in range(netw_n):
-
-        if not suppress_progress:
-            checks.progress_bar(j_idx, netw_n, progress_chunks)
-
-        # only compute for live nodes
-        if not netw_nodes_live[j_idx]:
-            continue
-
-        # generate the reachable classes and their respective distances
-        # these are non-unique - i.e. simply the class of each data point within the maximum distance
-        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
-        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = aggregate_to_src_idx(j_idx,
-                                                                                                   node_map,
-                                                                                                   edge_map,
-                                                                                                   data_map,
-                                                                                                   global_max_dist,
-                                                                                                   angular)
-
-        # aggregate the weighted j (all k) nodes
-
-        # iterate the reachable indices and related distances
-        for k_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
-            # some indices will be NaN if beyond max threshold distance - so check for infinity
-            # this happens when within radial max distance, but beyond network max distance
-            if np.isinf(data_dist):
-                continue
-
-            # iterate the distance dimensions
-            for d_idx, (d, b) in enumerate(zip(distances, betas)):
-
-                # increment weighted k aggregations at respective distances if the distance is less than current d
-                if data_dist <= d:
-
-                    # aggregate
-                    k_agg[d_idx][j_idx] += j_weights[k_idx] * np.exp(data_dist * b)
-
-    # now, iterate through each i vert and aggregate
+    # iterate all i nodes
+    # filter all reachable nodes k and aggregate k attractiveness * negative exponential of distance
     progress_chunks = int(netw_n / 2000)
     for i_idx in range(netw_n):
 
@@ -922,7 +885,53 @@ def singly_constrained(node_map: np.ndarray,
         # aggregate the weighted j (all k) nodes
 
         # iterate the reachable indices and related distances
-        for j_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+        for k_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
+            # some indices will be NaN if beyond max threshold distance - so check for infinity
+            # this happens when within radial max distance, but beyond network max distance
+            if np.isinf(data_dist):
+                continue
+
+            # iterate the distance dimensions
+            for d_idx, (d, b) in enumerate(zip(distances, betas)):
+
+                # increment weighted k aggregations at respective distances if the distance is less than current d
+                if data_dist <= d:
+
+                    # aggregate
+                    if np.isnan(k_agg[d_idx][i_idx]):
+                        k_agg[d_idx][i_idx] = j_weights[k_idx] * np.exp(data_dist * b)
+                    else:
+                        k_agg[d_idx][i_idx] += j_weights[k_idx] * np.exp(data_dist * b)
+
+    # this is the second step
+    # iterate through each j vert
+    # this time, filter all reachable i vertices and calculate the proportion of flow from i to j
+    # this is done by dividing i-j flow through i-k_agg flow from previous step
+    progress_chunks = int(netw_n / 2000)
+    for j_idx in range(netw_n):
+
+        if not suppress_progress:
+            checks.progress_bar(j_idx, netw_n, progress_chunks)
+
+        # only compute for live nodes
+        if not netw_nodes_live[j_idx]:
+            continue
+
+        # generate the reachable classes and their respective distances
+        # these are non-unique - i.e. simply the class of each data point within the maximum distance
+        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
+        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
+        reachable_data_idx, reachable_data_dist, _data_trim_to_full_idx_map = aggregate_to_src_idx(j_idx,
+                                                                                                   node_map,
+                                                                                                   edge_map,
+                                                                                                   data_map,
+                                                                                                   global_max_dist,
+                                                                                                   angular)
+
+        # aggregate j divided through all k nodes
+
+        # iterate the reachable indices and related distances
+        for i_idx, (data_idx, data_dist) in enumerate(zip(reachable_data_idx, reachable_data_dist)):
             # some indices will be NaN if beyond max threshold distance - so check for infinity
             # this happens when within radial max distance, but beyond network max distance
             if np.isinf(data_dist):
@@ -933,7 +942,18 @@ def singly_constrained(node_map: np.ndarray,
 
                 # if the distance is less than current d
                 if data_dist <= d:
-                    # aggregate all j from each i, dividing through respective k aggregations
-                    i_agg[d_idx][i_idx] += i_weights[i_idx] * j_weights[j_idx] * np.exp(data_dist * b) / k_agg[j_idx]
 
-    return i_agg
+                    # aggregate all flows from reachable i's to j_idx
+                    # divide through respective i-k_agg sums
+                    # remember, in this case weights are based on i_idx of j_weights array
+                    # catch division by zero:
+                    if k_agg[d_idx][i_idx] == 0:
+                        f = 0
+                    else:
+                        f = i_weights[i_idx] * j_weights[j_idx] * np.exp(data_dist * b) / k_agg[d_idx][i_idx]
+                    if np.isnan(j_flows[d_idx][j_idx]):
+                        j_flows[d_idx][j_idx] = f
+                    else:
+                        j_flows[d_idx][j_idx] += f
+
+    return j_flows

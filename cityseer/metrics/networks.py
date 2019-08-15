@@ -93,7 +93,8 @@ class Network_Layer:
                 'non_weighted': {},
                 'weighted': {}
             },
-            'stats': {}
+            'stats': {},
+            'models': {}
         }
         self._networkX = None
 

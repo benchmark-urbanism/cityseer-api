@@ -703,3 +703,41 @@ def test_local_aggregator_numerical_components():
                                mock_numerical[stats_idx][isolated_data_idx].var())
             assert np.allclose(stats_variance[stats_idx][d_idx][connected_nodes_idx],
                                mock_numerical[stats_idx][connected_data_idx].var())
+
+
+def test_model_singly_constrained():
+
+    import networkx as nx
+
+    G = nx.Graph()
+    G.add_node(0, x=0, y=0)
+    G.add_node(1, x=100, y=0)
+    G.add_node(2, x=200, y=0)
+    G.add_edge(0, 1)
+    G.add_edge(1, 2)
+    G = graphs.nX_simple_geoms(G)
+    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+
+    landuses = {}
+    counter = 0
+    for n, d in G.nodes(data=True):
+        landuses[counter] = {
+            'x': d['x'],
+            'y': d['y']
+        }
+        counter += 1
+
+    data_uids, data_map = layers.data_map_from_dict(landuses)
+    data_map = data.assign_to_network(data_map, node_map, edge_map, 500)
+
+    betas = np.array([-0.00125])
+    distances = networks.distance_from_beta(betas)
+
+    pop = np.array([2, 2, 2])
+    lu = np.array([0.01, 0.5, 1])
+
+    test = data.singly_constrained(node_map, edge_map, data_map, distances, betas, pop, lu, False)
+
+    assert np.sum(test) == np.sum(pop)
+    print(test)
