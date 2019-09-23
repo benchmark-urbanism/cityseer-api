@@ -5,9 +5,9 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "standard": "13.1.0",
-    "vuepress": "1.0.3",
+    "standard": "14.3.1",
+    "vuepress": "1.1.0",
     "vuepress-plugin-mathjax": "1.2.8",
-    "vuepress-theme-cityseer": "0.4.5"
+    "vuepress-theme-cityseer": "0.4.14"
   }
 }
