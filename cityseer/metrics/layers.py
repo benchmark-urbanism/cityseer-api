@@ -359,14 +359,17 @@ class Data_Layer:
 
     def model_singly_constrained(self,
                                  key: str,
+                                 i_data_map: np.ndarray,
+                                 j_data_map: np.ndarray,
                                  i_weights: Union[list, tuple, np.ndarray],
                                  j_weights: Union[list, tuple, np.ndarray]):
 
-        singly_constrained = data.singly_constrained(self.Network._nodes,
+        j_assigned, netw_flows = data.singly_constrained(self.Network._nodes,
                                                      self.Network._edges,
-                                                     self._data,
                                                      distances=np.array(self.Network.distances),
                                                      betas=np.array(self.Network.betas),
+                                                     i_data_map=i_data_map,
+                                                     j_data_map=j_data_map,
                                                      i_weights=np.array(i_weights),
                                                      j_weights=np.array(j_weights),
                                                      angular=self.Network.angular,
@@ -376,7 +379,10 @@ class Data_Layer:
         if key not in self.Network.metrics['models']:
             self.Network.metrics['models'][key] = {}
         for d_idx, d_key in enumerate(self.Network.distances):
-            self.Network.metrics['models'][key][d_key] = singly_constrained[d_idx]
+            if d_key not in self.Network.metrics['models'][key]:
+                self.Network.metrics['models'][key][d_key] = {}
+            self.Network.metrics['models'][key][d_key]['assigned_trips'] = j_assigned[d_idx]
+            self.Network.metrics['models'][key][d_key]['network_flows'] = netw_flows[d_idx]
 
 
 class Data_Layer_From_Dict(Data_Layer):

@@ -744,11 +744,11 @@ def test_model_singly_constrained():
     betas = np.array([-0.00125])
     distances = networks.distance_from_beta(betas)
 
-    pop = np.array([3, 3, 3, 3, 0])
-    lu = np.array([0, 0, 0, 0, 3])
+    pop = np.array([3, 3, 3, 3, 3])
+    lu = np.array([0, 0, 0, 0, 1])
 
     j_assigned, netw_flows = data.singly_constrained(node_map, edge_map, distances, betas, pop_map, landuse_map, pop, lu)
 
-    #assert np.sum(test) == np.sum(pop)
+    assert np.sum(j_assigned) == np.sum(pop)
     print(j_assigned)
     print(netw_flows)

@@ -865,10 +865,10 @@ def singly_constrained(node_map: np.ndarray,
     netw_flows = np.full((d_n, netw_n), 0.0)
 
     i_n = len(i_data_map)
-    k_agg = np.full((d_n, i_n), np.nan)
+    k_agg = np.full((d_n, i_n), 0.0)
 
     j_n = len(j_data_map)
-    j_assigned = np.full((d_n, j_n), np.nan)
+    j_assigned = np.full((d_n, j_n), 0.0)
 
     # iterate all i nodes
     # filter all reachable nodes k and aggregate k attractiveness * negative exponential of distance
@@ -908,10 +908,7 @@ def singly_constrained(node_map: np.ndarray,
                 total_dist = j_dist + i_door_dist
                 # increment weighted k aggregations at respective distances if the distance is less than current d
                 if total_dist <= d:
-                    if np.isnan(k_agg[d_idx][i_idx]):
-                        k_agg[d_idx][i_idx] = j_weights[j_idx_int] * np.exp(total_dist * b)
-                    else:
-                        k_agg[d_idx][i_idx] += j_weights[j_idx_int] * np.exp(total_dist * b)
+                    k_agg[d_idx][i_idx] += j_weights[j_idx_int] * np.exp(total_dist * b)
 
     # this is the second step
     # this time, filter all reachable j vertices and aggregate the proportion of flow from i to j
@@ -957,14 +954,13 @@ def singly_constrained(node_map: np.ndarray,
                         assigned = 0
                     else:
                         assigned = i_weights[i_idx] * j_weights[j_idx_int] * np.exp(total_dist * b) / k_agg[d_idx][i_idx]
-                    if np.isnan(j_assigned[d_idx][j_idx_int]):
-                        j_assigned[d_idx][j_idx_int] = assigned
-                    else:
-                        j_assigned[d_idx][j_idx_int] += assigned
+                    j_assigned[d_idx][j_idx_int] += assigned
                     # assign trips to network
                     if assigned != 0:
                         # get the j assigned node
                         j_assigned_netw_idx = int(j_data_map[:, 2][j_idx_int])
+                        # in this case start and end nodes are counted...!
+                        netw_flows[d_idx][j_assigned_netw_idx] += assigned
                         # skip if same start / end node
                         if j_assigned_netw_idx == i_assigned_netw_idx:
                             continue
@@ -974,11 +970,11 @@ def singly_constrained(node_map: np.ndarray,
                         inter_idx_trim = np.int(netw_pred_trim[netw_idx_trim])
                         inter_idx_full = np.int(netw_trim_to_full[inter_idx_trim])
                         while True:
+                            # end nodes counted, so place above break
+                            netw_flows[d_idx][inter_idx_full] += assigned
                             # break out of while loop if the intermediary has reached the source node
                             if inter_idx_full == i_assigned_netw_idx:
                                 break
-                            print(assigned)
-                            netw_flows[d_idx][inter_idx_full] += assigned
                             # follow the chain
                             inter_idx_trim = np.int(netw_pred_trim[inter_idx_trim])
                             inter_idx_full = np.int(netw_trim_to_full[inter_idx_trim])
