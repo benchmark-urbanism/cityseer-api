@@ -1,8 +1,10 @@
 name: publish package
 on:
   create:
+    branch:
+      - master
     tags:
-      - 'v*[!dev]*'
+      - 'v*'
 jobs:
   publish-package:
     runs-on: ubuntu-latest
