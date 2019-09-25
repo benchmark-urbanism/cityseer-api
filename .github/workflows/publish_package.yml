@@ -2,7 +2,8 @@ name: publish package
 on:
   create:
     tags:
-      - '!v*dev*'
+      - 'v*.*.*'
+      - '!v*.*.*.*'
 jobs:
   publish-package:
     runs-on: ubuntu-latest
