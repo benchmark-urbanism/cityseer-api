@@ -1,0 +1,19 @@
+pubname: publish docs
+on:
+  push:
+    branches:
+      - master
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: build docs
+        run: |
+          yarn install
+          yarn run docs:build
+      - name: deploy docs
+        uses: alex-page/blazing-fast-gh-pages-deploy@v1.0.1
+        with:
+          repo-token: ${{ secrets.GH_PAT }}
+          site-directory: docs/.vuepress/dist

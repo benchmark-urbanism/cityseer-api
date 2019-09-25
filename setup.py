@@ -8,7 +8,7 @@ pip install --upgrade setuptools wheel
 python setup.py sdist bdist_wheel
 pip install --upgrade twine
 TESTING REPO: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==0.7.6rc7
+DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==0.9.0.dev0
 OTHERWISE: twine upload dist/*
 '''
 
