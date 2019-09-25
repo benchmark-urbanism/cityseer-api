@@ -17,7 +17,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
       - name: build and publish package
-        if: !contains(github.ref, 'tags')
+        if: !contains(github.ref, 'dev')
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
