@@ -1,7 +1,9 @@
 cityseer
 ========
 
-[![Build Status](https://travis-ci.com/cityseer/cityseer.svg?branch=master)](https://travis-ci.com/cityseer/cityseer)
+[![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20package/badge.svg)](https://github.com/cityseer/cityseer/actions)
+
+[![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20docs/badge.svg)](https://github.com/cityseer/cityseer/actions)
 
 `cityseer` is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
 

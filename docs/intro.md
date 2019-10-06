@@ -20,7 +20,9 @@ pip install cityseer
 
 Code tests are run against `python 3.7`.
 
-[![Build Status](https://travis-ci.com/cityseer/cityseer.svg?branch=master)](https://travis-ci.com/cityseer/cityseer)
+[![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20package/badge.svg)](https://github.com/cityseer/cityseer/actions)
+
+[![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20docs/badge.svg)](https://github.com/cityseer/cityseer/actions)
 
 Quickstart
 ----------

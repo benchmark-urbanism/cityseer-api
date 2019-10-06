@@ -704,6 +704,7 @@ def test_local_aggregator_numerical_components():
                                mock_numerical[stats_idx][connected_data_idx].var())
 
 
+#TODO: add more extensive tests if / when publishing this function
 def test_model_singly_constrained():
     import networkx as nx
 
@@ -750,5 +751,5 @@ def test_model_singly_constrained():
     j_assigned, netw_flows = data.singly_constrained(node_map, edge_map, distances, betas, pop_map, landuse_map, pop, lu)
 
     assert np.sum(j_assigned) == np.sum(pop)
-    print(j_assigned)
-    print(netw_flows)
+    assert np.allclose(j_assigned, [[ 0, 0, 0, 0, 15]])
+    assert np.allclose(netw_flows, [[3, 6, 9, 12, 15]])
