@@ -128,8 +128,12 @@ def nX_remove_dangling_nodes(networkX_graph: nx.Graph,
     g_copy = networkX_graph.copy()
 
     if remove_disconnected:
-        connected_components = list(nx.connected_component_subgraphs(g_copy))
-        g_copy = sorted(connected_components, key=len, reverse=True)[0]
+        # finds connected components - this behaviour changed with networkx v2.4
+        connected_components = list(nx.algorithms.components.connected_components(g_copy))
+        # sort by largest component
+        g_nodes = sorted(connected_components, key=len, reverse=True)[0]
+        # make a copy of the graph using the largest component
+        g_copy = nx.Graph(g_copy.subgraph(g_nodes))
 
     if despine:
         remove_nodes = []

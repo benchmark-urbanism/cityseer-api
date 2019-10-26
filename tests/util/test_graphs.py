@@ -195,14 +195,20 @@ def test_nX_remove_dangling_nodes():
                 assert (n, nb) in G_post.edges
 
     # check that disconnected components are removed
+    # this behaviour changed in networkx 2.4
     G_post = graphs.nX_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True)
-    pre_components = list(nx.connected_component_subgraphs(G_messy))
-    post_components = list(nx.connected_component_subgraphs(G_post))
+    pre_components = list(nx.algorithms.components.connected_components(G_messy))
+    post_components = list(nx.algorithms.components.connected_components(G_post))
+    assert len(pre_components) != 1
     assert len(post_components) == 1
+    # check that components match
     biggest_component = sorted(pre_components, key=len, reverse=True)[0]
-    post_component = post_components[0]
-    assert biggest_component.nodes == post_component.nodes
-    assert biggest_component.edges == post_component.edges
+    # index to 0 because post_components is still in list form
+    assert biggest_component == post_components[0]
+    # check that actual graphs are equivalent
+    G_biggest_component = nx.Graph(G_messy.subgraph(biggest_component))
+    assert G_biggest_component.nodes == G_post.nodes
+    assert G_biggest_component.edges == G_post.edges
 
 
 def test_nX_remove_filler_nodes():

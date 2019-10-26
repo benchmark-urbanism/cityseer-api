@@ -2,7 +2,7 @@ numpy
 numba
 utm
 shapely>=1.7a2
-networkx
+networkx>=2.4
 tqdm
 matplotlib
 sklearn
