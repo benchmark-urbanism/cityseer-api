@@ -848,7 +848,8 @@ def nX_auto_edge_params(networkX_graph: nx.Graph) -> nx.Graph:
         if 'geom' not in d:
             raise AttributeError(
                 f'No edge geom found for edge {s}-{e}: '
-                f'Please add an edge "geom" attribute consisting of a shapely LineString.')
+                f'Please add an edge "geom" attribute consisting of a shapely LineString.'
+                f'Simple (straight) geometries can be inferred automatically through use of the nX_simple_geoms() method.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
@@ -871,7 +872,8 @@ def nX_m_weighted_nodes(networkX_graph: nx.Graph) -> nx.Graph:
         for nb in g_copy.neighbors(n):
             # test for length attribute
             if 'length' not in g_copy[n][nb]:
-                raise AttributeError(f'No "length" attribute available for edge {n}-{nb}.')
+                raise AttributeError(f'No "length" attribute available for edge {n}-{nb}.'
+                                     f'"length" attributes can be generated using the nX_auto_edge_params() method.')
             agg_length += g_copy[n][nb]['length'] / 2
         g_copy.nodes[n]['weight'] = agg_length
 
