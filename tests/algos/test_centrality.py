@@ -3,12 +3,13 @@ import numpy as np
 import pytest
 import timeit
 
-from cityseer.algos import data, centrality, checks
+from cityseer.algos import data, centrality
 from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
 
 def test_shortest_path_tree():
+
     # for extracting paths from predecessor map
     def find_path(start_idx, target_idx, map_pred):
         s_path = []
@@ -25,11 +26,9 @@ def test_shortest_path_tree():
     G = graphs.nX_simple_geoms(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
-
     # for debugging
     # from cityseer.util import plot
     # plot.plot_nX_primal_or_dual(primal=G, labels=True)
-
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000]:
         for src_idx in range(len(G)):
@@ -45,18 +44,14 @@ def test_shortest_path_tree():
                 if j in nx_path:
                     assert find_path(j, src_idx, map_pred) == nx_path[j]
                     assert map_impedance[j] == map_distance[j] == nx_dist[j]
-
     # angular impedance should take a simpler but longer path - test basic case on dual
     G_dual = mock.mock_graph()
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
-
     node_uids_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
-
     # source and target are the same for either
     src_idx = node_uids_dual.index('11_6')
     target = node_uids_dual.index('39_40')
-
     # SIMPLEST PATH: get simplest path tree using angular impedance
     map_pred, map_impedance, map_distance, cycles = centrality.shortest_path_tree(node_map_dual,
                                                                                   edge_map_dual,
@@ -69,7 +64,6 @@ def test_shortest_path_tree():
     # takes 1597m route via long outside segment
     # map_distance[int(full_to_trim_idx_map[node_labels.index('39_40')])]
     assert path_transpose == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
-
     # SHORTEST PATH:
     # get shortest path tree using non angular impedance
     map_pred, map_impedance, map_distance, cycles = centrality.shortest_path_tree(node_map_dual,
@@ -84,7 +78,6 @@ def test_shortest_path_tree():
     # map_distance[int(full_to_trim_idx_map[node_labels.index('39_40')])]
     assert path_transpose == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39',
                               '39_40']
-
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src_idx = node_uids_dual.index('10_43')
     target = node_uids_dual.index('10_5')
@@ -97,7 +90,6 @@ def test_shortest_path_tree():
     path = find_path(target, src_idx, map_pred)
     path_transpose = [node_uids_dual[n] for n in path]
     assert path_transpose == ['10_43', '10_5']
-
     # WITH SIDESTEPS - set angular flag to False
     # manually overwrite distance impedances with angular for this test
     # (angular has to be false otherwise shortest-path sidestepping avoided)
@@ -120,7 +112,6 @@ def test_decomposed_local_centrality():
     betas = np.array([-0.02, -0.01, -0.005, -0.0008])
     distances = networks.distance_from_beta(betas)
     measure_keys = ('harmonic_node', 'betweenness_node')
-
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
@@ -131,7 +122,6 @@ def test_decomposed_local_centrality():
                                                 betas,
                                                 measure_keys,
                                                 angular=False)
-
     G_decomposed = graphs.nX_decompose(G, 20)
     # from cityseer.util import plot
     # plot.plot_nX(G_decomposed, labels=True)
@@ -142,7 +132,6 @@ def test_decomposed_local_centrality():
                                                            betas,
                                                            measure_keys,
                                                            angular=False)
-
     # test harmonic closeness on original nodes for non-decomposed vs decomposed
     d_range = len(distances)
     m_range = len(measure_keys)

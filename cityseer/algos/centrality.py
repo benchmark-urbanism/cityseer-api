@@ -41,7 +41,7 @@ def shortest_path_tree(
     map_impedance = np.full(n, np.inf)
     map_distance = np.full(n, np.inf)
     map_pred = np.full(n, np.nan)
-    cycles = np.full(n, np.nan)
+    cycles = np.full(n, 0)
 
     # the starting node's impedance and distance will be zero
     map_impedance[src_idx] = 0
@@ -116,9 +116,9 @@ def shortest_path_tree(
             if not np.isnan(map_pred[nb_nd_idx]):
                 # set the farthest location to True - nb node vs active node
                 if map_distance[nb_nd_idx] > map_distance[active_nd_idx]:
-                    cycles[nb_nd_idx] = True
+                    cycles[nb_nd_idx] = 1
                 else:
-                    cycles[active_nd_idx] = True
+                    cycles[active_nd_idx] = 1
             # impedance and distance is previous plus new
             if not angular:
                 impedance = map_impedance[active_nd_idx] + seg_len * seg_imp_fact
@@ -183,6 +183,8 @@ def local_centrality(node_map: np.ndarray,
     # keep name and index relationships explicit
     agg_keys = []
     agg_targets = []
+    seg_keys = []
+    seg_targets = []
     betw_keys = []
     betw_targets = []
     if not angular:
@@ -191,27 +193,28 @@ def local_centrality(node_map: np.ndarray,
             if measure_name == 'node_density':
                 agg_keys.append(0)
                 agg_targets.append(m_idx)
-            elif measure_name == 'segment_density':
+            elif measure_name == 'farness':
                 agg_keys.append(1)
                 agg_targets.append(m_idx)
-            elif measure_name == 'farness':
+            elif measure_name == 'cycles':
                 agg_keys.append(2)
                 agg_targets.append(m_idx)
-            elif measure_name == 'cycles':
+            elif measure_name == 'harmonic_node':
                 agg_keys.append(3)
                 agg_targets.append(m_idx)
-            elif measure_name == 'harmonic_node':
+            elif measure_name == 'beta_node':
                 agg_keys.append(4)
                 agg_targets.append(m_idx)
+            # segment keys (betweenness segments can be built during betweenness iters)
+            elif measure_name == 'segment_density':
+                seg_keys.append(0)
+                seg_targets.append(m_idx)
             elif measure_name == 'harmonic_segment':
-                agg_keys.append(5)
-                agg_targets.append(m_idx)
-            elif measure_name == 'beta_node':
-                agg_keys.append(6)
-                agg_targets.append(m_idx)
+                seg_keys.append(1)
+                seg_targets.append(m_idx)
             elif measure_name == 'beta_segment':
-                agg_keys.append(7)
-                agg_targets.append(m_idx)
+                seg_keys.append(2)
+                seg_targets.append(m_idx)
             # betweenness keys
             elif measure_name == 'betweenness_node':
                 betw_keys.append(0)
@@ -232,11 +235,12 @@ def local_centrality(node_map: np.ndarray,
         for m_idx, measure_name in enumerate(measure_keys):
             # aggregating keys
             if measure_name == 'harmonic_node_angle':
-                agg_keys.append(8)
+                agg_keys.append(5)
                 agg_targets.append(m_idx)
+            # segment keys
             elif measure_name == 'harmonic_segment_hybrid':
-                agg_keys.append(9)
-                agg_targets.append(m_idx)
+                seg_keys.append(3)
+                seg_targets.append(m_idx)
             # betweenness keys
             elif measure_name == 'betweenness_node_angle':
                 betw_keys.append(3)
@@ -272,7 +276,71 @@ def local_centrality(node_map: np.ndarray,
                                                                            global_max_dist,
                                                                            angular)
         # use corresponding indices for reachable verts
-        for to_idx in np.where(~np.isinf(map_impedance))[0]:
+        active_nodes = np.where(~np.isinf(map_impedance))[0]
+        # only build edge data if necessary
+        if len(seg_keys) > 0:
+            visited = List.empty_list(int64)
+            # visit all active nodes
+            for active_nd_idx in active_nodes:
+                # add to visited
+                visited.append(active_nd_idx)
+                # visit all outbound edges
+                edge_idx = int(node_map[active_nd_idx, 3])
+                # iterate the node's neighbours
+                while edge_idx < len(edge_map):
+                    start_nd, end_nd = edge_map[edge_idx, :2]
+                    # if the start index no longer matches it means all neighbours have been visited for current node
+                    if start_nd != active_nd_idx:
+                        break
+                    # increment idx for next loop
+                    edge_idx += 1
+                    # cast to int for indexing
+                    nb_nd_idx = int(end_nd)
+                    # if the neighbouring node has already been visited:
+                    # then this edge will have been processed from the other direction
+                    if nb_nd_idx in visited:
+                        continue
+                    # otherwise, go ahead and compute
+                    start_dist = map_distance[active_nd_idx]
+                    end_dist = map_distance[nb_nd_idx]
+                    start_imp = map_impedance[active_nd_idx]
+                    end_imp = map_impedance[nb_nd_idx]
+                    # TODO: figure out snipping vs. impedance etc.
+                    # TODO: figure out peaking for cases where end distances are less than sum distances
+                    # iterate the distance and beta thresholds
+                    for d_idx in range(len(distances)):
+                        dist_cutoff = distances[d_idx]
+                        beta = betas[d_idx]
+                        # only proceed if the start distance is within the current cutoff
+                        if start_dist < dist_cutoff:
+                            # if the end distance is infinite, it exceeds the cutoff - i.e. snip
+                            if np.isinf(end_dist):
+                                cut_dist = dist_cutoff
+                            else:
+                                cut_dist = end_dist
+                            # iterate the segment function keys
+                            for seg_idx, seg_key in enumerate(seg_keys):
+                                # fetch target index for writing data
+                                # stored at equivalent index in seg_targets
+                                m_idx = seg_targets[seg_idx]
+                                # 0 - segment density
+                                if seg_key == 0:
+                                    measures_data[m_idx][d_idx][src_idx] += cut_dist - start_dist
+                                # 1 - harmonic segments
+                                elif seg_key == 1:
+                                    measures_data[m_idx][d_idx][src_idx] += np.log(cut_dist) - np.log(start_dist)
+                                # 2 - beta weighted segments
+                                elif seg_key == 2:
+                                    measures_data[m_idx][d_idx][src_idx] += (np.exp(beta * cut_dist) -
+                                                                             np.exp(beta * start_dist)) / beta
+                                # 3 - harmonic segments hybrid
+                                # elif seg_key == 3:
+                                #
+
+
+
+        # aggregative and betweenness keys can be computed per to index
+        for to_idx in active_nodes:
             # skip self node
             if to_idx == src_idx:
                 continue
@@ -294,34 +362,21 @@ def local_centrality(node_map: np.ndarray,
                         # 0 - simple node counts
                         if agg_key == 0:
                             measures_data[m_idx][d_idx][src_idx] += 1
-                        # 1 - network density
-                        # elif agg_key == 1:
-                        # 2 - farness
-                        elif agg_key == 2:
+                        # 1 - farness
+                        elif agg_key == 1:
                             measures_data[m_idx][d_idx][src_idx] += dist
-                        # 3 - cycles
+                        # 2 - cycles
+                        elif agg_key == 2:
+                            measures_data[m_idx][d_idx][src_idx] += 1
+                        # 3 - harmonic node
                         elif agg_key == 3:
-                            # if there is a cycle
-                            if cycles[to_idx]:
-                                measures_data[m_idx][d_idx][src_idx] += 1
-                        # 4 - harmonic node
-                        elif agg_key == 4:
                             measures_data[m_idx][d_idx][src_idx] += 1 / impedance
-                        # 5 - harmonic segments
-                        # elif agg_key == 5:
-                        #
-                        # 6 - beta weighted node
-                        elif agg_key == 6:
+                        # 4 - beta weighted node
+                        elif agg_key == 4:
                             measures_data[m_idx][d_idx][src_idx] += np.exp(beta * dist)
-                        # 7 - beta weighted segments
-                        # elif agg_key == 7:
-                        #
-                        # 8 - harmonic angle based
-                        # elif agg_key == 8:
-                        #
-                        # 9 - harmonic segments hybrid based
-                        # elif agg_key == 9:
-                        #
+                        # 5 - harmonic node - angular
+                        elif agg_key == 5:
+                            measures_data[m_idx][d_idx][src_idx] += 1 / impedance
             # check whether betweenness keys actually present prior to proceeding
             if len(betw_keys) == 0:
                 continue
