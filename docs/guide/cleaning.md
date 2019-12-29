@@ -117,14 +117,10 @@ With the topology cleaned-up, the emphasis can now shift to evening out the inte
 The final step consolidates adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
 ```python
-# decomposition of the network will even out the intensity of nodes
-# set the decompose_max flag based on the level of granularity required
-G = graphs.nX_decompose(G, decompose_max=50)
 # simplify split roadways
 # some experimentation may be required to find the optimal buffer distance
-# setting it too large, will deteriorate the quality of the network
+# setting it too large will deteriorate the quality of the network
 G = graphs.nX_consolidate_parallel(G, buffer_dist=15)
-
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 

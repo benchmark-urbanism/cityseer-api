@@ -19,15 +19,14 @@ def test_nX_simple_geoms():
         ])
         assert line_geom == G_geoms[s][e]['geom']
 
-    # check that missing node attributes throw an error
-    for attr in ['x', 'y']:
-        G_wgs = mock.mock_graph(wgs84_coords=True)
+    # check that missing node keys throw an error
+    for k in ['x', 'y']:
         for n in G.nodes():
-            # delete attribute from first node and break
-            del G.nodes[n][attr]
+            # delete key from first node and break
+            del G.nodes[n][k]
             break
-        # check that missing attribute throws an error
-        with pytest.raises(AttributeError):
+        # check that missing key throws an error
+        with pytest.raises(KeyError):
             graphs.nX_simple_geoms(G)
 
 
@@ -64,20 +63,20 @@ def test_nX_wgs_to_utm():
     with pytest.raises(TypeError):
         graphs.nX_wgs_to_utm(G_wgs)
 
-    # check that missing node attributes throw an error
-    for attr in ['x', 'y']:
+    # check that missing node keys throw an error
+    for k in ['x', 'y']:
         G_wgs = mock.mock_graph(wgs84_coords=True)
         for n in G_wgs.nodes():
-            # delete attribute from first node and break
-            del G_wgs.nodes[n][attr]
+            # delete key from first node and break
+            del G_wgs.nodes[n][k]
             break
-        # check that missing attribute throws an error
-        with pytest.raises(AttributeError):
+        # check that missing key throws an error
+        with pytest.raises(KeyError):
             graphs.nX_wgs_to_utm(G_wgs)
 
     # check that non WGS coordinates throw error
     G_utm = mock.mock_graph()
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         graphs.nX_wgs_to_utm(G_utm)
 
     # check that non-matching UTM zones are coerced to the same zone
@@ -118,7 +117,6 @@ def test_nX_wgs_to_utm():
 
 
 def make_messy_graph(G):
-
     # test that redundant (sraight) intersections are removed
     G_messy = G.copy(G)
 
@@ -174,7 +172,6 @@ def make_messy_graph(G):
 
 
 def test_nX_remove_dangling_nodes():
-
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
     G_messy = make_messy_graph(G)
@@ -212,7 +209,6 @@ def test_nX_remove_dangling_nodes():
 
 
 def test_nX_remove_filler_nodes():
-
     # test that redundant intersections are removed, i.e. where degree == 2
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
@@ -301,19 +297,19 @@ def test_nX_remove_filler_nodes():
     assert G_lollipop_simpl[2][2]['geom'].coords[0] == G_lollipop_simpl[2][2]['geom'].coords[-1]
 
     # check that missing geoms throw an error
-    G_attr = G_messy.copy()
-    for i, (s, e) in enumerate(G_attr.edges()):
+    G_k = G_messy.copy()
+    for i, (s, e) in enumerate(G_k.edges()):
         if i % 2 == 0:
-            del G_attr[s][e]['geom']
-    with pytest.raises(AttributeError):
-        graphs.nX_remove_filler_nodes(G_attr)
+            del G_k[s][e]['geom']
+    with pytest.raises(KeyError):
+        graphs.nX_remove_filler_nodes(G_k)
 
     # check that non-LineString geoms throw an error
-    G_attr = G_messy.copy()
-    for s, e in G_attr.edges():
-        G_attr[s][e]['geom'] = geometry.Point([G_attr.nodes[s]['x'], G_attr.nodes[s]['y']])
-    with pytest.raises(AttributeError):
-        graphs.nX_remove_filler_nodes(G_attr)
+    G_k = G_messy.copy()
+    for s, e in G_k.edges():
+        G_k[s][e]['geom'] = geometry.Point([G_k.nodes[s]['x'], G_k.nodes[s]['y']])
+    with pytest.raises(TypeError):
+        graphs.nX_remove_filler_nodes(G_k)
 
     # catch non-touching Linestrings
     G_corr = G_messy.copy()
@@ -324,13 +320,12 @@ def test_nX_remove_filler_nodes():
         # corrupt a point
         start[0] = start[0] - 1
         G_corr[s][e]['geom'] = geometry.LineString([start, end])
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         graphs.nX_remove_filler_nodes(G_corr)
 
 
 # this method tests both nX_consolidate_spatial and nX_consolidate_parallel
 def test_nX_consolidate():
-
     # create a test graph
     G = nx.Graph()
     nodes = [
@@ -381,104 +376,68 @@ def test_nX_consolidate():
     G.add_nodes_from(nodes)
     G.add_edges_from(edges)
 
+    G = graphs.nX_simple_geoms(G)
     # behaviour confirmed visually
     # from cityseer.util import plot
     # plot.plot_nX(G, labels=True)
 
-    G = graphs.nX_simple_geoms(G)
+    # check that decomposed graphs are caught
+    G_decomp = graphs.nX_decompose(G, 50)
+    with pytest.raises(ValueError):
+        graphs.nX_consolidate_parallel(G_decomp)
+    with pytest.raises(ValueError):
+        graphs.nX_consolidate_spatial(G_decomp)
+
     # simplify first to test lollipop self-loop from node 15
     G = graphs.nX_remove_filler_nodes(G)
-    # plot.plot_nX(G, labels=True)
-    G = graphs.nX_decompose(G, 50)
-    # plot.plot_nX(G, labels=True)
+    # plot.plot_nX(G, labels=True, figsize=(10, 10), dpi=150)
     G_merged_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=25)
-    # plot.plot_nX(G_merged_parallel, labels=True)
+    # plot.plot_nX(G_merged_parallel, labels=True, figsize=(10, 10), dpi=150)
 
-    assert G_merged_parallel.number_of_nodes() == 14
-    assert G_merged_parallel.number_of_edges() == 14
+    assert G_merged_parallel.number_of_nodes() == 8
+    assert G_merged_parallel.number_of_edges() == 8
 
     node_coords = []
     for n, d in G_merged_parallel.nodes(data=True):
         node_coords.append((d['x'], d['y']))
     assert node_coords == [
         (700660, 5719660),
-        (700799.2961812733, 5719758.592362546),
-        (700760.7038187267, 5719758.592362546),
         (700620.0, 5719710.0),
         (700660.0, 5719710.0),
         (700710.0, 5719800.0),
         (700710.0, 5719710.0),
         (700710.0, 5719620.0),
         (700780.0, 5719710.0),
-        (700840.0, 5719710.0),
-        (700710.0, 5719760.0),
-        (700750.0, 5719710.0),
-        (700710.0, 5719660.0),
-        (700810.0, 5719710.0)]
+        (700840.0, 5719710.0)]
 
     edge_lens = []
     for s, e, d in G_merged_parallel.edges(data=True):
         edge_lens.append(d['geom'].length)
-    assert edge_lens == [50.0,
-                         43.14757303390519,
-                         52.28346114756593,
-                         52.28346114756593,
-                         40.0,
-                         50.0,
-                         40.0,
-                         50.0,
-                         40.0,
-                         50.0,
-                         40.0,
-                         30.0,
-                         30.0,
-                         30.0]
+    assert edge_lens == [50.0, 40.0, 50.0, 90.0, 90.0, 70.0, 147.70329614269008, 60.0]
 
     G_merged_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=25)
     # plot.plot_nX(G_merged_spatial, labels=True)
 
-    assert G_merged_spatial.number_of_nodes() == 14
-    assert G_merged_spatial.number_of_edges() == 14
+    assert G_merged_spatial.number_of_nodes() == 8
+    assert G_merged_spatial.number_of_edges() == 8
 
     node_coords = []
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d['x'], d['y']))
     assert node_coords == [
         (700660, 5719660),
-        (700799.2961812733, 5719758.592362546),
-        (700760.7038187267, 5719758.592362546),
         (700620.0, 5719710.0),
         (700660.0, 5719700.0),
         (700710.0, 5719800.0),
         (700710.0, 5719710.0),
         (700710.0, 5719620.0),
         (700780.0, 5719720.0),
-        (700840.0, 5719710.0),
-        (700710.0, 5719760.0),
-        (700750.0, 5719710.0),
-        (700710.0, 5719660.0),
-        (700810.0, 5719710.0)
-    ]
+        (700840.0, 5719710.0)]
 
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d['geom'].length)
-    assert edge_lens == [
-        40.0,
-        43.14757303390519,
-        43.147573033043194,
-        43.147573033043194,
-        41.23105625617661,
-        50.99019513592785,
-        40.0,
-        50.0,
-        40.0,
-        50.0,
-        40.0,
-        31.622776601683793,
-        31.622776601683793,
-        30.0
-    ]
+    assert edge_lens == [40.0, 41.23105625617661, 50.99019513592785, 90.0, 90.0, 70.71067811865476, 129.4427190999916, 60.8276253029822]
 
     # visual tests on OSM data
     # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
@@ -493,19 +452,19 @@ def test_nX_consolidate():
         G = graphs.nX_simple_geoms(G_utm)
         G = graphs.nX_remove_filler_nodes(G)
         G = graphs.nX_remove_dangling_nodes(G)
-        G_decomp = graphs.nX_decompose(G, 25)
+        #G_decomp = graphs.nX_decompose(G, 25)
         # from cityseer.util import plot
-        # plot.plot_nX(G, figsize=(20, 20), dpi=150)
-        G_spatial = graphs.nX_consolidate_spatial(G_decomp, buffer_dist=15)
-        # plot.plot_nX(G_spatial, figsize=(20, 20), dpi=150)
-        G_parallel = graphs.nX_consolidate_parallel(G_decomp, buffer_dist=14)
-        # plot.plot_nX(G_parallel, figsize=(20, 20), dpi=150)
+        # plot.plot_nX(G, figsize=(10, 10), dpi=150)
+        G_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=15)
+        # plot.plot_nX(G_spatial, figsize=(10, 10), dpi=150)
+        G_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=14)
+        # plot.plot_nX(G_parallel, figsize=(10, 10), dpi=150)
 
 
 def test_nX_decompose():
     # check that missing geoms throw an error
     G = mock.mock_graph()
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         graphs.nX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
@@ -527,22 +486,46 @@ def test_nX_decompose():
     # plot.plot_nX(G_simple, labels=True)
     # plot.plot_nX(G_decompose)
     assert nx.number_of_nodes(G_decompose) == 661
-    assert nx.number_of_edges(G_decompose) == 682
+    assert nx.number_of_edges(G_decompose) == 1262
 
-    # check that total lengths and impedances are the same
+    # check that total lengths are the same for non ghosted edges
     G_lens = 0
-    G_imp = 0
-    G_simple = graphs.nX_auto_edge_params(G)
     for s, e, e_data in G_simple.edges(data=True):
-        G_lens += e_data['length']
-        G_imp += e_data['impedance']
+        G_lens += e_data['geom'].length
     G_d_lens = 0
-    G_d_imp = 0
     for s, e, e_data in G_decompose.edges(data=True):
-        G_d_lens += e_data['length']
-        G_d_imp += e_data['impedance']
+        if 'ghosted' in e_data and e_data['ghosted']:
+            continue
+        G_d_lens += e_data['geom'].length
     assert np.allclose(G_lens, G_d_lens)
-    assert np.allclose(G_imp, G_d_imp)
+
+    # check that all ghosted edges add up to the parent edges
+    for n, n_data in G_decompose.nodes(data=True):
+        if 'ghosted' in n_data and n_data['ghosted']:
+            nbs = list(G_decompose.neighbors(n))
+            assert len(nbs) == 1 or len(nbs) == 2
+            # ghost nodes from self-loops only have one edge
+            if len(nbs) == 1:
+                s = nbs[0]
+                edge = G_decompose[n][s]['geom']
+                parent_edge = G_decompose[s][s]['geom']
+                # check that the ghost node takes the short-route
+                # i.e. shouldn't be more than half the length of parent edge
+                assert edge.length <= parent_edge.length / 2
+            else:
+                s, e = nbs
+                edge_a = G_decompose[n][s]['geom']
+                edge_b = G_decompose[n][e]['geom']
+                parent_edge = G_decompose[s][e]['geom']
+                assert np.allclose(edge_a.length + edge_b.length, parent_edge.length)
+
+    # check that all new nodes and edges are ghosted
+    for n, n_data in G_decompose.nodes(data=True):
+        if not G_simple.has_node(n):
+            assert n_data['ghosted']
+    for s, e, e_data in G_decompose.edges(data=True):
+        if not G_simple.has_edge(s, e):
+            assert e_data['ghosted']
 
     # check that geoms are correctly flipped
     G_forward = mock.mock_graph()
@@ -564,18 +547,18 @@ def test_nX_decompose():
 
     # test that geom coordinate mismatch throws an error
     G = mock.mock_graph()
-    for attr in ['x', 'y']:
+    for k in ['x', 'y']:
         for n in G.nodes():
-            G.nodes[n][attr] = G.nodes[n][attr] + 1
+            G.nodes[n][k] = G.nodes[n][k] + 1
             break
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             graphs.nX_decompose(G, 20)
 
 
 def test_nX_to_dual():
     # check that missing geoms throw an error
     G = mock.mock_graph()
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         graphs.nX_to_dual(G)
 
     # check that non-LineString geoms throw an error
@@ -585,15 +568,15 @@ def test_nX_to_dual():
     with pytest.raises(TypeError):
         graphs.nX_to_dual(G)
 
-    # check that missing node attributes throw an error
-    for attr in ['x', 'y']:
+    # check that missing node keys throw an error
+    for k in ['x', 'y']:
         G = mock.mock_graph()
         for n in G.nodes():
-            # delete attribute from first node and break
-            del G.nodes[n][attr]
+            # delete key from first node and break
+            del G.nodes[n][k]
             break
-        # check that missing attribute throws an error
-        with pytest.raises(AttributeError):
+        # check that missing key throws an error
+        with pytest.raises(KeyError):
             graphs.nX_to_dual(G)
 
     # test dual
@@ -642,47 +625,7 @@ def test_nX_to_dual():
     # plot.plot_networkX_graphs(primal=G, dual=G_dual)
 
 
-def test_nX_auto_edge_params():
-    # check that missing geoms throw an error
-    G = mock.mock_graph()
-    with pytest.raises(AttributeError):
-        graphs.nX_auto_edge_params(G)
-
-    # check that non-LineString geoms throw an error
-    G = mock.mock_graph()
-    for s, e in G.edges():
-        G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(TypeError):
-        graphs.nX_auto_edge_params(G)
-
-    # test edge defaults
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G_edge_defaults = graphs.nX_auto_edge_params(G)
-    for s, e, d in G.edges(data=True):
-        assert d['geom'].length == G_edge_defaults[s][e]['length']
-        assert d['geom'].length == G_edge_defaults[s][e]['impedance']
-
-
-def test_nX_m_weighted_nodes():
-    # check that missing length attribute throws error
-    G = mock.mock_graph()
-    with pytest.raises(AttributeError):
-        graphs.nX_m_weighted_nodes(G)
-
-    # test length weighted nodes
-    G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-    G = graphs.nX_m_weighted_nodes(G)
-    for n, d in G.nodes(data=True):
-        agg_length = 0
-        for nb in G.neighbors(n):
-            agg_length += G[n][nb]['length'] / 2
-        assert d['weight'] == agg_length
-
-
 def test_graph_maps_from_nX():
-    # TODO: add test for self-loops?
 
     # template graph
     G_template = mock.mock_graph()
@@ -690,15 +633,22 @@ def test_graph_maps_from_nX():
 
     # test maps vs. networkX
     G_test = G_template.copy()
-    G_test = graphs.nX_auto_edge_params(G_test)
     # set some random 'live' statuses
     for n in G_test.nodes():
         G_test.nodes[n]['live'] = bool(np.random.randint(0, 1))
-    # randomise the impedances
+    # randomise the imp_factors
     for s, e in G_test.edges():
-        G_test[s][e]['impedance'] = G_test[s][e]['impedance'] * np.random.random() * 2000
-    # generate length weighted nodes
-    G_test = graphs.nX_m_weighted_nodes(G_test)
+        G_test[s][e]['imp_factor'] = np.random.random() * 2
+    # generate geom with angular change for edge 50-51 - should sum to 360
+    angle_geom = geometry.LineString([
+        [700700, 5719900],
+        [700700, 5720000],
+        [700750, 5720050],
+        [700700, 5720050],
+        [700700, 5720100]
+    ])
+    G_test[50][51]['geom'] = angle_geom
+
     # generate test maps
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_test)
     # debug plot
@@ -707,62 +657,70 @@ def test_graph_maps_from_nX():
 
     # run check
     checks.check_network_maps(node_map, edge_map)
+
     # check lengths
     assert len(node_uids) == len(node_map) == G_test.number_of_nodes()
+    # no ghosted edges, so edges = x2
     assert len(edge_map) == G_test.number_of_edges() * 2
+
     # check node maps (idx and label match in this case...)
     for n_label in node_uids:
         assert node_map[n_label][0] == G_test.nodes[n_label]['x']
         assert node_map[n_label][1] == G_test.nodes[n_label]['y']
         assert node_map[n_label][2] == G_test.nodes[n_label]['live']
-        assert node_map[n_label][4] == G_test.nodes[n_label]['weight']
+        # index 3 is the edge index for the edge map
+        assert node_map[n_label][4] == 0  # ghosted is False by default
+
     # check edge maps (idx and label match in this case...)
-    for start, end, length, impedance in edge_map:
-        assert length == G_test[start][end]['length']
-        assert impedance == G_test[start][end]['impedance']
+    for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_map:
+        assert length == G_test[start][end]['geom'].length
+        if (start == 50 and end == 51) or (start == 51 and end == 50):
+            # check that the angle is measured along the line of change
+            # i.e. 45 + 135 + 90 (not 45 + 45 + 90)
+            # angles are transformed per: 1 + (angle_sum / 180)
+            assert angle_sum == 270
+        else:
+            assert angle_sum == 0
+        assert imp_factor == G_test[start][end]['imp_factor']
+        s_x, s_y = node_map[int(start)][:2]
+        e_x, e_y = node_map[int(end)][:2]
+        assert start_bearing == np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x))
+        assert end_bearing == np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x))
 
-    # check that missing node attributes throw an error
+    # check that missing geoms throw an error
     G_test = G_template.copy()
-    for attr in ['x', 'y']:
-        G_test = graphs.nX_auto_edge_params(G_test)
+    for s, e in G_test.edges():
+        # delete key from first node and break
+        del G_test[s][e]['geom']
+        break
+    with pytest.raises(KeyError):
+        graphs.graph_maps_from_nX(G_test)
+
+    # check that non-LineString geoms throw an error
+    G_test = G_template.copy()
+    for s, e in G_test.edges():
+        G_test[s][e]['geom'] = geometry.Point([G_test.nodes[s]['x'], G_test.nodes[s]['y']])
+    with pytest.raises(TypeError):
+        graphs.graph_maps_from_nX(G_test)
+
+    # check that missing node keys throw an error
+    G_test = G_template.copy()
+    for k in ['x', 'y']:
         for n in G_test.nodes():
-            # delete attribute from first node and break
-            del G_test.nodes[n][attr]
+            # delete key from first node and break
+            del G_test.nodes[n][k]
             break
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             graphs.graph_maps_from_nX(G_test)
 
-    # check that missing edge attributes throw an error
+    # check that invalid imp_factors are caught
     G_test = G_template.copy()
-    for attr in ['length', 'impedance']:
-        G_test = graphs.nX_auto_edge_params(G_test)
-        for s, e in G_test.edges():
-            # delete attribute from first edge and break
-            del G_test[s][e][attr]
-            break
-        with pytest.raises(AttributeError):
-            graphs.graph_maps_from_nX(G_test)
-
-    # check that invalid lengths are caught
-    G_test = G_template.copy()
-    G_test = graphs.nX_auto_edge_params(G_test)
-    # corrupt length attribute and break
-    for corrupt_val in [0, -1, -np.inf, np.nan]:
-        for s, e in G_test.edges():
-            G_test[s][e]['length'] = corrupt_val
-            break
-        with pytest.raises(AttributeError):
-            graphs.graph_maps_from_nX(G_test)
-
-    # check that invalid impedances are caught
-    G_test = G_template.copy()
-    G_test = graphs.nX_auto_edge_params(G_test)
-    # corrupt impedance attribute and break
+    # corrupt imp_factor value and break
     for corrupt_val in [-1, -np.inf, np.nan]:
         for s, e in G_test.edges():
-            G_test[s][e]['length'] = corrupt_val
+            G_test[s][e]['imp_factor'] = corrupt_val
             break
-        with pytest.raises(AttributeError):
+        with pytest.raises(ValueError):
             graphs.graph_maps_from_nX(G_test)
 
 
@@ -772,27 +730,28 @@ def test_nX_from_graph_maps():
     # check round trip to and from graph maps results in same graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-    # explicitly set live and weight params for equality checks
+    # explicitly set live params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
     for n in G.nodes():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
-        G.nodes[n]['weight'] = np.random.random() * 2000
 
     # test directly from and to graph maps
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
-    assert G_round_trip.nodes == G.nodes
-    assert G_round_trip.edges == G.edges
+    assert list(G_round_trip.nodes) == list(G.nodes)
+    assert list(G_round_trip.edges) == list(G.edges)
 
     # check with metrics dictionary
     N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
-    N.harmonic_closeness()
+
+    #TODO: N.harmonic_closeness()
     data_dict = mock.mock_data_dict(G)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_aggregated(landuse_labels, mixed_use_keys=['hill', 'shannon'], accessibility_keys=['a', 'c'],
+    D.compute_aggregated(landuse_labels,
+                         mixed_use_keys=['hill', 'shannon'],
+                         accessibility_keys=['a', 'c'],
                          qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone
@@ -813,12 +772,9 @@ def test_nX_from_graph_maps():
 
     # test with decomposed
     G_decomposed = graphs.nX_decompose(G, decompose_max=20)
-    # NB -> set live and weight explicitly - otherwise generated implicitly e.g. weight=1
-    # which means equality check won't work for nodes
+    # set live explicitly
     for n in G_decomposed.nodes():
         G_decomposed.nodes[n]['live'] = bool(np.random.randint(0, 1))
-        G_decomposed.nodes[n]['weight'] = np.random.random() * 2000
-
     node_uids_d, node_map_d, edge_map_d = graphs.graph_maps_from_nX(G_decomposed)
 
     G_round_trip_d = graphs.nX_from_graph_maps(node_uids_d, node_map_d, edge_map_d)
@@ -832,7 +788,7 @@ def test_nX_from_graph_maps():
     with pytest.raises(ValueError):
         graphs.nX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=corrupt_G)
     # mismatching node uid
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
         graphs.nX_from_graph_maps(corrupt_node_uids, node_map, edge_map, networkX_graph=G)

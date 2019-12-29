@@ -22,8 +22,8 @@ def test_shortest_path_tree():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
 
     # test all shortest paths against networkX version of dijkstra
     x_arr = node_map[:, 0]
@@ -45,20 +45,22 @@ def test_shortest_path_tree():
                                                                                           max_dist=max_dist,
                                                                                           angular=False)
             # compare against networkx dijkstra
-            nx_dist, nx_path = nx.single_source_dijkstra(G, src, weight='impedance', cutoff=max_dist)
+            nx_dist, nx_path = nx.single_source_dijkstra(G_round_trip, src, weight='length', cutoff=max_dist)
             for j in range(len(G)):
                 if j in nx_path:
                     assert find_path(map_pred, j, trim_to_full_idx_map, full_to_trim_idx_map) == nx_path[j]
                     j_trim = int(full_to_trim_idx_map[j])
                     assert map_impedance[j_trim] == map_distance[j_trim] == nx_dist[j]
 
-    # angular impedance should take a simpler but longer path
-    G_dual = graphs.nX_to_dual(G)
-    node_uids_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
+    # angular impedance should take a simpler but longer path - test basic case on dual
+    G_dual = mock.mock_graph()
+    G_dual = graphs.nX_simple_geoms(G_dual)
+    G_dual = graphs.nX_to_dual(G_dual)
 
     # for debugging
     # from cityseer.util import plot
-    # plot.plot_networkX_primal_or_dual(primal=G, dual=G_dual)
+    # plot.plot_nX_primal_or_dual(primal=G, dual=G_dual, labels=True)
+    node_uids_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
 
     # source and target are the same for either
     src = node_uids_dual.index('11_6')
@@ -73,74 +75,69 @@ def test_shortest_path_tree():
                                                                     np.inf)
 
     # SIMPLEST PATH: get simplest path tree using angular impedance
-    map_impedance_a, map_distance_a, map_pred_a, cycles_a = centrality.shortest_path_tree(node_map_dual,
-                                                                                          edge_map_dual,
-                                                                                          src,
-                                                                                          trim_to_full_idx_map,
-                                                                                          full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=True)
+    map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(node_map_dual,
+                                                                                  edge_map_dual,
+                                                                                  src,
+                                                                                  trim_to_full_idx_map,
+                                                                                  full_to_trim_idx_map,
+                                                                                  max_dist=np.inf,
+                                                                                  angular=True)
     # find path
-    path_a = find_path(map_pred_a, target, trim_to_full_idx_map, full_to_trim_idx_map)
-    path_transpose_a = [node_uids_dual[n] for n in path_a]
+    path = find_path(map_pred, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose = [node_uids_dual[n] for n in path]
     # takes 1597m route via long outside segment
-    # map_distance_a[int(full_to_trim_idx_map[node_labels.index('39_40')])]
-    assert path_transpose_a == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
+    # map_distance[int(full_to_trim_idx_map[node_labels.index('39_40')])]
+    assert path_transpose == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
 
-    # SHORTEST PATH: override angular impedances with true distances
-    edge_map_m = edge_map_dual.copy()
-    edge_map_m[:, 3] = edge_map_m[:, 2]
-    # get shortest path tree using distance impedance
-    map_impedance_m, map_distance_m, map_pred_m, cycles_m = centrality.shortest_path_tree(node_map_dual,
-                                                                                          edge_map_m,
-                                                                                          src,
-                                                                                          trim_to_full_idx_map,
-                                                                                          full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=False)
+    # SHORTEST PATH:
+    # get shortest path tree using non angular impedance
+    map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(node_map_dual,
+                                                                                  edge_map_dual,
+                                                                                  src,
+                                                                                  trim_to_full_idx_map,
+                                                                                  full_to_trim_idx_map,
+                                                                                  max_dist=np.inf,
+                                                                                  angular=False)
     # find path
-    path_m = find_path(map_pred_m, target, trim_to_full_idx_map, full_to_trim_idx_map)
-    path_transpose_m = [node_uids_dual[n] for n in path_m]
-    # takes 1345m route shorter route
-    # map_distance_m[int(full_to_trim_idx_map[node_labels.index('39_40')])]
-    assert path_transpose_m == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39', '39_40']
+    path = find_path(map_pred, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose = [node_uids_dual[n] for n in path]
+    # takes 1345m shorter route
+    # map_distance[int(full_to_trim_idx_map[node_labels.index('39_40')])]
+    assert path_transpose == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39',
+                              '39_40']
+
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src = node_uids_dual.index('10_43')
     target = node_uids_dual.index('10_5')
-    map_impedance_ns, map_distance_ns, map_pred_ns, cycles_ns = centrality.shortest_path_tree(node_map_dual,
-                                                                                              edge_map_dual,
-                                                                                              src,
-                                                                                              trim_to_full_idx_map,
-                                                                                              full_to_trim_idx_map,
-                                                                                              max_dist=np.inf,
-                                                                                              angular=True)
+    map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(node_map_dual,
+                                                                                  edge_map_dual,
+                                                                                  src,
+                                                                                  trim_to_full_idx_map,
+                                                                                  full_to_trim_idx_map,
+                                                                                  max_dist=np.inf,
+                                                                                  angular=True)
     # find path
-    path_ns = find_path(map_pred_ns, target, trim_to_full_idx_map, full_to_trim_idx_map)
-    path_transpose_ns = [node_uids_dual[n] for n in path_ns]
-    assert path_transpose_ns == ['10_43', '10_5']
+    path = find_path(map_pred, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose = [node_uids_dual[n] for n in path]
+    assert path_transpose == ['10_43', '10_5']
 
     # WITH SIDESTEPS - set angular flag to False
-    map_impedance_s, map_distance_s, map_pred_s, cycles_s = centrality.shortest_path_tree(node_map_dual,
-                                                                                          edge_map_dual,
-                                                                                          src,
-                                                                                          trim_to_full_idx_map,
-                                                                                          full_to_trim_idx_map,
-                                                                                          max_dist=np.inf,
-                                                                                          angular=False)
+    # manually overwrite distance impedances with angular for this test
+    # (angular has to be false otherwise shortest-path sidestepping avoided)
+    edge_map_dual_temp = edge_map_dual.copy()
+    # angular impedances at index 3 copied to distance impedances at distance 2
+    edge_map_dual_temp[:, 2] = edge_map_dual_temp[:, 3]
+    map_impedance, map_distance, map_pred, cycles = centrality.shortest_path_tree(node_map_dual,
+                                                                                  edge_map_dual_temp,
+                                                                                  src,
+                                                                                  trim_to_full_idx_map,
+                                                                                  full_to_trim_idx_map,
+                                                                                  max_dist=np.inf,
+                                                                                  angular=False)
     # find path
-    path_s = find_path(map_pred_s, target, trim_to_full_idx_map, full_to_trim_idx_map)
-    path_transpose_s = [node_uids_dual[n] for n in path_s]
-    assert path_transpose_s == ['10_43', '10_14', '10_5']
-
-    # check that out of range src index raises error
-    with pytest.raises(ValueError):
-        centrality.shortest_path_tree(node_map_dual,
-                                      edge_map_dual,
-                                      len(node_map_dual),
-                                      trim_to_full_idx_map,
-                                      full_to_trim_idx_map,
-                                      max_dist=np.inf,
-                                      angular=False)
+    path = find_path(map_pred, target, trim_to_full_idx_map, full_to_trim_idx_map)
+    path_transpose = [node_uids_dual[n] for n in path]
+    assert path_transpose == ['10_43', '10_14', '10_5']
 
     # test that mismatching full_to_trim length raises error
     with pytest.raises(ValueError):
@@ -153,44 +150,44 @@ def test_shortest_path_tree():
                                       angular=False)
 
 
-def decomposed_centrality_check():
-    # needs a large enough beta so that distance thresholds aren't encountered
-    betas = np.array([-0.0008])
+def test_decomposed_local_centrality():
+    # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
+    betas = np.array([-0.02, -0.01, -0.005, -0.0008])
     distances = networks.distance_from_beta(betas)
+    measure_keys = ('harmonic_node', 'betweenness_node')
 
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G_decomposed = graphs.nX_decompose(G, 20)  # decomposition will auto-populate length and impedance
+    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    measures_data = centrality.local_centrality(node_map,
+                                                edge_map,
+                                                distances,
+                                                betas,
+                                                measure_keys,
+                                                angular=False)
+
+    G_decomposed = graphs.nX_decompose(G, 20)
+    # from cityseer.util import plot
+    # plot.plot_nX(G_decomposed, labels=True)
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_decomposed)  # generate node and edge maps
+    measures_data_decomposed = centrality.local_centrality(node_map,
+                                                           edge_map,
+                                                           distances,
+                                                           betas,
+                                                           measure_keys,
+                                                           angular=False)
 
-    closeness_data, betweenness_data = \
-        centrality.local_centrality(node_map,
-                                    edge_map,
-                                    distances,
-                                    betas,
-                                    np.array([3]),  # harmonic key
-                                    np.array([0]),  # betweenness key
-                                    angular=False)
+    # test harmonic closeness on original nodes for non-decomposed vs decomposed
+    d_range = len(distances)
+    m_range = len(measure_keys)
+    assert measures_data.shape == (m_range, d_range, len(G))
+    assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
+    original_node_idx = np.where(node_map[:, 4] == 0)
+    for m_idx in range(m_range):
+        for d_idx in range(d_range):
+            assert np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
 
-    # test harmonic closeness vs NetworkX
-    nx_harm_cl = nx.harmonic_centrality(G_decomposed, distance='impedance')
-    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.allclose(nx_harm_cl, closeness_data[0][0])  # first item, first distance
-
-    # test betweenness vs NetworkX
-    # set endpoint counting to false and do not normalise
-    nx_betw = nx.betweenness_centrality(G_decomposed, weight='impedance', endpoints=False, normalized=False)
-    nx_betw = np.array([v for v in nx_betw.values()])
-    # nx betweenness gives slightly 112.5 for all disconnected looping component nodes
-    # whereas cityseer gives values between 106 and 119
-    # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    # betweeness_data is first item, first distance
-    for idx, (nx_v, city_v) in enumerate(zip(nx_betw, betweenness_data[0][0])):
-        if idx in [52, 53, 54, 55] or idx > 113:
-            continue
-        else:
-            assert nx_v == city_v
 
 def test_local_centrality():
     '''
@@ -200,8 +197,8 @@ def test_local_centrality():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)  # set default edge attributes
     node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
 
     # Test centrality methods where possible against NetworkX - i.e. harmonic closeness and betweenness
     # Note that NetworkX improved closeness is not the same as derivation used in this package
@@ -212,31 +209,42 @@ def test_local_centrality():
     distances = networks.distance_from_beta(betas)
 
     # set the keys - add shuffling to be sure various orders work
-    closeness_keys = np.arange(7)
-    np.random.shuffle(closeness_keys)
-    betweenness_keys = np.arange(2)
-    np.random.shuffle(betweenness_keys)
+    measure_keys = [
+        'node_density',
+        #'segment_density',
+        'farness',
+        'cycles',
+        'harmonic_node',
+        #'harmonic_segment',
+        'beta_node',
+        #'beta_segment'
+        'betweenness_node',
+        #'betweenness_node_wt',
+        #'betweenness_segment'
+    ]
+    np.random.shuffle(measure_keys)
+    measure_keys = tuple(measure_keys)
 
-    # compute closeness and betweenness
-    closeness_data, betweenness_data = \
-        centrality.local_centrality(node_map,
+    measure_keys_angular = [
+        #'harmonic_node_angle',
+        #'harmonic_segment_hybrid',
+        #'betweenness_node_angle',
+        #'betweeness_segment_hybrid'
+    ]
+    np.random.shuffle(measure_keys_angular)
+    measure_keys_angular = tuple(measure_keys_angular)
+
+    measures_data = centrality.local_centrality(node_map,
                                     edge_map,
                                     distances,
                                     betas,
-                                    closeness_keys,
-                                    betweenness_keys,
+                                    measure_keys,
                                     angular=False)
 
-    node_density = closeness_data[np.where(closeness_keys == 0)][0]
-    far_impedance = closeness_data[np.where(closeness_keys == 1)][0]
-    far_distance = closeness_data[np.where(closeness_keys == 2)][0]
-    harmonic = closeness_data[np.where(closeness_keys == 3)][0]
-    improved = closeness_data[np.where(closeness_keys == 4)][0]
-    gravity_index = closeness_data[np.where(closeness_keys == 5)][0]
-    cycles = closeness_data[np.where(closeness_keys == 6)][0]
+    node_density = measures_data[measure_keys.index('node_density')]
+    harmonic_node = measures_data[measure_keys.index('harmonic_node')]
 
-    betweenness = betweenness_data[np.where(betweenness_keys == 0)][0]
-    betweenness_decay = betweenness_data[np.where(betweenness_keys == 1)][0]
+    betweenness = measures_data[measure_keys.index('betweenness_node')]
 
     # test node density
     # node density count doesn't include self-node
@@ -248,13 +256,13 @@ def test_local_centrality():
         assert n in [48, 3, 1, 0]
 
     # test harmonic closeness vs NetworkX
-    nx_harm_cl = nx.harmonic_centrality(G, distance='impedance')
+    nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance='length')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.allclose(nx_harm_cl, harmonic[3])
+    assert np.allclose(nx_harm_cl, harmonic_node[3])
 
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
-    nx_betw = nx.betweenness_centrality(G, weight='impedance', endpoints=False, normalized=False)
+    nx_betw = nx.betweenness_centrality(G_round_trip, weight='length', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
     # for some reason nx betweenness gives 0.5 instead of 1 for disconnected looping component (should be 1)
     # maybe two equidistant routes being divided through 2
@@ -262,8 +270,8 @@ def test_local_centrality():
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
     assert np.array_equal(nx_betw[:52], betweenness[3][:52])
 
-    # also test against decomposed
-    decomposed_centrality_check()
+
+def test_temp():
 
     ###
     # test manual metrics against all nodes
@@ -366,15 +374,6 @@ def test_local_centrality():
                         temp_node_map[:, 2][int(live_idx)] = 1
                     plot.plot_graph_maps(node_uids, temp_node_map, edge_map, poly=geom)
                 '''
-
-        # improved closeness
-        for n_idx in range(len(improved_cl)):
-            # catch division by zero
-            if far_dist[n_idx] == 0:
-                improved_cl[n_idx] = 0
-            else:
-                improved_cl[n_idx] = dens[n_idx] ** 2 / far_dist[n_idx]
-
 
         # check betweenness
         assert np.allclose(node_density[d_idx], dens)

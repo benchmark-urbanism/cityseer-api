@@ -154,17 +154,17 @@ def test_check_network_maps():
         checks.check_network_maps(N._nodes, corrupted_edges)
     # catch NaN or negative values
     for x in [np.nan, -1]:
-        # invalid weights
-        corrupted_nodes = N._nodes.copy()
-        corrupted_nodes[0][4] *= x
-        with pytest.raises(ValueError):
-            checks.check_network_maps(corrupted_nodes, N._edges)
-        # invalid weights
+        # invalid length
         corrupted_edges = N._edges.copy()
         corrupted_edges[0][2] *= x
         with pytest.raises(ValueError):
             checks.check_network_maps(N._nodes, corrupted_edges)
-        # invalid weights
+        # invalid angle_sum
+        corrupted_edges = N._edges.copy()
+        corrupted_edges[0][3] *= x
+        with pytest.raises(ValueError):
+            checks.check_network_maps(N._nodes, corrupted_edges)
+        # invalid imp_factor
         corrupted_edges = N._edges.copy()
         corrupted_edges[0][3] *= x
         with pytest.raises(ValueError):

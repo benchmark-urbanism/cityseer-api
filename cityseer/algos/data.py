@@ -92,14 +92,17 @@ def assign_to_network(data_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - edge indx
-    4 - weight
+    3 - edge index
+    4 - ghosted
 
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - impedance
+    3 - sum of angular travel along length
+    4 - impedance factor
+    5 - entry bearing
+    6 - exit bearing
 
     DATA MAP:
     0 - x
@@ -449,14 +452,17 @@ def local_aggregator(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - edge indx
-    4 - weight
+    3 - edge index
+    4 - ghosted
 
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - impedance
+    3 - sum of angular travel along length
+    4 - impedance factor
+    5 - entry bearing
+    6 - exit bearing
 
     DATA MAP:
     0 - x
@@ -832,14 +838,17 @@ def singly_constrained(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - edge indx
-    4 - weight
+    3 - edge index
+    4 - ghosted
 
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - impedance
+    3 - sum of angular travel along length
+    4 - impedance factor
+    5 - entry bearing
+    6 - exit bearing
 
     DATA MAP:
     0 - x
