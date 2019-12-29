@@ -22,9 +22,8 @@ def _generate_trim_to_full_map(full_to_trim_map: np.ndarray, trim_count: int) ->
 
     return trim_to_full_map
 
-
 @njit(cache=True)
-def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
+def data_radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float):
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
 
@@ -962,7 +961,8 @@ def singly_constrained(node_map: np.ndarray,
                     if k_agg[d_idx][i_idx] == 0:
                         assigned = 0
                     else:
-                        assigned = i_weights[i_idx] * j_weights[j_idx_int] * np.exp(total_dist * b) / k_agg[d_idx][i_idx]
+                        assigned = i_weights[i_idx] * j_weights[j_idx_int] * np.exp(total_dist * b) / k_agg[d_idx][
+                            i_idx]
                     j_assigned[d_idx][j_idx_int] += assigned
                     # assign trips to network
                     if assigned != 0:

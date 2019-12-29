@@ -6,7 +6,44 @@ from numba import njit
 from cityseer.algos import data, checks
 
 
-# @njit(cache=True)
+@njit(cache=True)
+def netw_radial_filter(src_idx: int, node_map: np.ndarray, max_dist: float):
+    '''
+    This version is customised for the network and will ignore ghosted nodes (unless source node)
+
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    3 - edge index
+    4 - ghosted
+    '''
+
+    x_arr = node_map[:, 0]
+    y_arr = node_map[:, 1]
+    ghosted = node_map[:, 4]
+    src_x = x_arr[src_idx]
+    src_y = y_arr[src_idx]
+
+    # filter by distance
+    total_count = len(x_arr)
+    full_to_trim_idx_map = np.full(total_count, np.nan)
+    trim_count = 0
+    for i in range(total_count):
+        # ignore ghosted (except source)
+        if ghosted[i] and not i == src_idx:
+            continue
+        # all other nodes filtered by distance
+        dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
+        if dist <= max_dist:
+            full_to_trim_idx_map[int(i)] = trim_count
+            trim_count += 1
+    trim_to_full_map = data._generate_trim_to_full_map(full_to_trim_idx_map, trim_count)
+
+    return trim_to_full_map, full_to_trim_idx_map
+
+
+@njit(cache=True)
 def shortest_path_tree(
         node_map: np.ndarray,
         edge_map: np.ndarray,
@@ -172,7 +209,7 @@ def shortest_path_tree(
 # https://github.com/numba/numba/issues/3555
 # which prevents nested print function from working as intended
 # TODO: set to True once resolved - likely 2020
-# @njit(cache=False)
+@njit(cache=False)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
@@ -304,13 +341,7 @@ def local_centrality(node_map: np.ndarray,
 
         # filter the graph by distance
         # note that if global_max_dist == np.inf, then the radial_filter function basically returns np.arange(0.0, n)
-        src_x = x_arr[src_idx]
-        src_y = y_arr[src_idx]
-        trim_to_full_idx_map, full_to_trim_idx_map = data.radial_filter(src_x,
-                                                                        src_y,
-                                                                        x_arr,
-                                                                        y_arr,
-                                                                        global_max_dist)
+        trim_to_full_idx_map, full_to_trim_idx_map = netw_radial_filter(src_idx, node_map, global_max_dist)
 
         # run the shortest tree dijkstra
         # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
@@ -355,7 +386,7 @@ def local_centrality(node_map: np.ndarray,
                         if agg_key == 0:
                             measures_data[m_idx][d_idx][src_idx] += 1
                         # 1 - network density
-                        elif agg_key == 1:
+                        # elif agg_key == 1:
 
                         # 2 - farness
                         elif agg_key == 2:

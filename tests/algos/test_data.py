@@ -6,7 +6,7 @@ from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 
 
-def test_radial_filter():
+def test_data_radial_filter():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
     G = graphs.nX_auto_edge_params(G)
@@ -15,44 +15,48 @@ def test_radial_filter():
     data_dict = mock.mock_data_dict(G)
     D = layers.Data_Layer_From_Dict(data_dict)
 
-    # test the filter
-    src_x = G.nodes[0]['x']
-    src_y = G.nodes[0]['y']
-    for max_dist in [0, 200, 500, 750, np.inf]:
-        trim_to_full_map, full_to_trim_map = \
-            data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
+    # generate some random source nodes
+    rd_src_idxs = np.random.randint(0, len(data_dict), 10)
 
-        checks.check_trim_maps(trim_to_full_map, full_to_trim_map)
+    for src_idx in rd_src_idxs:
+        # test the filter
+        src_x = G.nodes[src_idx]['x']
+        src_y = G.nodes[src_idx]['y']
+        for max_dist in [0, 200, 500, 750, np.inf]:
+            trim_to_full_map, full_to_trim_map = \
+                data.data_radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
 
-        # plots for debugging
-        # override the d_map's data class with the results of the filtering
-        # NOTE -> if all are on, then matplotlib will plot all the same dark color
-        # d_map = data.assign_to_network(d_map, n_map, 2000)
-        # d_map[:,3] = 0
-        # on_idx = np.where(np.isfinite(full_to_trim_map))
-        # d_map[on_idx, 3] = 1
-        # geom = None
-        # if max_dist:
-        #    geom = geometry.Point(src_x, src_y).buffer(max_dist)
-        # plot.plot_graph_maps(n_labels, n_map, e_map, d_map=d_map, poly=geom)
+            checks.check_trim_maps(trim_to_full_map, full_to_trim_map)
 
-        # check that the full_to_trim map is the correct number of elements
-        assert len(full_to_trim_map) == len(D._data)
-        # check that all non NaN indices are reflected in the either direction
-        c = 0
-        for i, n in enumerate(full_to_trim_map):
-            if not np.isnan(n):
-                c += 1
-                assert trim_to_full_map[int(n)] == i
-        assert c == len(trim_to_full_map)
+            # plots for debugging
+            # override the d_map's data class with the results of the filtering
+            # NOTE -> if all are on, then matplotlib will plot all the same dark color
+            # d_map = data.assign_to_network(d_map, n_map, 2000)
+            # d_map[:,3] = 0
+            # on_idx = np.where(np.isfinite(full_to_trim_map))
+            # d_map[on_idx, 3] = 1
+            # geom = None
+            # if max_dist:
+            #    geom = geometry.Point(src_x, src_y).buffer(max_dist)
+            # plot.plot_graph_maps(n_labels, n_map, e_map, d_map=d_map, poly=geom)
 
-        # test that all reachable indices are, in fact, within the max distance
-        for i, val in enumerate(full_to_trim_map):
-            dist = np.sqrt((D.x_arr[i] - src_x) ** 2 + (D.y_arr[i] - src_y) ** 2)
-            if np.isfinite(val):
-                assert dist <= max_dist
-            else:
-                assert dist > max_dist
+            # check that the full_to_trim map is the correct number of elements
+            assert len(full_to_trim_map) == len(D._data)
+            # check that all non NaN indices are reflected in the either direction
+            c = 0
+            for i, n in enumerate(full_to_trim_map):
+                if not np.isnan(n):
+                    c += 1
+                    assert trim_to_full_map[int(n)] == i
+            assert c == len(trim_to_full_map)
+
+            # test that all reachable indices are, in fact, within the max distance
+            for i, val in enumerate(full_to_trim_map):
+                dist = np.sqrt((D.x_arr[i] - src_x) ** 2 + (D.y_arr[i] - src_y) ** 2)
+                if np.isfinite(val):
+                    assert dist <= max_dist
+                else:
+                    assert dist > max_dist
 
 
 def test_nearest_idx():
