@@ -251,20 +251,19 @@ class Network_Layer:
         '''
         This method provides access to the underlying centrality.local_centrality method
         '''
-
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
             heuristic = 'shortest'
             options = (
                 'node_density',
-                'segment_density',
                 'farness',
                 'cycles',
                 'harmonic_node',
-                'harmonic_segment',
                 'beta_node',
-                'beta_segment'
+                'segment_density',
+                'harmonic_segment',
+                'beta_segment',
                 'betweenness_node',
                 'betweenness_node_wt',
                 'betweenness_segment'
@@ -277,10 +276,8 @@ class Network_Layer:
                 'betweenness_node_angle',
                 'betweeness_segment_hybrid'
         )
-
         if measures is None:
             raise ValueError(f'Please select at least one measure to compute.')
-
         keys = []
         for measure in measures:
             if measure not in options:
@@ -289,7 +286,6 @@ class Network_Layer:
             if measure in keys:
                 raise ValueError(f'Please remove duplicate measure: {measure}.')
             keys.append(measure)
-
         keys = tuple(keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(keys)} centrality measures using {heuristic} path heuristic.')
@@ -301,7 +297,6 @@ class Network_Layer:
             keys,
             angular,
             suppress_progress=checks.quiet_mode)
-
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior

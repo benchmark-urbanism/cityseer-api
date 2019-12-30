@@ -42,6 +42,9 @@ def shortest_path_tree(
     map_distance = np.full(n, np.inf)
     map_pred = np.full(n, np.nan)
     cycles = np.full(n, 0)
+    # when doing angular, need to keep track of exit bearings
+    exit_bearings = np.full(n, np.nan)
+    # keep track of visited
 
     # the starting node's impedance and distance will be zero
     map_impedance[src_idx] = 0
@@ -66,9 +69,9 @@ def shortest_path_tree(
         active.remove(active_nd_idx)
         # fetch the associated edge_map index
         # isolated nodes will have no corresponding edges
-        if np.isnan(node_map[active_nd_idx][3]):
+        if np.isnan(node_map[active_nd_idx, 3]):
             continue
-        edge_idx = int(node_map[active_nd_idx][3])
+        edge_idx = int(node_map[active_nd_idx, 3])
         # iterate the node's neighbours
         # instead of while True, use length of edge map to catch last node's termination
         while edge_idx < len(edge_map):
@@ -92,10 +95,10 @@ def shortest_path_tree(
                 # get the active node's predecessor
                 pred_nd_idx = int(map_pred[active_nd_idx])
                 # check that the new neighbour was not directly accessible from the predecessor's set of neighbours
-                pred_edge_idx = int(node_map[pred_nd_idx][3])
+                pred_edge_idx = int(node_map[pred_nd_idx, 3])
                 while pred_edge_idx < len(edge_map):
                     # iterate start and end nodes corresponding to edges accessible from the predecessor node
-                    pred_start, pred_end = edge_map[pred_edge_idx][:2]
+                    pred_start, pred_end = edge_map[pred_edge_idx, :2]
                     # if the predecessor start index no longer matches, all have been visited
                     if pred_start != pred_nd_idx:
                         break
@@ -123,20 +126,24 @@ def shortest_path_tree(
             if not angular:
                 impedance = map_impedance[active_nd_idx] + seg_len * seg_imp_fact
             else:
-                impedance = map_impedance[active_nd_idx] + (1 + seg_ang / 180) * seg_imp_fact
+                # angular impedance include two parts:
+                # A - turn from prior simplest-path route segment
+                # B - angular change across current segment
+                if active_nd_idx == src_idx:
+                    turn = 0
+                else:
+                    turn = np.abs((seg_en_bear - exit_bearings[active_nd_idx] + 180) % 360 - 180)
+                impedance = map_impedance[active_nd_idx] + (turn + seg_ang) * seg_imp_fact
             dist = map_distance[active_nd_idx] + seg_len
-            # check that the distance doesn't exceed the max
-            # remember that a closer route may be found, and that this may well be within max...
-            if dist > max_dist:
-                continue
-            # add to active if undiscovered
-            if np.isnan(map_pred[nb_nd_idx]):
+            # add the neighbour to active if undiscovered but only if less than max threshold
+            if np.isnan(map_pred[nb_nd_idx]) and dist <= max_dist:
                 active.append(nb_nd_idx)
             # if impedance less than prior, update
             if impedance < map_impedance[nb_nd_idx]:
                 map_impedance[nb_nd_idx] = impedance
                 map_distance[nb_nd_idx] = dist
                 map_pred[nb_nd_idx] = active_nd_idx
+                exit_bearings[nb_nd_idx] = seg_ex_bear
 
     return map_pred, map_impedance, map_distance, cycles
 
@@ -278,6 +285,9 @@ def local_centrality(node_map: np.ndarray,
         # use corresponding indices for reachable verts
         active_nodes = np.where(~np.isinf(map_impedance))[0]
         # only build edge data if necessary
+        # building-out graph per visited node
+        # this approach prevents skipping of segments not on the shortest path
+        # another approach would be to build-out an array of visited edges and aggregate (as opposed to graph agg)
         if len(seg_keys) > 0:
             visited = List.empty_list(int64)
             # visit all active nodes
@@ -285,10 +295,13 @@ def local_centrality(node_map: np.ndarray,
                 # add to visited
                 visited.append(active_nd_idx)
                 # visit all outbound edges
+                # isolated nodes will have no corresponding edges
+                if np.isnan(node_map[active_nd_idx, 3]):
+                    continue
                 edge_idx = int(node_map[active_nd_idx, 3])
                 # iterate the node's neighbours
                 while edge_idx < len(edge_map):
-                    start_nd, end_nd = edge_map[edge_idx, :2]
+                    start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_map[edge_idx]
                     # if the start index no longer matches it means all neighbours have been visited for current node
                     if start_nd != active_nd_idx:
                         break
@@ -305,54 +318,91 @@ def local_centrality(node_map: np.ndarray,
                     end_dist = map_distance[nb_nd_idx]
                     start_imp = map_impedance[active_nd_idx]
                     end_imp = map_impedance[nb_nd_idx]
-                    # TODO: figure out snipping vs. impedance etc.
-                    # TODO: figure out peaking for cases where end distances are less than sum distances
+                    # TODO: whether to salvage edge-cases where possibly within distance from other direction
                     # iterate the distance and beta thresholds
                     for d_idx in range(len(distances)):
                         dist_cutoff = distances[d_idx]
                         beta = betas[d_idx]
                         # only proceed if the start distance is within the current cutoff
                         if start_dist < dist_cutoff:
-                            # if the end distance is infinite, it exceeds the cutoff - i.e. snip
-                            if np.isinf(end_dist):
-                                cut_dist = dist_cutoff
+                            # in some cases the segment calcs need to be split
+                            split_segs = False
+                            # set the vars for type inference
+                            a = start_dist
+                            a_imp = start_imp
+                            b = 0.0
+                            b_imp = 0.0
+                            c = end_dist
+                            c_imp = end_imp
+                            d = 0.0
+                            d_imp = 0.0
+                            # if the end distance exceeds the distance threshold then snip
+                            if end_dist > dist_cutoff:
+                                b = dist_cutoff
+                                b_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
+                            # else if the end distance doesn't exceed and is on the shortest-path
+                            elif start_dist + seg_len == end_dist:
+                                b = end_dist
+                                b_imp = end_imp
+                            # otherwise, split the segment and compute from either end
                             else:
-                                cut_dist = end_dist
+                                split_segs = True
+                                # get the max distance along the segment
+                                # seg_len = (m - start_len) + (m - end_len)
+                                m = (seg_len + start_dist + end_dist) / 2
+                                # check that max is not exceeded
+                                if m > dist_cutoff:
+                                    m = dist_cutoff
+                                # now b and d can be determined
+                                b = m
+                                b_imp = a_imp + (m - a) * seg_imp_fact
+                                d = m
+                                d_imp = c_imp + (m - c) * seg_imp_fact
                             # iterate the segment function keys
                             for seg_idx, seg_key in enumerate(seg_keys):
                                 # fetch target index for writing data
                                 # stored at equivalent index in seg_targets
                                 m_idx = seg_targets[seg_idx]
-                                # 0 - segment density
+                                # 0 - segment density - uses plain distances
                                 if seg_key == 0:
-                                    measures_data[m_idx][d_idx][src_idx] += cut_dist - start_dist
-                                # 1 - harmonic segments
+                                    measures_data[m_idx, d_idx, src_idx] += b - a
+                                # 1 - harmonic segments - uses impedances in case of impedance multiplier
                                 elif seg_key == 1:
-                                    measures_data[m_idx][d_idx][src_idx] += np.log(cut_dist) - np.log(start_dist)
+                                    measures_data[m_idx, d_idx, src_idx] += np.log(b_imp) - np.log(a_imp)
+                                    if split_segs:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(d_imp) - np.log(c_imp)
                                 # 2 - beta weighted segments
                                 elif seg_key == 2:
-                                    measures_data[m_idx][d_idx][src_idx] += (np.exp(beta * cut_dist) -
-                                                                             np.exp(beta * start_dist)) / beta
+                                    measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * b_imp) -
+                                                                             np.exp(beta * a_imp)) / beta
+                                    if split_segs:
+                                        measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * d_imp) -
+                                                                                 np.exp(beta * c_imp)) / beta
                                 # 3 - harmonic segments hybrid
-                                # elif seg_key == 3:
-                                #
+                                # Uses integral of segment distances as a base - then weighted by angular
+                                elif seg_key == 3:
+                                    # average from the end impedance minus half of the segment's angular change
+                                    a = end_imp - seg_ang / 2
+                                    # transform - prevents division by zero
+                                    a = 1 + (a /  180)
+                                    measures_data[m_idx, d_idx, src_idx] += (np.log(b) - np.log(a)) / a
+                                    if split_segs:
+                                        measures_data[m_idx, d_idx, src_idx] += (np.log(d) - np.log(c)) / a
 
-
-
-        # aggregative and betweenness keys can be computed per to index
+        # aggregative and betweenness keys can be computed per to_idx
         for to_idx in active_nodes:
             # skip self node
             if to_idx == src_idx:
                 continue
-            impedance = map_impedance[to_idx]
-            dist = map_distance[to_idx]
+            to_imp = map_impedance[to_idx]
+            to_dist = map_distance[to_idx]
             # node weights removed since v0.10
             # switched to edge impedance factors
             # calculate centralities
             for d_idx in range(len(distances)):
                 dist_cutoff = distances[d_idx]
                 beta = betas[d_idx]
-                if dist <= dist_cutoff:
+                if to_dist <= dist_cutoff:
                     # iterate aggregation functions
                     for agg_idx, agg_key in enumerate(agg_keys):
                         # fetch target index for writing data
@@ -361,23 +411,24 @@ def local_centrality(node_map: np.ndarray,
                         # go through keys and write data
                         # 0 - simple node counts
                         if agg_key == 0:
-                            measures_data[m_idx][d_idx][src_idx] += 1
+                            measures_data[m_idx, d_idx, src_idx] += 1
                         # 1 - farness
                         elif agg_key == 1:
-                            measures_data[m_idx][d_idx][src_idx] += dist
+                            measures_data[m_idx, d_idx, src_idx] += to_dist
                         # 2 - cycles
                         elif agg_key == 2:
-                            measures_data[m_idx][d_idx][src_idx] += 1
+                            measures_data[m_idx, d_idx, src_idx] += 1
                         # 3 - harmonic node
                         elif agg_key == 3:
-                            measures_data[m_idx][d_idx][src_idx] += 1 / impedance
+                            measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
                         # 4 - beta weighted node
                         elif agg_key == 4:
-                            measures_data[m_idx][d_idx][src_idx] += np.exp(beta * dist)
+                            measures_data[m_idx, d_idx, src_idx] += np.exp(beta * to_dist)
                         # 5 - harmonic node - angular
                         elif agg_key == 5:
-                            measures_data[m_idx][d_idx][src_idx] += 1 / impedance
-            # check whether betweenness keys actually present prior to proceeding
+                            a = 1 + (to_imp / 180)  # transform angles
+                            measures_data[m_idx, d_idx, src_idx] += 1 / a
+            # check whether betweenness keys are present prior to proceeding
             if len(betw_keys) == 0:
                 continue
             # only process betweenness in one direction
@@ -388,32 +439,35 @@ def local_centrality(node_map: np.ndarray,
             # betweenness - only counting truly between vertices, not starting and ending verts
             inter_idx = int(map_pred[to_idx])
             while True:
-                # break out of while loop if the intermediary has reached the source node
-                if inter_idx == src_idx:
-                    break
                 for d_idx in range(len(distances)):
                     dist_cutoff = distances[d_idx]
                     beta = betas[d_idx]
-                    if dist <= dist_cutoff:
+                    # node based betweenness measures only count
+                    if to_dist <= dist_cutoff:
                         # iterate betweenness functions
                         for betw_idx, betw_key in enumerate(betw_keys):
                             # fetch target index for writing data
                             # stored at equivalent index in betw_targets
                             m_idx = betw_targets[betw_idx]
                             # go through keys and write data
-                            # node count
+                            # simple count of nodes for betweenness
                             if betw_key == 0:
-                                measures_data[m_idx][d_idx][inter_idx] += 1
-                            # 1 - distance weighted node count
+                                measures_data[m_idx, d_idx, inter_idx] += 1
+                            # 1 - beta weighted betweenness
                             # distance is based on distance between from and to vertices
                             # thus potential spatial impedance via between vertex
                             elif betw_key == 1:
-                                measures_data[m_idx][d_idx][inter_idx] += np.exp(beta * dist)
-                            # 2 - network density
-
-                            # 3 - angle based node count
-
-                            # 4 - hybrid segments
+                                measures_data[m_idx, d_idx, inter_idx] += np.exp(beta * to_dist)
+                            # 2 - segment version of betweenness
+                            elif betw_key == 2:
+                            # 3 - betweenness node count - angular heuristic version
+                            elif betw_key == 3:
+                                measures_data[m_idx, d_idx, inter_idx] += 1
+                            # 4 - betweeenness segment hybrid version
+                            elif betw_key == 4:
+                # break out of while loop if the intermediary has reached the source node
+                if inter_idx == src_idx:
+                    break
                 # follow the chain
                 inter_idx = int(map_pred[inter_idx])
     return measures_data
