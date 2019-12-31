@@ -12,41 +12,46 @@ if 'CITYSEER_QUIET_MODE' in os.environ:
     if os.environ['CITYSEER_QUIET_MODE'].lower() in ['true', '1']:
         quiet_mode = True
 
-# cache for parent functions has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: resolve once fixed
+
 @njit(cache=True)
-def progress_bar(current: int, total: int, chunks: int):
+def _print_msg(hash_count, void_count, percentage):
+    msg = '|'
+    for n in range(int(hash_count)):
+        msg += '#'
+    for n in range(int(void_count)):
+        msg += ' '
+    msg += '|'
+    print(msg, percentage, '%')
 
-    if chunks < 10:
-        chunks = 10
 
-    if chunks > total:
-        chunks = total
+@njit(cache=True)
+def progress_stepsize(total, target_chunks):
+    if target_chunks == 0:
+        target_chunks = 1
+    if target_chunks < 10:
+        target_chunks = 10
+    if target_chunks > total:
+        target_chunks = total
+    return int(total / target_chunks)
 
-    def print_msg(hash_count, void_count, percentage):
-        msg = '|'
-        for n in range(int(hash_count)):
-            msg += '#'
-        for n in range(int(void_count)):
-            msg += ' '
-        msg += '|'
-        print(msg, percentage, '%')
 
-    step_size = int(total / chunks)
-
+@njit(cache=False)
+def progress_bar(current: int, total: int, step_size: int):
+    '''
+    Printing carries a performance penalty
+    Cache has to be set to false per Numba issue:
+    https://github.com/numba/numba/issues/3555
+    TODO: set cache to True once resolved - likely 2020
+    '''
     if current == 0:
-        print_msg(0, int(total / step_size), 0)
-
+        _print_msg(0, int(total / step_size), 0)
     if (current + 1) == total:
-        print_msg(int(total / step_size), 0, 100)
-
+        _print_msg(int(total / step_size), 0, 100)
     elif (current + 1) % step_size == 0:
         percentage = np.round((current + 1) / total * 100, 2)
         hash_count = int((current + 1) / step_size)
         void_count = int(total / step_size - hash_count)
-        print_msg(hash_count, void_count, percentage)
+        _print_msg(hash_count, void_count, percentage)
 
 
 @njit(cache=True)

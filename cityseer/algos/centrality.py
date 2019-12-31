@@ -36,10 +36,10 @@ def shortest_path_tree(
     6 - exit bearing
 
     RETURNS A SHORTEST PATH TREE MAP:
-    0 - active
-    1 - pred
-    2 - distance
-    3 - impedance
+    0 - processed nodes
+    1 - predecessors
+    2 - distances
+    3 - impedances
     4 - cycles
     '''
     # prepare the arrays
@@ -165,11 +165,7 @@ def shortest_path_tree(
     return tree_map, tree_edges
 
 
-# cache has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: set to True once resolved - likely 2020
-@njit(cache=False)
+@njit(cache=True)
 def local_centrality(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      distances: np.ndarray,
@@ -282,12 +278,15 @@ def local_centrality(node_map: np.ndarray,
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     measures_data = np.full((k_n, d_n, n), 0.0)
+    # setup progress bar params
+    target_chunks = int(n / 5000)
+    step_size = checks.progress_stepsize(n, target_chunks)
     # iterate through each vert and calculate the shortest path tree
-    progress_chunks = int(n / 5000)
     for src_idx in range(n):
         # numba no object mode can only handle basic printing
+        # note that progress bar adds a performance penalty
         if not suppress_progress:
-            checks.progress_bar(src_idx, n, progress_chunks)
+            checks.progress_bar(src_idx, n, step_size)
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
@@ -296,10 +295,10 @@ def local_centrality(node_map: np.ndarray,
         keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
         distance map in metres still necessary for defining max distances and computing equivalent distance measures
         RETURNS A SHORTEST PATH TREE MAP:
-        0 - active
-        1 - pred
-        2 - distance
-        3 - impedance
+        0 - processed nodes
+        1 - predecessors
+        2 - distances
+        3 - impedances
         4 - cycles
         '''
         tree_map, tree_edges = shortest_path_tree(node_map,
@@ -312,7 +311,6 @@ def local_centrality(node_map: np.ndarray,
         tree_dists = tree_map[:, 2]
         tree_imps = tree_map[:, 3]
         tree_cycles = tree_map[:, 4]
-
         # only build edge data if necessary
         if len(seg_keys) > 0:
             # visit all processed nodes

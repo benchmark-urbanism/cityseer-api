@@ -67,11 +67,7 @@ def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarra
     return min_idx, min_dist
 
 
-# cache has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: set to True once resolved
-@njit(cache=False)
+@njit(cache=True)
 def assign_to_network(data_map: np.ndarray,
                       node_map: np.ndarray,
                       edge_map: np.ndarray,
@@ -426,11 +422,7 @@ def aggregate_to_src_idx(src_idx: int,
            netw_trim_to_full, netw_full_to_trim, netw_pred_trim
 
 
-# cache has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: set to True once resolved
-@njit(cache=False)
+@njit(cache=True)
 def local_aggregator(node_map: np.ndarray,
                      edge_map: np.ndarray,
                      data_map: np.ndarray,
@@ -810,11 +802,7 @@ def local_aggregator(node_map: np.ndarray,
            stats_max, stats_min
 
 
-# cache has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: set to True once resolved
-@njit(cache=False)
+@njit(cache=True)
 def singly_constrained(node_map: np.ndarray,
                        edge_map: np.ndarray,
                        distances: np.ndarray,

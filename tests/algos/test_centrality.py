@@ -1,3 +1,4 @@
+import os
 import networkx as nx
 import numpy as np
 import pytest
@@ -177,10 +178,14 @@ def test_decomposed_local_centrality():
 
 
 def test_local_centrality_time():
-    # OLD VERSION with trim maps:
-    # Timing: 10.490865555 for 10000 iterations
-    # NEW VERSION with numba typed list:
-    # VS. 8.242256040000001 for 10000 iterations
+    '''
+    originally based on harmonic_node and betweenness_node:
+    OLD VERSION with trim maps:
+    Timing: 10.490865555 for 10000 iterations
+    NEW VERSION with numba typed list:
+    VS. 8.242256040000001 for 10000 iterations
+    #TODO: figure out puzzling behaviour - segments of unreachable code add to timing regardless... why?
+    '''
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
@@ -188,24 +193,31 @@ def test_local_centrality_time():
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
-
     # setup timing wrapper
     def wrapper_func():
+        '''
+        node density invokes aggregative workflow
+        betweenness node invokes betweenness workflow
+        segment density invokes segments workflow
+        '''
         return centrality.local_centrality(node_map,
                                            edge_map,
                                            distances,
                                            betas,
-                                           ('harmonic_node', 'betweenness_node'),
+                                           ('node_density',  # 7.16s
+                                            'betweenness_node',  # 8.08s - adds around 1s
+                                            'segment_density'  # 11.2s - adds around 3s
+                                           ),
                                            angular=False,
                                            suppress_progress=True)
-
-    # prime
+    # prime the function
     wrapper_func()
     iters = 10000
-    # report
+    # time and report
     func_time = timeit.timeit(wrapper_func, number=iters)
     print(f'Timing: {func_time} for {iters} iterations')
-    assert func_time < 10
+    if 'GITHUB_ACTIONS' not in os.environ:
+        assert func_time < 12
 
 
 def test_local_centrality():
