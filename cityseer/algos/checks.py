@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from numba import njit
+from numba.typed import Dict
 
 def_min_thresh_wt = 0.01831563888873418
 
@@ -130,7 +131,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 
 @njit(cache=True)
-def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
+def check_network_maps(node_data: np.ndarray, edge_data: np.ndarray, node_edge_map: Dict):
     '''
     NODE MAP:
     0 - x
@@ -150,52 +151,53 @@ def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
     '''
 
     # catch zero length node or edge maps
-    if len(node_map) == 0:
+    if len(node_data) == 0:
         raise ValueError('Zero length node map')
-    if len(edge_map) == 0:
+    if len(edge_data) == 0:
         raise ValueError('Zero length edge map')
 
-    if not node_map.ndim == 2 or not node_map.shape[1] == 5:
+    if not node_data.ndim == 2 or not node_data.shape[1] == 4:
         raise ValueError('''
-            The node map must have a dimensionality of Nx5:
-            Columns must correspond to x, y, live, edge idx, and ghosted.
+            The node map must have a dimensionality of Nx4:
+            Columns must correspond to x, y, live, and ghosted.
             ''')
 
-    if not edge_map.ndim == 2 or not edge_map.shape[1] == 7:
+    if not edge_data.ndim == 2 or not edge_data.shape[1] == 7:
         raise ValueError('''
             The edge map must have a dimensionality of Nx7:
             Columns must correspond to of start, end, length, angle_sum, imp_factor, entry bearing, and exit bearing.
             ''')
 
     # check sequential and reciprocal node to edge map indices
-    edge_counter = 0
-    for n_idx in range(len(node_map)):
-        e_idx = node_map[n_idx][3]
-        # in the event of isolated nodes, there will be no corresponding edge index
-        if np.isnan(e_idx):
-            continue
-        # the edge index should match the sequential edge counter
-        if e_idx != edge_counter:
-            raise ValueError('Mismatched node / edge maps encountered.')
+    edge_counts = np.full(len(edge_data), 0)
+    for n_idx in range(len(node_data)):
+        edges = node_edge_map[n_idx]
         # zip through all edges for current node
-        while edge_counter < len(edge_map):
-            # break once subsequent node encountered
-            start = edge_map[edge_counter][0]
-            if start != n_idx:
-                break
-            # increment edge counter
-            edge_counter += 1
-    if edge_counter != len(edge_map):
+        for edge_idx in edges:
+            # get the edge
+            edge = edge_data[edge_idx]
+            # check that the start node matches the current node index
+            assert edge[0] == n_idx
+            # add to the counter
+            edge_counts[edge_idx] += 1
+
+    if not np.all(edge_counts == 1):
         raise ValueError('Mismatched node and edge maps encountered.')
 
-    if not np.all(np.isfinite(edge_map[:, 2])) or not np.all(edge_map[:, 2] >= 0):
+    if not np.all(np.isfinite(edge_data[:, 0])) or not np.all(edge_data[:, 0] >= 0):
+        raise ValueError('Missing or invalid start node index encountered.')
+
+    if not np.all(np.isfinite(edge_data[:, 1])) or not np.all(edge_data[:, 1] >= 0):
+        raise ValueError('Missing or invalid end node index encountered.')
+
+    if not np.all(np.isfinite(edge_data[:, 2])) or not np.all(edge_data[:, 2] >= 0):
         raise ValueError('Invalid edge length encountered. Should be finite number greater than or equal to zero.')
 
-    if not np.all(np.isfinite(edge_map[:, 3])) or not np.all(edge_map[:, 3] >= 0):
+    if not np.all(np.isfinite(edge_data[:, 3])) or not np.all(edge_data[:, 3] >= 0):
         raise ValueError(
             'Invalid edge angle sum encountered. Should be finite number greater than or equal to zero.')
 
-    if not np.all(np.isfinite(edge_map[:, 4])) or not np.all(edge_map[:, 4] >= 0):
+    if not np.all(np.isfinite(edge_data[:, 4])) or not np.all(edge_data[:, 4] >= 0):
         raise ValueError(
             'Invalid impedance factor encountered. Should be finite number greater than or equal to zero.')
 

@@ -650,29 +650,28 @@ def test_graph_maps_from_nX():
     G_test[50][51]['geom'] = angle_geom
 
     # generate test maps
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_test)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_test)
     # debug plot
     # plot.plot_graphs(primal=G_test)
-    # plot.plot_graph_maps(node_uids, node_map, edge_map)
+    # plot.plot_graph_maps(node_uids, node_data, edge_data)
 
     # run check
-    checks.check_network_maps(node_map, edge_map)
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
 
     # check lengths
-    assert len(node_uids) == len(node_map) == G_test.number_of_nodes()
+    assert len(node_uids) == len(node_data) == G_test.number_of_nodes()
     # no ghosted edges, so edges = x2
-    assert len(edge_map) == G_test.number_of_edges() * 2
+    assert len(edge_data) == G_test.number_of_edges() * 2
 
     # check node maps (idx and label match in this case...)
     for n_label in node_uids:
-        assert node_map[n_label][0] == G_test.nodes[n_label]['x']
-        assert node_map[n_label][1] == G_test.nodes[n_label]['y']
-        assert node_map[n_label][2] == G_test.nodes[n_label]['live']
-        # index 3 is the edge index for the edge map
-        assert node_map[n_label][4] == 0  # ghosted is False by default
+        assert node_data[n_label][0] == G_test.nodes[n_label]['x']
+        assert node_data[n_label][1] == G_test.nodes[n_label]['y']
+        assert node_data[n_label][2] == G_test.nodes[n_label]['live']
+        assert node_data[n_label][3] == 0  # ghosted is False by default
 
     # check edge maps (idx and label match in this case...)
-    for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_map:
+    for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_data:
         assert length == G_test[start][end]['geom'].length
         if (start == 50 and end == 51) or (start == 51 and end == 50):
             # check that the angle is measured along the line of change
@@ -682,8 +681,8 @@ def test_graph_maps_from_nX():
         else:
             assert angle_sum == 0
         assert imp_factor == G_test[start][end]['imp_factor']
-        s_x, s_y = node_map[int(start)][:2]
-        e_x, e_y = node_map[int(end)][:2]
+        s_x, s_y = node_data[int(start)][:2]
+        e_x, e_y = node_data[int(end)][:2]
         assert start_bearing == np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x))
         assert end_bearing == np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x))
 
@@ -736,8 +735,8 @@ def test_nX_from_graph_maps():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
 
     # test directly from and to graph maps
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
-    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     assert list(G_round_trip.nodes) == list(G.nodes)
     assert list(G_round_trip.edges) == list(G.edges)
 
@@ -756,15 +755,15 @@ def test_nX_from_graph_maps():
     metrics_dict = N.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.nX_from_graph_maps(node_uids,
-                                                  node_map,
-                                                  edge_map,
+                                                  node_data,
+                                                  edge_data,
                                                   metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
     # with backbone
     G_round_trip_data = graphs.nX_from_graph_maps(node_uids,
-                                                  node_map,
-                                                  edge_map,
+                                                  node_data,
+                                                  edge_data,
                                                   networkX_graph=G,
                                                   metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
@@ -775,9 +774,9 @@ def test_nX_from_graph_maps():
     # set live explicitly
     for n in G_decomposed.nodes():
         G_decomposed.nodes[n]['live'] = bool(np.random.randint(0, 1))
-    node_uids_d, node_map_d, edge_map_d = graphs.graph_maps_from_nX(G_decomposed)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(G_decomposed)
 
-    G_round_trip_d = graphs.nX_from_graph_maps(node_uids_d, node_map_d, edge_map_d)
+    G_round_trip_d = graphs.nX_from_graph_maps(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
     assert G_round_trip_d.nodes == G_decomposed.nodes
     assert G_round_trip_d.edges == G_decomposed.edges
 
@@ -786,9 +785,9 @@ def test_nX_from_graph_maps():
     corrupt_G = G.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
-        graphs.nX_from_graph_maps(node_uids, node_map, edge_map, networkX_graph=corrupt_G)
+        graphs.nX_from_graph_maps(node_uids, node_data, edge_data, networkX_graph=corrupt_G)
     # mismatching node uid
     with pytest.raises(ValueError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
-        graphs.nX_from_graph_maps(corrupt_node_uids, node_map, edge_map, networkX_graph=G)
+        graphs.nX_from_graph_maps(corrupt_node_uids, node_data, edge_data, networkX_graph=G)

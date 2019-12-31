@@ -2,10 +2,11 @@
 General graph manipulation
 '''
 import logging
-import os
 import uuid
 from typing import Union, Tuple
 import json
+from numba import types
+from numba.typed import Dict
 
 import networkx as nx
 import numpy as np
@@ -313,7 +314,7 @@ def _dissolve_adjacent(_target_graph: nx.Graph,
 
     # remove old nodes and reassign to new parent node
     # first determine new edges
-    new_edge_data = []
+    new_edges = []
     for uid in _node_group:
         for nb_uid in nx.neighbors(_target_graph, uid):
             # drop geoms between merged nodes
@@ -346,11 +347,11 @@ def _dissolve_adjacent(_target_graph: nx.Graph,
                 else:
                     target_uid = nb_uid
                 new_line_geom = geometry.LineString(coords)
-                new_edge_data.append((_parent_node_name, target_uid, new_line_geom))
+                new_edges.append((_parent_node_name, target_uid, new_line_geom))
     # remove the nodes from the target graph, this will also implicitly drop related edges
     _target_graph.remove_nodes_from(_node_group)
     # add the edges
-    for s, e, geom in new_edge_data:
+    for s, e, geom in new_edges:
         # when dealing with a collapsed linestring, this should be a rare occurance
         if geom.length == 0:
             logger.warning(f'Encountered a geom of length 0m: check edge {s}-{e}.')
@@ -811,7 +812,7 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     return g_dual
 
 
-def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray]:
+def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
@@ -843,8 +844,13 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and edge maps
     node_uids = []
-    node_map = np.full((g_copy.number_of_nodes(), 5), np.nan)  # float - for consistency
-    edge_map = np.full((total_out_degrees, 7), np.nan)  # float - allows for nan and inf
+    node_data = np.full((g_copy.number_of_nodes(), 4), np.nan)  # float - for consistency
+    edge_data = np.full((total_out_degrees, 7), np.nan)  # float - allows for nan and inf
+    # nodes have a one-to-many mapping to edges
+    node_edge_map = Dict.empty(
+        key_type=types.uint,
+        value_type=types.uint[:]
+    )
     edge_idx = 0
     # populate the nodes
     for n, d in tqdm(g_copy.nodes(data=True), disable=checks.quiet_mode):
@@ -852,81 +858,76 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
         # don't cast to string because otherwise correspondence between original and round-trip graph indices is lost
         node_uids.append(d['label'])
         # cast to int for indexing
-        i = int(n)
+        node_idx = int(n)
 
         # NODE MAP INDEX POSITION 0 = x coordinate
         if 'x' not in d:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        node_map[i][0] = d['x']
+        node_data[node_idx][0] = d['x']
 
         # NODE MAP INDEX POSITION 1 = y coordinate
         if 'y' not in d:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        node_map[i][1] = d['y']
+        node_data[node_idx][1] = d['y']
 
         # NODE MAP INDEX POSITION 2 = live or not
         if 'live' in d:
-            node_map[i][2] = d['live']
+            node_data[node_idx][2] = d['live']
         else:
-            node_map[i][2] = True
+            node_data[node_idx][2] = True
 
-        # NODE MAP INDEX POSITION 3 = starting index for edges in edge map
-        # NB - if an isolated node, then this should be np.nan
-        # otherwise it will refer to the incorrect edge since the edge won't be iterated below
-        if nx.degree(g_copy, i) == 0:
-            node_map[i][3] = np.nan
-        else:
-            node_map[i][3] = edge_idx
-
-        # NODE MAP INDEX POSITION 4 = ghosted
+        # NODE MAP INDEX POSITION 3 = ghosted
         if 'ghosted' in d:
-            node_map[i][4] = d['ghosted']
+            node_data[node_idx][3] = d['ghosted']
         else:
-            node_map[i][4] = False
+            node_data[node_idx][3] = False
         # follow all non-ghosted out edges and add these to the edge_map
         # for ghosted nodes this happens in the out direction only
         # for non-ghosted nodes, this happens in both directions
+        out_edges = []
         for nb in g_copy.neighbors(n):
 
             # get node data - skip if ghosted neighbour
+            # TODO: remove this after time test
             nb_data = g_copy.nodes[nb]
             if 'ghosted' in nb_data and nb_data['ghosted']:
                 continue
 
+            out_edges.append(edge_idx)
+
             # EDGE MAP INDEX POSITION 0 = start node
-            edge_map[edge_idx][0] = i
+            edge_data[edge_idx][0] = node_idx
 
             # EDGE MAP INDEX POSITION 1 = end node
-            edge_map[edge_idx][1] = nb
+            edge_data[edge_idx][1] = nb
 
             # get edge data
-            edge_data = g_copy[i][nb]
-
+            edge = g_copy[node_idx][nb]
             # EDGE MAP INDEX POSITION 2 = length
-            if not 'geom' in edge_data:
+            if not 'geom' in edge:
                 raise KeyError(
-                    f'No edge geom found for edge {i}-{nb}: '
+                    f'No edge geom found for edge {node_idx}-{nb}: '
                     f'Please add an edge "geom" attribute consisting of a shapely LineString.'
                     f'Simple (straight) geometries can be inferred automatically through use of the nX_simple_geoms() method.')
-            line_geom = edge_data['geom']
+            line_geom = edge['geom']
             if line_geom.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {i}-{nb}.')
+                raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {node_idx}-{nb}.')
             # cannot have zero or negative length - division by zero
             l = line_geom.length
             if not np.isfinite(l) or l <= 0:
-                raise ValueError(f'Length attribute {l} for edge {i}-{nb} must be a finite positive value.')
-            edge_map[edge_idx][2] = l
+                raise ValueError(f'Length attribute {l} for edge {node_idx}-{nb} must be a finite positive value.')
+            edge_data[edge_idx][2] = l
 
             # EDGE MAP INDEX POSITION 3 = angle_sum
             # check geom coordinates directionality (for bearings at index 5 / 6)
             # flip if facing backwards direction
-            s_x, s_y = node_map[i][:2]
+            s_x, s_y = node_data[node_idx][:2]
             if not (s_x, s_y) == line_geom.coords[0][:2]:
                 line_geom = geometry.LineString(line_geom.coords[::-1])
             e_x, e_y = (g_copy.nodes[nb]['x'], g_copy.nodes[nb]['y'])
             # double check that coordinates now face the forwards direction
             if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
-                raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {i}-{nb}')
+                raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
             # iterate the coordinates and calculate the angular change
             angle_sum = 0
             for c in range(len(line_geom.coords) - 2):
@@ -942,46 +943,50 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
                 # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
                 # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
             if not np.isfinite(angle_sum) or angle_sum < 0:
-                raise ValueError(f'Angle-sum attribute {angle_sum} for edge {i}-{nb} must be a finite positive value.')
-            edge_map[edge_idx][3] = angle_sum
+                raise ValueError(f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
+            edge_data[edge_idx][3] = angle_sum
 
             # EDGE MAP INDEX POSITION 4 = imp_factor
             # if imp_factor is set explicitly, then use
-            if 'imp_factor' in edge_data:
+            if 'imp_factor' in edge:
                 # cannot have imp_factor less than zero (but == 0 is OK)
-                imp_factor = edge_data['imp_factor']
+                imp_factor = edge['imp_factor']
                 if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
                     raise ValueError(
-                        f'Impedance factor: {imp_factor} for edge {i}-{nb} must be a finite positive value or positive infinity.')
-                edge_map[edge_idx][4] = imp_factor
+                        f'Impedance factor: {imp_factor} for edge {node_idx}-{nb} must be a finite positive value or positive infinity.')
+                edge_data[edge_idx][4] = imp_factor
             else:
                 # fallback imp_factor of 1
-                edge_map[edge_idx][4] = 1
+                edge_data[edge_idx][4] = 1
 
             # EDGE MAP INDEX POSITION 5 - entry bearing
             x_1, y_1 = line_geom.coords[0][:2]
             x_2, y_2 = line_geom.coords[1][:2]
-            edge_map[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+            edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
 
             # EDGE MAP INDEX POSITION 6 - exit bearing
             x_1, y_1 = line_geom.coords[-2][:2]
             x_2, y_2 = line_geom.coords[-1][:2]
-            edge_map[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+            edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
 
             # increment the edge_idx
             edge_idx += 1
 
-    return tuple(node_uids), node_map, edge_map
+        # add the node to the node_edge_map
+        node_edge_map[node_idx] = np.array(out_edges, dtype='uint')
+
+    return tuple(node_uids), node_data, edge_data, node_edge_map
 
 
 def nX_from_graph_maps(node_uids: Union[tuple, list],
                        node_map: np.ndarray,
                        edge_map: np.ndarray,
+                       node_edge_map: Dict,
                        networkX_graph: nx.Graph = None,
                        metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
-    checks.check_network_maps(node_map, edge_map)
+    checks.check_network_maps(node_map, edge_map, node_edge_map)
 
     if networkX_graph is not None:
         logger.info('Reusing existing graph as backbone.')
@@ -1001,7 +1006,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     logger.info('Unpacking node data.')
     for uid, node in tqdm(zip(node_uids, node_map), disable=checks.quiet_mode):
-        x, y, live, edge_idx, ghosted = node
+        x, y, live, ghosted = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y
         g_copy.nodes[uid]['live'] = bool(live)

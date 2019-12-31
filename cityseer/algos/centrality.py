@@ -1,5 +1,5 @@
 from typing import Tuple
-from numba.typed import List
+from numba.typed import List, Dict
 
 import numpy as np
 from numba import njit, int64
@@ -9,8 +9,9 @@ from cityseer.algos import checks
 
 @njit(cache=True)
 def shortest_path_tree(
-        node_map: np.ndarray,
-        edge_map: np.ndarray,
+        node_data: np.ndarray,
+        edge_data: np.ndarray,
+        node_edge_map: Dict,
         src_idx: int,
         max_dist: float = np.inf,
         angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
@@ -23,8 +24,7 @@ def shortest_path_tree(
     0 - x
     1 - y
     2 - live
-    3 - edge index
-    4 - ghosted
+    3 - ghosted
 
     EDGE MAP:
     0 - start node
@@ -43,7 +43,7 @@ def shortest_path_tree(
     4 - cycles
     '''
     # prepare the arrays
-    n = len(node_map)
+    n = len(node_data)
     tree_map = np.full((n, 5), np.inf)
     tree_map[:, 0] = 0
     tree_map[:, 1] = np.nan
@@ -57,7 +57,7 @@ def shortest_path_tree(
     # when doing angular, need to keep track of exit bearings
     exit_bearings = np.full(n, np.nan)
     # keep track of visited edges
-    tree_edges = np.full(len(edge_map), False)
+    tree_edges = np.full(len(edge_data), False)
     # the starting node's impedance and distance will be zero
     tree_imps[src_idx] = 0
     tree_dists[src_idx] = 0
@@ -80,21 +80,16 @@ def shortest_path_tree(
         active.remove(active_nd_idx)
         # add to active node
         tree_nodes[active_nd_idx] = True
-        # fetch the associated edge_map index
+        # fetch the associated edge_data index
         # isolated nodes will have no corresponding edges
-        if np.isnan(node_map[active_nd_idx, 3]):
+        if np.isnan(node_data[active_nd_idx, 3]):
             continue
-        edge_idx = int(node_map[active_nd_idx, 3])
+        edges = node_edge_map[active_nd_idx]
         # iterate the node's neighbours
         # instead of while True, use length of edge map to catch last node's termination
-        while edge_idx < len(edge_map):
+        for edge_idx in edges:
             # get the edge's properties
-            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_map[edge_idx]
-            # if the start index no longer matches it means all neighbours have been visited for current node
-            if start_nd != active_nd_idx:
-                break
-            # increment idx for next loop
-            edge_idx += 1
+            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
@@ -108,20 +103,15 @@ def shortest_path_tree(
                 # get the active node's predecessor
                 pred_nd_idx = int(tree_preds[active_nd_idx])
                 # check that the new neighbour was not directly accessible from the predecessor's set of neighbours
-                pred_edge_idx = int(node_map[pred_nd_idx, 3])
-                while pred_edge_idx < len(edge_map):
+                pred_edges = node_edge_map[pred_nd_idx]
+                for pred_edge_idx in pred_edges:
                     # iterate start and end nodes corresponding to edges accessible from the predecessor node
-                    pred_start, pred_end = edge_map[pred_edge_idx, :2]
-                    # if the predecessor start index no longer matches, all have been visited
-                    if pred_start != pred_nd_idx:
-                        break
+                    pred_start, pred_end = edge_data[pred_edge_idx, :2]
                     # check that the previous node's neighbour's node is not equal to the currently new neighbour node
                     # if so, the new neighbour was previously accessible
                     if pred_end == nb_nd_idx:
                         prior_match = True
                         break
-                    # increment predecessor idx for next loop
-                    pred_edge_idx += 1
                 # continue if prior match was found
                 if prior_match:
                     continue
@@ -154,7 +144,7 @@ def shortest_path_tree(
             # only add edge to active if the neighbour node has not been processed previously
             if not tree_nodes[nb_nd_idx]:
                 # minus one because index has already been incremented
-                tree_edges[edge_idx - 1] = True
+                tree_edges[edge_idx] = True
             # if impedance less than prior, update
             if impedance < tree_imps[nb_nd_idx]:
                 tree_imps[nb_nd_idx] = impedance
@@ -166,8 +156,9 @@ def shortest_path_tree(
 
 
 @njit(cache=True)
-def local_centrality(node_map: np.ndarray,
-                     edge_map: np.ndarray,
+def local_centrality(node_data: np.ndarray,
+                     edge_data: np.ndarray,
+                     node_edge_map: Dict,
                      distances: np.ndarray,
                      betas: np.ndarray,
                      measure_keys: tuple,
@@ -179,8 +170,7 @@ def local_centrality(node_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - edge index
-    4 - ghosted
+    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node
@@ -190,14 +180,14 @@ def local_centrality(node_map: np.ndarray,
     5 - entry bearing
     6 - exit bearing
     '''
-    checks.check_network_maps(node_map, edge_map)
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_distances_and_betas(distances, betas)
     # establish variables
-    n = len(node_map)
+    n = len(node_data)
     d_n = len(distances)
     k_n = len(measure_keys)
     global_max_dist = np.nanmax(distances)
-    nodes_live = node_map[:, 2]
+    nodes_live = node_data[:, 2]
     # string comparisons will substantially slow down nested loops
     # hence the out-of-loop strategy to map strings to indices corresponding to respective measures
     # keep name and index relationships explicit
@@ -301,11 +291,12 @@ def local_centrality(node_map: np.ndarray,
         3 - impedances
         4 - cycles
         '''
-        tree_map, tree_edges = shortest_path_tree(node_map,
-                                                      edge_map,
-                                                      src_idx,
-                                                      global_max_dist,
-                                                      angular)
+        tree_map, tree_edges = shortest_path_tree(node_data,
+                                                  edge_data,
+                                                  node_edge_map,
+                                                  src_idx,
+                                                  global_max_dist,
+                                                  angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_dists = tree_map[:, 2]
@@ -316,7 +307,7 @@ def local_centrality(node_map: np.ndarray,
             # visit all processed nodes
             for edge_idx in np.where(tree_edges)[0]:
                 # unpack
-                start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_map[edge_idx]
+                start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_data[edge_idx]
                 # get the start and end distances and impedances
                 start_idx = int(start_nd)
                 end_idx = int(end_nd)
@@ -380,7 +371,7 @@ def local_centrality(node_map: np.ndarray,
                             elif seg_key == 2:
                                 if not split_segs:
                                     measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * b_imp) -
-                                                                         np.exp(beta * a_imp)) / beta
+                                                                             np.exp(beta * a_imp)) / beta
                                 else:
                                     measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * c_imp) -
                                                                              np.exp(beta * a_imp)) / beta

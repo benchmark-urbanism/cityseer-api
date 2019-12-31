@@ -25,24 +25,25 @@ def test_shortest_path_tree():
     # prepare primal graph
     G_primal = mock.mock_graph()
     G_primal = graphs.nX_simple_geoms(G_primal)
-    node_uids_p, node_map_p, edge_map_p = graphs.graph_maps_from_nX(G_primal)
+    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(G_primal)
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_map_p, edge_map_p)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
     G_dual = mock.mock_graph()
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
-    node_uids_d, node_map_d, edge_map_d = graphs.graph_maps_from_nX(G_dual)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(G_dual)
     assert len(node_uids_d) > len(node_uids_p)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000]:
         for src_idx in range(len(G_primal)):
             # check shortest path maps
-            tree_map, tree_edges = centrality.shortest_path_tree(node_map_p,
-                                                                      edge_map_p,
-                                                                      src_idx,
-                                                                      max_dist=max_dist,
-                                                                      angular=False)
+            tree_map, tree_edges = centrality.shortest_path_tree(node_data_p,
+                                                                 edge_data_p,
+                                                                 node_edge_map_p,
+                                                                 src_idx,
+                                                                 max_dist=max_dist,
+                                                                 angular=False)
             tree_preds_p = tree_map[:, 1]
             tree_dists_p = tree_map[:, 2]
             tree_imps_p = tree_map[:, 3]
@@ -62,17 +63,19 @@ def test_shortest_path_tree():
         p_target_idx = node_uids_p.index(p_target)
         d_source_idx = node_uids_d.index(d_source)  # dual source index changes depending on direction
         d_target_idx = node_uids_d.index(d_target)
-        tree_map_p, tree_edges_p = centrality.shortest_path_tree(node_map_p,
-                                                                    edge_map_p,
-                                                                    p_source_idx,
-                                                                    max_dist=max_dist,
-                                                                    angular=True)
+        tree_map_p, tree_edges_p = centrality.shortest_path_tree(node_data_p,
+                                                                 edge_data_p,
+                                                                 node_edge_map_p,
+                                                                 p_source_idx,
+                                                                 max_dist=max_dist,
+                                                                 angular=True)
         tree_imps_p = tree_map_p[:, 3]
-        tree_map_d, tree_edges_d = centrality.shortest_path_tree(node_map_d,
-                                                                    edge_map_d,
-                                                                    d_source_idx,
-                                                                    max_dist=max_dist,
-                                                                    angular=True)
+        tree_map_d, tree_edges_d = centrality.shortest_path_tree(node_data_d,
+                                                                 edge_data_d,
+                                                                 node_edge_map_d,
+                                                                 d_source_idx,
+                                                                 max_dist=max_dist,
+                                                                 angular=True)
         tree_imps_d = tree_map_d[:, 3]
         assert tree_imps_p[p_target_idx] == tree_imps_d[d_target_idx]
     # angular impedance should take a simpler but longer path - test basic case on dual
@@ -83,11 +86,12 @@ def test_shortest_path_tree():
     src_idx = node_uids_d.index('11_6')
     target = node_uids_d.index('39_40')
     # SIMPLEST PATH: get simplest path tree using angular impedance
-    tree_map, tree_edges = centrality.shortest_path_tree(node_map_d,
-                                                              edge_map_d,
-                                                              src_idx,
-                                                              max_dist=np.inf,
-                                                              angular=True)
+    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
+                                                         edge_data_d,
+                                                         node_edge_map_d,
+                                                         src_idx,
+                                                         max_dist=np.inf,
+                                                         angular=True)
     # find path
     tree_preds = tree_map[:, 1]
     path = _find_path(target, src_idx, tree_preds)
@@ -97,11 +101,12 @@ def test_shortest_path_tree():
     assert path_transpose == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
     # SHORTEST PATH:
     # get shortest path tree using non angular impedance
-    tree_map, tree_edges = centrality.shortest_path_tree(node_map_d,
-                                                              edge_map_d,
-                                                              src_idx,
-                                                              max_dist=np.inf,
-                                                              angular=False)
+    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
+                                                         edge_data_d,
+                                                         node_edge_map_d,
+                                                         src_idx,
+                                                         max_dist=np.inf,
+                                                         angular=False)
     # find path
     tree_preds = tree_map[:, 1]
     path = _find_path(target, src_idx, tree_preds)
@@ -113,11 +118,12 @@ def test_shortest_path_tree():
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src_idx = node_uids_d.index('10_43')
     target = node_uids_d.index('10_5')
-    tree_map, tree_edges = centrality.shortest_path_tree(node_map_d,
-                                                              edge_map_d,
-                                                              src_idx,
-                                                              max_dist=np.inf,
-                                                              angular=True)
+    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
+                                                         edge_data_d,
+                                                         node_edge_map_d,
+                                                         src_idx,
+                                                         max_dist=np.inf,
+                                                         angular=True)
     # find path
     tree_preds = tree_map[:, 1]
     path = _find_path(target, src_idx, tree_preds)
@@ -126,14 +132,15 @@ def test_shortest_path_tree():
     # WITH SIDESTEPS - set angular flag to False
     # manually overwrite distance impedances with angular for this test
     # (angular has to be false otherwise shortest-path sidestepping avoided)
-    edge_map_d_temp = edge_map_d.copy()
+    edge_data_d_temp = edge_data_d.copy()
     # angular impedances at index 3 copied to distance impedances at distance 2
-    edge_map_d_temp[:, 2] = edge_map_d_temp[:, 3]
-    tree_map, tree_edges = centrality.shortest_path_tree(node_map_d,
-                                                              edge_map_d_temp,
-                                                              src_idx,
-                                                              max_dist=np.inf,
-                                                              angular=False)
+    edge_data_d_temp[:, 2] = edge_data_d_temp[:, 3]
+    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
+                                                         edge_data_d_temp,
+                                                         node_edge_map_d,
+                                                         src_idx,
+                                                         max_dist=np.inf,
+                                                         angular=False)
     # find path
     tree_preds = tree_map[:, 1]
     path = _find_path(target, src_idx, tree_preds)
@@ -149,9 +156,10 @@ def test_decomposed_local_centrality():
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    measures_data = centrality.local_centrality(node_map,
-                                                edge_map,
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    measures_data = centrality.local_centrality(node_data,
+                                                edge_data,
+                                                node_edge_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -159,9 +167,11 @@ def test_decomposed_local_centrality():
     G_decomposed = graphs.nX_decompose(G, 20)
     # from cityseer.util import plot
     # plot.plot_nX(G_decomposed, labels=True)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G_decomposed)  # generate node and edge maps
-    measures_data_decomposed = centrality.local_centrality(node_map,
-                                                           edge_map,
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        G_decomposed)  # generate node and edge maps
+    measures_data_decomposed = centrality.local_centrality(node_data,
+                                                           edge_data,
+                                                           node_edge_map,
                                                            distances,
                                                            betas,
                                                            measure_keys,
@@ -171,7 +181,7 @@ def test_decomposed_local_centrality():
     m_range = len(measure_keys)
     assert measures_data.shape == (m_range, d_range, len(G))
     assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
-    original_node_idx = np.where(node_map[:, 4] == 0)
+    original_node_idx = np.where(node_data[:, 3] == 0)
     for m_idx in range(m_range):
         for d_idx in range(d_range):
             assert np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
@@ -182,17 +192,20 @@ def test_local_centrality_time():
     originally based on harmonic_node and betweenness_node:
     OLD VERSION with trim maps:
     Timing: 10.490865555 for 10000 iterations
-    NEW VERSION with numba typed list:
-    VS. 8.242256040000001 for 10000 iterations
+    NEW VERSION with numba typed list - faster and removes arcane full vs. trim maps workflow
+    8.242256040000001 for 10000 iterations
+    VERSION with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
+    8.882408618 for 10000 iterations
     #TODO: figure out puzzling behaviour - segments of unreachable code add to timing regardless... why?
     '''
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
+
     # setup timing wrapper
     def wrapper_func():
         '''
@@ -200,16 +213,18 @@ def test_local_centrality_time():
         betweenness node invokes betweenness workflow
         segment density invokes segments workflow
         '''
-        return centrality.local_centrality(node_map,
-                                           edge_map,
+        return centrality.local_centrality(node_data,
+                                           edge_data,
+                                           node_edge_map,
                                            distances,
                                            betas,
                                            ('node_density',  # 7.16s
                                             'betweenness_node',  # 8.08s - adds around 1s
-                                            'segment_density'  # 11.2s - adds around 3s
-                                           ),
+                                            #'segment_density'  # 11.2s - adds around 3s
+                                            ),
                                            angular=False,
                                            suppress_progress=True)
+
     # prime the function
     wrapper_func()
     iters = 10000
@@ -231,8 +246,8 @@ def test_local_centrality():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_map, edge_map)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([-0.02, -0.01, -0.005, -0.0008])
     distances = networks.distance_from_beta(betas)
@@ -253,8 +268,9 @@ def test_local_centrality():
     np.random.shuffle(measure_keys)  # in place
     measure_keys = tuple(measure_keys)
     # generate the measures
-    measures_data = centrality.local_centrality(node_map,
-                                                edge_map,
+    measures_data = centrality.local_centrality(node_data,
+                                                edge_data,
+                                                node_edge_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -280,8 +296,9 @@ def test_local_centrality():
     np.random.shuffle(measure_keys_angular)  # in place
     measure_keys_angular = tuple(measure_keys_angular)
     # generate the angular measures
-    measures_data_angular = centrality.local_centrality(node_map,
-                                                        edge_map,
+    measures_data_angular = centrality.local_centrality(node_data,
+                                                        edge_data,
+                                                        node_edge_map,
                                                         distances,
                                                         betas,
                                                         measure_keys_angular,
@@ -318,8 +335,8 @@ def test_local_centrality():
 def test_temp():
     ###
     # test manual metrics against all nodes
-    x_arr = node_map[:, 0]
-    y_arr = node_map[:, 1]
+    x_arr = node_data[:, 0]
+    y_arr = node_data[:, 1]
     # test against various distances
     for d_idx in range(len(distances)):
         dist_cutoff = distances[d_idx]
@@ -347,8 +364,8 @@ def test_temp():
 
             # get shortest path maps
             tree_imps_trim, tree_dists_trim, tree_preds_trim, cycles_trim = \
-                centrality.shortest_path_tree(node_map,
-                                              edge_map,
+                centrality.shortest_path_tree(node_data,
+                                              edge_data,
                                               src_idx,
                                               trim_to_full_idx_map,
                                               full_to_trim_idx_map,
@@ -411,11 +428,11 @@ def test_temp():
                     from shapely import geometry
                     geom = geometry.Point(x_arr[src_idx], y_arr[src_idx]).buffer(dist_cutoff)
                     # override live designation to distinguish reachable nodes...
-                    temp_node_map = node_map.copy()
-                    temp_node_map[:, 2] = 0
+                    temp_node_data = node_data.copy()
+                    temp_node_data[:, 2] = 0
                     for live_idx in trim_to_full_idx_map[np.isfinite(tree_dists_trim)]:
-                        temp_node_map[:, 2][int(live_idx)] = 1
-                    plot.plot_graph_maps(node_uids, temp_node_map, edge_map, poly=geom)
+                        temp_node_data[:, 2][int(live_idx)] = 1
+                    plot.plot_graph_maps(node_uids, temp_node_data, edge_data, poly=geom)
                 '''
 
         # check betweenness
@@ -430,15 +447,15 @@ def test_temp():
         assert np.allclose(betweenness_decay[d_idx], betw_wt)
 
     # check behaviour of weights
-    node_map_w = node_map.copy()
-    node_map_w[:, 4] = 2
+    node_data_w = node_data.copy()
+    node_data_w[:, 4] = 2
     # unshuffle the keys
     closeness_keys.sort()
     betweenness_keys.sort()
     # compute
     closeness_data_w, betweenness_data_w = \
-        centrality.local_centrality(node_map_w,
-                                    edge_map,
+        centrality.local_centrality(node_data_w,
+                                    edge_data,
                                     distances,
                                     betas,
                                     closeness_keys,
@@ -467,11 +484,11 @@ def test_temp():
 
     # setup dual data
     G_dual = graphs.nX_to_dual(G)
-    node_labels_dual, node_map_dual, edge_map_dual = graphs.graph_maps_from_nX(G_dual)
+    node_labels_dual, node_data_dual, edge_data_dual, node_edge_map_dual = graphs.graph_maps_from_nX(G_dual)
 
     cl_dual, bt_dual = \
-        centrality.local_centrality(node_map_dual,
-                                    edge_map_dual,
+        centrality.local_centrality(node_data_dual,
+                                    edge_data_dual,
                                     distances,
                                     betas,
                                     closeness_keys,
@@ -479,8 +496,8 @@ def test_temp():
                                     angular=True)
 
     cl_dual_sidestep, bt_dual_sidestep = \
-        centrality.local_centrality(node_map_dual,
-                                    edge_map_dual,
+        centrality.local_centrality(node_data_dual,
+                                    edge_data_dual,
                                     distances,
                                     betas,
                                     closeness_keys,
@@ -499,8 +516,8 @@ def test_temp():
                            ([1, 1], [1]),  # duplicate
                            ([1], [1, 1])]:
         with pytest.raises(ValueError):
-            centrality.local_centrality(node_map,
-                                        edge_map,
+            centrality.local_centrality(node_data,
+                                        edge_data,
                                         distances,
                                         betas,
                                         np.array(cl_key),
