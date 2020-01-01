@@ -812,13 +812,13 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     return g_dual
 
 
-def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
+def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict, Dict]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
     - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
-    - length and angle now set automatically inside this method because entry and exit bearing have set here regardless.
-    (Can't compute entry and exit bearing on undirected graph...)
+    - length and angle now set automatically inside this method because in and out bearing are set here regardless.
+    - returns node_data, edge_data, a map from nodes to edges, and a map from edges to ghost nodes
     '''
 
     if not isinstance(networkX_graph, nx.Graph):
@@ -886,23 +886,28 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
         # for non-ghosted nodes, this happens in both directions
         out_edges = []
         for nb in g_copy.neighbors(n):
-
             # get node data - skip if ghosted neighbour
-            # TODO: remove this after time test
+            # ghosted nodes will build links to non-ghosted adjacent nodes
+            # non-ghosted nodes will only build links to other non-ghosted nodes
+            # i.e. ghosted nodes end up with only out-bound edges
             nb_data = g_copy.nodes[nb]
             if 'ghosted' in nb_data and nb_data['ghosted']:
                 continue
-
+            # add the new edge index to the node's out edges
             out_edges.append(edge_idx)
-
-            # EDGE MAP INDEX POSITION 0 = start node
-            edge_data[edge_idx][0] = node_idx
-
-            # EDGE MAP INDEX POSITION 1 = end node
-            edge_data[edge_idx][1] = nb
-
             # get edge data
             edge = g_copy[node_idx][nb]
+            # assign the index to the originating networkX graph edge
+            # used for subsequent mapping of ghost nodes to parent edges
+            # each edge will end up with two edge indices, one in each direction
+            if 'edge_indices' not in edge:
+                edge['edge_indices'] = [edge_idx]
+            else:
+                edge['edge_indices'].append(edge_idx)
+            # EDGE MAP INDEX POSITION 0 = start node
+            edge_data[edge_idx][0] = node_idx
+            # EDGE MAP INDEX POSITION 1 = end node
+            edge_data[edge_idx][1] = nb
             # EDGE MAP INDEX POSITION 2 = length
             if not 'geom' in edge:
                 raise KeyError(
@@ -917,7 +922,6 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             if not np.isfinite(l) or l <= 0:
                 raise ValueError(f'Length attribute {l} for edge {node_idx}-{nb} must be a finite positive value.')
             edge_data[edge_idx][2] = l
-
             # EDGE MAP INDEX POSITION 3 = angle_sum
             # check geom coordinates directionality (for bearings at index 5 / 6)
             # flip if facing backwards direction
@@ -945,7 +949,6 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             if not np.isfinite(angle_sum) or angle_sum < 0:
                 raise ValueError(f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
             edge_data[edge_idx][3] = angle_sum
-
             # EDGE MAP INDEX POSITION 4 = imp_factor
             # if imp_factor is set explicitly, then use
             if 'imp_factor' in edge:
@@ -958,35 +961,53 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             else:
                 # fallback imp_factor of 1
                 edge_data[edge_idx][4] = 1
-
-            # EDGE MAP INDEX POSITION 5 - entry bearing
+            # EDGE MAP INDEX POSITION 5 - in bearing
             x_1, y_1 = line_geom.coords[0][:2]
             x_2, y_2 = line_geom.coords[1][:2]
             edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-
-            # EDGE MAP INDEX POSITION 6 - exit bearing
+            # EDGE MAP INDEX POSITION 6 - out bearing
             x_1, y_1 = line_geom.coords[-2][:2]
             x_2, y_2 = line_geom.coords[-1][:2]
             edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-
             # increment the edge_idx
             edge_idx += 1
-
         # add the node to the node_edge_map
         node_edge_map[node_idx] = np.array(out_edges, dtype='uint')
+    # build the edge to ghost-node map
+    # edges have a one-to-many mapping to ghost-nodes
+    edge_ghost_map = Dict.empty(
+        key_type=types.uint,
+        value_type=types.uint[:]
+    )
+    edge_ghost_dict = {}
+    for n, d in g_copy.nodes(data=True):
+        if 'ghosted' in d and d['ghosted']:
+            # each ghosted node has two neighbours, one non-ghosted node on either side
+            nb_a, nb_b = nx.neighbors(g_copy, n)
+            parent_edge = g_copy[nb_a][nb_b]
+            # each parent edge will have two edge ids, one in either direction
+            # map the ghost nodes to the respective edges
+            for edge_idx in parent_edge['edge_indices']:
+                if edge_idx not in edge_ghost_dict:
+                    edge_ghost_dict[edge_idx] = []
+                edge_ghost_dict[edge_idx].append(n)
+    # build numba dict
+    for k, v in edge_ghost_dict.items():
+        edge_ghost_map[k] = np.array(v, dtype='uint')
 
-    return tuple(node_uids), node_data, edge_data, node_edge_map
+    return tuple(node_uids), node_data, edge_data, node_edge_map, edge_ghost_map
 
 
 def nX_from_graph_maps(node_uids: Union[tuple, list],
                        node_map: np.ndarray,
                        edge_map: np.ndarray,
                        node_edge_map: Dict,
+                       edge_ghost_map: Dict,
                        networkX_graph: nx.Graph = None,
                        metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
-    checks.check_network_maps(node_map, edge_map, node_edge_map)
+    checks.check_network_maps(node_map, edge_map, node_edge_map, edge_ghost_map)
 
     if networkX_graph is not None:
         logger.info('Reusing existing graph as backbone.')

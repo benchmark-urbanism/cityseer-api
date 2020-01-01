@@ -32,8 +32,8 @@ def shortest_path_tree(
     2 - length in metres
     3 - sum of angular travel along length
     4 - impedance factor
-    5 - entry bearing
-    6 - exit bearing
+    5 - in bearing
+    6 - out bearing
 
     RETURNS A SHORTEST PATH TREE MAP:
     0 - processed nodes
@@ -41,12 +41,15 @@ def shortest_path_tree(
     2 - distances
     3 - impedances
     4 - cycles
+    5 - origin segments
+    6 - last segments
     '''
     # prepare the arrays
     n = len(node_data)
-    tree_map = np.full((n, 5), np.inf)
+    tree_map = np.full((n, 7), np.nan)
     tree_map[:, 0] = 0
-    tree_map[:, 1] = np.nan
+    tree_map[:, 2] = np.inf
+    tree_map[:, 3] = np.inf
     tree_map[:, 4] = 0
     # prepare proxies
     tree_nodes = tree_map[:, 0]
@@ -54,8 +57,10 @@ def shortest_path_tree(
     tree_dists = tree_map[:, 2]
     tree_imps = tree_map[:, 3]
     tree_cycles = tree_map[:, 4]
-    # when doing angular, need to keep track of exit bearings
-    exit_bearings = np.full(n, np.nan)
+    tree_origin_seg = tree_map[:, 5]
+    tree_last_seg = tree_map[:, 6]
+    # when doing angular, need to keep track of out bearings
+    out_bearings = np.full(n, np.nan)
     # keep track of visited edges
     tree_edges = np.full(len(edge_data), False)
     # the starting node's impedance and distance will be zero
@@ -89,7 +94,7 @@ def shortest_path_tree(
         # instead of while True, use length of edge map to catch last node's termination
         for edge_idx in edges:
             # get the edge's properties
-            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_data[edge_idx]
+            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
@@ -135,7 +140,7 @@ def shortest_path_tree(
                 if active_nd_idx == src_idx:
                     turn = 0
                 else:
-                    turn = np.abs((seg_en_bear - exit_bearings[active_nd_idx] + 180) % 360 - 180)
+                    turn = np.abs((seg_in_bear - out_bearings[active_nd_idx] + 180) % 360 - 180)
                 impedance = tree_imps[active_nd_idx] + (turn + seg_ang) * seg_imp_fact
             dist = tree_dists[active_nd_idx] + seg_len
             # add the neighbour to active if undiscovered but only if less than max threshold
@@ -143,22 +148,43 @@ def shortest_path_tree(
                 active.append(nb_nd_idx)
             # only add edge to active if the neighbour node has not been processed previously
             if not tree_nodes[nb_nd_idx]:
-                # minus one because index has already been incremented
                 tree_edges[edge_idx] = True
             # if impedance less than prior, update
+            # this will also happen for the first nodes that overshoot the boundary
+            # they will not be explored further because they have not been added to active
             if impedance < tree_imps[nb_nd_idx]:
                 tree_imps[nb_nd_idx] = impedance
                 tree_dists[nb_nd_idx] = dist
                 tree_preds[nb_nd_idx] = active_nd_idx
-                exit_bearings[nb_nd_idx] = seg_ex_bear
+                out_bearings[nb_nd_idx] = seg_out_bear
+                # chain through origin segs - identifies which segment a particular shortest path originated from
+                if active_nd_idx == src_idx:
+                    tree_origin_seg[nb_nd_idx] = edge_idx
+                else:
+                    tree_origin_seg[nb_nd_idx] = tree_origin_seg[active_nd_idx]
+                # keep track of last seg
+                tree_last_seg[nb_nd_idx] = edge_idx
     # the returned active edges contain activated edges, but only in direction of shortest-path discovery
     return tree_map, tree_edges
+
+
+@njit(cache=True)
+def _find_edge_idx(node_edge_map: Dict, edge_data: np.ndarray, start_nd_idx: int, end_nd_idx: int) -> int:
+    '''
+    Finds an edge from start and end nodes
+    '''
+    # iterate the start node's edges
+    for edge_idx in node_edge_map[start_nd_idx]:
+        # check whether the edge's out node matches the target node
+        if edge_data[edge_idx, 1] == end_nd_idx:
+            return edge_idx
 
 
 @njit(cache=True)
 def local_centrality(node_data: np.ndarray,
                      edge_data: np.ndarray,
                      node_edge_map: Dict,
+                     edge_ghost_map: Dict,
                      distances: np.ndarray,
                      betas: np.ndarray,
                      measure_keys: tuple,
@@ -177,11 +203,11 @@ def local_centrality(node_data: np.ndarray,
     2 - length in metres
     3 - sum of angular travel along length
     4 - impedance factor
-    5 - entry bearing
-    6 - exit bearing
+    5 - in bearing
+    6 - out bearing
     '''
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_distances_and_betas(distances, betas)
+    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
     # establish variables
     n = len(node_data)
     d_n = len(distances)
@@ -290,6 +316,8 @@ def local_centrality(node_data: np.ndarray,
         2 - distances
         3 - impedances
         4 - cycles
+        5 - origin segments
+        6 - last segments
         '''
         tree_map, tree_edges = shortest_path_tree(node_data,
                                                   edge_data,
@@ -302,93 +330,139 @@ def local_centrality(node_data: np.ndarray,
         tree_dists = tree_map[:, 2]
         tree_imps = tree_map[:, 3]
         tree_cycles = tree_map[:, 4]
+        tree_origin_seg = tree_map[:, 5]
+        tree_last_seg = tree_map[:, 6]
         # only build edge data if necessary
         if len(seg_keys) > 0:
-            # visit all processed nodes
+            # can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
+            # visit all processed edges
             for edge_idx in np.where(tree_edges)[0]:
                 # unpack
-                start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_en_bear, seg_ex_bear = edge_data[edge_idx]
-                # get the start and end distances and impedances
-                start_idx = int(start_nd)
-                end_idx = int(end_nd)
-                start_dist = tree_dists[start_idx]
-                end_dist = tree_dists[end_idx]
-                start_imp = tree_imps[start_idx]
-                end_imp = tree_imps[end_idx]
-                # sort where a < b
-                if start_dist < end_dist:
-                    a = start_dist
-                    a_imp = start_imp
-                    b = end_dist
-                    b_imp = end_imp
-                else:
-                    a = end_dist
-                    a_imp = end_imp
-                    b = start_dist
-                    b_imp = start_imp
-                # iterate the distance and beta thresholds
-                for d_idx in range(len(distances)):
-                    dist_cutoff = distances[d_idx]
-                    beta = betas[d_idx]
-                    # only proceed if the smaller a distance is within the current cutoff
-                    if a < dist_cutoff:
-                        # in some cases the segment calcs need to be split
-                        split_segs = False
-                        # if the larger b distance exceeds the distance threshold then snip
-                        if b > dist_cutoff:
-                            b = dist_cutoff
-                            b_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
-                        # else if the segment is not on the shortest-path, split the segment and compute from either end
-                        elif a + seg_len != end_dist:
-                            split_segs = True
-                            # get the max distance along the segment
-                            # seg_len = (m - start_len) + (m - end_len)
-                            m = (seg_len + a + b) / 2
-                            # check that max is not exceeded
-                            if m > dist_cutoff:
-                                m = dist_cutoff
-                            # determine c and d
-                            c = m
-                            c_imp = a_imp + (m - a) * seg_imp_fact
-                            d = m
-                            d_imp = b_imp + (m - b) * seg_imp_fact
-                        # iterate the segment function keys
-                        for seg_idx, seg_key in enumerate(seg_keys):
-                            # fetch target index for writing data
-                            # stored at equivalent index in seg_targets
-                            m_idx = seg_targets[seg_idx]
-                            # 0 - segment density - uses plain distances
-                            if seg_key == 0:
-                                measures_data[m_idx, d_idx, src_idx] += b - a
-                            # 1 - harmonic segments - uses impedances in case of impedance multiplier
-                            elif seg_key == 1:
-                                if not split_segs:
-                                    measures_data[m_idx, d_idx, src_idx] += np.log(b_imp) - np.log(a_imp)
-                                else:
+                seg_in_nd, seg_out_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
+                in_nd_idx = int(seg_in_nd)
+                out_nd_idx = int(seg_out_nd)
+                in_imp = tree_imps[in_nd_idx]
+                out_imp = tree_imps[out_nd_idx]
+                in_dist = tree_dists[in_nd_idx]
+                out_dist = tree_dists[out_nd_idx]
+                # for conceptual simplicity, separate angular and non-angular workflows
+                # non angular uses a split segment workflow
+                # if the segment is on the shortest path then the second segment will squash down to naught
+                if not angular:
+                    # sort where a < b
+                    if in_imp <= out_imp:
+                        a = tree_dists[in_nd_idx]
+                        a_imp = tree_imps[in_nd_idx]
+                        b = tree_dists[out_nd_idx]
+                        b_imp = tree_imps[out_nd_idx]
+                    else:
+                        a = tree_dists[out_nd_idx]
+                        a_imp = tree_imps[out_nd_idx]
+                        b = tree_dists[in_nd_idx]
+                        b_imp = tree_imps[in_nd_idx]
+                    # get the max distance along the segment: seg_len = (m - start_len) + (m - end_len)
+                    # c and d variables can diverge per beneath
+                    c = d = (seg_len + a + b) / 2
+                    # c / d impedance should technically be the same if computed from either side
+                    c_imp = d_imp = a_imp + (c - a) * seg_imp_fact
+                    # iterate the distance and beta thresholds - from large to small for threshold snipping
+                    for d_idx in range(len(distances) - 1, -1, -1):
+                        dist_cutoff = distances[d_idx]
+                        beta = betas[d_idx]
+                        # a-c segment
+                        if a < dist_cutoff:
+                            if c > dist_cutoff:
+                                c = dist_cutoff
+                                c_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
+                            for seg_idx, seg_key in enumerate(seg_keys):
+                                m_idx = seg_targets[seg_idx]
+                                if seg_key == 0:
+                                    measures_data[m_idx, d_idx, src_idx] += c - a
+                                elif seg_key == 1:
                                     measures_data[m_idx, d_idx, src_idx] += np.log(c_imp) - np.log(a_imp)
+                                elif seg_key == 2:
+                                    if beta == -0.0:
+                                        auc = c_imp - a_imp
+                                    else:
+                                        auc = (np.exp(beta * c_imp) -
+                                               np.exp(beta * a_imp)) / beta
+                                    measures_data[m_idx, d_idx, src_idx] += auc
+                        # a-b segment - if on the shortest path then d == b - in which case, continue
+                        if b == d:
+                            continue
+                        if b < dist_cutoff:
+                            if d > dist_cutoff:
+                                d = dist_cutoff
+                                d_imp = b_imp + (dist_cutoff - b) * seg_imp_fact
+                            for seg_idx, seg_key in enumerate(seg_keys):
+                                m_idx = seg_targets[seg_idx]
+                                if seg_key == 0:
+                                    measures_data[m_idx, d_idx, src_idx] += d - b
+                                elif seg_key == 1:
                                     measures_data[m_idx, d_idx, src_idx] += np.log(d_imp) - np.log(b_imp)
-                            # 2 - beta weighted segments
-                            elif seg_key == 2:
-                                if not split_segs:
-                                    measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * b_imp) -
-                                                                             np.exp(beta * a_imp)) / beta
-                                else:
-                                    measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * c_imp) -
-                                                                             np.exp(beta * a_imp)) / beta
-                                    measures_data[m_idx, d_idx, src_idx] += (np.exp(beta * d_imp) -
-                                                                             np.exp(beta * b_imp)) / beta
+                                elif seg_key == 2:
+                                    # catch division by zero
+                                    # as beta approaches 0 the distance is weighted by 1 instead of < 1
+                                    if beta == -0.0:
+                                        auc = d_imp - b_imp
+                                    else:
+                                        auc = (np.exp(beta * d_imp) -
+                                               np.exp(beta * b_imp)) / beta
+                                    measures_data[m_idx, d_idx, src_idx] += auc
+                # different workflow for angular - uses single segment
+                # otherwise many assumptions if splitting segments re: angular vs. distance shortest-paths...
+                else:
+                    # get the approach angles for either side
+                    # this involves impedance up to that point plus the turn onto the segment
+                    # also add half of the segment's length-wise angular impedance
+                    in_ang = in_imp + seg_ang / 2
+                    # the source node won't have a predecessor
+                    if in_nd_idx != src_idx:
+                        # get the out bearing from the predecessor and calculate the turn onto current seg's in bearing
+                        in_pred_idx = int(tree_preds[in_nd_idx])
+                        e_i = _find_edge_idx(node_edge_map, edge_data, in_pred_idx, in_nd_idx)
+                        in_pred_out_bear = edge_data[int(e_i), 6]
+                        in_ang += np.abs((seg_in_bear - in_pred_out_bear + 180) % 360 - 180)
+                    # same for other side
+                    out_ang = out_imp + seg_ang / 2
+                    if out_nd_idx != src_idx:
+                        out_pred_idx = int(tree_preds[out_nd_idx])
+                        e_i = _find_edge_idx(node_edge_map, edge_data, out_pred_idx, out_nd_idx)
+                        out_pred_out_bear = edge_data[int(e_i), 6]
+                        out_ang += np.abs((seg_out_bear - out_pred_out_bear + 180) % 360 - 180)
+                    # the distance and angle are based on the smallest angular impedance onto the segment
+                    # shortest-path segments will have exit bearings equal to the entry bearings
+                    # in this case, select the closest by shortest distance
+                    if in_ang == out_ang:
+                        if in_dist < out_dist:
+                            e = tree_dists[in_nd_idx]
+                            ang = in_ang
+                        else:
+                            e = tree_dists[out_nd_idx]
+                            ang = out_ang
+                    elif in_ang < out_ang:
+                        e = tree_dists[in_nd_idx]
+                        ang = in_ang
+                    else:
+                        e = tree_dists[out_nd_idx]
+                        ang = out_ang
+                    # f is the entry distance plus segment length
+                    f = e + seg_len
+                    # iterate the distance thresholds - from large to small for threshold snipping
+                    for d_idx in range(len(distances) - 1, -1, -1):
+                        dist_cutoff = distances[d_idx]
+                        if e < dist_cutoff:
+                            if f > dist_cutoff:
+                                f = dist_cutoff
                             # 3 - harmonic segments hybrid
                             # Uses integral of segment distances as a base - then weighted by angular
-                            elif seg_key == 3:
-                                # average from the end impedance minus half of the segment's angular change
-                                a = end_imp - seg_ang / 2
-                                # transform - prevents division by zero
-                                a = 1 + (a / 180)
-                                if not split_segs:
-                                    measures_data[m_idx, d_idx, src_idx] += (np.log(b) - np.log(a)) / a
-                                else:
-                                    measures_data[m_idx, d_idx, src_idx] += (np.log(c) - np.log(a)) / a
-                                    measures_data[m_idx, d_idx, src_idx] += (np.log(d) - np.log(b)) / a
+                            for seg_idx, seg_key in enumerate(seg_keys):
+                                if seg_key == 3:
+                                    m_idx = seg_targets[seg_idx]
+                                    # transform - prevents division by zero
+                                    agg_ang = 1 + (ang / 180)
+                                    # then aggregate - angular uses distances explicitly
+                                    measures_data[m_idx, d_idx, src_idx] += (np.log(f) - np.log(e)) / agg_ang
         # aggregative and betweenness keys can be computed per to_idx
         for to_idx in tree_nodes:
             # skip self node
@@ -432,22 +506,37 @@ def local_centrality(node_data: np.ndarray,
             # check whether betweenness keys are present prior to proceeding
             if len(betw_keys) == 0:
                 continue
-            # only process betweenness in one direction
+            # only process in one direction
             if to_idx < src_idx:
                 continue
-            # weights removed since v0.10
-            # switched to impedance factor
+            # do not aggregate if the current source node is a ghosted node
+            if node_data[src_idx, 3]:
+                continue
+            # flags
+            agg_nodes = (0 in betw_keys or 1 in betw_keys or 3 in betw_keys)
+            agg_segs = (2 in betw_keys or 4 in betw_keys)
+            # segment versions only agg first and last segments - intervening bits are processed from other to nodes
+            origin_seg = edge_data[int(tree_origin_seg[to_idx])]
+            o_seg_len = origin_seg[2]
+            last_seg = edge_data[int(tree_last_seg[to_idx])]
+            l_seg_len = last_seg[2]
+            min_seg_span = tree_dists[to_idx] - o_seg_len - l_seg_len
+            o_1 = min_seg_span
+            o_2 = min_seg_span + o_seg_len
+            l_1 = min_seg_span
+            l_2 = min_seg_span + l_seg_len
             # betweenness - only counting truly between vertices, not starting and ending verts
             inter_idx = int(tree_preds[to_idx])
             while True:
                 # break out of while loop if the intermediary has reached the source node
                 if inter_idx == src_idx:
                     break
-                for d_idx in range(len(distances)):
+                # iterate the distance thresholds - from large to small for threshold snipping
+                for d_idx in range(len(distances) - 1, -1, -1):
                     dist_cutoff = distances[d_idx]
                     beta = betas[d_idx]
-                    # node based betweenness measures only count
-                    if to_dist <= dist_cutoff:
+                    # check if distances from respective segments
+                    if agg_nodes and tree_dists[to_idx] < dist_cutoff:
                         # iterate betweenness functions
                         for betw_idx, betw_key in enumerate(betw_keys):
                             # fetch target index for writing data
@@ -455,20 +544,41 @@ def local_centrality(node_data: np.ndarray,
                             m_idx = betw_targets[betw_idx]
                             # go through keys and write data
                             # simple count of nodes for betweenness
-                            if betw_key == 0:
+                            if betw_key == 0 and agg_nodes:
                                 measures_data[m_idx, d_idx, inter_idx] += 1
                             # 1 - beta weighted betweenness
                             # distance is based on distance between from and to vertices
                             # thus potential spatial impedance via between vertex
-                            elif betw_key == 1:
-                                measures_data[m_idx, d_idx, inter_idx] += np.exp(beta * to_dist)
-                            # 2 - segment version of betweenness
-                            # elif betw_key == 2:
+                            elif betw_key == 1 and agg_nodes:
+                                measures_data[m_idx, d_idx, inter_idx] += np.exp(beta * to_dist) * 1
                             # 3 - betweenness node count - angular heuristic version
-                            elif betw_key == 3:
+                            elif betw_key == 3 and agg_nodes:
                                 measures_data[m_idx, d_idx, inter_idx] += 1
+                    if agg_segs and min_seg_span < dist_cutoff:
+                        # prune if necessary
+                        if o_2 > dist_cutoff:
+                            o_2 = dist_cutoff
+                        if l_2 > dist_cutoff:
+                            l_2 = dist_cutoff
+                        for betw_idx, betw_key in enumerate(betw_keys):
+                            m_idx = betw_targets[betw_idx]
+                            # 2 - segment version of betweenness
+                            if betw_key == 2:
+                                # catch division by zero
+                                if beta == -0.0:
+                                    auc = o_2 - o_1 + l_2 - l_1
+                                else:
+                                    auc = (np.exp(beta * o_2) -
+                                           np.exp(beta * o_1)) / beta + \
+                                          (np.exp(beta * l_2) -
+                                           np.exp(beta * l_1)) / beta
+                                measures_data[m_idx, d_idx, inter_idx] += auc
                             # 4 - betweeenness segment hybrid version
-                            # elif betw_key == 4:
+                            elif betw_key == 4:
+                                bt_ang = 1 + (tree_imps[to_idx] / 180)
+                                measures_data[m_idx, d_idx, inter_idx] += \
+                                    ((np.log(o_2) - np.log(o_1)) +
+                                     (np.log(l_2) - np.log(l_1))) / bt_ang
                 # follow the chain
                 inter_idx = int(tree_preds[inter_idx])
     return measures_data

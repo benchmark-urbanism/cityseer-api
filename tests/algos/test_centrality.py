@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import timeit
 
-from cityseer.algos import data, centrality
+from cityseer.algos import data, centrality, checks
 from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
@@ -25,17 +25,19 @@ def test_shortest_path_tree():
     # prepare primal graph
     G_primal = mock.mock_graph()
     G_primal = graphs.nX_simple_geoms(G_primal)
-    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(G_primal)
+    node_uids_p, node_data_p, edge_data_p, node_edge_map_p, edge_ghost_map_p = graphs.graph_maps_from_nX(G_primal)
+    import numba
+    print(numba.typeof(node_edge_map_p))
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p, edge_ghost_map_p)
     # prepare dual graph
     G_dual = mock.mock_graph()
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(G_dual)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d, edge_ghost_map_d = graphs.graph_maps_from_nX(G_dual)
     assert len(node_uids_d) > len(node_uids_p)
     # test all shortest paths against networkX version of dijkstra
-    for max_dist in [0, 500, 2000]:
+    for max_dist in [0, 500, 2000, np.inf]:
         for src_idx in range(len(G_primal)):
             # check shortest path maps
             tree_map, tree_edges = centrality.shortest_path_tree(node_data_p,
@@ -150,16 +152,17 @@ def test_shortest_path_tree():
 
 def test_decomposed_local_centrality():
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    betas = np.array([-0.02, -0.01, -0.005, -0.0008])
+    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
     measure_keys = ('harmonic_node', 'betweenness_node')
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     measures_data = centrality.local_centrality(node_data,
                                                 edge_data,
                                                 node_edge_map,
+                                                edge_ghost_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -167,11 +170,13 @@ def test_decomposed_local_centrality():
     G_decomposed = graphs.nX_decompose(G, 20)
     # from cityseer.util import plot
     # plot.plot_nX(G_decomposed, labels=True)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
-        G_decomposed)  # generate node and edge maps
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G_decomposed)
+    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
     measures_data_decomposed = centrality.local_centrality(node_data,
                                                            edge_data,
                                                            node_edge_map,
+                                                           edge_ghost_map,
                                                            distances,
                                                            betas,
                                                            measure_keys,
@@ -184,6 +189,9 @@ def test_decomposed_local_centrality():
     original_node_idx = np.where(node_data[:, 3] == 0)
     for m_idx in range(m_range):
         for d_idx in range(d_range):
+            print(m_idx, d_idx)
+            print(measures_data[m_idx][d_idx])
+            print(measures_data_decomposed[m_idx][d_idx][original_node_idx])
             assert np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
 
 
@@ -201,7 +209,7 @@ def test_local_centrality_time():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
@@ -216,11 +224,13 @@ def test_local_centrality_time():
         return centrality.local_centrality(node_data,
                                            edge_data,
                                            node_edge_map,
+                                           edge_ghost_map,
                                            distances,
                                            betas,
                                            ('node_density',  # 7.16s
                                             'betweenness_node',  # 8.08s - adds around 1s
-                                            #'segment_density'  # 11.2s - adds around 3s
+                                            'segment_density',  # 11.2s - adds around 3s
+                                            'betweenness_segment'
                                             ),
                                            angular=False,
                                            suppress_progress=True)
@@ -232,7 +242,7 @@ def test_local_centrality_time():
     func_time = timeit.timeit(wrapper_func, number=iters)
     print(f'Timing: {func_time} for {iters} iterations')
     if 'GITHUB_ACTIONS' not in os.environ:
-        assert func_time < 12
+        assert func_time < 15
 
 
 def test_local_centrality():
@@ -246,10 +256,10 @@ def test_local_centrality():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map, edge_ghost_map)
     # needs a large enough beta so that distance thresholds aren't encountered
-    betas = np.array([-0.02, -0.01, -0.005, -0.0008])
+    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
     # set the keys - add shuffling to be sure various orders work
     measure_keys = [
@@ -271,6 +281,7 @@ def test_local_centrality():
     measures_data = centrality.local_centrality(node_data,
                                                 edge_data,
                                                 node_edge_map,
+                                                edge_ghost_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -299,6 +310,7 @@ def test_local_centrality():
     measures_data_angular = centrality.local_centrality(node_data,
                                                         edge_data,
                                                         node_edge_map,
+                                                        edge_ghost_map,
                                                         distances,
                                                         betas,
                                                         measure_keys_angular,
@@ -484,7 +496,7 @@ def test_temp():
 
     # setup dual data
     G_dual = graphs.nX_to_dual(G)
-    node_labels_dual, node_data_dual, edge_data_dual, node_edge_map_dual = graphs.graph_maps_from_nX(G_dual)
+    node_labels_dual, node_data_dual, edge_data_dual, node_edge_map_dual, edge_ghost_map_dual = graphs.graph_maps_from_nX(G_dual)
 
     cl_dual, bt_dual = \
         centrality.local_centrality(node_data_dual,
