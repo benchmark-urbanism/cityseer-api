@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 import pytest
 
@@ -59,12 +57,11 @@ def test_beta_from_distance():
 def test_Network_Layer():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
 
     # manual graph maps for comparison
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
-    x_arr = node_map[:, 0]
-    y_arr = node_map[:, 1]
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)
+    x_arr = node_data[:, 0]
+    y_arr = node_data[:, 1]
     betas = [-0.02, -0.005]
     distances = networks.distance_from_beta(betas)
 
@@ -72,26 +69,35 @@ def test_Network_Layer():
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
             N = networks.Network_Layer(node_uids,
-                                       node_map,
-                                       edge_map,
+                                       node_data,
+                                       edge_data,
+                                       node_edge_map,
+                                       edge_ghost_map,
                                        distances=d,
-                                       betas=b,
-                                       angular=angular)
+                                       betas=b)
             assert np.array_equal(N.uids, node_uids)
-            assert np.allclose(N._nodes, node_map, equal_nan=True)
-            assert np.array_equal(N._edges, edge_map)
+            assert np.allclose(N._node_data, node_data, equal_nan=True)
+            assert np.array_equal(N._edge_data, edge_data)
             assert np.array_equal(N.distances, distances)  # inferred automatically when only betas provided
             assert np.array_equal(N.betas, betas)  # inferred automatically when only distances provided
             assert N.min_threshold_wt == checks.def_min_thresh_wt
-            assert N.angular == angular
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
-            assert np.array_equal(N.live, node_map[:, 2])
-            assert np.array_equal(N.edge_lengths, edge_map[:, 2])
-            assert np.array_equal(N.edge_impedances, edge_map[:, 3])
+            assert np.array_equal(N.live, node_data[:, 2])
+            assert np.array_equal(N.ghosted, node_data[:, 3])
+            assert np.array_equal(N.edge_lengths, edge_data[:, 2])
+            assert np.array_equal(N.edge_angles, edge_data[:, 3])
+            assert np.array_equal(N.edge_impedance_factor, edge_data[:, 4])
+            assert np.array_equal(N.edge_in_bearing, edge_data[:, 5])
+            assert np.array_equal(N.edge_out_bearing, edge_data[:, 6])
 
     # test round-trip graph to and from Network_Layer
-    N = networks.Network_Layer(node_uids, node_map, edge_map, distances=distances)
+    N = networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances=distances)
     G_round_trip = N.to_networkX()
     # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
     # i.e. can't simply check that all nodes equal, so check properties manually
@@ -101,73 +107,108 @@ def test_Network_Layer():
         assert G_round_trip.nodes[n]['y'] == d['y']
     # edges can be checked en masse
     assert G_round_trip.edges == G.edges
-
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
     N = networks.Network_Layer(node_uids,
-                               node_map,
-                               edge_map,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
                                betas=betas,
                                min_threshold_wt=alt_min)
     assert np.array_equal(N.distances, alt_distances)
-
     # check for malformed signatures
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids[:-1], node_map, edge_map, distances)
+        networks.Network_Layer(node_uids[:-1],
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map[:, :-1], edge_map, distances)
+        networks.Network_Layer(node_uids,
+                               node_data[:, :-1],
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map[:, :-1], distances)
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data[:, :-1],
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map)  # no betas or distances
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data[:, :-1],
+                               edge_ghost_map,
+                               distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map, distances=None, betas=None)
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data[:, :-1],
+                               node_edge_map,
+                               distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map, distances=[])
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map)  # no betas or distances
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids, node_map, edge_map, betas=[])
-
-    # check setter for weights
-    old_weights = N.weights
-    new_weights = np.copy(old_weights) * 2
-    N.weights = new_weights
-    assert np.allclose(N.weights, new_weights)
-    corrupted_weights = np.copy(new_weights)
-    for i in [-1, np.nan, np.inf]:
-        corrupted_weights[0] = i
-        with pytest.raises(ValueError):
-            N.weights = corrupted_weights
-    with pytest.raises(TypeError):
-        N.weights = 10
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances=None,
+                               betas=None)
+    with pytest.raises(ValueError):
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               distances=[])
+    with pytest.raises(ValueError):
+        networks.Network_Layer(node_uids,
+                               node_data,
+                               edge_data,
+                               node_edge_map,
+                               edge_ghost_map,
+                               betas=[])
 
 
 def test_Network_Layer_From_nX():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-    node_uids, node_map, edge_map = graphs.graph_maps_from_nX(G)
-    x_arr = node_map[:, 0]
-    y_arr = node_map[:, 1]
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)
+    x_arr = node_data[:, 0]
+    y_arr = node_data[:, 1]
     betas = np.array([-0.04, -0.02])
     distances = networks.distance_from_beta(betas)
 
     # test Network_Layer_From_NetworkX's class
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
-            N = networks.Network_Layer_From_nX(G, distances=d, betas=b, angular=angular)
+            N = networks.Network_Layer_From_nX(G, distances=d, betas=b)
             assert np.array_equal(N.uids, node_uids)
-            assert np.allclose(N._nodes, node_map, equal_nan=True)
-            assert np.array_equal(N._edges, edge_map)
+            assert np.allclose(N._node_data, node_data, equal_nan=True)
+            assert np.array_equal(N._edge_data, edge_data)
             assert np.array_equal(N.distances, distances)  # inferred automatically when only betas provided
             assert np.array_equal(N.betas, betas)  # inferred automatically when only distances provided
             assert N.min_threshold_wt == checks.def_min_thresh_wt
-            assert N.angular == angular
             assert np.array_equal(N.x_arr, x_arr)
             assert np.array_equal(N.y_arr, y_arr)
-            assert np.array_equal(N.live, node_map[:, 2])
-            assert np.array_equal(N.edge_lengths, edge_map[:, 2])
-            assert np.array_equal(N.edge_impedances, edge_map[:, 3])
+            assert np.array_equal(N.live, node_data[:, 2])
+            assert np.array_equal(N.edge_lengths, edge_data[:, 2])
+            assert np.array_equal(N.edge_angles, edge_data[:, 3])
+            assert np.array_equal(N.edge_impedance_factor, edge_data[:, 4])
+            assert np.array_equal(N.edge_in_bearing, edge_data[:, 5])
+            assert np.array_equal(N.edge_out_bearing, edge_data[:, 6])
 
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
@@ -189,12 +230,11 @@ def test_Network_Layer_From_nX():
 
 
 def dict_check(m_dict, Network):
-
     for i, uid in enumerate(Network.uids):
-        assert m_dict[uid]['x'] == Network._nodes[i][0]
-        assert m_dict[uid]['y'] == Network._nodes[i][1]
-        assert m_dict[uid]['live'] == Network._nodes[i][2]
-        assert m_dict[uid]['weight'] == Network._nodes[i][4]
+        assert m_dict[uid]['x'] == Network._node_data[i][0]
+        assert m_dict[uid]['y'] == Network._node_data[i][1]
+        assert m_dict[uid]['live'] == Network._node_data[i][2]
+        assert m_dict[uid]['ghosted'] == Network._node_data[i][3]
 
         for c_key, c_val in Network.metrics['centrality'].items():
             for d_key, d_val in c_val.items():
@@ -222,10 +262,10 @@ def dict_check(m_dict, Network):
                     # some NaN so use np.allclose
                     assert np.allclose(d_val[i], m_dict[uid]['stats'][th_key][stat_key][d_key], equal_nan=True)
 
+
 def test_metrics_to_dict():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
     # create a network layer and run some metrics
     N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
 
@@ -234,8 +274,7 @@ def test_metrics_to_dict():
     dict_check(metrics_dict, N)
 
     # check with centrality metrics
-    N.harmonic_closeness()
-    N.betweenness()
+    N.compute_centrality(measures=['harmonic_node'])
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
@@ -243,6 +282,8 @@ def test_metrics_to_dict():
     data_dict = mock.mock_data_dict(G)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     numerical_data = mock.mock_numerical_data(len(data_dict))
+    # TODO:
+    '''
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
     D.compute_aggregated(landuse_labels,
@@ -251,6 +292,7 @@ def test_metrics_to_dict():
                          qs=[0, 1],
                          stats_keys=['boo'],
                          stats_data_arrs=numerical_data)
+    '''
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
@@ -261,12 +303,13 @@ def test_to_networkX():
     # check round trip to and from graph maps results in same graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
+    G = graphs.nX_decompose(G, decompose_max=20)
     for n in G.nodes():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
-        G.nodes[n]['weight'] = np.random.random() * 2000
+    for s, e in G.edges():
+        G[s][e]['imp_factor'] = np.random.randint(0, 2)
 
     # add random data to check persistence at other end
     G.nodes[0]['boo'] = 'baa'
@@ -274,19 +317,16 @@ def test_to_networkX():
 
     # test with metrics
     N = networks.Network_Layer_From_nX(G, distances=[500])
-    N.harmonic_closeness()
-    N.betweenness()
+    N.compute_centrality(measures=['harmonic_node'])
     metrics_dict = N.metrics_to_dict()
     G_round_trip = N.to_networkX()
     for n, d in G.nodes(data=True):
         assert G_round_trip.nodes[n]['x'] == d['x']
         assert G_round_trip.nodes[n]['y'] == d['y']
         assert G_round_trip.nodes[n]['live'] == d['live']
-        assert G_round_trip.nodes[n]['weight'] == d['weight']
     for s, e, d in G.edges(data=True):
         assert G_round_trip[s][e]['geom'] == d['geom']
-        assert G_round_trip[s][e]['length'] == d['length']
-        assert G_round_trip[s][e]['impedance'] == d['impedance']
+        assert G_round_trip[s][e]['imp_factor'] == d['imp_factor']
     # check that metrics came through
     for uid, metrics in metrics_dict.items():
         assert G_round_trip.nodes[uid]['metrics'] == metrics
@@ -299,106 +339,71 @@ def test_compute_centrality():
     '''
     Underlying method also tested via test_networks.test_network_centralities
     '''
-
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
+    # generate data structures
     N = networks.Network_Layer_From_nX(G, distances)
-    node_map = N._nodes
-    edge_map = N._edges
-
-    # check single closeness and betweenness independently against underlying
-    N_temp = copy.deepcopy(N)
-    N_temp.compute_centrality(close_metrics=['node_density'])
+    node_data = N._node_data
+    edge_data = N._edge_data
+    node_edge_map = N._node_edge_map
+    edge_ghost_map = N._edge_ghost_map
+    # check measures against underlying method
+    N = networks.Network_Layer_From_nX(G, distances)
+    N.compute_centrality(measures=['node_density'])
     # test against underlying method
-    cl_data, bt_data = centrality.local_centrality(node_map,
-                                                   edge_map,
-                                                   distances,
-                                                   betas,
-                                                   closeness_keys=np.array([0]))
+    measures_data = centrality.local_centrality(node_data,
+                                                edge_data,
+                                                node_edge_map,
+                                                edge_ghost_map,
+                                                distances,
+                                                betas,
+                                                measure_keys=('node_density',))
     for d_idx, d_key in enumerate(distances):
-        assert np.array_equal(N_temp.metrics['centrality']['node_density'][d_key], cl_data[0][d_idx])
-
-    N_temp = copy.deepcopy(N)
-    N_temp.compute_centrality(between_metrics=['betweenness'])
-    # test against underlying method
-    cl_data, bt_data = centrality.local_centrality(node_map,
-                                                   edge_map,
-                                                   distances,
-                                                   betas,
-                                                   betweenness_keys=np.array([0]))
-    for d_idx, d_key in enumerate(distances):
-        assert np.array_equal(N_temp.metrics['centrality']['betweenness'][d_key], bt_data[0][d_idx])
-
+        assert np.array_equal(N.metrics['centrality']['node_density'][d_key], measures_data[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
-    closeness_types = np.array(['node_density',
-                                'farness_impedance',
-                                'farness_distance',
-                                'harmonic',
-                                'improved',
-                                'gravity_index',
-                                'cycles'])
-    betweenness_types = np.array(['betweenness', 'betweenness_decay'])
-
-    cl_random = np.arange(len(closeness_types))
-    np.random.shuffle(cl_random)
-
-    bt_random = np.arange(len(betweenness_types))
-    np.random.shuffle(bt_random)
-
+    measures = ['node_density',
+                'farness',
+                'cycles',
+                'harmonic_node',
+                'segment_density',
+                'betweenness_node',
+                'betweenness_segment']
+    np.random.shuffle(measures)  # in place
     # not necessary to do all labels, first few should do
-    for cl_min in range(3):
-        cl_keys = np.array(cl_random[cl_min:])
-
-        for bt_min in range(3):
-            bt_keys = np.array(bt_random[bt_min:])
-
-            # in the final case, set betweenness to a single key otherwise an error would be raised
-            if len(cl_keys) == 0 and len(bt_keys) == 0:
-                bt_keys = np.array([0])
-
-            # randomise order of keys and metrics
-            cl_metrics = closeness_types[cl_keys]
-            bt_metrics = betweenness_types[bt_keys]
-
-            N_temp = copy.deepcopy(N)
-            N_temp.compute_centrality(close_metrics=cl_metrics, between_metrics=bt_metrics)
-            # test against underlying method
-            cl_data, bt_data = centrality.local_centrality(node_map,
-                                                           edge_map,
-                                                           distances,
-                                                           betas,
-                                                           closeness_keys=cl_keys,
-                                                           betweenness_keys=bt_keys)
-            for cl_idx, cl_m in enumerate(cl_metrics):
-                for d_idx, d_key in enumerate(distances):
-                    assert np.array_equal(N_temp.metrics['centrality'][cl_m][d_key], cl_data[cl_idx][d_idx])
-
-            for bt_idx, bt_m in enumerate(bt_metrics):
-                for d_idx, d_key in enumerate(distances):
-                    assert np.array_equal(N_temp.metrics['centrality'][bt_m][d_key], bt_data[bt_idx][d_idx])
-
+    for min_idx in range(3):
+        measure_keys = np.array(measures[min_idx:])
+        N = networks.Network_Layer_From_nX(G, distances)
+        N.compute_centrality(measures=measures)
+        # test against underlying method
+        measures_data = centrality.local_centrality(node_data,
+                                                    edge_data,
+                                                    node_edge_map,
+                                                    edge_ghost_map,
+                                                    distances,
+                                                    betas,
+                                                    measure_keys=tuple(measure_keys))
+        for m_idx, measure_name in enumerate(measure_keys):
+            for d_idx, d_key in enumerate(distances):
+                assert np.array_equal(N.metrics['centrality'][measure_name][d_key],
+                                      measures_data[m_idx][d_idx])
     # check that angular gets passed through
-    G_dual = graphs.nX_to_dual(G)
-    N_dual = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=True)
-    N_dual.compute_centrality(close_metrics=['harmonic'], between_metrics=['betweenness'])
-
-    N_dual_sidestep = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=False)
-    N_dual_sidestep.compute_centrality(close_metrics=['harmonic'], between_metrics=['betweenness'])
-
-    assert not np.array_equal(N_dual.metrics['centrality']['harmonic'][2000],
-                              N_dual_sidestep.metrics['centrality']['harmonic'][2000])
-    assert not np.array_equal(N_dual.metrics['centrality']['betweenness'][2000],
-                              N_dual_sidestep.metrics['centrality']['betweenness'][2000])
-
-    # most integrity checks happen in underlying method, though check here for typos
+    N_ang = networks.Network_Layer_From_nX(G, distances=[2000])
+    N_ang.compute_centrality(measures=['harmonic_node_angle'], angular=True)
+    N = networks.Network_Layer_From_nX(G, distances=[2000])
+    N.compute_centrality(measures=['harmonic_node'], angular=False)
+    assert not np.array_equal(N_ang.metrics['centrality']['harmonic_node_angle'][2000],
+                              N.metrics['centrality']['harmonic_node'][2000])
+    assert not np.array_equal(N_ang.metrics['centrality']['harmonic_node_angle'][2000],
+                              N.metrics['centrality']['harmonic_node'][2000])
+    # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
-        N.compute_centrality(close_metrics=['spelling_typo'])
+        N.compute_centrality(measures=['spelling_typo'])
     with pytest.raises(ValueError):
-        N.compute_centrality(between_metrics=['spelling_typo'])
+        N.compute_centrality(measures=['node_density', 'node_density'])
+    with pytest.raises(ValueError):
+        N.compute_centrality(measures=['harmonic_angle', 'harmonic_node_angle'])
 
 
 def network_generator():
@@ -407,99 +412,4 @@ def network_generator():
         for angular in [False, True]:
             G = mock.mock_graph()
             G = graphs.nX_simple_geoms(G)
-            G = graphs.nX_auto_edge_params(G)
             yield G, distances, betas, angular
-
-
-def test_harmonic_closeness():
-    for G, distances, betas, angular in network_generator():
-
-        # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_easy.harmonic_closeness()
-        # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_full.compute_centrality(close_metrics=['harmonic'])
-
-        # compare
-        for d in distances:
-            assert np.array_equal(N_easy.metrics['centrality']['harmonic'][d],
-                                  N_full.metrics['centrality']['harmonic'][d])
-
-
-def test_improved_closeness():
-    for G, distances, betas, angular in network_generator():
-
-        # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_easy.improved_closeness()
-        # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_full.compute_centrality(close_metrics=['improved'])
-
-        # compare
-        for d in distances:
-            assert np.array_equal(N_easy.metrics['centrality']['improved'][d],
-                                  N_full.metrics['centrality']['improved'][d])
-
-
-def test_gravity_index():
-    for G, distances, betas, angular in network_generator():
-
-        # DISTANCES
-        # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_easy.gravity_index()
-        # easy version via betas
-        N_easy_betas = networks.Network_Layer_From_nX(G, betas=betas, angular=angular)
-        N_easy_betas.gravity_index()
-        # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_full.compute_centrality(close_metrics=['gravity_index'])
-
-        # compare
-        for d in distances:
-            gravity_index_easy = N_easy.metrics['centrality']['gravity_index'][d]
-            gravity_index_easy_betas = N_easy_betas.metrics['centrality']['gravity_index'][d]
-            gravity_index_full = N_full.metrics['centrality']['gravity_index'][d]
-            assert np.array_equal(gravity_index_easy, gravity_index_full)
-            assert np.array_equal(gravity_index_easy_betas, gravity_index_full)
-
-
-def test_betweenness():
-    for G, distances, betas, angular in network_generator():
-
-        # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_easy.betweenness()
-        # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
-        N_full.compute_centrality(between_metrics=['betweenness'])
-
-        # compare
-        for d in distances:
-            assert np.array_equal(N_easy.metrics['centrality']['betweenness'][d],
-                                  N_full.metrics['centrality']['betweenness'][d])
-
-
-def test_betweenness_decay():
-    for G, distances, betas, angular in network_generator():
-
-        # DISTANCES
-        # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_easy.betweenness_decay()
-        # easy version via betas
-        N_easy_betas = networks.Network_Layer_From_nX(G, betas=betas, angular=angular)
-        N_easy_betas.betweenness_decay()
-        # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances=distances, angular=angular)
-        N_full.compute_centrality(between_metrics=['betweenness_decay'])
-
-        # compare
-        for d in distances:
-            between_gravity_easy = N_easy.metrics['centrality']['betweenness_decay'][d]
-            between_gravity_easy_betas = N_easy_betas.metrics['centrality']['betweenness_decay'][d]
-            between_gravity_full = N_full.metrics['centrality']['betweenness_decay'][d]
-            assert np.array_equal(between_gravity_easy, between_gravity_full)
-            assert np.array_equal(between_gravity_easy_betas, between_gravity_full)

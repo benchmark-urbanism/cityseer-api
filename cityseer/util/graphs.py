@@ -844,12 +844,14 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     g_copy = nx.convert_node_labels_to_integers(g_copy, 0)
     # prepare the node and edge maps
     node_uids = []
-    node_data = np.full((g_copy.number_of_nodes(), 4), np.nan)  # float - for consistency
-    edge_data = np.full((total_out_degrees, 7), np.nan)  # float - allows for nan and inf
+    # float - for consistency - requires higher accuracy for x, y work
+    node_data = np.full((g_copy.number_of_nodes(), 4), np.nan, dtype=np.float64)
+    # float - allows for nan and inf - float32 should be ample...
+    edge_data = np.full((total_out_degrees, 7), np.nan, dtype=np.float32)
     # nodes have a one-to-many mapping to edges
     node_edge_map = Dict.empty(
-        key_type=types.uint,
-        value_type=types.uint[:]
+        key_type=types.int64,
+        value_type=types.int64[:]
     )
     edge_idx = 0
     # populate the nodes
@@ -972,46 +974,51 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             # increment the edge_idx
             edge_idx += 1
         # add the node to the node_edge_map
-        node_edge_map[node_idx] = np.array(out_edges, dtype='uint')
+        node_edge_map[node_idx] = np.array(out_edges, dtype='int64')
     # build the edge to ghost-node map
     # edges have a one-to-many mapping to ghost-nodes
     edge_ghost_map = Dict.empty(
-        key_type=types.uint,
-        value_type=types.uint[:]
+        key_type=types.int64,
+        value_type=types.int64[:]
     )
-    edge_ghost_dict = {}
-    for n, d in g_copy.nodes(data=True):
+    # all edge indices to be added even if no associated ghost nodes (used from betweenness workflow)
+    for s_idx, e_idx, d in g_copy.edges(data=True):
+        # continue if this is a ghosted edge
         if 'ghosted' in d and d['ghosted']:
-            # each ghosted node has two neighbours, one non-ghosted node on either side
-            nb_a, nb_b = nx.neighbors(g_copy, n)
-            parent_edge = g_copy[nb_a][nb_b]
-            # each parent edge will have two edge ids, one in either direction
-            # map the ghost nodes to the respective edges
-            for edge_idx in parent_edge['edge_indices']:
-                if edge_idx not in edge_ghost_dict:
-                    edge_ghost_dict[edge_idx] = []
-                edge_ghost_dict[edge_idx].append(n)
-    # build numba dict
-    for k, v in edge_ghost_dict.items():
-        edge_ghost_map[k] = np.array(v, dtype='uint')
+            continue
+        # find all ghost nodes
+        ghost_nodes = []
+        # visit all neighbour nodes from the start node and find ghost nodes linking to end node
+        for nb_idx in nx.neighbors(g_copy, s_idx):
+            nb = g_copy.nodes[nb_idx]
+            if 'ghosted' in nb and nb['ghosted']:
+                for g_nb_idx in nx.neighbors(g_copy, nb_idx):
+                    if g_nb_idx == e_idx:
+                        ghost_nodes.append(nb_idx)
+                        break
+        # each parent edge will have two edge ids, one in either direction - intentionally explicit
+        e_idx_a, e_idx_b = d['edge_indices']
+        # add to map
+        edge_ghost_map[e_idx_a] = np.array(ghost_nodes, dtype='int64')
+        edge_ghost_map[e_idx_b] = np.array(ghost_nodes, dtype='int64')
 
     return tuple(node_uids), node_data, edge_data, node_edge_map, edge_ghost_map
 
 
 def nX_from_graph_maps(node_uids: Union[tuple, list],
-                       node_map: np.ndarray,
-                       edge_map: np.ndarray,
+                       node_data: np.ndarray,
+                       edge_data: np.ndarray,
                        node_edge_map: Dict,
                        edge_ghost_map: Dict,
                        networkX_graph: nx.Graph = None,
                        metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
 
-    checks.check_network_maps(node_map, edge_map, node_edge_map, edge_ghost_map)
+    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
 
     if networkX_graph is not None:
         logger.info('Reusing existing graph as backbone.')
-        if networkX_graph.number_of_nodes() != len(node_map):
+        if networkX_graph.number_of_nodes() != len(node_data):
             raise ValueError('The number of nodes in the graph does not match the number of nodes in the node map.')
         g_copy = networkX_graph.copy()
         for uid in node_uids:
@@ -1026,7 +1033,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
             g_copy.add_node(uid)
 
     logger.info('Unpacking node data.')
-    for uid, node in tqdm(zip(node_uids, node_map), disable=checks.quiet_mode):
+    for uid, node in tqdm(zip(node_uids, node_data), disable=checks.quiet_mode):
         x, y, live, ghosted = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y
@@ -1034,7 +1041,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         g_copy.nodes[uid]['ghosted'] = bool(ghosted)
 
     logger.info('Unpacking edge data.')
-    for edge in tqdm(edge_map, disable=checks.quiet_mode):
+    for edge in tqdm(edge_data, disable=checks.quiet_mode):
         start, end, length, angle_sum, imp_factor, start_bearing, end_bearing = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]

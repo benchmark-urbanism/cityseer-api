@@ -6,6 +6,7 @@ from typing import Union
 
 import networkx as nx
 import numpy as np
+from numba.typed import Dict
 
 from cityseer.algos import centrality, checks
 from cityseer.util import graphs
@@ -57,35 +58,37 @@ class Network_Layer:
 
     def __init__(self,
                  node_uids: Union[list, tuple],
-                 node_map: np.ndarray,
-                 edge_map: np.ndarray,
+                 node_data: np.ndarray,
+                 edge_data: np.ndarray,
+                 node_edge_map: Dict,
+                 edge_ghost_map: Dict,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = checks.def_min_thresh_wt,
-                 dual: bool = False):
-
+                 min_threshold_wt: float = checks.def_min_thresh_wt):
         '''
         NODE MAP:
         0 - x
         1 - y
         2 - live
-        3 - edge indx
-        4 - weight
+        3 - ghosted
 
         EDGE MAP:
         0 - start node
         1 - end node
         2 - length in metres
-        3 - impedance
+        3 - sum of angular travel along length
+        4 - impedance factor
+        5 - in bearing
+        6 - out bearing
         '''
-
         self._uids = node_uids
-        self._nodes = node_map
-        self._edges = edge_map
+        self._node_data = node_data
+        self._edge_data = edge_data
+        self._node_edge_map = node_edge_map
+        self._edge_ghost_map = edge_ghost_map
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
-        self._dual = dual
         self.metrics = {
             'centrality': {},
             'mixed_uses': {},
@@ -96,14 +99,13 @@ class Network_Layer:
             'stats': {},
             'models': {}
         }
+        # for storing originating networkX graph
         self._networkX = None
-
         # check the data structures
-        if len(self._uids) != len(self._nodes):
+        if len(self._uids) != len(self._node_data):
             raise ValueError('The number of indices does not match the number of nodes.')
-
-        checks.check_network_maps(self._nodes, self._edges)
-
+        # check network maps
+        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map, self._edge_ghost_map)
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
             if isinstance(self._distances, (int, float)):
@@ -152,37 +154,39 @@ class Network_Layer:
 
     @property
     def x_arr(self):
-        return self._nodes[:, 0]
+        return self._node_data[:, 0]
 
     @property
     def y_arr(self):
-        return self._nodes[:, 1]
+        return self._node_data[:, 1]
 
     @property
     def live(self):
-        return self._nodes[:, 2]
+        return self._node_data[:, 2]
 
     @property
-    def weights(self):
-        return self._nodes[:, 4]
-
-    @weights.setter
-    def weights(self, weights):
-        if not isinstance(weights, (list, tuple, np.ndarray)):
-            raise TypeError('Weights should consist of a list, tuple, or numpy.ndarray of weights.')
-        weights = np.array(weights)
-        if not weights.ndim == 1 or not weights.shape[0] == self._nodes.shape[0]:
-            raise ValueError('Weights should be a single dimensional array of the same length as the number of nodes.')
-        self._nodes[:, 4] = weights
-        checks.check_network_maps(self._nodes, self._edges)
+    def ghosted(self):
+        return self._node_data[:, 3]
 
     @property
     def edge_lengths(self):
-        return self._edges[:, 2]
+        return self._edge_data[:, 2]
 
     @property
-    def edge_impedances(self):
-        return self._edges[:, 3]
+    def edge_angles(self):
+        return self._edge_data[:, 3]
+
+    @property
+    def edge_impedance_factor(self):
+        return self._edge_data[:, 4]
+
+    @property
+    def edge_in_bearing(self):
+        return self._edge_data[:, 5]
+
+    @property
+    def edge_out_bearing(self):
+        return self._edge_data[:, 6]
 
     @property
     def networkX(self):
@@ -192,6 +196,7 @@ class Network_Layer:
     def networkX(self, value):
         self._networkX = value
 
+    # for retrieving metrics to a dictionary
     def metrics_to_dict(self):
         '''
         metrics are stored in arrays, this method unpacks per uid
@@ -202,7 +207,7 @@ class Network_Layer:
                 'x': self.x_arr[i],
                 'y': self.y_arr[i],
                 'live': self.live[i] == 1,
-                'weight': self._nodes[:, 4][i]
+                'ghosted': self.ghosted[i] == 1
             }
             # unpack centralities
             m[uid]['centrality'] = {}
@@ -222,7 +227,6 @@ class Network_Layer:
                 else:
                     for d_key, d_val in m_val.items():
                         m[uid]['mixed_uses'][m_key][d_key] = d_val[i]
-
             m[uid]['accessibility'] = {
                 'non_weighted': {},
                 'weighted': {}
@@ -232,7 +236,6 @@ class Network_Layer:
                     m[uid]['accessibility'][cat][cl_key] = {}
                     for d_key, d_val in cl_val.items():
                         m[uid]['accessibility'][cat][cl_key][d_key] = d_val[i]
-
             m[uid]['stats'] = {}
             for th_key, th_val in self.metrics['stats'].items():
                 m[uid]['stats'][th_key] = {}
@@ -240,17 +243,21 @@ class Network_Layer:
                     m[uid]['stats'][th_key][stat_key] = {}
                     for d_key, d_val in stat_val.items():
                         m[uid]['stats'][th_key][stat_key][d_key] = d_val[i]
-
         return m
 
+    # for unpacking to a networkX graph
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
-        return graphs.nX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
+        return graphs.nX_from_graph_maps(self._uids,
+                                         self._node_data,
+                                         self._edge_data,
+                                         self._node_edge_map,
+                                         self._edge_ghost_map,
+                                         self._networkX,
+                                         metrics_dict)
 
-    def compute_centrality(self, measures: Union[list, tuple] = None, angular:bool = False):
-        '''
-        This method provides access to the underlying centrality.local_centrality method
-        '''
+    # provides access to the underlying centrality.local_centrality method
+    def compute_centrality(self, measures: Union[list, tuple] = None, angular: bool = False):
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
@@ -275,32 +282,34 @@ class Network_Layer:
                 'harmonic_segment_hybrid',
                 'betweenness_node_angle',
                 'betweeness_segment_hybrid'
-        )
+            )
         if measures is None:
             raise ValueError(f'Please select at least one measure to compute.')
-        keys = []
+        measure_keys = []
         for measure in measures:
             if measure not in options:
                 raise ValueError(f'Invalid network measure: {measure}. '
-                                 f'Must be one of {", ".join(options)} when using f{heuristic} path heuristic.')
-            if measure in keys:
+                                 f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.')
+            if measure in measure_keys:
                 raise ValueError(f'Please remove duplicate measure: {measure}.')
-            keys.append(measure)
-        keys = tuple(keys)
+            measure_keys.append(measure)
+        measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
-            logger.info(f'Computing {", ".join(keys)} centrality measures using {heuristic} path heuristic.')
+            logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
         measures_data = centrality.local_centrality(
-            self._nodes,
-            self._edges,
+            self._node_data,
+            self._edge_data,
+            self._node_edge_map,
+            self._edge_ghost_map,
             np.array(self._distances),
             np.array(self._betas),
-            keys,
+            measure_keys,
             angular,
             suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
-        for measure_idx, measure_name in enumerate(keys):
+        for measure_idx, measure_name in enumerate(measure_keys):
             if measure_name not in self.metrics['centrality']:
                 self.metrics['centrality'][measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
@@ -308,21 +317,19 @@ class Network_Layer:
 
 
 class Network_Layer_From_nX(Network_Layer):
-
     def __init__(self,
                  networkX_graph: nx.Graph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = checks.def_min_thresh_wt,
-                 angular: bool = False):
-        node_uids, node_map, edge_map = graphs.graph_maps_from_nX(networkX_graph)
-
+                 min_threshold_wt: float = checks.def_min_thresh_wt):
+        node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(networkX_graph)
         super().__init__(node_uids,
-                         node_map,
-                         edge_map,
+                         node_data,
+                         edge_data,
+                         node_edge_map,
+                         edge_ghost_map,
                          distances,
                          betas,
-                         min_threshold_wt,
-                         angular)
-
+                         min_threshold_wt)
+        # keep reference to networkX graph
         self.networkX = networkX_graph
