@@ -847,7 +847,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     # float - for consistency - requires higher accuracy for x, y work
     node_data = np.full((g_copy.number_of_nodes(), 4), np.nan, dtype=np.float64)
     # float - allows for nan and inf - float32 should be ample...
-    edge_data = np.full((total_out_degrees, 7), np.nan, dtype=np.float32)
+    edge_data = np.full((total_out_degrees, 8), np.nan, dtype=np.float32)
     # nodes have a one-to-many mapping to edges
     node_edge_map = Dict.empty(
         key_type=types.int64,
@@ -971,6 +971,11 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             x_1, y_1 = line_geom.coords[-2][:2]
             x_2, y_2 = line_geom.coords[-1][:2]
             edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+            # EDGE MAP INDEX POSITION 7 - ghosted
+            if 'ghosted' in edge:
+                edge_data[edge_idx][7] = d['ghosted']
+            else:
+                edge_data[edge_idx][7] = False
             # increment the edge_idx
             edge_idx += 1
         # add the node to the node_edge_map
@@ -1042,7 +1047,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     logger.info('Unpacking edge data.')
     for edge in tqdm(edge_data, disable=checks.quiet_mode):
-        start, end, length, angle_sum, imp_factor, start_bearing, end_bearing = edge
+        start, end, length, angle_sum, imp_factor, start_bearing, end_bearing, ghosted = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]
         # networkX will silently add new edges / data over existing edges
@@ -1052,7 +1057,8 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                         angle_sum=angle_sum,
                         imp_factor=imp_factor,
                         start_bearing=start_bearing,
-                        end_bearing=end_bearing)
+                        end_bearing=end_bearing,
+                        ghosted=bool(ghosted))
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')

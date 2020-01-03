@@ -155,7 +155,7 @@ def test_decomposed_local_centrality():
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
-    measure_keys = ('harmonic_node', 'betweenness_node')
+    measure_keys = ('node_harmonic', 'node_betweenness')
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
@@ -193,60 +193,6 @@ def test_decomposed_local_centrality():
             assert np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
 
 
-def test_local_centrality_time():
-    '''
-    originally based on harmonic_node and betweenness_node:
-    OLD VERSION with trim maps:
-    Timing: 10.490865555 for 10000 iterations
-    NEW VERSION with numba typed list - faster and removes arcane full vs. trim maps workflow
-    8.242256040000001 for 10000 iterations
-    VERSION with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
-    8.882408618 for 10000 iterations
-
-    float64 - 17.881911942000002
-    float32 - 13.612861239
-    segments of unreachable code add to timing regardless...
-    possibly because of high number of iters vs. function prep and teardown...?
-    '''
-    # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    # needs a large enough beta so that distance thresholds aren't encountered
-    distances = np.array([np.inf])
-    betas = networks.beta_from_distance(distances)
-
-    # setup timing wrapper
-    def wrapper_func():
-        '''
-        node density invokes aggregative workflow
-        betweenness node invokes betweenness workflow
-        segment density invokes segments workflow
-        '''
-        return centrality.local_centrality(node_data,
-                                           edge_data,
-                                           node_edge_map,
-                                           edge_ghost_map,
-                                           distances,
-                                           betas,
-                                           ('node_density',  # 7.16s
-                                            'betweenness_node',  # 8.08s - adds around 1s
-                                            'segment_density',  # 11.2s - adds around 3s
-                                            #'betweenness_segment'
-                                            ),
-                                           angular=False,
-                                           suppress_progress=True)
-
-    # prime the function
-    wrapper_func()
-    iters = 10000
-    # time and report
-    func_time = timeit.timeit(wrapper_func, number=iters)
-    print(f'Timing: {func_time} for {iters} iterations')
-    if 'GITHUB_ACTIONS' not in os.environ:
-        assert func_time < 20
-
-
 def test_local_centrality():
     '''
     Also tested indirectly via test_networks.test_compute_centrality
@@ -266,16 +212,16 @@ def test_local_centrality():
     # set the keys - add shuffling to be sure various orders work
     measure_keys = [
         'node_density',
-        'farness',
-        'cycles',
-        'harmonic_node',
-        'beta_node',
+        'node_farness',
+        'node_cycles',
+        'node_harmonic',
+        'node_beta',
         'segment_density',
-        'harmonic_segment',
-        'beta_segment',
-        'betweenness_node',
-        'betweenness_node_wt',
-        'betweenness_segment'
+        'segment_harmonic',
+        'segment_beta',
+        'node_betweenness',
+        'node_betweenness_beta',
+        'segment_betweenness'
     ]
     np.random.shuffle(measure_keys)  # in place
     measure_keys = tuple(measure_keys)
@@ -289,24 +235,24 @@ def test_local_centrality():
                                                 measure_keys,
                                                 angular=False)
     node_density = measures_data[measure_keys.index('node_density')]
-    farness = measures_data[measure_keys.index('farness')]
-    cycles = measures_data[measure_keys.index('cycles')]
-    harmonic_node = measures_data[measure_keys.index('harmonic_node')]
-    beta_node = measures_data[measure_keys.index('beta_node')]
+    node_farness = measures_data[measure_keys.index('node_farness')]
+    node_cycles = measures_data[measure_keys.index('node_cycles')]
+    node_harmonic = measures_data[measure_keys.index('node_harmonic')]
+    node_beta = measures_data[measure_keys.index('node_beta')]
     segment_density = measures_data[measure_keys.index('segment_density')]
-    harmonic_segment = measures_data[measure_keys.index('harmonic_segment')]
-    beta_segment = measures_data[measure_keys.index('beta_segment')]
-    betweenness_node = measures_data[measure_keys.index('betweenness_node')]
-    betweenness_node_wt = measures_data[measure_keys.index('betweenness_node_wt')]
-    betweenness_segment = measures_data[measure_keys.index('betweenness_segment')]
+    segment_harmonic = measures_data[measure_keys.index('segment_harmonic')]
+    segment_beta = measures_data[measure_keys.index('segment_beta')]
+    node_betweenness = measures_data[measure_keys.index('node_betweenness')]
+    node_betweenness_beta = measures_data[measure_keys.index('node_betweenness_beta')]
+    segment_betweenness = measures_data[measure_keys.index('segment_betweenness')]
     # post compute improved
-    improved_closness = node_density / farness / node_density
+    improved_closness = node_density / node_farness / node_density
     # angular keys
     measure_keys_angular = [
-        'harmonic_node_angle',
-        'harmonic_segment_hybrid',
-        'betweenness_node_angle',
-        'betweenness_segment_hybrid'
+        'node_harmonic_angular',
+        'segment_harmonic_hybrid',
+        'node_betweenness_angular',
+        'segment_betweeness_hybrid'
     ]
     np.random.shuffle(measure_keys_angular)  # in place
     measure_keys_angular = tuple(measure_keys_angular)
@@ -319,10 +265,10 @@ def test_local_centrality():
                                                         betas,
                                                         measure_keys_angular,
                                                         angular=True)
-    harmonic_node_angle = measures_data_angular[measure_keys_angular.index('harmonic_node_angle')]
-    harmonic_segment_hybrid = measures_data_angular[measure_keys_angular.index('harmonic_segment_hybrid')]
-    betweenness_node_angle = measures_data_angular[measure_keys_angular.index('betweenness_node_angle')]
-    betweenness_segment_hybrid = measures_data_angular[measure_keys_angular.index('betweenness_segment_hybrid')]
+    node_harmonic_angular = measures_data_angular[measure_keys_angular.index('node_harmonic_angular')]
+    segment_harmonic_hybrid = measures_data_angular[measure_keys_angular.index('segment_harmonic_hybrid')]
+    node_betweenness_angular = measures_data_angular[measure_keys_angular.index('node_betweenness_angular')]
+    segment_betweeness_hybrid = measures_data_angular[measure_keys_angular.index('segment_betweeness_hybrid')]
 
     # test node density
     # node density count doesn't include self-node
@@ -335,7 +281,7 @@ def test_local_centrality():
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance='length')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.allclose(nx_harm_cl, harmonic_node[4])
+    assert np.allclose(nx_harm_cl, node_harmonic[4])
 
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
@@ -345,7 +291,7 @@ def test_local_centrality():
     # maybe two equidistant routes being divided through 2
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    assert np.array_equal(nx_betw[:52], betweenness_node[4][:52])
+    assert np.array_equal(nx_betw[:52], node_betweenness[4][:52])
 
     # test against various distances
     for d_idx in range(len(distances)):
@@ -416,18 +362,18 @@ def test_local_centrality():
         # check betweenness
         print(distances[d_idx])
         assert np.allclose(node_density[d_idx], dens)
-        assert np.allclose(farness[d_idx], far_dist)
-        assert np.allclose(cycles[d_idx], cyc)
-        assert np.allclose(harmonic_node[d_idx], harmonic_cl)
-        assert np.allclose(beta_node[d_idx], grav)
+        assert np.allclose(node_farness[d_idx], far_dist)
+        assert np.allclose(node_cycles[d_idx], cyc)
+        assert np.allclose(node_harmonic[d_idx], harmonic_cl)
+        assert np.allclose(node_beta[d_idx], grav)
         assert np.allclose(improved_closness[d_idx], improved_cl, equal_nan=True)
-        assert np.allclose(betweenness_node[d_idx], betw)
-        assert np.allclose(betweenness_node_wt[d_idx], betw_wt)
+        assert np.allclose(node_betweenness[d_idx], betw)
+        assert np.allclose(node_betweenness_beta[d_idx], betw_wt)
 
-        #TODO: how to test segment_density, harmonic_segment, beta_segment, betweenness_segment
+        #TODO: how to test segment_density, harmonic_segment, segment_beta, segment_betweenness
 
     # check that problematic keys are caught
-    for angular, k in zip([False, True], ['harmonic_node', 'harmonic_node_angle']):
+    for angular, k in zip([False, True], ['node_harmonic', 'node_harmonic_angular']):
         # catch typos
         with pytest.raises(ValueError):
             centrality.local_centrality(node_data,
@@ -456,5 +402,61 @@ def test_local_centrality():
                                         edge_ghost_map,
                                         distances,
                                         betas,
-                                        ('node_density', 'harmonic_node_angle'),
+                                        ('node_density', 'node_harmonic_angular'),
                                         angular=False)
+
+
+def test_local_centrality_time():
+    '''
+    originally based on node_harmonic and node_betweenness:
+    OLD VERSION with trim maps:
+    Timing: 10.490865555 for 10000 iterations
+    NEW VERSION with numba typed list - faster and removes arcane full vs. trim maps workflow
+    8.242256040000001 for 10000 iterations
+    VERSION with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
+    8.882408618 for 10000 iterations
+
+    float64 - 17.881911942000002
+    float32 - 13.612861239
+    segments of unreachable code add to timing regardless...
+    possibly because of high number of iters vs. function prep and teardown...?
+
+    14.976446869
+    '''
+    # load the test graph
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    # needs a large enough beta so that distance thresholds aren't encountered
+    distances = np.array([np.inf])
+    betas = networks.beta_from_distance(distances)
+
+    # setup timing wrapper
+    def wrapper_func():
+        '''
+        node density invokes aggregative workflow
+        betweenness node invokes betweenness workflow
+        segment density invokes segments workflow
+        '''
+        return centrality.local_centrality(node_data,
+                                           edge_data,
+                                           node_edge_map,
+                                           edge_ghost_map,
+                                           distances,
+                                           betas,
+                                           ('node_density',  # 7.16s
+                                            'node_betweenness',  # 8.08s - adds around 1s
+                                            'segment_density',  # 11.2s - adds around 3s
+                                            'segment_betweenness'
+                                            ),
+                                           angular=False,
+                                           suppress_progress=True)
+
+    # prime the function
+    wrapper_func()
+    iters = 10000
+    # time and report
+    func_time = timeit.timeit(wrapper_func, number=iters)
+    print(f'Timing: {func_time} for {iters} iterations')
+    if 'GITHUB_ACTIONS' not in os.environ:
+        assert func_time < 20

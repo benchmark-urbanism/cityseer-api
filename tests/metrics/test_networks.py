@@ -274,7 +274,7 @@ def test_metrics_to_dict():
     dict_check(metrics_dict, N)
 
     # check with centrality metrics
-    N.compute_centrality(measures=['harmonic_node'])
+    N.compute_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
@@ -317,7 +317,7 @@ def test_to_networkX():
 
     # test with metrics
     N = networks.Network_Layer_From_nX(G, distances=[500])
-    N.compute_centrality(measures=['harmonic_node'])
+    N.compute_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     G_round_trip = N.to_networkX()
     for n, d in G.nodes(data=True):
@@ -364,12 +364,12 @@ def test_compute_centrality():
         assert np.array_equal(N.metrics['centrality']['node_density'][d_key], measures_data[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
     measures = ['node_density',
-                'farness',
-                'cycles',
-                'harmonic_node',
+                'node_farness',
+                'node_cycles',
+                'node_harmonic',
                 'segment_density',
-                'betweenness_node',
-                'betweenness_segment']
+                'node_betweenness',
+                'segment_betweenness']
     np.random.shuffle(measures)  # in place
     # not necessary to do all labels, first few should do
     for min_idx in range(3):
@@ -390,20 +390,20 @@ def test_compute_centrality():
                                       measures_data[m_idx][d_idx])
     # check that angular gets passed through
     N_ang = networks.Network_Layer_From_nX(G, distances=[2000])
-    N_ang.compute_centrality(measures=['harmonic_node_angle'], angular=True)
+    N_ang.compute_centrality(measures=['node_harmonic_angular'], angular=True)
     N = networks.Network_Layer_From_nX(G, distances=[2000])
-    N.compute_centrality(measures=['harmonic_node'], angular=False)
-    assert not np.array_equal(N_ang.metrics['centrality']['harmonic_node_angle'][2000],
-                              N.metrics['centrality']['harmonic_node'][2000])
-    assert not np.array_equal(N_ang.metrics['centrality']['harmonic_node_angle'][2000],
-                              N.metrics['centrality']['harmonic_node'][2000])
+    N.compute_centrality(measures=['node_harmonic'], angular=False)
+    assert not np.array_equal(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
+                              N.metrics['centrality']['node_harmonic'][2000])
+    assert not np.array_equal(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
+                              N.metrics['centrality']['node_harmonic'][2000])
     # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
         N.compute_centrality(measures=['spelling_typo'])
     with pytest.raises(ValueError):
         N.compute_centrality(measures=['node_density', 'node_density'])
     with pytest.raises(ValueError):
-        N.compute_centrality(measures=['harmonic_angle', 'harmonic_node_angle'])
+        N.compute_centrality(measures=['harmonic_angle', 'node_harmonic_angular'])
 
 
 def network_generator():

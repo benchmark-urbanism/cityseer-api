@@ -34,6 +34,7 @@ def shortest_path_tree(
     4 - impedance factor
     5 - in bearing
     6 - out bearing
+    7 - ghosted
 
     RETURNS A SHORTEST PATH TREE MAP:
     0 - processed nodes
@@ -94,7 +95,7 @@ def shortest_path_tree(
         # instead of while True, use length of edge map to catch last node's termination
         for edge_idx in edges:
             # get the edge's properties
-            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
+            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear, seg_ghosted = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
@@ -103,7 +104,7 @@ def shortest_path_tree(
             # DO ANGULAR BEFORE CYCLES, AND CYCLES BEFORE DISTANCE THRESHOLD
             # it is necessary to check for angular sidestepping if using angular impedances on a dual graph
             # only do this for angular graphs, and if the nb node has already been discovered
-            if angular and not np.isnan(tree_preds[nb_nd_idx]):
+            if angular and active_nd_idx != src_idx and not np.isnan(tree_preds[nb_nd_idx]):
                 prior_match = False
                 # get the active node's predecessor
                 pred_nd_idx = int(tree_preds[active_nd_idx])
@@ -205,15 +206,10 @@ def local_centrality(node_data: np.ndarray,
     4 - impedance factor
     5 - in bearing
     6 - out bearing
+    7 - ghosted
     '''
     checks.check_distances_and_betas(distances, betas)
     checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
-    # establish variables
-    n = len(node_data)
-    d_n = len(distances)
-    k_n = len(measure_keys)
-    global_max_dist = np.nanmax(distances)
-    nodes_live = node_data[:, 2]
     # string comparisons will substantially slow down nested loops
     # hence the out-of-loop strategy to map strings to indices corresponding to respective measures
     # keep name and index relationships explicit
@@ -229,36 +225,36 @@ def local_centrality(node_data: np.ndarray,
             if measure_name == 'node_density':
                 agg_keys.append(0)
                 agg_targets.append(m_idx)
-            elif measure_name == 'farness':
+            elif measure_name == 'node_farness':
                 agg_keys.append(1)
                 agg_targets.append(m_idx)
-            elif measure_name == 'cycles':
+            elif measure_name == 'node_cycles':
                 agg_keys.append(2)
                 agg_targets.append(m_idx)
-            elif measure_name == 'harmonic_node':
+            elif measure_name == 'node_harmonic':
                 agg_keys.append(3)
                 agg_targets.append(m_idx)
-            elif measure_name == 'beta_node':
+            elif measure_name == 'node_beta':
                 agg_keys.append(4)
                 agg_targets.append(m_idx)
             # segment keys (betweenness segments can be built during betweenness iters)
             elif measure_name == 'segment_density':
                 seg_keys.append(0)
                 seg_targets.append(m_idx)
-            elif measure_name == 'harmonic_segment':
+            elif measure_name == 'segment_harmonic':
                 seg_keys.append(1)
                 seg_targets.append(m_idx)
-            elif measure_name == 'beta_segment':
+            elif measure_name == 'segment_beta':
                 seg_keys.append(2)
                 seg_targets.append(m_idx)
             # betweenness keys
-            elif measure_name == 'betweenness_node':
+            elif measure_name == 'node_betweenness':
                 betw_keys.append(0)
                 betw_targets.append(m_idx)
-            elif measure_name == 'betweenness_node_wt':
+            elif measure_name == 'node_betweenness_beta':
                 betw_keys.append(1)
                 betw_targets.append(m_idx)
-            elif measure_name == 'betweenness_segment':
+            elif measure_name == 'segment_betweenness':
                 betw_keys.append(2)
                 betw_targets.append(m_idx)
             else:
@@ -269,18 +265,18 @@ def local_centrality(node_data: np.ndarray,
                 ''')
         else:
             # aggregating keys
-            if measure_name == 'harmonic_node_angle':
+            if measure_name == 'node_harmonic_angular':
                 agg_keys.append(5)
                 agg_targets.append(m_idx)
             # segment keys
-            elif measure_name == 'harmonic_segment_hybrid':
+            elif measure_name == 'segment_harmonic_hybrid':
                 seg_keys.append(3)
                 seg_targets.append(m_idx)
             # betweenness keys
-            elif measure_name == 'betweenness_node_angle':
+            elif measure_name == 'node_betweenness_angular':
                 betw_keys.append(3)
                 betw_targets.append(m_idx)
-            elif measure_name == 'betweenness_segment_hybrid':
+            elif measure_name == 'segment_betweeness_hybrid':
                 betw_keys.append(4)
                 betw_targets.append(m_idx)
             else:
@@ -293,10 +289,18 @@ def local_centrality(node_data: np.ndarray,
             len(seg_keys) != len(set(seg_keys)) or \
             len(betw_keys) != len(set(betw_keys)):
         raise ValueError('Please remove duplicate measure key.')
-    # prepare data array
+    # prepare data arrays
+    # establish variables
+    n = len(node_data)
+    d_n = len(distances)
+    k_n = len(measure_keys)
+    global_max_dist = np.nanmax(distances)
+    nodes_live = node_data[:, 2]
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
+    # betweenness data is stored to edges then copied to affected ghost nodes later
+    measures_edges = np.full((k_n, d_n, len(edge_ghost_map)), 0.0, dtype=np.float32)
     # setup progress bar params
     target_chunks = int(n / 5000)
     step_size = checks.progress_stepsize(n, target_chunks)
@@ -341,7 +345,7 @@ def local_centrality(node_data: np.ndarray,
             # visit all processed edges
             for edge_idx in np.where(tree_edges)[0]:
                 # unpack
-                seg_in_nd, seg_out_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
+                seg_in_nd, seg_out_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear, seg_ghosted = edge_data[edge_idx]
                 in_nd_idx = int(seg_in_nd)
                 out_nd_idx = int(seg_out_nd)
                 in_imp = tree_imps[in_nd_idx]
@@ -525,10 +529,8 @@ def local_centrality(node_data: np.ndarray,
             agg_nodes = (0 in betw_keys or 1 in betw_keys or 3 in betw_keys)
             agg_segs = (2 in betw_keys or 4 in betw_keys)
             # segment versions only agg first and last segments - intervening bits are processed from other to nodes
-            origin_seg = edge_data[int(tree_origin_seg[to_idx])]
-            o_seg_len = origin_seg[2]
-            last_seg = edge_data[int(tree_last_seg[to_idx])]
-            l_seg_len = last_seg[2]
+            o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
+            l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
             min_seg_span = tree_dists[to_idx] - o_seg_len - l_seg_len
             o_1 = min_seg_span
             o_2 = min_seg_span + o_seg_len
@@ -543,7 +545,6 @@ def local_centrality(node_data: np.ndarray,
                     break
                 # reference the preceeding edge id
                 pred_edge_idx = int(tree_last_seg[inter_idx])
-                ghosted_nodes = edge_ghost_map[pred_edge_idx]  # this is expensive
                 # iterate the distance thresholds - from large to small for threshold snipping
                 for d_idx in range(len(distances) - 1, -1, -1):
                     dist_cutoff = distances[d_idx]
@@ -559,11 +560,9 @@ def local_centrality(node_data: np.ndarray,
                             # simple count of nodes for betweenness
                             if betw_key == 0 and agg_nodes:
                                 measures_data[m_idx, d_idx, inter_idx] += 1
-                                # don't aggregate to ghost nodes on end-most section
                                 # first-most is skipped because of break at src_idx above
                                 if lag_idx != to_idx:
-                                    for g_idx in ghosted_nodes:
-                                        measures_data[m_idx, d_idx, g_idx] += 1
+                                    measures_edges[m_idx, d_idx, pred_edge_idx] += 1
                             # 1 - beta weighted betweenness
                             # distance is based on distance between from and to vertices
                             # thus potential spatial impedance via between vertex
@@ -571,14 +570,12 @@ def local_centrality(node_data: np.ndarray,
                                 b_w = np.exp(beta * to_dist) * 1
                                 measures_data[m_idx, d_idx, inter_idx] += b_w
                                 if lag_idx != to_idx:
-                                    for g_idx in ghosted_nodes:
-                                        measures_data[m_idx, d_idx, g_idx] += b_w
+                                    measures_edges[m_idx, d_idx, pred_edge_idx] += b_w
                             # 3 - betweenness node count - angular heuristic version
                             elif betw_key == 3 and agg_nodes:
                                 measures_data[m_idx, d_idx, inter_idx] += 1
                                 if lag_idx != to_idx:
-                                    for g_idx in ghosted_nodes:
-                                       measures_data[m_idx, d_idx, g_idx] += 1
+                                    measures_edges[m_idx, d_idx, pred_edge_idx] += 1
                     if agg_segs and min_seg_span <= dist_cutoff:
                         # prune if necessary
                         if o_2 > dist_cutoff:
@@ -599,8 +596,7 @@ def local_centrality(node_data: np.ndarray,
                                            np.exp(beta * l_1)) / beta
                                 measures_data[m_idx, d_idx, inter_idx] += auc
                                 if lag_idx != to_idx:
-                                    for g_idx in ghosted_nodes:
-                                        measures_data[m_idx, d_idx, g_idx] += auc
+                                    measures_edges[m_idx, d_idx, pred_edge_idx] += auc
                             # 4 - betweeenness segment hybrid version
                             elif betw_key == 4:
                                 bt_ang = 1 + (tree_imps[to_idx] / 180)
@@ -608,10 +604,19 @@ def local_centrality(node_data: np.ndarray,
                                      (np.log(l_2) - np.log(l_1))) / bt_ang
                                 measures_data[m_idx, d_idx, inter_idx] += auc_a
                                 if lag_idx != to_idx:
-                                    for g_idx in ghosted_nodes:
-                                        measures_data[m_idx, d_idx, g_idx] += auc_a
+                                    measures_edges[m_idx, d_idx, pred_edge_idx] += auc_a
                 # follow the chain
                 lag_idx = inter_idx
                 inter_idx = int(tree_preds[inter_idx])
+
+    # copy betweenness data from edges to ghost nodes
+    for betw_idx, betw_key in enumerate(betw_keys):
+        m_idx = betw_targets[betw_idx]
+        for d_idx in range(len(distances)):
+            for e_idx in range(len(edge_data)):
+                if e_idx in edge_ghost_map:
+                    v = measures_edges[m_idx, d_idx, e_idx]
+                    for ghost_nd_idx in edge_ghost_map[e_idx]:
+                        measures_data[m_idx, d_idx, ghost_nd_idx] = v
 
     return measures_data

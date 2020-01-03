@@ -264,24 +264,24 @@ class Network_Layer:
             heuristic = 'shortest'
             options = (
                 'node_density',
-                'farness',
-                'cycles',
-                'harmonic_node',
-                'beta_node',
+                'node_farness',
+                'node_cycles',
+                'node_harmonic',
+                'node_beta',
                 'segment_density',
-                'harmonic_segment',
-                'beta_segment',
-                'betweenness_node',
-                'betweenness_node_wt',
-                'betweenness_segment'
+                'segment_harmonic',
+                'segment_beta',
+                'node_betweenness',
+                'node_betweenness_beta',
+                'segment_betweenness'
             )
         else:
             heuristic = 'simplest'
             options = (
-                'harmonic_node_angle',
-                'harmonic_segment_hybrid',
-                'betweenness_node_angle',
-                'betweeness_segment_hybrid'
+                'node_harmonic_angular',
+                'segment_harmonic_hybrid',
+                'node_betweenness_angular',
+                'segment_betweeness_hybrid'
             )
         if measures is None:
             raise ValueError(f'Please select at least one measure to compute.')

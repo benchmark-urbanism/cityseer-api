@@ -156,15 +156,9 @@ def check_network_maps(node_data: np.ndarray,
     if len(edge_data) == 0:
         raise ValueError('Zero length edge map')
     if not node_data.ndim == 2 or not node_data.shape[1] == 4:
-        raise ValueError('''
-            The node map must have a dimensionality of Nx4:
-            Columns must correspond to x, y, live, and ghosted.
-            ''')
-    if not edge_data.ndim == 2 or not edge_data.shape[1] == 7:
-        raise ValueError('''
-            The edge map must have a dimensionality of Nx7:
-            Columns must correspond to of start, end, length, angle_sum, imp_factor, entry bearing, and exit bearing.
-            ''')
+        raise ValueError('The node map must have a dimensionality of Nx4.')
+    if not edge_data.ndim == 2 or not edge_data.shape[1] == 8:
+        raise ValueError('The edge map must have a dimensionality of Nx7')
     # check sequential and reciprocal node to edge map indices
     edge_counts = np.full(len(edge_data), 0)
     for n_idx in range(len(node_data)):
