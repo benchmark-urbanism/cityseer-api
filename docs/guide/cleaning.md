@@ -1,12 +1,11 @@
 Graph cleaning
 ==============
 
-Certain sources of street network data offer high quality representations that work well for network analysis algorithms. The Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) dataset is a great example of such a dataset:
-- The network has been simplified to its essential structure: i.e. unnecessarily complex representations of intersections; on-ramps; split roadways; etc. have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. Network representations focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)) introduce an unnecessary level of complexity, serving to hinder rather than help network analysis algorithms: i.e. the extraneous detail can introduce unintuitive or irregular outcomes for shortest-path calculations;
-- The topology of the network is kept distinct from the geometry of the streets. Oftentimes, as can be seen with [Open Street Map](https://www.openstreetmap.org), additional nodes are added to streets for the purpose of representing geometric twists and turns along a roadway. These extra nodes can lead to distortions in the derivation of network centrality measures, because uneven intensities of node distribution can amplify or diminish the effect of calculations;
-- Bonus: It is open and free to use!
+Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
+- The network has been simplified to its essential structure: i.e. unnecessarily complex representations of intersections; on-ramps; split roadways; etc. have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. This is in contrast to network representations focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)): these introduce unnecessary complexity serving to hinder rather than help shortest-path algorithms.
+- The topology of the network is kept distinct from the geometry of the streets. Oftentimes, as can be seen with [Open Street Map](https://www.openstreetmap.org), additional nodes are added to streets for the purpose of representing geometric twists and turns along a roadway. These additional nodes cause topological distortions that impact network centrality measures.
 
-When a high-quality source is available, it may be best not to attempt additional cleanup unless there is a particular reason to do so. On the other-hand, many indispensable sources of network information, particularly Open Street Map data, can be messy (for the purposes of network analysis). This section describes how such sources can be cleaned and prepared for subsequent analysis.
+When a high-quality source is available, it may be best not to attempt additional cleanup unless there is a particular reason to do so. On the other-hand, many indispensable sources of network information, particularly Open Street Map data, can be messy for the purposes of network analysis. This section describes how such sources can be cleaned and prepared for subsequent analysis.
 
 
 Downloading data
@@ -112,18 +111,22 @@ At this point it may initially appear that the roadway geometries have now gone 
 Refining the network
 --------------------
 
-With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts, and reduces distortions in network centrality measures due to varied intensities of nodes. It is also beneficial in the context of the local distance thresholds, which may intersect longer street segments.
+With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts.
  
 The final step consolidates adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
 ```python
+# decomposition of the network will even out the intensity of nodes
+# set the decompose_max flag based on the level of granularity required
+G = graphs.nX_decompose(G, decompose_max=50)
 # simplify split roadways
 # some experimentation may be required to find the optimal buffer distance
-# setting it too large will deteriorate the quality of the network
+# setting it too large, will deteriorate the quality of the network
 G = graphs.nX_consolidate_parallel(G, buffer_dist=15)
+
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
 <ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
 
-The graph is now ready for analysis. Whereas by no means perfect, it is a substantial improvement (for the purpose of network analysis) against the original raw OSM data!
+The graph is now ready for analysis with the `cityseer` package's methods.
