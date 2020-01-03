@@ -25,7 +25,6 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
                            primal_colour: (tuple, list, np.ndarray) = None,
                            dual_colour: (tuple, list, np.ndarray) = None,
                            **kwargs):
-
     plt.figure(**kwargs)
 
     alpha = 0.75
@@ -94,7 +93,8 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
         plt.show()
 
 
-def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None, **kwargs):
+def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None,
+            **kwargs):
     return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour, **kwargs)
 
 
@@ -104,7 +104,6 @@ def plot_assignment(Network_Layer,
                     node_colour: (list, tuple, np.ndarray) = None,
                     node_labels: bool = False,
                     data_labels: (list, tuple, np.ndarray) = None):
-
     # extract NetworkX
     Graph = Network_Layer.to_networkX()
 

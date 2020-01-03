@@ -92,7 +92,7 @@ def test_mock_numerical_data():
 
 def test_mock_species_data():
     for counts, probs in mock.mock_species_data():
-        assert np.array_equal(counts / counts.sum(), probs)
+        assert np.allclose(counts / counts.sum(), probs)
         assert round(probs.sum(), 8) == 1
 
 

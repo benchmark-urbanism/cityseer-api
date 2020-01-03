@@ -25,16 +25,16 @@ def test_shortest_path_tree():
     # prepare primal graph
     G_primal = mock.mock_graph()
     G_primal = graphs.nX_simple_geoms(G_primal)
-    node_uids_p, node_data_p, edge_data_p, node_edge_map_p, edge_ghost_map_p = graphs.graph_maps_from_nX(G_primal)
+    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(G_primal)
     import numba
     print(numba.typeof(node_edge_map_p))
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p, edge_ghost_map_p)
+    G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
     G_dual = mock.mock_graph()
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d, edge_ghost_map_d = graphs.graph_maps_from_nX(G_dual)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(G_dual)
     assert len(node_uids_d) > len(node_uids_p)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000, np.inf]:
@@ -159,11 +159,10 @@ def test_decomposed_local_centrality():
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     measures_data = centrality.local_centrality(node_data,
                                                 edge_data,
                                                 node_edge_map,
-                                                edge_ghost_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -172,12 +171,11 @@ def test_decomposed_local_centrality():
     # from cityseer.util import plot
     # plot.plot_nX(G_decomposed, labels=True)
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G_decomposed)
-    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_decomposed)
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
     measures_data_decomposed = centrality.local_centrality(node_data,
                                                            edge_data,
                                                            node_edge_map,
-                                                           edge_ghost_map,
                                                            distances,
                                                            betas,
                                                            measure_keys,
@@ -204,8 +202,8 @@ def test_local_centrality():
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map, edge_ghost_map)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
@@ -229,7 +227,6 @@ def test_local_centrality():
     measures_data = centrality.local_centrality(node_data,
                                                 edge_data,
                                                 node_edge_map,
-                                                edge_ghost_map,
                                                 distances,
                                                 betas,
                                                 measure_keys,
@@ -260,7 +257,6 @@ def test_local_centrality():
     measures_data_angular = centrality.local_centrality(node_data,
                                                         edge_data,
                                                         node_edge_map,
-                                                        edge_ghost_map,
                                                         distances,
                                                         betas,
                                                         measure_keys_angular,
@@ -291,7 +287,7 @@ def test_local_centrality():
     # maybe two equidistant routes being divided through 2
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    assert np.array_equal(nx_betw[:52], node_betweenness[4][:52])
+    assert np.allclose(nx_betw[:52], node_betweenness[4][:52])
 
     # test against various distances
     for d_idx in range(len(distances)):
@@ -311,11 +307,11 @@ def test_local_centrality():
         for src_idx in range(len(G)):
             # get shortest path maps
             tree_map, tree_edges = centrality.shortest_path_tree(node_data,
-                                                      edge_data,
-                                                      node_edge_map,
-                                                      src_idx,
-                                                      dist_cutoff,
-                                                      angular=False)
+                                                                 edge_data,
+                                                                 node_edge_map,
+                                                                 src_idx,
+                                                                 dist_cutoff,
+                                                                 angular=False)
             tree_preds = tree_map[:, 1]
             tree_dists = tree_map[:, 2]
             tree_imps = tree_map[:, 3]
@@ -370,7 +366,7 @@ def test_local_centrality():
         assert np.allclose(node_betweenness[d_idx], betw)
         assert np.allclose(node_betweenness_beta[d_idx], betw_wt)
 
-        #TODO: how to test segment_density, harmonic_segment, segment_beta, segment_betweenness
+        # TODO: how to test segment_density, harmonic_segment, segment_beta, segment_betweenness
 
     # check that problematic keys are caught
     for angular, k in zip([False, True], ['node_harmonic', 'node_harmonic_angular']):
@@ -379,7 +375,6 @@ def test_local_centrality():
             centrality.local_centrality(node_data,
                                         edge_data,
                                         node_edge_map,
-                                        edge_ghost_map,
                                         distances,
                                         betas,
                                         ('typo_key',),
@@ -389,7 +384,6 @@ def test_local_centrality():
             centrality.local_centrality(node_data,
                                         edge_data,
                                         node_edge_map,
-                                        edge_ghost_map,
                                         distances,
                                         betas,
                                         (k, k),
@@ -399,7 +393,6 @@ def test_local_centrality():
             centrality.local_centrality(node_data,
                                         edge_data,
                                         node_edge_map,
-                                        edge_ghost_map,
                                         distances,
                                         betas,
                                         ('node_density', 'node_harmonic_angular'),
@@ -421,12 +414,12 @@ def test_local_centrality_time():
     segments of unreachable code add to timing regardless...
     possibly because of high number of iters vs. function prep and teardown...?
 
-    14.976446869
+    14.4 -> 14.293403884 for simpler ghost node workflow
     '''
     # load the test graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
@@ -441,7 +434,6 @@ def test_local_centrality_time():
         return centrality.local_centrality(node_data,
                                            edge_data,
                                            node_edge_map,
-                                           edge_ghost_map,
                                            distances,
                                            betas,
                                            ('node_density',  # 7.16s

@@ -6,6 +6,7 @@ from numba import njit, int64
 
 from cityseer.algos import checks
 
+
 # don't use 'nnan' fastmath flag
 @njit(cache=True, fastmath={'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'})
 def shortest_path_tree(
@@ -34,7 +35,6 @@ def shortest_path_tree(
     4 - impedance factor
     5 - in bearing
     6 - out bearing
-    7 - ghosted
 
     RETURNS A SHORTEST PATH TREE MAP:
     0 - processed nodes
@@ -95,7 +95,7 @@ def shortest_path_tree(
         # instead of while True, use length of edge map to catch last node's termination
         for edge_idx in edges:
             # get the edge's properties
-            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear, seg_ghosted = edge_data[edge_idx]
+            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
@@ -185,7 +185,6 @@ def _find_edge_idx(node_edge_map: Dict, edge_data: np.ndarray, start_nd_idx: int
 def local_centrality(node_data: np.ndarray,
                      edge_data: np.ndarray,
                      node_edge_map: Dict,
-                     edge_ghost_map: Dict,
                      distances: np.ndarray,
                      betas: np.ndarray,
                      measure_keys: tuple,
@@ -206,10 +205,9 @@ def local_centrality(node_data: np.ndarray,
     4 - impedance factor
     5 - in bearing
     6 - out bearing
-    7 - ghosted
     '''
     checks.check_distances_and_betas(distances, betas)
-    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
     # string comparisons will substantially slow down nested loops
     # hence the out-of-loop strategy to map strings to indices corresponding to respective measures
     # keep name and index relationships explicit
@@ -289,6 +287,9 @@ def local_centrality(node_data: np.ndarray,
             len(seg_keys) != len(set(seg_keys)) or \
             len(betw_keys) != len(set(betw_keys)):
         raise ValueError('Please remove duplicate measure key.')
+    # flags
+    betw_nodes = (0 in betw_keys or 1 in betw_keys or 3 in betw_keys)
+    betw_segs = (2 in betw_keys or 4 in betw_keys)
     # prepare data arrays
     # establish variables
     n = len(node_data)
@@ -299,17 +300,12 @@ def local_centrality(node_data: np.ndarray,
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
-    # betweenness data is stored to edges then copied to affected ghost nodes later
-    measures_edges = np.full((k_n, d_n, len(edge_ghost_map)), 0.0, dtype=np.float32)
-    # setup progress bar params
-    target_chunks = int(n / 5000)
-    step_size = checks.progress_stepsize(n, target_chunks)
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if not suppress_progress:
-            checks.progress_bar(src_idx, n, step_size)
+            checks.progress_bar(src_idx, n, 2000)
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
@@ -330,8 +326,8 @@ def local_centrality(node_data: np.ndarray,
                                                   edge_data,
                                                   node_edge_map,
                                                   src_idx,
-                                                  global_max_dist,
-                                                  angular)
+                                                  max_dist=global_max_dist,
+                                                  angular=angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_dists = tree_map[:, 2]
@@ -345,7 +341,7 @@ def local_centrality(node_data: np.ndarray,
             # visit all processed edges
             for edge_idx in np.where(tree_edges)[0]:
                 # unpack
-                seg_in_nd, seg_out_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear, seg_ghosted = edge_data[edge_idx]
+                seg_in_nd, seg_out_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
                 in_nd_idx = int(seg_in_nd)
                 out_nd_idx = int(seg_out_nd)
                 in_imp = tree_imps[in_nd_idx]
@@ -478,6 +474,10 @@ def local_centrality(node_data: np.ndarray,
             # skip self node
             if to_idx == src_idx:
                 continue
+            # skip ghosted nodes
+            if node_data[to_idx, 3]:
+                continue
+            # unpack impedance and distance for to index
             to_imp = tree_imps[to_idx]
             to_dist = tree_dists[to_idx]
             # do not proceed if no route available
@@ -517,106 +517,94 @@ def local_centrality(node_data: np.ndarray,
                             a = 1 + (to_imp / 180)  # transform angles
                             measures_data[m_idx, d_idx, src_idx] += 1 / a
             # check whether betweenness keys are present prior to proceeding
-            if len(betw_keys) == 0:
+            if not betw_nodes and not betw_segs:
                 continue
             # only process in one direction
             if to_idx < src_idx:
                 continue
-            # do not aggregate if the current source node is a ghosted node
-            if node_data[src_idx, 3]:
-                continue
-            # flags
-            agg_nodes = (0 in betw_keys or 1 in betw_keys or 3 in betw_keys)
-            agg_segs = (2 in betw_keys or 4 in betw_keys)
-            # segment versions only agg first and last segments - intervening bits are processed from other to nodes
-            o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
-            l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
-            min_seg_span = tree_dists[to_idx] - o_seg_len - l_seg_len
-            o_1 = min_seg_span
-            o_2 = min_seg_span + o_seg_len
-            l_1 = min_seg_span
-            l_2 = min_seg_span + l_seg_len
-            # betweenness - only counting truly between vertices, not starting and ending verts
-            inter_idx = int(tree_preds[to_idx])
-            lag_idx = to_idx
-            while True:
-                # break out of while loop if the intermediary has reached the source node
-                if inter_idx == src_idx:
-                    break
-                # reference the preceeding edge id
-                pred_edge_idx = int(tree_last_seg[inter_idx])
-                # iterate the distance thresholds - from large to small for threshold snipping
-                for d_idx in range(len(distances) - 1, -1, -1):
-                    dist_cutoff = distances[d_idx]
-                    beta = betas[d_idx]
-                    # check if distances from respective segments
-                    if agg_nodes and tree_dists[to_idx] <= dist_cutoff:
-                        # iterate betweenness functions
-                        for betw_idx, betw_key in enumerate(betw_keys):
-                            # fetch target index for writing data
-                            # stored at equivalent index in betw_targets
-                            m_idx = betw_targets[betw_idx]
-                            # go through keys and write data
-                            # simple count of nodes for betweenness
-                            if betw_key == 0 and agg_nodes:
-                                measures_data[m_idx, d_idx, inter_idx] += 1
-                                # first-most is skipped because of break at src_idx above
-                                if lag_idx != to_idx:
-                                    measures_edges[m_idx, d_idx, pred_edge_idx] += 1
-                            # 1 - beta weighted betweenness
-                            # distance is based on distance between from and to vertices
-                            # thus potential spatial impedance via between vertex
-                            elif betw_key == 1 and agg_nodes:
-                                b_w = np.exp(beta * to_dist) * 1
-                                measures_data[m_idx, d_idx, inter_idx] += b_w
-                                if lag_idx != to_idx:
-                                    measures_edges[m_idx, d_idx, pred_edge_idx] += b_w
-                            # 3 - betweenness node count - angular heuristic version
-                            elif betw_key == 3 and agg_nodes:
-                                measures_data[m_idx, d_idx, inter_idx] += 1
-                                if lag_idx != to_idx:
-                                    measures_edges[m_idx, d_idx, pred_edge_idx] += 1
-                    if agg_segs and min_seg_span <= dist_cutoff:
-                        # prune if necessary
-                        if o_2 > dist_cutoff:
-                            o_2 = dist_cutoff
-                        if l_2 > dist_cutoff:
-                            l_2 = dist_cutoff
-                        for betw_idx, betw_key in enumerate(betw_keys):
-                            m_idx = betw_targets[betw_idx]
-                            # 2 - segment version of betweenness
-                            if betw_key == 2:
-                                # catch division by zero
-                                if beta == -0.0:
-                                    auc = o_2 - o_1 + l_2 - l_1
-                                else:
-                                    auc = (np.exp(beta * o_2) -
-                                           np.exp(beta * o_1)) / beta + \
-                                          (np.exp(beta * l_2) -
-                                           np.exp(beta * l_1)) / beta
-                                measures_data[m_idx, d_idx, inter_idx] += auc
-                                if lag_idx != to_idx:
-                                    measures_edges[m_idx, d_idx, pred_edge_idx] += auc
-                            # 4 - betweeenness segment hybrid version
-                            elif betw_key == 4:
-                                bt_ang = 1 + (tree_imps[to_idx] / 180)
-                                auc_a = ((np.log(o_2) - np.log(o_1)) +
-                                     (np.log(l_2) - np.log(l_1))) / bt_ang
-                                measures_data[m_idx, d_idx, inter_idx] += auc_a
-                                if lag_idx != to_idx:
-                                    measures_edges[m_idx, d_idx, pred_edge_idx] += auc_a
-                # follow the chain
-                lag_idx = inter_idx
-                inter_idx = int(tree_preds[inter_idx])
-
-    # copy betweenness data from edges to ghost nodes
-    for betw_idx, betw_key in enumerate(betw_keys):
-        m_idx = betw_targets[betw_idx]
-        for d_idx in range(len(distances)):
-            for e_idx in range(len(edge_data)):
-                if e_idx in edge_ghost_map:
-                    v = measures_edges[m_idx, d_idx, e_idx]
-                    for ghost_nd_idx in edge_ghost_map[e_idx]:
-                        measures_data[m_idx, d_idx, ghost_nd_idx] = v
+            # identify true routes from ghosted routes
+            src_ghosted = node_data[src_idx, 3]
+            to_ghosted = node_data[src_idx, 3]
+            true_route = not src_ghosted and not to_ghosted
+            # NODE WORKFLOW
+            if true_route and betw_nodes:
+                # betweenness - only counting truly between vertices, not starting and ending verts
+                inter_idx = int(tree_preds[to_idx])
+                while True:
+                    # break out of while loop if the intermediary has reached the source node
+                    if inter_idx == src_idx:
+                        break
+                    # iterate the distance thresholds
+                    for d_idx in range(len(distances)):
+                        dist_cutoff = distances[d_idx]
+                        beta = betas[d_idx]
+                        # check threshold
+                        if tree_dists[to_idx] <= dist_cutoff:
+                            # iterate betweenness functions
+                            for betw_idx, betw_key in enumerate(betw_keys):
+                                # fetch target index for writing data
+                                # stored at equivalent index in betw_targets
+                                m_idx = betw_targets[betw_idx]
+                                # go through keys and write data
+                                # simple count of nodes for betweenness
+                                if betw_key == 0:
+                                    measures_data[m_idx, d_idx, inter_idx] += 1
+                                # 1 - beta weighted betweenness
+                                # distance is based on distance between from and to vertices
+                                # thus potential spatial impedance via between vertex
+                                elif betw_key == 1:
+                                    b_w = np.exp(beta * to_dist) * 1
+                                    measures_data[m_idx, d_idx, inter_idx] += b_w
+                                # 3 - betweenness node count - angular heuristic version
+                                elif betw_key == 3:
+                                    measures_data[m_idx, d_idx, inter_idx] += 1
+                    # follow the chain
+                    inter_idx = int(tree_preds[inter_idx])
+            if betw_segs:
+                # segment versions only agg first and last segments - intervening bits are processed from other to nodes
+                o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
+                l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
+                min_seg_span = tree_dists[to_idx] - o_seg_len - l_seg_len
+                o_1 = min_seg_span
+                o_2 = min_seg_span + o_seg_len
+                l_1 = min_seg_span
+                l_2 = min_seg_span + l_seg_len
+                # betweenness - only counting truly between vertices, not starting and ending verts
+                inter_idx = int(tree_preds[to_idx])
+                while True:
+                    # break out of while loop if the intermediary has reached the source node
+                    if inter_idx == src_idx:
+                        break
+                    # iterate the distance thresholds - from large to small for threshold snipping
+                    for d_idx in range(len(distances) - 1, -1, -1):
+                        dist_cutoff = distances[d_idx]
+                        beta = betas[d_idx]
+                        if min_seg_span <= dist_cutoff:
+                            # prune if necessary
+                            if o_2 > dist_cutoff:
+                                o_2 = dist_cutoff
+                            if l_2 > dist_cutoff:
+                                l_2 = dist_cutoff
+                            for betw_idx, betw_key in enumerate(betw_keys):
+                                m_idx = betw_targets[betw_idx]
+                                # 2 - segment version of betweenness
+                                if betw_key == 2:
+                                    # catch division by zero
+                                    if beta == -0.0:
+                                        auc = o_2 - o_1 + l_2 - l_1
+                                    else:
+                                        auc = (np.exp(beta * o_2) -
+                                               np.exp(beta * o_1)) / beta + \
+                                              (np.exp(beta * l_2) -
+                                               np.exp(beta * l_1)) / beta
+                                    measures_data[m_idx, d_idx, inter_idx] += auc
+                                # 4 - betweeenness segment hybrid version
+                                elif betw_key == 4:
+                                    bt_ang = 1 + (tree_imps[to_idx] / 180)
+                                    auc_a = ((np.log(o_2) - np.log(o_1)) +
+                                             (np.log(l_2) - np.log(l_1))) / bt_ang
+                                    measures_data[m_idx, d_idx, inter_idx] += auc_a
+                    # follow the chain
+                    inter_idx = int(tree_preds[inter_idx])
 
     return measures_data

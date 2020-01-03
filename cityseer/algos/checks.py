@@ -25,17 +25,6 @@ def _print_msg(hash_count, void_count, percentage):
     print(msg, percentage, '%')
 
 
-@njit(cache=True)
-def progress_stepsize(total, target_chunks):
-    if target_chunks == 0:
-        target_chunks = 1
-    if target_chunks < 10:
-        target_chunks = 10
-    if target_chunks > total:
-        target_chunks = total
-    return int(total / target_chunks)
-
-
 @njit(cache=False)
 def progress_bar(current: int, total: int, step_size: int):
     '''
@@ -44,6 +33,10 @@ def progress_bar(current: int, total: int, step_size: int):
     https://github.com/numba/numba/issues/3555
     TODO: set cache to True once resolved - likely 2020
     '''
+    if step_size < 1:
+        step_size = 1
+    if step_size > total:
+        step_size = total
     if current == 0:
         _print_msg(0, int(total / step_size), 0)
     if (current + 1) == total:
@@ -133,8 +126,7 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 @njit(cache=True)
 def check_network_maps(node_data: np.ndarray,
                        edge_data: np.ndarray,
-                       node_edge_map: Dict,
-                       edge_ghost_map: Dict):
+                       node_edge_map: Dict):
     '''
     NODE MAP:
     0 - x
@@ -157,7 +149,7 @@ def check_network_maps(node_data: np.ndarray,
         raise ValueError('Zero length edge map')
     if not node_data.ndim == 2 or not node_data.shape[1] == 4:
         raise ValueError('The node map must have a dimensionality of Nx4.')
-    if not edge_data.ndim == 2 or not edge_data.shape[1] == 8:
+    if not edge_data.ndim == 2 or not edge_data.shape[1] == 7:
         raise ValueError('The edge map must have a dimensionality of Nx7')
     # check sequential and reciprocal node to edge map indices
     edge_counts = np.full(len(edge_data), 0)
@@ -181,32 +173,6 @@ def check_network_maps(node_data: np.ndarray,
                     raise ValueError('Missing matching edge pair in opposite direction.')
             # add to the counter
             edge_counts[edge_idx] += 1
-        # check that the ghost nodes are accurately mapped
-        # if ghosted
-        if node_data[n_idx, 3]:
-            # find outbound neighbouring nodes - each ghost node has one in either direction
-            # each ghosted node will have one outbound edge
-            edge_a = node_edge_map[n_idx][0]
-            edge_b = node_edge_map[n_idx][1]
-            # the respective neighbours are the end nodes for each of these edges
-            nb_a = int(edge_data[edge_a][1])
-            nb_b = int(edge_data[edge_b][1])
-            # from each neighbour, it should be possible to find an edge linking back to the opposite neighbour
-            paired = 0
-            # iterate the edge indices for the respective neighbour nodes
-            for edge_idx in node_edge_map[nb_a]:
-                # get the corresponding edge data and check if the end node matches it's opposite
-                if edge_data[edge_idx][1] == nb_b:
-                    paired += 1
-                    break
-            # likewise
-            for edge_idx in node_edge_map[nb_b]:
-                if edge_data[edge_idx][1] == nb_a:
-                    paired += 1
-                    break
-            if paired != 2:
-                raise ValueError('Mismatching ghost nodes. '
-                                 'Each ghost node should have a outbound edges to a spanning parent edge.')
     if not np.all(edge_counts == 1):
         raise ValueError('Mismatched node and edge maps encountered.')
     if not np.all(np.isfinite(edge_data[:, 0])) or not np.all(edge_data[:, 0] >= 0):

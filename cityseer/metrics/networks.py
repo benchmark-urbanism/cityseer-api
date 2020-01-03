@@ -61,7 +61,6 @@ class Network_Layer:
                  node_data: np.ndarray,
                  edge_data: np.ndarray,
                  node_edge_map: Dict,
-                 edge_ghost_map: Dict,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
@@ -85,7 +84,6 @@ class Network_Layer:
         self._node_data = node_data
         self._edge_data = edge_data
         self._node_edge_map = node_edge_map
-        self._edge_ghost_map = edge_ghost_map
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
@@ -105,7 +103,7 @@ class Network_Layer:
         if len(self._uids) != len(self._node_data):
             raise ValueError('The number of indices does not match the number of nodes.')
         # check network maps
-        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map, self._edge_ghost_map)
+        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
             if isinstance(self._distances, (int, float)):
@@ -252,7 +250,6 @@ class Network_Layer:
                                          self._node_data,
                                          self._edge_data,
                                          self._node_edge_map,
-                                         self._edge_ghost_map,
                                          self._networkX,
                                          metrics_dict)
 
@@ -300,7 +297,6 @@ class Network_Layer:
             self._node_data,
             self._edge_data,
             self._node_edge_map,
-            self._edge_ghost_map,
             np.array(self._distances),
             np.array(self._betas),
             measure_keys,
@@ -322,12 +318,11 @@ class Network_Layer_From_nX(Network_Layer):
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
-        node_uids, node_data, edge_data, node_edge_map, edge_ghost_map = graphs.graph_maps_from_nX(networkX_graph)
+        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(networkX_graph)
         super().__init__(node_uids,
                          node_data,
                          edge_data,
                          node_edge_map,
-                         edge_ghost_map,
                          distances,
                          betas,
                          min_threshold_wt)

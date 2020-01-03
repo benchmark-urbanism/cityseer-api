@@ -7,9 +7,9 @@ from cityseer.util import graphs, mock
 
 
 def test_progress_bar():
-    for n, chunks in zip([1, 10, 100], [1, 3, 10]):
+    for n, step_size in zip([1, 10, 100], [1, 3, 10]):
         for i in range(n):
-            checks.progress_bar(i, n, chunks)
+            checks.progress_bar(i, n, step_size)
     # check that chunks > total doesn't raise
     checks.progress_bar(10, 10, 20)
 
@@ -54,7 +54,6 @@ def test_check_categorical_data():
 def test_check_data_map():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
     N = networks.Network_Layer_From_nX(G, distances=[500])
     data_dict = mock.mock_data_dict(G)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
@@ -67,7 +66,11 @@ def test_check_data_map():
     checks.check_data_map(data_map, check_assigned=False)
 
     # assign then check that it runs as intended
-    data_map = data.assign_to_network(data_map, N._nodes, N._edges, max_dist=400)
+    data_map = data.assign_to_network(data_map,
+                                      N._node_data,
+                                      N._edge_data,
+                                      N._node_edge_map,
+                                      max_dist=400)
     checks.check_data_map(data_map)
 
     # catch zero length data arrays
@@ -80,95 +83,53 @@ def test_check_data_map():
         checks.check_data_map(data_map[:, :-1])
 
 
-def test_check_trim_maps():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-    N = networks.Network_Layer_From_nX(G, distances=[500])
-    trim_to_full_idx_map, full_to_trim_idx_map = \
-        data.radial_filter(N.x_arr[0], N.y_arr[0], N.x_arr, N.y_arr, 500)
-
-    # incorrect order
-    with pytest.raises(ValueError):
-        checks.check_trim_maps(full_to_trim_idx_map, trim_to_full_idx_map)
-    # non-sequential trim indices in full map
-    with pytest.raises(ValueError):
-        non_seq_full_to_trim = full_to_trim_idx_map.copy()
-        non_seq_full_to_trim[1] = 2
-        non_seq_full_to_trim[2] = 1
-        checks.check_trim_maps(trim_to_full_idx_map, non_seq_full_to_trim)
-    # wrong length of trim_to_full map
-    with pytest.raises(ValueError):
-        checks.check_trim_maps(trim_to_full_idx_map[:-1], full_to_trim_idx_map)
-    # corrupt trim_to_full
-    corrupt_trim_to_full = trim_to_full_idx_map.copy()
-    corrupt_trim_to_full[0] = np.nan
-    with pytest.raises(ValueError):
-        checks.check_trim_maps(corrupt_trim_to_full, full_to_trim_idx_map)
-    # corrupt full_to_trim
-    corrupt_full_to_trim = full_to_trim_idx_map.copy()
-    corrupt_full_to_trim[41] = 100
-    with pytest.raises(ValueError):
-        checks.check_trim_maps(trim_to_full_idx_map, corrupt_full_to_trim)
-
-
 def test_check_network_maps():
     # network maps
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
     N = networks.Network_Layer_From_nX(G, distances=[500])
-
     # from cityseer.util import plot
     # plot.plot_networkX_primal_or_dual(primal=G)
-    # plot.plot_graph_maps(N.uids, N._nodes, N._edges)
-
+    # plot.plot_graph_maps(N.uids, N._node_data, N._edge_data)
     # catch zero length node and edge arrays
     empty_node_arr = np.full((0, 5), np.nan)
     with pytest.raises(ValueError):
-        checks.check_network_maps(empty_node_arr, N._edges)
+        checks.check_network_maps(empty_node_arr, N._edge_data, N._node_edge_map)
     empty_edge_arr = np.full((0, 4), np.nan)
     with pytest.raises(ValueError):
-        checks.check_network_maps(N._nodes, empty_edge_arr)
-
+        checks.check_network_maps(N._node_data, empty_edge_arr, N._node_edge_map)
     # check that malformed node and data maps throw errors
     with pytest.raises(ValueError):
-        checks.check_network_maps(N._nodes[:, :-1], N._edges)
+        checks.check_network_maps(N._node_data[:, :-1], N._edge_data, N._node_edge_map)
     with pytest.raises(ValueError):
-        checks.check_network_maps(N._nodes, N._edges[:, :-1])
-    # catch corrupted edge references from node map
-    corrupted_nodes = N._nodes.copy()
-    corrupted_nodes[1][3] = 4
-    with pytest.raises(ValueError):
-        checks.check_network_maps(corrupted_nodes, N._edges)
-    # catch corrupted node references from edge map
-    # first out of order
-    corrupted_edges = N._edges.copy()
-    corrupted_edges[1][0] = 1
-    with pytest.raises(ValueError):
-        checks.check_network_maps(N._nodes, corrupted_edges)
-    # greater than sequential step
-    corrupted_edges = N._edges.copy()
-    corrupted_edges[3][0] = 2
-    with pytest.raises(ValueError):
-        checks.check_network_maps(N._nodes, corrupted_edges)
-    # catch NaN or negative values
+        checks.check_network_maps(N._node_data, N._edge_data[:, :-1], N._node_edge_map)
+    # catch problematic edge map values
     for x in [np.nan, -1]:
+        # missing start node
+        corrupted_edges = N._edge_data.copy()
+        corrupted_edges[0, 0] = x
+        with pytest.raises(AssertionError):
+            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
+        # missing end node
+        corrupted_edges = N._edge_data.copy()
+        corrupted_edges[0, 1] = x
+        with pytest.raises(KeyError):
+            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
         # invalid length
-        corrupted_edges = N._edges.copy()
-        corrupted_edges[0][2] *= x
+        corrupted_edges = N._edge_data.copy()
+        corrupted_edges[0, 2] = x
         with pytest.raises(ValueError):
-            checks.check_network_maps(N._nodes, corrupted_edges)
+            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
         # invalid angle_sum
-        corrupted_edges = N._edges.copy()
-        corrupted_edges[0][3] *= x
+        corrupted_edges = N._edge_data.copy()
+        corrupted_edges[0, 3] = x
         with pytest.raises(ValueError):
-            checks.check_network_maps(N._nodes, corrupted_edges)
+            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
         # invalid imp_factor
-        corrupted_edges = N._edges.copy()
-        corrupted_edges[0][3] *= x
+        corrupted_edges = N._edge_data.copy()
+        corrupted_edges[0, 4] = x
         with pytest.raises(ValueError):
-            checks.check_network_maps(N._nodes, corrupted_edges)
+            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
 
 
 def test_check_distances_and_betas():

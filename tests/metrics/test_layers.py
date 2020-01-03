@@ -98,8 +98,8 @@ def test_Data_Layer():
     D = layers.Data_Layer(data_uids, data_map)
     assert D.uids == data_uids
     assert np.allclose(D._data, data_map, equal_nan=True)
-    assert np.array_equal(D.x_arr, x_arr)
-    assert np.array_equal(D.y_arr, y_arr)
+    assert np.allclose(D.x_arr, x_arr)
+    assert np.allclose(D.y_arr, y_arr)
 
 
 def test_Data_Layer_From_Dict():
@@ -113,38 +113,30 @@ def test_Data_Layer_From_Dict():
     D = layers.Data_Layer_From_Dict(data_dict)
     assert D.uids == data_uids
     assert np.allclose(D._data, data_map, equal_nan=True)
-    assert np.array_equal(D.x_arr, x_arr)
-    assert np.array_equal(D.y_arr, y_arr)
+    assert np.allclose(D.x_arr, x_arr)
+    assert np.allclose(D.y_arr, y_arr)
 
 
-def test_compute_aggregated():
-    '''
-    Test landuse components
-    Underlying method also tested via diversity.test_local_landuses()
-    '''
-
+def test_compute_aggregated_A():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_auto_edge_params(G)
-
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
+    # network layer
     N = networks.Network_Layer_From_nX(G, distances)
-    node_map = N._nodes
-    edge_map = N._edges
-
+    node_map = N._node_data
+    edge_map = N._edge_data
+    node_edge_map = N._node_edge_map
+    # data layer
     data_dict = mock.mock_data_dict(G)
     qs = np.array([0, 1, 2])
     D = layers.Data_Layer_From_Dict(data_dict)
-
     # check single metrics independently against underlying for some use-cases, e.g. hill, non-hill, accessibility...
-    N_temp = copy.deepcopy(N)
-    D.assign_to_network(N_temp, max_dist=500)
+    D.assign_to_network(N, max_dist=500)
     # generate some mock landuse data
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     landuse_classes, landuse_encodings = layers.encode_categorical(landuse_labels)
-
-    # generate landuses
+    # compute hill mixed uses
     D.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
     # test against underlying method
     data_map = D._data
@@ -152,20 +144,18 @@ def test_compute_aggregated():
     stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
+                              node_edge_map,
                               data_map,
                               distances,
                               betas,
                               landuse_encodings,
                               qs=qs,
                               mixed_use_hill_keys=np.array([1]))
-
     for q_idx, q_key in enumerate(qs):
         for d_idx, d_key in enumerate(distances):
-            assert np.array_equal(N_temp.metrics['mixed_uses']['hill_branch_wt'][q_key][d_key],
-                                  mu_data_hill[0][q_idx][d_idx])
-
-    N_temp = copy.deepcopy(N)
-    D.assign_to_network(N_temp, max_dist=500)
+            assert np.allclose(N.metrics['mixed_uses']['hill_branch_wt'][q_key][d_key],
+                               mu_data_hill[0][q_idx][d_idx])
+    # gini simpson
     D.compute_aggregated(landuse_labels, mixed_use_keys=['gini_simpson'])
     # test against underlying method
     data_map = D._data
@@ -173,17 +163,15 @@ def test_compute_aggregated():
     stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
+                              node_edge_map,
                               data_map,
                               distances,
                               betas,
                               landuse_encodings,
                               mixed_use_other_keys=np.array([1]))
-
     for d_idx, d_key in enumerate(distances):
-        assert np.array_equal(N_temp.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx])
-
-    N_temp = copy.deepcopy(N)
-    D.assign_to_network(N_temp, max_dist=500)
+        assert np.allclose(N.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx])
+    # accessibilities
     D.compute_aggregated(landuse_labels, accessibility_keys=['c'])
     # test against underlying method
     data_map = D._data
@@ -191,16 +179,15 @@ def test_compute_aggregated():
     stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
+                              node_edge_map,
                               data_map,
                               distances,
                               betas,
                               landuse_encodings,
                               accessibility_keys=np.array([landuse_classes.index('c')]))
-
     for d_idx, d_key in enumerate(distances):
-        assert np.array_equal(N_temp.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx])
-        assert np.array_equal(N_temp.metrics['accessibility']['weighted']['c'][d_key], ac_data_wt[0][d_idx])
-
+        assert np.allclose(N.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx])
+        assert np.allclose(N.metrics['accessibility']['weighted']['c'][d_key], ac_data_wt[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
     mixed_uses_hill_types = np.array(['hill',
                                       'hill_branch_wt',
@@ -242,7 +229,7 @@ def test_compute_aggregated():
                 mu_o_metrics = mixed_use_other_types[mu_o_keys]
                 ac_metrics = ac_codes[ac_keys]
 
-                N_temp = copy.deepcopy(N)
+                N_temp = networks.Network_Layer_From_nX(G, distances)
                 D_temp = layers.Data_Layer_From_Dict(data_dict)
                 D_temp.assign_to_network(N_temp, max_dist=500)
                 D_temp.compute_aggregated(landuse_labels,
@@ -253,9 +240,10 @@ def test_compute_aggregated():
 
                 # test against underlying method
                 mu_data_hill, mu_data_other, ac_data, ac_data_wt, stats_sum, stats_sum_wt, \
-                    stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+                stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
                     data.local_aggregator(node_map,
                                           edge_map,
+                                          node_edge_map,
                                           data_map,
                                           distances,
                                           betas,
@@ -269,41 +257,20 @@ def test_compute_aggregated():
                 for mu_h_idx, mu_h_met in enumerate(mu_h_metrics):
                     for q_idx, q_key in enumerate(qs):
                         for d_idx, d_key in enumerate(distances):
-                            assert np.array_equal(N_temp.metrics['mixed_uses'][mu_h_met][q_key][d_key],
-                                                  mu_data_hill[mu_h_idx][q_idx][d_idx])
+                            assert np.allclose(N_temp.metrics['mixed_uses'][mu_h_met][q_key][d_key],
+                                               mu_data_hill[mu_h_idx][q_idx][d_idx])
 
                 for mu_o_idx, mu_o_met in enumerate(mu_o_metrics):
                     for d_idx, d_key in enumerate(distances):
-                        assert np.array_equal(N_temp.metrics['mixed_uses'][mu_o_met][d_key],
-                                              mu_data_other[mu_o_idx][d_idx])
+                        assert np.allclose(N_temp.metrics['mixed_uses'][mu_o_met][d_key],
+                                           mu_data_other[mu_o_idx][d_idx])
 
                 for ac_idx, ac_met in enumerate(ac_metrics):
                     for d_idx, d_key in enumerate(distances):
-                        assert np.array_equal(N_temp.metrics['accessibility']['non_weighted'][ac_met][d_key],
-                                              ac_data[ac_idx][d_idx])
-                        assert np.array_equal(N_temp.metrics['accessibility']['weighted'][ac_met][d_key],
-                                              ac_data_wt[ac_idx][d_idx])
-
-    # check that angular gets passed through
-    G_dual = graphs.nX_to_dual(G)
-
-    N_dual = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=True)
-    D_dual = layers.Data_Layer_From_Dict(data_dict)
-    D_dual.assign_to_network(N_dual, max_dist=500)
-    D_dual.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'], accessibility_keys=['c'])
-
-    N_dual_sidestep = networks.Network_Layer_From_nX(G_dual, distances=[2000], angular=False)
-    D_dual = layers.Data_Layer_From_Dict(data_dict)
-    D_dual.assign_to_network(N_dual_sidestep, max_dist=500)
-    D_dual.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'], accessibility_keys=['c'])
-
-    assert not np.array_equal(N_dual.metrics['mixed_uses']['shannon'][2000],
-                              N_dual_sidestep.metrics['mixed_uses']['shannon'][2000])
-    # non-weighted will in some cases still be equal (still full counted albeit different routes)
-    # assert not np.array_equal(N_dual.metrics['accessibility']['non_weighted']['c'][2000],
-    # N_dual_sidestep.metrics['accessibility']['non_weighted']['c'][2000])
-    assert not np.array_equal(N_dual.metrics['accessibility']['weighted']['c'][2000],
-                              N_dual_sidestep.metrics['accessibility']['weighted']['c'][2000])
+                        assert np.allclose(N_temp.metrics['accessibility']['non_weighted'][ac_met][d_key],
+                                           ac_data[ac_idx][d_idx])
+                        assert np.allclose(N_temp.metrics['accessibility']['weighted'][ac_met][d_key],
+                                           ac_data_wt[ac_idx][d_idx])
 
     # most integrity checks happen in underlying method, though check here for mismatching labels length and typos
     with pytest.raises(ValueError):
@@ -316,14 +283,26 @@ def test_compute_aggregated():
         D_new = layers.Data_Layer_From_Dict(data_dict)
         D_new.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'])
 
+
+def test_compute_aggregated_B():
     '''
     Test stats component
     '''
-
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    betas = np.array([-0.01, -0.005])
+    distances = networks.distance_from_beta(betas)
+    # network layer
+    N = networks.Network_Layer_From_nX(G, distances)
+    node_map = N._node_data
+    edge_map = N._edge_data
+    node_edge_map = N._node_edge_map
+    # data layer
     data_dict = mock.mock_data_dict(G)
+    qs = np.array([0, 1, 2])
     D = layers.Data_Layer_From_Dict(data_dict)
-    N_temp = copy.deepcopy(N)
-    D.assign_to_network(N_temp, max_dist=500)
+    # check single metrics independently against underlying for some use-cases, e.g. hill, non-hill, accessibility...
+    D.assign_to_network(N, max_dist=500)
 
     # generate some mock landuse data
     mock_numeric = mock.mock_numerical_data(len(data_dict), num_arrs=2)
@@ -337,18 +316,20 @@ def test_compute_aggregated():
     stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
         data.local_aggregator(node_map,
                               edge_map,
+                              node_edge_map,
                               data_map,
                               distances,
                               betas,
                               numerical_arrays=mock_numeric)
 
     stats_keys = ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
-    stats_data = [stats_max, stats_min, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt]
+    stats_data = [stats_max, stats_min, stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance,
+                  stats_variance_wt]
 
     for num_idx, num_label in enumerate(['boo', 'baa']):
         for s_key, stats in zip(stats_keys, stats_data):
             for d_idx, d_key in enumerate(distances):
-                assert np.array_equal(N_temp.metrics['stats'][num_label][s_key][d_key], stats[num_idx][d_idx])
+                assert np.allclose(N.metrics['stats'][num_label][s_key][d_key], stats[num_idx][d_idx])
 
     # check that mismatching label and array lengths are caught
     for labels, arrs in ((['a'], mock_numeric),  # mismatching lengths
@@ -361,134 +342,113 @@ def test_compute_aggregated():
 def network_generator():
     for betas in [[-0.008], [-0.008, -0.002]]:
         distances = networks.distance_from_beta(betas)
-        for angular in [False, True]:
-            G = mock.mock_graph()
-            G = graphs.nX_simple_geoms(G)
-            G = graphs.nX_auto_edge_params(G)
-            yield G, distances, betas, angular
+        G = mock.mock_graph()
+        G = graphs.nX_simple_geoms(G)
+        yield G, distances, betas
 
 
 def test_hill_diversity():
-    for G, distances, betas, angular in network_generator():
-
+    for G, distances, betas in network_generator():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
-
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_diversity(landuse_labels, qs=[0, 1, 2])
-
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill'], qs=[0, 1, 2])
-
         # compare
         for d in distances:
             for q in [0, 1, 2]:
-                assert np.array_equal(N_easy.metrics['mixed_uses']['hill'][q][d],
-                                      N_full.metrics['mixed_uses']['hill'][q][d])
+                assert np.allclose(N_easy.metrics['mixed_uses']['hill'][q][d],
+                                   N_full.metrics['mixed_uses']['hill'][q][d])
 
 
 def test_hill_branch_wt_diversity():
-    for G, distances, betas, angular in network_generator():
-
+    for G, distances, betas in network_generator():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
-
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
-
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=[0, 1, 2])
-
         # compare
         for d in distances:
             for q in [0, 1, 2]:
-                assert np.array_equal(N_easy.metrics['mixed_uses']['hill_branch_wt'][q][d],
-                                      N_full.metrics['mixed_uses']['hill_branch_wt'][q][d])
+                assert np.allclose(N_easy.metrics['mixed_uses']['hill_branch_wt'][q][d],
+                                   N_full.metrics['mixed_uses']['hill_branch_wt'][q][d])
 
 
 def test_compute_accessibilities():
-    for G, distances, betas, angular in network_generator():
-
+    for G, distances, betas in network_generator():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
-
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_accessibilities(landuse_labels, ['c'])
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, accessibility_keys=['c'])
-
         # compare
         for d in distances:
             for wt in ['weighted', 'non_weighted']:
-                assert np.array_equal(N_easy.metrics['accessibility'][wt]['c'][d],
-                                      N_full.metrics['accessibility'][wt]['c'][d])
+                assert np.allclose(N_easy.metrics['accessibility'][wt]['c'][d],
+                                   N_full.metrics['accessibility'][wt]['c'][d])
 
 
 def test_compute_stats_single():
-    for G, distances, betas, angular in network_generator():
-
+    for G, distances, betas in network_generator():
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=1)
-
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_single('boo', numeric_data[0])
-
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(stats_keys=['boo'], stats_data_arrs=numeric_data)
-
         # compare
         for n_label in ['boo']:
             for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:
                 for dist in distances:
                     assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
                                        N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)
-
         # check that non-single dimension arrays are caught
         with pytest.raises(ValueError):
             D_easy.compute_stats_single('boo', numeric_data)
 
 
 def test_compute_stats_multiple():
-    for G, distances, betas, angular in network_generator():
-
+    for G, distances, betas in network_generator():
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=2)
-
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_easy = networks.Network_Layer_From_nX(G, distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_multiple(['boo', 'baa'], numeric_data)
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances, angular=angular)
+        N_full = networks.Network_Layer_From_nX(G, distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(stats_keys=['boo', 'baa'], stats_data_arrs=numeric_data)
-
         # compare
         for n_label in ['boo', 'baa']:
             for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:

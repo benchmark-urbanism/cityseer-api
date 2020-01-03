@@ -405,9 +405,6 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph, buffer_dist: float = 14) ->
 
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
-        # if node is ghosted, then raise
-        if 'ghosted' in n_d and n_d['ghosted']:
-            raise ValueError('Attempting to consolidate a previously decomposed graph.')
         # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
@@ -518,9 +515,6 @@ def nX_consolidate_parallel(networkX_graph: nx.Graph, buffer_dist: float = 14) -
 
     # iterate origin graph
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
-        # if node is ghosted, then raise
-        if 'ghosted' in n_d and n_d['ghosted']:
-            raise ValueError('Attempting to consolidate a previously decomposed graph.')
         # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
@@ -670,32 +664,23 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
         # note that a length less than the decompose threshold will result in a single 'sub'-string
         n = np.ceil(line_geom.length / decompose_max)
         step_size = line_geom.length / n
-        step = step_size  # start location
-        # the original edge remains in place
+        # since decomposing, remove the prior edge... but only after properties have been read
+        g_copy.remove_edge(s, e)
+        # then add the new sub-edge/s
+        step = 0
+        prior_node_id = s
         sub_node_counter = 0
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if n = 1
         for i in range(int(n) - 1):
             # create the new node label and id
             new_node_id = f'{s}_{sub_node_counter}_{e}'
             sub_node_counter += 1
-            # split the LineString geom for placing the new node
-            start_line_segment = ops.substring(line_geom, 0.0, step)
-            end_line_segment = ops.substring(line_geom, step, line_geom.length)
+            # create the split LineString geom for measuring the new length
+            line_segment = ops.substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
-            x, y = start_line_segment.coords[-1]
-            # add the new node
+            x, y = line_segment.coords[-1]
+            # add the new node and edge
             g_copy.add_node(new_node_id, x=x, y=y, ghosted=True)
-            # add the edges
-            # if a self-loop, then take the shorter of the two edges
-            if s == e:
-                if start_line_segment.length < end_line_segment.length:
-                    g_copy.add_edge(new_node_id, s, geom=start_line_segment, ghosted=True)
-                else:
-                    g_copy.add_edge(new_node_id, s, geom=end_line_segment, ghosted=True)
-            # for other cases, record both segments as new edges
-            else:
-                g_copy.add_edge(new_node_id, s, geom=start_line_segment, ghosted=True)
-                g_copy.add_edge(new_node_id, e, geom=end_line_segment, ghosted=True)
             # add and set live property if present in parent graph
             if 'live' in networkX_graph.nodes[s] and 'live' in networkX_graph.nodes[e]:
                 live = True
@@ -703,8 +688,17 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
                 if not networkX_graph.nodes[s]['live'] and not networkX_graph.nodes[e]['live']:
                     live = False
                 g_copy.nodes[new_node_id]['live'] = live
-            # increment the step
+            # add the edge
+            g_copy.add_edge(prior_node_id, new_node_id, geom=line_segment)
+            # increment the step and node id
+            prior_node_id = new_node_id
             step += step_size
+        # set the last edge manually to avoid rounding errors at end of LineString
+        # the nodes already exist, so just add edge
+        line_segment = ops.substring(line_geom, step, line_geom.length)
+        l = line_segment.length
+        g_copy.add_edge(prior_node_id, e, geom=line_segment)
+
     return g_copy
 
 
@@ -812,13 +806,13 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
     return g_dual
 
 
-def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict, Dict]:
+def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
     '''
     Strategic decisions because of too many edge cases:
     - decided to not discard disconnected components to avoid unintended consequences
     - no internal simplification - use prior methods or tools to clean or simplify the graph before calling this method
     - length and angle now set automatically inside this method because in and out bearing are set here regardless.
-    - returns node_data, edge_data, a map from nodes to edges, and a map from edges to ghost nodes
+    - returns node_data, edge_data, a map from nodes to edges
     '''
 
     if not isinstance(networkX_graph, nx.Graph):
@@ -832,12 +826,9 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     for n in tqdm(g_copy.nodes(), disable=checks.quiet_mode):
         # writing node identifier to 'labels' in case conversion to integers method interferes with order
         g_copy.nodes[n]['label'] = n
-        # sum edges - but only to non-ghosted nodes
+        # sum edges
         for nb in g_copy.neighbors(n):
-            if 'ghosted' in g_copy.nodes[nb] and g_copy.nodes[nb]['ghosted']:
-                continue
-            else:
-                total_out_degrees += 1
+            total_out_degrees += 1
 
     logger.info('Generating data arrays')
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
@@ -847,7 +838,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     # float - for consistency - requires higher accuracy for x, y work
     node_data = np.full((g_copy.number_of_nodes(), 4), np.nan, dtype=np.float64)
     # float - allows for nan and inf - float32 should be ample...
-    edge_data = np.full((total_out_degrees, 8), np.nan, dtype=np.float32)
+    edge_data = np.full((total_out_degrees, 7), np.nan, dtype=np.float32)
     # nodes have a one-to-many mapping to edges
     node_edge_map = Dict.empty(
         key_type=types.int64,
@@ -883,33 +874,18 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             node_data[node_idx][3] = d['ghosted']
         else:
             node_data[node_idx][3] = False
-        # follow all non-ghosted out edges and add these to the edge_map
-        # for ghosted nodes this happens in the out direction only
-        # for non-ghosted nodes, this happens in both directions
+
+        # build edges
         out_edges = []
         for nb in g_copy.neighbors(n):
-            # get node data - skip if ghosted neighbour
-            # ghosted nodes will build links to non-ghosted adjacent nodes
-            # non-ghosted nodes will only build links to other non-ghosted nodes
-            # i.e. ghosted nodes end up with only out-bound edges
-            nb_data = g_copy.nodes[nb]
-            if 'ghosted' in nb_data and nb_data['ghosted']:
-                continue
             # add the new edge index to the node's out edges
             out_edges.append(edge_idx)
-            # get edge data
-            edge = g_copy[node_idx][nb]
-            # assign the index to the originating networkX graph edge
-            # used for subsequent mapping of ghost nodes to parent edges
-            # each edge will end up with two edge indices, one in each direction
-            if 'edge_indices' not in edge:
-                edge['edge_indices'] = [edge_idx]
-            else:
-                edge['edge_indices'].append(edge_idx)
             # EDGE MAP INDEX POSITION 0 = start node
             edge_data[edge_idx][0] = node_idx
             # EDGE MAP INDEX POSITION 1 = end node
             edge_data[edge_idx][1] = nb
+            # get edge data
+            edge = g_copy[node_idx][nb]
             # EDGE MAP INDEX POSITION 2 = length
             if not 'geom' in edge:
                 raise KeyError(
@@ -918,7 +894,8 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
                     f'Simple (straight) geometries can be inferred automatically through use of the nX_simple_geoms() method.')
             line_geom = edge['geom']
             if line_geom.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {node_idx}-{nb}.')
+                raise TypeError(
+                    f'Expecting LineString geometry but found {line_geom.type} geometry for edge {node_idx}-{nb}.')
             # cannot have zero or negative length - division by zero
             l = line_geom.length
             if not np.isfinite(l) or l <= 0:
@@ -949,7 +926,8 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
                 # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
                 # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
             if not np.isfinite(angle_sum) or angle_sum < 0:
-                raise ValueError(f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
+                raise ValueError(
+                    f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
             edge_data[edge_idx][3] = angle_sum
             # EDGE MAP INDEX POSITION 4 = imp_factor
             # if imp_factor is set explicitly, then use
@@ -971,55 +949,21 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             x_1, y_1 = line_geom.coords[-2][:2]
             x_2, y_2 = line_geom.coords[-1][:2]
             edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-            # EDGE MAP INDEX POSITION 7 - ghosted
-            if 'ghosted' in edge:
-                edge_data[edge_idx][7] = d['ghosted']
-            else:
-                edge_data[edge_idx][7] = False
             # increment the edge_idx
             edge_idx += 1
         # add the node to the node_edge_map
         node_edge_map[node_idx] = np.array(out_edges, dtype='int64')
-    # build the edge to ghost-node map
-    # edges have a one-to-many mapping to ghost-nodes
-    edge_ghost_map = Dict.empty(
-        key_type=types.int64,
-        value_type=types.int64[:]
-    )
-    # all edge indices to be added even if no associated ghost nodes (used from betweenness workflow)
-    for s_idx, e_idx, d in g_copy.edges(data=True):
-        # continue if this is a ghosted edge
-        if 'ghosted' in d and d['ghosted']:
-            continue
-        # find all ghost nodes
-        ghost_nodes = []
-        # visit all neighbour nodes from the start node and find ghost nodes linking to end node
-        for nb_idx in nx.neighbors(g_copy, s_idx):
-            nb = g_copy.nodes[nb_idx]
-            if 'ghosted' in nb and nb['ghosted']:
-                for g_nb_idx in nx.neighbors(g_copy, nb_idx):
-                    if g_nb_idx == e_idx:
-                        ghost_nodes.append(nb_idx)
-                        break
-        # each parent edge will have two edge ids, one in either direction - intentionally explicit
-        e_idx_a, e_idx_b = d['edge_indices']
-        # add to map
-        edge_ghost_map[e_idx_a] = np.array(ghost_nodes, dtype='int64')
-        edge_ghost_map[e_idx_b] = np.array(ghost_nodes, dtype='int64')
 
-    return tuple(node_uids), node_data, edge_data, node_edge_map, edge_ghost_map
+    return tuple(node_uids), node_data, edge_data, node_edge_map
 
 
 def nX_from_graph_maps(node_uids: Union[tuple, list],
                        node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
-                       edge_ghost_map: Dict,
                        networkX_graph: nx.Graph = None,
                        metrics_dict: dict = None) -> nx.Graph:
     logger.info('Populating node and edge map data to a networkX graph.')
-
-    checks.check_network_maps(node_data, edge_data, node_edge_map, edge_ghost_map)
 
     if networkX_graph is not None:
         logger.info('Reusing existing graph as backbone.')
@@ -1037,6 +981,9 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         for uid in node_uids:
             g_copy.add_node(uid)
 
+    # after above so that errors caught first
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
+
     logger.info('Unpacking node data.')
     for uid, node in tqdm(zip(node_uids, node_data), disable=checks.quiet_mode):
         x, y, live, ghosted = node
@@ -1047,7 +994,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     logger.info('Unpacking edge data.')
     for edge in tqdm(edge_data, disable=checks.quiet_mode):
-        start, end, length, angle_sum, imp_factor, start_bearing, end_bearing, ghosted = edge
+        start, end, length, angle_sum, imp_factor, start_bearing, end_bearing = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]
         # networkX will silently add new edges / data over existing edges
@@ -1057,8 +1004,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                         angle_sum=angle_sum,
                         imp_factor=imp_factor,
                         start_bearing=start_bearing,
-                        end_bearing=end_bearing,
-                        ghosted=bool(ghosted))
+                        end_bearing=end_bearing)
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
