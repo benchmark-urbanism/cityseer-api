@@ -385,7 +385,10 @@ def local_centrality(node_data: np.ndarray,
                                 if seg_key == 0:
                                     measures_data[m_idx, d_idx, src_idx] += c - a
                                 elif seg_key == 1:
-                                    measures_data[m_idx, d_idx, src_idx] += np.log(c_imp) - np.log(a_imp)
+                                    if a_imp < 1:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(c_imp)
+                                    else:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(c_imp) - np.log(a_imp)
                                 elif seg_key == 2:
                                     if beta == -0.0:
                                         auc = c_imp - a_imp
@@ -405,7 +408,10 @@ def local_centrality(node_data: np.ndarray,
                                 if seg_key == 0:
                                     measures_data[m_idx, d_idx, src_idx] += d - b
                                 elif seg_key == 1:
-                                    measures_data[m_idx, d_idx, src_idx] += np.log(d_imp) - np.log(b_imp)
+                                    if b_imp < 1:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(d_imp)
+                                    else:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(d_imp) - np.log(b_imp)
                                 elif seg_key == 2:
                                     # catch division by zero
                                     # as beta approaches 0 the distance is weighted by 1 instead of < 1
@@ -468,7 +474,10 @@ def local_centrality(node_data: np.ndarray,
                                     # transform - prevents division by zero
                                     agg_ang = 1 + (ang / 180)
                                     # then aggregate - angular uses distances explicitly
-                                    measures_data[m_idx, d_idx, src_idx] += (np.log(f) - np.log(e)) / agg_ang
+                                    if e < 1:
+                                        measures_data[m_idx, d_idx, src_idx] += np.log(f) / agg_ang
+                                    else:
+                                        measures_data[m_idx, d_idx, src_idx] += (np.log(f) - np.log(e)) / agg_ang
         # aggregative and betweenness keys can be computed per to_idx
         for to_idx in tree_nodes:
             # skip self node
@@ -600,9 +609,16 @@ def local_centrality(node_data: np.ndarray,
                                     measures_data[m_idx, d_idx, inter_idx] += auc
                                 # 4 - betweeenness segment hybrid version
                                 elif betw_key == 4:
-                                    bt_ang = 1 + (tree_imps[to_idx] / 180)
-                                    auc_a = ((np.log(o_2) - np.log(o_1)) +
-                                             (np.log(l_2) - np.log(l_1))) / bt_ang
+                                    bt_ang = 1 + tree_imps[to_idx] / 180
+                                    if o_1 < 1:
+                                        pt_a = np.log(o_2)
+                                    else:
+                                        pt_a = np.log(o_2) - np.log(o_1)
+                                    if l_1 < 1:
+                                        pt_b = np.log(l_2)
+                                    else:
+                                        pt_b = np.log(l_2) - np.log(l_1)
+                                    auc_a = (pt_a + pt_b) / bt_ang
                                     measures_data[m_idx, d_idx, inter_idx] += auc_a
                     # follow the chain
                     inter_idx = int(tree_preds[inter_idx])
