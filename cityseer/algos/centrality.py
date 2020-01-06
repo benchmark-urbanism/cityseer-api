@@ -483,9 +483,8 @@ def local_centrality(node_data: np.ndarray,
             # skip self node
             if to_idx == src_idx:
                 continue
-            # skip ghosted nodes
-            if node_data[to_idx, 3]:
-                continue
+            # skip ghosted nodes except for cycles
+            ghosted_node = node_data[to_idx, 3]
             # unpack impedance and distance for to index
             to_imp = tree_imps[to_idx]
             to_dist = tree_dists[to_idx]
@@ -506,25 +505,26 @@ def local_centrality(node_data: np.ndarray,
                         m_idx = agg_targets[agg_idx]
                         # go through keys and write data
                         # 0 - simple node counts
-                        if agg_key == 0:
-                            measures_data[m_idx, d_idx, src_idx] += 1
-                        # 1 - farness
-                        elif agg_key == 1:
-                            measures_data[m_idx, d_idx, src_idx] += to_dist
+                        if not ghosted_node:
+                            if agg_key == 0:
+                                measures_data[m_idx, d_idx, src_idx] += 1
+                            # 1 - farness
+                            elif not ghosted_node and agg_key == 1:
+                                measures_data[m_idx, d_idx, src_idx] += to_dist
+                                # 3 - harmonic node
+                            elif not ghosted_node and agg_key == 3:
+                                measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
+                            # 4 - beta weighted node
+                            elif not ghosted_node and agg_key == 4:
+                                measures_data[m_idx, d_idx, src_idx] += np.exp(beta * to_dist)
+                            # 5 - harmonic node - angular
+                            elif not ghosted_node and agg_key == 5:
+                                a = 1 + (to_imp / 180)  # transform angles
+                                measures_data[m_idx, d_idx, src_idx] += 1 / a
                         # 2 - cycles
-                        elif agg_key == 2:
+                        if agg_key == 2:
                             if tree_cycles[to_idx]:
                                 measures_data[m_idx, d_idx, src_idx] += 1
-                        # 3 - harmonic node
-                        elif agg_key == 3:
-                            measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
-                        # 4 - beta weighted node
-                        elif agg_key == 4:
-                            measures_data[m_idx, d_idx, src_idx] += np.exp(beta * to_dist)
-                        # 5 - harmonic node - angular
-                        elif agg_key == 5:
-                            a = 1 + (to_imp / 180)  # transform angles
-                            measures_data[m_idx, d_idx, src_idx] += 1 / a
             # check whether betweenness keys are present prior to proceeding
             if not betw_nodes and not betw_segs:
                 continue
@@ -533,9 +533,10 @@ def local_centrality(node_data: np.ndarray,
                 continue
             # identify true routes from ghosted routes
             src_ghosted = node_data[src_idx, 3]
-            to_ghosted = node_data[src_idx, 3]
+            to_ghosted = node_data[to_idx, 3]
             true_route = not src_ghosted and not to_ghosted
             # NODE WORKFLOW
+            # don't count routes originating or ending at ghosted nodes
             if true_route and betw_nodes:
                 # betweenness - only counting truly between vertices, not starting and ending verts
                 inter_idx = int(tree_preds[to_idx])
@@ -562,8 +563,7 @@ def local_centrality(node_data: np.ndarray,
                                 # distance is based on distance between from and to vertices
                                 # thus potential spatial impedance via between vertex
                                 elif betw_key == 1:
-                                    b_w = np.exp(beta * to_dist) * 1
-                                    measures_data[m_idx, d_idx, inter_idx] += b_w
+                                    measures_data[m_idx, d_idx, inter_idx] += np.exp(beta * to_dist) * 1
                                 # 3 - betweenness node count - angular heuristic version
                                 elif betw_key == 3:
                                     measures_data[m_idx, d_idx, inter_idx] += 1

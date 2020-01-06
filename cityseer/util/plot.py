@@ -177,8 +177,8 @@ def plot_assignment(Network_Layer,
 
 
 def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
-                    node_map: np.ndarray,
-                    edge_map: np.ndarray,
+                    node_data: np.ndarray,
+                    edge_data: np.ndarray,
                     data_map: np.ndarray = None,
                     poly: geometry.Polygon = None):
     # the edges are bi-directional - therefore duplicated per directional from-to edge
@@ -187,8 +187,8 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
 
     # set extents
     for ax in (ax1, ax2):
-        ax.set_xlim(node_map[:, 0].min() - 100, node_map[:, 0].max() + 100)
-        ax.set_ylim(node_map[:, 1].min() - 100, node_map[:, 1].max() + 100)
+        ax.set_xlim(node_data[:, 0].min() - 100, node_data[:, 0].max() + 100)
+        ax.set_ylim(node_data[:, 1].min() - 100, node_data[:, 1].max() + 100)
 
     if poly:
         x = [x for x in poly.exterior.coords.xy[0]]
@@ -198,19 +198,19 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
 
     # plot nodes
     cols = []
-    for n in node_map[:, 2]:
+    for n in node_data[:, 2]:
         if bool(n):
             cols.append(secondary)
         else:
             cols.append(accent)
-    ax1.scatter(node_map[:, 0], node_map[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
-    ax2.scatter(node_map[:, 0], node_map[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
+    ax1.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
+    ax2.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
 
     # check for duplicate edges
     edges = set()
 
     # plot edges - requires iteration through maps
-    for src_idx, src_data in enumerate(node_map):
+    for src_idx, src_data in enumerate(node_data):
         # get the starting edge index
         # isolated nodes don't have edges
         edge_idx = src_data[3]
@@ -219,9 +219,9 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
         edge_idx = int(edge_idx)
         # iterate the neighbours
         # don't use while True because last node's index increment won't be caught
-        while edge_idx < len(edge_map):
+        while edge_idx < len(edge_data):
             # get the corresponding edge data
-            edge_data = edge_map[edge_idx]
+            edge_data = edge_data[edge_idx]
             # get the src node - this is to check that still within src edge - neighbour range
             fr_idx = edge_data[0]
             # break once all neighbours visited
@@ -230,7 +230,7 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
             # get the neighbour node's index
             to_idx = edge_data[1]
             # fetch the neighbour node's data
-            nb_data = node_map[int(to_idx)]
+            nb_data = node_data[int(to_idx)]
             # check for duplicates
             k = str(sorted([fr_idx, to_idx]))
             if k not in edges:
@@ -240,7 +240,7 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
                 ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c=accent, linewidth=1)
             edge_idx += 1
 
-    for idx, (x, y) in enumerate(zip(node_map[:, 0], node_map[:, 1])):
+    for idx, (x, y) in enumerate(zip(node_data[:, 0], node_data[:, 1])):
         ax2.annotate(idx, xy=(x, y), size=5)
 
     '''
@@ -278,13 +278,13 @@ def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
             # if the data points have been assigned network indices
             if not np.isnan(nearest_netw_idx):
                 # plot lines to parents for easier viz
-                p_x = node_map[int(nearest_netw_idx)][0]
-                p_y = node_map[int(nearest_netw_idx)][1]
+                p_x = node_data[int(nearest_netw_idx)][0]
+                p_y = node_data[int(nearest_netw_idx)][1]
                 ax1.plot([p_x, x], [p_y, y], c=warning, lw=0.75, ls='-')
 
             if not np.isnan(next_n_netw_idx):
-                p_x = node_map[int(next_n_netw_idx)][0]
-                p_y = node_map[int(next_n_netw_idx)][1]
+                p_x = node_data[int(next_n_netw_idx)][0]
+                p_y = node_data[int(next_n_netw_idx)][1]
                 ax1.plot([p_x, x], [p_y, y], c=info, lw=0.75, ls='--')
 
     plt.gcf().set_facecolor(background)

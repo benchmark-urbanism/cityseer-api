@@ -26,8 +26,6 @@ def test_shortest_path_tree():
     G_primal = mock.mock_graph()
     G_primal = graphs.nX_simple_geoms(G_primal)
     node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(G_primal)
-    import numba
-    print(numba.typeof(node_edge_map_p))
     # prepare round-trip graph for checks
     G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
@@ -151,46 +149,6 @@ def test_shortest_path_tree():
     assert path_transpose == ['10_43', '10_14', '10_5']
 
 
-def test_decomposed_local_centrality():
-    # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
-    distances = networks.distance_from_beta(betas)
-    measure_keys = ('node_harmonic', 'node_betweenness')
-    # test a decomposed graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    measures_data = centrality.local_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                measure_keys,
-                                                angular=False)
-    G_decomposed = graphs.nX_decompose(G, 20)
-    # from cityseer.util import plot
-    # plot.plot_nX(G_decomposed, labels=True)
-    # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_decomposed)
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
-    measures_data_decomposed = centrality.local_centrality(node_data,
-                                                           edge_data,
-                                                           node_edge_map,
-                                                           distances,
-                                                           betas,
-                                                           measure_keys,
-                                                           angular=False)
-    # test harmonic closeness on original nodes for non-decomposed vs decomposed
-    d_range = len(distances)
-    m_range = len(measure_keys)
-    assert measures_data.shape == (m_range, d_range, len(G))
-    assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
-    original_node_idx = np.where(node_data[:, 3] == 0)
-    for m_idx in range(m_range):
-        for d_idx in range(d_range):
-            assert np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
-
-
 def test_local_centrality():
     '''
     Also tested indirectly via test_networks.test_compute_centrality
@@ -204,6 +162,8 @@ def test_local_centrality():
     G = graphs.nX_simple_geoms(G)
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
+    # plots for debugging
+
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
@@ -355,8 +315,6 @@ def test_local_centrality():
                     inter_idx = np.int(tree_preds[inter_idx])
         improved_cl = dens / far_dist / dens
 
-        # check betweenness
-        print(distances[d_idx])
         assert np.allclose(node_density[d_idx], dens)
         assert np.allclose(node_farness[d_idx], far_dist)
         assert np.allclose(node_cycles[d_idx], cyc)
@@ -366,7 +324,18 @@ def test_local_centrality():
         assert np.allclose(node_betweenness[d_idx], betw)
         assert np.allclose(node_betweenness_beta[d_idx], betw_wt)
 
-        # TODO: how to test segment_density, harmonic_segment, segment_beta, segment_betweenness
+        # TODO: are there possibly ways to test segment_density, harmonic_segment, segment_beta, segment_betweenness
+        # for infinite distance, the segment density should match the sum of reachable segments
+        length_sum = 0
+        for s, e, d in G_round_trip.edges(data=True):
+            length_sum += d['length']
+        reachable_length_sum = length_sum - \
+                               (G_round_trip[50][51]['length'] +
+                                G_round_trip[52][53]['length'] +
+                                G_round_trip[53][54]['length'] +
+                                G_round_trip[54][55]['length'] +
+                                G_round_trip[52][55]['length'])
+        assert np.allclose(segment_density[-1][:49], reachable_length_sum)
 
     # check that problematic keys are caught
     for angular, k in zip([False, True], ['node_harmonic', 'node_harmonic_angular']):
@@ -397,6 +366,59 @@ def test_local_centrality():
                                         betas,
                                         ('node_density', 'node_harmonic_angular'),
                                         angular=False)
+
+
+def test_decomposed_local_centrality():
+    # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
+    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
+    distances = networks.distance_from_beta(betas)
+    measure_keys = ('node_density',
+                    'node_farness',
+                    'node_cycles',
+                    'node_harmonic',
+                    'node_beta',
+                    'segment_density',
+                    'segment_harmonic',
+                    'segment_beta',
+                    'node_betweenness',
+                    'node_betweenness_beta',
+                    'segment_betweenness')
+    # test a decomposed graph
+    G = mock.mock_graph()
+    G = graphs.nX_simple_geoms(G)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    measures_data = centrality.local_centrality(node_data,
+                                                edge_data,
+                                                node_edge_map,
+                                                distances,
+                                                betas,
+                                                measure_keys,
+                                                angular=False)
+    G_decomposed = graphs.nX_decompose(G, 20)
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_decomposed)
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
+    measures_data_decomposed = centrality.local_centrality(node_data,
+                                                           edge_data,
+                                                           node_edge_map,
+                                                           distances,
+                                                           betas,
+                                                           measure_keys,
+                                                           angular=False)
+    # test harmonic closeness on original nodes for non-decomposed vs decomposed
+    d_range = len(distances)
+    m_range = len(measure_keys)
+    assert measures_data.shape == (m_range, d_range, len(G))
+    assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
+    original_node_idx = np.where(node_data[:, 3] == 0)
+    # cycles and betweenness segments will not match
+    for m_idx in range(m_range):
+        for d_idx in range(d_range):
+            match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
+            if not match:
+                print('key', measure_keys[m_idx], 'dist:', distances[d_idx], 'match:', match)
+            if m_idx != 2 and m_idx != 10:
+                assert match
 
 
 def test_local_centrality_time():
