@@ -52,8 +52,8 @@ def test_shortest_path_tree():
             for j in range(len(G_primal)):
                 if j in nx_path:
                     assert _find_path(j, src_idx, tree_preds_p) == nx_path[j]
-                    np.testing.assert_array_almost_equal(tree_imps_p[j], tree_dists_p[j], decimal=3)
-                    np.testing.assert_array_almost_equal(tree_imps_p[j], nx_dist[j], decimal=3)
+                    assert np.allclose(tree_imps_p[j], tree_dists_p[j], atol=0.001, rtol=0)
+                    assert np.allclose(tree_imps_p[j], nx_dist[j], atol=0.001, rtol=0)
     # compare angular impedances and paths for a selection of targets on primal vs. dual
     # this works for this graph because edge segments are straight
     p_source_idx = node_uids_p.index(0)
@@ -78,7 +78,7 @@ def test_shortest_path_tree():
                                                                  max_dist=max_dist,
                                                                  angular=True)
         tree_imps_d = tree_map_d[:, 3]
-        np.testing.assert_array_almost_equal(tree_imps_p[p_target_idx], tree_imps_d[d_target_idx], decimal=3)
+        assert np.allclose(tree_imps_p[p_target_idx], tree_imps_d[d_target_idx], atol=0.001, rtol=0)
     # angular impedance should take a simpler but longer path - test basic case on dual
     # for debugging
     # from cityseer.util import plot
@@ -237,7 +237,7 @@ def test_local_centrality():
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance='length')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    np.testing.assert_array_almost_equal(nx_harm_cl, node_harmonic[4], decimal=3)
+    assert np.allclose(nx_harm_cl, node_harmonic[4], atol=0.001, rtol=0)
 
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
@@ -247,7 +247,7 @@ def test_local_centrality():
     # maybe two equidistant routes being divided through 2
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    np.testing.assert_array_almost_equal(nx_betw[:52], node_betweenness[4][:52], decimal=3)
+    assert np.allclose(nx_betw[:52], node_betweenness[4][:52], atol=0.001, rtol=0)
 
     # test against various distances
     for d_idx in range(len(distances)):
@@ -315,14 +315,14 @@ def test_local_centrality():
                     inter_idx = np.int(tree_preds[inter_idx])
         improved_cl = dens / far_dist / dens
 
-        np.testing.assert_array_almost_equal(node_density[d_idx], dens, decimal=3)
-        np.testing.assert_array_almost_equal(node_farness[d_idx], far_dist, decimal=2)  # needs 2 to pass
-        np.testing.assert_array_almost_equal(node_cycles[d_idx], cyc, decimal=3)
-        np.testing.assert_array_almost_equal(node_harmonic[d_idx], harmonic_cl, decimal=3)
-        np.testing.assert_array_almost_equal(node_beta[d_idx], grav, decimal=3)
-        np.testing.assert_array_almost_equal(improved_closness[d_idx], improved_cl, decimal=3)
-        np.testing.assert_array_almost_equal(node_betweenness[d_idx], betw, decimal=3)
-        np.testing.assert_array_almost_equal(node_betweenness_beta[d_idx], betw_wt, decimal=3)
+        assert np.allclose(node_density[d_idx], dens, atol=0.001, rtol=0)
+        assert np.allclose(node_farness[d_idx], far_dist, atol=0.01, rtol=0)  # relax precision
+        assert np.allclose(node_cycles[d_idx], cyc, atol=0.001, rtol=0)
+        assert np.allclose(node_harmonic[d_idx], harmonic_cl, atol=0.001, rtol=0)
+        assert np.allclose(node_beta[d_idx], grav, atol=0.001, rtol=0)
+        assert np.allclose(improved_closness[d_idx], improved_cl, equal_nan=True, atol=0.001, rtol=0)
+        assert np.allclose(node_betweenness[d_idx], betw, atol=0.001, rtol=0)
+        assert np.allclose(node_betweenness_beta[d_idx], betw_wt, atol=0.001, rtol=0)
 
         # TODO: are there possibly ways to test segment_density, harmonic_segment, segment_beta, segment_betweenness
         # for infinite distance, the segment density should match the sum of reachable segments
