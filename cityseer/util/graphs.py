@@ -332,10 +332,10 @@ def _dissolve_adjacent(_target_graph: nx.Graph,
                 s_x = _target_graph.nodes[uid]['x']
                 s_y = _target_graph.nodes[uid]['y']
                 # check geom coordinates directionality - flip if facing backwards direction
-                if not (s_x, s_y) == line_geom.coords[0][:2]:
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
                     line_geom = geometry.LineString(line_geom.coords[::-1])
                 # double check that coordinates now face the forwards direction
-                if not (s_x, s_y) == line_geom.coords[0][:2]:
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
                     raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {uid}-{nb_uid}')
                 # update geom starting point to new parent node's coordinates
                 coords = list(line_geom.coords)
@@ -655,10 +655,11 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
         if line_geom.type != 'LineString':
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
-        if not (s_x, s_y) == line_geom.coords[0][:2]:
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
             line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
-        if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or not np.allclose((e_x, e_y),
+                                                                                   line_geom.coords[-1][:2]):
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -905,11 +906,12 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             # check geom coordinates directionality (for bearings at index 5 / 6)
             # flip if facing backwards direction
             s_x, s_y = node_data[node_idx][:2]
-            if not (s_x, s_y) == line_geom.coords[0][:2]:
+            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
                 line_geom = geometry.LineString(line_geom.coords[::-1])
             e_x, e_y = (g_copy.nodes[nb]['x'], g_copy.nodes[nb]['y'])
             # double check that coordinates now face the forwards direction
-            if not (s_x, s_y) == line_geom.coords[0][:2] or not (e_x, e_y) == line_geom.coords[-1][:2]:
+            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or not np.allclose((e_x, e_y),
+                                                                                       line_geom.coords[-1][:2]):
                 raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
             # iterate the coordinates and calculate the angular change
             angle_sum = 0

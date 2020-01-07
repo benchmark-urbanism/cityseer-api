@@ -511,7 +511,7 @@ def local_centrality(node_data: np.ndarray,
                             # 1 - farness
                             elif not ghosted_node and agg_key == 1:
                                 measures_data[m_idx, d_idx, src_idx] += to_dist
-                                # 3 - harmonic node
+                            # 3 - harmonic node
                             elif not ghosted_node and agg_key == 3:
                                 measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
                             # 4 - beta weighted node

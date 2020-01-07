@@ -258,7 +258,7 @@ class Network_Layer:
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
-            heuristic = 'shortest'
+            heuristic = 'shortest (non-angular)'
             options = (
                 'node_density',
                 'node_farness',
@@ -273,7 +273,7 @@ class Network_Layer:
                 'segment_betweenness'
             )
         else:
-            heuristic = 'simplest'
+            heuristic = 'simplest (angular)'
             options = (
                 'node_harmonic_angular',
                 'segment_harmonic_hybrid',
