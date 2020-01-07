@@ -133,7 +133,7 @@ def test_assign_to_network():
     ]
     for i in range(len(data_map_test_1600)):
         assert data_map_test_1600[i, 2] == targets[i][1]
-        assert np.allclose(data_map_test_1600[i, 3], targets[i][2], equal_nan=True)
+        np.testing.assert_array_almost_equal(data_map_test_1600[i, 3], targets[i][2], decimal=3)
     # for debugging
     # from cityseer.util import plot
     # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map_test_1600)
@@ -594,39 +594,44 @@ def test_local_aggregator_numerical_components():
         for d_idx in range(len(distances)):
             # max
             assert np.isnan(stats_max[stats_idx, d_idx, 49])
-            assert np.allclose(stats_max[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].max())
-            assert np.allclose(stats_max[stats_idx, d_idx, isolated_nodes_idx],
-                               mock_numerical[stats_idx, isolated_data_idx].max())
-            assert np.allclose(stats_max[stats_idx, d_idx, connected_nodes_idx],
-                               mock_numerical[stats_idx, connected_data_idx].max())
+            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, [50, 51]],
+                                                 mock_numerical[stats_idx, [17, 33]].max(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, isolated_nodes_idx],
+                                                 mock_numerical[stats_idx, isolated_data_idx].max(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, connected_nodes_idx],
+                                                 mock_numerical[stats_idx, connected_data_idx].max(), decimal=3)
             # min
             assert np.isnan(stats_min[stats_idx, d_idx, 49])
-            assert np.allclose(stats_min[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].min())
-            assert np.allclose(stats_min[stats_idx, d_idx, isolated_nodes_idx],
-                               mock_numerical[stats_idx, isolated_data_idx].min())
-            assert np.allclose(stats_min[stats_idx, d_idx, connected_nodes_idx],
-                               mock_numerical[stats_idx, connected_data_idx].min())
+            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, [50, 51]],
+                                                 mock_numerical[stats_idx, [17, 33]].min(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, isolated_nodes_idx],
+                                                 mock_numerical[stats_idx, isolated_data_idx].min(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, connected_nodes_idx],
+                                                 mock_numerical[stats_idx, connected_data_idx].min(), decimal=3)
             # sum
             assert np.isnan(stats_sum[stats_idx, d_idx, 49])
-            assert np.allclose(stats_sum[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].sum())
-            assert np.allclose(stats_sum[stats_idx, d_idx, isolated_nodes_idx],
-                               mock_numerical[stats_idx, isolated_data_idx].sum())
-            assert np.allclose(stats_sum[stats_idx, d_idx, connected_nodes_idx],
-                               mock_numerical[stats_idx, connected_data_idx].sum())
+            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, [50, 51]],
+                                                 mock_numerical[stats_idx, [17, 33]].sum(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, isolated_nodes_idx],
+                                                 mock_numerical[stats_idx, isolated_data_idx].sum(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, connected_nodes_idx],
+                                                 mock_numerical[stats_idx, connected_data_idx].sum(), decimal=3)
             # mean
             assert np.isnan(stats_mean[stats_idx, d_idx, 49])
-            assert np.allclose(stats_mean[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].mean())
-            assert np.allclose(stats_mean[stats_idx, d_idx, isolated_nodes_idx],
-                               mock_numerical[stats_idx, isolated_data_idx].mean())
-            assert np.allclose(stats_mean[stats_idx, d_idx, connected_nodes_idx],
-                               mock_numerical[stats_idx, connected_data_idx].mean())
+            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, [50, 51]],
+                                                 mock_numerical[stats_idx, [17, 33]].mean(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, isolated_nodes_idx],
+                                                 mock_numerical[stats_idx, isolated_data_idx].mean(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, connected_nodes_idx],
+                                                 mock_numerical[stats_idx, connected_data_idx].mean(), decimal=3)
             # variance
             assert np.isnan(stats_variance[stats_idx, d_idx, 49])
-            assert np.allclose(stats_variance[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].var())
-            assert np.allclose(stats_variance[stats_idx, d_idx, isolated_nodes_idx],
-                               mock_numerical[stats_idx, isolated_data_idx].var())
-            assert np.allclose(stats_variance[stats_idx, d_idx, connected_nodes_idx],
-                               mock_numerical[stats_idx, connected_data_idx].var())
+            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, [50, 51]],
+                                                 mock_numerical[stats_idx, [17, 33]].var(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, isolated_nodes_idx],
+                                                 mock_numerical[stats_idx, isolated_data_idx].var(), decimal=3)
+            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, connected_nodes_idx],
+                                                 mock_numerical[stats_idx, connected_data_idx].var(), decimal=3)
 
 
 # TODO: add more extensive tests if / when publishing this function
@@ -683,5 +688,5 @@ def test_model_singly_constrained():
                                                      lu)
 
     assert np.sum(j_assigned) == np.sum(pop)
-    assert np.allclose(j_assigned, [[0, 0, 0, 0, 15]])
-    assert np.allclose(netw_flows, [[3, 6, 9, 12, 15]])
+    np.testing.assert_array_almost_equal(j_assigned, [[0, 0, 0, 0, 15]], decimal=3)
+    np.testing.assert_array_almost_equal(netw_flows, [[3, 6, 9, 12, 15]], decimal=3)

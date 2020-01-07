@@ -10,11 +10,13 @@ def test_hill_diversity():
     # test hill diversity against scipy entropy
     for counts, probs in mock.mock_species_data():
         # check hill q=1 - this can be tested against scipy because hill q=1 is exponential of entropy
-        assert np.allclose(diversity.hill_diversity(counts, q=1), np.exp(entropy(probs)))
+        np.testing.assert_array_almost_equal(diversity.hill_diversity(counts, q=1), np.exp(entropy(probs)), decimal=3)
         # check that hill q<1 and q>1 is reasonably close to scipy entropy
         # (different internal computation)
-        assert np.allclose(diversity.hill_diversity(counts, 0.99999999), np.exp(entropy(probs)))
-        assert np.allclose(diversity.hill_diversity(counts, 1.00000001), np.exp(entropy(probs)))
+        np.testing.assert_array_almost_equal(diversity.hill_diversity(counts, 0.99999999), np.exp(entropy(probs)),
+                                             decimal=3)
+        np.testing.assert_array_almost_equal(diversity.hill_diversity(counts, 1.00000001), np.exp(entropy(probs)),
+                                             decimal=3)
         # check for malformed q
         with pytest.raises(ValueError):
             diversity.hill_diversity(counts, q=-1)
@@ -27,8 +29,9 @@ def test_hill_diversity_branch_distance_wt():
         non_weights = np.full(len(counts), 1)
         non_beta = -0
         for q in [0, 1, 2]:
-            assert np.allclose(diversity.hill_diversity(counts, q),
-                               diversity.hill_diversity_branch_distance_wt(counts, non_weights, q, non_beta))
+            np.testing.assert_array_almost_equal(diversity.hill_diversity(counts, q),
+                                                 diversity.hill_diversity_branch_distance_wt(counts, non_weights, q,
+                                                                                             non_beta), decimal=3)
 
         # check for malformed signatures
         with pytest.raises(ValueError):

@@ -42,8 +42,8 @@ def test_nX_wgs_to_utm():
     G_converted = graphs.nX_wgs_to_utm(G_wgs)
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
-        assert np.allclose(d['x'], G_converted.nodes[n]['x'])
-        assert np.allclose(d['y'], G_converted.nodes[n]['y'])
+        np.testing.assert_array_almost_equal(d['x'], G_converted.nodes[n]['x'], decimal=1)
+        np.testing.assert_array_almost_equal(d['y'], G_converted.nodes[n]['y'], decimal=1)
 
     # check that edge coordinates are correctly converted
     G_utm = mock.mock_graph()
@@ -491,7 +491,7 @@ def test_nX_decompose():
         if 'ghosted' in e_data and e_data['ghosted']:
             continue
         G_d_lens += e_data['geom'].length
-    assert np.allclose(G_lens, G_d_lens)
+    np.testing.assert_array_almost_equal(G_lens, G_d_lens, decimal=3)
 
     # check that all ghosted edges have one or two edges
     for n, n_data in G_decompose.nodes(data=True):
@@ -648,7 +648,7 @@ def test_graph_maps_from_nX():
 
     # check edge maps (idx and label match in this case...)
     for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_data:
-        assert np.allclose(length, G_test[start][end]['geom'].length)
+        np.testing.assert_array_almost_equal(length, G_test[start][end]['geom'].length, decimal=3)
         if (start == 50 and end == 51) or (start == 51 and end == 50):
             # check that the angle is measured along the line of change
             # i.e. 45 + 135 + 90 (not 45 + 45 + 90)
@@ -656,11 +656,11 @@ def test_graph_maps_from_nX():
             assert angle_sum == 270
         else:
             assert angle_sum == 0
-        assert np.allclose(imp_factor, G_test[start][end]['imp_factor'])
+        np.testing.assert_array_almost_equal(imp_factor, G_test[start][end]['imp_factor'], decimal=3)
         s_x, s_y = node_data[int(start)][:2]
         e_x, e_y = node_data[int(end)][:2]
-        assert np.allclose(start_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)))
-        assert np.allclose(end_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)))
+        np.testing.assert_array_almost_equal(start_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), decimal=3)
+        np.testing.assert_array_almost_equal(end_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), decimal=3)
 
     # check that missing geoms throw an error
     G_test = G_template.copy()

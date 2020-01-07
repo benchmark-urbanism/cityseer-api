@@ -32,8 +32,8 @@ def test_dict_wgs_to_utm():
     # check that round-trip converted match with reasonable proximity given rounding errors
     for k in data_dict_utm.keys():
         # rounding can be tricky
-        assert np.allclose(data_dict_utm[k]['x'], dict_converted[k]['x'])
-        assert np.allclose(data_dict_utm[k]['y'], dict_converted[k]['y'])
+        np.testing.assert_array_almost_equal(data_dict_utm[k]['x'], dict_converted[k]['x'], decimal=1)
+        np.testing.assert_array_almost_equal(data_dict_utm[k]['y'], dict_converted[k]['y'], decimal=1)
 
     # check that missing node attributes throw an error
     for attr in ['x', 'y']:
@@ -97,9 +97,9 @@ def test_Data_Layer():
     # test against Data_Layer internal process
     D = layers.Data_Layer(data_uids, data_map)
     assert D.uids == data_uids
-    assert np.allclose(D._data, data_map, equal_nan=True)
-    assert np.allclose(D.x_arr, x_arr)
-    assert np.allclose(D.y_arr, y_arr)
+    np.testing.assert_array_almost_equal(D._data, data_map, decimal=3)
+    np.testing.assert_array_almost_equal(D.x_arr, x_arr, decimal=3)
+    np.testing.assert_array_almost_equal(D.y_arr, y_arr, decimal=3)
 
 
 def test_Data_Layer_From_Dict():
@@ -112,9 +112,9 @@ def test_Data_Layer_From_Dict():
     # test against Data_Layer_From_Dict's internal process
     D = layers.Data_Layer_From_Dict(data_dict)
     assert D.uids == data_uids
-    assert np.allclose(D._data, data_map, equal_nan=True)
-    assert np.allclose(D.x_arr, x_arr)
-    assert np.allclose(D.y_arr, y_arr)
+    np.testing.assert_array_almost_equal(D._data, data_map, decimal=3)
+    np.testing.assert_array_almost_equal(D.x_arr, x_arr, decimal=3)
+    np.testing.assert_array_almost_equal(D.y_arr, y_arr, decimal=3)
 
 
 def test_compute_aggregated_A():
@@ -153,8 +153,8 @@ def test_compute_aggregated_A():
                               mixed_use_hill_keys=np.array([1]))
     for q_idx, q_key in enumerate(qs):
         for d_idx, d_key in enumerate(distances):
-            assert np.allclose(N.metrics['mixed_uses']['hill_branch_wt'][q_key][d_key],
-                               mu_data_hill[0][q_idx][d_idx])
+            np.testing.assert_array_almost_equal(N.metrics['mixed_uses']['hill_branch_wt'][q_key][d_key],
+                                                 mu_data_hill[0][q_idx][d_idx], decimal=3)
     # gini simpson
     D.compute_aggregated(landuse_labels, mixed_use_keys=['gini_simpson'])
     # test against underlying method
@@ -170,7 +170,8 @@ def test_compute_aggregated_A():
                               landuse_encodings,
                               mixed_use_other_keys=np.array([1]))
     for d_idx, d_key in enumerate(distances):
-        assert np.allclose(N.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx])
+        np.testing.assert_array_almost_equal(N.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx],
+                                             decimal=3)
     # accessibilities
     D.compute_aggregated(landuse_labels, accessibility_keys=['c'])
     # test against underlying method
@@ -186,8 +187,10 @@ def test_compute_aggregated_A():
                               landuse_encodings,
                               accessibility_keys=np.array([landuse_classes.index('c')]))
     for d_idx, d_key in enumerate(distances):
-        assert np.allclose(N.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx])
-        assert np.allclose(N.metrics['accessibility']['weighted']['c'][d_key], ac_data_wt[0][d_idx])
+        np.testing.assert_array_almost_equal(N.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx],
+                                             decimal=3)
+        np.testing.assert_array_almost_equal(N.metrics['accessibility']['weighted']['c'][d_key], ac_data_wt[0][d_idx],
+                                             decimal=3)
     # also check the number of returned types for a few assortments of metrics
     mixed_uses_hill_types = np.array(['hill',
                                       'hill_branch_wt',
@@ -257,20 +260,21 @@ def test_compute_aggregated_A():
                 for mu_h_idx, mu_h_met in enumerate(mu_h_metrics):
                     for q_idx, q_key in enumerate(qs):
                         for d_idx, d_key in enumerate(distances):
-                            assert np.allclose(N_temp.metrics['mixed_uses'][mu_h_met][q_key][d_key],
-                                               mu_data_hill[mu_h_idx][q_idx][d_idx])
+                            np.testing.assert_array_almost_equal(N_temp.metrics['mixed_uses'][mu_h_met][q_key][d_key],
+                                                                 mu_data_hill[mu_h_idx][q_idx][d_idx], decimal=3)
 
                 for mu_o_idx, mu_o_met in enumerate(mu_o_metrics):
                     for d_idx, d_key in enumerate(distances):
-                        assert np.allclose(N_temp.metrics['mixed_uses'][mu_o_met][d_key],
-                                           mu_data_other[mu_o_idx][d_idx])
+                        np.testing.assert_array_almost_equal(N_temp.metrics['mixed_uses'][mu_o_met][d_key],
+                                                             mu_data_other[mu_o_idx][d_idx], decimal=3)
 
                 for ac_idx, ac_met in enumerate(ac_metrics):
                     for d_idx, d_key in enumerate(distances):
-                        assert np.allclose(N_temp.metrics['accessibility']['non_weighted'][ac_met][d_key],
-                                           ac_data[ac_idx][d_idx])
-                        assert np.allclose(N_temp.metrics['accessibility']['weighted'][ac_met][d_key],
-                                           ac_data_wt[ac_idx][d_idx])
+                        np.testing.assert_array_almost_equal(
+                            N_temp.metrics['accessibility']['non_weighted'][ac_met][d_key],
+                            ac_data[ac_idx][d_idx], decimal=3)
+                        np.testing.assert_array_almost_equal(N_temp.metrics['accessibility']['weighted'][ac_met][d_key],
+                                                             ac_data_wt[ac_idx][d_idx], decimal=3)
 
     # most integrity checks happen in underlying method, though check here for mismatching labels length and typos
     with pytest.raises(ValueError):
@@ -329,7 +333,9 @@ def test_compute_aggregated_B():
     for num_idx, num_label in enumerate(['boo', 'baa']):
         for s_key, stats in zip(stats_keys, stats_data):
             for d_idx, d_key in enumerate(distances):
-                assert np.allclose(N.metrics['stats'][num_label][s_key][d_key], stats[num_idx][d_idx])
+                np.testing.assert_array_almost_equal(N.metrics['stats'][num_label][s_key][d_key],
+                                                     stats[num_idx][d_idx],
+                                                     decimal=3)
 
     # check that mismatching label and array lengths are caught
     for labels, arrs in ((['a'], mock_numeric),  # mismatching lengths
@@ -364,8 +370,8 @@ def test_hill_diversity():
         # compare
         for d in distances:
             for q in [0, 1, 2]:
-                assert np.allclose(N_easy.metrics['mixed_uses']['hill'][q][d],
-                                   N_full.metrics['mixed_uses']['hill'][q][d])
+                np.testing.assert_array_almost_equal(N_easy.metrics['mixed_uses']['hill'][q][d],
+                                                     N_full.metrics['mixed_uses']['hill'][q][d], decimal=3)
 
 
 def test_hill_branch_wt_diversity():
@@ -385,8 +391,8 @@ def test_hill_branch_wt_diversity():
         # compare
         for d in distances:
             for q in [0, 1, 2]:
-                assert np.allclose(N_easy.metrics['mixed_uses']['hill_branch_wt'][q][d],
-                                   N_full.metrics['mixed_uses']['hill_branch_wt'][q][d])
+                np.testing.assert_array_almost_equal(N_easy.metrics['mixed_uses']['hill_branch_wt'][q][d],
+                                                     N_full.metrics['mixed_uses']['hill_branch_wt'][q][d], decimal=3)
 
 
 def test_compute_accessibilities():
@@ -406,8 +412,8 @@ def test_compute_accessibilities():
         # compare
         for d in distances:
             for wt in ['weighted', 'non_weighted']:
-                assert np.allclose(N_easy.metrics['accessibility'][wt]['c'][d],
-                                   N_full.metrics['accessibility'][wt]['c'][d])
+                np.testing.assert_array_almost_equal(N_easy.metrics['accessibility'][wt]['c'][d],
+                                                     N_full.metrics['accessibility'][wt]['c'][d], decimal=3)
 
 
 def test_compute_stats_single():
@@ -428,8 +434,8 @@ def test_compute_stats_single():
         for n_label in ['boo']:
             for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:
                 for dist in distances:
-                    assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
-                                       N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)
+                    np.testing.assert_array_almost_equal(N_easy.metrics['stats'][n_label][s_label][dist],
+                                                         N_full.metrics['stats'][n_label][s_label][dist], decimal=3)
         # check that non-single dimension arrays are caught
         with pytest.raises(ValueError):
             D_easy.compute_stats_single('boo', numeric_data)
@@ -453,5 +459,5 @@ def test_compute_stats_multiple():
         for n_label in ['boo', 'baa']:
             for s_label in ['max', 'min', 'mean', 'mean_weighted', 'variance', 'variance_weighted']:
                 for dist in distances:
-                    assert np.allclose(N_easy.metrics['stats'][n_label][s_label][dist],
-                                       N_full.metrics['stats'][n_label][s_label][dist], equal_nan=True)
+                    np.testing.assert_array_almost_equal(N_easy.metrics['stats'][n_label][s_label][dist],
+                                                         N_full.metrics['stats'][n_label][s_label][dist], decimal=3)
