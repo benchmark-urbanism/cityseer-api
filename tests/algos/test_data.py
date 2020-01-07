@@ -133,7 +133,7 @@ def test_assign_to_network():
     ]
     for i in range(len(data_map_test_1600)):
         assert data_map_test_1600[i, 2] == targets[i][1]
-        np.testing.assert_array_almost_equal(data_map_test_1600[i, 3], targets[i][2], decimal=3)
+        assert np.allclose(data_map_test_1600[i, 3], targets[i][2], equal_nan=True, atol=0.001, rtol=0)
     # for debugging
     # from cityseer.util import plot
     # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map_test_1600)
@@ -543,10 +543,10 @@ def test_local_aggregator_categorical_components():
                               cl_disparity_wt_matrix=mock_matrix,
                               angular=False)
 
-    assert not np.allclose(mu_hill_dual, mu_hill_dual_sidestep)
-    assert not np.allclose(mu_other_dual, mu_other_dual_sidestep)
-    assert not np.allclose(ac_dual, ac_dual_sidestep)
-    assert not np.allclose(ac_wt_dual, ac_wt_dual_sidestep)
+    assert not np.allclose(mu_hill_dual, mu_hill_dual_sidestep, atol=0.001, rtol=0)
+    assert not np.allclose(mu_other_dual, mu_other_dual_sidestep, atol=0.001, rtol=0)
+    assert not np.allclose(ac_dual, ac_dual_sidestep, atol=0.001, rtol=0)
+    assert not np.allclose(ac_wt_dual, ac_wt_dual_sidestep, atol=0.001, rtol=0)
 
 
 def test_local_aggregator_numerical_components():
@@ -594,44 +594,44 @@ def test_local_aggregator_numerical_components():
         for d_idx in range(len(distances)):
             # max
             assert np.isnan(stats_max[stats_idx, d_idx, 49])
-            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, [50, 51]],
-                                                 mock_numerical[stats_idx, [17, 33]].max(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, isolated_nodes_idx],
-                                                 mock_numerical[stats_idx, isolated_data_idx].max(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_max[stats_idx, d_idx, connected_nodes_idx],
-                                                 mock_numerical[stats_idx, connected_data_idx].max(), decimal=3)
+            assert np.allclose(stats_max[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].max(),
+                               atol=0.001, rtol=0)
+            assert np.allclose(stats_max[stats_idx, d_idx, isolated_nodes_idx],
+                               mock_numerical[stats_idx, isolated_data_idx].max(), atol=0.001, rtol=0)
+            assert np.allclose(stats_max[stats_idx, d_idx, connected_nodes_idx],
+                               mock_numerical[stats_idx, connected_data_idx].max(), atol=0.001, rtol=0)
             # min
             assert np.isnan(stats_min[stats_idx, d_idx, 49])
-            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, [50, 51]],
-                                                 mock_numerical[stats_idx, [17, 33]].min(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, isolated_nodes_idx],
-                                                 mock_numerical[stats_idx, isolated_data_idx].min(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_min[stats_idx, d_idx, connected_nodes_idx],
-                                                 mock_numerical[stats_idx, connected_data_idx].min(), decimal=3)
+            assert np.allclose(stats_min[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].min(),
+                               atol=0.001, rtol=0)
+            assert np.allclose(stats_min[stats_idx, d_idx, isolated_nodes_idx],
+                               mock_numerical[stats_idx, isolated_data_idx].min(), atol=0.001, rtol=0)
+            assert np.allclose(stats_min[stats_idx, d_idx, connected_nodes_idx],
+                               mock_numerical[stats_idx, connected_data_idx].min(), atol=0.001, rtol=0)
             # sum
             assert np.isnan(stats_sum[stats_idx, d_idx, 49])
-            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, [50, 51]],
-                                                 mock_numerical[stats_idx, [17, 33]].sum(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, isolated_nodes_idx],
-                                                 mock_numerical[stats_idx, isolated_data_idx].sum(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_sum[stats_idx, d_idx, connected_nodes_idx],
-                                                 mock_numerical[stats_idx, connected_data_idx].sum(), decimal=3)
+            assert np.allclose(stats_sum[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].sum(),
+                               atol=0.001, rtol=0)
+            assert np.allclose(stats_sum[stats_idx, d_idx, isolated_nodes_idx],
+                               mock_numerical[stats_idx, isolated_data_idx].sum(), atol=0.001, rtol=0)
+            assert np.allclose(stats_sum[stats_idx, d_idx, connected_nodes_idx],
+                               mock_numerical[stats_idx, connected_data_idx].sum(), atol=0.001, rtol=0)
             # mean
             assert np.isnan(stats_mean[stats_idx, d_idx, 49])
-            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, [50, 51]],
-                                                 mock_numerical[stats_idx, [17, 33]].mean(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, isolated_nodes_idx],
-                                                 mock_numerical[stats_idx, isolated_data_idx].mean(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_mean[stats_idx, d_idx, connected_nodes_idx],
-                                                 mock_numerical[stats_idx, connected_data_idx].mean(), decimal=3)
+            assert np.allclose(stats_mean[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].mean(),
+                               atol=0.001, rtol=0)
+            assert np.allclose(stats_mean[stats_idx, d_idx, isolated_nodes_idx],
+                               mock_numerical[stats_idx, isolated_data_idx].mean(), atol=0.001, rtol=0)
+            assert np.allclose(stats_mean[stats_idx, d_idx, connected_nodes_idx],
+                               mock_numerical[stats_idx, connected_data_idx].mean(), atol=0.001, rtol=0)
             # variance
             assert np.isnan(stats_variance[stats_idx, d_idx, 49])
-            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, [50, 51]],
-                                                 mock_numerical[stats_idx, [17, 33]].var(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, isolated_nodes_idx],
-                                                 mock_numerical[stats_idx, isolated_data_idx].var(), decimal=3)
-            np.testing.assert_array_almost_equal(stats_variance[stats_idx, d_idx, connected_nodes_idx],
-                                                 mock_numerical[stats_idx, connected_data_idx].var(), decimal=3)
+            assert np.allclose(stats_variance[stats_idx, d_idx, [50, 51]], mock_numerical[stats_idx, [17, 33]].var(),
+                               atol=0.001, rtol=0)
+            assert np.allclose(stats_variance[stats_idx, d_idx, isolated_nodes_idx],
+                               mock_numerical[stats_idx, isolated_data_idx].var(), atol=0.001, rtol=0)
+            assert np.allclose(stats_variance[stats_idx, d_idx, connected_nodes_idx],
+                               mock_numerical[stats_idx, connected_data_idx].var(), atol=0.001, rtol=0)
 
 
 # TODO: add more extensive tests if / when publishing this function
@@ -688,5 +688,5 @@ def test_model_singly_constrained():
                                                      lu)
 
     assert np.sum(j_assigned) == np.sum(pop)
-    np.testing.assert_array_almost_equal(j_assigned, [[0, 0, 0, 0, 15]], decimal=3)
-    np.testing.assert_array_almost_equal(netw_flows, [[3, 6, 9, 12, 15]], decimal=3)
+    assert np.allclose(j_assigned, [[0, 0, 0, 0, 15]], atol=0.001, rtol=0)
+    assert np.allclose(netw_flows, [[3, 6, 9, 12, 15]], atol=0.001, rtol=0)

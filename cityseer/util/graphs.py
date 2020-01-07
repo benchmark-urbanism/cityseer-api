@@ -160,15 +160,15 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
         s_y = _G.nodes[_start_node]['y']
         # check geom coordinates directionality - flip to wind in same direction
         # i.e. _geom_a should start at _start_node whereas _geom_b should end at _start_node
-        if not (s_x, s_y) == _geom_a.coords[0][:2]:
+        if not np.allclose((s_x, s_y), _geom_a.coords[0][:2], atol=0.001, rtol=0):
             _geom_a = geometry.LineString(_geom_a.coords[::-1])
-        if not (s_x, s_y) == _geom_b.coords[-1][:2]:
+        if not np.allclose((s_x, s_y), _geom_b.coords[-1][:2], atol=0.001, rtol=0):
             _geom_b = geometry.LineString(_geom_b.coords[::-1])
         # now concatenate
         _new_agg_geom = geometry.LineString(list(_geom_a.coords) + list(_geom_b.coords))
         # check
-        assert _new_agg_geom.coords[0] == (s_x, s_y)
-        assert _new_agg_geom.coords[-1] == (s_x, s_y)
+        assert np.allclose(_new_agg_geom.coords[0], (s_x, s_y), atol=0.001, rtol=0)
+        assert np.allclose(_new_agg_geom.coords[-1], (s_x, s_y), atol=0.001, rtol=0)
         return _new_agg_geom
 
     def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node):
@@ -332,10 +332,10 @@ def _dissolve_adjacent(_target_graph: nx.Graph,
                 s_x = _target_graph.nodes[uid]['x']
                 s_y = _target_graph.nodes[uid]['y']
                 # check geom coordinates directionality - flip if facing backwards direction
-                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
                     line_geom = geometry.LineString(line_geom.coords[::-1])
                 # double check that coordinates now face the forwards direction
-                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
                     raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {uid}-{nb_uid}')
                 # update geom starting point to new parent node's coordinates
                 coords = list(line_geom.coords)
@@ -478,12 +478,14 @@ def _find_parallel(_networkX_graph: nx.Graph, _line_start_nd, _line_end_nd, _par
     _networkX_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
     _networkX_graph.add_edge(_line_start_nd, new_nd_name)
     _networkX_graph.add_edge(_line_end_nd, new_nd_name)
-    if (s_x, s_y) == part_a.coords[0][:2] or (s_x, s_y) == part_a.coords[-1][:2]:
+    if np.allclose((s_x, s_y), part_a.coords[0][:2], atol=0.001, rtol=0) or \
+            np.allclose((s_x, s_y), part_a.coords[-1][:2], atol=0.001, rtol=0):
         _networkX_graph[_line_start_nd][new_nd_name]['geom'] = part_a
         _networkX_graph[_line_end_nd][new_nd_name]['geom'] = part_b
     else:
         # double check matching geoms
-        if (s_x, s_y) != part_b.coords[0][:2] and (s_x, s_y) != part_b.coords[-1][:2]:
+        if not np.allclose((s_x, s_y), part_b.coords[0][:2], atol=0.001, rtol=0) and \
+                not np.allclose((s_x, s_y), part_b.coords[-1][:2], atol=0.001, rtol=0):
             raise ValueError('Unable to match split geoms to existing nodes')
         _networkX_graph[_line_start_nd][new_nd_name]['geom'] = part_b
         _networkX_graph[_line_end_nd][new_nd_name]['geom'] = part_a
@@ -655,11 +657,11 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
         if line_geom.type != 'LineString':
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
             line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or not np.allclose((e_x, e_y),
-                                                                                   line_geom.coords[-1][:2]):
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0) or \
+                not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -737,15 +739,16 @@ def nX_to_dual(networkX_graph: nx.Graph) -> nx.Graph:
             raise TypeError(
                 f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
         # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
-        if not (a_x, a_y) == line_geom.coords[0][:2]:
+        if not np.allclose((a_x, a_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
             line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
-        if not (a_x, a_y) == line_geom.coords[0][:2] or not (b_x, b_y) == line_geom.coords[-1][:2]:
+        if not np.allclose((a_x, a_y), line_geom.coords[0][:2], atol=0.001, rtol=0) or \
+                not np.allclose((b_x, b_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
         # generate the two half geoms
         a_half_geom = ops.substring(line_geom, 0, line_geom.length / 2)
         b_half_geom = ops.substring(line_geom, line_geom.length / 2, line_geom.length)
-        assert a_half_geom.coords[-1][:2] == b_half_geom.coords[0][:2]
+        assert np.allclose(a_half_geom.coords[-1][:2], b_half_geom.coords[0][:2], atol=0.001, rtol=0)
 
         return a_half_geom, b_half_geom
 
@@ -906,12 +909,12 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             # check geom coordinates directionality (for bearings at index 5 / 6)
             # flip if facing backwards direction
             s_x, s_y = node_data[node_idx][:2]
-            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]):
+            if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
                 line_geom = geometry.LineString(line_geom.coords[::-1])
             e_x, e_y = (g_copy.nodes[nb]['x'], g_copy.nodes[nb]['y'])
             # double check that coordinates now face the forwards direction
-            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or not np.allclose((e_x, e_y),
-                                                                                       line_geom.coords[-1][:2]):
+            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or \
+                    not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
                 raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
             # iterate the coordinates and calculate the angular change
             angle_sum = 0

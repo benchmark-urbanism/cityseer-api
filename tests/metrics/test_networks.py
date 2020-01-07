@@ -17,10 +17,10 @@ def test_distance_from_beta():
         assert networks.distance_from_beta(np.array([b])) == np.array([d])
     # check that custom min_threshold_wt works
     arr = networks.distance_from_beta(-0.04, min_threshold_wt=0.001)
-    np.testing.assert_array_almost_equal(arr, np.array([172.69388197455342]), decimal=3)
+    assert np.allclose(arr, np.array([172.69388197455342]), atol=0.001, rtol=0)
     # check on array form
     arr = networks.distance_from_beta([-0.04, -0.0025, -0.0])
-    np.testing.assert_array_almost_equal(arr, np.array([100, 1600, np.inf]), decimal=3)
+    assert np.allclose(arr, np.array([100, 1600, np.inf]), atol=0.001, rtol=0)
     # check for type error
     with pytest.raises(TypeError):
         networks.distance_from_beta('boo')
@@ -41,10 +41,10 @@ def test_beta_from_distance():
         assert networks.beta_from_distance(np.array([d])) == np.array([b])
     # check that custom min_threshold_wt works
     arr = networks.beta_from_distance(172.69388197455342, min_threshold_wt=0.001)
-    np.testing.assert_array_almost_equal(arr, np.array([-0.04]), decimal=3)
+    assert np.allclose(arr, np.array([-0.04]), atol=0.001, rtol=0)
     # check on array form
     arr = networks.beta_from_distance([100, 1600, np.inf])
-    np.testing.assert_array_almost_equal(arr, np.array([-0.04, -0.0025, -0.0]), decimal=3)
+    assert np.allclose(arr, np.array([-0.04, -0.0025, -0.0]), atol=0.001, rtol=0)
     # check for type error
     with pytest.raises(TypeError):
         networks.beta_from_distance('boo')
@@ -74,23 +74,23 @@ def test_Network_Layer():
                                        node_edge_map,
                                        distances=d,
                                        betas=b)
-            np.testing.assert_array_almost_equal(N.uids, node_uids, decimal=3)
-            np.testing.assert_array_almost_equal(N._node_data, node_data, decimal=3)
-            np.testing.assert_array_almost_equal(N._edge_data, edge_data, decimal=3)
-            np.testing.assert_array_almost_equal(N.distances, distances,
-                                                 decimal=3)  # inferred automatically when only betas provided
-            np.testing.assert_array_almost_equal(N.betas, betas,
-                                                 decimal=3)  # inferred automatically when only distances provided
+            assert np.allclose(N.uids, node_uids, atol=0.001, rtol=0)
+            assert np.allclose(N._node_data, node_data, atol=0.001, rtol=0)
+            assert np.allclose(N._edge_data, edge_data, atol=0.001, rtol=0)
+            assert np.allclose(N.distances, distances, atol=0.001,
+                               rtol=0)  # inferred automatically when only betas provided
+            assert np.allclose(N.betas, betas, atol=0.001,
+                               rtol=0)  # inferred automatically when only distances provided
             assert N.min_threshold_wt == checks.def_min_thresh_wt
-            np.testing.assert_array_almost_equal(N.x_arr, x_arr, decimal=3)
-            np.testing.assert_array_almost_equal(N.y_arr, y_arr, decimal=3)
-            np.testing.assert_array_almost_equal(N.live, node_data[:, 2], decimal=3)
-            np.testing.assert_array_almost_equal(N.ghosted, node_data[:, 3], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_lengths, edge_data[:, 2], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_angles, edge_data[:, 3], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_impedance_factor, edge_data[:, 4], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_in_bearing, edge_data[:, 5], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_out_bearing, edge_data[:, 6], decimal=3)
+            assert np.allclose(N.x_arr, x_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.y_arr, y_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.live, node_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.ghosted, node_data[:, 3], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_lengths, edge_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_angles, edge_data[:, 3], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_impedance_factor, edge_data[:, 4], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_in_bearing, edge_data[:, 5], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_out_bearing, edge_data[:, 6], atol=0.001, rtol=0)
 
     # test round-trip graph to and from Network_Layer
     N = networks.Network_Layer(node_uids,
@@ -116,7 +116,7 @@ def test_Network_Layer():
                                node_edge_map,
                                betas=betas,
                                min_threshold_wt=alt_min)
-    np.testing.assert_array_almost_equal(N.distances, alt_distances, decimal=3)
+    assert np.allclose(N.distances, alt_distances, atol=0.001, rtol=0)
     # check for malformed signatures
     with pytest.raises(ValueError):
         networks.Network_Layer(node_uids[:-1],
@@ -181,28 +181,28 @@ def test_Network_Layer_From_nX():
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
             N = networks.Network_Layer_From_nX(G, distances=d, betas=b)
-            np.testing.assert_array_almost_equal(N.uids, node_uids, decimal=3)
-            np.testing.assert_array_almost_equal(N._node_data, node_data, decimal=3)
-            np.testing.assert_array_almost_equal(N._edge_data, edge_data, decimal=3)
-            np.testing.assert_array_almost_equal(N.distances, distances,
-                                                 decimal=3)  # inferred automatically when only betas provided
-            np.testing.assert_array_almost_equal(N.betas, betas,
-                                                 decimal=3)  # inferred automatically when only distances provided
+            assert np.allclose(N.uids, node_uids, atol=0.001, rtol=0)
+            assert np.allclose(N._node_data, node_data, atol=0.001, rtol=0)
+            assert np.allclose(N._edge_data, edge_data, atol=0.001, rtol=0)
+            assert np.allclose(N.distances, distances, atol=0.001,
+                               rtol=0)  # inferred automatically when only betas provided
+            assert np.allclose(N.betas, betas, atol=0.001,
+                               rtol=0)  # inferred automatically when only distances provided
             assert N.min_threshold_wt == checks.def_min_thresh_wt
-            np.testing.assert_array_almost_equal(N.x_arr, x_arr, decimal=3)
-            np.testing.assert_array_almost_equal(N.y_arr, y_arr, decimal=3)
-            np.testing.assert_array_almost_equal(N.live, node_data[:, 2], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_lengths, edge_data[:, 2], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_angles, edge_data[:, 3], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_impedance_factor, edge_data[:, 4], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_in_bearing, edge_data[:, 5], decimal=3)
-            np.testing.assert_array_almost_equal(N.edge_out_bearing, edge_data[:, 6], decimal=3)
+            assert np.allclose(N.x_arr, x_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.y_arr, y_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.live, node_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_lengths, edge_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_angles, edge_data[:, 3], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_impedance_factor, edge_data[:, 4], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_in_bearing, edge_data[:, 5], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_out_bearing, edge_data[:, 6], atol=0.001, rtol=0)
 
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
     N = networks.Network_Layer_From_nX(G, betas=betas, min_threshold_wt=alt_min)
-    np.testing.assert_array_almost_equal(N.distances, alt_distances, decimal=3)
+    assert np.allclose(N.distances, alt_distances, atol=0.001, rtol=0)
 
     # check for malformed signatures
     with pytest.raises(TypeError):
@@ -248,9 +248,8 @@ def dict_check(m_dict, Network):
             for stat_key, stat_val in th_val.items():
                 for d_key, d_val in stat_val.items():
                     # some NaN so use np.allclose
-                    np.testing.assert_array_almost_equal(d_val[i],
-                                                         m_dict[uid]['stats'][th_key][stat_key][d_key],
-                                                         decimal=3)
+                    assert np.allclose(d_val[i], m_dict[uid]['stats'][th_key][stat_key][d_key], equal_nan=True,
+                                       atol=0.001, rtol=0)
 
 
 def test_metrics_to_dict():
@@ -356,9 +355,7 @@ def test_compute_centrality():
                                                 betas,
                                                 measure_keys=('node_density',))
     for d_idx, d_key in enumerate(distances):
-        np.testing.assert_array_almost_equal(N.metrics['centrality']['node_density'][d_key],
-                                             measures_data[0][d_idx],
-                                             decimal=3)
+        assert np.allclose(N.metrics['centrality']['node_density'][d_key], measures_data[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
     measures = ['node_density',
                 'node_farness',
@@ -382,18 +379,17 @@ def test_compute_centrality():
                                                     measure_keys=tuple(measure_keys))
         for m_idx, measure_name in enumerate(measure_keys):
             for d_idx, d_key in enumerate(distances):
-                np.testing.assert_array_almost_equal(N.metrics['centrality'][measure_name][d_key],
-                                                     measures_data[m_idx][d_idx],
-                                                     decimal=3)
+                assert np.allclose(N.metrics['centrality'][measure_name][d_key],
+                                   measures_data[m_idx][d_idx], atol=0.001, rtol=0)
     # check that angular gets passed through
     N_ang = networks.Network_Layer_From_nX(G, distances=[2000])
     N_ang.compute_centrality(measures=['node_harmonic_angular'], angular=True)
     N = networks.Network_Layer_From_nX(G, distances=[2000])
     N.compute_centrality(measures=['node_harmonic'], angular=False)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
-                           N.metrics['centrality']['node_harmonic'][2000])
+                           N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
-                           N.metrics['centrality']['node_harmonic'][2000])
+                           N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
         N.compute_centrality(measures=['spelling_typo'])

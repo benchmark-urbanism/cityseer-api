@@ -335,7 +335,7 @@ def test_local_centrality():
                                 G_round_trip[53][54]['length'] +
                                 G_round_trip[54][55]['length'] +
                                 G_round_trip[52][55]['length'])
-        assert np.allclose(segment_density[-1][:49], reachable_length_sum)
+        assert np.allclose(segment_density[-1][:49], reachable_length_sum, atol=0.01, rtol=0)  # relax precision
 
     # check that problematic keys are caught
     for angular, k in zip([False, True], ['node_harmonic', 'node_harmonic_angular']):
@@ -414,7 +414,8 @@ def test_decomposed_local_centrality():
     # cycles and betweenness segments will not match
     for m_idx in range(m_range):
         for d_idx in range(d_range):
-            match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx])
+            match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx],
+                                atol=0.1, rtol=0)  # relax precision
             if not match:
                 print('key', measure_keys[m_idx], 'dist:', distances[d_idx], 'match:', match)
             if m_idx != 2 and m_idx != 10:
