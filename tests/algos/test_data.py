@@ -186,8 +186,7 @@ def test_aggregate_to_src_idx():
                 data_x_arr = data_map_temp[:, 0]
                 data_y_arr = data_map_temp[:, 1]
                 # get the network distances
-                tree_map, tree_edges = centrality.shortest_path_tree(node_data,
-                                                                     edge_data,
+                tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
                                                                      node_edge_map,
                                                                      netw_src_idx,
                                                                      max_dist=max_dist,

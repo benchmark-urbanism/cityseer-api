@@ -293,6 +293,7 @@ def local_centrality(node_data: np.ndarray,
     k_n = len(measure_keys)
     global_max_dist = np.nanmax(distances)
     nodes_live = node_data[:, 2]
+    nodes_ghosted = node_data[:, 3]
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
@@ -524,8 +525,8 @@ def local_centrality(node_data: np.ndarray,
             if to_idx < src_idx:
                 continue
             # identify true routes from ghosted routes
-            src_ghosted = node_data[src_idx, 3]
-            to_ghosted = node_data[to_idx, 3]
+            src_ghosted = nodes_ghosted[src_idx]
+            to_ghosted = nodes_ghosted[to_idx]
             true_route = not src_ghosted and not to_ghosted
             # NODE WORKFLOW
             # don't count routes originating or ending at ghosted nodes
