@@ -280,7 +280,7 @@ nX\_to\_dual
 
 <FuncSignature>nX_to_dual(networkX_graph)</FuncSignature>
 
-Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation, such that edges are converted to nodes and intersections become edges. This is necessary for the computation of simplest-path (angular) metrics. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes, from which the `length` and `impedance` attributes will be set. The angular impedances will be calculated by summing the angular change over the length of the geometry.
+Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation, such that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -291,13 +291,14 @@ A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, a
 </FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
+
 <FuncElement name="graph" type="nx.Graph">
 
 A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges.
 
 If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`.
 
-The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes, from which the `length` and angular `impedance` edge attributes will be set. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
+The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
 
 </FuncElement>
 
@@ -311,7 +312,7 @@ G_dual = graphs.nX_to_dual(G_simple)
 
 <img src="../images/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
 
-_Dual graph (blue) overlaid on the source primal graph (red). Edge `length` and angular `impedance` attributes are set automatically from the `geom` attribute's length and total angular change._
+_Dual graph (blue) overlaid on the source primal graph (red)._
 
 ::: tip Hint
 
