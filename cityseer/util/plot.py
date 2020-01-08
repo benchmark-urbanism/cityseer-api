@@ -160,13 +160,13 @@ def plot_assignment(Network_Layer,
         # if the data points have been assigned network indices
         if not np.isnan(nearest_netw_idx):
             # plot lines to parents for easier viz
-            p_x = Network_Layer._nodes[int(nearest_netw_idx)][0]
-            p_y = Network_Layer._nodes[int(nearest_netw_idx)][1]
+            p_x = Network_Layer._node_data[int(nearest_netw_idx)][0]
+            p_y = Network_Layer._node_data[int(nearest_netw_idx)][1]
             plt.plot([p_x, x], [p_y, y], c='#64c1ff', lw=0.5, ls='--')
 
         if not np.isnan(next_n_netw_idx):
-            p_x = Network_Layer._nodes[int(next_n_netw_idx)][0]
-            p_y = Network_Layer._nodes[int(next_n_netw_idx)][1]
+            p_x = Network_Layer._node_data[int(next_n_netw_idx)][0]
+            p_y = Network_Layer._node_data[int(next_n_netw_idx)][1]
             plt.plot([p_x, x], [p_y, y], c='#888888', lw=0.5, ls='--')
 
     if path:

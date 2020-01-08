@@ -305,8 +305,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
     # NOTE -> use np.inf for max distance so as to explore all paths
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is checked later
-    tree_map, tree_edges = centrality.shortest_path_tree(node_data,
-                                                         edge_data,
+    tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
                                                          node_edge_map,
                                                          netw_src_idx,
                                                          max_dist=max_dist,

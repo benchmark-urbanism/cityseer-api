@@ -482,14 +482,12 @@ def test_nX_decompose():
     assert nx.number_of_nodes(G_decompose) == 661
     assert nx.number_of_edges(G_decompose) == 682
 
-    # check that total lengths are the same for non ghosted edges
+    # check that total lengths are the same
     G_lens = 0
     for s, e, e_data in G_simple.edges(data=True):
         G_lens += e_data['geom'].length
     G_d_lens = 0
     for s, e, e_data in G_decompose.edges(data=True):
-        if 'ghosted' in e_data and e_data['ghosted']:
-            continue
         G_d_lens += e_data['geom'].length
     assert np.allclose(G_lens, G_d_lens, atol=0.001, rtol=0)
 
@@ -499,7 +497,7 @@ def test_nX_decompose():
             nbs = list(G_decompose.neighbors(n))
             assert len(nbs) == 1 or len(nbs) == 2
 
-    # check that all new nodes and edges are ghosted
+    # check that all new nodes are ghosted
     for n, n_data in G_decompose.nodes(data=True):
         if not G_simple.has_node(n):
             assert n_data['ghosted']

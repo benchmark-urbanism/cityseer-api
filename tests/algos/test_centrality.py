@@ -38,8 +38,7 @@ def test_shortest_path_tree():
     for max_dist in [0, 500, 2000, np.inf]:
         for src_idx in range(len(G_primal)):
             # check shortest path maps
-            tree_map, tree_edges = centrality.shortest_path_tree(node_data_p,
-                                                                 edge_data_p,
+            tree_map, tree_edges = centrality.shortest_path_tree(edge_data_p,
                                                                  node_edge_map_p,
                                                                  src_idx,
                                                                  max_dist=max_dist,
@@ -64,15 +63,13 @@ def test_shortest_path_tree():
         p_target_idx = node_uids_p.index(p_target)
         d_source_idx = node_uids_d.index(d_source)  # dual source index changes depending on direction
         d_target_idx = node_uids_d.index(d_target)
-        tree_map_p, tree_edges_p = centrality.shortest_path_tree(node_data_p,
-                                                                 edge_data_p,
+        tree_map_p, tree_edges_p = centrality.shortest_path_tree(edge_data_p,
                                                                  node_edge_map_p,
                                                                  p_source_idx,
                                                                  max_dist=max_dist,
                                                                  angular=True)
         tree_imps_p = tree_map_p[:, 3]
-        tree_map_d, tree_edges_d = centrality.shortest_path_tree(node_data_d,
-                                                                 edge_data_d,
+        tree_map_d, tree_edges_d = centrality.shortest_path_tree(edge_data_d,
                                                                  node_edge_map_d,
                                                                  d_source_idx,
                                                                  max_dist=max_dist,
@@ -87,8 +84,7 @@ def test_shortest_path_tree():
     src_idx = node_uids_d.index('11_6')
     target = node_uids_d.index('39_40')
     # SIMPLEST PATH: get simplest path tree using angular impedance
-    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
-                                                         edge_data_d,
+    tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d,
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
@@ -102,8 +98,7 @@ def test_shortest_path_tree():
     assert path_transpose == ['11_6', '11_14', '10_14', '10_43', '43_44', '40_44', '39_40']
     # SHORTEST PATH:
     # get shortest path tree using non angular impedance
-    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
-                                                         edge_data_d,
+    tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d,
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
@@ -119,8 +114,7 @@ def test_shortest_path_tree():
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src_idx = node_uids_d.index('10_43')
     target = node_uids_d.index('10_5')
-    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
-                                                         edge_data_d,
+    tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d,
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
@@ -136,8 +130,7 @@ def test_shortest_path_tree():
     edge_data_d_temp = edge_data_d.copy()
     # angular impedances at index 3 copied to distance impedances at distance 2
     edge_data_d_temp[:, 2] = edge_data_d_temp[:, 3]
-    tree_map, tree_edges = centrality.shortest_path_tree(node_data_d,
-                                                         edge_data_d_temp,
+    tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d_temp,
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
@@ -266,8 +259,7 @@ def test_local_centrality():
 
         for src_idx in range(len(G)):
             # get shortest path maps
-            tree_map, tree_edges = centrality.shortest_path_tree(node_data,
-                                                                 edge_data,
+            tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
                                                                  node_edge_map,
                                                                  src_idx,
                                                                  dist_cutoff,
@@ -411,14 +403,16 @@ def test_decomposed_local_centrality():
     assert measures_data.shape == (m_range, d_range, len(G))
     assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
     original_node_idx = np.where(node_data[:, 3] == 0)
-    # cycles and betweenness segments will not match
+    # node based measures and betweenness segments will not match
+    # node measures can't filter by ghosted because then number of nodes is uneven
+    # segment betweenness become more finely spaced as the graph decomposes
     for m_idx in range(m_range):
         for d_idx in range(d_range):
             match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx],
                                 atol=0.1, rtol=0)  # relax precision
             if not match:
                 print('key', measure_keys[m_idx], 'dist:', distances[d_idx], 'match:', match)
-            if m_idx != 2 and m_idx != 10:
+            if m_idx > 4 and m_idx != 10:
                 assert match
 
 

@@ -10,7 +10,6 @@ from cityseer.algos import checks
 # don't use 'nnan' fastmath flag
 @njit(cache=True, fastmath={'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'})
 def shortest_path_tree(
-        node_data: np.ndarray,
         edge_data: np.ndarray,
         node_edge_map: Dict,
         src_idx: int,
@@ -46,7 +45,7 @@ def shortest_path_tree(
     6 - last segments - for any to_idx, the last segment of the shortest path
     '''
     # prepare the arrays
-    n = len(node_data)
+    n = len(node_edge_map)
     tree_map = np.full((n, 7), np.nan, dtype=np.float32)
     tree_map[:, 0] = 0
     tree_map[:, 2] = np.inf
@@ -87,9 +86,6 @@ def shortest_path_tree(
         # add to active node
         tree_nodes[active_nd_idx] = True
         # fetch the associated edge_data index
-        # isolated nodes will have no corresponding edges
-        if np.isnan(node_data[active_nd_idx, 3]):
-            continue
         edges = node_edge_map[active_nd_idx]
         # iterate the node's neighbours
         # instead of while True, use length of edge map to catch last node's termination
@@ -322,8 +318,7 @@ def local_centrality(node_data: np.ndarray,
         5 - origin segments
         6 - last segments
         '''
-        tree_map, tree_edges = shortest_path_tree(node_data,
-                                                  edge_data,
+        tree_map, tree_edges = shortest_path_tree(edge_data,
                                                   node_edge_map,
                                                   src_idx,
                                                   max_dist=global_max_dist,
@@ -483,8 +478,6 @@ def local_centrality(node_data: np.ndarray,
             # skip self node
             if to_idx == src_idx:
                 continue
-            # skip ghosted nodes except for cycles
-            ghosted_node = node_data[to_idx, 3]
             # unpack impedance and distance for to index
             to_imp = tree_imps[to_idx]
             to_dist = tree_dists[to_idx]
@@ -505,26 +498,25 @@ def local_centrality(node_data: np.ndarray,
                         m_idx = agg_targets[agg_idx]
                         # go through keys and write data
                         # 0 - simple node counts
-                        if not ghosted_node:
-                            if agg_key == 0:
-                                measures_data[m_idx, d_idx, src_idx] += 1
-                            # 1 - farness
-                            elif not ghosted_node and agg_key == 1:
-                                measures_data[m_idx, d_idx, src_idx] += to_dist
-                            # 3 - harmonic node
-                            elif not ghosted_node and agg_key == 3:
-                                measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
-                            # 4 - beta weighted node
-                            elif not ghosted_node and agg_key == 4:
-                                measures_data[m_idx, d_idx, src_idx] += np.exp(beta * to_dist)
-                            # 5 - harmonic node - angular
-                            elif not ghosted_node and agg_key == 5:
-                                a = 1 + (to_imp / 180)  # transform angles
-                                measures_data[m_idx, d_idx, src_idx] += 1 / a
+                        if agg_key == 0:
+                            measures_data[m_idx, d_idx, src_idx] += 1
+                        # 1 - farness
+                        elif agg_key == 1:
+                            measures_data[m_idx, d_idx, src_idx] += to_dist
                         # 2 - cycles
-                        if agg_key == 2:
+                        elif agg_key == 2:
                             if tree_cycles[to_idx]:
                                 measures_data[m_idx, d_idx, src_idx] += 1
+                        # 3 - harmonic node
+                        elif agg_key == 3:
+                            measures_data[m_idx, d_idx, src_idx] += 1 / to_imp
+                        # 4 - beta weighted node
+                        elif agg_key == 4:
+                            measures_data[m_idx, d_idx, src_idx] += np.exp(beta * to_dist)
+                        # 5 - harmonic node - angular
+                        elif agg_key == 5:
+                            a = 1 + (to_imp / 180)  # transform angles
+                            measures_data[m_idx, d_idx, src_idx] += 1 / a
             # check whether betweenness keys are present prior to proceeding
             if not betw_nodes and not betw_segs:
                 continue
