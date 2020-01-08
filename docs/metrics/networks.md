@@ -152,12 +152,12 @@ Network\_Layer <Chip text="class"/>
 <FuncSignature>
 <pre>
 Network_Layer(node_uids,
-              node_map,
-              edge_map,
+              node_data,
+              edge_data,
+              node_edge_map,
               distances=None,
               betas=None,
-              min_threshold_wt=0.01831563888873418,
-              angular=False)
+              min_threshold_wt=0.01831563888873418)
 </pre>
 </FuncSignature>
 
@@ -172,7 +172,6 @@ from cityseer.util import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 # if initialised with distances: 
 # betas for weighted metrics will be generated implicitly
@@ -191,34 +190,42 @@ print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
 
 <FuncElement name="node_uids" type="list, tuple">
 
-A `list` or `tuple` of node identifiers corresponding to each node. This list must be in the same order and of the same length as the `node_map`.
+A `list` or `tuple` of node identifiers corresponding to each node. This list must be in the same order and of the same length as the `node_data`.
 
 </FuncElement>
 
-<FuncElement name="node_map" type="np.ndarray">
+<FuncElement name="node_data" type="np.ndarray">
 
-A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|
 | 0 | `x` coordinate |
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live` |
-| 3 | start `idx` for the corresponding edge map |
-| 4 | `weight` applied to the node | 
+| 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. | 
 
 </FuncElement>
 
-<FuncElement name="edge_map" type="np.ndarray">
+<FuncElement name="edge_data" type="np.ndarray">
 
-A 2d `numpy` array representing the graph's edges. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should correspond as follows:
 
 | idx | property |
 |-----|:----------|
 | 0 | start node `idx` |
 | 1 | end node `idx` |
-| 2 | `length` in metres for enforcing $d_{max}$ |
-| 3 | `impedance` for shortest path calculations |
+| 2 | the segment length in metres |
+| 3 | the sum of segment's angular change |
+| 4 | 'impedance factor' applied to magnify or reduce the edge impedance. |
+| 5 | the edge's entry angular bearing |
+| 6 | the edge's exit angular bearing |
+
+</FuncElement>
+
+<FuncElement name="node_edge_map" type="numba.typed.Dict">
+
+A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge indices for each node.  
 
 </FuncElement>
 
@@ -240,12 +247,6 @@ The default `min_threshold_wt` parameter can be overridden to generate custom ma
 
 </FuncElement>
 
-<FuncElement name="angular" type="bool">
-
-Set the `angular` parameter to `True` if using angular impedances. Angular impedances can cause shortest-path algorithms to sidestep sharp turns, potentially resulting in misleading results. Setting `angular=True` will forestall this behaviour.
-
-</FuncElement>
-
 <FuncHeading>Returns</FuncHeading>
 
 <FuncElement name="Network_Layer" type="class">
@@ -261,17 +262,17 @@ The `x` and `y` node attributes determine the spatial coordinates of the node, a
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects. The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area. If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered, then set all nodes to `live=True`.
 
-The `idx` node attribute maps the current node to the starting edge-index for associated out-edges. Note that there may be more than one edge associated with any particular node. These are represented in sequential order in the `edge_map`, and therefore only the first such edge is identified by the `idx` node attribute. 
-
-The `weight` parameter allows centrality calculations to be weighted by external considerations, e.g. adjacent edge lengths, building density, etc. Set to a default value of `1` for all nodes if weights are not to be considered.
+The `ghosted` attribute should be applied to 'ghosted' nodes on decomposed graphs -- this will be added automatically if using [`nX_decompose`](/util/graphs.html#nx_decompose).
 
 ### Edge attributes
 
-The start and end edge `idx` attributes point to the corresponding node indices in the `node_map`.
+The start and end edge `idx` attributes point to the corresponding node indices in the `node_data` array.
 
-The `length` edge attribute should always correspond to the edge lengths in metres. This is used when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths traversed by the algorithm as opposed to crow-flies distances.
+The `length` edge attribute (index $2$) should always correspond to the edge lengths in metres. This is used when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths traversed by the algorithm as opposed to crow-flies distances.
 
-The `impedance` edge attribute represents the friction to movement across the network: it is used by the shortest-path algorithm when calculating the shortest-routes from each origin node $i$ to all surrounding nodes $j$ within the respective $d_{max}$ distance thresholds. For shortest-path centralities, the `impedance` attribute will generally assume the same value as the `length` attribute. This need not be the case; for example, simplest-path centralities assume an angular `impedance` attribute representing the angular change in direction across the length of a street segment (on the dual graph).
+The `angle_sum` edge bearing (index $3$) should correspond to the total angular change along the length of the segment. This is used when calculating angular impedances for simplest-path measures. The `start_bearing` (index $5$) and `end_bearing` (index $6$) attributes respectively represent the starting and ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm steps from one edge to another. 
+
+The `imp_factor` edge attribute (index $4$) represents an impedance multiplier for increasing or diminishing the impedance of an edge. This is ordinarily set to $1$, therefor not impacting calculations. By setting this to greater or less than $1$, the edge will have a correspondingly higher or lower impedance. This can be used to take considerations such as street gradients into account, but should be used with caution.
 
 ::: tip Hint
 
@@ -301,11 +302,10 @@ from cityseer.util import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
-N.harmonic_closeness()
+N.compute_centrality(measures=['node_harmonic'])
 
 # let's select a random node id
 random_idx = 6
@@ -313,14 +313,14 @@ random_uid = N.uids[random_idx]
 
 # the data is directly available at N.metrics
 # in this case the data is stored in arrays corresponding to the node indices
-print(N.metrics['centrality']['harmonic'][200][random_idx])
-# prints: 0.02312025367905132
+print(N.metrics['centrality']['node_harmonic'][200][random_idx])
+# prints: 0.023120252
 
 # let's convert the data to a dictionary
 # the unpacked data is now stored by the uid of the node identifier
 data_dict = N.metrics_to_dict()
-print(data_dict[random_uid]['centrality']['harmonic'][200])
-# prints: 0.02312025367905132
+print(data_dict[random_uid]['centrality']['node_harmonic'][200])
+# prints: 0.023120252
 ```
 
 
@@ -337,9 +337,10 @@ Transposes a `Network_Layer` into a `networkX` graph. This method calls [nX_from
 
 A `networkX` graph.
 
-`x`, `y`, `live`, `weight` node attributes will be copied from the `node_map` to the graph nodes. `length` and `impedance` attributes will be copied from the `edge_map` to the graph edges. 
+`x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data` to the graph edges. 
 
-Any data from computed metrics will be copied to each of the graph's nodes.
+If a `metrics_dict` is provided, all data will be copied to the graph nodes based on matching node identifiers.
+
 
 </FuncElement>
 
@@ -350,12 +351,11 @@ from cityseer.util import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute some-or-other metrics
-N.harmonic_closeness()
+N.compute_centrality(measures=['node_harmonic'])
 # convert back to networkX
 G_post = N.to_networkX()
 
@@ -363,12 +363,12 @@ G_post = N.to_networkX()
 random_idx = 6
 random_uid = N.uids[random_idx]
 
-print(N.metrics['centrality']['harmonic'][200][random_idx])
-# prints: 0.02312025367905132
+print(N.metrics['centrality']['node_harmonic'][200][random_idx])
+# prints: 0.023120252
 
 # the metrics have been copied to the new networkX graph
-print(G_post.nodes[random_uid]['metrics']['centrality']['harmonic'][200])
-# prints: 0.02312025367905132
+print(G_post.nodes[random_uid]['metrics']['centrality']['node_harmonic'][200])
+# prints: 0.023120252
 ```
 
 <img src="../images/plots/graph_before.png" alt="Graph before conversion" class="left"><img src="../images/plots/graph_after.png" alt="graph after conversion back to networkX" class="right">
@@ -381,18 +381,17 @@ _A `networkX` graph before conversion to a `Network_Layer` (left) and after conv
 
 <FuncSignature>
 <pre>
-Network_Layer.compute_centrality(close_metrics=None,
-                                 between_metrics=None)
+Network_Layer.compute_centrality(measures=None, angular=False)
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@gravity_index`](#gravity-index), [`@harmonic_closeness`](#harmonic-closeness), [`@improved_closeness`](#improved-closeness), [`@betweenness`](#betweenness), or [`@betweenness_decay`](#betweenness-decay) methods.
+This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures and distances, which can have significant speed implications.
 
 The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
 
-`Network_Layer.metrics['centrality'][<<centrality key>>][<<distance key>>][<<node idx>>]`
+`Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`
 
-For example, if `node_density`, `improved`, and `cycles` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
+For example, if `node_density`, `segment_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
 
 ```python
 # example structure
@@ -402,11 +401,11 @@ Network_Layer.metrics = {
             800: [...],
             1600: [...]
         },
-        'improved': {
+        'segment_density': {
             800: [...],
             1600: [...]
         },
-        'cycles': {
+        'node_betweenness_beta': {
             800: [...],
             1600: [...]
         }
@@ -423,13 +422,11 @@ from cityseer.util import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute a centrality measure
-# note that in this case N.harmonic_closeness() would do exactly the same
-N.compute_centrality(close_metrics=['harmonic'])
+N.compute_centrality(measures=['segment_harmonic'])
 
 # distance idx: any of the distances with which the Network_Layer was initialised
 distance_idx = 200
@@ -437,108 +434,66 @@ distance_idx = 200
 random_idx = 6
 
 # the data is available at N.metrics
-# in this case we need the 'harmonic' key
-print(N.metrics['centrality']['harmonic'][distance_idx][random_idx])
-# prints: 0.02312025367905132
+# in this case we need the 'segment_harmonic' key
+print(N.metrics['centrality']['segment_harmonic'][distance_idx][random_idx])
+# prints: 17.144033
 ```
 
-Note that the data can also be unpacked to a dictionary using [`@metrics_to_dict`](#metrics-to-dict), or transposed to a `networkX` graph using [`@to_networkX`](#to-networkx).
+Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](#to-networkx).
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name="close_metrics" type="list[str], tuple[str]">
+<FuncElement name="measures" type="list[str], tuple[str]">
 
-A list of strings, containing any combination of the following `key` values:
+A list or tuple of strings, containing any combination of the following `key` values, computed within the respective distance thresholds of $d_{max}$.
 
 </FuncElement>
+
+<FuncElement name="angular" type="bool">
+
+A boolean indicating whether to use shortest or simplest path heuristics.  
+
+</FuncElement>
+
+The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| node_density | $\displaystyle\sum_{j\neq{i}} w_{j}$ | The default $w=1$ reduces to a simple node count, however, this is technically a density measure because of the $d_{max}$ threshold constraint. Setting $w$ equal to adjacent street lengths converts this measure into a street density metric. |
-| farness_impedance | $\displaystyle\sum_{j\neq{i}} \frac{Z_{(i,j)}}{w_{j}}$ | $w=1$ reduces to the sum of impedances $Z$ within the threshold $d_{max}$. Be cautious with weights where $w=0$ because this would return `np.inf`. |
-| farness_distance | $\displaystyle\sum_{j\neq{i}}d_{(i,j)}$ | A summation of distances in metres within $d_{max}$. |
-| harmonic | $\displaystyle\sum_{j\neq{i}}\frac{w_{j}}{Z_{(i,j)}}$ | Reduces to _harmonic closeness_ where $w=1$. Harmonic closeness is the appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. (Conventional forms of closeness centrality should not be used in a localised context.) |
-| improved | $\displaystyle\frac{(N-1)^2}{\sum_{j\neq{i}}w_{(j)}}$ | A simplified variant of _"improved"_ closeness. As with harmonic closeness, this variant behaves appropriately on localised implementations. |
-| gravity index | $\displaystyle \sum_{j\neq{i}} exp(\beta \cdot d[i,j]) \cdot w_{j}$ | Reduces to the _gravity index_ where $w=1$. The gravity index is more correctly described as a spatial impedance metric and is differentiated from other closeness centralities by the use of an explicit $\beta$ parameter modelling distance decays. |
-| cycles | $\displaystyle\sum_{j\neq{i}}^{cycles} exp(\beta \cdot d[i, j])$ | A summation of distance-weighted network cycles within the threshold $d_{max}$ |
+| node_density | $\displaystyle\sum_{j\neq{i}}^{nodes}\ 1$ | A summation of nodes. |
+| node_farness | $\displaystyle\sum_{j\neq{i}}^{nodes}\ d_{(i,j)}$ | A summation of distances in metres. |
+| node_cycles | $\displaystyle\sum_{j\neq{i}\ j=cycle}^{nodes}\ 1$ | A summation of network cycles. |
+| node_harmonic | $\displaystyle\sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
+| node_beta | $\displaystyle \sum_{j\neq{i}}^{nodes}\ exp(\beta \cdot d[i,j])$ | Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |
+| segment_density | $\displaystyle \sum_{(a, b)}^{edges}\ d_{b} - d_{a}$ | A summation of edge lengths. |
+| segment_harmonic | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \ln(b) - \ln(a)$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
+| segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
+| node_betweenness | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in shortest]$ | Betweenness centrality summing all shortest-paths traversing each node $i$. | 
+| node_betweenness_beta | $\displaystyle\sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ exp(\beta \cdot d[j,k])\ [i\in shortest]$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
+| segment_betweenness | (Formula omitted for verboseness) | A continuous form of betweenness summing the distance-weighted edge lengths of shortest-paths passing through node $i$. Resembles `segment_beta` applied to all edges on the respective shortest paths. |
 
-<FuncElement name="between_metrics" type="list[str], tuple[str]">
-
-A list of strings, containing any combination of the following `key` values:
-
-</FuncElement>
+The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 | key | formula | notes |
-|-----|:-------:|-------|
-| betweenness | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)}$ | The default $w=1$ reduces to betweenness centrality within the $d_{max}$ threshold constraint. For betweenness measures, $w$ is a blended average of the weights for any $j$, $k$ node pair passing through node $i$. | 
-| betweenness_decay | $\displaystyle\sum_{j\neq{i}} \sum_{k\neq{j}\neq{i}} w_{(j, k)} \cdot exp(\beta \cdot d[j,k])$ | Adds a distance decay to betweenness. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.
+|-----|:--------:|-------|
+| node_harmonic_angular | $\displaystyle \sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $Z = 1 + (angular\ change/180)$. |
+| segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. |
+| node_betweenness_angular | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in simplest]$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).|
+| segment_betweeness_hybrid | (Formula omitted for verboseness) | A continuous form of betweenness summing the edge lengths of all simplest-paths passing through node $i$ and weighted by angular change $Z$ in the denominator. |
 
-::: warning Note
-The closeness family of measures, i.e. `harmonic`, `improved`, and `gravity_index`, perform similarly in most situations. `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly noticeable once values decrease below $1$. `improved` centrality is more robust because all reachable nodes are summed prior to the division step. `gravity_index` centrality is the most robust method in this regards, and also offers a graceful and tunable representation of distance decays via the negative exponential function.
-:::
+Outputs from the respective centrality measures can be retrieved from the `Network_Layer.metrics.centrality` dictionary by using the corresponding key. For example, `node_betweenness` would be recovered for a given distance as:
+
+`Network_Layer.metrics['centrality']['node_betweenness'][<<distance key>>]`
+
+This will return a numpy array corresponding to the indices of the network's data map. The `Network_Layer` can alternatively be converted back into a `NetworkX` graph using the [`to_networkX`](#to_networkX) method.
 
 ::: tip Hint
-The following methods are simplified wrappers for some of the more commonly used forms of network centrality. Note that for cases requiring more than one form of centrality on large graphs, it may be substantially faster to compute all variants at once by using the underlying [@compute_centrality](#compute-centrality) method directly. 
+- Normalised global closeness ($nodes/farness$) and improved closeness ($nodes / farness / nodes$) can be recovered from the above metrics, if so desired. Note that the use of normalised global closeness is discouraged for localised metrics.
+- Node-based centralities are particularly susceptible to topological distortions caused by messy graph representations; in these cases, segmentised versions may be more representative.
+- Decomposition of the network confers numerous advantages, such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of the centrality measures, for which reason segmentised versions may be preferable.
+- `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly noticeable once values decrease below $1$.
+- Segmentised versions should not be computed on dual graph representations because edge lengths will be counted multiple times for each permutation of interconnected edges at street intersections.
+- Node-based angular centralities can be computed on either the primal or dual graphs. Be cognisant that undecomposed dual graphs may differ from undecomposed primal graphs because the measures are computed from street centrepoints as opposed to street intersections.
 :::
-
-
-@harmonic\_closeness
----------------------
-
-<FuncSignature>Network_Layer.harmonic_closeness()</FuncSignature>
-
-Compute harmonic closeness. See [@compute_centrality](#compute-centrality) for additional information.
-
-The data key is `harmonic`, e.g.:
-
-`Network_Layer.metrics['centrality']['harmonic'][<<distance key>>][<<node idx>>]`
-
-
-@improved\_closeness
----------------------
-
-<FuncSignature>Network_Layer.improved_closeness()</FuncSignature>
-
-Compute improved closeness. See [@compute_centrality](#compute-centrality) for additional information.
-
-The data key is `improved`, e.g.:
-
-`Network_Layer.metrics['centrality']['improved'][<<distance key>>][<<node idx>>]`
-
-
-@gravity_index <Chip text="renamed in v0.8.10"/>
---------------
-
-<FuncSignature>Network_Layer.gravity_index()</FuncSignature>
-
-Compute the gravity index. See [@compute_centrality](#compute-centrality) for additional information.
-
-The data key is `gravity_index`, e.g.:
-
-`Network_Layer.metrics['centrality']['gravity_index'][<<distance key>>][<<node idx>>]`
-
-@betweenness
--------------
-
-<FuncSignature>Network_Layer.betweenness()</FuncSignature>
-
-Compute betweenness. See [@compute_centrality](#compute-centrality) for additional information.
-
-The data key is `betweenness`, e.g.:
-
-`Network_Layer.metrics['centrality']['betweenness'][<<distance key>>][<<node idx>>]`
-
-@betweenness\_decay <Chip text="renamed in v0.8.10"/>
--------------------
-
-<FuncSignature>Network_Layer.betweenness_decay()</FuncSignature>
-
-Compute betweenness taking spatial impedances into account. See [@compute_centrality](#compute-centrality) for additional information.
-
-The data key is `betweenness_decay`, e.g.:
-
-`Network_Layer.metrics['centrality']['betweenness_decay'][<<distance key>>][<<node idx>>]`
-
 
 Network\_Layer\_From\_nX <Chip text="class"/>
 ------------------------
@@ -548,8 +503,7 @@ Network\_Layer\_From\_nX <Chip text="class"/>
 Network_Layer_From_nX(networkX_graph,
                       distances=None,
                       betas=None,
-                      min_threshold_wt=0.01831563888873418,
-                      angular=False)
+                      min_threshold_wt=0.01831563888873418)
 </pre>
 </FuncSignature>
 
@@ -562,9 +516,7 @@ Directly transposes a `networkX` graph into a `Network_Layer`. This `class` simp
 
 A `networkX` graph.
 
-`x` and `y` node attributes are required. The `weight` node attribute is optional, and a default of `1` will be used if not present. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
-
-`length` and `impedance` edge attributes are required. See [`Network_Layer`](#network-layer) for more information.
+`x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
 
 </FuncElement>
 
@@ -583,12 +535,6 @@ A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the ex
 <FuncElement name="min_threshold_wt" type="float">
 
 The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [distance_from_beta](#distance-from-beta) for more information.
-
-</FuncElement>
-
-<FuncElement name="angular" type="bool">
-
-Set the `angular` parameter to `True` if using angular impedances. Angular impedances can cause shortest-path algorithms to sidestep sharp turns, potentially leading to misleading results. Setting `angular=True` adds a step to the algorithm in order to prevent this behaviour.
 
 </FuncElement>
 
