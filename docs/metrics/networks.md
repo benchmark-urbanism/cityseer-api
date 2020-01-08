@@ -469,7 +469,7 @@ The following keys use the shortest-path heuristic, and are available when the `
 | segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | node_betweenness | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in shortest]$ | Betweenness centrality summing all shortest-paths traversing each node $i$. | 
 | node_betweenness_beta | $\displaystyle\sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ exp(\beta \cdot d[j,k])\ [i\in shortest]$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
-| segment_betweenness | (Formula omitted for verboseness) | A continuous form of betweenness summing the distance-weighted edge lengths of shortest-paths passing through node $i$. Resembles `segment_beta` applied to all edges on the respective shortest paths. |
+| segment_betweenness |  | A continuous form of betweenness summing the distance-weighted edge lengths of shortest-paths passing through node $i$. Resembles `segment_beta` applied to all edges on the respective shortest paths. |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
@@ -478,7 +478,7 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 | node_harmonic_angular | $\displaystyle \sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $Z = 1 + (angular\ change/180)$. |
 | segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. |
 | node_betweenness_angular | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in simplest]$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).|
-| segment_betweeness_hybrid | (Formula omitted for verboseness) | A continuous form of betweenness summing the edge lengths of all simplest-paths passing through node $i$ and weighted by angular change $Z$ in the denominator. |
+| segment_betweeness_hybrid |  | A continuous form of betweenness summing the edge lengths of all simplest-paths passing through node $i$ and weighted by angular change $Z$ in the denominator. |
 
 Outputs from the respective centrality measures can be retrieved from the `Network_Layer.metrics.centrality` dictionary by using the corresponding key. For example, `node_betweenness` would be recovered for a given distance as:
 
