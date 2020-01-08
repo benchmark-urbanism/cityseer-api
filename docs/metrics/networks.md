@@ -469,7 +469,7 @@ The following keys use the shortest-path heuristic, and are available when the `
 | segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | node_betweenness | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in shortest]$ | Betweenness centrality summing all shortest-paths traversing each node $i$. | 
 | node_betweenness_beta | $\displaystyle\sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ exp(\beta \cdot d[j,k])\ [i\in shortest]$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
-| segment_betweenness |  | A continuous form of betweenness summing the distance-weighted edge lengths of shortest-paths passing through node $i$. Resembles `segment_beta` applied to all edges on the respective shortest paths. |
+| segment_betweenness |  | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
@@ -478,18 +478,18 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 | node_harmonic_angular | $\displaystyle \sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $Z = 1 + (angular\ change/180)$. |
 | segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. |
 | node_betweenness_angular | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in simplest]$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).|
-| segment_betweeness_hybrid |  | A continuous form of betweenness summing the edge lengths of all simplest-paths passing through node $i$ and weighted by angular change $Z$ in the denominator. |
+| segment_betweeness_hybrid |  | A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
-Outputs from the respective centrality measures can be retrieved from the `Network_Layer.metrics.centrality` dictionary by using the corresponding key. For example, `node_betweenness` would be recovered for a given distance as:
+Outputs from the respective centrality measures can be retrieved from the `Network_Layer.metrics.centrality` dictionary by using the corresponding key. For example, `node_betweenness` is recovered for a given distance as:
 
 `Network_Layer.metrics['centrality']['node_betweenness'][<<distance key>>]`
 
 This will return a numpy array corresponding to the indices of the network's data map. The `Network_Layer` can alternatively be converted back into a `NetworkX` graph using the [`to_networkX`](#to_networkX) method.
 
-::: tip Hint
-- Normalised global closeness ($nodes/farness$) and improved closeness ($nodes / farness / nodes$) can be recovered from the above metrics, if so desired. Note that the use of normalised global closeness is discouraged for localised metrics.
-- Node-based centralities are particularly susceptible to topological distortions caused by messy graph representations; in these cases, segmentised versions may be more representative.
-- Decomposition of the network confers numerous advantages, such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of the centrality measures, for which reason segmentised versions may be preferable.
+::: warning Notes
+- Normalised global closeness ($\frac{nodes}{farness}$) and improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the above metrics, if so desired. Note that the use of normalised global closeness is discouraged for localised metrics.
+- Node-based centralities are particularly susceptible to topological distortions caused by messy graph representations; in these cases, segmentised versions may be more useful.
+- Decomposition of the network confers numerous advantages, such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of node-based centrality measures. Segmentised versions may therefore be preferable when working with decomposed networks.
 - `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly noticeable once values decrease below $1$.
 - Segmentised versions should not be computed on dual graph representations because edge lengths will be counted multiple times for each permutation of interconnected edges at street intersections.
 - Node-based angular centralities can be computed on either the primal or dual graphs. Be cognisant that undecomposed dual graphs may differ from undecomposed primal graphs because the measures are computed from street centrepoints as opposed to street intersections.
