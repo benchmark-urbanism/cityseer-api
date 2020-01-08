@@ -129,8 +129,9 @@ class Data_Layer:
                           max_dist: [int, float]):
         self._Network = Network_Layer
         data.assign_to_network(self._data,
-                               self.Network._nodes,
-                               self.Network._edges,
+                               self.Network._node_data,
+                               self.Network._edge_data,
+                               self.Network._node_edge_map,
                                max_dist,
                                suppress_progress=checks.quiet_mode)
 
@@ -143,7 +144,8 @@ class Data_Layer:
                            stats_keys: Union[list, tuple] = None,
                            stats_data_arrs: Union[List[Union[list, tuple, np.ndarray]],
                                                   Tuple[Union[list, tuple, np.ndarray]],
-                                                  np.ndarray] = None):
+                                                  np.ndarray] = None,
+                           angular: bool = False):
         '''
         This method provides full access to the underlying diversity.local_landuses method
 
@@ -254,8 +256,9 @@ class Data_Layer:
         stats_sum, stats_sum_wt, \
         stats_mean, stats_mean_wt, \
         stats_variance, stats_variance_wt, \
-        stats_max, stats_min = data.local_aggregator(self.Network._nodes,
-                                                     self.Network._edges,
+        stats_max, stats_min = data.local_aggregator(self.Network._node_data,
+                                                     self.Network._edge_data,
+                                                     self.Network._node_edge_map,
                                                      self._data,
                                                      distances=np.array(self.Network.distances),
                                                      betas=np.array(self.Network.betas),
@@ -266,7 +269,7 @@ class Data_Layer:
                                                      accessibility_keys=np.array(acc_keys),
                                                      cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
                                                      numerical_arrays=stats_data_arrs,
-                                                     angular=self.Network.angular,
+                                                     angular=angular,
                                                      suppress_progress=checks.quiet_mode)
 
         # write the results to the Network's metrics dict
@@ -364,16 +367,16 @@ class Data_Layer:
                                  i_weights: Union[list, tuple, np.ndarray],
                                  j_weights: Union[list, tuple, np.ndarray]):
 
-        j_assigned, netw_flows = data.singly_constrained(self.Network._nodes,
-                                                     self.Network._edges,
-                                                     distances=np.array(self.Network.distances),
-                                                     betas=np.array(self.Network.betas),
-                                                     i_data_map=i_data_map,
-                                                     j_data_map=j_data_map,
-                                                     i_weights=np.array(i_weights),
-                                                     j_weights=np.array(j_weights),
-                                                     angular=self.Network.angular,
-                                                     suppress_progress=checks.quiet_mode)
+        j_assigned, netw_flows = data.singly_constrained(self.Network._node_data,
+                                                         self.Network._edge_data,
+                                                         distances=np.array(self.Network.distances),
+                                                         betas=np.array(self.Network.betas),
+                                                         i_data_map=i_data_map,
+                                                         j_data_map=j_data_map,
+                                                         i_weights=np.array(i_weights),
+                                                         j_weights=np.array(j_weights),
+                                                         angular=self.Network.angular,
+                                                         suppress_progress=checks.quiet_mode)
 
         # write the results to the Network's metrics dict
         if key not in self.Network.metrics['models']:

@@ -6,6 +6,7 @@ from typing import Union
 
 import networkx as nx
 import numpy as np
+from numba.typed import Dict
 
 from cityseer.algos import centrality, checks
 from cityseer.util import graphs
@@ -57,35 +58,35 @@ class Network_Layer:
 
     def __init__(self,
                  node_uids: Union[list, tuple],
-                 node_map: np.ndarray,
-                 edge_map: np.ndarray,
+                 node_data: np.ndarray,
+                 edge_data: np.ndarray,
+                 node_edge_map: Dict,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = checks.def_min_thresh_wt,
-                 angular: bool = False):
-
+                 min_threshold_wt: float = checks.def_min_thresh_wt):
         '''
         NODE MAP:
         0 - x
         1 - y
         2 - live
-        3 - edge indx
-        4 - weight
+        3 - ghosted
 
         EDGE MAP:
         0 - start node
         1 - end node
         2 - length in metres
-        3 - impedance
+        3 - sum of angular travel along length
+        4 - impedance factor
+        5 - in bearing
+        6 - out bearing
         '''
-
         self._uids = node_uids
-        self._nodes = node_map
-        self._edges = edge_map
+        self._node_data = node_data
+        self._edge_data = edge_data
+        self._node_edge_map = node_edge_map
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
-        self._angular = angular
         self.metrics = {
             'centrality': {},
             'mixed_uses': {},
@@ -96,14 +97,13 @@ class Network_Layer:
             'stats': {},
             'models': {}
         }
+        # for storing originating networkX graph
         self._networkX = None
-
         # check the data structures
-        if len(self._uids) != len(self._nodes):
+        if len(self._uids) != len(self._node_data):
             raise ValueError('The number of indices does not match the number of nodes.')
-
-        checks.check_network_maps(self._nodes, self._edges)
-
+        # check network maps
+        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)
         # if distances, check the types and generate the betas
         if self._distances is not None and self._betas is None:
             if isinstance(self._distances, (int, float)):
@@ -152,37 +152,39 @@ class Network_Layer:
 
     @property
     def x_arr(self):
-        return self._nodes[:, 0]
+        return self._node_data[:, 0]
 
     @property
     def y_arr(self):
-        return self._nodes[:, 1]
+        return self._node_data[:, 1]
 
     @property
     def live(self):
-        return self._nodes[:, 2]
+        return self._node_data[:, 2]
 
     @property
-    def weights(self):
-        return self._nodes[:, 4]
-
-    @weights.setter
-    def weights(self, weights):
-        if not isinstance(weights, (list, tuple, np.ndarray)):
-            raise TypeError('Weights should consist of a list, tuple, or numpy.ndarray of weights.')
-        weights = np.array(weights)
-        if not weights.ndim == 1 or not weights.shape[0] == self._nodes.shape[0]:
-            raise ValueError('Weights should be a single dimensional array of the same length as the number of nodes.')
-        self._nodes[:, 4] = weights
-        checks.check_network_maps(self._nodes, self._edges)
+    def ghosted(self):
+        return self._node_data[:, 3]
 
     @property
     def edge_lengths(self):
-        return self._edges[:, 2]
+        return self._edge_data[:, 2]
 
     @property
-    def edge_impedances(self):
-        return self._edges[:, 3]
+    def edge_angles(self):
+        return self._edge_data[:, 3]
+
+    @property
+    def edge_impedance_factor(self):
+        return self._edge_data[:, 4]
+
+    @property
+    def edge_in_bearing(self):
+        return self._edge_data[:, 5]
+
+    @property
+    def edge_out_bearing(self):
+        return self._edge_data[:, 6]
 
     @property
     def networkX(self):
@@ -192,6 +194,7 @@ class Network_Layer:
     def networkX(self, value):
         self._networkX = value
 
+    # for retrieving metrics to a dictionary
     def metrics_to_dict(self):
         '''
         metrics are stored in arrays, this method unpacks per uid
@@ -202,7 +205,7 @@ class Network_Layer:
                 'x': self.x_arr[i],
                 'y': self.y_arr[i],
                 'live': self.live[i] == 1,
-                'weight': self._nodes[:, 4][i]
+                'ghosted': self.ghosted[i] == 1
             }
             # unpack centralities
             m[uid]['centrality'] = {}
@@ -222,7 +225,6 @@ class Network_Layer:
                 else:
                     for d_key, d_val in m_val.items():
                         m[uid]['mixed_uses'][m_key][d_key] = d_val[i]
-
             m[uid]['accessibility'] = {
                 'non_weighted': {},
                 'weighted': {}
@@ -232,7 +234,6 @@ class Network_Layer:
                     m[uid]['accessibility'][cat][cl_key] = {}
                     for d_key, d_val in cl_val.items():
                         m[uid]['accessibility'][cat][cl_key][d_key] = d_val[i]
-
             m[uid]['stats'] = {}
             for th_key, th_val in self.metrics['stats'].items():
                 m[uid]['stats'][th_key] = {}
@@ -240,112 +241,90 @@ class Network_Layer:
                     m[uid]['stats'][th_key][stat_key] = {}
                     for d_key, d_val in stat_val.items():
                         m[uid]['stats'][th_key][stat_key][d_key] = d_val[i]
-
         return m
 
+    # for unpacking to a networkX graph
     def to_networkX(self):
         metrics_dict = self.metrics_to_dict()
-        return graphs.nX_from_graph_maps(self._uids, self._nodes, self._edges, self._networkX, metrics_dict)
+        return graphs.nX_from_graph_maps(self._uids,
+                                         self._node_data,
+                                         self._edge_data,
+                                         self._node_edge_map,
+                                         self._networkX,
+                                         metrics_dict)
 
-    def compute_centrality(self,
-                           close_metrics: Union[list, tuple] = None,
-                           between_metrics: Union[list, tuple] = None):
-        '''
-        This method provides full access to the underlying centrality.local_centrality method
-        '''
-
+    # provides access to the underlying centrality.local_centrality method
+    def compute_centrality(self, measures: Union[list, tuple] = None, angular: bool = False):
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
-
-        closeness_options = ['node_density',
-                             'farness_impedance',
-                             'farness_distance',
-                             'harmonic',
-                             'improved',
-                             'gravity_index',
-                             'cycles']
-        closeness_keys = []
-        if close_metrics is not None:
-            for cl in close_metrics:
-                if cl not in closeness_options:
-                    raise ValueError(f'Invalid closeness option: {cl}. Must be one of {", ".join(closeness_options)}.')
-                closeness_keys.append(closeness_options.index(cl))
-            if not checks.quiet_mode:
-                logger.info(f'Computing closeness measures: {", ".join(close_metrics)}')
-
-        betweenness_options = ['betweenness',
-                               'betweenness_decay']
-        betweenness_keys = []
-        if between_metrics is not None:
-            for bt in between_metrics:
-                if bt not in betweenness_options:
-                    raise ValueError(
-                        f'Invalid betweenness option: {bt}. Must be one of {", ".join(betweenness_options)}.')
-                betweenness_keys.append(betweenness_options.index(bt))
-            if not checks.quiet_mode:
-                logger.info(f'Computing betweenness measures: {", ".join(between_metrics)}')
-
-        closeness_data, betweenness_data = centrality.local_centrality(
-            self._nodes,
-            self._edges,
+        if not angular:
+            heuristic = 'shortest (non-angular)'
+            options = (
+                'node_density',
+                'node_farness',
+                'node_cycles',
+                'node_harmonic',
+                'node_beta',
+                'segment_density',
+                'segment_harmonic',
+                'segment_beta',
+                'node_betweenness',
+                'node_betweenness_beta',
+                'segment_betweenness'
+            )
+        else:
+            heuristic = 'simplest (angular)'
+            options = (
+                'node_harmonic_angular',
+                'segment_harmonic_hybrid',
+                'node_betweenness_angular',
+                'segment_betweeness_hybrid'
+            )
+        if measures is None:
+            raise ValueError(f'Please select at least one measure to compute.')
+        measure_keys = []
+        for measure in measures:
+            if measure not in options:
+                raise ValueError(f'Invalid network measure: {measure}. '
+                                 f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.')
+            if measure in measure_keys:
+                raise ValueError(f'Please remove duplicate measure: {measure}.')
+            measure_keys.append(measure)
+        measure_keys = tuple(measure_keys)
+        if not checks.quiet_mode:
+            logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
+        measures_data = centrality.local_centrality(
+            self._node_data,
+            self._edge_data,
+            self._node_edge_map,
             np.array(self._distances),
             np.array(self._betas),
-            np.array(closeness_keys),
-            np.array(betweenness_keys),
-            self._angular,
+            measure_keys,
+            angular,
             suppress_progress=checks.quiet_mode)
-
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
-        if close_metrics is not None:
-            for cl_idx, cl_key in enumerate(closeness_keys):
-                cl_name = closeness_options[cl_key]
-                if cl_name not in self.metrics['centrality']:
-                    self.metrics['centrality'][cl_name] = {}
-                for d_idx, d_key in enumerate(self._distances):
-                    self.metrics['centrality'][cl_name][d_key] = closeness_data[cl_idx][d_idx]
-
-        if between_metrics is not None:
-            for bt_idx, bt_key in enumerate(betweenness_keys):
-                bt_name = betweenness_options[bt_key]
-                if bt_name not in self.metrics['centrality']:
-                    self.metrics['centrality'][bt_name] = {}
-                for d_idx, d_key in enumerate(self._distances):
-                    self.metrics['centrality'][bt_name][d_key] = betweenness_data[bt_idx][d_idx]
-
-    def harmonic_closeness(self):
-        return self.compute_centrality(close_metrics=['harmonic'])
-
-    def improved_closeness(self):
-        return self.compute_centrality(close_metrics=['improved'])
-
-    def gravity_index(self):
-        return self.compute_centrality(close_metrics=['gravity_index'])
-
-    def betweenness(self):
-        return self.compute_centrality(between_metrics=['betweenness'])
-
-    def betweenness_decay(self):
-        return self.compute_centrality(between_metrics=['betweenness_decay'])
+        for measure_idx, measure_name in enumerate(measure_keys):
+            if measure_name not in self.metrics['centrality']:
+                self.metrics['centrality'][measure_name] = {}
+            for d_idx, d_key in enumerate(self._distances):
+                self.metrics['centrality'][measure_name][d_key] = measures_data[measure_idx][d_idx]
 
 
 class Network_Layer_From_nX(Network_Layer):
-
     def __init__(self,
                  networkX_graph: nx.Graph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
-                 min_threshold_wt: float = checks.def_min_thresh_wt,
-                 angular: bool = False):
-        node_uids, node_map, edge_map = graphs.graph_maps_from_nX(networkX_graph)
-
+                 min_threshold_wt: float = checks.def_min_thresh_wt):
+        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(networkX_graph)
         super().__init__(node_uids,
-                         node_map,
-                         edge_map,
+                         node_data,
+                         edge_data,
+                         node_edge_map,
                          distances,
                          betas,
-                         min_threshold_wt,
-                         angular)
-
+                         min_threshold_wt)
+        # keep reference to networkX graph
         self.networkX = networkX_graph

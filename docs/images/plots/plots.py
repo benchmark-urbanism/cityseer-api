@@ -21,8 +21,8 @@ plot.plot_nX(G, path='graph.png', labels=True, dpi=150)
 G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 20)
 
-N = networks.Network_Layer_From_nX(G, distances=[400])
-N.gravity_index()
+N = networks.Network_Layer_From_nX(G, distances=[400, 800])
+N.compute_centrality(measures=['segment_harmonic'])
 
 data_dict = mock.mock_data_dict(G, random_seed=25)
 D = layers.Data_Layer_From_Dict(data_dict)
@@ -31,19 +31,19 @@ landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 D.hill_branch_wt_diversity(landuse_labels, qs=[0])
 G_metrics = N.to_networkX()
 
-gravity_index_vals = []
+segment_harmonic_vals = []
 mixed_uses_vals = []
 for node, data in G_metrics.nodes(data=True):
-    gravity_index_vals.append(data['metrics']['centrality']['gravity_index'][400])
+    segment_harmonic_vals.append(data['metrics']['centrality']['segment_harmonic'][800])
     mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
 
 # custom colourmap
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
-gravity_index_vals = colors.Normalize()(gravity_index_vals)
-gravity_index_cols = cmap(gravity_index_vals)
+segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
+segment_harmonic_cols = cmap(segment_harmonic_vals)
 plt.cla()
 plt.clf()
-plot.plot_nX(G_metrics, path='intro_gravity_index.png', colour=gravity_index_cols, dpi=150)
+plot.plot_nX(G_metrics, path='intro_segment_harmonic.png', colour=segment_harmonic_cols, dpi=150)
 
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
@@ -111,7 +111,6 @@ plot.plot_nX(G_clean_parallel, 'graph_clean_parallel.png', dpi=150, figsize=(20,
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 plt.cla()
 plt.clf()
@@ -120,7 +119,7 @@ plot.plot_nX(G, path='graph_before.png', labels=True, dpi=150)
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute some-or-other metrics
-N.harmonic_closeness()
+N.compute_centrality(measures=['segment_harmonic'])
 # convert back to networkX
 G_post = N.to_networkX()
 
@@ -135,7 +134,6 @@ plot.plot_nX(G_post, path='graph_after.png', labels=True, dpi=150)
 # random seed 25
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 
 data_dict = mock.mock_data_dict(G, random_seed=25)
@@ -159,18 +157,18 @@ plot.plot_assignment(N_decomposed, L, path='assignment_decomposed.png')
 #
 #
 # PLOT MODULE
-# generate a graph and compute gravity_index
+# generate a graph and compute segment_harmonic
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 50)
 N = networks.Network_Layer_From_nX(G, distances=[800])
-N.gravity_index()
+N.compute_centrality(measures=['segment_harmonic'])
 G_after = N.to_networkX()
 
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
-    vals.append(data['metrics']['centrality']['gravity_index'][800])
+    vals.append(data['metrics']['centrality']['segment_harmonic'][800])
 
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
 vals = colors.Normalize()(vals)
@@ -223,3 +221,6 @@ ax.set_ylim([0, 1.0])
 ax.set_ylabel('Weighting')
 ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$')
 plt.savefig('betas.png', dpi=150)
+
+plt.cla()
+plt.clf()

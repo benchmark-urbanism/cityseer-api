@@ -1,6 +1,7 @@
 import os
 import numpy as np
-from numba import njit
+from numba import njit, typeof
+from numba.typed import Dict
 
 def_min_thresh_wt = 0.01831563888873418
 
@@ -12,41 +13,39 @@ if 'CITYSEER_QUIET_MODE' in os.environ:
     if os.environ['CITYSEER_QUIET_MODE'].lower() in ['true', '1']:
         quiet_mode = True
 
-# cache for parent functions has to be set to false per Numba issue:
-# https://github.com/numba/numba/issues/3555
-# which prevents nested print function from working as intended
-# TODO: resolve once fixed
+
 @njit(cache=True)
-def progress_bar(current: int, total: int, chunks: int):
+def _print_msg(hash_count, void_count, percentage):
+    msg = '|'
+    for n in range(int(hash_count)):
+        msg += '#'
+    for n in range(int(void_count)):
+        msg += ' '
+    msg += '|'
+    print(msg, percentage, '%')
 
-    if chunks < 10:
-        chunks = 10
 
-    if chunks > total:
-        chunks = total
-
-    def print_msg(hash_count, void_count, percentage):
-        msg = '|'
-        for n in range(int(hash_count)):
-            msg += '#'
-        for n in range(int(void_count)):
-            msg += ' '
-        msg += '|'
-        print(msg, percentage, '%')
-
-    step_size = int(total / chunks)
-
+@njit(cache=False)
+def progress_bar(current: int, total: int, step_size: int):
+    '''
+    Printing carries a performance penalty
+    Cache has to be set to false per Numba issue:
+    https://github.com/numba/numba/issues/3555
+    TODO: set cache to True once resolved - likely 2020
+    '''
+    if step_size < 1:
+        step_size = 1
+    if step_size > total:
+        step_size = total
     if current == 0:
-        print_msg(0, int(total / step_size), 0)
-
+        _print_msg(0, int(total / step_size), 0)
     if (current + 1) == total:
-        print_msg(int(total / step_size), 0, 100)
-
+        _print_msg(int(total / step_size), 0, 100)
     elif (current + 1) % step_size == 0:
         percentage = np.round((current + 1) / total * 100, 2)
         hash_count = int((current + 1) / step_size)
         void_count = int(total / step_size - hash_count)
-        print_msg(hash_count, void_count, percentage)
+        _print_msg(hash_count, void_count, percentage)
 
 
 @njit(cache=True)
@@ -125,63 +124,69 @@ def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
 
 
 @njit(cache=True)
-def check_network_maps(node_map: np.ndarray, edge_map: np.ndarray):
+def check_network_maps(node_data: np.ndarray,
+                       edge_data: np.ndarray,
+                       node_edge_map: Dict):
     '''
     NODE MAP:
     0 - x
     1 - y
     2 - live
-    3 - edge index
-    4 - weight
-
+    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node
     2 - length in metres
-    3 - impedance
+    3 - sum of angular travel along length
+    4 - impedance factor
+    5 - entry bearing
+    6 - exit bearing
     '''
-
     # catch zero length node or edge maps
-    if len(node_map) == 0:
+    if len(node_data) == 0:
         raise ValueError('Zero length node map')
-    if len(edge_map) == 0:
+    if len(edge_data) == 0:
         raise ValueError('Zero length edge map')
-
-    if not node_map.ndim == 2 or not node_map.shape[1] == 5:
-        raise ValueError(
-            'The node map must have a dimensionality of Nx5, consisting of x, y, live, edge idx, and weight attributes.')
-
-    if not edge_map.ndim == 2 or not edge_map.shape[1] == 4:
-        raise ValueError(
-            'The edge map must have a dimensionality of Nx4, consisting of start, end, length, and impedance attributes.')
-
+    if not node_data.ndim == 2 or not node_data.shape[1] == 4:
+        raise ValueError('The node map must have a dimensionality of Nx4.')
+    if not edge_data.ndim == 2 or not edge_data.shape[1] == 7:
+        raise ValueError('The edge map must have a dimensionality of Nx7')
     # check sequential and reciprocal node to edge map indices
-    edge_counter = 0
-    for n_idx in range(len(node_map)):
-        # in the event of isolated nodes, there will be no corresponding edge index
-        e_idx = node_map[n_idx][3]
-        if np.isnan(e_idx):
-            continue
-        # the edge index should match the sequential edge counter
-        if e_idx != edge_counter:
-            raise ValueError('Mismatched node / edge maps encountered.')
-        while edge_counter < len(edge_map):
-            start = edge_map[edge_counter][0]
-            if start != n_idx:
-                break
-            edge_counter += 1
-    if edge_counter != len(edge_map):
+    edge_counts = np.full(len(edge_data), 0)
+    for n_idx in range(len(node_data)):
+        edges = node_edge_map[n_idx]
+        # zip through all edges for current node
+        for edge_idx in edges:
+            # get the edge
+            edge = edge_data[edge_idx]
+            # check that the start node matches the current node index
+            start_nd_idx, end_nd_idx = edge[:2]
+            assert start_nd_idx == n_idx
+            # if the current node is not ghosted, check that each edge has a matching pair in the opposite direction
+            if not node_data[n_idx, 3]:
+                paired = False
+                for return_edge_idx in node_edge_map[int(end_nd_idx)]:
+                    if edge_data[return_edge_idx][1] == n_idx:
+                        paired = True
+                        break
+                if not paired:
+                    raise ValueError('Missing matching edge pair in opposite direction.')
+            # add to the counter
+            edge_counts[edge_idx] += 1
+    if not np.all(edge_counts == 1):
         raise ValueError('Mismatched node and edge maps encountered.')
-
-    if not np.all(np.isfinite(node_map[:, 4])) or not np.all(node_map[:, 4] >= 0):
-        raise ValueError('Invalid node weights encountered. All weights should be greater than or equal to zero.')
-
-    if not np.all(np.isfinite(edge_map[:, 2])) or not np.all(edge_map[:, 2] >= 0):
-        raise ValueError('Invalid edge length encountered. All edge lengths should be greater than or equal to zero.')
-
-    if not np.all(np.isfinite(edge_map[:, 3])) or not np.all(edge_map[:, 3] >= 0):
+    if not np.all(np.isfinite(edge_data[:, 0])) or not np.all(edge_data[:, 0] >= 0):
+        raise ValueError('Missing or invalid start node index encountered.')
+    if not np.all(np.isfinite(edge_data[:, 1])) or not np.all(edge_data[:, 1] >= 0):
+        raise ValueError('Missing or invalid end node index encountered.')
+    if not np.all(np.isfinite(edge_data[:, 2])) or not np.all(edge_data[:, 2] >= 0):
+        raise ValueError('Invalid edge length encountered. Should be finite number greater than or equal to zero.')
+    if not np.all(np.isfinite(edge_data[:, 3])) or not np.all(edge_data[:, 3] >= 0):
         raise ValueError(
-            'Invalid edge impedance encountered. All edge impedances should be greater than or equal to zero.')
+            'Invalid edge angle sum encountered. Should be finite number greater than or equal to zero.')
+    if not np.all(np.isfinite(edge_data[:, 4])) or not np.all(edge_data[:, 4] >= 0):
+        raise ValueError(
+            'Invalid impedance factor encountered. Should be finite number greater than or equal to zero.')
 
 
 @njit(cache=True)

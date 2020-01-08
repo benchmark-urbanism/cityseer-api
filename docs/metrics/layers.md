@@ -53,8 +53,8 @@ data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=25)
 for i, (key, value) in enumerate(data_dict_WGS.items()):
     print(key, value)
     # prints:
-    # 0 {'x': -1.4528142077605772, 'y': 54.145396945391695, 'live': False}
-    # 1 {'x': -1.463037735961814, 'y': 54.1411197101806, 'live': False}
+    # 0 {'x': -0.09600470559254023, 'y': 51.592916036617794, 'live': False}
+    # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964, 'live': False}
     if i == 1:
         break
         
@@ -64,8 +64,8 @@ data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
 for i, (key, value) in enumerate(data_dict_UTM.items()):
     print(key, value)
     # prints:
-    # 0 {'x': 6000804.828421302, 'y': 601059.7404369968, 'live': False}
-    # 1 {'x': 6000314.41378748, 'y': 600402.3539826316, 'live': False}
+    # 0 {'x': 701144.5207785056, 'y': 5719758.706109629, 'live': False}
+    # 1 {'x': 700455.0000341447, 'y': 5719282.703221394, 'live': False}
     if i == 1:
         break
 ```
@@ -165,7 +165,7 @@ A 2d numpy array representing the data points. The indices of the second dimensi
 | 2 | assigned network index - nearest |
 | 3 | assigned network index - next-nearest | 
 
-The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [@assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
 
 </FuncElement>
 
@@ -175,7 +175,7 @@ Data\_Layer <Chip text="class"/>
 
 <FuncSignature>Data_Layer(data_uids, data_map)</FuncSignature>
 
-Categorical data, such as land-use classifications, and numerical data can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on crude crow-flies aggregation methods.
+Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
 
 The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
@@ -189,7 +189,7 @@ A `list` or `tuple` of data identifiers corresponding to each data point. This l
 
 </FuncElement>
 
-<FuncElement name="node_map" type="np.ndarray">
+<FuncElement name="data_map" type="np.ndarray">
 
 A 2d `numpy` array representing the data points. The length of the first dimension should match that of the `data_uids`. The indices of the second dimension correspond as follows:
 
@@ -200,7 +200,7 @@ A 2d `numpy` array representing the data points. The length of the first dimensi
 | 2 | assigned network index - nearest |
 | 3 | assigned network index - next-nearest | 
 
-The arrays at indices `2` and `3` will be populated when the [@assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
 
 </FuncElement>
 
@@ -263,7 +263,7 @@ Data_Layer.compute_aggregated(landuse_labels,
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`@hill_diversity`](#hill-diversity), [`@hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`@compute_accessibilities`](#compute-accessibilities), [`@compute_stats_single`](#compute-stats-single), and [`@compute_stats_multiple`](#compute-stats-multiple) methods.
+This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`Data_Layer.hill_diversity`](#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](#compute-accessibilities), [`Data_Layer.compute_stats_single`](#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](#compute-stats-multiple) methods.
 
 The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
@@ -364,7 +364,6 @@ from cityseer.util import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
-G = graphs.nX_auto_edge_params(G)
 
 # generate the network layer
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
@@ -404,11 +403,11 @@ node_idx = 0
 print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
 # prints: 4.0
 print(N.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
-# prints: 0.019168845139732035
+# prints: 0.019168843947614676
 print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
 # prints: 1.0
 print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-# prints: 47135.72553719515
+# prints: 71297.82967202332
 ```
 
 Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx).
@@ -444,7 +443,7 @@ An optional list of strings describing which mixed-use metrics to compute, conta
 | raos_pairwise_disparity | $\displaystyle \sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`. |
 
 ::: tip Hint
-The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice unless there is reason to use another.
+The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse classifications schemas.
 :::
 
 <FuncElement name="accessibility_keys" type="list, tuple">
@@ -467,7 +466,7 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
 
 <FuncElement name="stats_keys" type="list, tuple">
 
-A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary under these keys. This parameter is only required if computing stats for a `stats_data_arrs` parameter.
+A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary using these keys. This parameter is only required if computing stats for a `stats_data_arrs` parameter.
 
 </FuncElement>
 
@@ -493,7 +492,7 @@ stats_data_arrs = [
 
 <FuncSignature>Data_Layer.hill_diversity(landuse_labels, qs)</FuncSignature>
 
-Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [@compute_aggregated](#compute-aggregated) for additional information.
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
@@ -517,7 +516,7 @@ The data key is `hill`, e.g.:
 
 <FuncSignature>Data_Layer.hill_branch_wt_diversity(landuse_labels, qs)</FuncSignature>
 
-Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [@compute_aggregated](#compute-aggregated) for additional information.
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
@@ -546,7 +545,7 @@ Data_Layer.compute_accessibilities(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute land-use accessibilities for the specified land-use classification keys. See [@compute_aggregated](#compute-aggregated) for additional information.
+Compute land-use accessibilities for the specified land-use classification keys. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
