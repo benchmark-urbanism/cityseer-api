@@ -85,15 +85,17 @@ def shortest_path_tree(
         active.remove(active_nd_idx)
         # add to active node
         tree_nodes[active_nd_idx] = True
-        # fetch the associated edge_data index
-        edges = node_edge_map[active_nd_idx]
         # iterate the node's neighbours
-        # instead of while True, use length of edge map to catch last node's termination
-        for edge_idx in edges:
+        for edge_idx in node_edge_map[active_nd_idx]:
             # get the edge's properties
             start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
+            # don't follow self-loops
+            if nb_nd_idx == active_nd_idx:
+                # add edge to active (used for segment methods)
+                tree_edges[edge_idx] = True
+                continue
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
             if nb_nd_idx == tree_preds[active_nd_idx]:
                 continue
@@ -105,8 +107,7 @@ def shortest_path_tree(
                 # get the active node's predecessor
                 pred_nd_idx = int(tree_preds[active_nd_idx])
                 # check that the new neighbour was not directly accessible from the predecessor's set of neighbours
-                pred_edges = node_edge_map[pred_nd_idx]
-                for pred_edge_idx in pred_edges:
+                for pred_edge_idx in node_edge_map[pred_nd_idx]:
                     # iterate start and end nodes corresponding to edges accessible from the predecessor node
                     pred_start, pred_end = edge_data[pred_edge_idx, :2]
                     # check that the previous node's neighbour's node is not equal to the currently new neighbour node
@@ -143,7 +144,7 @@ def shortest_path_tree(
             # add the neighbour to active if undiscovered but only if less than max threshold
             if np.isnan(tree_preds[nb_nd_idx]) and dist <= max_dist:
                 active.append(nb_nd_idx)
-            # only add edge to active if the neighbour node has not been processed previously
+            # only add edge to active if the neighbour node has not been processed previously (i.e. single direction only)
             if not tree_nodes[nb_nd_idx]:
                 tree_edges[edge_idx] = True
             # if impedance less than prior, update
