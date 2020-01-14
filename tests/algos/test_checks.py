@@ -7,11 +7,9 @@ from cityseer.util import graphs, mock
 
 
 def test_progress_bar():
-    for n, step_size in zip([1, 10, 100], [1, 3, 10]):
+    for n in [1, 10, 100, 1000]:
         for i in range(n):
-            checks.progress_bar(i, n, step_size)
-    # check that chunks > total doesn't raise
-    checks.progress_bar(10, 10, 20)
+            checks.progress_bar(i, n)
 
 
 def test_check_numerical_data():

@@ -169,9 +169,10 @@ def assign_to_network(data_map: np.ndarray,
     data_y_arr = data_map[:, 1]
     total_count = len(data_map)
     # setup progress bar params
+    steps = int(total_count / 10000)
     for data_idx in range(total_count):
         if not suppress_progress:
-            checks.progress_bar(data_idx, total_count, 2000)
+            checks.progress_bar(data_idx, total_count, steps)
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx], data_y_arr[data_idx], netw_x_arr, netw_y_arr, max_dist)
         # in some cases no network node will be within max_dist... so accept NaN
@@ -517,9 +518,10 @@ def local_aggregator(node_data: np.ndarray,
     stats_min = np.full((n_n, d_n, netw_n), np.nan)
 
     # iterate through each vert and aggregate
+    steps = int(netw_n / 10000)
     for netw_src_idx in range(netw_n):
         if not suppress_progress:
-            checks.progress_bar(netw_src_idx, netw_n, 2000)
+            checks.progress_bar(netw_src_idx, netw_n, steps)
         # only compute for live nodes
         if not netw_nodes_live[netw_src_idx]:
             continue
@@ -763,9 +765,10 @@ def singly_constrained(node_data: np.ndarray,
 
     # iterate all i nodes
     # filter all reachable nodes k and aggregate k attractiveness * negative exponential of distance
+    steps = int(i_n / 10000)
     for i_idx in range(i_n):
         if not suppress_progress:
-            checks.progress_bar(i_idx, i_n, 2000)
+            checks.progress_bar(i_idx, i_n, steps)
         # get the nearest node
         i_assigned_netw_idx = int(i_data_map[i_idx, 2])
         # calculate the base distance from the data point to the nearest assigned node
@@ -797,9 +800,10 @@ def singly_constrained(node_data: np.ndarray,
     # this is the second step
     # this time, filter all reachable j vertices and aggregate the proportion of flow from i to j
     # this is done by dividing i-j flow through i-k_agg flow from previous step
+    steps = int(i_n / 10000)
     for i_idx in range(i_n):
         if not suppress_progress:
-            checks.progress_bar(i_idx, i_n, 2000)
+            checks.progress_bar(i_idx, i_n, steps)
 
         # get the nearest node
         i_assigned_netw_idx = int(i_data_map[i_idx, 2])
