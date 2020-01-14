@@ -298,12 +298,13 @@ def local_centrality(node_data: np.ndarray,
     # the shortest path is based on impedances -> be cognisant of cases where impedances are not based on true distance:
     # in such cases, distances are equivalent to the impedance heuristic shortest path, not shortest distance in metres
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
+    steps = int(n / 10000)
     # iterate through each vert and calculate the shortest path tree
     for src_idx in range(n):
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if not suppress_progress:
-            checks.progress_bar(src_idx, n, 2000)
+            checks.progress_bar(src_idx, n, steps)
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue

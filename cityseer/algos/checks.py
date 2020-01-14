@@ -26,25 +26,26 @@ def _print_msg(hash_count, void_count, percentage):
 
 
 @njit(cache=False)
-def progress_bar(current: int, total: int, step_size: int):
+def progress_bar(current: int, total: int, steps: int = 20):
     '''
     Printing carries a performance penalty
     Cache has to be set to false per Numba issue:
     https://github.com/numba/numba/issues/3555
     TODO: set cache to True once resolved - likely 2020
     '''
-    if step_size < 1:
+    if steps == 0:
+        return
+    if current + 1 == total:
+        _print_msg(steps, 0, 100)
+        return
+    if total <= steps:
         step_size = 1
-    if step_size > total:
-        step_size = total
-    if current == 0:
-        _print_msg(0, int(total / step_size), 0)
-    if (current + 1) == total:
-        _print_msg(int(total / step_size), 0, 100)
-    elif (current + 1) % step_size == 0:
-        percentage = np.round((current + 1) / total * 100, 2)
-        hash_count = int((current + 1) / step_size)
-        void_count = int(total / step_size - hash_count)
+    else:
+        step_size = int(total / steps)
+    if current % step_size == 0:
+        percentage = np.round(current / total * 100, 2)
+        hash_count = int(percentage / 100 * steps)
+        void_count = steps - hash_count
         _print_msg(hash_count, void_count, percentage)
 
 
@@ -161,18 +162,14 @@ def check_network_maps(node_data: np.ndarray,
             # check that the start node matches the current node index
             start_nd_idx, end_nd_idx = edge[:2]
             assert start_nd_idx == n_idx
-            # don't follow self-loops
-            if end_nd_idx == n_idx:
-                continue
-            # if the current node is not ghosted, check that each edge has a matching pair in the opposite direction
-            if not node_data[n_idx, 3]:
-                paired = False
-                for return_edge_idx in node_edge_map[int(end_nd_idx)]:
-                    if edge_data[return_edge_idx][1] == n_idx:
-                        paired = True
-                        break
-                if not paired:
-                    raise ValueError('Missing matching edge pair in opposite direction.')
+            # check that each edge has a matching pair in the opposite direction
+            paired = False
+            for return_edge_idx in node_edge_map[int(end_nd_idx)]:
+                if edge_data[return_edge_idx][1] == n_idx:
+                    paired = True
+                    break
+            if not paired:
+                raise ValueError('Missing matching edge pair in opposite direction.')
             # add to the counter
             edge_counts[edge_idx] += 1
     if not np.all(edge_counts == 1):
