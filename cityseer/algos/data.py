@@ -197,11 +197,14 @@ def assign_to_network(data_map: np.ndarray,
             for edge_idx in node_edge_map[node_idx]:
                 # get the edge's start and end node indices
                 start, end = edge_data[edge_idx, :2]
-                # check that this isn't the previous node (already visited as neighbour from other direction)
-                if np.isfinite(prev_idx) and end == prev_idx:
-                    continue
                 # cast to int for indexing
                 new_idx = int(end)
+                # don't follow self-loops
+                if new_idx == node_idx:
+                    continue
+                # check that this isn't the previous node (already visited as neighbour from other direction)
+                if np.isfinite(prev_idx) and new_idx == prev_idx:
+                    continue
                 # look for the new neighbour with the smallest rightwards (anti-clockwise arctan2) angle
                 # measure the angle relative to the data point for the first node
                 if np.isnan(prev_idx):

@@ -154,14 +154,16 @@ def check_network_maps(node_data: np.ndarray,
     # check sequential and reciprocal node to edge map indices
     edge_counts = np.full(len(edge_data), 0)
     for n_idx in range(len(node_data)):
-        edges = node_edge_map[n_idx]
         # zip through all edges for current node
-        for edge_idx in edges:
+        for edge_idx in node_edge_map[n_idx]:
             # get the edge
             edge = edge_data[edge_idx]
             # check that the start node matches the current node index
             start_nd_idx, end_nd_idx = edge[:2]
             assert start_nd_idx == n_idx
+            # don't follow self-loops
+            if end_nd_idx == n_idx:
+                continue
             # if the current node is not ghosted, check that each edge has a matching pair in the opposite direction
             if not node_data[n_idx, 3]:
                 paired = False
