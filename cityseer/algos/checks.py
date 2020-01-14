@@ -162,18 +162,14 @@ def check_network_maps(node_data: np.ndarray,
             # check that the start node matches the current node index
             start_nd_idx, end_nd_idx = edge[:2]
             assert start_nd_idx == n_idx
-            # don't follow self-loops
-            if end_nd_idx == n_idx:
-                continue
-            # if the current node is not ghosted, check that each edge has a matching pair in the opposite direction
-            if not node_data[n_idx, 3]:
-                paired = False
-                for return_edge_idx in node_edge_map[int(end_nd_idx)]:
-                    if edge_data[return_edge_idx][1] == n_idx:
-                        paired = True
-                        break
-                if not paired:
-                    raise ValueError('Missing matching edge pair in opposite direction.')
+            # check that each edge has a matching pair in the opposite direction
+            paired = False
+            for return_edge_idx in node_edge_map[int(end_nd_idx)]:
+                if edge_data[return_edge_idx][1] == n_idx:
+                    paired = True
+                    break
+            if not paired:
+                raise ValueError('Missing matching edge pair in opposite direction.')
             # add to the counter
             edge_counts[edge_idx] += 1
     if not np.all(edge_counts == 1):
