@@ -523,13 +523,8 @@ def local_centrality(node_data: np.ndarray,
             # only process in one direction
             if to_idx < src_idx:
                 continue
-            # identify true routes from ghosted routes
-            src_ghosted = nodes_ghosted[src_idx]
-            to_ghosted = nodes_ghosted[to_idx]
-            true_route = not src_ghosted and not to_ghosted
             # NODE WORKFLOW
-            # don't count routes originating or ending at ghosted nodes
-            if true_route and betw_nodes:
+            if betw_nodes:
                 # betweenness - only counting truly between vertices, not starting and ending verts
                 inter_idx = int(tree_preds[to_idx])
                 while True:
