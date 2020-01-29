@@ -83,7 +83,7 @@ The [`Network_Layer.compute_centrality`](/metrics/networks.html#compute-centrali
 from cityseer.metrics import networks
 # create a Network layer from the networkX graph
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
-# the full underlying method allows the computation of various centralities simultaneously, e.g.
+# the underlying method allows the computation of various centralities simultaneously, e.g.
 N.compute_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 ```
 

@@ -403,16 +403,18 @@ def test_decomposed_local_centrality():
     assert measures_data.shape == (m_range, d_range, len(G))
     assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
     original_node_idx = np.where(node_data[:, 3] == 0)
-    # node based measures and betweenness segments will not match
-    # node measures can't filter by ghosted because then number of nodes is uneven
-    # segment betweenness become more finely spaced as the graph decomposes
+    # with increasing decomposition:
+    # - node based measures will not match
+    # - node based segment measures will match - these measure to the cut endpoints per thresholds
+    # - betweenness based segment won't match - doesn't measure to cut endpoints
     for m_idx in range(m_range):
+        print(m_idx)
         for d_idx in range(d_range):
             match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx],
                                 atol=0.1, rtol=0)  # relax precision
             if not match:
                 print('key', measure_keys[m_idx], 'dist:', distances[d_idx], 'match:', match)
-            if m_idx > 4 and m_idx != 10:
+            if m_idx in [5, 6, 7]:
                 assert match
 
 
