@@ -51,7 +51,6 @@ def test_mock_data_dict():
         # check that attributes are present
         assert 'x' in v and isinstance(v['y'], (int, float))
         assert 'y' in v and isinstance(v['y'], (int, float))
-        assert 'live' in v and isinstance(v['live'], bool)
         assert v['x'] >= min_x and v['x'] <= max_x
         assert v['y'] >= min_y and v['y'] <= max_y
 

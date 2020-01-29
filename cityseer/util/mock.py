@@ -215,8 +215,7 @@ def mock_data_dict(G: nx.Graph, length: int = 50, random_seed: int = None) -> di
     for i in range(length):
         data_dict[i] = {
             'x': np.random.uniform(min_x, max_x),
-            'y': np.random.uniform(min_y, max_y),
-            'live': bool(np.random.randint(0, 1))
+            'y': np.random.uniform(min_y, max_y)
         }
 
     return data_dict

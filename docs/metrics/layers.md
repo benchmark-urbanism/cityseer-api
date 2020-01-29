@@ -53,8 +53,8 @@ data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=25)
 for i, (key, value) in enumerate(data_dict_WGS.items()):
     print(key, value)
     # prints:
-    # 0 {'x': -0.09600470559254023, 'y': 51.592916036617794, 'live': False}
-    # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964, 'live': False}
+    # 0 {'x': -0.09600470559254023, 'y': 51.592916036617794}
+    # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964}
     if i == 1:
         break
         
@@ -64,8 +64,8 @@ data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
 for i, (key, value) in enumerate(data_dict_UTM.items()):
     print(key, value)
     # prints:
-    # 0 {'x': 701144.5207785056, 'y': 5719758.706109629, 'live': False}
-    # 1 {'x': 700455.0000341447, 'y': 5719282.703221394, 'live': False}
+    # 0 {'x': 701144.5207785056, 'y': 5719758.706109629}
+    # 1 {'x': 700455.0000341447, 'y': 5719282.703221394}
     if i == 1:
         break
 ```
