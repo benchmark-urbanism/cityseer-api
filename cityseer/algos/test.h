@@ -69,7 +69,37 @@ extern "C" {
 #endif
 
 
+// NodeDensity calculates node density
+
 extern GoFloat64 NodeDensity(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeFarness calculates farness
+
+extern GoFloat64 NodeFarness(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeCycles calculates network cycles
+
+extern GoInt NodeCycles(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeHarmonic calculates harmonic closeness
+
+extern GoFloat64 NodeHarmonic(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeBeta calculates the "gravity" index
+
+extern GoFloat64 NodeBeta(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeHarmonicAngular calculates angular harmonic closeness
+
+extern GoFloat64 NodeHarmonicAngular(GoFloat64 p0, GoFloat64 p1, GoFloat64 p2, GoInt p3);
+
+// NodeBetweenness calculates node betweenness
+
+extern GoFloat64 NodeBetweenness(GoFloat64 p0, GoFloat64 p1);
+
+// NodeBetweennessBeta calculates node betweenness weighted by beta
+
+extern GoFloat64 NodeBetweennessBeta(GoFloat64 p0, GoFloat64 p1);
 
 #ifdef __cplusplus
 }

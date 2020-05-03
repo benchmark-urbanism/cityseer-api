@@ -54,6 +54,9 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     return np.log(min_threshold_wt) / distance
 
 
+# TODO: sub-class network layer for nd; nd-ang; seg; seg-ang
+# do all setup logic here in class and keep backend lean and modular
+
 class Network_Layer:
 
     def __init__(self,
@@ -145,10 +148,6 @@ class Network_Layer:
     @property
     def min_threshold_wt(self):
         return self._min_threshold_wt
-
-    @property
-    def angular(self):
-        return self._angular
 
     @property
     def x_arr(self):
@@ -293,7 +292,7 @@ class Network_Layer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        measures_data = centrality.local_centrality(
+        measures_data = centrality.local_node_centrality(
             self._node_data,
             self._edge_data,
             self._node_edge_map,

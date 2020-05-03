@@ -348,12 +348,12 @@ def test_compute_centrality():
     N = networks.Network_Layer_From_nX(G, distances)
     N.compute_centrality(measures=['node_density'])
     # test against underlying method
-    measures_data = centrality.local_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                measure_keys=('node_density',))
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys=('node_density',))
     for d_idx, d_key in enumerate(distances):
         assert np.allclose(N.metrics['centrality']['node_density'][d_key], measures_data[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
@@ -371,12 +371,12 @@ def test_compute_centrality():
         N = networks.Network_Layer_From_nX(G, distances)
         N.compute_centrality(measures=measures)
         # test against underlying method
-        measures_data = centrality.local_centrality(node_data,
-                                                    edge_data,
-                                                    node_edge_map,
-                                                    distances,
-                                                    betas,
-                                                    measure_keys=tuple(measure_keys))
+        measures_data = centrality.local_node_centrality(node_data,
+                                                         edge_data,
+                                                         node_edge_map,
+                                                         distances,
+                                                         betas,
+                                                         measure_keys=tuple(measure_keys))
         for m_idx, measure_name in enumerate(measure_keys):
             for d_idx, d_key in enumerate(distances):
                 assert np.allclose(N.metrics['centrality'][measure_name][d_key],

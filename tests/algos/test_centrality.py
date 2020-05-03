@@ -9,8 +9,25 @@ from cityseer.metrics import networks
 from cityseer.util import mock, graphs
 
 
-# for extracting paths from predecessor map
-def _find_path(start_idx, target_idx, tree_preds):
+@pytest.fixture
+def primal_graph():
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nX_simple_geoms(G_primal)
+    return G_primal
+
+
+@pytest.fixture
+def dual_graph():
+    G_dual = mock.mock_graph()
+    G_dual = graphs.nX_simple_geoms(G_dual)
+    G_dual = graphs.nX_to_dual(G_dual)
+    return G_dual
+
+
+def find_path(start_idx, target_idx, tree_preds):
+    '''
+    for extracting paths from predecessor map
+    '''
     s_path = []
     pred = start_idx
     while True:
@@ -21,22 +38,16 @@ def _find_path(start_idx, target_idx, tree_preds):
     return list(reversed(s_path))
 
 
-def test_shortest_path_tree():
-    # prepare primal graph
-    G_primal = mock.mock_graph()
-    G_primal = graphs.nX_simple_geoms(G_primal)
-    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(G_primal)
+def test_shortest_path_tree(primal_graph, dual_graph):
+    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nX(primal_graph)
     # prepare round-trip graph for checks
     G_round_trip = graphs.nX_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
-    G_dual = mock.mock_graph()
-    G_dual = graphs.nX_simple_geoms(G_dual)
-    G_dual = graphs.nX_to_dual(G_dual)
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(G_dual)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nX(dual_graph)
     assert len(node_uids_d) > len(node_uids_p)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000, np.inf]:
-        for src_idx in range(len(G_primal)):
+        for src_idx in range(len(primal_graph)):
             # check shortest path maps
             tree_map, tree_edges = centrality.shortest_path_tree(edge_data_p,
                                                                  node_edge_map_p,
@@ -48,9 +59,9 @@ def test_shortest_path_tree():
             tree_imps_p = tree_map[:, 3]
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G_round_trip, src_idx, weight='length', cutoff=max_dist)
-            for j in range(len(G_primal)):
+            for j in range(len(primal_graph)):
                 if j in nx_path:
-                    assert _find_path(j, src_idx, tree_preds_p) == nx_path[j]
+                    assert find_path(j, src_idx, tree_preds_p) == nx_path[j]
                     assert np.allclose(tree_imps_p[j], tree_dists_p[j], atol=0.001, rtol=0)
                     assert np.allclose(tree_imps_p[j], nx_dist[j], atol=0.001, rtol=0)
     # compare angular impedances and paths for a selection of targets on primal vs. dual
@@ -91,7 +102,7 @@ def test_shortest_path_tree():
                                                          angular=True)
     # find path
     tree_preds = tree_map[:, 1]
-    path = _find_path(target, src_idx, tree_preds)
+    path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     # takes 1597m route via long outside segment
     # tree_dists[int(full_to_trim_idx_map[node_labels.index('39_40')])]
@@ -105,7 +116,7 @@ def test_shortest_path_tree():
                                                          angular=False)
     # find path
     tree_preds = tree_map[:, 1]
-    path = _find_path(target, src_idx, tree_preds)
+    path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     # takes 1345m shorter route
     # tree_dists[int(full_to_trim_idx_map[node_labels.index('39_40')])]
@@ -121,7 +132,7 @@ def test_shortest_path_tree():
                                                          angular=True)
     # find path
     tree_preds = tree_map[:, 1]
-    path = _find_path(target, src_idx, tree_preds)
+    path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     assert path_transpose == ['10_43', '10_5']
     # WITH SIDESTEPS - set angular flag to False
@@ -137,12 +148,12 @@ def test_shortest_path_tree():
                                                          angular=False)
     # find path
     tree_preds = tree_map[:, 1]
-    path = _find_path(target, src_idx, tree_preds)
+    path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     assert path_transpose == ['10_43', '10_14', '10_5']
 
 
-def test_local_centrality():
+def test_local_centrality(primal_graph):
     '''
     Also tested indirectly via test_networks.test_compute_centrality
 
@@ -151,12 +162,9 @@ def test_local_centrality():
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     '''
     # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
-    # plots for debugging
-
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
@@ -167,57 +175,27 @@ def test_local_centrality():
         'node_cycles',
         'node_harmonic',
         'node_beta',
-        'segment_density',
-        'segment_harmonic',
-        'segment_beta',
         'node_betweenness',
-        'node_betweenness_beta',
-        'segment_betweenness'
+        'node_betweenness_beta'
     ]
     np.random.shuffle(measure_keys)  # in place
     measure_keys = tuple(measure_keys)
     # generate the measures
-    measures_data = centrality.local_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                measure_keys,
-                                                angular=False)
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys)
     node_density = measures_data[measure_keys.index('node_density')]
     node_farness = measures_data[measure_keys.index('node_farness')]
     node_cycles = measures_data[measure_keys.index('node_cycles')]
     node_harmonic = measures_data[measure_keys.index('node_harmonic')]
     node_beta = measures_data[measure_keys.index('node_beta')]
-    segment_density = measures_data[measure_keys.index('segment_density')]
-    segment_harmonic = measures_data[measure_keys.index('segment_harmonic')]
-    segment_beta = measures_data[measure_keys.index('segment_beta')]
     node_betweenness = measures_data[measure_keys.index('node_betweenness')]
     node_betweenness_beta = measures_data[measure_keys.index('node_betweenness_beta')]
-    segment_betweenness = measures_data[measure_keys.index('segment_betweenness')]
     # post compute improved
     improved_closness = node_density / node_farness / node_density
-    # angular keys
-    measure_keys_angular = [
-        'node_harmonic_angular',
-        'segment_harmonic_hybrid',
-        'node_betweenness_angular',
-        'segment_betweeness_hybrid'
-    ]
-    np.random.shuffle(measure_keys_angular)  # in place
-    measure_keys_angular = tuple(measure_keys_angular)
-    # generate the angular measures
-    measures_data_angular = centrality.local_centrality(node_data,
-                                                        edge_data,
-                                                        node_edge_map,
-                                                        distances,
-                                                        betas,
-                                                        measure_keys_angular,
-                                                        angular=True)
-    node_harmonic_angular = measures_data_angular[measure_keys_angular.index('node_harmonic_angular')]
-    segment_harmonic_hybrid = measures_data_angular[measure_keys_angular.index('segment_harmonic_hybrid')]
-    node_betweenness_angular = measures_data_angular[measure_keys_angular.index('node_betweenness_angular')]
-    segment_betweeness_hybrid = measures_data_angular[measure_keys_angular.index('segment_betweeness_hybrid')]
 
     # test node density
     # node density count doesn't include self-node
@@ -248,16 +226,16 @@ def test_local_centrality():
         beta = betas[d_idx]
 
         # do the comparisons array-wise so that betweenness can be aggregated
-        betw = np.full(G.number_of_nodes(), 0.0)
-        betw_wt = np.full(G.number_of_nodes(), 0.0)
-        dens = np.full(G.number_of_nodes(), 0.0)
-        far_imp = np.full(G.number_of_nodes(), 0.0)
-        far_dist = np.full(G.number_of_nodes(), 0.0)
-        harmonic_cl = np.full(G.number_of_nodes(), 0.0)
-        grav = np.full(G.number_of_nodes(), 0.0)
-        cyc = np.full(G.number_of_nodes(), 0.0)
+        betw = np.full(primal_graph.number_of_nodes(), 0.0)
+        betw_wt = np.full(primal_graph.number_of_nodes(), 0.0)
+        dens = np.full(primal_graph.number_of_nodes(), 0.0)
+        far_imp = np.full(primal_graph.number_of_nodes(), 0.0)
+        far_dist = np.full(primal_graph.number_of_nodes(), 0.0)
+        harmonic_cl = np.full(primal_graph.number_of_nodes(), 0.0)
+        grav = np.full(primal_graph.number_of_nodes(), 0.0)
+        cyc = np.full(primal_graph.number_of_nodes(), 0.0)
 
-        for src_idx in range(len(G)):
+        for src_idx in range(len(primal_graph)):
             # get shortest path maps
             tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
                                                                  node_edge_map,
@@ -268,7 +246,7 @@ def test_local_centrality():
             tree_dists = tree_map[:, 2]
             tree_imps = tree_map[:, 3]
             tree_cycles = tree_map[:, 4]
-            for n_idx in G.nodes():
+            for n_idx in primal_graph.nodes():
                 # skip self nodes
                 if n_idx == src_idx:
                     continue
@@ -316,48 +294,30 @@ def test_local_centrality():
         assert np.allclose(node_betweenness[d_idx], betw, atol=0.001, rtol=0)
         assert np.allclose(node_betweenness_beta[d_idx], betw_wt, atol=0.001, rtol=0)
 
-        # TODO: are there possibly ways to test segment_density, harmonic_segment, segment_beta, segment_betweenness
-        # for infinite distance, the segment density should match the sum of reachable segments
-        length_sum = 0
-        for s, e, d in G_round_trip.edges(data=True):
-            length_sum += d['length']
-        reachable_length_sum = length_sum - \
-                               (G_round_trip[50][51]['length'] +
-                                G_round_trip[52][53]['length'] +
-                                G_round_trip[53][54]['length'] +
-                                G_round_trip[54][55]['length'] +
-                                G_round_trip[52][55]['length'])
-        assert np.allclose(segment_density[-1][:49], reachable_length_sum, atol=0.01, rtol=0)  # relax precision
+    # catch typos
+    with pytest.raises(ValueError):
+        centrality.local_node_centrality(node_data,
+                                         edge_data,
+                                         node_edge_map,
+                                         distances,
+                                         betas,
+                                         ('typo_key',))
 
-    # check that problematic keys are caught
-    for angular, k in zip([False, True], ['node_harmonic', 'node_harmonic_angular']):
-        # catch typos
-        with pytest.raises(ValueError):
-            centrality.local_centrality(node_data,
-                                        edge_data,
-                                        node_edge_map,
-                                        distances,
-                                        betas,
-                                        ('typo_key',),
-                                        angular=False)
-        # catch duplicates
-        with pytest.raises(ValueError):
-            centrality.local_centrality(node_data,
-                                        edge_data,
-                                        node_edge_map,
-                                        distances,
-                                        betas,
-                                        (k, k),
-                                        angular=False)
-        # catch mixed angular and non-angular keys
-        with pytest.raises(ValueError):
-            centrality.local_centrality(node_data,
-                                        edge_data,
-                                        node_edge_map,
-                                        distances,
-                                        betas,
-                                        ('node_density', 'node_harmonic_angular'),
-                                        angular=False)
+
+'''
+# TODO: are there possibly ways to test segment_density, harmonic_segment, segment_beta, segment_betweenness
+# for infinite distance, the segment density should match the sum of reachable segments
+length_sum = 0
+for s, e, d in G_round_trip.edges(data=True):
+    length_sum += d['length']
+reachable_length_sum = length_sum - \
+                       (G_round_trip[50][51]['length'] +
+                        G_round_trip[52][53]['length'] +
+                        G_round_trip[53][54]['length'] +
+                        G_round_trip[54][55]['length'] +
+                        G_round_trip[52][55]['length'])
+assert np.allclose(segment_density[-1][:49], reachable_length_sum, atol=0.01, rtol=0)  # relax precision
+'''
 
 
 def test_decomposed_local_centrality():
@@ -379,24 +339,24 @@ def test_decomposed_local_centrality():
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    measures_data = centrality.local_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                measure_keys,
-                                                angular=False)
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys,
+                                                     angular=False)
     G_decomposed = graphs.nX_decompose(G, 20)
     # generate node and edge maps
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_decomposed)
     checks.check_network_maps(node_data, edge_data, node_edge_map)
-    measures_data_decomposed = centrality.local_centrality(node_data,
-                                                           edge_data,
-                                                           node_edge_map,
-                                                           distances,
-                                                           betas,
-                                                           measure_keys,
-                                                           angular=False)
+    measures_data_decomposed = centrality.local_node_centrality(node_data,
+                                                                edge_data,
+                                                                node_edge_map,
+                                                                distances,
+                                                                betas,
+                                                                measure_keys,
+                                                                angular=False)
     # test harmonic closeness on original nodes for non-decomposed vs decomposed
     d_range = len(distances)
     m_range = len(measure_keys)
@@ -450,18 +410,18 @@ def test_local_centrality_time():
         betweenness node invokes betweenness workflow
         segment density invokes segments workflow
         '''
-        return centrality.local_centrality(node_data,
-                                           edge_data,
-                                           node_edge_map,
-                                           distances,
-                                           betas,
-                                           ('node_density',  # 7.16s
-                                            'node_betweenness',  # 8.08s - adds around 1s
-                                            'segment_density',  # 11.2s - adds around 3s
-                                            'segment_betweenness'
-                                            ),
-                                           angular=False,
-                                           suppress_progress=True)
+        return centrality.local_node_centrality(node_data,
+                                                edge_data,
+                                                node_edge_map,
+                                                distances,
+                                                betas,
+                                                ('node_density',  # 7.16s
+                                                 # 'node_betweenness',  # 8.08s - adds around 1s
+                                                 #'segment_density',  # 11.2s - adds around 3s
+                                                 #'segment_betweenness'
+                                                 ),
+                                                angular=False,
+                                                suppress_progress=True)
 
     # prime the function
     wrapper_func()

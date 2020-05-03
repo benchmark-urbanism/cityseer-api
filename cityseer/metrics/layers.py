@@ -365,17 +365,19 @@ class Data_Layer:
                                  i_data_map: np.ndarray,
                                  j_data_map: np.ndarray,
                                  i_weights: Union[list, tuple, np.ndarray],
-                                 j_weights: Union[list, tuple, np.ndarray]):
+                                 j_weights: Union[list, tuple, np.ndarray],
+                                 angular=False):
 
         j_assigned, netw_flows = data.singly_constrained(self.Network._node_data,
                                                          self.Network._edge_data,
+                                                         self.Network._node_edge_map,
                                                          distances=np.array(self.Network.distances),
                                                          betas=np.array(self.Network.betas),
                                                          i_data_map=i_data_map,
                                                          j_data_map=j_data_map,
                                                          i_weights=np.array(i_weights),
                                                          j_weights=np.array(j_weights),
-                                                         angular=self.Network.angular,
+                                                         angular=angular,
                                                          suppress_progress=checks.quiet_mode)
 
         # write the results to the Network's metrics dict
