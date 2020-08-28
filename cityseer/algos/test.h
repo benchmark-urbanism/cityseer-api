@@ -101,6 +101,10 @@ extern GoFloat64 NodeBetweenness(GoFloat64 p0, GoFloat64 p1);
 
 extern GoFloat64 NodeBetweennessBeta(GoFloat64 p0, GoFloat64 p1);
 
+extern void MakeGraph();
+
+extern void PrintGraph();
+
 #ifdef __cplusplus
 }
 #endif
