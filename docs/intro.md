@@ -17,7 +17,7 @@ Installation
 pip install cityseer
 ```
 
-Code tests are run against `python 3.7`.
+Code tests are run against `python 3.8`.
 
 [![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20package/badge.svg)](https://github.com/cityseer/cityseer/actions)
 

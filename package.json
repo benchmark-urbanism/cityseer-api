@@ -5,10 +5,10 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@vuepress/plugin-back-to-top": "^1.2.0",
-    "@vuepress/theme-default": "^1.2.0",
-    "stylus-loader": "^3.0.2",
-    "vuepress": "1.2.0",
+    "@vuepress/plugin-back-to-top": "1.5.4",
+    "@vuepress/theme-default": "1.5.4",
+    "stylus-loader": "3.0.2",
+    "vuepress": "1.5.4",
     "vuepress-plugin-mathjax": "1.2.8"
   }
 }

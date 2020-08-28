@@ -16,7 +16,7 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='0.11.0',
+    version='0.11.1',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description='Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer',
@@ -32,8 +32,8 @@ setup(
         'numpy',
         'numba',
         'utm',
-        'shapely>=1.7a1',
-        'networkx',
+        'shapely>=1.7.0',
+        'networkx>=2.4',
         'tqdm',
         'matplotlib',
         'sklearn'
