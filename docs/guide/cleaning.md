@@ -119,7 +119,7 @@ Two different methods can be used for this purpose:
 Both methods take a `buffer_dist` parameter specifying the threshold distance at which to apply consolidation, and may involve a degree of experimentation to find suitable distance.
 
 These methods can optionally be combined with network decomposition, which can be applied before or after, depending on which gives the best results for a given situation.
- 
+
 ```python
 # decomposition of the network will even out the intensity of nodes
 # set the decompose_max flag based on the level of granularity required
