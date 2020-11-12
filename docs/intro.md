@@ -23,11 +23,7 @@ Code tests are run against `python 3.8`.
 
 [![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20docs/badge.svg)](https://github.com/cityseer/cityseer/actions)
 
-Notebooks
----------
-
-Hosted notebooks covering topics such as this Quickstart guide or how to do [`Graph Cleaning`](/guide/cleaning) are hosted at [binder](https://hub.gke2.mybinder.org/user/cityseer-cityseer-1n6qfv9a/tree/demo_notebooks).
-
+> A notebook of this guide can be found at [binder](https://hub-binder.mybinder.ovh/user/cityseer-cityseer-mq3erq3w/notebooks/demo_notebooks/getting_started.ipynb).
 Quickstart
 ----------
 
