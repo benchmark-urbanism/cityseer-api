@@ -34,8 +34,7 @@ module.exports = {
         collapsable: false,
         children: [
           ['intro', 'intro'],
-          ['attribution', 'attribution'],
-          ['license', 'license']
+          ['attribution', 'attribution']
         ]
       },
       {
