@@ -2,7 +2,7 @@
 
 ---
 
-Clearly legible attribution should be provivded when using this package.
+Please provide clearly legible attribution when using this package.
 
 This should include either a link to the documentation website or one of the following logos.
 
