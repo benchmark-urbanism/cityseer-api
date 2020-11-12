@@ -1,4 +1,4 @@
-> A notebook of this guide can be found at [binder](https://hub-binder.mybinder.ovh/user/cityseer-cityseer-0dt63yhl/notebooks/demo_notebooks/graph_cleaning.ipynb).
+> A notebook of this guide can be found at [binder](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
 
 Graph cleaning
 ==============
