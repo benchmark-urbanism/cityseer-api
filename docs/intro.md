@@ -24,6 +24,7 @@ Code tests are run against `python 3.8`.
 [![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20docs/badge.svg)](https://github.com/cityseer/cityseer/actions)
 
 > A notebook of this guide can be found at [binder](https://hub-binder.mybinder.ovh/user/cityseer-cityseer-mq3erq3w/notebooks/demo_notebooks/getting_started.ipynb).
+
 Quickstart
 ----------
 
