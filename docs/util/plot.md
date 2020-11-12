@@ -172,7 +172,8 @@ plot_assignment(Network_Layer,
                 path=None,
                 node_colour=None,
                 node_labels=False,
-                data_labels=None)
+                data_labels=None,
+                **figure_kwargs)
 </pre>
 </FuncSignature>
 
@@ -212,6 +213,12 @@ Whether to plot the node labels.
 <FuncElement name="data_labels" type="list, tuple, np.ndarray">
 
 An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `Data_Layer`.
+
+</FuncElement>
+
+<FuncElement name="figure_kwargs" type="key=value pairs">
+
+`key=value` pairs which will be passed to the `matplotlib` figure parameters. If provided, these `kwargs` are used to override the default figure size or dpi parameters.
 
 </FuncElement>
 
