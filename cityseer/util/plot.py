@@ -103,7 +103,10 @@ def plot_assignment(Network_Layer,
                     path: str = None,
                     node_colour: (list, tuple, np.ndarray) = None,
                     node_labels: bool = False,
-                    data_labels: (list, tuple, np.ndarray) = None):
+                    data_labels: (list, tuple, np.ndarray) = None,
+                    **kwargs):
+    plt.figure(**kwargs)
+
     # extract NetworkX
     Graph = Network_Layer.to_networkX()
 

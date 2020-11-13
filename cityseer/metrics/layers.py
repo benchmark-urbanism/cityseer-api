@@ -366,7 +366,7 @@ class Data_Layer:
                                  j_data_map: np.ndarray,
                                  i_weights: Union[list, tuple, np.ndarray],
                                  j_weights: Union[list, tuple, np.ndarray],
-                                 angular=False):
+                                 angular: bool = False):
 
         j_assigned, netw_flows = data.singly_constrained(self.Network._node_data,
                                                          self.Network._edge_data,

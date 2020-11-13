@@ -142,7 +142,7 @@ L.assign_to_network(N, max_dist=500)
 
 plt.cla()
 plt.clf()
-plot.plot_assignment(N, L, path='assignment.png')
+plot.plot_assignment(N, L, path='assignment.png', dpi=150)
 
 G_decomposed = graphs.nX_decompose(G, 50)
 N_decomposed = networks.Network_Layer_From_nX(G_decomposed, distances=[200, 400, 800, 1600])

@@ -1,3 +1,5 @@
+> A notebook of this guide can be found at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
+
 Graph cleaning
 ==============
 
@@ -104,16 +106,21 @@ plot.plot_nX(G, figsize=(20, 20), dpi=150)
 <ImageModal :path="require('../images/plots/guides/cleaning/graph_topo.png')" alt='OSM graph topology' caption='The OSM graph after conversion to a topological representation. © OpenStreetMap contributors.'></ImageModal>
 
 ::: warning Note
-At this point it may initially appear that the roadway geometries have now gone missing. However, this information is still present in the `LineString` geometries assigned to each street edge. Put differently, the plotted representation is now topological, not geometric.
+At this point it may initially appear that the roadway geometries have now gone missing. However, this information is still present in the `LineString` geometries assigned to each street edge. Put differently, the plotted representation is now topological, not geometric. During conversion to a `cityseer` network map, `cityseer` will automatically compute the length and comulative angular change for each of these `LineString` geoms. The entry and exit angle of each network edge is also determined and is used internally to compute and aggregate angular change from one street to another.
 :::
 
 
 Refining the network
 --------------------
 
-With the topology cleaned-up, the emphasis can now shift to evening out the intensity of nodes across the network through the use of decomposition. This process allows for a more granular representation of data along streetfronts.
- 
-The final step consolidates adjacent roadways, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
+The final step involves the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations. 
+
+Two different methods can be used for this purpose:
+- [`nX_consolidate_spatial`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-spatial) consolidates adjacent nodes based on a crow-flies distance threshold;
+- [`nX_consolidate_parallel`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-parallel) consolidates adjacent nodes for parallel edges, and tends to give superior results.
+Both methods take a `buffer_dist` parameter specifying the threshold distance at which to apply consolidation, and may involve a degree of experimentation to find suitable distance.
+
+These methods can optionally be combined with network decomposition, which can be applied before or after, depending on which gives the best results for a given situation.
 
 ```python
 # decomposition of the network will even out the intensity of nodes
@@ -129,4 +136,17 @@ plot.plot_nX(G, figsize=(20, 20), dpi=150)
 
 <ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
 
-The graph is now ready for analysis with the `cityseer` package's methods.
+You can mix-and-match various steps to further refine the graph, for example, let's remove the filler nodes again; then use a smaller distance spatial buffer to collapse oddities around intersections; remove newly residual nodes of degree=2; then re-decompose.
+
+```python
+# feel free to experiment!
+G = graphs.nX_remove_filler_nodes(G)
+G = graphs.nX_consolidate_spatial(G, buffer_dist=10)
+G = graphs.nX_remove_filler_nodes(G)
+G = graphs.nX_decompose(G, 50)
+plot.plot_nX(G, figsize=(20, 20), dpi=150)
+```
+
+<ImageModal :path="require('../images/plots/guides/cleaning/graph_reconsolidated.png')" alt='OSM graph after additional steps' caption='The OSM graph after additional processing. © OpenStreetMap contributors.'></ImageModal>
+
+There may still be locations that need some manual cleaning, though this is now much easier to accomplish. The graph is now ready for analysis with the `cityseer` package's methods.
