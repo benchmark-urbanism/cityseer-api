@@ -2,9 +2,9 @@
 
 ---
 
-Attribution with a link to the documentation website is required.
+Please provide clearly legible attribution when using this package.
 
-Visual outputs (plots, maps, etc.) should legibly display one of the following `cityseer` logos:
+This should include either a link to the documentation website or one of the following logos.
 
 <img src="./images/logos/cityseer_logo_white.png" alt="cityseer white logo" class="centre" style="max-width:500px;">
 
