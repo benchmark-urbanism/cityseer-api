@@ -116,8 +116,8 @@ Refining the network
 The final step involves the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations. 
 
 Two different methods can be used for this purpose:
-- [`X_consolidate_spatial`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-spatial) consolidates adjacent nodes based on a crow-flies distance threshold;
-- [nX_consolidate_parallel](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-parallel) consolidates adjacent nodes for parallel edges, and tends to give superior results.
+- [`nX_consolidate_spatial`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-spatial) consolidates adjacent nodes based on a crow-flies distance threshold;
+- [`nX_consolidate_parallel`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-parallel) consolidates adjacent nodes for parallel edges, and tends to give superior results.
 Both methods take a `buffer_dist` parameter specifying the threshold distance at which to apply consolidation, and may involve a degree of experimentation to find suitable distance.
 
 These methods can optionally be combined with network decomposition, which can be applied before or after, depending on which gives the best results for a given situation.
