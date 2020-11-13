@@ -136,4 +136,17 @@ plot.plot_nX(G, figsize=(20, 20), dpi=150)
 
 <ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
 
+You can mix-and-match various steps to further refine the graph, for example, let's remove the filler nodes again; then use a smaller distance spatial buffer to collapse oddities around intersections; remove newly residual nodes of degree=2; then re-decompose.
+
+```python
+# feel free to experiment!
+G = graphs.nX_remove_filler_nodes(G)
+G = graphs.nX_consolidate_spatial(G, buffer_dist=10)
+G = graphs.nX_remove_filler_nodes(G)
+G = graphs.nX_decompose(G, 50)
+plot.plot_nX(G, figsize=(20, 20), dpi=150)
+```
+
+<ImageModal :path="require('../images/plots/guides/cleaning/graph_reconsolidated.png')" alt='OSM graph after additional steps' caption='The OSM graph after additional processing. © OpenStreetMap contributors.'></ImageModal>
+
 There may still be locations that need some manual cleaning, though this is now much easier to accomplish. The graph is now ready for analysis with the `cityseer` package's methods.
