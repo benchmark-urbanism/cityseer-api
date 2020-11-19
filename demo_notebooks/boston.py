@@ -10,16 +10,17 @@ from cityseer.metrics import networks
 import matplotlib.pyplot as plt
 from matplotlib import colors
 
-# %%
+#  %%
 # QUICK OPTION - 20km radius
 lat, lng = (42.360081, -71.058884)
 # cast the WGS coordinates to UTM prior to buffering
 easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
 # create a point, and then buffer
 pt = geometry.Point(easting, northing)
-poly_utm = pt.buffer(20000)
+poly_utm = pt.buffer(50000)
 
-# %%
+#  %%
+'''
 # FULL OPTION: USE SHAPEFILE
 # import shapefile (it was exported to EPSG 4326 CRS)
 with fiona.open('./demo_notebooks/boston/boston_4326.shp') as src:
@@ -56,8 +57,9 @@ print(f'UTM geometry type: {poly_utm.type}')
 print(f'UTM geometry validity: {poly_utm.is_valid}')
 print(f'UTM geometry area: {poly_utm.area}')
 print(f'UTM geometry width: {poly_utm.bounds[2] - poly_utm.bounds[0]}')
+'''
 
-# %%
+#  %%
 # convert back to WGS
 # the polygon is too big for the OSM server, so have to use convex hull then later prune
 geom = [utm.to_latlon(east, north, utm_zone_number, utm_zone_letter) for east, north in
@@ -116,7 +118,7 @@ Average degree:   2.0977
 # cast the graph to UTM coordinates prior to processing
 G_utm = graphs.nX_wgs_to_utm(G_wgs)
 
-# %%
+#  %%
 # setup plotting function
 # take centrepoint
 lng, lat = (-71.058884, 42.360081)
@@ -171,55 +173,72 @@ def nx_plot_zoom(nx_graph,
 
 nx_plot_zoom(G_utm)
 
-# %%
+#  %%
 G = graphs.nX_simple_geoms(G_utm)
 G = graphs.nX_remove_dangling_nodes(G, despine=25, remove_disconnected=True)
 nx_plot_zoom(G)
 
-# %%
+#  %%
 G = graphs.nX_remove_filler_nodes(G)
 nx_plot_zoom(G)
 
-# %%
+#  %%
 # buffer consolidation method
 # G_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=15)
 # nx_plot_zoom(G_spatial)
 
-# %%
+#  %%
 # parallel consolidation method
 G_cons = graphs.nX_consolidate_parallel(G, buffer_dist=15)
 nx_plot_zoom(G_cons)
 
-# %%
+#  %%
 # optional
 G_cons = graphs.nX_decompose(G_cons, decompose_max=100)
 nx_plot_zoom(G_cons)
 
-# %%
+#  %%
 # create a Network layer from the networkX graph
-N = networks.Network_Layer_From_nX(G_cons, distances=[400, 800, 1600])
+N = networks.Network_Layer_From_nX(G_cons, distances=[1000, 5000, 10000])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-N.compute_centrality(measures=['node_harmonic'])
+N.compute_centrality(measures=['node_harmonic', 'node_betweenness'])
 
-# %%
+#  %%
 G_metrics = N.to_networkX()
 
-# %%
+#  %%
 # plot centrality
-harmonic_closeness = []
+cent = []
 for node, data in G_metrics.nodes(data=True):
-    harmonic_closeness.append(data['metrics']['centrality']['node_harmonic'][1600])
+    cent.append(data['metrics']['centrality']['node_harmonic'][10000])
 # custom colourmap
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
 # mask outliers
-harmonic_closeness = np.array(harmonic_closeness)
-upper_threshold = np.percentile(harmonic_closeness, 99.9)
-outlier_idx = harmonic_closeness > upper_threshold
-harmonic_closeness[outlier_idx] = upper_threshold
+cent = np.array(cent)
+upper_threshold = np.percentile(cent, 99.9)
+outlier_idx = cent > upper_threshold
+cent[outlier_idx] = upper_threshold
 # normalise the values
-segment_harmonic_vals = colors.Normalize()(harmonic_closeness)
+segment_harmonic_vals = colors.Normalize()(cent)
 # cast against the colour map
 segment_harmonic_cols = cmap(segment_harmonic_vals)
 # plot
-# %%
+nx_plot_zoom(G_cons, colour=segment_harmonic_cols)
+
+# plot centrality
+cent = []
+for node, data in G_metrics.nodes(data=True):
+    cent.append(data['metrics']['centrality']['node_betweenness'][10000])
+# custom colourmap
+cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+# mask outliers
+cent = np.array(cent)
+upper_threshold = np.percentile(cent, 99.9)
+outlier_idx = cent > upper_threshold
+cent[outlier_idx] = upper_threshold
+# normalise the values
+segment_harmonic_vals = colors.Normalize()(cent)
+# cast against the colour map
+segment_harmonic_cols = cmap(segment_harmonic_vals)
+# plot
 nx_plot_zoom(G_cons, colour=segment_harmonic_cols)
