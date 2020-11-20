@@ -10,7 +10,7 @@ import os
 
 print(os.getcwd())
 
-lib = ctl.load_library('test.so', 'cityseer/algos')
+lib = ctl.load_library('test.so', './')
 
 NodeDensity = lib.NodeDensity
 NodeDensity.argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_int]
@@ -26,7 +26,7 @@ class Node(ctypes.Structure):
         ('x', ctypes.c_double),
         ('y', ctypes.c_double),
         ('live', ctypes.c_bool),
-        ('edges', ctypes.)  # TODO: slice
+        # ('edges', ctypes.)  # TODO: slice
     ]
 
 class Edge(ctypes.Structure):
