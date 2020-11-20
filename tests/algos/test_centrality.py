@@ -430,10 +430,8 @@ def test_local_centrality_time():
 
     float64 - 17.881911942000002
     float32 - 13.612861239
-    segments of unreachable code add to timing regardless...
-    possibly because of high number of iters vs. function prep and teardown...?
-
-    14.4 -> 14.293403884 for simpler ghost node workflow
+    segments of unreachable code used to add to timing regardless...
+    this seems to have been resolved in more recent versions of numba
     '''
     # load the test graph
     G = mock.mock_graph()
@@ -455,11 +453,12 @@ def test_local_centrality_time():
                                            node_edge_map,
                                            distances,
                                            betas,
-                                           ('node_density',  # 7.16s
-                                            'node_betweenness',  # 8.08s - adds around 1s
-                                            'segment_density',  # 11.2s - adds around 3s
-                                            'segment_betweenness'
-                                            ),
+                                           (
+                                               'node_density',  # 8.58 / strip out everything except node density = 8.5s
+                                               'node_betweenness',  # 9.34 / 9.56 stacked w. above
+                                               'segment_density',  # 11.19 / 12.14 stacked w. above
+                                               'segment_betweenness',  # 9.96 / 13.44 stacked w. above
+                                           ),
                                            angular=False,
                                            suppress_progress=True)
 
@@ -470,4 +469,4 @@ def test_local_centrality_time():
     func_time = timeit.timeit(wrapper_func, number=iters)
     print(f'Timing: {func_time} for {iters} iterations')
     if 'GITHUB_ACTIONS' not in os.environ:
-        assert func_time < 20
+        assert func_time < 15
