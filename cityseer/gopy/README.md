@@ -1,1 +1,0 @@
-/Users/gareth/go/bin/gopy build -output=out -vm=`which python3` /Users/Shared/dev/github/cityseer/cityseer/cityseer/gopy/hello.go
