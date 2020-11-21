@@ -6,7 +6,7 @@ import timeit
 
 from cityseer.algos import data, centrality, checks
 from cityseer.metrics import networks
-from cityseer.util import mock, graphs
+from cityseer.util import mock, graphs, plot
 
 
 @pytest.fixture
@@ -22,6 +22,36 @@ def dual_graph():
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
     return G_dual
+
+
+@pytest.fixture
+def diamond_graph():
+    '''
+    For manual checks of all node and segmentised methods
+       3
+      / \
+     /   \
+    /  a  \
+   1-------2
+    \  |  /
+     \ |b/ c
+      \|/
+       0
+    a = 100m = 2 * 50m
+    b = 86.60254m
+    c = 100m
+    all inner angles = 60º
+    '''
+    G_diamond = nx.Graph()
+    G_diamond.add_nodes_from([
+        (0, {'x': 50, 'y': 0}),
+        (1, {'x': 0, 'y': 86.60254}),
+        (2, {'x': 100, 'y': 86.60254}),
+        (3, {'x': 50, 'y': 86.60254 * 2})
+    ])
+    G_diamond.add_edges_from([(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)])
+    G_diamond = graphs.nX_simple_geoms(G_diamond)
+    return G_diamond
 
 
 def find_path(start_idx, target_idx, tree_preds):
@@ -65,7 +95,10 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                     assert np.allclose(tree_imps_p[j], tree_dists_p[j], atol=0.001, rtol=0)
                     assert np.allclose(tree_imps_p[j], nx_dist[j], atol=0.001, rtol=0)
     # compare angular impedances and paths for a selection of targets on primal vs. dual
-    # this works for this graph because edge segments are straight
+    # remember, this is angular change not distance travelled
+    # can be compared from primal to dual in this instance because edge segments are straight
+    # i.e. same amount of angular change whether primal or dual graph
+    # plot.plot_nX_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True)
     p_source_idx = node_uids_p.index(0)
     primal_targets = (15, 20, 37)
     dual_sources = ('0_1', '0_16', '0_31')
@@ -88,9 +121,6 @@ def test_shortest_path_tree(primal_graph, dual_graph):
         tree_imps_d = tree_map_d[:, 3]
         assert np.allclose(tree_imps_p[p_target_idx], tree_imps_d[d_target_idx], atol=0.001, rtol=0)
     # angular impedance should take a simpler but longer path - test basic case on dual
-    # for debugging
-    # from cityseer.util import plot
-    # plot.plot_nX_primal_or_dual(primal=G_primal, dual=G_dual, labels=True)
     # source and target are the same for either
     src_idx = node_uids_d.index('11_6')
     target = node_uids_d.index('39_40')
@@ -99,7 +129,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
-                                                         angular=True)
+                                                         angular=True)  # ANGULAR = TRUE
     # find path
     tree_preds = tree_map[:, 1]
     path = find_path(target, src_idx, tree_preds)
@@ -113,7 +143,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
-                                                         angular=False)
+                                                         angular=False)  # ANGULAR = FALSE
     # find path
     tree_preds = tree_map[:, 1]
     path = find_path(target, src_idx, tree_preds)
@@ -153,7 +183,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     assert path_transpose == ['10_43', '10_14', '10_5']
 
 
-def test_local_centrality(primal_graph):
+def test_local_node_centrality(primal_graph):
     '''
     Also tested indirectly via test_networks.test_compute_centrality
 
@@ -161,9 +191,8 @@ def test_local_centrality(primal_graph):
     Note that NetworkX improved closeness is not the same as derivation used in this package
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     '''
-    # load the test graph
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
-        primal_graph)  # generate node and edge maps
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
@@ -194,17 +223,18 @@ def test_local_centrality(primal_graph):
     node_beta = measures_data[measure_keys.index('node_beta')]
     node_betweenness = measures_data[measure_keys.index('node_betweenness')]
     node_betweenness_beta = measures_data[measure_keys.index('node_betweenness_beta')]
-    # post compute improved
+    # improved closeness is derived after the fact
     improved_closness = node_density / node_farness / node_density
 
     # test node density
     # node density count doesn't include self-node
-    # connected component == 48 == len(G) - 4
+    # connected component == 48 == len(G) - 1
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
     for n in node_density[4]:  # infinite distance - exceeds cutoff clashes
         assert n in [48, 3, 1, 0]
+
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance='length')
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
@@ -214,85 +244,85 @@ def test_local_centrality(primal_graph):
     # set endpoint counting to false and do not normalise
     nx_betw = nx.betweenness_centrality(G_round_trip, weight='length', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
-    # for some reason nx betweenness gives 0.5 instead of 1 for disconnected looping component (should be 1)
-    # maybe two equidistant routes being divided through 2
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
     assert np.allclose(nx_betw[:52], node_betweenness[4][:52], atol=0.001, rtol=0)
 
-    # test against various distances
-    for d_idx in range(len(distances)):
-        dist_cutoff = distances[d_idx]
-        beta = betas[d_idx]
+    # do the comparisons array-wise so that betweenness can be aggregated
+    d_n = len(distances)
+    betw = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    betw_wt = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    dens = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    far_imp = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    far_dist = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    harmonic_cl = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    grav = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    cyc = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
 
-        # do the comparisons array-wise so that betweenness can be aggregated
-        betw = np.full(primal_graph.number_of_nodes(), 0.0)
-        betw_wt = np.full(primal_graph.number_of_nodes(), 0.0)
-        dens = np.full(primal_graph.number_of_nodes(), 0.0)
-        far_imp = np.full(primal_graph.number_of_nodes(), 0.0)
-        far_dist = np.full(primal_graph.number_of_nodes(), 0.0)
-        harmonic_cl = np.full(primal_graph.number_of_nodes(), 0.0)
-        grav = np.full(primal_graph.number_of_nodes(), 0.0)
-        cyc = np.full(primal_graph.number_of_nodes(), 0.0)
+    for src_idx in range(len(primal_graph)):
+        # get shortest path maps
+        tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
+                                                             node_edge_map,
+                                                             src_idx,
+                                                             max(distances),
+                                                             angular=False)
+        tree_nodes = np.where(tree_map[:, 0])[0]
+        tree_preds = tree_map[:, 1]
+        tree_dists = tree_map[:, 2]
+        tree_imps = tree_map[:, 3]
+        tree_cycles = tree_map[:, 4]
+        for to_idx in tree_nodes:
+            # skip self nodes
+            if to_idx == src_idx:
+                continue
+            # get distance and impedance
+            to_imp = tree_imps[to_idx]
+            to_dist = tree_dists[to_idx]
+            cycles = tree_cycles[to_idx]
+            # continue if exceeds max
+            if np.isinf(to_dist):
+                continue
+            for d_idx in range(len(distances)):
+                dist_cutoff = distances[d_idx]
+                beta = betas[d_idx]
+                if to_dist <= dist_cutoff:
+                    # don't exceed threshold
+                    # if to_dist <= dist_cutoff:
+                    # aggregate values
+                    dens[d_idx][src_idx] += 1
+                    far_imp[d_idx][src_idx] += to_imp
+                    far_dist[d_idx][src_idx] += to_dist
+                    harmonic_cl[d_idx][src_idx] += 1 / to_imp
+                    grav[d_idx][src_idx] += np.exp(beta * to_dist)
+                    # cycles
+                    cyc[d_idx][src_idx] += cycles
+                    # only process betweenness in one direction
+                    if to_idx < src_idx:
+                        continue
+                    # betweenness - only counting truly between vertices, not starting and ending verts
+                    inter_idx = tree_preds[to_idx]
+                    # isolated nodes will have no predecessors
+                    if np.isnan(inter_idx):
+                        continue
+                    inter_idx = np.int(inter_idx)
+                    while True:
+                        # break out of while loop if the intermediary has reached the source node
+                        if inter_idx == src_idx:
+                            break
+                        betw[d_idx][inter_idx] += 1
+                        betw_wt[d_idx][inter_idx] += np.exp(beta * to_dist)
+                        # follow
+                        inter_idx = np.int(tree_preds[inter_idx])
+    improved_cl = dens / far_dist / dens
 
-        for src_idx in range(len(primal_graph)):
-            # get shortest path maps
-            tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
-                                                                 node_edge_map,
-                                                                 src_idx,
-                                                                 dist_cutoff,
-                                                                 angular=False)
-            tree_preds = tree_map[:, 1]
-            tree_dists = tree_map[:, 2]
-            tree_imps = tree_map[:, 3]
-            tree_cycles = tree_map[:, 4]
-            for n_idx in primal_graph.nodes():
-                # skip self nodes
-                if n_idx == src_idx:
-                    continue
-                # get distance and impedance
-                dist = tree_dists[n_idx]
-                imp = tree_imps[n_idx]
-                # continue if exceeds max
-                if np.isinf(dist) or dist > dist_cutoff:
-                    continue
-                # aggregate values
-                dens[src_idx] += 1
-                far_imp[src_idx] += imp
-                far_dist[src_idx] += dist
-                harmonic_cl[src_idx] += 1 / imp
-                grav[src_idx] += np.exp(beta * dist)
-                # cycles
-                if tree_cycles[n_idx]:
-                    cyc[src_idx] += 1
-                # BETWEENNESS
-                # only process betweenness in one direction
-                if n_idx < src_idx:
-                    continue
-                # betweenness - only counting truly between vertices, not starting and ending verts
-                inter_idx = tree_preds[n_idx]
-                # isolated nodes will have no predecessors
-                if np.isnan(inter_idx):
-                    continue
-                inter_idx = np.int(inter_idx)
-                while True:
-                    # break out of while loop if the intermediary has reached the source node
-                    if inter_idx == src_idx:
-                        break
-                    betw[inter_idx] += 1
-                    betw_wt[inter_idx] += np.exp(beta * dist)
-                    # follow
-                    inter_idx = np.int(tree_preds[inter_idx])
-        improved_cl = dens / far_dist / dens
-
-        assert np.allclose(node_density[d_idx], dens, atol=0.001, rtol=0)
-        assert np.allclose(node_farness[d_idx], far_dist, atol=0.01, rtol=0)  # relax precision
-        assert np.allclose(node_cycles[d_idx], cyc, atol=0.001, rtol=0)
-        assert np.allclose(node_harmonic[d_idx], harmonic_cl, atol=0.001, rtol=0)
-        assert np.allclose(node_beta[d_idx], grav, atol=0.001, rtol=0)
-        assert np.allclose(improved_closness[d_idx], improved_cl, equal_nan=True, atol=0.001, rtol=0)
-        assert np.allclose(node_betweenness[d_idx], betw, atol=0.001, rtol=0)
-        assert np.allclose(node_betweenness_beta[d_idx], betw_wt, atol=0.001, rtol=0)
+    assert np.allclose(node_density, dens, atol=0.001, rtol=0)
+    assert np.allclose(node_farness, far_dist, atol=0.01, rtol=0)  # relax precision
+    assert np.allclose(node_cycles, cyc, atol=0.001, rtol=0)
+    assert np.allclose(node_harmonic, harmonic_cl, atol=0.001, rtol=0)
+    assert np.allclose(node_beta, grav, atol=0.001, rtol=0)
+    assert np.allclose(improved_closness, improved_cl, equal_nan=True, atol=0.001, rtol=0)
+    assert np.allclose(node_betweenness, betw, atol=0.001, rtol=0)
+    assert np.allclose(node_betweenness_beta, betw_wt, atol=0.001, rtol=0)
 
     # catch typos
     with pytest.raises(ValueError):
@@ -304,20 +334,179 @@ def test_local_centrality(primal_graph):
                                          ('typo_key',))
 
 
-'''
-# TODO: are there possibly ways to test segment_density, harmonic_segment, segment_beta, segment_betweenness
-# for infinite distance, the segment density should match the sum of reachable segments
-length_sum = 0
-for s, e, d in G_round_trip.edges(data=True):
-    length_sum += d['length']
-reachable_length_sum = length_sum - \
-                       (G_round_trip[50][51]['length'] +
-                        G_round_trip[52][53]['length'] +
-                        G_round_trip[53][54]['length'] +
-                        G_round_trip[54][55]['length'] +
-                        G_round_trip[52][55]['length'])
-assert np.allclose(segment_density[-1][:49], reachable_length_sum, atol=0.01, rtol=0)  # relax precision
-'''
+def test_local_centrality(diamond_graph):
+    '''
+    manual checks for all methods against diamond graph
+    measures_data is multidimensional in the form of measure_keys x distances x nodes
+    '''
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(diamond_graph)
+    distances = np.array([50, 150, 250])
+    betas = networks.beta_from_distance(distances)
+    # NODE SHORTEST
+    # set the keys - add shuffling to be sure various orders work
+    node_keys = [
+        'node_density',
+        'node_farness',
+        'node_cycles',
+        'node_harmonic',
+        'node_beta',
+        'node_betweenness',
+        'node_betweenness_beta'
+    ]
+    np.random.shuffle(node_keys)  # in place
+    measure_keys = tuple(node_keys)
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys)
+    # node density
+    # additive nodes
+    m_idx = node_keys.index('node_density')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [2, 3, 3, 2], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [3, 3, 3, 3], atol=0.001, rtol=0)
+    # node farness
+    # additive distances
+    m_idx = node_keys.index('node_farness')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [200, 300, 300, 200], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [400, 300, 300, 400], atol=0.001, rtol=0)
+    # node cycles
+    # additive cycles
+    m_idx = node_keys.index('node_cycles')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [1, 2, 2, 1], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [2, 2, 2, 2], atol=0.001, rtol=0)
+    # node harmonic
+    # additive 1 / distances
+    m_idx = node_keys.index('node_harmonic')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0.02, 0.03, 0.03, 0.02], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0.025, 0.03, 0.03, 0.025], atol=0.001, rtol=0)
+    # node beta
+    # additive exp(beta * dist)
+    m_idx = node_keys.index('node_beta')
+    # beta = -0.0
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    # beta = -0.02666667
+    assert np.allclose(measures_data[m_idx][1], [0.1389669, 0.20845035, 0.20845035, 0.1389669], atol=0.001, rtol=0)
+    # beta = -0.016
+    assert np.allclose(measures_data[m_idx][2], [0.44455525, 0.6056895, 0.6056895, 0.44455522], atol=0.001, rtol=0)
+    # node betweenness
+    # additive 1 per node en route
+    m_idx = node_keys.index('node_betweenness')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)
+    # takes first out of multiple equidistant routes
+    assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=0.001, rtol=0)
+    # node betweenness beta
+    # additive exp(beta * dist) en route
+    m_idx = node_keys.index('node_betweenness_beta')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = -0.08
+    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = -0.02666667
+    # takes first out of multiple equidistant routes
+    # beta evaluated over 200m distance from 3 to 0 via node 1
+    assert np.allclose(measures_data[m_idx][2], [0, 0.0407622, 0, 0])  # beta = -0.016
+
+    # NODE SIMPLEST
+    node_keys_angular = [
+        'node_harmonic_angular',
+        'node_betweenness_angular'
+    ]
+    np.random.shuffle(node_keys_angular)  # in place
+    measure_keys = tuple(node_keys_angular)
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys,
+                                                     angular=True)
+    # node harmonic angular
+    # additive 1 / (1 + (to_imp / 180))
+    m_idx = node_keys_angular.index('node_harmonic_angular')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [2, 3, 3, 2], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [2.75, 3, 3, 2.75], atol=0.001, rtol=0)
+    # node betweenness angular
+    # additive 1 per node en simplest route
+    m_idx = node_keys_angular.index('node_betweenness_angular')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=0.001, rtol=0)
+
+    segment_keys = [
+        'segment_density',
+        'segment_harmonic',
+        'segment_beta',
+        'segment_betweenness'
+    ]
+    np.random.shuffle(segment_keys)  # in place
+    measure_keys = tuple(segment_keys)
+    measures_data = centrality.local_segment_centrality(node_data,
+                                                        edge_data,
+                                                        node_edge_map,
+                                                        distances,
+                                                        betas,
+                                                        measure_keys,
+                                                        angular=False)
+    # segment density
+    # additive segment lengths
+    m_idx = segment_keys.index('segment_density')
+    assert np.allclose(measures_data[m_idx][0], [100, 150, 150, 100], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [400, 500, 500, 400], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [500, 500, 500, 500], atol=0.001, rtol=0)
+    # segment harmonic
+    # segments are potentially approached from two directions
+    # i.e. along respective shortest paths to intersection of shortest routes
+    # i.e. in this case, the midpoint of the middle segment is apportioned in either direction
+    # additive log(b) - log(a) + log(d) - log(c)
+    # nearer distance capped at 1m to avert negative numbers
+    m_idx = segment_keys.index('segment_harmonic')
+    assert np.allclose(measures_data[m_idx][0], [7.824046, 11.736069, 11.736069, 7.824046], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
+    # segment beta
+    # additive np.exp(beta * b) - np.exp(beta * a) + np.exp(beta * d) - np.exp(beta * c)
+    # beta = 0 resolves to b - a and avoids division through zero
+    m_idx = segment_keys.index('segment_beta')
+    assert np.allclose(measures_data[m_idx][0], [24.542109, 36.813164, 36.813164, 24.542109], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [77.46391, 112.358284, 112.358284, 77.46391], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [133.80205, 177.43903, 177.43904, 133.80205], atol=0.001, rtol=0)
+    # segment betweenness
+    m_idx = segment_keys.index('segment_betweenness')
+    assert np.allclose(measures_data[m_idx][0], [7.824046, 11.736069, 11.736069, 7.824046], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
+
+    segment_keys_angular = [
+        'segment_harmonic_hybrid',
+        'segment_betweeness_hybrid'
+    ]
+    np.random.shuffle(segment_keys_angular)  # in place
+    measure_keys = tuple(segment_keys_angular)
+    measures_data = centrality.local_segment_centrality(node_data,
+                                                        edge_data,
+                                                        node_edge_map,
+                                                        distances,
+                                                        betas,
+                                                        measure_keys,
+                                                        angular=True)
+    # segment density
+    # additive segment lengths
+    m_idx = segment_keys_angular.index('segment_harmonic_hybrid')
+    assert np.allclose(measures_data[m_idx][0], [100, 150, 150, 100], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [400, 500, 500, 400], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [500, 500, 500, 500], atol=0.001, rtol=0)
+    # segment harmonic
+    # additive log(b) - log(a) + log(d) - log(c)
+    m_idx = segment_keys_angular.index('segment_betweeness_hybrid')
+    assert np.allclose(measures_data[m_idx][0], [7.824046, 11.736069, 11.736069, 7.824046], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
 
 
 def test_decomposed_local_centrality():
@@ -403,9 +592,11 @@ def test_local_centrality_time():
     OLD VERSION with trim maps:
     Timing: 10.490865555 for 10000 iterations
     NEW VERSION with numba typed list - faster and removes arcane full vs. trim maps workflow
-    8.242256040000001 for 10000 iterations
+    8.24 for 10000 iterations
     VERSION with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
-    8.882408618 for 10000 iterations
+    8.88 for 10000 iterations
+    VERSION with shortest path tree algo simplified to nodes and non-angular only
+    8.19 for 10000 iterations
 
     float64 - 17.881911942000002
     float32 - 13.612861239
@@ -441,7 +632,7 @@ def test_local_centrality_time():
                                                 betas,
                                                 (
                                                     'node_density',
-                                                    # 8.58 / strip out everything except node density = 8.5s
+                                                    # 8.73 / strip out everything except node density = 8.5s
                                                     # 'node_betweenness',  # 9.34 / 9.56 stacked w. above
                                                     # 'segment_density',  # 11.19 / 12.14 stacked w. above
                                                     # 'segment_betweenness',  # 9.96 / 13.44 stacked w. above

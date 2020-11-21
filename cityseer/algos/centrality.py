@@ -121,16 +121,17 @@ def shortest_path_tree(
                 # continue if prior match was found
                 if prior_match:
                     continue
-            # if a neighbouring node has already been discovered, then it is a cycle
+            # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
             # do before distance cutoff because this node and the neighbour can respectively be within max distance
+            # even if cumulative distance across this edge (via non-shortest path) exceeds distance
             # in some cases all distances are run at once, so keep behaviour consistent by
             # designating the farthest node (but via the shortest distance) as the cycle node
             if not np.isnan(tree_preds[nb_nd_idx]):
-                # set the farthest location to True - nb node vs active node
-                if tree_dists[nb_nd_idx] > tree_dists[active_nd_idx]:
-                    tree_cycles[nb_nd_idx] = 1
+                # bump farther location - prevents mismatching if cycle exceeds threshold in one direction or another
+                if tree_dists[active_nd_idx] <= tree_dists[nb_nd_idx]:
+                    tree_cycles[nb_nd_idx] += 0.5
                 else:
-                    tree_cycles[active_nd_idx] = 1
+                    tree_cycles[active_nd_idx] += 0.5
             # impedance and distance is previous plus new
             if not angular:
                 impedance = tree_imps[active_nd_idx] + seg_len * seg_imp_fact
@@ -367,7 +368,7 @@ def local_node_centrality(node_data: np.ndarray,
             # unpack impedance and distance for to index
             to_imp = tree_imps[to_idx]
             to_dist = tree_dists[to_idx]
-            cycles = tree_cycles[to_idx]  # bool in form of 1 or 0
+            cycles = tree_cycles[to_idx]
             # do not proceed if no route available
             if np.isinf(to_dist):
                 continue
@@ -529,7 +530,7 @@ def local_segment_centrality(node_data: np.ndarray,
         tree_origin_seg = tree_map[:, 5]
         tree_last_seg = tree_map[:, 6]
         # only build edge data if necessary
-        if close_funcs:
+        if close_idxs:
             # can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
             # visit all processed edges
             for edge_idx in np.where(tree_edges)[0]:
@@ -587,7 +588,6 @@ def local_segment_centrality(node_data: np.ndarray,
                 # different workflow for angular - uses single segment
                 # otherwise many assumptions if splitting segments re: angular vs. distance shortest-paths...
                 # note that only single case existing for angular version so no need for abstracted functions
-                # uses shim func instead
                 else:
                     # get the approach angles for either side
                     # this involves impedance up to that point plus the turn onto the segment
@@ -631,7 +631,8 @@ def local_segment_centrality(node_data: np.ndarray,
                         if e <= dist_cutoff:
                             if f > dist_cutoff:
                                 f = dist_cutoff
-                            # Uses integral of segment distances as a base - then weighted by angular
+                            # Uses segment length as base (in this sense hybrid)
+                            # Intentionally not using integral because conflates harmonic shortest-path w. simplest
                             # there is only one case for angular - no need to abstract to func
                             for m_idx in close_idxs:
                                 # transform - prevents division by zero
@@ -649,7 +650,9 @@ def local_segment_centrality(node_data: np.ndarray,
                 if np.isinf(to_dist):
                     continue
                 # BETWEENNESS
-                # segment versions only agg first and last segments - intervening bits are processed from other to-nodes
+                # segment versions only agg first and last segments
+                # these are accrued to the intervening nodes
+                # other sections (in between first and last) are respectively processed from other
                 o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
                 l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
                 min_seg_span = to_dist - o_seg_len - l_seg_len
@@ -685,12 +688,12 @@ def local_segment_centrality(node_data: np.ndarray,
                                                np.exp(beta * o_1)) / beta + \
                                               (np.exp(beta * l_2) -
                                                np.exp(beta * l_1)) / beta
-                                    measures_data[m_idx, d_idx, src_idx] += auc
+                                    measures_data[m_idx, d_idx, inter_idx] += auc
                                 else:
                                     bt_ang = 1 + tree_imps[to_idx] / 180
                                     pt_a = o_2 - o_1
                                     pt_b = l_2 - l_1
-                                    measures_data[m_idx, d_idx, src_idx] += (pt_a + pt_b) / bt_ang
+                                    measures_data[m_idx, d_idx, inter_idx] += (pt_a + pt_b) / bt_ang
                     # follow the chain
                     inter_idx = int(tree_preds[inter_idx])
     return measures_data
