@@ -324,57 +324,76 @@ def test_decomposed_local_centrality():
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
-    measure_keys = ('node_density',
-                    'node_farness',
-                    'node_cycles',
-                    'node_harmonic',
-                    'node_beta',
-                    'segment_density',
-                    'segment_harmonic',
-                    'segment_beta',
-                    'node_betweenness',
-                    'node_betweenness_beta',
-                    'segment_betweenness')
+    node_measure_keys = ('node_density',
+                         'node_farness',
+                         'node_cycles',
+                         'node_harmonic',
+                         'node_beta',
+                         'node_betweenness',
+                         'node_betweenness_beta')
+    segment_measure_keys = (
+        'segment_density',
+        'segment_harmonic',
+        'segment_beta',
+        'segment_betweenness')
     # test a decomposed graph
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-    measures_data = centrality.local_node_centrality(node_data,
-                                                     edge_data,
-                                                     node_edge_map,
-                                                     distances,
-                                                     betas,
-                                                     measure_keys,
-                                                     angular=False)
     G_decomposed = graphs.nX_decompose(G, 20)
-    # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_decomposed)
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
-    measures_data_decomposed = centrality.local_node_centrality(node_data,
+    # graph maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids_decomp, node_data_decomp, edge_data_decomp, node_edge_map_decomp = graphs.graph_maps_from_nX(G_decomposed)
+    # non-decomposed case
+    node_measures_data = centrality.local_node_centrality(node_data,
+                                                          edge_data,
+                                                          node_edge_map,
+                                                          distances,
+                                                          betas,
+                                                          node_measure_keys,
+                                                          angular=False)
+    # decomposed case
+    node_measures_data_decomposed = centrality.local_node_centrality(node_data_decomp,
+                                                                     edge_data_decomp,
+                                                                     node_edge_map_decomp,
+                                                                     distances,
+                                                                     betas,
+                                                                     node_measure_keys,
+                                                                     angular=False)
+    # node
+    d_range = len(distances)
+    m_range = len(node_measure_keys)
+    assert node_measures_data.shape == (m_range, d_range, len(G))
+    assert node_measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
+    # with increasing decomposition:
+    # - node based measures will not match
+    # - closeness segment measures will match - these measure to the cut endpoints per thresholds
+    # - betweenness segment measures won't match - don't measure to cut endpoints
+    # segment versions
+    segment_measures_data = centrality.local_segment_centrality(node_data,
                                                                 edge_data,
                                                                 node_edge_map,
                                                                 distances,
                                                                 betas,
-                                                                measure_keys,
+                                                                segment_measure_keys,
                                                                 angular=False)
-    # test harmonic closeness on original nodes for non-decomposed vs decomposed
-    d_range = len(distances)
-    m_range = len(measure_keys)
-    assert measures_data.shape == (m_range, d_range, len(G))
-    assert measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
+    segment_measures_data_decomposed = centrality.local_segment_centrality(node_data_decomp,
+                                                                           edge_data_decomp,
+                                                                           node_edge_map_decomp,
+                                                                           distances,
+                                                                           betas,
+                                                                           segment_measure_keys,
+                                                                           angular=False)
+    m_range = len(segment_measure_keys)
+    assert segment_measures_data.shape == (m_range, d_range, len(G))
+    assert segment_measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
     original_node_idx = np.where(node_data[:, 3] == 0)
-    # with increasing decomposition:
-    # - node based measures will not match
-    # - node based segment measures will match - these measure to the cut endpoints per thresholds
-    # - betweenness based segment won't match - doesn't measure to cut endpoints
     for m_idx in range(m_range):
-        print(m_idx)
         for d_idx in range(d_range):
-            match = np.allclose(measures_data[m_idx][d_idx], measures_data_decomposed[m_idx][d_idx][original_node_idx],
-                                atol=0.1, rtol=0)  # relax precision
-            if not match:
-                print('key', measure_keys[m_idx], 'dist:', distances[d_idx], 'match:', match)
-            if m_idx in [5, 6, 7]:
+            match = np.allclose(segment_measures_data[m_idx][d_idx],
+                                segment_measures_data_decomposed[m_idx][d_idx][original_node_idx],
+                                atol=0.1,
+                                rtol=0)  # relax precision
+            if m_range in (0, 1, 2):
                 assert match
 
 
