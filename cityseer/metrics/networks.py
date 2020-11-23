@@ -64,6 +64,7 @@ class Network_Layer:
                  node_data: np.ndarray,
                  edge_data: np.ndarray,
                  node_edge_map: Dict,
+                 dual: bool = False,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
@@ -87,6 +88,7 @@ class Network_Layer:
         self._node_data = node_data
         self._edge_data = edge_data
         self._node_edge_map = node_edge_map
+        self._dual = dual
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
@@ -253,7 +255,9 @@ class Network_Layer:
                                          metrics_dict)
 
     # provides access to the underlying centrality.local_centrality method
-    def compute_node_centrality(self, measures: Union[list, tuple] = None, angular: bool = False):
+    def compute_node_centrality(self,
+                                measures: Union[list, tuple] = None,
+                                angular: bool = False):
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
@@ -294,6 +298,7 @@ class Network_Layer:
             np.array(self._betas),
             measure_keys,
             angular,
+            self._dual,
             suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
@@ -305,7 +310,9 @@ class Network_Layer:
                 self.metrics['centrality'][measure_name][d_key] = measures_data[measure_idx][d_idx]
 
     # provides access to the underlying centrality.local_centrality method
-    def compute_segment_centrality(self, measures: Union[list, tuple] = None, angular: bool = False):
+    def compute_segment_centrality(self,
+                                   measures: Union[list, tuple] = None,
+                                   angular: bool = False):
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
@@ -343,6 +350,7 @@ class Network_Layer:
             np.array(self._betas),
             measure_keys,
             angular,
+            self._dual,
             suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
@@ -357,6 +365,7 @@ class Network_Layer:
 class Network_Layer_From_nX(Network_Layer):
     def __init__(self,
                  networkX_graph: nx.Graph,
+                 dual: bool = False,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
@@ -365,6 +374,7 @@ class Network_Layer_From_nX(Network_Layer):
                          node_data,
                          edge_data,
                          node_edge_map,
+                         dual,
                          distances,
                          betas,
                          min_threshold_wt)
