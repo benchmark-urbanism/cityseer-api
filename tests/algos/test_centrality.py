@@ -343,6 +343,7 @@ def test_local_centrality(diamond_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(diamond_graph)
     distances = np.array([50, 150, 250])
     betas = networks.beta_from_distance(distances)
+
     # NODE SHORTEST
     # set the keys - add shuffling to be sure various orders work
     node_keys = [
@@ -470,17 +471,18 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
     # segment beta
-    # additive np.exp(beta * b) - np.exp(beta * a) + np.exp(beta * d) - np.exp(beta * c)
+    # additive (np.exp(beta * b) - np.exp(beta * a)) / beta + (np.exp(beta * d) - np.exp(beta * c)) / beta
     # beta = 0 resolves to b - a and avoids division through zero
     m_idx = segment_keys.index('segment_beta')
     assert np.allclose(measures_data[m_idx][0], [24.542109, 36.813164, 36.813164, 24.542109], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][1], [77.46391, 112.358284, 112.358284, 77.46391], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [133.80205, 177.43903, 177.43904, 133.80205], atol=0.001, rtol=0)
     # segment betweenness
+    # similar to segment but apportioned to start and end segment of each betweenness pair
     m_idx = segment_keys.index('segment_betweenness')
-    assert np.allclose(measures_data[m_idx][0], [7.824046, 11.736069, 11.736069, 7.824046], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][0], [0, 49.084217, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 139.57748, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0, 199.52586, 0, 0], atol=0.001, rtol=0)
 
     segment_keys_angular = [
         'segment_harmonic_hybrid',
@@ -496,11 +498,15 @@ def test_local_centrality(diamond_graph):
                                                         measure_keys,
                                                         angular=True)
     # segment density
-    # additive segment lengths
+    # additive segment lengths divided through angular impedance
+    # (f - e) / (1 + (ang / 180))
+    # TODO: think this through
+    # counting both origin and destination results in double count
+    # (duplicates for betweenness in opposite direction...)
     m_idx = segment_keys_angular.index('segment_harmonic_hybrid')
     assert np.allclose(measures_data[m_idx][0], [100, 150, 150, 100], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][1], [400, 500, 500, 400], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][2], [500, 500, 500, 500], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [305, 360, 360, 305], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [410, 420, 420, 410], atol=0.001, rtol=0)
     # segment harmonic
     # additive log(b) - log(a) + log(d) - log(c)
     m_idx = segment_keys_angular.index('segment_betweeness_hybrid')
