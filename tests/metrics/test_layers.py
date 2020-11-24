@@ -123,7 +123,7 @@ def test_compute_aggregated_A():
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
-    N = networks.Network_Layer_From_nX(G, distances)
+    N = networks.Network_Layer_From_nX(G, distances=distances)
     node_map = N._node_data
     edge_map = N._edge_data
     node_edge_map = N._node_edge_map
@@ -230,7 +230,7 @@ def test_compute_aggregated_A():
                 mu_o_metrics = mixed_use_other_types[mu_o_keys]
                 ac_metrics = ac_codes[ac_keys]
 
-                N_temp = networks.Network_Layer_From_nX(G, distances)
+                N_temp = networks.Network_Layer_From_nX(G, distances=distances)
                 D_temp = layers.Data_Layer_From_Dict(data_dict)
                 D_temp.assign_to_network(N_temp, max_dist=500)
                 D_temp.compute_aggregated(landuse_labels,
@@ -294,7 +294,7 @@ def test_compute_aggregated_B():
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
-    N = networks.Network_Layer_From_nX(G, distances)
+    N = networks.Network_Layer_From_nX(G, distances=distances)
     node_map = N._node_data
     edge_map = N._edge_data
     node_edge_map = N._node_edge_map
@@ -354,12 +354,12 @@ def test_hill_diversity():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances)
+        N_easy = networks.Network_Layer_From_nX(G, distances=distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_diversity(landuse_labels, qs=[0, 1, 2])
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances)
+        N_full = networks.Network_Layer_From_nX(G, distances=distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill'], qs=[0, 1, 2])
@@ -375,12 +375,12 @@ def test_hill_branch_wt_diversity():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances)
+        N_easy = networks.Network_Layer_From_nX(G, distances=distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances)
+        N_full = networks.Network_Layer_From_nX(G, distances=distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=[0, 1, 2])
@@ -396,12 +396,12 @@ def test_compute_accessibilities():
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances)
+        N_easy = networks.Network_Layer_From_nX(G, distances=distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_accessibilities(landuse_labels, ['c'])
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances)
+        N_full = networks.Network_Layer_From_nX(G, distances=distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(landuse_labels, accessibility_keys=['c'])
@@ -417,12 +417,12 @@ def test_compute_stats_single():
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=1)
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances)
+        N_easy = networks.Network_Layer_From_nX(G, distances=distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_single('boo', numeric_data[0])
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances)
+        N_full = networks.Network_Layer_From_nX(G, distances=distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(stats_keys=['boo'], stats_data_arrs=numeric_data)
@@ -443,12 +443,12 @@ def test_compute_stats_multiple():
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=2)
         # easy version
-        N_easy = networks.Network_Layer_From_nX(G, distances)
+        N_easy = networks.Network_Layer_From_nX(G, distances=distances)
         D_easy = layers.Data_Layer_From_Dict(data_dict)
         D_easy.assign_to_network(N_easy, max_dist=500)
         D_easy.compute_stats_multiple(['boo', 'baa'], numeric_data)
         # custom version
-        N_full = networks.Network_Layer_From_nX(G, distances)
+        N_full = networks.Network_Layer_From_nX(G, distances=distances)
         D_full = layers.Data_Layer_From_Dict(data_dict)
         D_full.assign_to_network(N_full, max_dist=500)
         D_full.compute_aggregated(stats_keys=['boo', 'baa'], stats_data_arrs=numeric_data)

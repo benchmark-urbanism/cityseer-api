@@ -254,6 +254,14 @@ class Network_Layer:
                                          self._networkX,
                                          metrics_dict)
 
+    # deprecated method
+    def compute_centrality(self, **kwargs):
+        raise DeprecationWarning('The compute_centrality method has been deprecated. '
+                                 'It has been split into two: '
+                                 'use "compute_node_centrality" for node based measures '
+                                 'and "compute_segment_centrality" for segmentised measures.'
+                                 'See the documentation for further information.')
+
     # provides access to the underlying centrality.local_centrality method
     def compute_node_centrality(self,
                                 measures: Union[list, tuple] = None,

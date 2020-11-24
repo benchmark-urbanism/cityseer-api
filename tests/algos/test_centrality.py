@@ -153,8 +153,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     assert path_transpose == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39',
                               '39_40']
     # NO SIDESTEPS - explicit check that sidesteps are prevented
-    src_idx = node_uids_d.index('10_43')
-    target = node_uids_d.index('10_5')
+    src_idx = node_uids_d.index('31_32')
+    target = node_uids_d.index('32_34')
+    # mid = node_uids_d.index('32_35')
     tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d,
                                                          node_edge_map_d,
                                                          src_idx,
@@ -164,6 +165,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     tree_preds = tree_map[:, 1]
     path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
+    # print(path_transpose)
     assert path_transpose == ['10_43', '10_5']
     # WITH SIDESTEPS - set angular flag to False
     # manually overwrite distance impedances with angular for this test
@@ -478,11 +480,13 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [77.46391, 112.358284, 112.358284, 77.46391], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [133.80205, 177.43903, 177.43904, 133.80205], atol=0.001, rtol=0)
     # segment betweenness
-    # similar to segment but apportioned to start and end segment of each betweenness pair
+    # similar formulation to segment beta: start and end segment of each betweenness pair assigned to intervening nodes
+    # distance thresholds are computed using the inside edges of the segments
+    # so if the segments are touching, they will count up to the threshold distance...
     m_idx = segment_keys.index('segment_betweenness')
-    assert np.allclose(measures_data[m_idx][0], [0, 49.084217, 0, 0], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][1], [0, 139.57748, 0, 0], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][2], [0, 199.52586, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][0], [0, 24.542109, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 69.78874, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0, 99.76293, 0, 0], atol=0.001, rtol=0)
 
     segment_keys_angular = [
         'segment_harmonic_hybrid',
@@ -500,19 +504,16 @@ def test_local_centrality(diamond_graph):
     # segment density
     # additive segment lengths divided through angular impedance
     # (f - e) / (1 + (ang / 180))
-    # TODO: think this through
-    # counting both origin and destination results in double count
-    # (duplicates for betweenness in opposite direction...)
     m_idx = segment_keys_angular.index('segment_harmonic_hybrid')
     assert np.allclose(measures_data[m_idx][0], [100, 150, 150, 100], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][1], [305, 360, 360, 305], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [410, 420, 420, 410], atol=0.001, rtol=0)
     # segment harmonic
-    # additive log(b) - log(a) + log(d) - log(c)
+    # additive segment lengths / (1 + (ang / 180))
     m_idx = segment_keys_angular.index('segment_betweeness_hybrid')
-    assert np.allclose(measures_data[m_idx][0], [7.824046, 11.736069, 11.736069, 7.824046], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
-    assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][0], [0, 75, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 150, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0, 150, 0, 0], atol=0.001, rtol=0)
 
 
 def test_decomposed_local_centrality():
