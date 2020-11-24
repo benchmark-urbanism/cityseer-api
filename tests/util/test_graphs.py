@@ -717,7 +717,7 @@ def test_nX_from_graph_maps():
     # check with metrics dictionary
     N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
 
-    N.compute_centrality(measures=['node_harmonic'])
+    N.compute_node_centrality(measures=['node_harmonic'])
     data_dict = mock.mock_data_dict(G)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)

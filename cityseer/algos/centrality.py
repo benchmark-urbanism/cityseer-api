@@ -99,6 +99,10 @@ def shortest_path_tree(
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
             if nb_nd_idx == tree_preds[active_nd_idx]:
                 continue
+            """
+            Manual checks may not be necessary because current method for calculating angular change
+            includes bearing change from u-turn...!
+            
             # DO ANGULAR BEFORE CYCLES, AND CYCLES BEFORE DISTANCE THRESHOLD
             # it is necessary to check for angular sidestepping if using angular impedances on a DUAL graph
             # does not apply if calculating angular impedances on a PRIMAL graph
@@ -118,6 +122,8 @@ def shortest_path_tree(
                 # continue if prior match was found
                 if prior_match:
                     continue
+            
+            """
             # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
             # do before distance cutoff because this node and the neighbour can respectively be within max distance
             # even if cumulative distance across this edge (via non-shortest path) exceeds distance
@@ -435,7 +441,7 @@ def segment_beta(n, m, n_imp, m_imp, beta):
         return (np.exp(beta * m_imp) - np.exp(beta * n_imp)) / beta
 
 
-# @njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=True)
 def local_segment_centrality(node_data: np.ndarray,
                              edge_data: np.ndarray,
                              node_edge_map: Dict,
@@ -676,10 +682,13 @@ def local_segment_centrality(node_data: np.ndarray,
                 nb_nodes.append(out_nd_idx)
             # betweenness keys computed per to_idx
             for to_idx in tree_nodes:
+                # only process in one direction
+                if to_idx < src_idx:
+                    continue
                 # skip self node
                 if to_idx == src_idx:
                     continue
-                # skip direct neighbours
+                # skip direct neighbours (no nodes between)
                 if to_idx in nb_nodes:
                     continue
                 # distance - do not proceed if no route available
@@ -687,12 +696,15 @@ def local_segment_centrality(node_data: np.ndarray,
                 if np.isinf(to_dist):
                     continue
                 '''
-                # BETWEENNESS
-                # segment versions only agg first and last segments
-                # the distance decay is based on the distance between the src segment and to segment
-                # i.e. willingness of people to walk between src and to segments
-                # betweenness is aggregated to intervening nodes based on above distances and decays
-                # other sections (in between current first and last) are respectively processed from other to nodes
+                BETWEENNESS
+                segment versions only agg first and last segments
+                the distance decay is based on the distance between the src segment and to segment
+                i.e. willingness of people to walk between src and to segments
+                
+                betweenness is aggregated to intervening nodes based on above distances and decays
+                other sections (in between current first and last) are respectively processed from other to nodes
+                
+                distance thresholds are computed using the innner as opposed to outer edges of the segments
                 '''
                 o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
                 l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
