@@ -7,9 +7,10 @@ import utm
 from cityseer.algos import data
 from cityseer.metrics import layers, networks
 from cityseer.util import mock, graphs
+from cityseer.util.mock import primal_graph
 
 
-def test_dict_wgs_to_utm():
+def test_dict_wgs_to_utm(primal_graph):
     # check that node coordinates are correctly converted
     G_utm = mock.mock_graph()
     data_dict_utm = mock.mock_data_dict(G_utm)
@@ -65,10 +66,9 @@ def test_encode_categorical():
         assert classes.index(label) == class_encodings[idx]
 
 
-def test_data_map_from_dict():
+def test_data_map_from_dict(primal_graph):
     # generate mock data
-    G = mock.mock_graph()
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     assert len(data_uids) == len(data_map) == len(data_dict)
@@ -87,9 +87,8 @@ def test_data_map_from_dict():
             layers.data_map_from_dict(data_dict)
 
 
-def test_Data_Layer():
-    G = mock.mock_graph()
-    data_dict = mock.mock_data_dict(G)
+def test_Data_Layer(primal_graph):
+    data_dict = mock.mock_data_dict(primal_graph)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
@@ -102,9 +101,8 @@ def test_Data_Layer():
     assert np.allclose(D.y_arr, y_arr, atol=0.001, rtol=0)
 
 
-def test_Data_Layer_From_Dict():
-    G = mock.mock_graph()
-    data_dict = mock.mock_data_dict(G)
+def test_Data_Layer_From_Dict(primal_graph):
+    data_dict = mock.mock_data_dict(primal_graph)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
@@ -117,18 +115,16 @@ def test_Data_Layer_From_Dict():
     assert np.allclose(D.y_arr, y_arr, atol=0.001, rtol=0)
 
 
-def test_compute_aggregated_A():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+def test_compute_aggregated_A(primal_graph):
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
-    N = networks.Network_Layer_From_nX(G, distances=distances)
+    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
     node_map = N._node_data
     edge_map = N._edge_data
     node_edge_map = N._node_edge_map
     # data layer
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     qs = np.array([0, 1, 2])
     D = layers.Data_Layer_From_Dict(data_dict)
     # check single metrics independently against underlying for some use-cases, e.g. hill, non-hill, accessibility...
@@ -230,7 +226,7 @@ def test_compute_aggregated_A():
                 mu_o_metrics = mixed_use_other_types[mu_o_keys]
                 ac_metrics = ac_codes[ac_keys]
 
-                N_temp = networks.Network_Layer_From_nX(G, distances=distances)
+                N_temp = networks.Network_Layer_From_nX(primal_graph, distances=distances)
                 D_temp = layers.Data_Layer_From_Dict(data_dict)
                 D_temp.assign_to_network(N_temp, max_dist=500)
                 D_temp.compute_aggregated(landuse_labels,
@@ -285,21 +281,19 @@ def test_compute_aggregated_A():
         D_new.compute_aggregated(landuse_labels, mixed_use_keys=['shannon'])
 
 
-def test_compute_aggregated_B():
+def test_compute_aggregated_B(primal_graph):
     '''
     Test stats component
     '''
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
-    N = networks.Network_Layer_From_nX(G, distances=distances)
+    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
     node_map = N._node_data
     edge_map = N._edge_data
     node_edge_map = N._node_edge_map
     # data layer
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     qs = np.array([0, 1, 2])
     D = layers.Data_Layer_From_Dict(data_dict)
     # check single metrics independently against underlying for some use-cases, e.g. hill, non-hill, accessibility...
@@ -344,13 +338,12 @@ def test_compute_aggregated_B():
 def network_generator():
     for betas in [[-0.008], [-0.008, -0.002]]:
         distances = networks.distance_from_beta(betas)
-        G = mock.mock_graph()
-        G = graphs.nX_simple_geoms(G)
-        yield G, distances, betas
+        yield distances, betas
 
 
-def test_hill_diversity():
-    for G, distances, betas in network_generator():
+def test_hill_diversity(primal_graph):
+    for distances, betas in network_generator():
+        G = primal_graph.copy()
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
@@ -370,8 +363,9 @@ def test_hill_diversity():
                                    N_full.metrics['mixed_uses']['hill'][q][d], atol=0.001, rtol=0)
 
 
-def test_hill_branch_wt_diversity():
-    for G, distances, betas in network_generator():
+def test_hill_branch_wt_diversity(primal_graph):
+    for distances, betas in network_generator():
+        G = primal_graph.copy()
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
@@ -391,8 +385,9 @@ def test_hill_branch_wt_diversity():
                                    N_full.metrics['mixed_uses']['hill_branch_wt'][q][d], atol=0.001, rtol=0)
 
 
-def test_compute_accessibilities():
-    for G, distances, betas in network_generator():
+def test_compute_accessibilities(primal_graph):
+    for distances, betas in network_generator():
+        G = primal_graph.copy()
         data_dict = mock.mock_data_dict(G)
         landuse_labels = mock.mock_categorical_data(len(data_dict))
         # easy version
@@ -412,8 +407,9 @@ def test_compute_accessibilities():
                                    N_full.metrics['accessibility'][wt]['c'][d], atol=0.001, rtol=0)
 
 
-def test_compute_stats_single():
-    for G, distances, betas in network_generator():
+def test_compute_stats_single(primal_graph):
+    for distances, betas in network_generator():
+        G = primal_graph.copy()
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=1)
         # easy version
@@ -438,8 +434,9 @@ def test_compute_stats_single():
             D_easy.compute_stats_single('boo', numeric_data)
 
 
-def test_compute_stats_multiple():
-    for G, distances, betas in network_generator():
+def test_compute_stats_multiple(primal_graph):
+    for distances, betas in network_generator():
+        G = primal_graph.copy()
         data_dict = mock.mock_data_dict(G)
         numeric_data = mock.mock_numerical_data(len(data_dict), num_arrs=2)
         # easy version

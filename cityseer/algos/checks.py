@@ -133,7 +133,6 @@ def check_network_maps(node_data: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node
@@ -148,7 +147,7 @@ def check_network_maps(node_data: np.ndarray,
         raise ValueError('Zero length node map')
     if len(edge_data) == 0:
         raise ValueError('Zero length edge map')
-    if not node_data.ndim == 2 or not node_data.shape[1] == 4:
+    if not node_data.ndim == 2 or not node_data.shape[1] == 3:
         raise ValueError('The node map must have a dimensionality of Nx4.')
     if not edge_data.ndim == 2 or not edge_data.shape[1] == 7:
         raise ValueError('The edge map must have a dimensionality of Nx7')

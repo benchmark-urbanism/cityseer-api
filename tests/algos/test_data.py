@@ -4,20 +4,19 @@ import pytest
 from cityseer.algos import data, centrality, checks, diversity
 from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
+from cityseer.util.mock import primal_graph
 
 
-def test_radial_filter():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+def test_radial_filter(primal_graph):
     # generate some data
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     D = layers.Data_Layer_From_Dict(data_dict)
     # generate some random source nodes
     rd_src_idxs = np.random.randint(0, len(data_dict), 10)
     for src_idx in rd_src_idxs:
         # test the filter
-        src_x = G.nodes[src_idx]['x']
-        src_y = G.nodes[src_idx]['y']
+        src_x = primal_graph.nodes[src_idx]['x']
+        src_y = primal_graph.nodes[src_idx]['y']
         for max_dist in [0, 200, 500, 750, np.inf]:
             data_filter = data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
             # check that the full_to_trim map is the correct number of elements
@@ -31,12 +30,10 @@ def test_radial_filter():
                     assert dist > max_dist
 
 
-def test_nearest_idx():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    N = networks.Network_Layer_From_nX(G, distances=[100])
+def test_nearest_idx(primal_graph):
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[100])
     # generate some data
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     D = layers.Data_Layer_From_Dict(data_dict)
     # test the filter - iterating each point in data map
     for d in D._data:
@@ -55,15 +52,12 @@ def test_nearest_idx():
                 assert dist > min_dist
 
 
-def test_assign_to_network():
-    # generate network
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+def test_assign_to_network(primal_graph):
     # create additional dead-end scenario
-    G.remove_edge(14, 15)
-    G.remove_edge(15, 28)
+    primal_graph.remove_edge(14, 15)
+    primal_graph.remove_edge(15, 28)
     # G = graphs.nX_auto_edge_params(G)
-    G = graphs.nX_decompose(G, 50)
+    G = graphs.nX_decompose(primal_graph, 50)
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
     # generate data
     data_dict = mock.mock_data_dict(G, random_seed=25)
@@ -149,13 +143,10 @@ def test_assign_to_network():
     assert not np.any(np.isnan(data_map_test_2000[:, 2]))
 
 
-def test_aggregate_to_src_idx():
-    # generate network
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+def test_aggregate_to_src_idx(primal_graph):
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     # generate data
-    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     for max_dist in [400, 750]:
         # in this case, use same assignment max dist as search max dist
@@ -248,13 +239,11 @@ def test_aggregate_to_src_idx():
                             assert reachable_dist == next_nearest_dist
 
 
-def test_local_aggregator_signatures():
-    # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+def test_local_aggregator_signatures(primal_graph):
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
     # setup data
-    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
@@ -356,13 +345,11 @@ def test_local_aggregator_signatures():
                                   cl_disparity_wt_matrix=mock_matrix[:-1])
 
 
-def test_local_aggregator_categorical_components():
-    # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map, = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+def test_local_aggregator_categorical_components(primal_graph):
+    node_uids, node_data, edge_data, node_edge_map, = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
     # setup data
-    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
@@ -418,7 +405,7 @@ def test_local_aggregator_categorical_components():
     for d_idx in range(len(distances)):
         dist_cutoff = distances[d_idx]
         beta = betas[d_idx]
-        for src_idx in range(len(G)):
+        for src_idx in range(len(primal_graph)):
             reachable_data, reachable_data_dist, tree_preds = data.aggregate_to_src_idx(src_idx,
                                                                                         node_data,
                                                                                         edge_data,
@@ -501,7 +488,7 @@ def test_local_aggregator_categorical_components():
     # here the emphasis is simply on checking that the angular instruction gets chained through
 
     # setup dual data
-    G_dual = graphs.nX_to_dual(G)
+    G_dual = graphs.nX_to_dual(primal_graph)
     node_labels_dual, node_data_dual, edge_data_dual, node_edge_map_dual = graphs.graph_maps_from_nX(G_dual)
     data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
     data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
@@ -548,14 +535,12 @@ def test_local_aggregator_categorical_components():
     assert not np.allclose(ac_wt_dual, ac_wt_dual_sidestep, atol=0.001, rtol=0)
 
 
-def test_local_aggregator_numerical_components():
-    # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+def test_local_aggregator_numerical_components(primal_graph):
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
 
     # setup data
-    data_dict = mock.mock_data_dict(G, random_seed=13)
+    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # for debugging

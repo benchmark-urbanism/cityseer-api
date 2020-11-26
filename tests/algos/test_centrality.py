@@ -4,54 +4,10 @@ import numpy as np
 import pytest
 import timeit
 
-from cityseer.algos import data, centrality, checks
+from cityseer.algos import centrality
 from cityseer.metrics import networks
-from cityseer.util import mock, graphs, plot
-
-
-@pytest.fixture
-def primal_graph():
-    G_primal = mock.mock_graph()
-    G_primal = graphs.nX_simple_geoms(G_primal)
-    return G_primal
-
-
-@pytest.fixture
-def dual_graph():
-    G_dual = mock.mock_graph()
-    G_dual = graphs.nX_simple_geoms(G_dual)
-    G_dual = graphs.nX_to_dual(G_dual)
-    return G_dual
-
-
-@pytest.fixture
-def diamond_graph():
-    '''
-    For manual checks of all node and segmentised methods
-       3
-      / \
-     /   \
-    /  a  \
-   1-------2
-    \  |  /
-     \ |b/ c
-      \|/
-       0
-    a = 100m = 2 * 50m
-    b = 86.60254m
-    c = 100m
-    all inner angles = 60º
-    '''
-    G_diamond = nx.Graph()
-    G_diamond.add_nodes_from([
-        (0, {'x': 50, 'y': 0}),
-        (1, {'x': 0, 'y': 86.60254}),
-        (2, {'x': 100, 'y': 86.60254}),
-        (3, {'x': 50, 'y': 86.60254 * 2})
-    ])
-    G_diamond.add_edges_from([(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)])
-    G_diamond = graphs.nX_simple_geoms(G_diamond)
-    return G_diamond
+from cityseer.util import graphs
+from cityseer.util.mock import primal_graph, dual_graph, diamond_graph
 
 
 def find_path(start_idx, target_idx, tree_preds):
@@ -153,9 +109,8 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     assert path_transpose == ['11_6', '6_7', '3_7', '3_4', '1_4', '0_1', '0_31', '31_32', '32_34', '34_37', '37_39',
                               '39_40']
     # NO SIDESTEPS - explicit check that sidesteps are prevented
-    src_idx = node_uids_d.index('31_32')
-    target = node_uids_d.index('32_34')
-    # mid = node_uids_d.index('32_35')
+    src_idx = node_uids_d.index('10_43')
+    target = node_uids_d.index('10_5')
     tree_map, tree_edges = centrality.shortest_path_tree(edge_data_d,
                                                          node_edge_map_d,
                                                          src_idx,
@@ -516,7 +471,7 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][2], [0, 150, 0, 0], atol=0.001, rtol=0)
 
 
-def test_decomposed_local_centrality():
+def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
     betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
     distances = networks.distance_from_beta(betas)
@@ -533,11 +488,10 @@ def test_decomposed_local_centrality():
         'segment_beta',
         'segment_betweenness')
     # test a decomposed graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G_decomposed = graphs.nX_decompose(G, 20)
+    G_decomposed = graphs.nX_decompose(primal_graph, 20)
     # graph maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
     node_uids_decomp, node_data_decomp, edge_data_decomp, node_edge_map_decomp = graphs.graph_maps_from_nX(G_decomposed)
     # non-decomposed case
     node_measures_data = centrality.local_node_centrality(node_data,
@@ -558,7 +512,7 @@ def test_decomposed_local_centrality():
     # node
     d_range = len(distances)
     m_range = len(node_measure_keys)
-    assert node_measures_data.shape == (m_range, d_range, len(G))
+    assert node_measures_data.shape == (m_range, d_range, len(primal_graph))
     assert node_measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
     # with increasing decomposition:
     # - node based measures will not match
@@ -580,20 +534,20 @@ def test_decomposed_local_centrality():
                                                                            segment_measure_keys,
                                                                            angular=False)
     m_range = len(segment_measure_keys)
-    assert segment_measures_data.shape == (m_range, d_range, len(G))
+    assert segment_measures_data.shape == (m_range, d_range, len(primal_graph))
     assert segment_measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
-    original_node_idx = np.where(node_data[:, 3] == 0)
     for m_idx in range(m_range):
         for d_idx in range(d_range):
             match = np.allclose(segment_measures_data[m_idx][d_idx],
-                                segment_measures_data_decomposed[m_idx][d_idx][original_node_idx],
+                                # compare against the original 56 elements (prior to adding decomposed)
+                                segment_measures_data_decomposed[m_idx][d_idx][:56],
                                 atol=0.1,
                                 rtol=0)  # relax precision
             if m_range in (0, 1, 2):
                 assert match
 
 
-def test_local_centrality_time():
+def test_local_centrality_time(primal_graph):
     '''
     originally based on node_harmonic and node_betweenness:
     OLD VERSION with trim maps:
@@ -618,9 +572,8 @@ def test_local_centrality_time():
     thoughts of using golang proved too complex re: bindings...
     '''
     # load the test graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
+        primal_graph)  # generate node and edge maps
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
