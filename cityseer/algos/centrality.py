@@ -13,8 +13,7 @@ def shortest_path_tree(
         node_edge_map: Dict,
         src_idx: int,
         max_dist: float = np.inf,
-        angular: bool = False,
-        dual: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+        angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
     '''
     All shortest paths to max network distance from source node
     Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance
@@ -24,7 +23,6 @@ def shortest_path_tree(
     0 - x
     1 - y
     2 - live
-    3 - ghosted
 
     EDGE MAP:
     0 - start node
@@ -99,42 +97,18 @@ def shortest_path_tree(
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
             if nb_nd_idx == tree_preds[active_nd_idx]:
                 continue
-            """
-            Manual checks may not be necessary because current method for calculating angular change
-            includes bearing change from u-turn...!
-            
-            # DO ANGULAR BEFORE CYCLES, AND CYCLES BEFORE DISTANCE THRESHOLD
-            # it is necessary to check for angular sidestepping if using angular impedances on a DUAL graph
-            # does not apply if calculating angular impedances on a PRIMAL graph
-            if dual and angular and active_nd_idx != src_idx and not np.isnan(tree_preds[nb_nd_idx]):
-                prior_match = False
-                # get the active node's predecessor
-                pred_nd_idx = int(tree_preds[active_nd_idx])
-                # check that the new neighbour was not directly accessible from the predecessor's set of neighbours
-                for pred_edge_idx in node_edge_map[pred_nd_idx]:
-                    # iterate start and end nodes corresponding to edges accessible from the predecessor node
-                    pred_start, pred_end = edge_data[pred_edge_idx, :2]
-                    # check that the previous node's neighbour's node is not equal to the currently new neighbour node
-                    # if so, the new neighbour was previously accessible
-                    if pred_end == nb_nd_idx:
-                        prior_match = True
-                        break
-                # continue if prior match was found
-                if prior_match:
-                    continue
-            
-            """
-            # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
-            # do before distance cutoff because this node and the neighbour can respectively be within max distance
-            # even if cumulative distance across this edge (via non-shortest path) exceeds distance
-            # in some cases all distances are run at once, so keep behaviour consistent by
-            # designating the farthest node (but via the shortest distance) as the cycle node
-            if not np.isnan(tree_preds[nb_nd_idx]):
-                # bump farther location - prevents mismatching if cycle exceeds threshold in one direction or another
-                if tree_dists[active_nd_idx] <= tree_dists[nb_nd_idx]:
-                    tree_cycles[nb_nd_idx] += 0.5
-                else:
-                    tree_cycles[active_nd_idx] += 0.5
+            if not angular:
+                # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
+                # do before distance cutoff because this node and the neighbour can respectively be within max distance
+                # even if cumulative distance across this edge (via non-shortest path) exceeds distance
+                # in some cases all distances are run at once, so keep behaviour consistent by
+                # designating the farthest node (but via the shortest distance) as the cycle node
+                if not np.isnan(tree_preds[nb_nd_idx]):
+                    # bump farther location - prevents mismatching if cycle exceeds threshold in one direction or another
+                    if tree_dists[active_nd_idx] <= tree_dists[nb_nd_idx]:
+                        tree_cycles[nb_nd_idx] += 0.5
+                    else:
+                        tree_cycles[active_nd_idx] += 0.5
             # impedance and distance is previous plus new
             if not angular:
                 impedance = tree_imps[active_nd_idx] + seg_len * seg_imp_fact
@@ -249,7 +223,6 @@ NODE MAP:
 0 - x
 1 - y
 2 - live
-3 - ghosted
 EDGE MAP:
 0 - start node
 1 - end node
@@ -269,7 +242,6 @@ def local_node_centrality(node_data: np.ndarray,
                           betas: np.ndarray,
                           measure_keys: tuple,
                           angular: bool = False,
-                          dual: bool = False,
                           suppress_progress: bool = False) -> np.ndarray:
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
@@ -358,8 +330,7 @@ def local_node_centrality(node_data: np.ndarray,
                                                   node_edge_map,
                                                   src_idx,
                                                   max_dist=global_max_dist,
-                                                  angular=angular,
-                                                  dual=dual)
+                                                  angular=angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_dists = tree_map[:, 2]
@@ -449,7 +420,6 @@ def local_segment_centrality(node_data: np.ndarray,
                              betas: np.ndarray,
                              measure_keys: tuple,
                              angular: bool = False,
-                             dual: bool = False,
                              suppress_progress: bool = False) -> np.ndarray:
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
@@ -528,8 +498,7 @@ def local_segment_centrality(node_data: np.ndarray,
                                                   node_edge_map,
                                                   src_idx,
                                                   max_dist=global_max_dist,
-                                                  angular=angular,
-                                                  dual=dual)
+                                                  angular=angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_dists = tree_map[:, 2]

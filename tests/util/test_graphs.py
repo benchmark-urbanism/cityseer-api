@@ -6,28 +6,26 @@ from shapely import geometry, ops
 from cityseer.algos import checks
 from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs
+from cityseer.util.mock import primal_graph, diamond_graph
 
 
-def test_nX_simple_geoms():
-    G = mock.mock_graph()
-    G_geoms = graphs.nX_simple_geoms(G)
-
-    for s, e in G.edges():
+def test_nX_simple_geoms(primal_graph):
+    for s, e in primal_graph.edges():
         line_geom = geometry.LineString([
-            [G.nodes[s]['x'], G.nodes[s]['y']],
-            [G.nodes[e]['x'], G.nodes[e]['y']]
+            [primal_graph.nodes[s]['x'], primal_graph.nodes[s]['y']],
+            [primal_graph.nodes[e]['x'], primal_graph.nodes[e]['y']]
         ])
-        assert line_geom == G_geoms[s][e]['geom']
+        assert line_geom == primal_graph[s][e]['geom']
 
     # check that missing node keys throw an error
     for k in ['x', 'y']:
-        for n in G.nodes():
+        for n in primal_graph.nodes():
             # delete key from first node and break
-            del G.nodes[n][k]
+            del primal_graph.nodes[n][k]
             break
         # check that missing key throws an error
         with pytest.raises(KeyError):
-            graphs.nX_simple_geoms(G)
+            graphs.nX_simple_geoms(primal_graph)
 
 
 # TODO:
@@ -171,10 +169,8 @@ def make_messy_graph(G):
     return G_messy
 
 
-def test_nX_remove_dangling_nodes():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G_messy = make_messy_graph(G)
+def test_nX_remove_dangling_nodes(primal_graph):
+    G_messy = make_messy_graph(primal_graph)
 
     # no despining or disconnected components removal
     G_post = graphs.nX_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False)
@@ -208,11 +204,9 @@ def test_nX_remove_dangling_nodes():
     assert G_biggest_component.edges == G_post.edges
 
 
-def test_nX_remove_filler_nodes():
+def test_nX_remove_filler_nodes(primal_graph):
     # test that redundant intersections are removed, i.e. where degree == 2
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G_messy = make_messy_graph(G)
+    G_messy = make_messy_graph(primal_graph)
 
     # from cityseer.util import plot
     # plot.plot_nX(G_messy, labels=True)
@@ -223,10 +217,10 @@ def test_nX_remove_filler_nodes():
 
     # check that the simplified version matches the original un-messified version
     # but note the simplified version will have the disconnected loop of 52-53-54-55 now condensed to only #52
-    g_nodes = set(G.nodes)
+    g_nodes = set(primal_graph.nodes)
     g_nodes = g_nodes.difference([53, 54, 55])
     assert list(g_nodes).sort() == list(G_simplified.nodes).sort()
-    g_edges = set(G.edges)
+    g_edges = set(primal_graph.edges)
     g_edges = g_edges.difference([(52, 53), (53, 54), (54, 55), (52, 55)])  # condensed edges
     g_edges = g_edges.union([(52, 52)])  # the new self loop
     assert list(g_edges).sort() == list(G_simplified.edges).sort()
@@ -236,11 +230,11 @@ def test_nX_remove_filler_nodes():
         # ignore the new self-looping disconnected edge
         if s == 52 and e == 52:
             continue
-        assert G_simplified[s][e]['geom'].length == G[s][e]['geom'].length
+        assert G_simplified[s][e]['geom'].length == primal_graph[s][e]['geom'].length
     # manually check that the new self-looping edge is equal in length to its original segments
     l = 0
     for s, e in [(52, 53), (53, 54), (54, 55), (52, 55)]:
-        l += G[s][e]['geom'].length
+        l += primal_graph[s][e]['geom'].length
     assert l == G_simplified[52][52]['geom'].length
 
     # check that all nodes still have 'x' and 'y' keys
@@ -455,22 +449,22 @@ def test_nX_consolidate():
         # plot.plot_nX(G_parallel, figsize=(10, 10), dpi=150)
 
 
-def test_nX_decompose():
+def test_nX_decompose(primal_graph):
     # check that missing geoms throw an error
-    G = mock.mock_graph()
+    G = primal_graph.copy()
+    del G[0][1]['geom']
     with pytest.raises(KeyError):
         graphs.nX_decompose(G, 20)
 
     # check that non-LineString geoms throw an error
-    G = mock.mock_graph()
+    G = primal_graph.copy()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
         graphs.nX_decompose(G, 20)
 
     # test decomposition
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+    G = primal_graph.copy()
     # first clean the graph to strip disconnected looping component
     # this gives a start == end node situation for testing
     G_simple = graphs.nX_remove_filler_nodes(G)
@@ -497,18 +491,11 @@ def test_nX_decompose():
             nbs = list(G_decompose.neighbors(n))
             assert len(nbs) == 1 or len(nbs) == 2
 
-    # check that all new nodes are ghosted
-    for n, n_data in G_decompose.nodes(data=True):
-        if not G_simple.has_node(n):
-            assert n_data['ghosted']
-
     # check that geoms are correctly flipped
-    G_forward = mock.mock_graph()
-    G_forward = graphs.nX_simple_geoms(G_forward)
+    G_forward = primal_graph.copy()
     G_forward_decompose = graphs.nX_decompose(G_forward, 20)
 
-    G_backward = mock.mock_graph()
-    G_backward = graphs.nX_simple_geoms(G_backward)
+    G_backward = primal_graph.copy()
     for i, (s, e, d) in enumerate(G_backward.edges(data=True)):
         # flip each third geom
         if i % 3 == 0:
@@ -521,23 +508,24 @@ def test_nX_decompose():
         assert d['y'] == G_backward_decompose.nodes[n]['y']
 
     # test that geom coordinate mismatch throws an error
-    G = mock.mock_graph()
+    G = primal_graph.copy()
     for k in ['x', 'y']:
         for n in G.nodes():
             G.nodes[n][k] = G.nodes[n][k] + 1
             break
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             graphs.nX_decompose(G, 20)
 
 
-def test_nX_to_dual():
+def test_nX_to_dual(primal_graph, diamond_graph):
     # check that missing geoms throw an error
-    G = mock.mock_graph()
+    G = diamond_graph.copy()
+    del G[0][1]['geom']
     with pytest.raises(KeyError):
         graphs.nX_to_dual(G)
 
     # check that non-LineString geoms throw an error
-    G = mock.mock_graph()
+    G = diamond_graph.copy()
     for s, e in G.edges():
         G[s][e]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
     with pytest.raises(TypeError):
@@ -545,7 +533,7 @@ def test_nX_to_dual():
 
     # check that missing node keys throw an error
     for k in ['x', 'y']:
-        G = mock.mock_graph()
+        G = diamond_graph.copy()
         for n in G.nodes():
             # delete key from first node and break
             del G.nodes[n][k]
@@ -555,10 +543,53 @@ def test_nX_to_dual():
             graphs.nX_to_dual(G)
 
     # test dual
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+    G = diamond_graph.copy()
+    G_dual = graphs.nX_to_dual(G)
+
+    # from cityseer.util import plot
+    # plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
+
+    assert G_dual.number_of_nodes() == G.number_of_edges()
+    # the new dual nodes have three edges each, except for the midspan which now has four redges
+    for n in G_dual.nodes():
+        if n == '1_2':
+            assert nx.degree(G_dual, n) == 4
+        else:
+            assert nx.degree(G_dual, n) == 3
+    for start, end, d in G_dual.edges(data=True):
+        # the new geoms should also be 100m length (split 50m x 2)
+        assert round(d['geom'].length) == 100
+        # check the starting and ending bearings per diamond graph
+        if (G_dual.nodes[start]['x'], G_dual.nodes[start]['y']) == d['geom'].coords[0]:
+            s_x, s_y = d['geom'].coords[0]
+            m_x, m_y = d['geom'].coords[1]
+            e_x, e_y = d['geom'].coords[-1]
+        else:
+            s_x, s_y = d['geom'].coords[-1]
+            m_x, m_y = d['geom'].coords[1]
+            e_x, e_y = d['geom'].coords[0]
+        start_bearing = np.rad2deg(np.arctan2(m_y - s_y, m_x - s_x)).round()
+        end_bearing = np.rad2deg(np.arctan2(e_y - m_y, e_x - m_x)).round()
+        if (start, end) == ('0_1', '0_2'):
+            assert (start_bearing, end_bearing) == (-60, 60)
+        elif (start, end) == ('0_1', '1_2'):
+            assert (start_bearing, end_bearing) == (120, 0)
+        elif (start, end) == ('0_1', '1_3'):
+            assert (start_bearing, end_bearing) == (120, 60)
+        elif (start, end) == ('0_2', '1_2'):
+            assert (start_bearing, end_bearing) == (60, 180)
+        elif (start, end) == ('0_2', '2_3'):
+            assert (start_bearing, end_bearing) == (60, 120)
+        elif (start, end) == ('1_2', '1_3'):
+            assert (start_bearing, end_bearing) == (180, 60)
+        elif (start, end) == ('1_2', '2_3'):
+            assert (start_bearing, end_bearing) == (0, 120)
+        elif (start, end) == ('1_3', '2_3'):
+            assert (start_bearing, end_bearing) == (60, -60)
 
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
+    # see if any issues arise
+    G = primal_graph.copy()
     for i, (s, e, d) in enumerate(G.edges(data=True)):
         # add a kink to each second geom
         if i % 2 == 0:
@@ -570,98 +601,92 @@ def test_nX_to_dual():
             mid[0] += 10
             mid[1] -= 10
             # append 3d coord to check behaviour on 3d data
+            kinked_3d_geom = []
             for n in [start, mid, end]:
                 n = list(n)
                 n.append(10)
-            G[s][e]['geom'] = geometry.LineString([start, mid, end])
+                kinked_3d_geom.append(n)
+            G[s][e]['geom'] = geometry.LineString(kinked_3d_geom)
         # flip each third geom
         if i % 3 == 0:
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.nX_to_dual(G)
 
-    # from cityseer.util import plot
-    # plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
 
-    # dual nodes should equal primal edges
-    assert G_dual.number_of_nodes() == G.number_of_edges()
-    # all new nodes should have in-out-degrees of 4 except for following conditions:
-    for n in G_dual.nodes():
-        if n in ['50_51']:
-            assert nx.degree(G_dual, n) == 0
-        elif n in ['46_47', '46_48', '52_55', '52_53', '53_54', '54_55']:
-            assert nx.degree(G_dual, n) == 2
-        elif n in ['19_22', '22_23', '22_27', '22_46']:
-            assert nx.degree(G_dual, n) == 5
-        else:
-            assert nx.degree(G_dual, n) == 4
-
-    # for debugging
-    # plot.plot_networkX_graphs(primal=G, dual=G_dual)
-
-
-def test_graph_maps_from_nX():
-    # template graph
-    G_template = mock.mock_graph()
-    G_template = graphs.nX_simple_geoms(G_template)
-
+def test_graph_maps_from_nX(diamond_graph):
     # test maps vs. networkX
-    G_test = G_template.copy()
-    # set some random 'live' statuses
-    for n in G_test.nodes():
-        G_test.nodes[n]['live'] = bool(np.random.randint(0, 1))
-    # randomise the imp_factors
-    for s, e in G_test.edges():
-        G_test[s][e]['imp_factor'] = np.random.random() * 2
-    # generate geom with angular change for edge 50-51 - should sum to 360
-    angle_geom = geometry.LineString([
-        [700700, 5719900],
-        [700700, 5720000],
-        [700750, 5720050],
-        [700700, 5720050],
-        [700700, 5720100]
-    ])
-    G_test[50][51]['geom'] = angle_geom
+    G_test = diamond_graph.copy()
+    G_test_dual = graphs.nX_to_dual(G_test)
+    for G in (G_test, G_test_dual):
+        # set some random 'live' statuses
+        for n in G.nodes():
+            G.nodes[n]['live'] = bool(np.random.randint(0, 1))
 
-    # generate test maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G_test)
-    # debug plot
-    # plot.plot_graphs(primal=G_test)
-    # plot.plot_graph_maps(node_uids, node_data, edge_data)
+        # generate test maps
+        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+        # debug plot
+        # plot.plot_graphs(primal=G)
+        # plot.plot_graph_maps(node_uids, node_data, edge_data)
 
-    # run check
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
+        # run check
+        checks.check_network_maps(node_data, edge_data, node_edge_map)
 
-    # check lengths
-    assert len(node_uids) == len(node_data) == G_test.number_of_nodes()
-    # no ghosted edges, so edges = x2
-    assert len(edge_data) == G_test.number_of_edges() * 2
+        # check lengths
+        assert len(node_uids) == len(node_data) == G.number_of_nodes()
+        # edges = x2
+        assert len(edge_data) == G.number_of_edges() * 2
 
-    # check node maps (idx and label match in this case...)
-    for n_label in node_uids:
-        assert node_data[n_label][0] == G_test.nodes[n_label]['x']
-        assert node_data[n_label][1] == G_test.nodes[n_label]['y']
-        assert node_data[n_label][2] == G_test.nodes[n_label]['live']
-        assert node_data[n_label][3] == 0  # ghosted is False by default
+        # check node maps (idx and label match in this case...)
+        for n_label in node_uids:
+            assert node_data[n_label][0] == G.nodes[n_label]['x']
+            assert node_data[n_label][1] == G.nodes[n_label]['y']
+            assert node_data[n_label][2] == G.nodes[n_label]['live']
 
-    # check edge maps (idx and label match in this case...)
-    for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_data:
-        assert np.allclose(length, G_test[start][end]['geom'].length, atol=0.001, rtol=0)
-        if (start == 50 and end == 51) or (start == 51 and end == 50):
-            # check that the angle is measured along the line of change
-            # i.e. 45 + 135 + 90 (not 45 + 45 + 90)
-            # angles are transformed per: 1 + (angle_sum / 180)
-            assert angle_sum == 270
-        else:
+        # check edge maps (idx and label match in this case...)
+        for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_data:
+            assert np.allclose(length, G[start][end]['geom'].length, atol=0.001, rtol=0)
             assert angle_sum == 0
-        assert np.allclose(imp_factor, G_test[start][end]['imp_factor'], atol=0.001, rtol=0)
-        s_x, s_y = node_data[int(start)][:2]
-        e_x, e_y = node_data[int(end)][:2]
-        assert np.allclose(start_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
-        assert np.allclose(end_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
+            assert imp_factor == 1
+            s_x, s_y = node_data[int(start)][:2]
+            e_x, e_y = node_data[int(end)][:2]
+            assert np.allclose(start_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
+            assert np.allclose(end_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
+
+        # TODO: rework this to map and compare ...
+        for start, end, d in G_dual.edges(data=True):
+            # the new geoms should also be 100m length (split 50m x 2)
+            assert round(d['geom'].length) == 100
+            # check the starting and ending bearings per diamond graph
+            if (G_dual.nodes[start]['x'], G_dual.nodes[start]['y']) == d['geom'].coords[0]:
+                s_x, s_y = d['geom'].coords[0]
+                m_x, m_y = d['geom'].coords[1]
+                e_x, e_y = d['geom'].coords[-1]
+            else:
+                s_x, s_y = d['geom'].coords[-1]
+                m_x, m_y = d['geom'].coords[1]
+                e_x, e_y = d['geom'].coords[0]
+            start_bearing = np.rad2deg(np.arctan2(m_y - s_y, m_x - s_x)).round()
+            end_bearing = np.rad2deg(np.arctan2(e_y - m_y, e_x - m_x)).round()
+            if (start, end) == ('0_1', '0_2'):
+                assert (start_bearing, end_bearing) == (-60, 60)
+            elif (start, end) == ('0_1', '1_2'):
+                assert (start_bearing, end_bearing) == (120, 0)
+            elif (start, end) == ('0_1', '1_3'):
+                assert (start_bearing, end_bearing) == (120, 60)
+            elif (start, end) == ('0_2', '1_2'):
+                assert (start_bearing, end_bearing) == (60, 180)
+            elif (start, end) == ('0_2', '2_3'):
+                assert (start_bearing, end_bearing) == (60, 120)
+            elif (start, end) == ('1_2', '1_3'):
+                assert (start_bearing, end_bearing) == (180, 60)
+            elif (start, end) == ('1_2', '2_3'):
+                assert (start_bearing, end_bearing) == (0, 120)
+            elif (start, end) == ('1_3', '2_3'):
+                assert (start_bearing, end_bearing) == (60, -60)
 
     # check that missing geoms throw an error
-    G_test = G_template.copy()
+    G_test = diamond_graph.copy()
     for s, e in G_test.edges():
         # delete key from first node and break
         del G_test[s][e]['geom']
@@ -670,14 +695,14 @@ def test_graph_maps_from_nX():
         graphs.graph_maps_from_nX(G_test)
 
     # check that non-LineString geoms throw an error
-    G_test = G_template.copy()
+    G_test = diamond_graph.copy()
     for s, e in G_test.edges():
         G_test[s][e]['geom'] = geometry.Point([G_test.nodes[s]['x'], G_test.nodes[s]['y']])
     with pytest.raises(TypeError):
         graphs.graph_maps_from_nX(G_test)
 
     # check that missing node keys throw an error
-    G_test = G_template.copy()
+    G_test = diamond_graph.copy()
     for k in ['x', 'y']:
         for n in G_test.nodes():
             # delete key from first node and break
@@ -687,7 +712,7 @@ def test_graph_maps_from_nX():
             graphs.graph_maps_from_nX(G_test)
 
     # check that invalid imp_factors are caught
-    G_test = G_template.copy()
+    G_test = diamond_graph.copy()
     # corrupt imp_factor value and break
     for corrupt_val in [-1, -np.inf, np.nan]:
         for s, e in G_test.edges():
@@ -697,28 +722,26 @@ def test_graph_maps_from_nX():
             graphs.graph_maps_from_nX(G_test)
 
 
-def test_nX_from_graph_maps():
+def test_nX_from_graph_maps(primal_graph):
     # also see test_networks.test_to_networkX for tests on implementation via Network layer
 
     # check round trip to and from graph maps results in same graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
     # explicitly set live params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
-    for n in G.nodes():
-        G.nodes[n]['live'] = bool(np.random.randint(0, 1))
+    for n in primal_graph.nodes():
+        primal_graph.nodes[n]['live'] = bool(np.random.randint(0, 1))
 
     # test directly from and to graph maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
-    assert list(G_round_trip.nodes) == list(G.nodes)
-    assert list(G_round_trip.edges) == list(G.edges)
+    assert list(G_round_trip.nodes) == list(primal_graph.nodes)
+    assert list(G_round_trip.edges) == list(primal_graph.edges)
 
     # check with metrics dictionary
-    N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[500, 1000])
 
     N.compute_node_centrality(measures=['node_harmonic'])
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.Data_Layer_From_Dict(data_dict)
     D.assign_to_network(N, max_dist=400)
@@ -740,13 +763,13 @@ def test_nX_from_graph_maps():
                                                   node_data,
                                                   edge_data,
                                                   node_edge_map,
-                                                  networkX_graph=G,
+                                                  networkX_graph=primal_graph,
                                                   metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
 
     # test with decomposed
-    G_decomposed = graphs.nX_decompose(G, decompose_max=20)
+    G_decomposed = graphs.nX_decompose(primal_graph, decompose_max=20)
     # set live explicitly
     for n in G_decomposed.nodes():
         G_decomposed.nodes[n]['live'] = bool(np.random.randint(0, 1))
@@ -763,7 +786,7 @@ def test_nX_from_graph_maps():
 
     # error checks for when using backbone graph:
     # mismatching numbers of nodes
-    corrupt_G = G.copy()
+    corrupt_G = primal_graph.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
         graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map, networkX_graph=corrupt_G)
@@ -771,4 +794,4 @@ def test_nX_from_graph_maps():
     with pytest.raises(ValueError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
-        graphs.nX_from_graph_maps(corrupt_node_uids, node_data, edge_data, node_edge_map, networkX_graph=G)
+        graphs.nX_from_graph_maps(corrupt_node_uids, node_data, edge_data, node_edge_map, networkX_graph=primal_graph)

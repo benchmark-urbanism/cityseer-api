@@ -64,7 +64,6 @@ class Network_Layer:
                  node_data: np.ndarray,
                  edge_data: np.ndarray,
                  node_edge_map: Dict,
-                 dual: bool = False,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
@@ -73,7 +72,6 @@ class Network_Layer:
         0 - x
         1 - y
         2 - live
-        3 - ghosted
 
         EDGE MAP:
         0 - start node
@@ -88,7 +86,6 @@ class Network_Layer:
         self._node_data = node_data
         self._edge_data = edge_data
         self._node_edge_map = node_edge_map
-        self._dual = dual
         self._distances = distances
         self._betas = betas
         self._min_threshold_wt = min_threshold_wt
@@ -164,10 +161,6 @@ class Network_Layer:
         return self._node_data[:, 2]
 
     @property
-    def ghosted(self):
-        return self._node_data[:, 3]
-
-    @property
     def edge_lengths(self):
         return self._edge_data[:, 2]
 
@@ -205,8 +198,7 @@ class Network_Layer:
             m[uid] = {
                 'x': self.x_arr[i],
                 'y': self.y_arr[i],
-                'live': self.live[i] == 1,
-                'ghosted': self.ghosted[i] == 1
+                'live': self.live[i] == 1
             }
             # unpack centralities
             m[uid]['centrality'] = {}
@@ -306,7 +298,6 @@ class Network_Layer:
             np.array(self._betas),
             measure_keys,
             angular,
-            self._dual,
             suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
@@ -358,7 +349,6 @@ class Network_Layer:
             np.array(self._betas),
             measure_keys,
             angular,
-            self._dual,
             suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
@@ -373,7 +363,6 @@ class Network_Layer:
 class Network_Layer_From_nX(Network_Layer):
     def __init__(self,
                  networkX_graph: nx.Graph,
-                 dual: bool = False,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
@@ -382,7 +371,6 @@ class Network_Layer_From_nX(Network_Layer):
                          node_data,
                          edge_data,
                          node_edge_map,
-                         dual,
                          distances,
                          betas,
                          min_threshold_wt)
