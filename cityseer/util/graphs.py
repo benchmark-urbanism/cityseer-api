@@ -1000,9 +1000,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                         end_uid,
                         length=length,
                         angle_sum=angle_sum,
-                        imp_factor=imp_factor,
-                        start_bearing=start_bearing,
-                        end_bearing=end_bearing)
+                        imp_factor=imp_factor)
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')

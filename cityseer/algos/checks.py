@@ -94,37 +94,6 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
 
 
 @njit(cache=True)
-def check_trim_maps(trim_to_full: np.ndarray, full_to_trim: np.ndarray):
-    if len(trim_to_full) > len(full_to_trim):
-        raise ValueError(
-            'The trim_to_full map is longer than the full_to_trim map. Check that these have not been switched.')
-
-    counter = 0
-    # test for round-trip in the indices
-    # i.e. full_to_trim indices should be reciprocated by the trim_to_full indices in the other direction
-    for i in range(len(full_to_trim)):
-        # NaN values indicate points that are filtered out
-        # Non NaN values, on the other-hand, should point to the next index on the trim map
-        if not np.isnan(full_to_trim[i]):
-            trim_idx = int(full_to_trim[i])
-            # if the index exceeds the length of the trim map
-            if trim_idx >= len(trim_to_full):
-                raise ValueError('Trim index exceeds range of trim_to_full map.')
-            # indices should increase by one
-            if trim_idx > counter:
-                raise ValueError('Non-sequential index in full_to_trim map.')
-            # if the reciprocal trim_to_full index doesn't match the current i
-            full_idx = trim_to_full[trim_idx]
-            if full_idx != i:
-                raise ValueError('Mismatching trim-to-full and full-to-trim maps.')
-            counter += 1
-    # the counter (number of reciprocal indices) should match the length of the trim_to_full map
-    if counter != len(trim_to_full):
-        raise ValueError(
-            'The length of the trim-to-full map does not match the number of active elements in the full-to-trim map.')
-
-
-@njit(cache=True)
 def check_network_maps(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict):

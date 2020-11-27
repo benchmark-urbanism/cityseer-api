@@ -6,7 +6,7 @@ import timeit
 
 from cityseer.algos import centrality
 from cityseer.metrics import networks
-from cityseer.util import graphs
+from cityseer.util import graphs, plot
 from cityseer.util.mock import primal_graph, dual_graph, diamond_graph
 
 
@@ -298,6 +298,10 @@ def test_local_centrality(diamond_graph):
     '''
     # generate node and edge maps
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(diamond_graph)
+    # generate dual
+    diamond_graph_dual = graphs.nX_to_dual(diamond_graph)
+    node_uids_dual, node_data_dual, edge_data_dual, node_edge_map_dual = graphs.graph_maps_from_nX(diamond_graph_dual)
+    # setup distances and betas
     distances = np.array([50, 150, 250])
     betas = networks.beta_from_distance(distances)
 
@@ -396,6 +400,35 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=0.001, rtol=0)
 
+    # NODE SIMPLEST ON DUAL
+    node_keys_angular = [
+        'node_harmonic_angular',
+        'node_betweenness_angular'
+    ]
+    np.random.shuffle(node_keys_angular)  # in place
+    measure_keys = tuple(node_keys_angular)
+    measures_data = centrality.local_node_centrality(node_data_dual,
+                                                     edge_data_dual,
+                                                     node_edge_map_dual,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys,
+                                                     angular=True)
+    # node_uids_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
+    # node harmonic angular
+    # additive 1 / (1 + (to_imp / 180))
+    m_idx = node_keys_angular.index('node_harmonic_angular')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [1.95, 1.95, 2.4, 1.95, 1.95], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [2.45, 2.45, 2.4, 2.45, 2.45], atol=0.001, rtol=0)
+    # node betweenness angular
+    # additive 1 per node en simplest route
+    m_idx = node_keys_angular.index('node_betweenness_angular')
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0, 0], atol=0.001, rtol=0)
+    assert np.allclose(measures_data[m_idx][2], [0, 0, 0, 1, 1], atol=0.001, rtol=0)
+
+    # SEGMENT SHORTEST
     segment_keys = [
         'segment_density',
         'segment_harmonic',
@@ -443,6 +476,7 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [0, 69.78874, 0, 0], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [0, 99.76293, 0, 0], atol=0.001, rtol=0)
 
+    # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
     segment_keys_angular = [
         'segment_harmonic_hybrid',
         'segment_betweeness_hybrid'
@@ -469,6 +503,11 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][0], [0, 75, 0, 0], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][1], [0, 150, 0, 0], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [0, 150, 0, 0], atol=0.001, rtol=0)
+
+    # SEGMENT SIMPLEST IS DISCOURAGED FOR DUAL
+    # this is because it leads to double counting where segments overlap
+    # e.g. 6 segments replace a single four-way intersection
+    # it also causes issuse with sidestepping vs. discovering all necessary edges...
 
 
 def test_decomposed_local_centrality(primal_graph):

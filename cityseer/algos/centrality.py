@@ -97,6 +97,11 @@ def shortest_path_tree(
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
             if nb_nd_idx == tree_preds[active_nd_idx]:
                 continue
+            # only add edge to active if the neighbour node has not been processed previously
+            # i.e. single direction only
+            # i.e. if neighbour node has been processed all out edges have already been explored
+            if not tree_nodes[nb_nd_idx]:
+                tree_edges[edge_idx] = True
             if not angular:
                 # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
                 # do before distance cutoff because this node and the neighbour can respectively be within max distance
@@ -125,9 +130,6 @@ def shortest_path_tree(
             # add the neighbour to active if undiscovered but only if less than max threshold
             if np.isnan(tree_preds[nb_nd_idx]) and dist <= max_dist:
                 active.append(nb_nd_idx)
-            # only add edge to active if the neighbour node has not been processed previously (i.e. single direction only)
-            if not tree_nodes[nb_nd_idx]:
-                tree_edges[edge_idx] = True
             # if impedance less than prior, update
             # this will also happen for the first nodes that overshoot the boundary
             # they will not be explored further because they have not been added to active
@@ -584,34 +586,56 @@ def local_segment_centrality(node_data: np.ndarray,
                     this assumes segments are relatively straight, overly complex to subdivide segments for spliting...
                     '''
                     # only a single case existing for angular version so no need for abstracted functions
-                    # there are three cases:
+                    # there are three scenarios:
                     # 1) e is the predecessor for f
                     if n_nd_idx == src_idx or tree_preds[m_nd_idx] == n_nd_idx:
                         e = tree_dists[n_nd_idx]
                         f = tree_dists[m_nd_idx]
+                        # if travelling via n, then m = n_imp + seg_ang
+                        # calculations are based on segment length / angle
+                        # i.e. need to decide whether to base angular change on entry vs exit impedance
+                        # else take midpoint of segment as ballpark for average, which is the course taken here
+                        # i.e. exit impedance minus half segment impedance
                         ang = m_imp - seg_ang / 2
                     # 2) f is the predecessor for e
                     elif m_nd_idx == src_idx or tree_preds[n_nd_idx] == m_nd_idx:
                         e = tree_dists[m_nd_idx]
                         f = tree_dists[n_nd_idx]
-                        ang = n_imp - seg_ang / 2
+                        ang = n_imp - seg_ang / 2  # per above
                     # 3) neither of the above
-                    # get the approach angles for either side and compare
-                    # this involves impedance up to that point plus the turn onto the segment
+                    # get the approach angles for either side and compare to find the least inwards impedance
+                    # this involves impedance up to entrypoint either side plus respective turns onto the segment
                     else:
                         # get the out bearing from the predecessor and calculate the turn onto current seg's in bearing
+                        # find n's predecessor
                         n_pred_idx = int(tree_preds[n_nd_idx])
+                        # find the edge from n's predecessor to n
                         e_i = _find_edge_idx(node_edge_map, edge_data, n_pred_idx, n_nd_idx)
+                        # get the predecessor edge's outwards bearing at index 6
                         n_pred_out_bear = edge_data[int(e_i), 6]
-                        n_ang = n_imp + np.abs((seg_in_bear - n_pred_out_bear + 180) % 360 - 180)
-                        # other side
-                        m_pred_idx = int(tree_preds[m_nd_idx])
-                        # for accurate angle you need to use the edge in the opposite direction of travel...
+                        # calculating the turn into this segment from the predecessor's out bearing
+                        n_turn_in = np.abs((seg_in_bear - n_pred_out_bear + 180) % 360 - 180)
+                        # then add the turn-in to the aggregated impedance at n
+                        # i.e. total angular impedance onto this segment
+                        # as above two scenarios, adding half of angular impedance for segment as avg between in / out
+                        n_ang = n_imp + n_turn_in + seg_ang / 2
+                        # repeat for the other side other side
+                        # per original n -> m edge destructuring: m is the node in the outwards bound direction
+                        # i.e. need to first find the corresponding edge in the opposite m -> n direction of travel
+                        # this gives the correct inwards bearing as if m were the entry point
                         opp_i = _find_edge_idx(node_edge_map, edge_data, m_nd_idx, n_nd_idx)
-                        opp_in_bear = edge_data[int(opp_i), 6]
+                        # now that the opposing edge is known, we can fetch the inwards bearing at index 5 (not 6)
+                        opp_in_bear = edge_data[int(opp_i), 5]
+                        # find m's predecessor
+                        m_pred_idx = int(tree_preds[m_nd_idx])
+                        # we can now go ahead and find m's predecessor edge
                         e_i = _find_edge_idx(node_edge_map, edge_data, m_pred_idx, m_nd_idx)
+                        # get the predecessor edge's outwards bearing at index 6
                         m_pred_out_bear = edge_data[int(e_i), 6]
-                        m_ang = m_imp + np.abs((opp_in_bear - m_pred_out_bear + 180) % 360 - 180)
+                        # and calculate the turn-in from m's predecessor onto the m inwards bearing
+                        m_turn_in = np.abs((opp_in_bear - m_pred_out_bear + 180) % 360 - 180)
+                        # then add to aggregated impedance at m
+                        m_ang = m_imp + m_turn_in + seg_ang / 2
                         # the distance and angle are based on the smallest angular impedance onto the segment
                         # select by shortest distance in event angular impedances are identical from either direction
                         if n_ang == m_ang:
