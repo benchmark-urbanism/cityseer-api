@@ -618,7 +618,7 @@ def test_graph_maps_from_nX(diamond_graph):
     # test maps vs. networkX
     G_test = diamond_graph.copy()
     G_test_dual = graphs.nX_to_dual(G_test)
-    for G in (G_test, G_test_dual):
+    for G, is_dual in zip((G_test, G_test_dual), (False, True)):
         # set some random 'live' statuses
         for n in G.nodes():
             G.nodes[n]['live'] = bool(np.random.randint(0, 1))
@@ -629,7 +629,7 @@ def test_graph_maps_from_nX(diamond_graph):
         # plot.plot_graphs(primal=G)
         # plot.plot_graph_maps(node_uids, node_data, edge_data)
 
-        # run check
+        # run check (this checks node to edge maps internally)
         checks.check_network_maps(node_data, edge_data, node_edge_map)
 
         # check lengths
@@ -639,51 +639,72 @@ def test_graph_maps_from_nX(diamond_graph):
 
         # check node maps (idx and label match in this case...)
         for n_label in node_uids:
-            assert node_data[n_label][0] == G.nodes[n_label]['x']
-            assert node_data[n_label][1] == G.nodes[n_label]['y']
-            assert node_data[n_label][2] == G.nodes[n_label]['live']
+            n_idx = node_uids.index(n_label)
+            assert node_data[n_idx][0] == G.nodes[n_label]['x']
+            assert node_data[n_idx][1] == G.nodes[n_label]['y']
+            assert node_data[n_idx][2] == G.nodes[n_label]['live']
 
         # check edge maps (idx and label match in this case...)
-        for start, end, length, angle_sum, imp_factor, start_bearing, end_bearing in edge_data:
-            assert np.allclose(length, G[start][end]['geom'].length, atol=0.001, rtol=0)
-            assert angle_sum == 0
-            assert imp_factor == 1
-            s_x, s_y = node_data[int(start)][:2]
-            e_x, e_y = node_data[int(end)][:2]
-            assert np.allclose(start_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
-            assert np.allclose(end_bearing, np.rad2deg(np.arctan2(e_y - s_y, e_x - s_x)), atol=0.001, rtol=0)
-
-        # TODO: rework this to map and compare ...
-        for start, end, d in G_dual.edges(data=True):
-            # the new geoms should also be 100m length (split 50m x 2)
-            assert round(d['geom'].length) == 100
-            # check the starting and ending bearings per diamond graph
-            if (G_dual.nodes[start]['x'], G_dual.nodes[start]['y']) == d['geom'].coords[0]:
-                s_x, s_y = d['geom'].coords[0]
-                m_x, m_y = d['geom'].coords[1]
-                e_x, e_y = d['geom'].coords[-1]
+        for start, end, length, angle, imp_fact, start_bear, end_bear in edge_data:
+            # print(f'elif (start, end) == ({start}, {end}):')
+            # print(f'assert (length, angle, imp_fact, start_bear, end_bear) == ({length}, {angle}, {imp_fact}, {start_bear}, {end_bear})')
+            if not is_dual:
+                if (start, end) == (0.0, 1.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 120.0, 120.0)
+                elif (start, end) == (0.0, 2.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 60.0, 60.0)
+                elif (start, end) == (1.0, 0.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -60.0, -60.0)
+                elif (start, end) == (1.0, 2.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 0.0, 0.0)
+                elif (start, end) == (1.0, 3.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 60.0, 60.0)
+                elif (start, end) == (2.0, 0.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -120.0, -120.0)
+                elif (start, end) == (2.0, 1.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 180.0, 180.0)
+                elif (start, end) == (2.0, 3.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, 120.0, 120.0)
+                elif (start, end) == (3.0, 1.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -120.0, -120.0)
+                elif (start, end) == (3.0, 2.0):
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -60.0, -60.0)
             else:
-                s_x, s_y = d['geom'].coords[-1]
-                m_x, m_y = d['geom'].coords[1]
-                e_x, e_y = d['geom'].coords[0]
-            start_bearing = np.rad2deg(np.arctan2(m_y - s_y, m_x - s_x)).round()
-            end_bearing = np.rad2deg(np.arctan2(e_y - m_y, e_x - m_x)).round()
-            if (start, end) == ('0_1', '0_2'):
-                assert (start_bearing, end_bearing) == (-60, 60)
-            elif (start, end) == ('0_1', '1_2'):
-                assert (start_bearing, end_bearing) == (120, 0)
-            elif (start, end) == ('0_1', '1_3'):
-                assert (start_bearing, end_bearing) == (120, 60)
-            elif (start, end) == ('0_2', '1_2'):
-                assert (start_bearing, end_bearing) == (60, 180)
-            elif (start, end) == ('0_2', '2_3'):
-                assert (start_bearing, end_bearing) == (60, 120)
-            elif (start, end) == ('1_2', '1_3'):
-                assert (start_bearing, end_bearing) == (180, 60)
-            elif (start, end) == ('1_2', '2_3'):
-                assert (start_bearing, end_bearing) == (0, 120)
-            elif (start, end) == ('1_3', '2_3'):
-                assert (start_bearing, end_bearing) == (60, -60)
+                s_idx = node_uids[int(start)]
+                e_idx = node_uids[int(end)]
+                print(s_idx, e_idx)
+                if (start, end) == (0.0, 1.0):  # 0_1 0_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, -60.0, 60.0)
+                elif (start, end) == (0.0, 2.0):  # 0_1 1_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 120.0, 0.0)
+                elif (start, end) == (0.0, 3.0):  # 0_1 1_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 60.0, 1.0, 120.0, 60.0)
+                elif (start, end) == (1.0, 0.0):  # 0_2 0_1
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, -120.0, 120.0)
+                elif (start, end) == (1.0, 2.0):  # 0_2 1_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 60.0, 180.0)
+                elif (start, end) == (1.0, 4.0):  # 0_2 2_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 60.0, 1.0, 60.0, 120.0)
+                elif (start, end) == (2.0, 0.0):  # 1_2 0_1
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 180.0, -60.0)
+                elif (start, end) == (2.0, 1.0):  # 1_2 0_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 0.0, -120.0)
+                elif (start, end) == (2.0, 3.0):  # 1_2 1_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 180.0, 60.0)
+                elif (start, end) == (2.0, 4.0):  # 1_2 2_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 0.0, 120.0)
+                elif (start, end) == (3.0, 0.0):  # 1_3 0_1
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 60.0, 1.0, -120.0, -60.0)
+                elif (start, end) == (3.0, 2.0):  # 1_3 1_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, -120.0, 0.0)
+                elif (start, end) == (3.0, 4.0):  # 1_3 2_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 60.0, -60.0)
+                elif (start, end) == (4.0, 1.0):  # 2_3 0_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 60.0, 1.0, -60.0, -120.0)
+                elif (start, end) == (4.0, 2.0):  # 2_3 1_2
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, -60.0, 180.0)
+                elif (start, end) == (4.0, 3.0):  # 2_3 1_3
+                    assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 120.0, -120.0)
 
     # check that missing geoms throw an error
     G_test = diamond_graph.copy()
