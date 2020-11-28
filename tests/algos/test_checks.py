@@ -4,6 +4,7 @@ import pytest
 from cityseer.algos import data, checks
 from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
+from cityseer.util.mock import primal_graph
 
 
 def test_progress_bar():
@@ -49,11 +50,9 @@ def test_check_categorical_data():
         checks.check_categorical_data(data_encoding_float)
 
 
-def test_check_data_map():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    N = networks.Network_Layer_From_nX(G, distances=[500])
-    data_dict = mock.mock_data_dict(G)
+def test_check_data_map(primal_graph):
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[500])
+    data_dict = mock.mock_data_dict(primal_graph)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
     # should throw error if not assigned
@@ -81,11 +80,9 @@ def test_check_data_map():
         checks.check_data_map(data_map[:, :-1])
 
 
-def test_check_network_maps():
+def test_check_network_maps(primal_graph):
     # network maps
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    N = networks.Network_Layer_From_nX(G, distances=[500])
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[500])
     # from cityseer.util import plot
     # plot.plot_networkX_primal_or_dual(primal=G)
     # plot.plot_graph_maps(N.uids, N._node_data, N._edge_data)

@@ -70,7 +70,6 @@ def assign_to_network(data_map: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node
@@ -381,7 +380,6 @@ def local_aggregator(node_data: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node
@@ -725,7 +723,6 @@ def singly_constrained(node_data: np.ndarray,
     0 - x
     1 - y
     2 - live
-    3 - ghosted
     EDGE MAP:
     0 - start node
     1 - end node

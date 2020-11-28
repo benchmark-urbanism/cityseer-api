@@ -79,14 +79,14 @@ G = graphs.nX_decompose(G, 20)
 
 The `networkX` graph can now be transformed into a [`Network_Layer`](/metrics/networks.html#network-layer) by invoking [`Network_Layer_From_nX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`Network_Layer.compute_centrality`](/metrics/networks.html#compute-centrality) method wraps underlying numba optimised functions that compute a range of centrality methods. These are performed simultaneously for any required combinations of measures and distances. The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx) method.
+The [`Network_Layer.compute_node_centrality`](/metrics/networks.html#compute-node-centrality) and [`Network_Layer.compute_segment_centrality`](/metrics/networks.html#compute-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx) method.
 
 ```python
 from cityseer.metrics import networks
 # create a Network layer from the networkX graph
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-N.compute_centrality(measures=['segment_harmonic', 'segment_betweenness'])
+N.compute_segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 ```
 
 Categorical and numerical data can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and is used for the calculation of various mixed-use, land-use accessibility, and statistical measures. These measures are computed directly over the street network and offer distance-weighted variants. This makes them more contextually sensitive than methods based on simple crow-flies aggregation.
@@ -110,7 +110,7 @@ The data points will be assigned to the two closest network nodes — one in eit
 
 _Data assigned to the network (left); note that assignment becomes more contextually precise on decomposed graphs (right)._
 
-Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the `Network_Layer.compute_centrality` method, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`Data_Layer.hill_diversity`](/metrics/layers.html#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`Data_Layer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple). 
+Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`Data_Layer.hill_diversity`](/metrics/layers.html#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`Data_Layer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple). 
 
 ```python
 # landuse labels can be used to generate mixed-use and land-use accessibility measures
@@ -151,7 +151,7 @@ print(N.metrics['centrality']['segment_harmonic'][distance_idx][:4])
 print('mixed-use keys:', list(N.metrics['mixed_uses'].keys()))
 # prints: mixed-use keys: ['hill_branch_wt', 'hill', 'shannon']
 print(N.metrics['mixed_uses']['hill_branch_wt'][q_idx][distance_idx][:4])
-# prints: [3.77794601 3.38890755 3.68395318 2.67093971]
+# prints: [3.71650513 3.37621501 3.67013477 2.66319178]
 
 # statistical keys can be retrieved the same way:
 print('stats keys:', list(N.metrics['stats'].keys()))
@@ -159,20 +159,21 @@ print('stats keys:', list(N.metrics['stats'].keys()))
 print('valuations keys:', list(N.metrics['stats']['valuations'].keys()))
 # prints: valuations keys: ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
 print('valuations weighted by 1600m decay:', N.metrics['stats']['valuations']['mean_weighted'][1600][:4])
-# prints: valuations weighted by 1600m decay: [54197.16775872 52605.12914212 49085.95351109 52261.44967792]
+# prints: valuations weighted by 1600m decay: [54241.13370171 52637.06525419 49104.04636187 52314.00371644]
 
 
 # the data can also be convert back to a NetworkX graph
+import networkx as nx
 G_metrics = N.to_networkX()
 print(nx.info(G_metrics))
 # the data arrays are unpacked accordingly
 print(G_metrics.nodes[0]['metrics']['centrality']['segment_betweenness'][200])
-# prints: 590.8659
+# prints: 1022.12555
 
 # the data can also be extracted to a dictionary:
-N.metrics_to_dict()
+G_dict = N.metrics_to_dict()
 print(G_dict[0]['centrality']['segment_betweenness'][200])
-# prints: 590.8659
+# prints: 1022.12555
 ```
 
 The data can then be passed to data analysis or plotting methods. For example, the [`util.plot`](/util/plot.html) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:

@@ -4,13 +4,14 @@ import pytest
 import string
 
 from cityseer.util import mock
+from cityseer.util.mock import primal_graph
 
 
-def test_mock_graph():
+def test_mock_graph(primal_graph):
     G = mock.mock_graph()
     G_wgs = mock.mock_graph(wgs84_coords=True)
 
-    for g in [G, G_wgs]:
+    for g in [G, G_wgs, primal_graph]:
         assert g.number_of_nodes() == 56
         assert g.number_of_edges() == 77
         assert nx.average_degree_connectivity(g) == {
@@ -29,15 +30,14 @@ def test_mock_graph():
     # plot.plot_nX(G)
 
 
-def test_mock_data_dict():
-    G = mock.mock_graph()
-    data = mock.mock_data_dict(G)
+def test_mock_data_dict(primal_graph):
+    data = mock.mock_data_dict(primal_graph)
 
     min_x = np.inf
     max_x = -np.inf
     min_y = np.inf
     max_y = -np.inf
-    for n, d in G.nodes(data=True):
+    for n, d in primal_graph.nodes(data=True):
         if d['x'] < min_x:
             min_x = d['x']
         if d['x'] > max_x:

@@ -2,9 +2,9 @@
 
 ---
 
-Please provide clearly legible attribution when using this package.
+Clearly legible attribution should be provided when using this package.
 
-This should include either a link to the documentation website or one of the following logos.
+This should include a link to the documentation website, as well as one of the following logos if producing visual outputs.
 
 <img src="./images/logos/cityseer_logo_white.png" alt="cityseer white logo" class="centre" style="max-width:500px;">
 

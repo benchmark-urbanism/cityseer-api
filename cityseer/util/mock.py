@@ -4,10 +4,11 @@ Generate a graph for testing and documentation purposes.
 import logging
 from typing import Tuple
 import string
-
+import pytest
 import networkx as nx
 import numpy as np
 import utm
+from cityseer.util import graphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -182,6 +183,51 @@ def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
             G.nodes[n]['y'] = lat
 
     return G
+
+
+@pytest.fixture
+def primal_graph():
+    G_primal = mock_graph()
+    G_primal = graphs.nX_simple_geoms(G_primal)
+    return G_primal
+
+
+@pytest.fixture
+def dual_graph():
+    G_dual = mock_graph()
+    G_dual = graphs.nX_simple_geoms(G_dual)
+    G_dual = graphs.nX_to_dual(G_dual)
+    return G_dual
+
+
+@pytest.fixture
+def diamond_graph():
+    '''
+    For manual checks of all node and segmentised methods
+       3
+      / \
+     /   \
+    /  a  \
+   1-------2
+    \  |  /
+     \ |b/ c
+      \|/
+       0
+    a = 100m = 2 * 50m
+    b = 86.60254m
+    c = 100m
+    all inner angles = 60º
+    '''
+    G_diamond = nx.Graph()
+    G_diamond.add_nodes_from([
+        (0, {'x': 50, 'y': 0}),
+        (1, {'x': 0, 'y': 86.60254}),
+        (2, {'x': 100, 'y': 86.60254}),
+        (3, {'x': 50, 'y': 86.60254 * 2})
+    ])
+    G_diamond.add_edges_from([(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)])
+    G_diamond = graphs.nX_simple_geoms(G_diamond)
+    return G_diamond
 
 
 def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
