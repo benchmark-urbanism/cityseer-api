@@ -305,7 +305,7 @@ G = graphs.nX_simple_geoms(G)
 
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
-N.compute_centrality(measures=['node_harmonic'])
+N.compute_node_centrality(measures=['node_harmonic'])
 
 # let's select a random node id
 random_idx = 6
@@ -355,7 +355,7 @@ G = graphs.nX_simple_geoms(G)
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute some-or-other metrics
-N.compute_centrality(measures=['node_harmonic'])
+N.compute_node_centrality(measures=['node_harmonic'])
 # convert back to networkX
 G_post = N.to_networkX()
 
@@ -376,38 +376,43 @@ print(G_post.nodes[random_uid]['metrics']['centrality']['node_harmonic'][200])
 _A `networkX` graph before conversion to a `Network_Layer` (left) and after conversion back to `networkX` (right)._
 
 
-@compute\_centrality
----------------------
+Network centrality methods
+--------------------------
 
-<FuncSignature>
-<pre>
-Network_Layer.compute_centrality(measures=None, angular=False)
-</pre>
-</FuncSignature>
+There are two network centrality methods available depending on whether you're using a node-based or segment-based approach:
+- [compute_node_centrality](#compute-node-centrality)
+- [compute_segment_centrality](#compute-segment-centrality)
 
-This method wraps the underlying `numba` optimised functions for computing network centralities, and provides access to all the available centrality methods. These are computed simultaneously for any required combinations of measures and distances, which can have significant speed implications.
+These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+
+::: tip Hints
+The reasons for picking one approach over another are varied:
+- Node based centralities compute the measures relative to each reachable node within the threshold distances. For this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of street intersections. In these cases, the network should first be cleaned using methods such as those available in the [graph](/util/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be preferable because they are based on segment distances: segment aggregations remain the same regardless of the number of intervening nodes;
+- Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once impedances decrease below $1$.
+- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based) and dual graphs (node only).
+- Measures should only be directly compared on the same topology because different topologies can otherwise affect the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed on primal graphs because this does not account for the impact of differing topologies. Dual graph representations can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual. This effect is amplified for denser regions of the network.
+- Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example, the contribution of a single edge segment at a four-way intersection would be duplicated three times.
+- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired, through additional (manual) steps.
+- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions may therefore be preferable when working at small thresholds on decomposed networks.
+:::
 
 The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
 
 `Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`
 
-For example, if `node_density`, `segment_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
+For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
 
 ```python
 # example structure
 Network_Layer.metrics = {
     'centrality': {
         'node_density': {
-            800: [...],
-            1600: [...]
-        },
-        'segment_density': {
-            800: [...],
-            1600: [...]
+            800: [<numpy array>],
+            1600: [<numpy array>]
         },
         'node_betweenness_beta': {
-            800: [...],
-            1600: [...]
+            800: [<numpy array>],
+            1600: [<numpy array>]
         }
     }
 }
@@ -426,20 +431,30 @@ G = graphs.nX_simple_geoms(G)
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute a centrality measure
-N.compute_centrality(measures=['segment_harmonic'])
+N.compute_node_centrality(measures=['node_density', 'node_betweenness_beta'])
 
-# distance idx: any of the distances with which the Network_Layer was initialised
-distance_idx = 200
-# let's select a random node idx
-random_idx = 6
+# fetch node density for 400m threshold for the first 5 nodes
+print(N.metrics['centrality']['node_density'][400][:5])
+# prints [15, 13, 10, 11, 12]
 
-# the data is available at N.metrics
-# in this case we need the 'segment_harmonic' key
-print(N.metrics['centrality']['segment_harmonic'][distance_idx][random_idx])
-# prints: 17.144033
+# fetch betweenness beta for 1600m threshold for the first 5 nodes
+print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
+# prints [75.83173, 45.188183, 6.805982, 11.478158, 33.74703]
 ```
 
-Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](#to-networkx).
+The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](#metrics-to-dict) or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](#to-networkx).
+
+
+@compute\_node\_centrality <Chip text="v0.12.0"/>
+--------------------------
+
+<FuncSignature>
+<pre>
+Network_Layer.compute_node_centrality(measures=None, angular=False)
+</pre>
+</FuncSignature>
+
+
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -464,36 +479,57 @@ The following keys use the shortest-path heuristic, and are available when the `
 | node_cycles | $\displaystyle\sum_{j\neq{i}\ j=cycle}^{nodes}\ 1$ | A summation of network cycles. |
 | node_harmonic | $\displaystyle\sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
 | node_beta | $\displaystyle \sum_{j\neq{i}}^{nodes}\ exp(\beta \cdot d[i,j])$ | Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |
-| segment_density | $\displaystyle \sum_{(a, b)}^{edges}\ d_{b} - d_{a}$ | A summation of edge lengths. |
-| segment_harmonic | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \ln(b) - \ln(a)$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
-| segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | node_betweenness | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in shortest]$ | Betweenness centrality summing all shortest-paths traversing each node $i$. | 
 | node_betweenness_beta | $\displaystyle\sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ exp(\beta \cdot d[j,k])\ [i\in shortest]$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
-| segment_betweenness |  | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 | key | formula | notes |
 |-----|:--------:|-------|
 | node_harmonic_angular | $\displaystyle \sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $Z = 1 + (angular\ change/180)$. |
-| segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. |
 | node_betweenness_angular | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in simplest]$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).|
+
+
+@compute\_segment\_centrality <Chip text="v0.12.0"/>
+-----------------------------
+
+<FuncSignature>
+<pre>
+Network_Layer.compute_segment_centrality(measures=None, angular=False)
+</pre>
+</FuncSignature>
+
+
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name="measures" type="list[str], tuple[str]">
+
+A list or tuple of strings, containing any combination of the following `key` values, computed within the respective distance thresholds of $d_{max}$.
+
+</FuncElement>
+
+<FuncElement name="angular" type="bool">
+
+A boolean indicating whether to use shortest or simplest path heuristics.  
+
+</FuncElement>
+
+The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
+
+| key | formula | notes |
+|-----|:--------:|-------|
+| segment_density | $\displaystyle \sum_{(a, b)}^{edges}\ d_{b} - d_{a}$ | A summation of edge lengths. |
+| segment_harmonic | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \ln(b) - \ln(a)$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
+| segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
+| segment_betweenness |  | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+
+The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`.
+
+| key | formula | notes |
+|-----|:--------:|-------|
+| segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`. |
 | segment_betweeness_hybrid |  | A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
-
-Outputs from the respective centrality measures can be retrieved from the `Network_Layer.metrics.centrality` dictionary by using the corresponding key. For example, `node_betweenness` is recovered for a given distance as:
-
-`Network_Layer.metrics['centrality']['node_betweenness'][<<distance key>>]`
-
-This will return a numpy array corresponding to the indices of the network's data map. The `Network_Layer` can alternatively be converted back into a `NetworkX` graph using the [`to_networkX`](#to_networkX) method.
-
-::: warning Notes
-- Normalised global closeness ($\frac{nodes}{farness}$) and improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the above metrics, if so desired. Note that the use of normalised global closeness is discouraged for localised metrics.
-- Node-based centralities are particularly susceptible to topological distortions caused by messy graph representations; in these cases, segmentised versions may be more useful.
-- Decomposition of the network confers numerous advantages, such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of node-based centrality measures. Segmentised versions may therefore be preferable when working with decomposed networks.
-- `harmonic` centrality can be problematic on graphs where nodes are mistakenly placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$, particularly noticeable once values decrease below $1$.
-- Segmentised versions should not be computed on dual graph representations because edge lengths will be counted multiple times for each permutation of interconnected edges at street intersections.
-- Node-based angular centralities can be computed on either the primal or dual graphs. Be cognisant that undecomposed dual graphs may differ from undecomposed primal graphs because the measures are computed from street centrepoints as opposed to street intersections.
-:::
 
 Network\_Layer\_From\_nX <Chip text="class"/>
 ------------------------
