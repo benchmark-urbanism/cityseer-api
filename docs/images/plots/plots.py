@@ -22,7 +22,7 @@ G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 20)
 
 N = networks.Network_Layer_From_nX(G, distances=[400, 800])
-N.compute_centrality(measures=['segment_harmonic'])
+N.compute_segment_centrality(measures=['segment_harmonic'])
 
 data_dict = mock.mock_data_dict(G, random_seed=25)
 D = layers.Data_Layer_From_Dict(data_dict)
@@ -119,7 +119,7 @@ plot.plot_nX(G, path='graph_before.png', labels=True, dpi=150)
 # generate the network layer and compute some metrics
 N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
 # compute some-or-other metrics
-N.compute_centrality(measures=['segment_harmonic'])
+N.compute_segment_centrality(measures=['segment_harmonic'])
 # convert back to networkX
 G_post = N.to_networkX()
 
@@ -162,7 +162,7 @@ G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 50)
 N = networks.Network_Layer_From_nX(G, distances=[800])
-N.compute_centrality(measures=['segment_harmonic'])
+N.compute_segment_centrality(measures=['segment_harmonic'])
 G_after = N.to_networkX()
 
 # let's extract and normalise the values

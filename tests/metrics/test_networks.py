@@ -4,6 +4,7 @@ import pytest
 from cityseer.algos import checks, centrality
 from cityseer.metrics import networks, layers
 from cityseer.util import mock, graphs
+from cityseer.util.mock import primal_graph
 
 
 def test_distance_from_beta():
@@ -54,12 +55,9 @@ def test_beta_from_distance():
             networks.beta_from_distance(d)
 
 
-def test_Network_Layer():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-
+def test_Network_Layer(primal_graph):
     # manual graph maps for comparison
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
     betas = [-0.02, -0.005]
@@ -85,7 +83,6 @@ def test_Network_Layer():
             assert np.allclose(N.x_arr, x_arr, atol=0.001, rtol=0)
             assert np.allclose(N.y_arr, y_arr, atol=0.001, rtol=0)
             assert np.allclose(N.live, node_data[:, 2], atol=0.001, rtol=0)
-            assert np.allclose(N.ghosted, node_data[:, 3], atol=0.001, rtol=0)
             assert np.allclose(N.edge_lengths, edge_data[:, 2], atol=0.001, rtol=0)
             assert np.allclose(N.edge_angles, edge_data[:, 3], atol=0.001, rtol=0)
             assert np.allclose(N.edge_impedance_factor, edge_data[:, 4], atol=0.001, rtol=0)
@@ -101,12 +98,12 @@ def test_Network_Layer():
     G_round_trip = N.to_networkX()
     # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
     # i.e. can't simply check that all nodes equal, so check properties manually
-    for n, d in G.nodes(data=True):
+    for n, d in primal_graph.nodes(data=True):
         assert n in G_round_trip
         assert G_round_trip.nodes[n]['x'] == d['x']
         assert G_round_trip.nodes[n]['y'] == d['y']
     # edges can be checked en masse
-    assert G_round_trip.edges == G.edges
+    assert G_round_trip.edges == primal_graph.edges
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
@@ -168,10 +165,8 @@ def test_Network_Layer():
                                betas=[])
 
 
-def test_Network_Layer_From_nX():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)
+def test_Network_Layer_From_nX(primal_graph):
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
     betas = np.array([-0.04, -0.02])
@@ -180,7 +175,7 @@ def test_Network_Layer_From_nX():
     # test Network_Layer_From_NetworkX's class
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
-            N = networks.Network_Layer_From_nX(G, distances=d, betas=b)
+            N = networks.Network_Layer_From_nX(primal_graph, distances=d, betas=b)
             assert np.allclose(N.uids, node_uids, atol=0.001, rtol=0)
             assert np.allclose(N._node_data, node_data, atol=0.001, rtol=0)
             assert np.allclose(N._edge_data, edge_data, atol=0.001, rtol=0)
@@ -201,20 +196,20 @@ def test_Network_Layer_From_nX():
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
-    N = networks.Network_Layer_From_nX(G, betas=betas, min_threshold_wt=alt_min)
+    N = networks.Network_Layer_From_nX(primal_graph, betas=betas, min_threshold_wt=alt_min)
     assert np.allclose(N.distances, alt_distances, atol=0.001, rtol=0)
 
     # check for malformed signatures
     with pytest.raises(TypeError):
         networks.Network_Layer_From_nX('boo', distances=distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(G)  # no betas or distances
+        networks.Network_Layer_From_nX(primal_graph)  # no betas or distances
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(G, distances=None, betas=None)
+        networks.Network_Layer_From_nX(primal_graph, distances=None, betas=None)
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(G, distances=[])
+        networks.Network_Layer_From_nX(primal_graph, distances=[])
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(G, betas=[])
+        networks.Network_Layer_From_nX(primal_graph, betas=[])
 
 
 def dict_check(m_dict, Network):
@@ -222,7 +217,6 @@ def dict_check(m_dict, Network):
         assert m_dict[uid]['x'] == Network._node_data[i][0]
         assert m_dict[uid]['y'] == Network._node_data[i][1]
         assert m_dict[uid]['live'] == Network._node_data[i][2]
-        assert m_dict[uid]['ghosted'] == Network._node_data[i][3]
 
         for c_key, c_val in Network.metrics['centrality'].items():
             for d_key, d_val in c_val.items():
@@ -252,23 +246,21 @@ def dict_check(m_dict, Network):
                                        atol=0.001, rtol=0)
 
 
-def test_metrics_to_dict():
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+def test_metrics_to_dict(primal_graph):
     # create a network layer and run some metrics
-    N = networks.Network_Layer_From_nX(G, distances=[500, 1000])
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[500, 1000])
 
     # check with no metrics
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
     # check with centrality metrics
-    N.compute_centrality(measures=['node_harmonic'])
+    N.compute_node_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
     # check with data metrics
-    data_dict = mock.mock_data_dict(G)
+    data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     numerical_data = mock.mock_numerical_data(len(data_dict))
     # TODO:
@@ -286,15 +278,13 @@ def test_metrics_to_dict():
     dict_check(metrics_dict, N)
 
 
-def test_to_networkX():
+def test_to_networkX(primal_graph):
     # also see test_graphs.test_networkX_from_graph_maps for underlying graph maps version
 
     # check round trip to and from graph maps results in same graph
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
     # explicitly set live and weight params for equality checks
     # graph_maps_from_networkX generates these implicitly if missing
-    G = graphs.nX_decompose(G, decompose_max=20)
+    G = graphs.nX_decompose(primal_graph, decompose_max=20)
     for n in G.nodes():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
     for s, e in G.edges():
@@ -313,7 +303,7 @@ def test_to_networkX():
 
     # test with metrics
     N = networks.Network_Layer_From_nX(G, distances=[500])
-    N.compute_centrality(measures=['node_harmonic'])
+    N.compute_node_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     G_round_trip = N.to_networkX()
     for n, d in G.nodes(data=True):
@@ -331,78 +321,138 @@ def test_to_networkX():
     assert G_round_trip[boo_edge[0]][boo_edge[1]]['baa'] == 'boo'
 
 
-def test_compute_centrality():
+def test_compute_centrality(primal_graph):
     '''
-    Underlying method also tested via test_networks.test_network_centralities
+    Underlying methods also tested via test_networks.test_network_centralities
     '''
-    G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # generate data structures
-    N = networks.Network_Layer_From_nX(G, distances)
+    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
     node_data = N._node_data
     edge_data = N._edge_data
     node_edge_map = N._node_edge_map
+
+    # CHECK NODE BASED
+    node_measures = ['node_density',
+                     'node_farness',
+                     'node_cycles',
+                     'node_harmonic',
+                     'node_beta',
+                     'node_betweenness',
+                     'node_betweenness_beta']
+    node_measures_ang = ['node_harmonic_angular',
+                         'node_betweenness_angular']
+
     # check measures against underlying method
-    N = networks.Network_Layer_From_nX(G, distances)
-    N.compute_centrality(measures=['node_density'])
+    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
+    N.compute_node_centrality(measures=['node_density'])
     # test against underlying method
-    measures_data = centrality.local_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                measure_keys=('node_density',))
+    measures_data = centrality.local_node_centrality(node_data,
+                                                     edge_data,
+                                                     node_edge_map,
+                                                     distances,
+                                                     betas,
+                                                     measure_keys=('node_density',))
     for d_idx, d_key in enumerate(distances):
         assert np.allclose(N.metrics['centrality']['node_density'][d_key], measures_data[0][d_idx])
     # also check the number of returned types for a few assortments of metrics
-    measures = ['node_density',
-                'node_farness',
-                'node_cycles',
-                'node_harmonic',
-                'segment_density',
-                'node_betweenness',
-                'segment_betweenness']
-    np.random.shuffle(measures)  # in place
+    np.random.shuffle(node_measures)  # in place
     # not necessary to do all labels, first few should do
     for min_idx in range(3):
-        measure_keys = np.array(measures[min_idx:])
-        N = networks.Network_Layer_From_nX(G, distances)
-        N.compute_centrality(measures=measures)
+        measure_keys = np.array(node_measures[min_idx:])
+        N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
+        N.compute_node_centrality(measures=node_measures)
         # test against underlying method
-        measures_data = centrality.local_centrality(node_data,
-                                                    edge_data,
-                                                    node_edge_map,
-                                                    distances,
-                                                    betas,
-                                                    measure_keys=tuple(measure_keys))
+        measures_data = centrality.local_node_centrality(node_data,
+                                                         edge_data,
+                                                         node_edge_map,
+                                                         distances,
+                                                         betas,
+                                                         measure_keys=tuple(measure_keys))
         for m_idx, measure_name in enumerate(measure_keys):
             for d_idx, d_key in enumerate(distances):
                 assert np.allclose(N.metrics['centrality'][measure_name][d_key],
                                    measures_data[m_idx][d_idx], atol=0.001, rtol=0)
     # check that angular gets passed through
-    N_ang = networks.Network_Layer_From_nX(G, distances=[2000])
-    N_ang.compute_centrality(measures=['node_harmonic_angular'], angular=True)
-    N = networks.Network_Layer_From_nX(G, distances=[2000])
-    N.compute_centrality(measures=['node_harmonic'], angular=False)
+    N_ang = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
+    N_ang.compute_node_centrality(measures=['node_harmonic_angular'], angular=True)
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
+    N.compute_node_centrality(measures=['node_harmonic'], angular=False)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
                            N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
                            N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
-        N.compute_centrality(measures=['spelling_typo'])
+        N.compute_node_centrality(measures=['spelling_typo'])
     with pytest.raises(ValueError):
-        N.compute_centrality(measures=['node_density', 'node_density'])
+        N.compute_node_centrality(measures=['node_density', 'node_density'])
     with pytest.raises(ValueError):
-        N.compute_centrality(measures=['harmonic_angle', 'node_harmonic_angular'])
+        N.compute_node_centrality(measures=['node_density', 'node_harmonic_angular'])
+
+    # CHECK SEGMENTISED
+    segment_measures = ['segment_density',
+                        'segment_harmonic',
+                        'segment_beta',
+                        'segment_betweenness']
+    segment_measures_ang = ['segment_harmonic_hybrid',
+                            'segment_betweeness_hybrid']
+
+    # check measures against underlying method
+    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
+    N.compute_segment_centrality(measures=['segment_density'])
+    # test against underlying method
+    measures_data = centrality.local_segment_centrality(node_data,
+                                                        edge_data,
+                                                        node_edge_map,
+                                                        distances,
+                                                        betas,
+                                                        measure_keys=('segment_density',))
+    for d_idx, d_key in enumerate(distances):
+        assert np.allclose(N.metrics['centrality']['segment_density'][d_key], measures_data[0][d_idx])
+    # also check the number of returned types for a few assortments of metrics
+    np.random.shuffle(segment_measures)  # in place
+    # not necessary to do all labels, first few should do
+    for min_idx in range(3):
+        measure_keys = np.array(segment_measures[min_idx:])
+        N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
+        N.compute_segment_centrality(measures=segment_measures)
+        # test against underlying method
+        measures_data = centrality.local_segment_centrality(node_data,
+                                                            edge_data,
+                                                            node_edge_map,
+                                                            distances,
+                                                            betas,
+                                                            measure_keys=tuple(measure_keys))
+        for m_idx, measure_name in enumerate(measure_keys):
+            for d_idx, d_key in enumerate(distances):
+                assert np.allclose(N.metrics['centrality'][measure_name][d_key],
+                                   measures_data[m_idx][d_idx], atol=0.001, rtol=0)
+    # check that angular gets passed through
+    N_ang = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
+    N_ang.compute_segment_centrality(measures=['segment_harmonic_hybrid'], angular=True)
+    N = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
+    N.compute_segment_centrality(measures=['segment_harmonic'], angular=False)
+    assert not np.allclose(N_ang.metrics['centrality']['segment_harmonic_hybrid'][2000],
+                           N.metrics['centrality']['segment_harmonic'][2000], atol=0.001, rtol=0)
+    assert not np.allclose(N_ang.metrics['centrality']['segment_harmonic_hybrid'][2000],
+                           N.metrics['centrality']['segment_harmonic'][2000], atol=0.001, rtol=0)
+    # check that typos, duplicates, and mixed angular / non-angular are caught
+    with pytest.raises(ValueError):
+        N.compute_segment_centrality(measures=['spelling_typo'])
+    with pytest.raises(ValueError):
+        N.compute_segment_centrality(measures=['segment_density', 'segment_density'])
+    with pytest.raises(ValueError):
+        N.compute_segment_centrality(measures=['segment_density', 'segment_harmonic_hybrid'])
+
+    # check that the deprecated method raises:
+    with pytest.raises(DeprecationWarning):
+        N.compute_centrality()
 
 
-def network_generator():
+def network_generator(primal_graph):
     for betas in [[-0.008], [-0.008, -0.002, -0.0]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
-            G = mock.mock_graph()
-            G = graphs.nX_simple_geoms(G)
-            yield G, distances, betas, angular
+            yield primal_graph, distances, betas, angular

@@ -683,7 +683,7 @@ def nX_decompose(networkX_graph: nx.Graph, decompose_max: float) -> nx.Graph:
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
             # add the new node and edge
-            g_copy.add_node(new_node_id, x=x, y=y, ghosted=True)
+            g_copy.add_node(new_node_id, x=x, y=y)
             # add and set live property if present in parent graph
             if 'live' in networkX_graph.nodes[s] and 'live' in networkX_graph.nodes[e]:
                 live = True
@@ -840,7 +840,7 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
     # prepare the node and edge maps
     node_uids = []
     # float - for consistency - requires higher accuracy for x, y work
-    node_data = np.full((g_copy.number_of_nodes(), 4), np.nan, dtype=np.float64)
+    node_data = np.full((g_copy.number_of_nodes(), 3), np.nan, dtype=np.float64)
     # float - allows for nan and inf - float32 should be ample...
     edge_data = np.full((total_out_degrees, 7), np.nan, dtype=np.float32)
     # nodes have a one-to-many mapping to edges
@@ -872,12 +872,6 @@ def graph_maps_from_nX(networkX_graph: nx.Graph) -> Tuple[tuple, np.ndarray, np.
             node_data[node_idx][2] = d['live']
         else:
             node_data[node_idx][2] = True
-
-        # NODE MAP INDEX POSITION 3 = ghosted
-        if 'ghosted' in d:
-            node_data[node_idx][3] = d['ghosted']
-        else:
-            node_data[node_idx][3] = False
 
         # build edges
         out_edges = []
@@ -991,11 +985,10 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     logger.info('Unpacking node data.')
     for uid, node in tqdm(zip(node_uids, node_data), disable=checks.quiet_mode):
-        x, y, live, ghosted = node
+        x, y, live = node
         g_copy.nodes[uid]['x'] = x
         g_copy.nodes[uid]['y'] = y
         g_copy.nodes[uid]['live'] = bool(live)
-        g_copy.nodes[uid]['ghosted'] = bool(ghosted)
 
     logger.info('Unpacking edge data.')
     for edge in tqdm(edge_data, disable=checks.quiet_mode):
@@ -1007,9 +1000,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                         end_uid,
                         length=length,
                         angle_sum=angle_sum,
-                        imp_factor=imp_factor,
-                        start_bearing=start_bearing,
-                        end_bearing=end_bearing)
+                        imp_factor=imp_factor)
 
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
