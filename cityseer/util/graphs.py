@@ -171,7 +171,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
         assert np.allclose(_new_agg_geom.coords[-1], (s_x, s_y), atol=0.001, rtol=0)
         return _new_agg_geom
 
-    def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node):
+    def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node, stairway=False):
 
         # if the next node has a degree of 2, then follow the chain
         # for disconnected components, check that the next node is not back at the start node...
@@ -198,12 +198,34 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
             if _new_next == start_node:
                 _new_agg_geom = manual_weld(_G, start_node, new_geom, agg_geom)
             else:
+                # if collapsing a stairway where an upper stair landing matches a lower stair landing coord in 2D
+                # detect per both ends of new_geom touching both ends of the agg_geom
+                if new_geom.coords[0] in agg_geom.coords and new_geom.coords[1] in agg_geom.coords:
+                    # in these cases ops.linemerge will create a MultiLineString (at the next iteration)
+                    # the stairway flag indicates that a MultiLineString vs LineString type exceptions will be expected
+                    stairway = True
                 _new_agg_geom = ops.linemerge([agg_geom, new_geom])
+            # catch MultiLineStrings for stairways
+            if _new_agg_geom.type == 'MultiLineString' and stairway:
+                # drop the looped geometry
+                # TODO: may need to add case where more than two geoms exist (if loop doesn't coincide with start)
+                # test against stairway at lat, lng = (51.493, -0.06393)
+                assert len(_new_agg_geom.geoms) == 2
+                line_a = _new_agg_geom.geoms[0]
+                line_b = _new_agg_geom.geoms[1]
+                if line_a.coords[0][:2] == line_a.coords[-1][:2]:
+                    assert line_b.coords[0][:2] != line_b.coords[-1][:2]
+                    _new_agg_geom = line_b
+                else:
+                    assert line_a.coords[0][:2] != line_a.coords[-1][:2]
+                    _new_agg_geom = line_a
+                # reset flag
+                stairway = False
             if _new_agg_geom.type != 'LineString':
                 raise TypeError(
                     f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}.'
                     f'Check that the adjacent LineStrings in the vicinity of {curr_node}-{next_node} are not corrupted.')
-            return recursive_weld(_G, start_node, _new_agg_geom, agg_del_nodes, _new_curr, _new_next)
+            return recursive_weld(_G, start_node, _new_agg_geom, agg_del_nodes, _new_curr, _new_next, stairway)
         else:
             end_node = next_node
             return agg_geom, agg_del_nodes, end_node
