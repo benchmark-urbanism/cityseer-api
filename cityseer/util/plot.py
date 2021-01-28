@@ -93,7 +93,10 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
         plt.show()
 
 
-def plot_nX(networkX_graph: nx.Graph, path: str = None, labels: bool = False, colour: (list, tuple, np.ndarray) = None,
+def plot_nX(networkX_graph: nx.Graph,
+            path: str = None,
+            labels: bool = False,
+            colour: (list, tuple, np.ndarray) = None,
             **kwargs):
     return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour, **kwargs)
 
