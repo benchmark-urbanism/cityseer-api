@@ -99,7 +99,7 @@ plt.clf()
 plot.plot_nX(G_clean_spatial, 'graph_clean_spatial.png', dpi=150, figsize=(20, 20))
 
 # parallel cleanup
-G_clean_parallel = graphs.nX_consolidate_parallel(G_messy_decomp)
+G_clean_parallel = graphs.nX_split_opposing_geoms(G_messy_decomp)
 plt.cla()
 plt.clf()
 plot.plot_nX(G_clean_parallel, 'graph_clean_parallel.png', dpi=150, figsize=(20, 20))

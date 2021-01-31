@@ -3,8 +3,7 @@ General graph manipulation
 '''
 import json
 import logging
-from typing import Union, Tuple
-import uuid
+from typing import Union, Tuple, List
 
 import networkx as nx
 from numba import types
@@ -397,8 +396,8 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
 
 
 def _weld_parallel_edges(_multi_graph: nx.MultiGraph,
-                         use_midline: bool = False,
-                         max_length_discrepancy_ratio: float = 1.1) -> nx.Graph:
+                         use_midline: bool,
+                         max_length_discrepancy_ratio: float) -> nx.Graph:
     """
     Checks a multiGraph for duplicate edges.
     These are removed using either a midline method, else the shortest of the duplicate edges.
@@ -452,22 +451,43 @@ def _weld_parallel_edges(_multi_graph: nx.MultiGraph,
     return deduped_graph
 
 
-def _create_strtree(_graph: nx.Graph) -> strtree.STRtree:
-    # create an STRtree
+def scrape_points(_graph: nx.Graph) -> List:
     points = []
-    for n, n_d in _graph.nodes(data=True):
+    for n, d in _graph.nodes(data=True):
         # x coordinate
-        if 'x' not in _graph.nodes[n]:
+        if 'x' not in d:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        x = _graph.nodes[n]['x']
+        x = d['x']
         # y coordinate
-        if 'y' not in _graph.nodes[n]:
+        if 'y' not in d:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        y = _graph.nodes[n]['y']
+        y = d['y']
         p = geometry.Point(x, y)
         p.uid = n
         points.append(p)
+    return points
+
+
+def scrape_lines(_graph: nx.Graph) -> List:
+    lines = []
+    for s, e, d in _graph.edges(data=True):
+        if 'geom' not in d:
+            raise KeyError(f'Encountered edge missing "geom" attribute.')
+        linestring = d['geom']
+        linestring.start_uid = s
+        linestring.end_uid = e
+        lines.append(linestring)
+    return lines
+
+
+def _create_nodes_strtree(_graph: nx.Graph) -> strtree.STRtree:
+    points = scrape_points(_graph)
     return strtree.STRtree(points)
+
+
+def _create_edges_strtree(_graph: nx.Graph) -> strtree.STRtree:
+    lines = scrape_lines(_graph)
+    return strtree.STRtree(lines)
 
 
 def nX_consolidate_spatial(networkX_graph: nx.Graph,
@@ -475,7 +495,7 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
                            min_node_threshold: int = 2,
                            use_midline: bool = False,
                            highest_degree: bool = False,
-                           max_length_discrepancy_ratio: float = 1.1) -> nx.Graph:
+                           max_length_discrepancy_ratio: float = 1.2) -> nx.Graph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
     """
@@ -486,8 +506,8 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
     _multi_graph = nx.MultiGraph()
     _multi_graph.add_nodes_from(networkX_graph.nodes(data=True))
     _multi_graph.add_edges_from(networkX_graph.edges(data=True))
-    # create an STRtree
-    tree = _create_strtree(networkX_graph)
+    # create a nodes STRtree
+    nodes_tree = _create_nodes_strtree(networkX_graph)
     # keep track of removed nodes
     removed_nodes = set()
     # iterate origin graph, remove overlapping nodes within buffer, replace with new
@@ -496,7 +516,7 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
         if n in removed_nodes:
             continue
         # get all other nodes within buffer distance
-        js = tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
+        js = nodes_tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
         # if only self-node, then continue
         if len(js) <= 1:
             continue
@@ -516,197 +536,97 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
             _multi_graph = _squash_adjacent(_multi_graph, node_group, highest_degree)
     # squashing nodes can result in edge duplicates
     deduped_graph = _weld_parallel_edges(_multi_graph,
-                                         use_midline=use_midline,
-                                         max_length_discrepancy_ratio=max_length_discrepancy_ratio)
+                                         use_midline,
+                                         max_length_discrepancy_ratio)
 
     return deduped_graph
 
 
-def _find_parallel(_multi_graph: nx.MultiGraph,
-                   _line_start_nd,
-                   _line_end_nd,
-                   _parallel_nd,
-                   _buffer_dist) -> Union[None, Tuple]:
-    """
-    Checks whether node _parallel_nd is within _buffer_dist of a line geom.
-    The line geom is retrieved from the edge between _line_start_nd and _line_end_nd.
-    The nearest point on the line geom is then checked for parallelism to _parallel_nd
-    """
-    if not isinstance(_multi_graph, nx.MultiGraph):
-        raise TypeError('This method requires an undirected networkX multi-graph (for multiple edges).')
-    # select first out of multi-edges
-    # TODO: multi edges? Select first?
-    line_geom = _multi_graph[_line_start_nd][_line_end_nd][0]['geom']
-    p_x = _multi_graph.nodes[_parallel_nd]['x']
-    p_y = _multi_graph.nodes[_parallel_nd]['y']
-    parallel_point = geometry.Point(p_x, p_y)
-    # returns tuple of nearest from respective input geoms
-    # want the nearest point on the line at index 1
-    nearest_point = ops.nearest_points(parallel_point, line_geom)[-1]
-    # check if the distance from the parallel point to the nearest point is within buffer distance
-    if parallel_point.distance(nearest_point) > _buffer_dist:
-        return None
-    # in some cases the line will be pointing away, but is still short enough to be within max
-    # in these cases, check that the closest point is not actually the start of the line geom (or very near to it)
-    s_x = _multi_graph.nodes[_line_start_nd]['x']
-    s_y = _multi_graph.nodes[_line_start_nd]['y']
-    line_start_point = geometry.Point(s_x, s_y)
-    if nearest_point.distance(line_start_point) < 1:
-        return None
-    # if a valid nearest point has been found, go ahead and split the geom
-    # use a snap because rounding precision errors will otherwise cause issues
-    split_geoms = ops.split(ops.snap(line_geom, nearest_point, 0.01), nearest_point)
-    # if (relatively rare) the split is still not successful
-    if len(split_geoms) != 2:
-        logger.warning(f'Attempt to split line geom for {_line_start_nd}-{_line_end_nd} did not return two geoms: '
-                       f'{split_geoms}')
-        return None
-    # otherwise, unpack the geoms
-    part_a, part_b = split_geoms
-    # generate a new node name by concatenating the source nodes
-    # TODO: ponder whether to consider more than one break in existing geom?
-    new_nd_name = f'{_line_start_nd}_{_line_end_nd}'
-    if new_nd_name in _multi_graph:
-        logger.warning(f'Abandoning splice at on {_line_start_nd} to {_line_end_nd} (parallel of {_parallel_nd})')
-        return None
-    _multi_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
-    _multi_graph.add_edge(_line_start_nd, new_nd_name)
-    _multi_graph.add_edge(_line_end_nd, new_nd_name)
-    # TODO: is it necessary to check for more than one geom?
-    # If more than one geom the 0 edge index has to be reworked
-    if np.allclose((s_x, s_y), part_a.coords[0][:2], atol=0.001, rtol=0) or \
-            np.allclose((s_x, s_y), part_a.coords[-1][:2], atol=0.001, rtol=0):
-        _multi_graph[_line_start_nd][new_nd_name][0]['geom'] = part_a
-        _multi_graph[_line_end_nd][new_nd_name][0]['geom'] = part_b
-    else:
-        # double check matching geoms
-        if not np.allclose((s_x, s_y), part_b.coords[0][:2], atol=0.001, rtol=0) and \
-                not np.allclose((s_x, s_y), part_b.coords[-1][:2], atol=0.001, rtol=0):
-            raise ValueError('Unable to match split geoms to existing nodes')
-        _multi_graph[_line_start_nd][new_nd_name][0]['geom'] = part_b
-        _multi_graph[_line_end_nd][new_nd_name][0]['geom'] = part_a
-
-    # the existing edge should be removed later to avoid in-place errors during loop cycle
-    # also return the parallel point and the newly paired parallel node
-    return (_line_start_nd, _line_end_nd), (_parallel_nd, new_nd_name)
-
-
-def nX_consolidate_parallel(networkX_graph: nx.Graph,
+def nX_split_opposing_geoms(networkX_graph: nx.Graph,
                             buffer_dist: float = 10,
-                            min_node_threshold: int = 2,
                             use_midline: bool = False,
-                            highest_degree: bool = False,
-                            max_length_discrepancy_ratio: float = 1.1) -> nx.Graph:
+                            max_length_discrepancy_ratio: float = 1.2) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
     logger.info(f'Consolidating network by parallel edges.')
     _multi_graph = nx.MultiGraph()
     _multi_graph.add_nodes_from(networkX_graph.nodes(data=True))
     _multi_graph.add_edges_from(networkX_graph.edges(data=True))
-    # create an STRtree
-    tree = _create_strtree(networkX_graph)
-    # keep track of removed nodes
-    removed_nodes = set()
-    # keep track of manually split node locations for post-processing
-    merge_pairs = []
+    # create an edges STRtree (nodes and edges)
+    edges_tree = _create_edges_strtree(networkX_graph)
     # iterate origin graph
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
-        # skip if already consolidated from an adjacent node
-        if n in removed_nodes:
-            continue
-        # get all other nodes within buffer distance
-        js = tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
-        # if only self-node, then continue
-        if len(js) <= 1:
-            continue
-        # keep track of the uids to be consolidated
-        node_group = set()
-        # delay removals until after each iteration of loop to avoid in-place modification errors
-        removals = []
-        # iterate each node's neighbours
-        # check if any of the neighbour's neighbours are within the buffer distance of other direct neighbours
-        # if so, parallel set of edges may have been found
-        nbs = list(nx.neighbors(_multi_graph, n))
-        for j_point in js:
-            j = j_point.uid
-            # ignore self-node
-            if j == n:
+        # prepare a list of out edges
+        neighbours = list(networkX_graph.neighbors(n))
+        out_edges_str = [sorted((str(n), str(nb))) for nb in neighbours]
+        # get all other edges within the buffer distance
+        edges = edges_tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
+        # filter out edges that are not direct neighbours
+        gapped_edges = []
+        for edge_geom in edges:
+            s = edge_geom.start_uid
+            e = edge_geom.end_uid
+            if sorted((str(s), str(e))) not in out_edges_str:
+                gapped_edges.append((s, e, edge_geom))
+        # prepare the root node's point geom
+        n_geom = geometry.Point(n_d['x'], n_d['y'])
+        # iter gapped edges
+        for s, e, edge_geom in gapped_edges:
+            # see if start node is within buffer distance already
+            s_d = networkX_graph.nodes[s]
+            if geometry.Point(s_d['x'], s_d['y']).distance(n_geom) <= buffer_dist:
                 continue
-            # only review if not already in the removed nodes,
-            if j in removed_nodes:
+            # likewise for end node
+            e_d = networkX_graph.nodes[e]
+            if geometry.Point(e_d['x'], e_d['y']).distance(n_geom) <= buffer_dist:
                 continue
-            # matching can happen in one of several situations, so use a flag
-            matched = False
-            # cross check n's neighbours against j's neighbours
-            # if they have respective neighbours within buffer dist of each other, then merge
-            j_nbs = list(nx.neighbors(_multi_graph, j))
-            for n_nb in nbs:
-                # skip this neighbour if already removed
-                if n_nb in removed_nodes:
-                    continue
-                # if j is a direct neighbour to n, then ignore
-                if n_nb == j:
-                    continue
-                # get the n node neighbour and create a point
-                n_nb_point = geometry.Point(_multi_graph.nodes[n_nb]['x'], _multi_graph.nodes[n_nb]['y'])
-                # compare against j node neighbours
-                for j_nb in j_nbs:
-                    # skip this neighbour if already removed
-                    if j_nb in removed_nodes:
-                        continue
-                    # don't match against origin node
-                    if j_nb == n:
-                        continue
-                    # if the respective neighbours are the same node, then match
-                    if n_nb == j_nb:
-                        matched = True
-                        break
-                    # otherwise, get the j node neighbour and create a point
-                    j_nb_point = geometry.Point(_multi_graph.nodes[j_nb]['x'], _multi_graph.nodes[j_nb]['y'])
-                    # check whether the neighbours are within the buffer distance of each other
-                    if n_nb_point.distance(j_nb_point) < buffer_dist:
-                        matched = True
-                        break
-                    # if not, then check along length of lines
-                    # this is necessary for situations where certain lines are broken by other links
-                    # i.e. where nodes are out of lock-step
-                    # check first for j_nb point against n - n_nb line geom
-                    response = _find_parallel(_multi_graph, n, n_nb, j_nb, buffer_dist)
-                    if response is not None:
-                        removal_pair, merge_pair = response
-                        removals.append(removal_pair)
-                        merge_pairs.append(merge_pair)
-                        matched = True
-                        break
-                    # similarly check for n_nb point against j - j_nb line geom
-                    response = _find_parallel(_multi_graph, j, j_nb, n_nb, buffer_dist)
-                    if response is not None:
-                        removal_pair, merge_pair = response
-                        removals.append(removal_pair)
-                        merge_pairs.append(merge_pair)
-                        matched = True
-                        break
-                # break out if match found
-                if matched:
+            # TODO: refine split cases
+
+            # otherwise, project a point and split the opposing geom
+            # ops.nearest_points returns tuple of nearest from respective input geoms
+            # want the nearest point on the line at index 1
+            nearest_point = ops.nearest_points(n_geom, edge_geom)[-1]
+            # if a valid nearest point has been found, go ahead and split the geom
+            # use a snap because rounding precision errors will otherwise cause issues
+            split_geoms = ops.split(ops.snap(edge_geom, nearest_point, 0.01), nearest_point)
+            # in some cases the line will be pointing away, but is still near enough to be within max
+            # in these cases a single geom will be returned
+            if len(split_geoms) < 2:
+                continue
+            new_edge_geom_a, new_edge_geom_b = split_geoms
+            # generate a new node name by concatenating the source nodes
+            idx = 0
+            while True:
+                new_nd_name = f'{s}_{e}_{idx}'
+                if new_nd_name not in _multi_graph:
                     break
-            # if successful match, go ahead and add a new parent node, and merge n and j
-            if matched:
-                node_group.update([n, j])
-                removed_nodes.update([n, j])
-        for s, e in removals:
-            # in some cases, the edge may not exist anymore
-            if (s, e) in _multi_graph.edges():
+                idx += 1
+            # add the new node and edges to _multi_graph (don't modify networkX_graph because of iter in place)
+            _multi_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
+            _multi_graph.add_edge(s, new_nd_name)
+            _multi_graph.add_edge(e, new_nd_name)
+            # TODO: more than one splice??
+            if np.allclose((s_d['x'], s_d['y']), new_edge_geom_a.coords[0][:2], atol=0.001, rtol=0) or \
+                    np.allclose((s_d['x'], s_d['y']), new_edge_geom_a.coords[-1][:2], atol=0.001, rtol=0):
+                _multi_graph[s][new_nd_name][0]['geom'] = new_edge_geom_a
+                _multi_graph[e][new_nd_name][0]['geom'] = new_edge_geom_b
+            else:
+                # double check matching geoms
+                if not np.allclose((s_d['x'], s_d['y']), new_edge_geom_b.coords[0][:2], atol=0.001, rtol=0) and \
+                        not np.allclose((s_d['x'], s_d['y']), new_edge_geom_b.coords[-1][:2], atol=0.001, rtol=0):
+                    raise ValueError('Unable to match split geoms to existing nodes')
+                _multi_graph[s][new_nd_name][0]['geom'] = new_edge_geom_b
+                _multi_graph[e][new_nd_name][0]['geom'] = new_edge_geom_a
+            # drop the old edge from _multi_graph (don't modify networkX_graph because of iter in place)
+            # TODO: more than one splice?
+            if _multi_graph.has_edge(s, e):
                 _multi_graph.remove_edge(s, e)
-        if node_group and len(node_group) >= min_node_threshold:
-            _multi_graph = _squash_adjacent(_multi_graph, node_group, highest_degree)
-    for pair in merge_pairs:
-        # in some cases one of the pair of nodes may not exist anymore
-        if pair[0] in _multi_graph and pair[1] in _multi_graph:
-            _multi_graph = _squash_adjacent(_multi_graph, pair, highest_degree)
+
     # squashing nodes can result in edge duplicates
     deduped_graph = _weld_parallel_edges(_multi_graph,
-                                         use_midline=use_midline,
-                                         max_length_discrepancy_ratio=max_length_discrepancy_ratio)
+                                         use_midline,
+                                         max_length_discrepancy_ratio)
+
     return deduped_graph
 
 

@@ -129,7 +129,7 @@ G = graphs.nX_decompose(G, decompose_max=50)
 # simplify split roadways
 # some experimentation may be required to find the optimal buffer distance
 # setting it too large, will deteriorate the quality of the network
-G = graphs.nX_consolidate_parallel(G, buffer_dist=15)
+G = graphs.nX_split_opposing_geoms(G, buffer_dist=15)
 
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```

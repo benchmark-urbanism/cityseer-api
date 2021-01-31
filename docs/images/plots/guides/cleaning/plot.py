@@ -54,7 +54,7 @@ plt.clf()
 plot.plot_nX(G_messy, 'graph_topo.png', dpi=150, figsize=(20, 20))
 
 G_messy = graphs.nX_decompose(G_messy, 50)
-G_messy = graphs.nX_consolidate_parallel(G_messy)
+G_messy = graphs.nX_split_opposing_geoms(G_messy)
 plt.cla()
 plt.clf()
 plot.plot_nX(G_messy, 'graph_consolidated.png', dpi=150, figsize=(20, 20))

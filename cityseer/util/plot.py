@@ -3,6 +3,7 @@ These plot methods are mainly for testing and debugging
 '''
 import matplotlib.pyplot as plt
 from matplotlib import colors
+from matplotlib.collections import LineCollection
 import networkx as nx
 import numpy as np
 from shapely import geometry
@@ -18,74 +19,120 @@ success = '#2e7d32'
 background = '#2e2e2e'
 
 
-def plot_nX_primal_or_dual(primal: nx.Graph = None,
-                           dual: nx.Graph = None,
+def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
+                           dual_graph: nx.Graph = None,
                            path: str = None,
                            labels: bool = False,
-                           primal_colour: (tuple, list, np.ndarray) = None,
-                           dual_colour: (tuple, list, np.ndarray) = None,
+                           primal_node_colour: (str, tuple, list) = None,
+                           primal_edge_colour: (str, tuple, list) = None,
+                           dual_node_colour: (str, tuple, list) = None,
+                           dual_edge_colour: (str, tuple, list) = None,
+                           plot_geoms: bool = False,
+                           x_lim: (tuple, list) = None,
+                           y_lim: (tuple, list) = None,
                            **kwargs):
-    plt.figure(**kwargs)
-
+    # cleanup old plots
+    plt.ioff()
+    plt.close('all')
+    plt.cla()
+    plt.clf()
+    # create new plot
+    fig, ax = plt.subplots(1, 1, **kwargs)
+    # setup params
     alpha = 0.75
     node_size = 30
     if labels:
         alpha = 0.95
         node_size = 70
 
-    if primal is not None:
-
-        pos_primal = {}
-        for n, d in primal.nodes(data=True):
-            pos_primal[n] = (d['x'], d['y'])
-
-        if primal_colour is not None:
-            if not (len(primal_colour) == 1 or len(primal_colour) == len(primal)):
-                raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
-                                 'the number of nodes in the graph.')
-            node_colour = primal_colour
+    # setup a function that can be used for either the primal or dual graph
+    def plot_graph(_graph, _is_primal, _node_colour, _node_shape, _edge_colour, _edge_style):
+        if not len(_graph.nodes()):
+            raise ValueError('Graph contains no nodes to plot.')
+        # setup a node colour list if nodes are individually coloured, this is for filtering by extents
+        if _node_colour is not None:
+            if not isinstance(_node_colour, (str, list, tuple)):
+                raise ValueError('Node colours should be a colour string, else a list or tuple of colours.')
+            if isinstance(_node_colour, (list, tuple)) and (len(_node_colour) != 1 or len(_node_colour) != len(_graph)):
+                raise ValueError('A list or tuple of node colours should match the number of nodes in the graph.')
         else:
-            node_colour = secondary
-
-        nx.draw(primal, pos_primal,
+            if _is_primal:
+                _node_colour = secondary
+            else:
+                _node_colour = info
+        if _edge_colour is not None:
+            if not isinstance(_edge_colour, str):
+                raise ValueError('Edge colours should be a string representing a single colour.')
+        else:
+            if _is_primal:
+                _edge_colour = 'w'
+            else:
+                _edge_colour = '#999999'
+        pos = {}
+        node_list = []
+        colour_list = []
+        for n_idx, (n, d) in enumerate(_graph.nodes(data=True)):
+            x = d['x']
+            y = d['y']
+            # add to the pos dictionary regardless (otherwise nx.draw throws an error)
+            pos[n] = (d['x'], d['y'])
+            # filter out nodes not within the extnets
+            if x_lim and (x < x_lim[0] or x > x_lim[1]):
+                continue
+            if y_lim and (y < y_lim[0] or y > y_lim[1]):
+                continue
+            # add to the node list
+            node_list.append(n)
+            # and add to the node colour list if node colours are a list or tuple
+            if isinstance(_node_colour, (list, tuple)):
+                colour_list.append(_node_colour[n_idx])
+        if not len(node_list):
+            raise ValueError('All nodes have been filtered out by the x_lim / y_lim parameter: check your extents')
+        # update the node colours to the filtered list of colours if necessary
+        if isinstance(_node_colour, (list, tuple)):
+            _node_colour = colour_list
+        # plot edges manually for geoms
+        edge_list = []
+        edge_geoms = []
+        for s, e, data in _graph.edges(data=True):
+            # filter out if start and end nodes are not in the active node list
+            if s not in node_list or e not in node_list:
+                continue
+            if plot_geoms:
+                x_arr, y_arr = data['geom'].coords.xy
+                edge_geoms.append(tuple(zip(x_arr, y_arr)))
+            else:
+                edge_list.append((s, e))
+        # plot geoms manually if required
+        if plot_geoms:
+            lines = LineCollection(edge_geoms, colors=_edge_colour)
+            ax.add_collection(lines)
+        # go ahead and plot: note that edge_list will be empty if plotting geoms
+        nx.draw(_graph,
+                pos=pos,
+                ax=ax,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
                 font_weight='bold',
-                node_color=node_colour,
+                nodelist=node_list,
+                node_color=_node_colour,
                 node_size=node_size,
-                node_shape='o',
-                edge_color='w',
+                node_shape=_node_shape,
+                edgelist=edge_list,
+                edge_color=_edge_colour,
+                style=_edge_style,
                 width=1,
                 alpha=alpha)
 
-    if dual is not None:
-
-        pos_dual = {}
-        for n, d in dual.nodes(data=True):
-            pos_dual[n] = (d['x'], d['y'])
-
-        if dual_colour is not None:
-            if not (len(dual_colour) == 1 or len(dual_colour) == len(dual)):
-                raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
-                                 'the number of nodes in the graph.')
-            node_colour = dual_colour
-        else:
-            node_colour = info
-
-        nx.draw(dual, pos_dual,
-                with_labels=labels,
-                font_size=5,
-                font_color='w',
-                font_weight='bold',
-                node_color=node_colour,
-                node_size=node_size,
-                node_shape='d',
-                edge_color='#999999',
-                style='dashed',
-                width=1,
-                alpha=alpha)
-
+    if primal_graph is not None:
+        plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid')
+    if dual_graph is not None:
+        plot_graph(primal_graph, True, dual_node_colour, 'd', dual_edge_colour, 'dashed')
+    if x_lim:
+        plt.xlim(*x_lim)
+    if y_lim:
+        plt.ylim(*y_lim)
     if path:
         plt.savefig(path, facecolor=background)
     else:
@@ -96,9 +143,21 @@ def plot_nX_primal_or_dual(primal: nx.Graph = None,
 def plot_nX(networkX_graph: nx.Graph,
             path: str = None,
             labels: bool = False,
-            colour: (list, tuple, np.ndarray) = None,
+            node_colour: (str, tuple, list) = None,
+            edge_colour: (str, tuple, list) = None,
+            plot_geoms: bool = False,
+            x_lim: (tuple, list) = None,
+            y_lim: (tuple, list) = None,
             **kwargs):
-    return plot_nX_primal_or_dual(primal=networkX_graph, path=path, labels=labels, primal_colour=colour, **kwargs)
+    return plot_nX_primal_or_dual(primal_graph=networkX_graph,
+                                  path=path,
+                                  labels=labels,
+                                  primal_node_colour=node_colour,
+                                  primal_edge_colour=edge_colour,
+                                  plot_geoms=plot_geoms,
+                                  x_lim=x_lim,
+                                  y_lim=y_lim,
+                                  **kwargs)
 
 
 def plot_assignment(Network_Layer,
