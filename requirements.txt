@@ -1,9 +1,9 @@
-numpy
-numba>=0.49.0
-utm
-shapely>=1.7.0
-networkx>=2.4
-tqdm
 matplotlib
-sklearn
+networkx>=2.4
+numpy
+numba>=0.52.0
 pytest
+shapely>=1.7.0
+sklearn
+tqdm
+utm

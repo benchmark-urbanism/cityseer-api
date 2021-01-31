@@ -205,6 +205,8 @@ def test_nX_remove_dangling_nodes(primal_graph):
 
 
 def test_nX_remove_filler_nodes(primal_graph):
+    # TODO: add a test for stairs (i.e. OSM) where node coordinates collapse in 2D
+
     # test that redundant intersections are removed, i.e. where degree == 2
     G_messy = make_messy_graph(primal_graph)
 
@@ -325,7 +327,7 @@ def test_nX_consolidate():
     nodes = [
         (0, {'x': 700620, 'y': 5719720}),
         (1, {'x': 700620, 'y': 5719700}),
-        (2, {'x': 700660, 'y': 5719720}),
+        #(2, {'x': 700660, 'y': 5719720}),
         (3, {'x': 700660, 'y': 5719700}),
         (4, {'x': 700660, 'y': 5719660}),
         (5, {'x': 700700, 'y': 5719800}),
@@ -333,53 +335,57 @@ def test_nX_consolidate():
         (7, {'x': 700700, 'y': 5719720}),
         (8, {'x': 700720, 'y': 5719720}),
         (9, {'x': 700700, 'y': 5719700}),
-        (10, {'x': 700720, 'y': 5719700}),
+        #(10, {'x': 700720, 'y': 5719700}),
         (11, {'x': 700700, 'y': 5719620}),
         (12, {'x': 700720, 'y': 5719620}),
         (13, {'x': 700760, 'y': 5719760}),
         (14, {'x': 700800, 'y': 5719760}),
         (15, {'x': 700780, 'y': 5719720}),
-        (16, {'x': 700780, 'y': 5719700}),
+        #(16, {'x': 700780, 'y': 5719700}),
         (17, {'x': 700840, 'y': 5719720}),
         (18, {'x': 700840, 'y': 5719700})]
     edges = [
-        (0, 2),
-        (0, 2),
+        # (0, 2),
+        (0, 7),  # new
         (1, 3),
-        (2, 3),
-        (2, 7),
+        # (2, 3),
+        # (2, 7),
         (3, 4),
         (3, 9),
         (5, 7),
         (6, 8),
         (7, 8),
         (7, 9),
-        (8, 10),
+        # (8, 10),
+        (8, 12),  # new
         (8, 15),
         (9, 11),
-        (9, 10),
-        (10, 12),
-        (10, 16),
+        # (9, 10),
+        (9, 18),  # new
+        # (10, 12),
+        # (10, 16),
         (13, 14),
         (13, 15),
         (14, 15),
-        (15, 16),
-        (15, 17),
-        (16, 18)
+        # (15, 16),
+        (15, 17)
+        # (16, 18)
     ]
     G.add_nodes_from(nodes)
     G.add_edges_from(edges)
 
     G = graphs.nX_simple_geoms(G)
     # behaviour confirmed visually
-    # from cityseer.util import plot
-    # plot.plot_nX(G, labels=True)
+    from cityseer.util import plot
+    plot.plot_nX(G, labels=True, plot_geoms=True)
 
     # simplify first to test lollipop self-loop from node 15
     G = graphs.nX_remove_filler_nodes(G)
-    # plot.plot_nX(G, labels=True, figsize=(10, 10), dpi=150)
-    G_merged_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=25)
-    # plot.plot_nX(G_merged_parallel, labels=True, figsize=(10, 10), dpi=150)
+    plot.plot_nX(G, labels=True, plot_geoms=True)
+    G_merged_parallel = graphs.nX_split_opposing_geoms(G, buffer_dist=25, use_midline=True)
+    plot.plot_nX(G_merged_parallel, labels=True, plot_geoms=True)
+    G_merged_spatial = graphs.nX_consolidate_spatial(G_merged_parallel, buffer_dist=25, use_midline=True)
+    plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
 
     assert G_merged_parallel.number_of_nodes() == 8
     assert G_merged_parallel.number_of_edges() == 8
@@ -445,7 +451,7 @@ def test_nX_consolidate():
         # plot.plot_nX(G, figsize=(10, 10), dpi=150)
         G_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=15)
         # plot.plot_nX(G_spatial, figsize=(10, 10), dpi=150)
-        G_parallel = graphs.nX_consolidate_parallel(G, buffer_dist=14)
+        G_parallel = graphs.nX_split_opposing_geoms(G, buffer_dist=14)
         # plot.plot_nX(G_parallel, figsize=(10, 10), dpi=150)
 
 

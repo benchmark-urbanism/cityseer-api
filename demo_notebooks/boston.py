@@ -1,25 +1,27 @@
 # %%
-import requests
-import fiona
-from shapely import geometry
-import utm
+from cityseer.metrics import networks
+from cityseer.util import graphs, plot
+from matplotlib import colors
 import numpy as np
 import networkx as nx
-from cityseer.util import graphs
-from cityseer.metrics import networks
-import matplotlib.pyplot as plt
-from matplotlib import colors
+import requests
+from shapely import geometry
+import utm
 
-#  %%
+import importlib
+
+importlib.reload(graphs)
+
+# %%
 # QUICK OPTION - 20km radius
-lat, lng = (42.360081, -71.058884)
+lat, lng = (51.51342151135985, -0.1386875041450292)
 # cast the WGS coordinates to UTM prior to buffering
 easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
 # create a point, and then buffer
 pt = geometry.Point(easting, northing)
-poly_utm = pt.buffer(50000)
+poly_utm = pt.buffer(350)
 
-#  %%
+# %%
 '''
 # FULL OPTION: USE SHAPEFILE
 # import shapefile (it was exported to EPSG 4326 CRS)
@@ -59,7 +61,7 @@ print(f'UTM geometry area: {poly_utm.area}')
 print(f'UTM geometry width: {poly_utm.bounds[2] - poly_utm.bounds[0]}')
 '''
 
-#  %%
+# %%
 # convert back to WGS
 # the polygon is too big for the OSM server, so have to use convex hull then later prune
 geom = [utm.to_latlon(east, north, utm_zone_number, utm_zone_letter) for east, north in
@@ -71,12 +73,66 @@ geom_osm = str.join(' ', [f'{lat} {lng}' for lat, lng in poly_wgs.exterior.coord
 
 # osm query
 timeout = 60 * 10  # 10 minutes
-filters = '["area"!~"yes"]' \
-          '["highway"!~"footway|proposed|construction|abandoned|platform|raceway|service"]' \
-          '["foot"!~"no"]' \
-          '["service"!~"private"]' \
-          '["access"!~"private"]'
-query = f'[out:json][timeout:{timeout}];(way["highway"]{filters}(poly:"{geom_osm}"); >;);out skel qt;'
+"""
+query = f'''
+    [out:json][timeout:{timeout}];
+    (
+    way["highway"]["area"!="yes"]["highway"!~"proposed|construction|abandoned|platform|raceway"]["foot"!="no"]
+                   ["tunnel"!="yes"]["indoor"!="yes"]["service"!~"private|parking_aisle"]["access"!="private"]
+                   (poly:"{geom_osm}");
+    way["highway"]["foot"="designated"](poly:"{geom_osm}");
+    way["highway"]["bicycle"="designated"](poly:"{geom_osm}");
+    );
+    (._;>;);
+    out skel qt;
+    '''
+"""
+query = f'''
+    /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
+    */
+    [out:json][timeout:{timeout}];
+    /*
+    build spatial_set from highways based on extent
+    */
+    way["highway"]
+      ["area"!="yes"]
+      ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|abandoned|platform|construction"]
+      ["service"!~"parking_aisle"]
+      (if:
+       /* don't fetch roads that don't have sidewalks */
+       (t["sidewalk"] != "none" && t["sidewalk"] != "no")
+       /* unless foot or bicycles permitted */
+       || t["foot"]!="no"
+       || (t["bicycle"]!="no" && t["bicycle"]!="unsuitable")
+      )
+      ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+      ["access"!~"private|customers"]
+      ["indoor"!="yes"]
+      (poly:"{geom_osm}") -> .spatial_set;
+    /*
+    build union_set from spatial_set
+    */
+    (
+      way.spatial_set["highway"];
+      way.spatial_set["foot"~"yes|designated"];
+      way.spatial_set["bicycle"~"yes|designated"];
+    ) -> .union_set;
+    /*
+    filter union_set
+    */
+    way.union_set -> .filtered_set;
+    /*
+    union filtered_set ways with nodes via recursion
+    */
+    (
+      .filtered_set;
+      >;
+    );
+    /*
+    return only basic info
+    */
+    out skel qt;
+    '''
 try:
     response = requests.get('https://overpass-api.de/api/interpreter',
                             timeout=timeout,
@@ -86,7 +142,7 @@ try:
 except requests.exceptions.RequestException as e:
     raise e
 
-#  %%
+# %%
 # load the OSM response data into a networkX graph
 G_wgs = graphs.nX_from_osm(osm_json=response.text)
 print(nx.info(G_wgs))
@@ -113,26 +169,25 @@ Number of edges: 1739395
 Average degree:   2.0977
 '''
 
-#  %%
+# %%
 # 1m30s
 # cast the graph to UTM coordinates prior to processing
 G_utm = graphs.nX_wgs_to_utm(G_wgs)
 
-#  %%
+# %%
 # setup plotting function
 # take centrepoint
-lng, lat = (-71.058884, 42.360081)
+# lat, lng = (51.510434954365735, -0.1297641580617722)
 # convert to UTM using same UTM as before
 easting, northing = utm.from_latlon(lat, lng, force_zone_letter=utm_zone_letter, force_zone_number=utm_zone_number)[:2]
 # buffer
-buff = geometry.Point(easting, northing).buffer(3000)
+buff = geometry.Point(easting, northing).buffer(350)
 # extract extents
 min_x, min_y, max_x, max_y = buff.bounds
 print(f'min x: {min_x:.1f} min y: {min_y:.1f} max x: {max_x:.1f} max y: {max_y:.1f}')
 
-
 # min x: 327449.4 min y: 4688809.9 max x: 333449.4 max y: 4694809.9
-
+"""
 def nx_plot_zoom(nx_graph,
                  x_lim=(min_x, max_x),
                  y_lim=(min_y, max_y),
@@ -156,7 +211,7 @@ def nx_plot_zoom(nx_graph,
         colour = '#d32f2f'
     nx.draw(nx_graph,
             pos,
-            with_labels=False,
+            with_labels=True,
             node_color=colour,
             node_size=30,
             node_shape='o',
@@ -170,40 +225,38 @@ def nx_plot_zoom(nx_graph,
     plt.ylim(*y_lim)
     # show
     plt.show()
-
-nx_plot_zoom(G_utm)
-
-#  %%
+"""
+# %%
+G_utm = graphs.nX_simple_geoms(G_utm)
+plot.plot_nX(G_utm, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=False, figsize=(20, 20),
+             dpi=200)
+# small distance spatial consolidation to deal with problematic situations such as
+# bridging overlapping walkways per lat, lng = (51.493, -0.06393)
+# %%
 G = graphs.nX_simple_geoms(G_utm)
-G = graphs.nX_remove_dangling_nodes(G, despine=25, remove_disconnected=True)
-nx_plot_zoom(G)
-
-#  %%
 G = graphs.nX_remove_filler_nodes(G)
-nx_plot_zoom(G)
+G = graphs.nX_remove_dangling_nodes(G, despine=5, remove_disconnected=True)
+plot.plot_nX(G, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
+# %%
+G1 = graphs.nX_consolidate_spatial(G, buffer_dist=25, min_node_threshold=6, highest_degree=True, use_midline=True)
+plot.plot_nX(G1, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
+G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=10, use_midline=True)
+plot.plot_nX(G2, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
+G3 = graphs.nX_consolidate_spatial(G2, buffer_dist=10, min_node_threshold=2, highest_degree=True, use_midline=True)
+plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
+G = graphs.nX_remove_filler_nodes(G3)
+plot.plot_nX(G, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
-#  %%
-# buffer consolidation method
-# G_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=15)
-# nx_plot_zoom(G_spatial)
+# %%
+plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
-#  %%
-# parallel consolidation method
-G_cons = graphs.nX_consolidate_parallel(G, buffer_dist=15)
-nx_plot_zoom(G_cons)
-
-#  %%
-# optional
-G_cons = graphs.nX_decompose(G_cons, decompose_max=100)
-nx_plot_zoom(G_cons)
-
-#  %%
+# %%
 # create a Network layer from the networkX graph
 N = networks.Network_Layer_From_nX(G_cons, distances=[1000, 5000, 10000])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 N.compute_centrality(measures=['node_harmonic', 'node_betweenness'])
 
-#  %%
+# %%
 G_metrics = N.to_networkX()
 
 #  %%
