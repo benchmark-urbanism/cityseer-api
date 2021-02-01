@@ -464,6 +464,7 @@ def scrape_points(_graph: nx.Graph) -> List:
         y = d['y']
         p = geometry.Point(x, y)
         p.uid = n
+        p.degree = nx.degree(_graph, n)
         points.append(p)
     return points
 
@@ -493,8 +494,11 @@ def _create_edges_strtree(_graph: nx.Graph) -> strtree.STRtree:
 def nX_consolidate_spatial(networkX_graph: nx.Graph,
                            buffer_dist: float = 5,
                            min_node_threshold: int = 2,
-                           use_midline: bool = False,
-                           highest_degree: bool = False,
+                           min_node_degree: int = 1,
+                           max_cumulative_degree: int = None,
+                           gapped_only: bool = False,
+                           merge_by_midline: bool = False,
+                           squash_by_highest_degree: bool = False,
                            max_length_discrepancy_ratio: float = 1.2) -> nx.Graph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -517,24 +521,34 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
         # skip if already consolidated from an adjacent node
         if n in removed_nodes:
             continue
-        # get all other nodes within buffer distance
+        # get all other nodes within buffer distance - the self-node is also returned
         js = nodes_tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
-        # the self-node is also returned
-        # only proceed if min_node_threshold is met
-        if len(js) < min_node_threshold:
+        # extract the node uids if they've not already been removed and their degrees exceed min_node_degree
+        node_group = []
+        cumulative_degree = 0
+        for j in js:
+            if j.uid in removed_nodes or j.degree < min_node_degree:
+                continue
+            if gapped_only and j.uid in nx.neighbors(networkX_graph, n):
+                continue
+            node_group.append(j.uid)
+            cumulative_degree += j.degree
+        # check for min_node_threshold
+        if len(node_group) < min_node_threshold:
             continue
-        # group the nodes
-        node_group = set([j.uid for j in js if j.uid not in removed_nodes])
+        # check for cumulative degree threshold
+        if max_cumulative_degree is not None and cumulative_degree > max_cumulative_degree:
+            continue
         # update removed nodes
         removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        if len(node_group) < min_node_threshold:
-            continue
-        _multi_graph = _squash_adjacent(_multi_graph, node_group, highest_degree)
+        _multi_graph = _squash_adjacent(_multi_graph, node_group, squash_by_highest_degree)
     # squashing nodes can result in edge duplicates
     deduped_graph = _weld_parallel_edges(_multi_graph,
-                                         use_midline,
+                                         merge_by_midline,
                                          max_length_discrepancy_ratio)
+    # remove any orphaned nodes
+    deduped_graph = nX_remove_filler_nodes(deduped_graph)
 
     return deduped_graph
 
@@ -553,18 +567,35 @@ def nX_split_opposing_geoms(networkX_graph: nx.Graph,
     edges_tree = _create_edges_strtree(networkX_graph)
     # iterate origin graph
     for n, n_d in tqdm(networkX_graph.nodes(data=True), disable=checks.quiet_mode):
-        # prepare a list of out edges
-        neighbours = list(networkX_graph.neighbors(n))
-        out_edges_str = [sorted((str(n), str(nb))) for nb in neighbours]
+        # don't split opposing geoms from nodes of degree 1
+        if nx.degree(networkX_graph, n) < 2:
+            continue
         # get all other edges within the buffer distance
-        edges = edges_tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
-        # filter out edges that are not direct neighbours
+        # the spatial index using bounding boxes, so further filtering is required (see further down)
+        n_point = geometry.Point(n_d['x'], n_d['y'])
+        edges = edges_tree.query(n_point.buffer(buffer_dist))
+        # get neighbouring nodes
+        neighbours = list(networkX_graph.neighbors(n))
+        # abort if only direct neighbours
+        if len(edges) <= len(neighbours):
+            continue
+        # prepare a list of out-bound edges
+        out_edges_str = [sorted((str(n), str(nb))) for nb in neighbours]
+        # filter edges
         gapped_edges = []
         for edge_geom in edges:
+            # skip direct neighbours
             s = edge_geom.start_uid
             e = edge_geom.end_uid
-            if sorted((str(s), str(e))) not in out_edges_str:
-                gapped_edges.append((s, e, edge_geom))
+            if sorted((str(s), str(e))) in out_edges_str:
+                continue
+            # check whether the geom is truly within the buffer distance
+            if edge_geom.distance(n_point) > buffer_dist:
+                continue
+            gapped_edges.append((s, e, edge_geom))
+        # abort if no gapped edges
+        if not gapped_edges:
+            continue
         # prepare the root node's point geom
         n_geom = geometry.Point(n_d['x'], n_d['y'])
         # iter gapped edges
@@ -577,8 +608,6 @@ def nX_split_opposing_geoms(networkX_graph: nx.Graph,
             e_d = networkX_graph.nodes[e]
             if geometry.Point(e_d['x'], e_d['y']).distance(n_geom) <= buffer_dist:
                 continue
-            # TODO: refine split cases
-
             # otherwise, project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
@@ -591,13 +620,8 @@ def nX_split_opposing_geoms(networkX_graph: nx.Graph,
             if len(split_geoms) < 2:
                 continue
             new_edge_geom_a, new_edge_geom_b = split_geoms
-            # generate a new node name by concatenating the source nodes
-            idx = 0
-            while True:
-                new_nd_name = f'{s}_{e}_{idx}'
-                if new_nd_name not in _multi_graph:
-                    break
-                idx += 1
+            # generate a new node name
+            new_nd_name = f'{s}_{e}_{n}'
             # add the new node and edges to _multi_graph (don't modify networkX_graph because of iter in place)
             _multi_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
             _multi_graph.add_edge(s, new_nd_name)

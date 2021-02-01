@@ -380,11 +380,9 @@ def test_nX_consolidate():
     plot.plot_nX(G, labels=True, plot_geoms=True)
 
     # simplify first to test lollipop self-loop from node 15
-    G = graphs.nX_remove_filler_nodes(G)
-    plot.plot_nX(G, labels=True, plot_geoms=True)
     G_merged_parallel = graphs.nX_split_opposing_geoms(G, buffer_dist=25, use_midline=True)
     plot.plot_nX(G_merged_parallel, labels=True, plot_geoms=True)
-    G_merged_spatial = graphs.nX_consolidate_spatial(G_merged_parallel, buffer_dist=25, use_midline=True)
+    G_merged_spatial = graphs.nX_consolidate_spatial(G_merged_parallel, buffer_dist=25, merge_by_midline=True)
     plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
 
     assert G_merged_parallel.number_of_nodes() == 8
