@@ -96,7 +96,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
         edge_geoms = []
         for s, e, data in _graph.edges(data=True):
             # filter out if start and end nodes are not in the active node list
-            if s not in node_list or e not in node_list:
+            if s not in node_list and e not in node_list:
                 continue
             if plot_geoms:
                 x_arr, y_arr = data['geom'].coords.xy

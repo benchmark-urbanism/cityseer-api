@@ -72,21 +72,8 @@ poly_wgs = geometry.Polygon(geom)
 geom_osm = str.join(' ', [f'{lat} {lng}' for lat, lng in poly_wgs.exterior.coords])
 
 # osm query
-timeout = 60 * 10  # 10 minutes
-"""
-query = f'''
-    [out:json][timeout:{timeout}];
-    (
-    way["highway"]["area"!="yes"]["highway"!~"proposed|construction|abandoned|platform|raceway"]["foot"!="no"]
-                   ["tunnel"!="yes"]["indoor"!="yes"]["service"!~"private|parking_aisle"]["access"!="private"]
-                   (poly:"{geom_osm}");
-    way["highway"]["foot"="designated"](poly:"{geom_osm}");
-    way["highway"]["bicycle"="designated"](poly:"{geom_osm}");
-    );
-    (._;>;);
-    out skel qt;
-    '''
-"""
+timeout = 60 * 3  # 10 minutes
+
 query = f'''
     /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
     */
@@ -233,19 +220,48 @@ plot.plot_nX(G_utm, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plo
 # small distance spatial consolidation to deal with problematic situations such as
 # bridging overlapping walkways per lat, lng = (51.493, -0.06393)
 # %%
+import importlib
+
+importlib.reload(graphs)
+importlib.reload(plot)
+
+# %%
 G = graphs.nX_simple_geoms(G_utm)
+G = graphs.nX_remove_dangling_nodes(G, despine=10, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
-G = graphs.nX_remove_dangling_nodes(G, despine=5, remove_disconnected=True)
 plot.plot_nX(G, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 # %%
-G1 = graphs.nX_consolidate_spatial(G, buffer_dist=25, min_node_threshold=6, highest_degree=True, use_midline=True)
+G1 = graphs.nX_consolidate_spatial(G,
+                                   buffer_dist=25,
+                                   min_node_threshold=6,
+                                   min_node_degree=3,
+                                   squash_by_highest_degree=False,
+                                   merge_by_midline=True)
 plot.plot_nX(G1, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
-G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=10, use_midline=True)
+# %%
+G2 = graphs.nX_consolidate_spatial(G1,
+                                   buffer_dist=15,
+                                   min_node_threshold=3,
+                                   min_node_degree=3,
+                                   max_cumulative_degree=13,
+                                   squash_by_highest_degree=True,
+                                   merge_by_midline=True)
 plot.plot_nX(G2, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
-G3 = graphs.nX_consolidate_spatial(G2, buffer_dist=10, min_node_threshold=2, highest_degree=True, use_midline=True)
+# %%
+
+
+G3 = graphs.nX_split_opposing_geoms(G2, buffer_dist=15, use_midline=True)
 plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
-G = graphs.nX_remove_filler_nodes(G3)
-plot.plot_nX(G, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
+# %%
+G4 = graphs.nX_consolidate_spatial(G3,
+                                   buffer_dist=15,
+                                   min_node_threshold=2,
+                                   min_node_degree=2,
+                                   max_cumulative_degree=12,
+                                   gapped_only=True,
+                                   squash_by_highest_degree=False,
+                                   merge_by_midline=True)
+plot.plot_nX(G4, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%
 plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
