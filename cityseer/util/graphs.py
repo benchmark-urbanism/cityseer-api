@@ -501,6 +501,8 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
     """
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
+    if min_node_threshold < 2:
+        raise ValueError('Set min_node_threshold to at least two.')
     logger.info(f'Consolidating network by distance buffer.')
     # use a multigraph so that multiple edges can be stored
     _multi_graph = nx.MultiGraph()
@@ -517,23 +519,18 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
             continue
         # get all other nodes within buffer distance
         js = nodes_tree.query(geometry.Point(n_d['x'], n_d['y']).buffer(buffer_dist))
-        # if only self-node, then continue
-        if len(js) <= 1:
+        # the self-node is also returned
+        # only proceed if min_node_threshold is met
+        if len(js) < min_node_threshold:
             continue
-        # keep track of the uids to be consolidated
-        node_group = set()
-        # iterate geoms within buffer
-        # this includes the self-node, hence no special logic to handle
-        for j in js:
-            if j.uid in removed_nodes:
-                continue
-            # if not already in the removed nodes, go ahead and add the point
-            node_group.add(j.uid)
-            # add to the removed_nodes dict and point to new parent node uid
-            removed_nodes.add(j.uid)
+        # group the nodes
+        node_group = set([j.uid for j in js if j.uid not in removed_nodes])
+        # update removed nodes
+        removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        if node_group and len(node_group) >= min_node_threshold:
-            _multi_graph = _squash_adjacent(_multi_graph, node_group, highest_degree)
+        if len(node_group) < min_node_threshold:
+            continue
+        _multi_graph = _squash_adjacent(_multi_graph, node_group, highest_degree)
     # squashing nodes can result in edge duplicates
     deduped_graph = _weld_parallel_edges(_multi_graph,
                                          use_midline,
