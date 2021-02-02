@@ -227,6 +227,7 @@ importlib.reload(plot)
 
 # %%
 G = graphs.nX_simple_geoms(G_utm)
+G = graphs.nX_remove_filler_nodes(G)
 G = graphs.nX_remove_dangling_nodes(G, despine=10, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
 plot.plot_nX(G, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
@@ -240,16 +241,15 @@ G1 = graphs.nX_consolidate_spatial(G,
 plot.plot_nX(G1, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 # %%
 G2 = graphs.nX_consolidate_spatial(G1,
-                                   buffer_dist=15,
-                                   min_node_threshold=3,
+                                   buffer_dist=10,
+                                   min_node_threshold=2,
                                    min_node_degree=3,
-                                   max_cumulative_degree=13,
-                                   squash_by_highest_degree=True,
+                                   min_cumulative_degree=7,
+                                   max_cumulative_degree=16,
+                                   squash_by_highest_degree=False,
                                    merge_by_midline=True)
 plot.plot_nX(G2, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 # %%
-
-
 G3 = graphs.nX_split_opposing_geoms(G2, buffer_dist=15, use_midline=True)
 plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 # %%
@@ -257,8 +257,8 @@ G4 = graphs.nX_consolidate_spatial(G3,
                                    buffer_dist=15,
                                    min_node_threshold=2,
                                    min_node_degree=2,
-                                   max_cumulative_degree=12,
-                                   gapped_only=True,
+                                   max_cumulative_degree=9,
+                                   neigh_policy='indirect',
                                    squash_by_highest_degree=False,
                                    merge_by_midline=True)
 plot.plot_nX(G4, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
