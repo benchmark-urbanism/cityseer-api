@@ -149,11 +149,9 @@ def nX_remove_dangling_nodes(networkX_graph: nx.Graph,
 def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
-
     logger.info(f'Removing filler nodes.')
     g_copy = networkX_graph.copy()
     removed_nodes = set()
-
     def manual_weld(_G, _start_node, _geom_a, _geom_b):
         s_x = _G.nodes[_start_node]['x']
         s_y = _G.nodes[_start_node]['y']
@@ -169,9 +167,7 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
         assert np.allclose(_new_agg_geom.coords[0], (s_x, s_y), atol=0.001, rtol=0)
         assert np.allclose(_new_agg_geom.coords[-1], (s_x, s_y), atol=0.001, rtol=0)
         return _new_agg_geom
-
     def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node, stairway=False):
-
         # if the next node has a degree of 2, then follow the chain
         # for disconnected components, check that the next node is not back at the start node...
         if nx.degree(_G, next_node) == 2 and next_node != start_node:
@@ -228,20 +224,15 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
         else:
             end_node = next_node
             return agg_geom, agg_del_nodes, end_node
-
     # iterate the nodes and weld edges where encountering simple intersections
     # use the original graph so as to write changes to new graph
     for n in tqdm(networkX_graph.nodes(), disable=checks.quiet_mode):
-
         # some nodes will already have been removed via recursive function
         if n in removed_nodes:
             continue
-
         if nx.degree(networkX_graph, n) == 2:
-
             # get neighbours and geoms either side
             nb_a, nb_b = list(nx.neighbors(networkX_graph, n))
-
             # geom A
             if 'geom' not in networkX_graph[n][nb_a]:
                 raise KeyError(f'Missing "geom" attribute for edge {n}-{nb_a}')
@@ -250,7 +241,6 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
                 raise TypeError(f'Expecting LineString geometry but found {geom_a.type} geometry.')
             # start the A direction recursive weld
             agg_geom_a, agg_del_nodes_a, end_node_a = recursive_weld(networkX_graph, n, geom_a, [], n, nb_a)
-
             # only follow geom B if geom A doesn't return an isolated (disconnected) looping component
             # e.g. circular disconnected walkway
             if end_node_a == n:
@@ -260,7 +250,6 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
                 removed_nodes.update(agg_del_nodes_a)
                 g_copy.add_edge(n, n, geom=agg_geom_a)
                 continue
-
             # geom B
             if 'geom' not in networkX_graph[n][nb_b]:
                 raise KeyError(f'Missing "geom" attribute for edge {n}-{nb_b}')
@@ -269,14 +258,12 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
                 raise TypeError(f'Expecting LineString geometry but found {geom_b.type} geometry.')
             # start the B direction recursive weld
             agg_geom_b, agg_del_nodes_b, end_node_b = recursive_weld(networkX_graph, n, geom_b, [], n, nb_b)
-
             # remove old nodes - edges are removed implicitly
             agg_del_nodes = agg_del_nodes_a + agg_del_nodes_b
             # also remove origin node n
             agg_del_nodes.append(n)
             g_copy.remove_nodes_from(agg_del_nodes)
             removed_nodes.update(agg_del_nodes)
-
             # merge the lines
             # disconnected self-loops are caught above per geom a, i.e. where the whole loop is degree == 2
             # however, lollipop scenarios are not, so weld manually
@@ -285,13 +272,11 @@ def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
                 merged_line = manual_weld(networkX_graph, end_node_a, agg_geom_a, agg_geom_b)
             else:
                 merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
-
             # run checks
             if merged_line.type != 'LineString':
                 raise TypeError(
                     f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
                     f'Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
-
             # add new edge
             g_copy.add_edge(end_node_a, end_node_b, geom=merged_line)
 
@@ -408,7 +393,7 @@ def _weld_parallel_edges(_multi_graph: nx.MultiGraph,
     deduped_graph = nx.Graph()
     deduped_graph.add_nodes_from(_multi_graph.nodes(data=True))
     # iter the edges
-    for s, e, d in _multi_graph.edges(data=True):
+    for s, e, d in tqdm(_multi_graph.edges(data=True), disable=checks.quiet_mode):
         # if only one edge is associated with this node pair, then add
         if _multi_graph.number_of_edges(s, e) == 1:
             deduped_graph.add_edge(s, e, **d)
@@ -495,8 +480,9 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
                            buffer_dist: float = 5,
                            min_node_threshold: int = 2,
                            min_node_degree: int = 1,
+                           min_cumulative_degree: int = None,
                            max_cumulative_degree: int = None,
-                           gapped_only: bool = False,
+                           neigh_policy: str = None,
                            merge_by_midline: bool = False,
                            squash_by_highest_degree: bool = False,
                            max_length_discrepancy_ratio: float = 1.2) -> nx.Graph:
@@ -506,9 +492,11 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
     if min_node_threshold < 2:
-        raise ValueError('Set min_node_threshold to at least two.')
+        raise ValueError('The minimum node threshold should be set to at least two.')
+    if neigh_policy is not None and neigh_policy not in ('direct', 'indirect'):
+        raise ValueError('Neighbour policy should be one of "direct" or "indirect".')
     logger.info(f'Consolidating network by distance buffer.')
-    # use a multigraph so that multiple edges can be stored
+    # convert to multigraph so that multiple edges can be stored
     _multi_graph = nx.MultiGraph()
     _multi_graph.add_nodes_from(networkX_graph.nodes(data=True))
     _multi_graph.add_edges_from(networkX_graph.edges(data=True))
@@ -529,7 +517,10 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
         for j in js:
             if j.uid in removed_nodes or j.degree < min_node_degree:
                 continue
-            if gapped_only and j.uid in nx.neighbors(networkX_graph, n):
+            neighbours = nx.neighbors(networkX_graph, n)
+            if neigh_policy == 'indirect' and j.uid in neighbours:
+                continue
+            elif neigh_policy == 'direct' and j.uid not in neighbours:
                 continue
             node_group.append(j.uid)
             cumulative_degree += j.degree
@@ -537,6 +528,8 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
         if len(node_group) < min_node_threshold:
             continue
         # check for cumulative degree threshold
+        if min_cumulative_degree is not None and cumulative_degree < min_cumulative_degree:
+            continue
         if max_cumulative_degree is not None and cumulative_degree > max_cumulative_degree:
             continue
         # update removed nodes
@@ -547,7 +540,6 @@ def nX_consolidate_spatial(networkX_graph: nx.Graph,
     deduped_graph = _weld_parallel_edges(_multi_graph,
                                          merge_by_midline,
                                          max_length_discrepancy_ratio)
-    # remove any orphaned nodes
     deduped_graph = nX_remove_filler_nodes(deduped_graph)
 
     return deduped_graph
