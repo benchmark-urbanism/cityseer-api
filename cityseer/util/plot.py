@@ -1,13 +1,13 @@
 '''
 These plot methods are mainly for testing and debugging
 '''
-import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.collections import LineCollection
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from shapely import geometry
-from cityseer.metrics import layers
+from sklearn.preprocessing import LabelEncoder
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -201,8 +201,12 @@ def plot_assignment(Network_Layer,
         data_cmap = None
     else:
         # generate categorical colormap
-        d_classes, d_encodings = layers.encode_categorical(data_labels)
-        data_colour = colors.Normalize()(d_encodings)
+        # use sklearn's label encoder
+        le = LabelEncoder()
+        le.fit(data_labels)
+        # map the int encodings to the respective classes
+        classes_int = le.transform(data_labels)
+        data_colour = colors.Normalize()(classes_int)
         data_cmap = 'Dark2'  # Set1
 
     # overlay data map
