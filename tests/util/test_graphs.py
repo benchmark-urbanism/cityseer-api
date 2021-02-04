@@ -205,8 +205,6 @@ def test_nX_remove_dangling_nodes(primal_graph):
 
 
 def test_nX_remove_filler_nodes(primal_graph):
-    # TODO: add a test for stairs (i.e. OSM) where node coordinates collapse in 2D
-
     # test that redundant intersections are removed, i.e. where degree == 2
     G_messy = make_messy_graph(primal_graph)
 
@@ -216,7 +214,6 @@ def test_nX_remove_filler_nodes(primal_graph):
     # simplify and test
     G_simplified = graphs.nX_remove_filler_nodes(G_messy)
     # plot.plot_nX(G_simplified, labels=True)
-
     # check that the simplified version matches the original un-messified version
     # but note the simplified version will have the disconnected loop of 52-53-54-55 now condensed to only #52
     g_nodes = set(primal_graph.nodes)
@@ -226,7 +223,6 @@ def test_nX_remove_filler_nodes(primal_graph):
     g_edges = g_edges.difference([(52, 53), (53, 54), (54, 55), (52, 55)])  # condensed edges
     g_edges = g_edges.union([(52, 52)])  # the new self loop
     assert list(g_edges).sort() == list(G_simplified.edges).sort()
-
     # check the integrity of the edges
     for s, e, d in G_simplified.edges(data=True):
         # ignore the new self-looping disconnected edge
@@ -238,24 +234,19 @@ def test_nX_remove_filler_nodes(primal_graph):
     for s, e in [(52, 53), (53, 54), (54, 55), (52, 55)]:
         l += primal_graph[s][e]['geom'].length
     assert l == G_simplified[52][52]['geom'].length
-
     # check that all nodes still have 'x' and 'y' keys
     for n, d in G_simplified.nodes(data=True):
         assert 'x' in d
         assert 'y' in d
 
-    # lollipop test - where looping component (all nodes == degree 2) suspend off a node with degree > 2
-    # lollipops are handled slightly differently from isolated looping components (all nodes == degree 2)
-    # there are no lollipops in the mock graph, so create one here
-
-    # generate graph
+    # lollipop test - where a looping component (all nodes == degree 2) suspends off a node with degree > 2
     G_lollipop = nx.Graph()
     nodes = [
-        (1, {'x': 700400, 'y': 5719750}),
-        (2, {'x': 700400, 'y': 5719650}),
-        (3, {'x': 700500, 'y': 5719550}),
-        (4, {'x': 700400, 'y': 5719450}),
-        (5, {'x': 700300, 'y': 5719550})
+        (1, {'x': 400, 'y': 750}),
+        (2, {'x': 400, 'y': 650}),
+        (3, {'x': 500, 'y': 550}),
+        (4, {'x': 400, 'y': 450}),
+        (5, {'x': 300, 'y': 550})
     ]
     G_lollipop.add_nodes_from(nodes)
     edges = [
@@ -266,19 +257,15 @@ def test_nX_remove_filler_nodes(primal_graph):
         (5, 2)
     ]
     G_lollipop.add_edges_from(edges)
-
     # add edge geoms
     G_lollipop = graphs.nX_simple_geoms(G_lollipop)
-
     # flip some geometry
     G_lollipop[2][5]['geom'] = geometry.LineString(G_lollipop[2][5]['geom'].coords[::-1])
     # simplify
     G_lollipop_simpl = graphs.nX_remove_filler_nodes(G_lollipop)
-
     # check integrity of graph
     assert nx.number_of_nodes(G_lollipop_simpl) == 2
     assert nx.number_of_edges(G_lollipop_simpl) == 2
-
     # geoms should still be same cumulative length
     before_len = 0
     for s, e, d in G_lollipop.edges(data=True):
@@ -291,6 +278,58 @@ def test_nX_remove_filler_nodes(primal_graph):
     assert G_lollipop_simpl[1][2]['geom'].coords[-1] == G_lollipop_simpl[2][2]['geom'].coords[0]
     # start and end point of lollipop should match
     assert G_lollipop_simpl[2][2]['geom'].coords[0] == G_lollipop_simpl[2][2]['geom'].coords[-1]
+    # manually check welded geom
+    assert G_lollipop_simpl[2][2]['geom'].wkt == 'LINESTRING (400 650, 500 550, 400 450, 300 550, 400 650)'
+
+    # stairway test - where overlapping edges (all nodes == degree 2) have overlapping coordinates in 2D space
+    G_stairway = nx.Graph()
+    nodes = [
+        ('1-down', {'x': 400, 'y': 750}),
+        ('2-down', {'x': 400, 'y': 650}),
+        ('3-down', {'x': 500, 'y': 550}),
+        ('4-down', {'x': 400, 'y': 450}),
+        ('5-down', {'x': 300, 'y': 550}),
+        ('2-mid', {'x': 400, 'y': 650}),
+        ('3-mid', {'x': 500, 'y': 550}),
+        ('4-mid', {'x': 400, 'y': 450}),
+        ('5-mid', {'x': 300, 'y': 550}),
+        ('2-up', {'x': 400, 'y': 650}),
+        ('1-up', {'x': 400, 'y': 750})
+    ]
+    G_stairway.add_nodes_from(nodes)
+    G_stairway.add_nodes_from(nodes)
+    edges = [
+        ('1-down', '2-down'),
+        ('2-down', '3-down'),
+        ('3-down', '4-down'),
+        ('4-down', '5-down'),
+        ('5-down', '2-mid'),
+        ('2-mid', '3-mid'),
+        ('3-mid', '4-mid'),
+        ('4-mid', '5-mid'),
+        ('5-mid', '2-up'),
+        ('2-up', '1-up')
+    ]
+    G_stairway.add_edges_from(edges)
+    # add edge geoms
+    G_stairway = graphs.nX_simple_geoms(G_stairway)
+    # flip some geometry
+    G_stairway['5-down']['2-mid']['geom'] = geometry.LineString(G_stairway['5-down']['2-mid']['geom'].coords[::-1])
+    # simplify
+    G_stairway_simpl = graphs.nX_remove_filler_nodes(G_stairway)
+    # check integrity of graph
+    assert nx.number_of_nodes(G_stairway_simpl) == 2
+    assert nx.number_of_edges(G_stairway_simpl) == 1
+    # geoms should still be same cumulative length
+    before_len = 0
+    for s, e, d in G_stairway.edges(data=True):
+        before_len += d['geom'].length
+    after_len = 0
+    for s, e, d in G_stairway_simpl.edges(data=True):
+        after_len += d['geom'].length
+    assert before_len == after_len
+    assert G_stairway_simpl['1-down']['1-up']['geom'].wkt == \
+           'LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)'
 
     # check that missing geoms throw an error
     G_k = G_messy.copy()
@@ -307,7 +346,7 @@ def test_nX_remove_filler_nodes(primal_graph):
     with pytest.raises(TypeError):
         graphs.nX_remove_filler_nodes(G_k)
 
-    # catch non-touching Linestrings
+    # catch non-touching LineStrings
     G_corr = G_messy.copy()
     for s, e in G_corr.edges():
         geom = G_corr[s][e]['geom']
@@ -316,7 +355,7 @@ def test_nX_remove_filler_nodes(primal_graph):
         # corrupt a point
         start[0] = start[0] - 1
         G_corr[s][e]['geom'] = geometry.LineString([start, end])
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         graphs.nX_remove_filler_nodes(G_corr)
 
 
@@ -325,25 +364,25 @@ def test_nX_consolidate():
     # create a test graph
     G = nx.Graph()
     nodes = [
-        (0, {'x': 700620, 'y': 5719720}),
-        (1, {'x': 700620, 'y': 5719700}),
-        #(2, {'x': 700660, 'y': 5719720}),
-        (3, {'x': 700660, 'y': 5719700}),
-        (4, {'x': 700660, 'y': 5719660}),
-        (5, {'x': 700700, 'y': 5719800}),
-        (6, {'x': 700720, 'y': 5719800}),
-        (7, {'x': 700700, 'y': 5719720}),
-        (8, {'x': 700720, 'y': 5719720}),
-        (9, {'x': 700700, 'y': 5719700}),
-        #(10, {'x': 700720, 'y': 5719700}),
-        (11, {'x': 700700, 'y': 5719620}),
-        (12, {'x': 700720, 'y': 5719620}),
-        (13, {'x': 700760, 'y': 5719760}),
-        (14, {'x': 700800, 'y': 5719760}),
-        (15, {'x': 700780, 'y': 5719720}),
-        #(16, {'x': 700780, 'y': 5719700}),
-        (17, {'x': 700840, 'y': 5719720}),
-        (18, {'x': 700840, 'y': 5719700})]
+        (0, {'x': 620, 'y': 720}),
+        (1, {'x': 620, 'y': 700}),
+        # (2, {'x': 660, 'y': 720}),
+        (3, {'x': 660, 'y': 700}),
+        (4, {'x': 660, 'y': 660}),
+        (5, {'x': 700, 'y': 800}),
+        (6, {'x': 720, 'y': 800}),
+        (7, {'x': 700, 'y': 720}),
+        (8, {'x': 720, 'y': 720}),
+        (9, {'x': 700, 'y': 700}),
+        # (10, {'x': 720, 'y': 700}),
+        (11, {'x': 700, 'y': 620}),
+        (12, {'x': 720, 'y': 620}),
+        (13, {'x': 760, 'y': 760}),
+        (14, {'x': 800, 'y': 760}),
+        (15, {'x': 780, 'y': 720}),
+        # (16, {'x': 780, 'y': 700}),
+        (17, {'x': 840, 'y': 720}),
+        (18, {'x': 840, 'y': 700})]
     edges = [
         # (0, 2),
         (0, 7),  # new
@@ -392,14 +431,14 @@ def test_nX_consolidate():
     for n, d in G_merged_parallel.nodes(data=True):
         node_coords.append((d['x'], d['y']))
     assert node_coords == [
-        (700660, 5719660),
-        (700620.0, 5719710.0),
-        (700660.0, 5719710.0),
-        (700710.0, 5719800.0),
-        (700710.0, 5719710.0),
-        (700710.0, 5719620.0),
-        (700780.0, 5719710.0),
-        (700840.0, 5719710.0)]
+        (660, 660),
+        (620.0, 710.0),
+        (660.0, 710.0),
+        (710.0, 800.0),
+        (710.0, 710.0),
+        (710.0, 620.0),
+        (780.0, 710.0),
+        (840.0, 710.0)]
 
     edge_lens = []
     for s, e, d in G_merged_parallel.edges(data=True):
@@ -416,14 +455,14 @@ def test_nX_consolidate():
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d['x'], d['y']))
     assert node_coords == [
-        (700660, 5719660),
-        (700620.0, 5719710.0),
-        (700660.0, 5719700.0),
-        (700710.0, 5719800.0),
-        (700710.0, 5719710.0),
-        (700710.0, 5719620.0),
-        (700780.0, 5719720.0),
-        (700840.0, 5719710.0)]
+        (660, 660),
+        (620.0, 710.0),
+        (660.0, 700.0),
+        (710.0, 800.0),
+        (710.0, 710.0),
+        (710.0, 620.0),
+        (780.0, 720.0),
+        (840.0, 710.0)]
 
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):

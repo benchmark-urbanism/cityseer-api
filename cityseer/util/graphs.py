@@ -9,7 +9,7 @@ import networkx as nx
 from numba import types
 from numba.typed import Dict
 import numpy as np
-from shapely import geometry, ops, strtree
+from shapely import geometry, ops, strtree, coords
 from tqdm.auto import tqdm
 import utm
 
@@ -146,139 +146,232 @@ def nX_remove_dangling_nodes(networkX_graph: nx.Graph,
     return g_copy
 
 
+def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                         idx: int,
+                         xy: Tuple[float, float]) -> list:
+    """
+    Snaps a LineString's startpoint coordinate to a specified xy coordinate.
+    """
+    # check types
+    if not isinstance(linestring_coords, (list, tuple, np.ndarray, coords.CoordinateSequence)):
+        raise ValueError('Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.')
+    linestring_coords = list(linestring_coords)
+    # handle 3D
+    # tuples don't support indexed assignment
+    coord = list(linestring_coords[idx])
+    coord[:2] = xy
+    linestring_coords[idx] = coord
+    # return a new linestring
+    return linestring_coords
+
+
+def _snap_linestring_startpoint(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                                xy: Tuple[float, float]) -> list:
+    """
+    Snaps a LineString's start-point coordinate to a specified xy coordinate.
+    """
+    return _snap_linestring_idx(linestring_coords, 0, xy)
+
+
+def _snap_linestring_endpoint(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                              xy: Tuple[float, float]) -> list:
+    """
+    Snaps a LineString's end-point coordinate to a specified xy coordinate.
+    """
+    return _snap_linestring_idx(linestring_coords, -1, xy)
+
+
+def _align_linestring_coords(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                             xy: Tuple[float, float],
+                             reverse: bool = False,
+                             tolerance=checks.tolerance) -> list:
+    """
+    Aligns a LineString's coordinate order to a specified x and y within a given tolerance:
+    If reverse=False the coordinate order will be aligned to start from the given x and y
+    If reverse=True the coordinate order will be aligned to end at the given x and y
+    """
+    # check types
+    if not isinstance(linestring_coords, (list, tuple, np.ndarray, coords.CoordinateSequence)):
+        raise ValueError('Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.')
+    linestring_coords = list(linestring_coords)
+    # the target indices depend on whether reversed or not
+    if not reverse:
+        xy_idx = 0
+        opposite_idx = -1
+    else:
+        xy_idx = -1
+        opposite_idx = 0
+    # flip if necessary
+    if np.allclose(xy, linestring_coords[opposite_idx][:2], atol=tolerance, rtol=0):
+        return linestring_coords[::-1]
+    # if still not aligning, then there is an issue
+    elif not np.allclose(xy, linestring_coords[xy_idx][:2], atol=tolerance, rtol=0):
+        raise ValueError(f'Unable to align the LineString to starting point {xy} given the tolerance of {tolerance}.')
+    # otherwise no flipping is required and the coordinates can simply be returned
+    else:
+        return linestring_coords
+
+
+def _weld_linestring_coords(linestring_coords_a: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                            linestring_coords_b: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+                            force_xy: Tuple[float, float] = None,
+                            tolerance=checks.tolerance) -> list:
+    """
+    Takes two geometries: finds a matching start / end point combination and merges the coordinates accordingly.
+    """
+    # check types
+    for lc in [linestring_coords_a, linestring_coords_b]:
+        if not isinstance(lc, (list, tuple, np.ndarray, coords.CoordinateSequence)):
+            raise ValueError('Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.')
+    linestring_coords_a = list(linestring_coords_a)
+    linestring_coords_b = list(linestring_coords_b)
+    # if both lists are empty, raise
+    if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
+        raise ValueError('Neither of the provided linestring coordinate lists contain any coordinates.')
+    # if one of the lists is empty, return only the other
+    elif not len(linestring_coords_b):
+        return linestring_coords_a
+    elif not len(linestring_coords_a):
+        return linestring_coords_b
+    # match the directionality of the linestrings
+    # if override_xy is provided, then make sure that the sides with the specified xy are merged
+    # this is useful for looping components or overlapping components
+    # i.e. where both the start and end points match an endpoint on the opposite line
+    # in this case it is necessary to know which is the inner side of the weld and which is the outer endpoint
+    if force_xy:
+        if not np.allclose(linestring_coords_a[-1][:2], force_xy, atol=tolerance, rtol=0):
+            coords_a = _align_linestring_coords(linestring_coords_a, force_xy, reverse=True)
+        else:
+            coords_a = linestring_coords_a
+        if not np.allclose(linestring_coords_b[0][:2], force_xy, atol=tolerance, rtol=0):
+            coords_b = _align_linestring_coords(linestring_coords_b, force_xy, reverse=False)
+        else:
+            coords_b = linestring_coords_b
+    # in this case, the linestring_b has to be flipped to start from x, y
+    elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+        anchor_xy = linestring_coords_a[-1][:2]
+        coords_a = linestring_coords_a
+        coords_b = _align_linestring_coords(linestring_coords_b, anchor_xy)
+    # in this case, linestring_a has to be flipped to end at x, y
+    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
+        anchor_xy = linestring_coords_a[0][:2]
+        coords_a = _align_linestring_coords(linestring_coords_a, anchor_xy)
+        coords_b = linestring_coords_b
+    # in this case, merge in the b -> a order (saves flipping both)
+    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+        coords_a = linestring_coords_b
+        coords_b = linestring_coords_a
+    # in this case no further alignment is necessary
+    else:
+        coords_a = linestring_coords_a
+        coords_b = linestring_coords_b
+    # double check weld
+    if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
+        raise ValueError(f'Unable to weld LineString geometries with the given tolerance of {tolerance}.')
+    # drop the duplicate interleaving coordinate
+    return coords_a[:-1] + coords_b
+
+
 def nX_remove_filler_nodes(networkX_graph: nx.Graph) -> nx.Graph:
+    """
+    Iterates a networkX graph's nodes and removes nodes of degree = 2.
+    The associated edges are removed and replaced with a new welded geometry.
+    Geometries are spliced.
+    """
     if not isinstance(networkX_graph, nx.Graph):
         raise TypeError('This method requires an undirected networkX graph.')
     logger.info(f'Removing filler nodes.')
     g_copy = networkX_graph.copy()
     removed_nodes = set()
-    def manual_weld(_G, _start_node, _geom_a, _geom_b):
-        s_x = _G.nodes[_start_node]['x']
-        s_y = _G.nodes[_start_node]['y']
-        # check geom coordinates directionality - flip to wind in same direction
-        # i.e. _geom_a should start at _start_node whereas _geom_b should end at _start_node
-        if not np.allclose((s_x, s_y), _geom_a.coords[0][:2], atol=0.001, rtol=0):
-            _geom_a = geometry.LineString(_geom_a.coords[::-1])
-        if not np.allclose((s_x, s_y), _geom_b.coords[-1][:2], atol=0.001, rtol=0):
-            _geom_b = geometry.LineString(_geom_b.coords[::-1])
-        # now concatenate
-        _new_agg_geom = geometry.LineString(list(_geom_a.coords) + list(_geom_b.coords))
-        # check
-        assert np.allclose(_new_agg_geom.coords[0], (s_x, s_y), atol=0.001, rtol=0)
-        assert np.allclose(_new_agg_geom.coords[-1], (s_x, s_y), atol=0.001, rtol=0)
-        return _new_agg_geom
-    def recursive_weld(_G, start_node, agg_geom, agg_del_nodes, curr_node, next_node, stairway=False):
-        # if the next node has a degree of 2, then follow the chain
-        # for disconnected components, check that the next node is not back at the start node...
-        if nx.degree(_G, next_node) == 2 and next_node != start_node:
-            # next node becomes new current
-            _new_curr = next_node
-            # add next node to delete list
-            agg_del_nodes.append(next_node)
-            # get its neighbours
-            _a, _b = list(nx.neighbors(networkX_graph, next_node))
-            # proceed to the new_next node
-            if _a == curr_node:
-                _new_next = _b
-            else:
-                _new_next = _a
-            # get the geom and weld
-            if 'geom' not in _G[_new_curr][_new_next]:
-                raise KeyError(f'Missing "geom" attribute for edge {_new_curr}-{_new_next}')
-            new_geom = _G[_new_curr][_new_next]['geom']
-            if new_geom.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {new_geom.type} geometry.')
-            # when welding an isolated circular component, the ops linemerge will potentially weld onto the wrong end
-            # i.e. start-side instead of end-side... so orient and merge manually
-            if _new_next == start_node:
-                _new_agg_geom = manual_weld(_G, start_node, new_geom, agg_geom)
-            else:
-                # if collapsing a stairway where an upper stair landing matches a lower stair landing coord in 2D
-                # detect per both ends of new_geom touching both ends of the agg_geom
-                if new_geom.coords[0] in agg_geom.coords and new_geom.coords[1] in agg_geom.coords:
-                    # in these cases ops.linemerge will create a MultiLineString (at the next iteration)
-                    # the stairway flag indicates that a MultiLineString vs LineString type exceptions will be expected
-                    stairway = True
-                _new_agg_geom = ops.linemerge([agg_geom, new_geom])
-            # catch MultiLineStrings for stairways
-            if _new_agg_geom.type == 'MultiLineString' and stairway:
-                # drop the looped geometry
-                # TODO: may need to add case where more than two geoms exist (if loop doesn't coincide with start)
-                # test against stairway at lat, lng = (51.493, -0.06393)
-                assert len(_new_agg_geom.geoms) == 2
-                line_a = _new_agg_geom.geoms[0]
-                line_b = _new_agg_geom.geoms[1]
-                if line_a.coords[0][:2] == line_a.coords[-1][:2]:
-                    assert line_b.coords[0][:2] != line_b.coords[-1][:2]
-                    _new_agg_geom = line_b
-                else:
-                    assert line_a.coords[0][:2] != line_a.coords[-1][:2]
-                    _new_agg_geom = line_a
-                # reset flag
-                stairway = False
-            if _new_agg_geom.type != 'LineString':
-                raise TypeError(
-                    f'Found {_new_agg_geom.type} geometry instead of "LineString" for new geom {_new_agg_geom.wkt}.'
-                    f'Check that the adjacent LineStrings in the vicinity of {curr_node}-{next_node} are not corrupted.')
-            return recursive_weld(_G, start_node, _new_agg_geom, agg_del_nodes, _new_curr, _new_next, stairway)
-        else:
-            end_node = next_node
-            return agg_geom, agg_del_nodes, end_node
-    # iterate the nodes and weld edges where encountering simple intersections
-    # use the original graph so as to write changes to new graph
+    # iterates the original graph, but changes are written to the copied version (to avoid in-place snafus)
     for n in tqdm(networkX_graph.nodes(), disable=checks.quiet_mode):
         # some nodes will already have been removed via recursive function
         if n in removed_nodes:
             continue
+        # proceed if a "simple" node is discovered, i.e. degree = 2
         if nx.degree(networkX_graph, n) == 2:
-            # get neighbours and geoms either side
-            nb_a, nb_b = list(nx.neighbors(networkX_graph, n))
-            # geom A
-            if 'geom' not in networkX_graph[n][nb_a]:
-                raise KeyError(f'Missing "geom" attribute for edge {n}-{nb_a}')
-            geom_a = networkX_graph[n][nb_a]['geom']
-            if geom_a.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {geom_a.type} geometry.')
-            # start the A direction recursive weld
-            agg_geom_a, agg_del_nodes_a, end_node_a = recursive_weld(networkX_graph, n, geom_a, [], n, nb_a)
-            # only follow geom B if geom A doesn't return an isolated (disconnected) looping component
-            # e.g. circular disconnected walkway
-            if end_node_a == n:
-                logger.warning(f'Disconnected looping component encountered around {n}')
-                # in this case, do not remove the starting node because it suspends the loop
-                g_copy.remove_nodes_from(agg_del_nodes_a)
-                removed_nodes.update(agg_del_nodes_a)
-                g_copy.add_edge(n, n, geom=agg_geom_a)
-                continue
-            # geom B
-            if 'geom' not in networkX_graph[n][nb_b]:
-                raise KeyError(f'Missing "geom" attribute for edge {n}-{nb_b}')
-            geom_b = networkX_graph[n][nb_b]['geom']
-            if geom_b.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {geom_b.type} geometry.')
-            # start the B direction recursive weld
-            agg_geom_b, agg_del_nodes_b, end_node_b = recursive_weld(networkX_graph, n, geom_b, [], n, nb_b)
-            # remove old nodes - edges are removed implicitly
-            agg_del_nodes = agg_del_nodes_a + agg_del_nodes_b
-            # also remove origin node n
-            agg_del_nodes.append(n)
-            g_copy.remove_nodes_from(agg_del_nodes)
-            removed_nodes.update(agg_del_nodes)
-            # merge the lines
-            # disconnected self-loops are caught above per geom a, i.e. where the whole loop is degree == 2
-            # however, lollipop scenarios are not, so weld manually
-            # lollipop scenarios are where a looping component (all degrees == 2) suspends off a node with degree > 2
-            if end_node_a == end_node_b:
-                merged_line = manual_weld(networkX_graph, end_node_a, agg_geom_a, agg_geom_b)
+            # pick the first neighbour and follow the chain until a non-simple node is encountered
+            nb = list(nx.neighbors(networkX_graph, n))[0]
+            # anchor_nd should be the first node of the chain of nodes to be merged, and should be a non-simple node
+            anchor_nd = None
+            # next_link_nd should be a direct neighbour of anchor_nd and must be a simple node
+            next_link_nd = n
+            # find the non-simple start node
+            while anchor_nd is None:
+                # follow the chain of neighbours and break once a non-simple node is found
+                # catch disconnected looping components by checking for re-encountering start-node
+                if nx.degree(networkX_graph, nb) != 2 or nb == n:
+                    anchor_nd = nb
+                    break
+                # probe neighbours in one-direction only - i.e. don't backtrack
+                nb_a, nb_b = list(nx.neighbors(networkX_graph, nb))
+                if nb_a == next_link_nd:
+                    next_link_nd = nb
+                    nb = nb_b
+                else:
+                    next_link_nd = nb
+                    nb = nb_a
+            # from anchor_nd, proceed along the chain in the next_link_nd direction
+            # accumulate and weld geometries along the way
+            # break once finding another non-simple node
+            trailing_nd = anchor_nd
+            end_nd = None
+            drop_nodes = []
+            agg_geoms = []
+            while end_nd is None:
+                # aggregate the geom
+                try:
+                    geom = networkX_graph[trailing_nd][next_link_nd]['geom']
+                except KeyError:
+                    raise KeyError(f'Missing "geom" attribute for edge {trailing_nd}-{next_link_nd}')
+                if geom.type != 'LineString':
+                    raise TypeError(f'Expecting LineString geometry but found {geom.type} geometry.')
+                # welds can be done automatically, but here are edge cases:
+                # looped roadways or overlapping edges such as stairways don't know which sides of two segments to join
+                # i.e. in these cases the edges can sometimes be matched from one of two possible configurations
+                # since the xy join is known for all cases it is used here regardless
+                override_xy = (networkX_graph.nodes[trailing_nd]['x'], networkX_graph.nodes[trailing_nd]['y'])
+                # weld
+                agg_geoms = _weld_linestring_coords(agg_geoms, geom.coords, force_xy=override_xy)
+                # if the next node has a degree of 2, then follow the chain
+                # for circular components, break if the next node matches the start node
+                if nx.degree(networkX_graph, next_link_nd) != 2 or next_link_nd == anchor_nd:
+                    end_nd = next_link_nd
+                else:
+                    # add next_link_nd to drop list
+                    drop_nodes.append(next_link_nd)
+                    # get the next set of neighbours
+                    nb_a, nb_b = list(nx.neighbors(networkX_graph, next_link_nd))
+                    # proceed to the new_next node
+                    if nb_a == trailing_nd:
+                        trailing_nd = next_link_nd
+                        next_link_nd = nb_b
+                    else:
+                        trailing_nd = next_link_nd
+                        next_link_nd = nb_a
+            # double-check that the geom's endpoints match within tolerance
+            # then snap to remove possibility of creeping tolerances
+            s_xy = (networkX_graph.nodes[anchor_nd]['x'], networkX_graph.nodes[anchor_nd]['y'])
+            if not np.allclose(agg_geoms[0], s_xy, atol=checks.tolerance, rtol=0):
+                raise ValueError('New Linestring geometry does not match starting node coordinates.')
             else:
-                merged_line = ops.linemerge([agg_geom_a, agg_geom_b])
-            # run checks
-            if merged_line.type != 'LineString':
+                agg_geoms = _snap_linestring_startpoint(agg_geoms, s_xy)
+            e_xy = (networkX_graph.nodes[end_nd]['x'], networkX_graph.nodes[end_nd]['y'])
+            if not np.allclose(agg_geoms[-1], e_xy, atol=checks.tolerance, rtol=0):
+                raise ValueError('New Linestring geometry does not match ending node coordinates.')
+            else:
+                agg_geoms = _snap_linestring_endpoint(agg_geoms, e_xy)
+            # create a new linestring
+            new_geom = geometry.LineString(agg_geoms)
+            if new_geom.type != 'LineString':
                 raise TypeError(
-                    f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
-                    f'Check that the adjacent LineStrings for {nb_a}-{n} and {n}-{nb_b} actually touch.')
-            # add new edge
-            g_copy.add_edge(end_node_a, end_node_b, geom=merged_line)
+                    f'Found {new_geom.type} geometry instead of "LineString" for new geom {new_geom.wkt}.'
+                    f'Check that the adjacent LineStrings in the vicinity of {n} are not corrupted.')
+            # add a new edge from anchor_nd to end_nd
+            g_copy.add_edge(anchor_nd, end_nd, geom=new_geom)
+            # drop the removed nodes, which will also implicitly drop the related edges
+            g_copy.remove_nodes_from(drop_nodes)
+            removed_nodes.update(drop_nodes)
 
     return g_copy
 
@@ -436,7 +529,7 @@ def _weld_parallel_edges(_multi_graph: nx.MultiGraph,
     return deduped_graph
 
 
-def scrape_points(_graph: nx.Graph) -> List:
+def _create_nodes_strtree(_graph: nx.Graph) -> strtree.STRtree:
     points = []
     for n, d in _graph.nodes(data=True):
         # x coordinate
@@ -451,10 +544,10 @@ def scrape_points(_graph: nx.Graph) -> List:
         p.uid = n
         p.degree = nx.degree(_graph, n)
         points.append(p)
-    return points
+    return strtree.STRtree(points)
 
 
-def scrape_lines(_graph: nx.Graph) -> List:
+def _create_edges_strtree(_graph: nx.Graph) -> strtree.STRtree:
     lines = []
     for s, e, d in _graph.edges(data=True):
         if 'geom' not in d:
@@ -463,16 +556,6 @@ def scrape_lines(_graph: nx.Graph) -> List:
         linestring.start_uid = s
         linestring.end_uid = e
         lines.append(linestring)
-    return lines
-
-
-def _create_nodes_strtree(_graph: nx.Graph) -> strtree.STRtree:
-    points = scrape_points(_graph)
-    return strtree.STRtree(points)
-
-
-def _create_edges_strtree(_graph: nx.Graph) -> strtree.STRtree:
-    lines = scrape_lines(_graph)
     return strtree.STRtree(lines)
 
 

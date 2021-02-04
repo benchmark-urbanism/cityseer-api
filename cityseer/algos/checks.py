@@ -1,9 +1,12 @@
 import os
 import numpy as np
-from numba import njit, typeof
+from numba import njit
 from numba.typed import Dict
 
+# for calculating default betas vs. distances
 def_min_thresh_wt = 0.01831563888873418
+# for checking linestring geometries
+tolerance = 0.001
 
 quiet_mode = False
 if 'GCP_PROJECT' in os.environ:
@@ -12,6 +15,11 @@ if 'GCP_PROJECT' in os.environ:
 if 'CITYSEER_QUIET_MODE' in os.environ:
     if os.environ['CITYSEER_QUIET_MODE'].lower() in ['true', '1']:
         quiet_mode = True
+
+debug_mode = False
+if 'CITYSEER_DEBUG_MODE' in os.environ:
+    if os.environ['CITYSEER_DEBUG_MODE'].lower() in ['true', '1']:
+        debug_mode = True
 
 
 @njit(cache=True)
