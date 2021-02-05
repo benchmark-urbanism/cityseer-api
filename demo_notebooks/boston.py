@@ -8,18 +8,14 @@ import requests
 from shapely import geometry
 import utm
 
-import importlib
-
-importlib.reload(graphs)
-
 # %%
 # QUICK OPTION - 20km radius
-lat, lng = (51.51342151135985, -0.1386875041450292)
+lat, lng = (51.51197802142709, -0.13435325883010577)
 # cast the WGS coordinates to UTM prior to buffering
 easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
 # create a point, and then buffer
 pt = geometry.Point(easting, northing)
-poly_utm = pt.buffer(350)
+poly_utm = pt.buffer(1000)
 
 # %%
 '''
@@ -168,7 +164,7 @@ G_utm = graphs.nX_wgs_to_utm(G_wgs)
 # convert to UTM using same UTM as before
 easting, northing = utm.from_latlon(lat, lng, force_zone_letter=utm_zone_letter, force_zone_number=utm_zone_number)[:2]
 # buffer
-buff = geometry.Point(easting, northing).buffer(350)
+buff = geometry.Point(easting, northing).buffer(1000)
 # extract extents
 min_x, min_y, max_x, max_y = buff.bounds
 print(f'min x: {min_x:.1f} min y: {min_y:.1f} max x: {max_x:.1f} max y: {max_y:.1f}')
@@ -263,8 +259,6 @@ G4 = graphs.nX_consolidate_spatial(G3,
                                    merge_by_midline=True)
 plot.plot_nX(G4, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
-# %%
-plot.plot_nX(G3, labels=True, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%
 # create a Network layer from the networkX graph
