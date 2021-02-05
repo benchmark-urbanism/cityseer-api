@@ -14,13 +14,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def mock_graph(wgs84_coords: bool = False) -> nx.Graph:
+def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     '''
     Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
     :return: NetworkX graph
     '''
 
-    G = nx.Graph()
+    G = nx.MultiGraph()
 
     nodes = [
         (0, {'x': 700700, 'y': 5719700}),
