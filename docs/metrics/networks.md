@@ -398,7 +398,7 @@ The reasons for picking one approach over another are varied:
 
 The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
 
-`Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`</small>
 
 For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
 
@@ -474,20 +474,20 @@ The following keys use the shortest-path heuristic, and are available when the `
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| node_density | $\displaystyle\sum_{j\neq{i}}^{nodes}\ 1$ | A summation of nodes. |
-| node_farness | $\displaystyle\sum_{j\neq{i}}^{nodes}\ d_{(i,j)}$ | A summation of distances in metres. |
-| node_cycles | $\displaystyle\sum_{j\neq{i}\ j=cycle}^{nodes}\ 1$ | A summation of network cycles. |
-| node_harmonic | $\displaystyle\sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-| node_beta | $\displaystyle \sum_{j\neq{i}}^{nodes}\ exp(\beta \cdot d[i,j])$ | Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |
-| node_betweenness | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in shortest]$ | Betweenness centrality summing all shortest-paths traversing each node $i$. | 
-| node_betweenness_beta | $\displaystyle\sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ exp(\beta \cdot d[j,k])\ [i\in shortest]$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
+| <small>node_density</small> | $\scriptstyle\sum_{j\neq{i}}^{n}1$ | <small>A summation of nodes.</small>|
+| <small>node_farness</small> | $\scriptstyle\sum_{j\neq{i}}^{n}d_{(i,j)}$ | <small>A summation of distances in metres.</small>|
+| <small>node_cycles</small> | $\scriptstyle\sum_{j\neq{i}j=cycle}^{n}1$ | <small>A summation of network cycles.</small>|
+| <small>node_harmonic</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | <small>Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$.</small>|
+| <small>node_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\\exp(\beta\cdot d[i,j])$ | <small>Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase.</small>|
+| <small>node_betweenness</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | <small>Betweenness centrality summing all shortest-paths traversing each node $i$.</small>| 
+| <small>node_betweenness_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\\exp(\beta\cdot d[j,k])$ | <small>Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.</small>|
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| node_harmonic_angular | $\displaystyle \sum_{j\neq{i}}^{nodes}\ \frac{1}{Z_{(i,j)}}$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $Z = 1 + (angular\ change/180)$. |
-| node_betweenness_angular | $\displaystyle \sum_{j\neq{i}}^{nodes} \sum_{k\neq{j}\neq{i}}^{nodes}\ 1\ [i\in simplest]$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).|
+| <small>node_harmonic_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | <small>The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $\scriptstyle{Z = 1 + (angularchange/180)}$.</small>|
+| <small>node_betweenness_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | <small>The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).</small>|
 
 
 @compute\_segment\_centrality <Chip text="v0.12.0"/>
@@ -519,17 +519,17 @@ The following keys use the shortest-path heuristic, and are available when the `
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| segment_density | $\displaystyle \sum_{(a, b)}^{edges}\ d_{b} - d_{a}$ | A summation of edge lengths. |
-| segment_harmonic | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \ln(b) - \ln(a)$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
-| segment_beta | $\displaystyle \sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
-| segment_betweenness |  | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+| <small>segment_density</small> | $\scriptstyle\sum_{(a, b)}^{edges}d_{b} - d_{a}$ | <small>A summation of edge lengths.</small> |
+| <small>segment_harmonic</small> | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$ | <small>A continuous form of harmonic closeness centrality applied to edge lengths.</small> |
+| <small>segment_beta</small> | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | <small>A continuous form of beta-weighted (gravity index) centrality applied to edge lengths.</small> |
+| <small>segment_betweenness</small> |  | <small>A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$.</small> |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`.
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| segment_harmonic_hybrid | $\displaystyle \sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`. |
-| segment_betweeness_hybrid |  | A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+| <small>segment_harmonic_hybrid</small> | $\scriptstyle\sum_{(a, b)}^{edges}\frac{d_{b} - d_{a}}{Z}$ | <small>Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`.</small> |
+| <small>segment_betweeness_hybrid</small> |  | <small>A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$.</small> |
 
 Network\_Layer\_From\_nX <Chip text="class"/>
 ------------------------

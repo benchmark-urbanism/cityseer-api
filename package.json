@@ -1,14 +1,12 @@
 {
   "scripts": {
-    "docs:dev": "vuepress dev docs",
-    "docs:build": "vuepress build docs"
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:serve": "vitepress serve docs"
   },
   "dependencies": {},
   "devDependencies": {
-    "@vuepress/plugin-back-to-top": "1.7.1",
-    "@vuepress/theme-default": "1.7.1",
-    "stylus-loader": "3.0.2",
-    "vuepress": "1.7.1",
-    "vuepress-plugin-mathjax": "1.2.8"
+    "@iktakahiro/markdown-it-katex": "^4.0.1",
+    "vitepress": "^0.12.0"
   }
 }

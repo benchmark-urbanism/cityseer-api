@@ -1,7 +1,7 @@
 matplotlib
 networkx>=2.4
+numba>=0.53.0rc1.post1
 numpy
-numba>=0.52.0
 pytest
 shapely>=1.7.0
 sklearn

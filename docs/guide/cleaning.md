@@ -76,7 +76,7 @@ G_utm = graphs.nX_wgs_to_utm(G_wgs)
 plot.plot_nX(G_utm, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_raw.png')" alt='Raw OSM graph' caption='The raw OSM graph after conversion to UTM coordinates. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/guides/cleaning/graph_raw.png' alt='Raw OSM graph' caption='The raw OSM graph after conversion to UTM coordinates. © OpenStreetMap contributors.'></ImageModal>
 
 
 Deducing the network topology
@@ -103,7 +103,7 @@ G = graphs.nX_remove_filler_nodes(G)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_topo.png')" alt='OSM graph topology' caption='The OSM graph after conversion to a topological representation. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/guides/cleaning/graph_topo.png' alt='OSM graph topology' caption='The OSM graph after conversion to a topological representation. © OpenStreetMap contributors.'></ImageModal>
 
 ::: warning Note
 At this point it may initially appear that the roadway geometries have now gone missing. However, this information is still present in the `LineString` geometries assigned to each street edge. Put differently, the plotted representation is now topological, not geometric. During conversion to a `cityseer` network map, `cityseer` will automatically compute the length and comulative angular change for each of these `LineString` geoms. The entry and exit angle of each network edge is also determined and is used internally to compute and aggregate angular change from one street to another.
@@ -134,7 +134,7 @@ G = graphs.nX_split_opposing_geoms(G, buffer_dist=15)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_consolidated.png')" alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/guides/cleaning/graph_consolidated.png' alt='OSM graph after decomposition and consolidation' caption='The OSM graph after decomposition and consolidation. © OpenStreetMap contributors.'></ImageModal>
 
 You can mix-and-match various steps to further refine the graph, for example, let's remove the filler nodes again; then use a smaller distance spatial buffer to collapse oddities around intersections; remove newly residual nodes of degree=2; then re-decompose.
 
@@ -147,6 +147,6 @@ G = graphs.nX_decompose(G, 50)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)
 ```
 
-<ImageModal :path="require('../images/plots/guides/cleaning/graph_reconsolidated.png')" alt='OSM graph after additional steps' caption='The OSM graph after additional processing. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/guides/cleaning/graph_reconsolidated.png' alt='OSM graph after additional steps' caption='The OSM graph after additional processing. © OpenStreetMap contributors.'></ImageModal>
 
 There may still be locations that need some manual cleaning, though this is now much easier to accomplish. The graph is now ready for analysis with the `cityseer` package's methods.
