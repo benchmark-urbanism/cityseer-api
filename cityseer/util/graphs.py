@@ -14,8 +14,6 @@ from tqdm.auto import tqdm
 import utm
 
 from cityseer.algos import checks
-# TODO
-from cityseer.util import plot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -403,11 +401,19 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
     node_names = []
     # if not using the high degree basis, then simply take the multipoint of all nodes
     if not _highest_degree:
+        node_dupes = set()
         for n_uid in _node_group:
+            node_names.append(n_uid)
             x = _multi_graph.nodes[n_uid]['x']
             y = _multi_graph.nodes[n_uid]['y']
+            # in rare cases opposing geom splitting can cause overlaying nodes
+            # these can swing the gravity of multipoint centroids so screen these out
+            xy_key = f'{x}-{y}'
+            if xy_key in node_dupes:
+                continue
+            else:
+                node_dupes.add(xy_key)
             node_geoms.append(geometry.Point(x, y))
-            node_names.append(n_uid)
     # otherwise, identify all nodes of highest degree and use only their centroid
     else:
         highest_degree = 0
@@ -438,13 +444,6 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
     new_node_name = '|'.join(new_node_names)
     # add the new node
     _multi_graph.add_node(new_node_name, x=c.x, y=c.y)
-    # prepare the new edges
-    new_edges = []
-    plotting = False
-    if _node_group == [8, '8_7_15', '7_8_10', 6, 7]:
-        print('here')
-        from cityseer.util import plot
-        plotting = True
     # iterate the nodes to be removed and connect their existing edge geometries to the new centroid's coordinate
     for uid in _node_group:
         # iterate the node's existing neighbours
@@ -453,8 +452,6 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
             # an exception exists when a geom is looped, in which case the neighbour is also the current node
             if nb_uid in _node_group and nb_uid != uid:
                 continue
-            if plotting:
-                plot.plot_nX(_multi_graph, labels=True)
             # MultiGraph - so iter edges
             for edge in _multi_graph[uid][nb_uid].values():
                 if 'geom' not in edge:
@@ -641,14 +638,10 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
         _multi_graph = _squash_adjacent(_multi_graph, node_group, squash_by_highest_degree)
     # squashing nodes can result in edge duplicates
-    plot.plot_nX(networkX_multigraph, labels=True, plot_geoms=True)
-    plot.plot_nX(_multi_graph, labels=True, plot_geoms=True)
     deduped_graph1 = _merge_parallel_edges(_multi_graph,
                                            merge_by_midline,
                                            max_length_discrepancy_ratio)
-    plot.plot_nX(deduped_graph1, labels=True, plot_geoms=True)
     deduped_graph2 = nX_remove_filler_nodes(deduped_graph1)
-    plot.plot_nX(deduped_graph2, labels=True, plot_geoms=True)
 
     return deduped_graph2
 
@@ -659,6 +652,10 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                             max_length_discrepancy_ratio: float = 1.2) -> nx.MultiGraph:
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')
+
+    def make_edge_key(s, e):
+        return '-'.join(sorted([str(s), str(e)]))
+
     logger.info(f'Consolidating network by parallel edges.')
     _multi_graph = networkX_multigraph.copy()
     # create an edges STRtree (nodes and edges)
@@ -667,10 +664,6 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
     edge_children = {}
     # iterate origin graph (else node structure changes in place)
     for n, n_d in tqdm(networkX_multigraph.nodes(data=True), disable=checks.quiet_mode):
-        # TODO:
-        if n == 13:
-            plot.plot_nX(_multi_graph, labels=True, plot_geoms=True)
-            print('here')
         # don't split opposing geoms from nodes of degree 1
         if nx.degree(_multi_graph, n) < 2:
             continue
@@ -681,48 +674,48 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
         # spatial query from point returns all buffers with buffer_dist
         edges = edges_tree.query(n_point.buffer(buffer_dist))
         # extract the start node, end node, geom
-        edges = [(sorted((str(edge.start_uid), str(edge.end_uid))), edge) for edge in edges]
-        # check for removed edges
+        edges = [(edge.start_uid, edge.end_uid, edge) for edge in edges]
+        # check against removed edges
         current_edges = []
-        for edge_key, edge_geom in edges:
+        for s, e, edge_geom in edges:
             # if removed, use new children edges instead
+            edge_key = make_edge_key(s, e)
             if edge_key in edge_children:
                 current_edges += edge_children[edge_key]
             # otherwise it is safe to use original edge
             else:
-                current_edges.append((edge_key, edge_geom))
+                current_edges.append((s, e, edge_geom))
         # get neighbouring nodes from new graph
         neighbours = list(_multi_graph.neighbors(n))
         # abort if only direct neighbours
         if len(current_edges) <= len(neighbours):
             continue
         # prepare a list of out-bound edges
-        out_edges_str = [sorted((str(n), str(nb))) for nb in neighbours]
+        out_edges_str = [make_edge_key(n, nb) for nb in neighbours]
         # filter current_edges
         gapped_edges = []
-        for edge_key, edge_geom in current_edges:
+        for s, e, edge_geom in current_edges:
             # skip direct neighbours
-            if edge_key in out_edges_str:
+            if make_edge_key(s, e) in out_edges_str:
                 continue
             # check whether the geom is truly within the buffer distance
             if edge_geom.distance(n_point) > buffer_dist:
                 continue
-            gapped_edges.append((edge_key, edge_geom))
+            gapped_edges.append((s, e, edge_geom))
         # abort if no gapped edges
         if not gapped_edges:
             continue
         # prepare the root node's point geom
         n_geom = geometry.Point(n_d['x'], n_d['y'])
         # iter gapped edges
-        for old_edge_key, edge_geom in gapped_edges:
-            s_nd, e_nd = old_edge_key
+        for s, e, edge_geom in gapped_edges:
             # see if start node is within buffer distance already
-            s_nd_data = _multi_graph.nodes[s_nd]
+            s_nd_data = _multi_graph.nodes[s]
             s_nd_geom = geometry.Point(s_nd_data['x'], s_nd_data['y'])
             if s_nd_geom.distance(n_geom) <= buffer_dist:
                 continue
             # likewise for end node
-            e_nd_data = _multi_graph.nodes[e_nd]
+            e_nd_data = _multi_graph.nodes[e]
             e_nd_geom = geometry.Point(e_nd_data['x'], e_nd_data['y'])
             if e_nd_geom.distance(n_geom) <= buffer_dist:
                 continue
@@ -739,11 +732,11 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                 continue
             new_edge_geom_a, new_edge_geom_b = split_geoms
             # generate a new node name
-            new_nd_name = f'{old_edge_key}_{n}'
+            new_nd_name = f'{s}|{n}|{e}'
             # add the new node and edges to _multi_graph (don't modify networkX_multigraph because of iter in place)
             _multi_graph.add_node(new_nd_name, x=nearest_point.x, y=nearest_point.y)
-            _multi_graph.add_edge(s_nd, new_nd_name)
-            _multi_graph.add_edge(e_nd, new_nd_name)
+            _multi_graph.add_edge(s, new_nd_name)
+            _multi_graph.add_edge(e, new_nd_name)
             # TODO: more than one splice??
             if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=0.001, rtol=0) or \
                     np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[-1][:2], atol=0.001, rtol=0):
@@ -757,16 +750,16 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                 s_new_geom = new_edge_geom_b
                 e_new_geom = new_edge_geom_a
             # write the new edges
-            _multi_graph[s_nd][new_nd_name][0]['geom'] = s_new_geom
-            _multi_graph[e_nd][new_nd_name][0]['geom'] = e_new_geom
+            _multi_graph[s][new_nd_name][0]['geom'] = s_new_geom
+            _multi_graph[e][new_nd_name][0]['geom'] = e_new_geom
             # add the new edges to the edge_children dictionary
-            edge_children[old_edge_key] = [(sorted((s_nd, new_nd_name)), s_new_geom),
-                                           (sorted((e_nd, new_nd_name)), e_new_geom)]
+            edge_key = make_edge_key(s, e)
+            edge_children[edge_key] = [(s, new_nd_name, s_new_geom),
+                                       (e, new_nd_name, e_new_geom)]
             # TODO: more than one splice?
             # drop the old edge from _multi_graph
-            if _multi_graph.has_edge(s_nd, e_nd):
-                _multi_graph.remove_edge(s_nd, e_nd)
-
+            if _multi_graph.has_edge(s, e):
+                _multi_graph.remove_edge(s, e)
     # squashing nodes can result in edge duplicates
     deduped_graph = _merge_parallel_edges(_multi_graph,
                                           use_midline,
@@ -861,6 +854,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         For splitting and orienting half geoms
         '''
         # get edge data
+        #TODO: convert to multi
         edge_data = g[a_node][b_node]
         # test for x coordinates
         if 'x' not in g.nodes[a_node] or 'y' not in g.nodes[a_node]:

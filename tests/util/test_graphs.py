@@ -405,12 +405,12 @@ def test_nX_consolidate():
 
     G = graphs.nX_simple_geoms(G)
     # behaviour confirmed visually
-    from cityseer.util import plot
-    plot.plot_nX(G, labels=True, plot_geoms=True)
+    # from cityseer.util import plot
+    # plot.plot_nX(G, labels=True, plot_geoms=True)
 
     # simplify first to test lollipop self-loop from node 15
     G_split_opps = graphs.nX_split_opposing_geoms(G, buffer_dist=25, use_midline=True)
-    plot.plot_nX(G_split_opps, labels=True, plot_geoms=True)
+    # plot.plot_nX(G_split_opps, labels=True, plot_geoms=True)
     G_merged_spatial = graphs.nX_consolidate_spatial(G_split_opps, buffer_dist=25, merge_by_midline=True)
     # plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
 
@@ -420,66 +420,19 @@ def test_nX_consolidate():
     node_coords = []
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d['x'], d['y']))
-    assert node_coords == [
-        (660, 660),
-        (620.0, 710.0),
-        (660.0, 710.0),
-        (710.0, 800.0),
-        (710.0, 710.0),
-        (710.0, 620.0),
-        (780.0, 710.0),
-        (840.0, 710.0)]
+    assert node_coords == [(660, 660),
+                           (620.0, 710.0),
+                           (660.0, 710.0),
+                           (710.0, 800.0),
+                           (710.0, 710.0),
+                           (710.0, 620.0),
+                           (780.0, 710.0),
+                           (840.0, 710.0)]
 
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d['geom'].length)
-    assert edge_lens == [50.0, 40.0, 50.0, 90.0, 90.0, 70.0, 147.70329614269008, 60.0]
-
-    G_merged_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=25)
-    # plot.plot_nX(G_merged_spatial, labels=True)
-
-    assert G_merged_spatial.number_of_nodes() == 8
-    assert G_merged_spatial.number_of_edges() == 8
-
-    node_coords = []
-    for n, d in G_merged_spatial.nodes(data=True):
-        node_coords.append((d['x'], d['y']))
-    assert node_coords == [
-        (660, 660),
-        (620.0, 710.0),
-        (660.0, 700.0),
-        (710.0, 800.0),
-        (710.0, 710.0),
-        (710.0, 620.0),
-        (780.0, 720.0),
-        (840.0, 710.0)]
-
-    edge_lens = []
-    for s, e, d in G_merged_spatial.edges(data=True):
-        edge_lens.append(d['geom'].length)
-    assert edge_lens == [40.0, 41.23105625617661, 50.99019513592785, 90.0, 90.0, 70.71067811865476, 129.4427190999916,
-                         60.8276253029822]
-
-    # visual tests on OSM data
-    # TODO: can furnish more extensive tests, e.g. to verify veracity of new geoms
-    osm_json = mock.mock_osm_data()
-    g_1 = graphs.nX_from_osm(osm_json=osm_json)
-
-    osm_json_alt = mock.mock_osm_data(alt=True)
-    g_2 = graphs.nX_from_osm(osm_json=osm_json_alt)
-
-    for g in [g_1, g_2]:
-        G_utm = graphs.nX_wgs_to_utm(g)
-        G = graphs.nX_simple_geoms(G_utm)
-        G = graphs.nX_remove_filler_nodes(G)
-        G = graphs.nX_remove_dangling_nodes(G)
-        # G_decomp = graphs.nX_decompose(G, 25)
-        # from cityseer.util import plot
-        # plot.plot_nX(G, figsize=(10, 10), dpi=150)
-        G_spatial = graphs.nX_consolidate_spatial(G, buffer_dist=15)
-        # plot.plot_nX(G_spatial, figsize=(10, 10), dpi=150)
-        G_parallel = graphs.nX_split_opposing_geoms(G, buffer_dist=14)
-        # plot.plot_nX(G_parallel, figsize=(10, 10), dpi=150)
+    assert edge_lens == [50.0, 40.0, 50.0, 90.0, 90.0, 70.0, 60.0, 147.70329614269008]
 
 
 def test_nX_decompose(primal_graph):
@@ -493,6 +446,7 @@ def test_nX_decompose(primal_graph):
     G = primal_graph.copy()
     for s, e, k in G.edges(keys=True):
         G[s][e][k]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
+        break
     with pytest.raises(TypeError):
         graphs.nX_decompose(G, 20)
 
@@ -501,13 +455,16 @@ def test_nX_decompose(primal_graph):
     # first clean the graph to strip disconnected looping component
     # this gives a start == end node situation for testing
     G_simple = graphs.nX_remove_filler_nodes(G)
-    G_decompose = graphs.nX_decompose(G_simple, 20)
+    G_decompose = graphs.nX_decompose(G_simple, 50)
 
     # from cityseer.util import plot
     # plot.plot_nX(G_simple, labels=True)
     # plot.plot_nX(G_decompose)
-    assert nx.number_of_nodes(G_decompose) == 661
-    assert nx.number_of_edges(G_decompose) == 682
+    assert nx.number_of_nodes(G_decompose) == 272
+    assert nx.number_of_edges(G_decompose) == 293
+    for s, e in G_decompose.edges():
+        assert G_decompose.number_of_edges(s, e) == 1
+
 
     # check that total lengths are the same
     G_lens = 0
@@ -518,12 +475,6 @@ def test_nX_decompose(primal_graph):
         G_d_lens += e_data['geom'].length
     assert np.allclose(G_lens, G_d_lens, atol=0.001, rtol=0)
 
-    # check that all ghosted edges have one or two edges
-    for n, n_data in G_decompose.nodes(data=True):
-        if 'ghosted' in n_data and n_data['ghosted']:
-            nbs = list(G_decompose.neighbors(n))
-            assert len(nbs) == 1 or len(nbs) == 2
-
     # check that geoms are correctly flipped
     G_forward = primal_graph.copy()
     G_forward_decompose = graphs.nX_decompose(G_forward, 20)
@@ -532,8 +483,7 @@ def test_nX_decompose(primal_graph):
     for i, (s, e, k, d) in enumerate(G_backward.edges(data=True, keys=True)):
         # flip each third geom
         if i % 3 == 0:
-            flipped_coords = np.fliplr(d['geom'].coords.xy)
-            G[s][e][k]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
+            G[s][e][k]['geom'] = geometry.LineString(d['geom'].coords[::-1])
     G_backward_decompose = graphs.nX_decompose(G_backward, 20)
 
     for n, d in G_forward_decompose.nodes(data=True):
@@ -561,7 +511,7 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     G = diamond_graph.copy()
     for s, e, k in G.edges(keys=True):
         G[s][e][k]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(TypeError):
+    with pytest.raises(KeyError):
         graphs.nX_to_dual(G)
 
     # check that missing node keys throw an error
@@ -579,8 +529,8 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     G = diamond_graph.copy()
     G_dual = graphs.nX_to_dual(G)
 
-    # from cityseer.util import plot
-    # plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
+    from cityseer.util import plot
+    plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
 
     assert G_dual.number_of_nodes() == G.number_of_edges()
     # the new dual nodes have three edges each, except for the midspan which now has four redges

@@ -218,7 +218,7 @@ def diamond_graph():
     c = 100m
     all inner angles = 60º
     '''
-    G_diamond = nx.Graph()
+    G_diamond = nx.MultiGraph()
     G_diamond.add_nodes_from([
         (0, {'x': 50, 'y': 0}),
         (1, {'x': 0, 'y': 86.60254}),
@@ -230,7 +230,7 @@ def diamond_graph():
     return G_diamond
 
 
-def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
+def get_graph_extents(G: nx.MultiGraph) -> Tuple[float, float, float, float]:
     # get min and maxes for x and y
     min_x = np.inf
     max_x = -np.inf
@@ -250,7 +250,7 @@ def get_graph_extents(G: nx.Graph) -> Tuple[float, float, float, float]:
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(G: nx.Graph, length: int = 50, random_seed: int = None) -> dict:
+def mock_data_dict(G: nx.MultiGraph, length: int = 50, random_seed: int = None) -> dict:
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
