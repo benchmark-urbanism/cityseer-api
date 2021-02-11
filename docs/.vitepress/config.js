@@ -21,7 +21,7 @@ module.exports = {
             indexName: 'cityseer_docs'
         },
         searchPlaceholder: 'search',
-        searchMaxSuggestions: 10,
+        searchMaxSuggestions: 3,
         logo: '/round_logo.png',
         lastUpdated: true,
         nav: [
