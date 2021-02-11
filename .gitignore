@@ -22,7 +22,7 @@ yarn-error.log*
 node_modules/
 
 # Docs
-docs/.vuepress/dist
+docs/.vitepress/dist
 
 # Distribution / packaging
 .Python

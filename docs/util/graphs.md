@@ -188,9 +188,9 @@ A `networkX` graph. Nodes located within the `buffer_dist` distance from other n
 
 </FuncElement>
 
-<ImageModal :path="require('../images/plots/graph_messy.png')" alt='Example messy graph' caption='The pre-consolidation OSM street network for Soho, London, with filler nodes removed; dangling nodes removed; and street edges decomposed. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/graph_messy.png' alt='Example messy graph' caption='The pre-consolidation OSM street network for Soho, London, with filler nodes removed; dangling nodes removed; and street edges decomposed. © OpenStreetMap contributors.'></ImageModal>
 
-<ImageModal :path="require('../images/plots/graph_clean_spatial.png')" alt='Example cleaned graph' caption='Spatially consolidated OSM street network for Soho, London. Compare with the nX_consolidate_parrallel method, below. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/graph_clean_spatial.png' alt='Example cleaned graph' caption='Spatially consolidated OSM street network for Soho, London. Compare with the nX_consolidate_parrallel method, below. © OpenStreetMap contributors.'></ImageModal>
 
 nX\_consolidate\_parallel <Chip text="v0.8.7"/>
 -------------------------
@@ -220,9 +220,9 @@ A `networkX` graph. Nodes located within the `buffer_dist` distance from other n
 
 </FuncElement>
 
-<ImageModal :path="require('../images/plots/graph_messy.png')" alt='Example messy graph' caption='The pre-consolidation OSM street network for Soho, London, with filler nodes removed; dangling nodes removed; and street edges decomposed. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/graph_messy.png' alt='Example messy graph' caption='The pre-consolidation OSM street network for Soho, London, with filler nodes removed; dangling nodes removed; and street edges decomposed. © OpenStreetMap contributors.'></ImageModal>
 
-<ImageModal :path="require('../images/plots/graph_clean_parallel.png')" alt='Example cleaned graph' caption='Parallel-consolidated OSM street network for Soho, London. Notice that nX_consolidate_parallel better preserves the original street topology as compared to nX_consolidate_spatial. © OpenStreetMap contributors.'></ImageModal>
+<ImageModal path='../images/plots/graph_clean_parallel.png' alt='Example cleaned graph' caption='Parallel-consolidated OSM street network for Soho, London. Notice that nX_consolidate_parallel better preserves the original street topology as compared to nX_consolidate_spatial. © OpenStreetMap contributors.'></ImageModal>
 
 
 nX\_decompose
