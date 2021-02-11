@@ -7,7 +7,10 @@ module.exports = {
     head: [
         ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css?family=Raleway:300,400,500'}],
         ['link', {rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css'}],
-        ['link', {rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css'}]
+        ['link', {
+            rel: 'stylesheet',
+            href: 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css'
+        }]
     ],
     themeConfig: {
         locales: {},
@@ -64,7 +67,14 @@ module.exports = {
         lineNumbers: true,
         toc: {includeLevel: [1, 2]},
         config: (md) => {
-            md.use(require('@iktakahiro/markdown-it-katex'))
+            md.use(require('@iktakahiro/markdown-it-katex')).use(require('markdown-it-replacements'))
+            // replace tags for rendering katex
+            const originalRender = md.render
+            md.render = function () {
+                return originalRender
+                    .apply(this, arguments)
+                    .replace(/<span class="katex">/g, '<span v-pre class="katex">')
+            }
         },
     },
 }
