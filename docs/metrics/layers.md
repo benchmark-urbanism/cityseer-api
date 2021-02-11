@@ -508,7 +508,7 @@ The values of `q` for which to compute Hill diversity.
 
 The data key is `hill`, e.g.:
 
-`Network_Layer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
 
 
 @hill\_branch\_wt\_diversity
@@ -532,7 +532,7 @@ The values of `q` for which to compute Hill diversity.
 
 The data key is `hill_branch_wt`, e.g.:
 
-`Network_Layer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
 
 
 @compute\_accessibilities
@@ -561,8 +561,8 @@ The land-use keys for which to compute accessibilies. The keys should be selecte
 
 The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail` accessibility:
 
-`Network_Layer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`
-`Network_Layer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`</small><br>
+<small>`Network_Layer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`</small>
 
 
 @compute\_stats\_single
@@ -589,7 +589,7 @@ A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corres
 
 The data key will correspond to the `stats_key` parameter, e.g. where using `occupants` as the key:
 
-`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
 
 
 ::: tip Hint
@@ -634,9 +634,9 @@ stats_data_arrs = [
 
 The data keys will correspond to the `stats_keys` parameter:
 
-`Network_Layer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`
-`Network_Layer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`
-`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
+<small>`Network_Layer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
+<small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
 
 
 Data_Layer_From_Dict <Chip text="class"/>
