@@ -61,8 +61,6 @@ Dual node colour or colours. When passing a list of colours, the number of colou
 
 </FuncElement>
 
-</FuncElement>
-
 <FuncElement name="figure_kwargs" type="key=value pairs">
 
 `key=value` pairs which will be passed to the `matplotlib` figure parameters. If provided, these `kwargs` are used to override the default figure size or dpi parameters.

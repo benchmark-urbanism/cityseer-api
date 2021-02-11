@@ -1,12 +1,11 @@
 ---
-# https://www.markdownguide.org/extended-syntax/#tables
-
 home: true
-heroImage: /logo.png
-heroText: visibility hidden
+heroImage: logo.png
+heroAlt: Logo image
+heroText: ' '
 tagline: Computational tools for urban analysis
 actionText: Get Started →
-actionLink: intro.md
+actionLink: intro
 features:
 - title: Urban analysis
   details: Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.
