@@ -5,7 +5,9 @@ module.exports = {
     title: 'Cityseer API Docs',
     description: 'Computational tools for urban analysis',
     head: [
-        ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css?family=Raleway:300,400,500'}]
+        ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css?family=Raleway:300,400,500'}],
+        ['link', {rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css'}],
+        ['link', {rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css'}]
     ],
     themeConfig: {
         locales: {},
@@ -63,6 +65,7 @@ module.exports = {
         lineNumbers: true,
         toc: {includeLevel: [1, 2]},
         config: (md) => {
+            md.use(require("@iktakahiro/markdown-it-katex"))
         },
     },
 }

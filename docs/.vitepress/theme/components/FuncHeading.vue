@@ -7,10 +7,10 @@
 <style lang="postcss" scoped>
 
 .heading-style {
-  padding: 1em 0;
+  padding: 4px 0;
   margin: 10px 0;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   border-bottom-style: solid;
   border-color: #2e2e2e;
   border-width: 1px;
