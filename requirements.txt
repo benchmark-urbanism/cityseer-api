@@ -1,5 +1,5 @@
 numpy
-numba>=0.49.0
+numba>=0.53.0rc1.post1
 utm
 shapely>=1.7.0
 networkx>=2.4
