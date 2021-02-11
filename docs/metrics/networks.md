@@ -392,13 +392,13 @@ The reasons for picking one approach over another are varied:
 - Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based) and dual graphs (node only).
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed on primal graphs because this does not account for the impact of differing topologies. Dual graph representations can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual. This effect is amplified for denser regions of the network.
 - Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example, the contribution of a single edge segment at a four-way intersection would be duplicated three times.
-- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic closeness or improved closeness should be used instead. Note that Global closeness ($\frac{n}{farness}$) and improved closeness ($\frac{n}{farness / nodes}$) can be recovered from the available metrics, if so desired, through additional (manual) steps.
+- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired, through additional (manual) steps.
 - Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions may therefore be preferable when working at small thresholds on decomposed networks.
 :::
 
 The computed metrics will be written to a dictionary available at the `Network_Layer.metrics` property and will be categorised by the respective centrality and distance keys: 
 
-`Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`
+<small>`Network_Layer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`</small>
 
 For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$, then the dictionary would assume the following structure:
 
@@ -472,22 +472,22 @@ A boolean indicating whether to use shortest or simplest path heuristics.
 
 The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
 
-| key | formula |        notes |
+| key | formula | notes |
 |-----|:--------:|-------|
-| <small>node_density</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\ 1$ | <small>A summation of nodes.</small>|
-| <small>node_farness</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\ d_{(i,j)}$ | <small>A summation of distances in metres.</small>|
-| <small>node_cycles</small> | $\scriptstyle\sum_{j\neq{i}\ j=cycle}^{n}\ 1$ | <small>A summation of network cycles.</small>|
-| <small>node_harmonic</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\ \frac{1}{Z_{(i,j)}}$ | <small>Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$.</small>|
-| <small>node_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\ exp(\beta \cdot d[i,j])$ | <small>Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase.</small>|
-| <small>node_betweenness</small> | $\scriptstyle\sum_{j\neq{i}}^{n} \sum_{k\neq{j}\neq{i}}^{n}\ 1$ | <small>Betweenness centrality summing all shortest-paths traversing each node $i$.</small>| 
-| <small>node_betweenness_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n} \sum_{k\neq{j}\neq{i}}^{n}\ \\ exp(\beta \cdot d[j,k])$ | <small>Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.</small>|
+| <small>node_density</small> | $\scriptstyle\sum_{j\neq{i}}^{n}1$ | <small>A summation of nodes.</small>|
+| <small>node_farness</small> | $\scriptstyle\sum_{j\neq{i}}^{n}d_{(i,j)}$ | <small>A summation of distances in metres.</small>|
+| <small>node_cycles</small> | $\scriptstyle\sum_{j\neq{i}j=cycle}^{n}1$ | <small>A summation of network cycles.</small>|
+| <small>node_harmonic</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | <small>Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$.</small>|
+| <small>node_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\\exp(\beta\cdot d[i,j])$ | <small>Also known as the '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase.</small>|
+| <small>node_betweenness</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | <small>Betweenness centrality summing all shortest-paths traversing each node $i$.</small>| 
+| <small>node_betweenness_beta</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\\exp(\beta\cdot d[j,k])$ | <small>Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$.</small>|
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| <small>node_harmonic_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\ \frac{1}{Z_{(i,j)}}$ | <small>The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $\scriptstyle{Z = 1 + (angular\ change/180)}$.</small>|
-| <small>node_betweenness_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n} \sum_{k\neq{j}\neq{i}}^{n}\ 1$ | <small>The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).</small>|
+| <small>node_harmonic_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | <small>The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to $1$ to avoid division by zero: $\scriptstyle{Z = 1 + (angularchange/180)}$.</small>|
+| <small>node_betweenness_angular</small> | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | <small>The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance).</small>|
 
 
 @compute\_segment\_centrality <Chip text="v0.12.0"/>
@@ -519,16 +519,16 @@ The following keys use the shortest-path heuristic, and are available when the `
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| <small>segment_density</small> | $\scriptstyle\sum_{(a, b)}^{edges}\ d_{b} - d_{a}$ | <small>A summation of edge lengths.</small> |
-| <small>segment_harmonic</small> | $\scriptstyle\sum_{(a, b)}^{edges}\ \int_{a}^{b} \ln(b) - \ln(a)$ | <small>A continuous form of harmonic closeness centrality applied to edge lengths.</small> |
-| <small>segment_beta</small> | $\scriptstyle\sum_{(a, b)}^{edges}\ \int_{a}^{b} \frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | <small>A continuous form of beta-weighted (gravity index) centrality applied to edge lengths.</small> |
+| <small>segment_density</small> | $\scriptstyle\sum_{(a, b)}^{edges}d_{b} - d_{a}$ | <small>A summation of edge lengths.</small> |
+| <small>segment_harmonic</small> | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$ | <small>A continuous form of harmonic closeness centrality applied to edge lengths.</small> |
+| <small>segment_beta</small> | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | <small>A continuous form of beta-weighted (gravity index) centrality applied to edge lengths.</small> |
 | <small>segment_betweenness</small> |  | <small>A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$.</small> |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`.
 
 | key | formula | notes |
 |-----|:--------:|-------|
-| <small>segment_harmonic_hybrid</small> | $\scriptstyle\sum_{(a, b)}^{edges} \frac{d_{b} - d_{a}}{Z}$ | <small>Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`.</small> |
+| <small>segment_harmonic_hybrid</small> | $\scriptstyle\sum_{(a, b)}^{edges}\frac{d_{b} - d_{a}}{Z}$ | <small>Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`.</small> |
 | <small>segment_betweeness_hybrid</small> |  | <small>A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$.</small> |
 
 Network\_Layer\_From\_nX <Chip text="class"/>
