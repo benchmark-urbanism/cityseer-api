@@ -6,12 +6,12 @@ import logging
 from typing import Union, Tuple
 
 import networkx as nx
+import numpy as np
+import utm
 from numba import types
 from numba.typed import Dict
-import numpy as np
 from shapely import geometry, ops, strtree, coords
 from tqdm.auto import tqdm
-import utm
 
 from cityseer.algos import checks
 
@@ -327,9 +327,10 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
             while end_nd is None:
                 # aggregate the geom
                 try:
-                    # the edge from trailing_nd to ext_link_nd is always singular i.e. index-in directly:
-                    # simple nodes on one end or the other end implies a single-in and single-out for at least one end
-                    assert networkX_multigraph.number_of_edges(trailing_nd, next_link_nd) == 1
+                    # the edge from trailing_nd to next_link_nd is always singular i.e. index-in directly:
+                    # there is ordinarily a single edge from trailing to next
+                    # however, there is an edge case where next is a dead-end with two edges linking back to trailing
+                    # in either case, just use the first geom
                     geom = networkX_multigraph[trailing_nd][next_link_nd][0]['geom']
                 except KeyError:
                     raise KeyError(f'Missing "geom" attribute for edge {trailing_nd}-{next_link_nd}')
@@ -351,14 +352,22 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                     # add next_link_nd to drop list
                     drop_nodes.append(next_link_nd)
                     # get the next set of neighbours
-                    nb_a, nb_b = list(nx.neighbors(networkX_multigraph, next_link_nd))
-                    # proceed to the new_next node
-                    if nb_a == trailing_nd:
+                    # in the above-mentioned edge-case, a single dead-end node with two edges back to a start node
+                    # will only have one neighbour
+                    new_nbs = list(nx.neighbors(networkX_multigraph, next_link_nd))
+                    if len(new_nbs) == 1:
                         trailing_nd = next_link_nd
-                        next_link_nd = nb_b
+                        next_link_nd = new_nbs[0]
+                    # but in almost all cases there will be two neighbours
                     else:
-                        trailing_nd = next_link_nd
-                        next_link_nd = nb_a
+                        nb_a, nb_b = list(nx.neighbors(networkX_multigraph, next_link_nd))
+                        # proceed to the new_next node
+                        if nb_a == trailing_nd:
+                            trailing_nd = next_link_nd
+                            next_link_nd = nb_b
+                        else:
+                            trailing_nd = next_link_nd
+                            next_link_nd = nb_a
             # double-check that the geom's endpoints match within tolerance
             # then snap to remove any potential side-effects from minor tolerance issues
             s_xy = (networkX_multigraph.nodes[anchor_nd]['x'], networkX_multigraph.nodes[anchor_nd]['y'])
@@ -509,20 +518,20 @@ def _merge_parallel_edges(_multi_graph: nx.MultiGraph,
             edge_geoms = [edge['geom'] for edge in edges]
             edge_lens = [geom.length for geom in edge_geoms]
             shortest_idx = edge_lens.index(min(edge_lens))
-            shortest_len = edge_lens[shortest_idx]
+            shortest_len = edge_lens.pop(shortest_idx)
             shortest_geom = edge_geoms.pop(shortest_idx)
-            # retain distinct edges where additional length exceeds the max_length_discrepancy_ratio
-            if max(edge_lens) > shortest_len * max_length_discrepancy_ratio:
-                for idx, edge_len in enumerate(edge_lens):
-                    if edge_len > shortest_len * max_length_discrepancy_ratio:
-                        # add edge
-                        g = edge_geoms[idx]
-                        deduped_graph.add_edge(s, e, geom=g)
-                        # remove from remainder
-                        edge_geoms.pop(idx)
+            longer_geoms = []
+            for edge_len, edge_geom in zip(edge_lens, edge_geoms):
+                # retain distinct edges where they are substantially longer than the shortest geom
+                if edge_len > shortest_len * max_length_discrepancy_ratio:
+                    deduped_graph.add_edge(s, e, geom=edge_geom)
+                # otherwise, add to the list of longer geoms to be merged along with shortest
+                else:
+                    longer_geoms.append(edge_geom)
             # otherwise, if not merging on a midline basis
             # or, if no other edges to process (in cases where longer geom has been retained per above)
-            elif not use_midline or len(edge_geoms) == 0:
+            # then use the shortest geom
+            if not use_midline or len(longer_geoms) == 0:
                 deduped_graph.add_edge(s, e, geom=shortest_geom)
             # otherwise weld the geoms, using the shortest as a yardstick
             else:
@@ -533,7 +542,7 @@ def _merge_parallel_edges(_multi_graph: nx.MultiGraph,
                     short_point = geometry.Point(coord)
                     # find the nearest points on the longer geoms
                     multi_coords = [short_point]
-                    for longer_geom in edge_geoms:
+                    for longer_geom in longer_geoms:
                         # get the nearest point on the longer geom
                         # returns a tuple of nearest geom for respective input geoms
                         longer_point = ops.nearest_points(short_point, longer_geom)[-1]
@@ -586,10 +595,10 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
                            min_node_degree: int = 1,
                            min_cumulative_degree: int = None,
                            max_cumulative_degree: int = None,
-                           neigh_policy: str = None,
-                           merge_by_midline: bool = False,
-                           squash_by_highest_degree: bool = False,
-                           max_length_discrepancy_ratio: float = 1.2) -> nx.MultiGraph:
+                           neighbour_policy: str = None,
+                           merge_edges_by_midline: bool = False,
+                           squash_nodes_by_highest_degree: bool = False,
+                           max_length_discrepancy_ratio: float = 1.5) -> nx.MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
     """
@@ -597,7 +606,7 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
         raise TypeError('This method requires an undirected networkX MultiGraph.')
     if min_node_threshold < 2:
         raise ValueError('The minimum node threshold should be set to at least two.')
-    if neigh_policy is not None and neigh_policy not in ('direct', 'indirect'):
+    if neighbour_policy is not None and neighbour_policy not in ('direct', 'indirect'):
         raise ValueError('Neighbour policy should be one of "direct" or "indirect".')
     logger.info(f'Consolidating network by distance buffer.')
     _multi_graph = networkX_multigraph.copy()
@@ -619,9 +628,9 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
             if j.uid in removed_nodes or j.degree < min_node_degree:
                 continue
             neighbours = nx.neighbors(networkX_multigraph, n)
-            if neigh_policy == 'indirect' and j.uid in neighbours:
+            if neighbour_policy == 'indirect' and j.uid in neighbours:
                 continue
-            elif neigh_policy == 'direct' and j.uid not in neighbours:
+            elif neighbour_policy == 'direct' and j.uid not in neighbours:
                 continue
             node_group.append(j.uid)
             cumulative_degree += j.degree
@@ -636,14 +645,14 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
         # update removed nodes
         removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        _multi_graph = _squash_adjacent(_multi_graph, node_group, squash_by_highest_degree)
+        _multi_graph = _squash_adjacent(_multi_graph, node_group, squash_nodes_by_highest_degree)
     # squashing nodes can result in edge duplicates
-    deduped_graph1 = _merge_parallel_edges(_multi_graph,
-                                           merge_by_midline,
-                                           max_length_discrepancy_ratio)
-    deduped_graph2 = nX_remove_filler_nodes(deduped_graph1)
+    deduped_graph = _merge_parallel_edges(_multi_graph,
+                                          merge_edges_by_midline,
+                                          max_length_discrepancy_ratio)
+    deduped_graph = nX_remove_filler_nodes(deduped_graph)
 
-    return deduped_graph2
+    return deduped_graph
 
 
 def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
