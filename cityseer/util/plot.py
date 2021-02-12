@@ -27,6 +27,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
                            primal_edge_colour: (str, tuple, list) = None,
                            dual_node_colour: (str, tuple, list) = None,
                            dual_edge_colour: (str, tuple, list) = None,
+                           primal_edge_width: (int, float) = None,
+                           dual_edge_width: (int, float) = None,
                            plot_geoms: bool = False,
                            x_lim: (tuple, list) = None,
                            y_lim: (tuple, list) = None,
@@ -46,7 +48,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
         node_size = 70
 
     # setup a function that can be used for either the primal or dual graph
-    def plot_graph(_graph, _is_primal, _node_colour, _node_shape, _edge_colour, _edge_style):
+    def plot_graph(_graph, _is_primal, _node_colour, _node_shape, _edge_colour, _edge_style, _edge_width):
         if not len(_graph.nodes()):
             raise ValueError('Graph contains no nodes to plot.')
         # setup a node colour list if nodes are individually coloured, this is for filtering by extents
@@ -67,7 +69,16 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
             if _is_primal:
                 _edge_colour = 'w'
             else:
-                _edge_colour = '#999999'
+                _edge_colour = accent
+        # edge width
+        if _edge_width is not None:
+            if not isinstance(_edge_width, (int, float)):
+                raise ValueError('Edge widths should be an int or float.')
+        else:
+            if _is_primal:
+                _edge_width = 1.5
+            else:
+                _edge_width = 0.5
         pos = {}
         node_list = []
         colour_list = []
@@ -105,7 +116,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
                 edge_list.append((s, e))
         # plot geoms manually if required
         if plot_geoms:
-            lines = LineCollection(edge_geoms, colors=_edge_colour)
+            lines = LineCollection(edge_geoms, colors=_edge_colour, linewidths=_edge_width, linestyles=_edge_style)
             ax.add_collection(lines)
         # go ahead and plot: note that edge_list will be empty if plotting geoms
         nx.draw(_graph,
@@ -122,13 +133,13 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
                 edgelist=edge_list,
                 edge_color=_edge_colour,
                 style=_edge_style,
-                width=1,
+                width=_edge_width,
                 alpha=alpha)
 
     if primal_graph is not None:
-        plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid')
+        plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid', primal_edge_width)
     if dual_graph is not None:
-        plot_graph(primal_graph, True, dual_node_colour, 'd', dual_edge_colour, 'dashed')
+        plot_graph(dual_graph, False, dual_node_colour, 'd', dual_edge_colour, 'dashed', dual_edge_width)
     if x_lim:
         plt.xlim(*x_lim)
     if y_lim:
@@ -145,6 +156,7 @@ def plot_nX(networkX_graph: nx.Graph,
             labels: bool = False,
             node_colour: (str, tuple, list) = None,
             edge_colour: (str, tuple, list) = None,
+            edge_width: (int, float) = None,
             plot_geoms: bool = False,
             x_lim: (tuple, list) = None,
             y_lim: (tuple, list) = None,
@@ -154,6 +166,7 @@ def plot_nX(networkX_graph: nx.Graph,
                                   labels=labels,
                                   primal_node_colour=node_colour,
                                   primal_edge_colour=edge_colour,
+                                  primal_edge_width=edge_width,
                                   plot_geoms=plot_geoms,
                                   x_lim=x_lim,
                                   y_lim=y_lim,

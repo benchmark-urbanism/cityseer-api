@@ -199,7 +199,13 @@ def test_local_node_centrality(primal_graph):
 
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
-    nx_betw = nx.betweenness_centrality(G_round_trip, weight='length', endpoints=False, normalized=False)
+    # nx node centrality not implemented for MultiGraph
+    G_non_multi = nx.Graph()
+    G_non_multi.add_nodes_from(G_round_trip.nodes())
+    for s, e, k, d in G_round_trip.edges(keys=True, data=True):
+        assert k == 0
+        G_non_multi.add_edge(s, e, **d)
+    nx_betw = nx.betweenness_centrality(G_non_multi, weight='length', endpoints=False, normalized=False)
     nx_betw = np.array([v for v in nx_betw.values()])
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated

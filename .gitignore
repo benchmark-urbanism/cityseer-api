@@ -3,6 +3,7 @@
 
 # Dev
 .idea/
+build/
 
 # Jupyter notebooks
 .ipynb_checkpoints

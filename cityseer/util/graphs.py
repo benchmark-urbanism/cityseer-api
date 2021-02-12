@@ -163,7 +163,7 @@ def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coord
     # handle 3D
     coord = list(linestring_coords[idx])  # tuples don't support indexed assignment
     coord[:2] = xy
-    linestring_coords[idx] = coord
+    linestring_coords[idx] = tuple(coord)
 
     return linestring_coords
 
@@ -738,14 +738,14 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
             _multi_graph.add_edge(s, new_nd_name)
             _multi_graph.add_edge(e, new_nd_name)
             # TODO: more than one splice??
-            if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=0.001, rtol=0) or \
-                    np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[-1][:2], atol=0.001, rtol=0):
+            if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=checks.tolerance, rtol=0) or \
+                    np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[-1][:2], atol=checks.tolerance, rtol=0):
                 s_new_geom = new_edge_geom_a
                 e_new_geom = new_edge_geom_b
             else:
                 # double check matching geoms
-                if not np.allclose(s_nd_geom.coords, new_edge_geom_b.coords[0][:2], atol=0.001, rtol=0) and \
-                        not np.allclose(s_nd_geom.coords, new_edge_geom_b.coords[-1][:2], atol=0.001, rtol=0):
+                if not np.allclose(s_nd_geom.coords, new_edge_geom_b.coords[0][:2], atol=checks.tolerance, rtol=0) and \
+                        not np.allclose(s_nd_geom.coords, new_edge_geom_b.coords[-1][:2], atol=checks.tolerance, rtol=0):
                     raise ValueError('Unable to match split geoms to existing nodes')
                 s_new_geom = new_edge_geom_b
                 e_new_geom = new_edge_geom_a
@@ -794,11 +794,11 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph, decompose_max: float) -> nx
         if line_geom.type != 'LineString':
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0):
             line_geom = geometry.LineString(line_geom.coords[::-1])
         # double check that coordinates now face the forwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0) or \
-                not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
+        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0) or \
+                not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=checks.tolerance, rtol=0):
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -844,28 +844,31 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph, decompose_max: float) -> nx
 
 
 def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
+    """
+    Converts a primal MultiGraph to a dual MultiGraph.
+    Note that a multi-graph is useful for primal but not for dual, so the output multi-graph will have single edges.
+    e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
+    primal. The same type of situation does not arise in the dual because the nodes map to distinct streets.
+    """
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')
     logger.info('Converting graph to dual.')
     g_dual = nx.MultiGraph()
 
-    def get_half_geoms(g, a_node, b_node):
+    def get_half_geoms(g, a_node, b_node, edge_k):
         '''
         For splitting and orienting half geoms
         '''
         # get edge data
-        #TODO: convert to multi
-        edge_data = g[a_node][b_node]
+        edge_data = g[a_node][b_node][edge_k]
         # test for x coordinates
         if 'x' not in g.nodes[a_node] or 'y' not in g.nodes[a_node]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
         # test for y coordinates
         if 'x' not in g.nodes[b_node] or 'y' not in g.nodes[b_node]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
-        a_x = g.nodes[a_node]['x']
-        a_y = g.nodes[a_node]['y']
-        b_x = g.nodes[b_node]['x']
-        b_y = g.nodes[b_node]['y']
+        a_xy = (g.nodes[a_node]['x'], g.nodes[a_node]['y'])
+        b_xy = (g.nodes[b_node]['x'], g.nodes[b_node]['y'])
         # test for geom
         if 'geom' not in edge_data:
             raise KeyError(
@@ -876,72 +879,79 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         if line_geom.type != 'LineString':
             raise TypeError(
                 f'Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}.')
-        # check geom coordinates directionality - flip if facing backwards direction - beware 3d coords
-        if not np.allclose((a_x, a_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
-            line_geom = geometry.LineString(line_geom.coords[::-1])
-        # double check that coordinates now face the forwards direction
-        if not np.allclose((a_x, a_y), line_geom.coords[0][:2], atol=0.001, rtol=0) or \
-                not np.allclose((b_x, b_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
-            raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {a_node}-{b_node}')
+        # align geom coordinates to start from A side
+        line_geom_coords = _align_linestring_coords(line_geom.coords, a_xy)
+        line_geom = geometry.LineString(line_geom_coords)
         # generate the two half geoms
         a_half_geom = ops.substring(line_geom, 0, line_geom.length / 2)
         b_half_geom = ops.substring(line_geom, line_geom.length / 2, line_geom.length)
-        assert np.allclose(a_half_geom.coords[-1][:2], b_half_geom.coords[0][:2], atol=0.001, rtol=0)
+        # check that nothing odd happened with new midpoint
+        assert np.allclose(a_half_geom.coords[-1][:2], b_half_geom.coords[0][:2], atol=checks.tolerance, rtol=0)
+        # snap to prevent creeping tolerance issues
+        # A side geom starts at node A and ends at new midpoint
+        a_half_geom_coords = _snap_linestring_startpoint(a_half_geom.coords, a_xy)
+        # snap new midpoint to geom A's endpoint (i.e. no need to snap endpoint of geom A)
+        mid_xy = a_half_geom_coords[-1][:2]
+        # B side geom starts at mid and ends at B node
+        b_half_geom_coords = _snap_linestring_startpoint(b_half_geom.coords, mid_xy)
+        b_half_geom_coords = _snap_linestring_endpoint(b_half_geom_coords, b_xy)
+        # double check coords
+        assert a_half_geom_coords[0][:2] == a_xy
+        assert a_half_geom_coords[-1][:2] == mid_xy
+        assert b_half_geom_coords[0][:2] == mid_xy
+        assert b_half_geom_coords[-1][:2] == b_xy
 
-        return a_half_geom, b_half_geom
+        return geometry.LineString(a_half_geom_coords), geometry.LineString(b_half_geom_coords)
 
-    # iterate the primal graph's edges
-    for s, e, d in tqdm(networkX_multigraph.edges(data=True), disable=checks.quiet_mode):
-
-        # get the first and second half geoms
-        s_half_geom, e_half_geom = get_half_geoms(networkX_multigraph, s, e)
-
-        # create a new dual node corresponding to the current primal edge
-        s_e = sorted([str(s), str(e)])
-        hub_node_dual = f'{s_e[0]}_{s_e[1]}'
-        x, y = s_half_geom.coords[-1][:2]
-        g_dual.add_node(hub_node_dual, x=x, y=y)
-        # add and set live property if present in parent graph
+    def set_live(s, e, dual_n):
+        # add and set live property to dual node if present in adjacent primal graph nodes
         if 'live' in networkX_multigraph.nodes[s] and 'live' in networkX_multigraph.nodes[e]:
             live = True
             # if BOTH parents are not live, then set child to not live
             if not networkX_multigraph.nodes[s]['live'] and not networkX_multigraph.nodes[e]['live']:
                 live = False
-            g_dual.nodes[hub_node_dual]['live'] = live
+            g_dual.nodes[dual_n]['live'] = live
 
+    # iterate the primal graph's edges
+    for s, e, k, d in tqdm(networkX_multigraph.edges(data=True, keys=True), disable=checks.quiet_mode):
+        # get the first and second half geoms
+        s_half_geom, e_half_geom = get_half_geoms(networkX_multigraph, s, e, k)
+        # create a new dual node corresponding to the current primal edge
+        s_e = sorted([str(s), str(e)])
+        hub_node_dual = f'{s_e[0]}_{s_e[1]}'
+        # the node may already have been added from a neighbouring node that has already been processed
+        if hub_node_dual not in g_dual:
+            x, y = s_half_geom.coords[-1][:2]
+            g_dual.add_node(hub_node_dual, x=x, y=y)
+            # add and set live property if present in parent graph
+            set_live(s, e, hub_node_dual)
         # process either side
         for n_side, half_geom in zip([s, e], [s_half_geom, e_half_geom]):
-
             # add the spoke edges on the dual
             for nb in nx.neighbors(networkX_multigraph, n_side):
-
                 # don't follow neighbour back to current edge combo
                 if nb in [s, e]:
                     continue
-
-                # get the near and far half geoms
-                spoke_half_geom, _discard_geom = get_half_geoms(networkX_multigraph, n_side, nb)
-
                 # add the neighbouring primal edge as dual node
                 s_nb = sorted([str(n_side), str(nb)])
                 spoke_node_dual = f'{s_nb[0]}_{s_nb[1]}'
-                x, y = spoke_half_geom.coords[-1][:2]
-                g_dual.add_node(spoke_node_dual, x=x, y=y)
-                # add and set live property if present in parent graph
-                if 'live' in networkX_multigraph.nodes[n_side] and 'live' in networkX_multigraph.nodes[nb]:
-                    live = True
-                    # if BOTH parents are not live, then set child to not live
-                    if not networkX_multigraph.nodes[n_side]['live'] and not networkX_multigraph.nodes[nb]['live']:
-                        live = False
-                    g_dual.nodes[spoke_node_dual]['live'] = live
-
+                # skip if the edge has already been processed from another direction
+                if g_dual.has_edge(hub_node_dual, spoke_node_dual):
+                    continue
+                # get the near and far half geoms
+                spoke_half_geom, _discard_geom = get_half_geoms(networkX_multigraph, n_side, nb, k)
+                # nodes will be added if not already present (i.e. from first direction processed)
+                if spoke_node_dual not in g_dual:
+                    x, y = spoke_half_geom.coords[-1][:2]
+                    g_dual.add_node(spoke_node_dual, x=x, y=y)
+                    # add and set live property if present in parent graph
+                    set_live(s, e, spoke_node_dual)
                 # weld the lines
                 merged_line = ops.linemerge([half_geom, spoke_half_geom])
                 if merged_line.type != 'LineString':
                     raise TypeError(
                         f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
                         f'Check that the LineStrings for {s}-{e} and {n_side}-{nb} actually touch.')
-
                 # add the dual edge
                 g_dual.add_edge(hub_node_dual, spoke_node_dual, parent_primal_node=n_side, geom=merged_line)
 
@@ -991,100 +1001,95 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
         node_uids.append(d['label'])
         # cast to int for indexing
         node_idx = int(n)
-
         # NODE MAP INDEX POSITION 0 = x coordinate
         if 'x' not in d:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
         node_data[node_idx][0] = d['x']
-
         # NODE MAP INDEX POSITION 1 = y coordinate
         if 'y' not in d:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
         node_data[node_idx][1] = d['y']
-
         # NODE MAP INDEX POSITION 2 = live or not
         if 'live' in d:
             node_data[node_idx][2] = d['live']
         else:
             node_data[node_idx][2] = True
-
         # build edges
         out_edges = []
         for nb in g_multi_copy.neighbors(n):
-            # add the new edge index to the node's out edges
-            out_edges.append(edge_idx)
-            # EDGE MAP INDEX POSITION 0 = start node
-            edge_data[edge_idx][0] = node_idx
-            # EDGE MAP INDEX POSITION 1 = end node
-            edge_data[edge_idx][1] = nb
-            # get edge data
-            edge = g_multi_copy[node_idx][nb]
-            # EDGE MAP INDEX POSITION 2 = length
-            if not 'geom' in edge:
-                raise KeyError(
-                    f'No edge geom found for edge {node_idx}-{nb}: '
-                    f'Please add an edge "geom" attribute consisting of a shapely LineString.'
-                    f'Simple (straight) geometries can be inferred automatically through use of the nX_simple_geoms() method.')
-            line_geom = edge['geom']
-            if line_geom.type != 'LineString':
-                raise TypeError(
-                    f'Expecting LineString geometry but found {line_geom.type} geometry for edge {node_idx}-{nb}.')
-            # cannot have zero or negative length - division by zero
-            l = line_geom.length
-            if not np.isfinite(l) or l <= 0:
-                raise ValueError(f'Length attribute {l} for edge {node_idx}-{nb} must be a finite positive value.')
-            edge_data[edge_idx][2] = l
-            # EDGE MAP INDEX POSITION 3 = angle_sum
-            # check geom coordinates directionality (for bearings at index 5 / 6)
-            # flip if facing backwards direction
-            s_x, s_y = node_data[node_idx][:2]
-            if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=0.001, rtol=0):
-                line_geom = geometry.LineString(line_geom.coords[::-1])
-            e_x, e_y = (g_multi_copy.nodes[nb]['x'], g_multi_copy.nodes[nb]['y'])
-            # double check that coordinates now face the forwards direction
-            if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or \
-                    not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=0.001, rtol=0):
-                raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
-            # iterate the coordinates and calculate the angular change
-            angle_sum = 0
-            for c in range(len(line_geom.coords) - 2):
-                x_1, y_1 = line_geom.coords[c][:2]
-                x_2, y_2 = line_geom.coords[c + 1][:2]
-                x_3, y_3 = line_geom.coords[c + 2][:2]
-                # arctan2 is y / x order
-                a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
-                angle_sum += np.abs((a_2 - a_1 + 180) % 360 - 180)
-                # alternative
-                # A = np.array(merged_line.coords[c + 1]) - np.array(merged_line.coords[c])
-                # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
-                # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
-            if not np.isfinite(angle_sum) or angle_sum < 0:
-                raise ValueError(
-                    f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
-            edge_data[edge_idx][3] = angle_sum
-            # EDGE MAP INDEX POSITION 4 = imp_factor
-            # if imp_factor is set explicitly, then use
-            if 'imp_factor' in edge:
-                # cannot have imp_factor less than zero (but == 0 is OK)
-                imp_factor = edge['imp_factor']
-                if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
+            for nx_edge_idx, nx_edge_data in g_multi_copy[n][nb].items():
+                # add the new edge index to the node's out edges
+                out_edges.append(edge_idx)
+                # EDGE MAP INDEX POSITION 0 = start node
+                edge_data[edge_idx][0] = node_idx
+                # EDGE MAP INDEX POSITION 1 = end node
+                edge_data[edge_idx][1] = nb
+                # EDGE MAP INDEX POSITION 2 = length
+                if not 'geom' in nx_edge_data:
+                    raise KeyError(
+                        f'No edge geom found for edge {node_idx}-{nb}: '
+                        f'Please add an edge "geom" attribute consisting of a shapely LineString.'
+                        f'Simple (straight) geometries can be inferred automatically through use of the nX_simple_geoms() method.')
+                line_geom = nx_edge_data['geom']
+                if line_geom.type != 'LineString':
+                    raise TypeError(
+                        f'Expecting LineString geometry but found {line_geom.type} geometry for edge {node_idx}-{nb}.')
+                # cannot have zero or negative length - division by zero
+                l = line_geom.length
+                if not np.isfinite(l) or l <= 0:
+                    raise ValueError(f'Length attribute {l} for edge {node_idx}-{nb} must be a finite positive value.')
+                edge_data[edge_idx][2] = l
+                # EDGE MAP INDEX POSITION 3 = angle_sum
+                # check geom coordinates directionality (for bearings at index 5 / 6)
+                # flip if facing backwards direction
+                s_x, s_y = node_data[node_idx][:2]
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0):
+                    line_geom = geometry.LineString(line_geom.coords[::-1])
+                e_x, e_y = (g_multi_copy.nodes[nb]['x'], g_multi_copy.nodes[nb]['y'])
+                # double check that coordinates now face the forwards direction
+                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or \
+                        not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=checks.tolerance, rtol=0):
+                    raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
+                # iterate the coordinates and calculate the angular change
+                angle_sum = 0
+                for c in range(len(line_geom.coords) - 2):
+                    x_1, y_1 = line_geom.coords[c][:2]
+                    x_2, y_2 = line_geom.coords[c + 1][:2]
+                    x_3, y_3 = line_geom.coords[c + 2][:2]
+                    # arctan2 is y / x order
+                    a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                    a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
+                    angle_sum += np.abs((a_2 - a_1 + 180) % 360 - 180)
+                    # alternative
+                    # A = np.array(merged_line.coords[c + 1]) - np.array(merged_line.coords[c])
+                    # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
+                    # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
+                if not np.isfinite(angle_sum) or angle_sum < 0:
                     raise ValueError(
-                        f'Impedance factor: {imp_factor} for edge {node_idx}-{nb} must be a finite positive value or positive infinity.')
-                edge_data[edge_idx][4] = imp_factor
-            else:
-                # fallback imp_factor of 1
-                edge_data[edge_idx][4] = 1
-            # EDGE MAP INDEX POSITION 5 - in bearing
-            x_1, y_1 = line_geom.coords[0][:2]
-            x_2, y_2 = line_geom.coords[1][:2]
-            edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-            # EDGE MAP INDEX POSITION 6 - out bearing
-            x_1, y_1 = line_geom.coords[-2][:2]
-            x_2, y_2 = line_geom.coords[-1][:2]
-            edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-            # increment the edge_idx
-            edge_idx += 1
+                        f'Angle-sum attribute {angle_sum} for edge {node_idx}-{nb} must be a finite positive value.')
+                edge_data[edge_idx][3] = angle_sum
+                # EDGE MAP INDEX POSITION 4 = imp_factor
+                # if imp_factor is set explicitly, then use
+                if 'imp_factor' in nx_edge_data:
+                    # cannot have imp_factor less than zero (but == 0 is OK)
+                    imp_factor = nx_edge_data['imp_factor']
+                    if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
+                        raise ValueError(
+                            f'Impedance factor: {imp_factor} for edge {node_idx}-{nb} must be a finite positive value or positive infinity.')
+                    edge_data[edge_idx][4] = imp_factor
+                else:
+                    # fallback imp_factor of 1
+                    edge_data[edge_idx][4] = 1
+                # EDGE MAP INDEX POSITION 5 - in bearing
+                x_1, y_1 = line_geom.coords[0][:2]
+                x_2, y_2 = line_geom.coords[1][:2]
+                edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                # EDGE MAP INDEX POSITION 6 - out bearing
+                x_1, y_1 = line_geom.coords[-2][:2]
+                x_2, y_2 = line_geom.coords[-1][:2]
+                edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                # increment the edge_idx
+                edge_idx += 1
         # add the node to the node_edge_map
         node_edge_map[node_idx] = np.array(out_edges, dtype='int64')
 
@@ -1098,7 +1103,6 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
                        networkX_multigraph: nx.MultiGraph = None,
                        metrics_dict: dict = None) -> nx.MultiGraph:
     logger.info('Populating node and edge map data to a networkX graph.')
-
     if networkX_multigraph is not None:
         logger.info('Reusing existing graph as backbone.')
         if networkX_multigraph.number_of_nodes() != len(node_data):
@@ -1112,31 +1116,62 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
     else:
         logger.info('No existing graph found, creating new.')
         g_multi_copy = nx.MultiGraph()
-        for uid in node_uids:
-            g_multi_copy.add_node(uid)
-
+        g_multi_copy.add_nodes_from(node_uids)
     # after above so that errors caught first
     checks.check_network_maps(node_data, edge_data, node_edge_map)
-
     logger.info('Unpacking node data.')
     for uid, node in tqdm(zip(node_uids, node_data), disable=checks.quiet_mode):
         x, y, live = node
         g_multi_copy.nodes[uid]['x'] = x
         g_multi_copy.nodes[uid]['y'] = y
         g_multi_copy.nodes[uid]['live'] = bool(live)
-
     logger.info('Unpacking edge data.')
     for edge in tqdm(edge_data, disable=checks.quiet_mode):
         start, end, length, angle_sum, imp_factor, start_bearing, end_bearing = edge
         start_uid = node_uids[int(start)]
         end_uid = node_uids[int(end)]
-        # networkX will silently add new edges / data over existing edges
-        g_multi_copy.add_edge(start_uid,
-                              end_uid,
-                              length=length,
-                              angle_sum=angle_sum,
-                              imp_factor=imp_factor)
-
+        # note that the original geom is lost with round trip unless retained in a supplied backbone graph.
+        # the edge map is directional, so each original edge will be processed twice, once from either direction.
+        # edges are only added if A) not using a backbone graph and B) the edge hasn't already been added
+        if networkX_multigraph is None:
+            # if the edge doesn't already exist, then simply add
+            if not g_multi_copy.has_edge(start_uid, end_uid):
+                add_edge = True
+            # else, only add if not matching an already added edge
+            # i.e. don't add the same edge when processed from opposite direction
+            else:
+                add_edge = True  # tentatively set to True
+                # iter the edges
+                for edge_item_idx, edge_item_data in g_multi_copy[start_uid][end_uid].items():
+                    # set add_edge to false if a matching edge length is found
+                    if edge_item_data['length'] == length:
+                        add_edge = False
+            # add the edge if not existent
+            if add_edge:
+                g_multi_copy.add_edge(start_uid,
+                                      end_uid,
+                                      length=length,
+                                      angle_sum=angle_sum,
+                                      imp_factor=imp_factor)
+        # if a new edge is not being added then add the attributes to the appropriate backbone edge if not already done
+        # this is only relevant if processing a backbone graph
+        else:
+            # raise if the edge doesn't exist
+            if not g_multi_copy.has_edge(start_uid, end_uid):
+                raise KeyError(f'The backbone graph is missing an edge spanning from {start_uid} to {end_uid}'
+                               f'The original graph (with all original edges) has to be reused.')
+            # due working with a MultiGraph it is necessary to check that the correct edge index is matched
+            for edge_item_idx, edge_item_data in g_multi_copy[start_uid][end_uid].items():
+                if np.isclose(edge_item_data['geom'].length, length, atol=0.1, rtol=0.0):
+                    # check whether the attributes have already been added from the other direction?
+                    if 'length' in edge_item_data and edge_item_data['length'] == length:
+                        continue
+                    # otherwise add the edge attributes and move on
+                    existing_edge = g_multi_copy[start_uid][end_uid][edge_item_idx]
+                    existing_edge['length'] = length
+                    existing_edge['angle_sum'] = angle_sum
+                    existing_edge['imp_factor'] = imp_factor
+    # unpack any metrics written to the nodes
     if metrics_dict is not None:
         logger.info('Unpacking metrics to nodes.')
         for uid, metrics in tqdm(metrics_dict.items(), disable=checks.quiet_mode):

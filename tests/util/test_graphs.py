@@ -511,7 +511,7 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     G = diamond_graph.copy()
     for s, e, k in G.edges(keys=True):
         G[s][e][k]['geom'] = geometry.Point([G.nodes[s]['x'], G.nodes[s]['y']])
-    with pytest.raises(KeyError):
+    with pytest.raises(TypeError):
         graphs.nX_to_dual(G)
 
     # check that missing node keys throw an error
@@ -528,11 +528,11 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     # test dual
     G = diamond_graph.copy()
     G_dual = graphs.nX_to_dual(G)
+    # from cityseer.util import plot
+    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=False, labels=True)
 
-    from cityseer.util import plot
-    plot.plot_nX_primal_or_dual(primal=G, dual=G_dual)
-
-    assert G_dual.number_of_nodes() == G.number_of_edges()
+    assert G_dual.number_of_nodes() == 5
+    assert G_dual.number_of_edges() == 8
     # the new dual nodes have three edges each, except for the midspan which now has four redges
     for n in G_dual.nodes():
         if n == '1_2':
@@ -595,6 +595,13 @@ def test_nX_to_dual(primal_graph, diamond_graph):
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e][k]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.nX_to_dual(G)
+    # from cityseer.util import plot
+    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=False, labels=True)
+    # 3 + 4 + 1 + 3 + 3 + (9 + 12) + (9 + 12) + (9 + 12) = 77
+    assert G_dual.number_of_nodes() == 77
+    assert G_dual.number_of_edges() == 148
+    for s, e in G_dual.edges():
+        assert G_dual.number_of_edges(s, e) == 1
 
 
 def test_graph_maps_from_nX(diamond_graph):
@@ -652,6 +659,8 @@ def test_graph_maps_from_nX(diamond_graph):
                     assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -120.0, -120.0)
                 elif (start, end) == (3.0, 2.0):
                     assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 0.0, 1.0, -60.0, -60.0)
+                else:
+                    raise KeyError('Unmatched edge.')
             else:
                 s_idx = node_uids[int(start)]
                 e_idx = node_uids[int(end)]
@@ -688,7 +697,8 @@ def test_graph_maps_from_nX(diamond_graph):
                     assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, -60.0, 180.0)
                 elif (start, end) == (4.0, 3.0):  # 2_3 1_3
                     assert (length, angle, imp_fact, start_bear, end_bear) == (100.0, 120.0, 1.0, 120.0, -120.0)
-
+                else:
+                    raise KeyError('Unmatched edge.')
     # check that missing geoms throw an error
     G_test = diamond_graph.copy()
     for s, e, k in G_test.edges(keys=True):
@@ -767,7 +777,7 @@ def test_nX_from_graph_maps(primal_graph):
                                                   node_data,
                                                   edge_data,
                                                   node_edge_map,
-                                                  networkX_graph=primal_graph,
+                                                  networkX_multigraph=primal_graph,
                                                   metrics_dict=metrics_dict)
     for uid, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[uid]['metrics'] == metrics
@@ -781,11 +791,11 @@ def test_nX_from_graph_maps(primal_graph):
 
     G_round_trip_d = graphs.nX_from_graph_maps(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
     assert list(G_round_trip_d.nodes) == list(G_decomposed.nodes)
-    for n, node_data in G_round_trip.nodes(data=True):
+    for n, iter_node_data in G_round_trip.nodes(data=True):
         assert n in G_decomposed
-        assert node_data['live'] == G_decomposed.nodes[n]['live']
-        assert node_data['x'] == G_decomposed.nodes[n]['x']
-        assert node_data['y'] == G_decomposed.nodes[n]['y']
+        assert iter_node_data['live'] == G_decomposed.nodes[n]['live']
+        assert iter_node_data['x'] == G_decomposed.nodes[n]['x']
+        assert iter_node_data['y'] == G_decomposed.nodes[n]['y']
     assert G_round_trip_d.edges == G_decomposed.edges
 
     # error checks for when using backbone graph:
@@ -793,9 +803,26 @@ def test_nX_from_graph_maps(primal_graph):
     corrupt_G = primal_graph.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
-        graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map, networkX_graph=corrupt_G)
+        graphs.nX_from_graph_maps(node_uids,
+                                  node_data,
+                                  edge_data,
+                                  node_edge_map,
+                                  networkX_multigraph=corrupt_G)
     # mismatching node uid
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = 'boo'
-        graphs.nX_from_graph_maps(corrupt_node_uids, node_data, edge_data, node_edge_map, networkX_graph=primal_graph)
+        graphs.nX_from_graph_maps(corrupt_node_uids,
+                                  node_data,
+                                  edge_data,
+                                  node_edge_map,
+                                  networkX_multigraph=primal_graph)
+    # missing edge
+    with pytest.raises(KeyError):
+        corrupt_primal_graph = primal_graph.copy()
+        corrupt_primal_graph.remove_edge(0, 1)
+        graphs.nX_from_graph_maps(node_uids,
+                                  node_data,
+                                  edge_data,
+                                  node_edge_map,
+                                  networkX_multigraph=corrupt_primal_graph)
