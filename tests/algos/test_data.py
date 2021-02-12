@@ -622,7 +622,7 @@ def test_local_aggregator_numerical_components(primal_graph):
 def test_model_singly_constrained():
     import networkx as nx
 
-    G = nx.Graph()
+    G = nx.MultiGraph()
     G.add_node(0, x=0, y=0)
     G.add_node(1, x=100, y=0)
     G.add_node(2, x=200, y=0)

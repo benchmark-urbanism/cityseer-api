@@ -287,8 +287,8 @@ def test_to_networkX(primal_graph):
     G = graphs.nX_decompose(primal_graph, decompose_max=20)
     for n in G.nodes():
         G.nodes[n]['live'] = bool(np.random.randint(0, 1))
-    for s, e in G.edges():
-        G[s][e]['imp_factor'] = np.random.randint(0, 2)
+    for s, e, k in G.edges(keys=True):
+        G[s][e][k]['imp_factor'] = np.random.randint(0, 2)
 
     # add random data to check persistence at other end
     baa_node = None
@@ -297,9 +297,10 @@ def test_to_networkX(primal_graph):
         G.nodes[n]['boo'] = 'baa'
         break
     boo_edge = None
-    for s, e in G.edges():
+    for s, e, k in G.edges(keys=True):
         boo_edge = (s, e)
-        G[s][e]['baa'] = 'boo'
+        G[s][e][k]['baa'] = 'boo'
+        break
 
     # test with metrics
     N = networks.Network_Layer_From_nX(G, distances=[500])
@@ -310,15 +311,15 @@ def test_to_networkX(primal_graph):
         assert G_round_trip.nodes[n]['x'] == d['x']
         assert G_round_trip.nodes[n]['y'] == d['y']
         assert G_round_trip.nodes[n]['live'] == d['live']
-    for s, e, d in G.edges(data=True):
-        assert G_round_trip[s][e]['geom'] == d['geom']
-        assert G_round_trip[s][e]['imp_factor'] == d['imp_factor']
+    for s, e, k, d in G.edges(keys=True, data=True):
+        assert G_round_trip[s][e][k]['geom'] == d['geom']
+        assert G_round_trip[s][e][k]['imp_factor'] == d['imp_factor']
     # check that metrics came through
     for uid, metrics in metrics_dict.items():
         assert G_round_trip.nodes[uid]['metrics'] == metrics
     # check data persistence
     assert G_round_trip.nodes[baa_node]['boo'] == 'baa'
-    assert G_round_trip[boo_edge[0]][boo_edge[1]]['baa'] == 'boo'
+    assert G_round_trip[boo_edge[0]][boo_edge[1]][0]['baa'] == 'boo'
 
 
 def test_compute_centrality(primal_graph):

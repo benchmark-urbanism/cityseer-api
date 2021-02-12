@@ -8,7 +8,7 @@ pip install --upgrade setuptools wheel
 python setup.py sdist bdist_wheel
 pip install --upgrade twine
 TESTING REPO: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==0.12.1.dev0
+DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.0.0a1
 OTHERWISE: twine upload dist/*
 '''
 
@@ -16,7 +16,7 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='0.12.1.dev0',
+    version='1.0.0alpha1',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.util'],
     description='Computational tools for urban analysis',
     url='https://github.com/cityseer/cityseer',
