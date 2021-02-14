@@ -449,31 +449,29 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
     """
     if not isinstance(_multi_graph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX multi-graph (for multiple edges).')
-    #if centroid_policy_min_degree is not None and centroid_policy_min_len_factor is not None:
-    #    raise ValueError('Merge policy should be "centroid_policy_min_degree", "centroid_policy_min_len_factor",'
-    #                     'or else neither, in which case all nodes will be used.')
     if centroid_policy_min_degree is not None and centroid_policy_min_degree < 1:
         raise ValueError('merge_node_min_degree should be a positive integer.')
     if centroid_policy_min_len_factor is not None and not 1 >= centroid_policy_min_len_factor >= 0:
         raise ValueError('centroid_policy_min_len_factor should be a decimal between 0 and 1.')
     # remove any node uids no longer in the graph
     _node_group = [n for n in _node_group if n in _multi_graph]
-    # set the new centroid from the centroid of the node group's Multipoint:
-    node_geoms = []
-    node_names = []
-    # if merging on a highest degree basis
+    # filter out nodes if using centroid_policy_min_degree or centroid_policy_min_len_factor
+    filtered_nodes = []
     if centroid_policy_min_degree is not None:
         for n_uid in _node_group:
             if nx.degree(_multi_graph, n_uid) >= centroid_policy_min_degree:
-                # append geom
-                x = _multi_graph.nodes[n_uid]['x']
-                y = _multi_graph.nodes[n_uid]['y']
-                node_geoms.append(geometry.Point(x, y))
-                node_names.append(n_uid)
+                filtered_nodes.append(n_uid)
     # else if merging on a longest adjacent edges basis
     if centroid_policy_min_len_factor is not None:
+        # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
+        if filtered_nodes:
+            node_pool = filtered_nodes.copy()
+            filtered_nodes = []  # reset
+        # else use the full original node group
+        else:
+            node_pool = _node_group
         agg_lens = []
-        for n_uid in _node_group:
+        for n_uid in node_pool:
             agg_len = 0
             # iterate each node's neighbours, aggregating neighbouring edge lengths along the way
             for nb_uid in nx.neighbors(_multi_graph, n_uid):
@@ -483,34 +481,33 @@ def _squash_adjacent(_multi_graph: nx.MultiGraph,
         # find the longest
         max_len = max(agg_lens)
         # select all nodes with an agg_len within a small tolerance of longest
-        for n_uid, agg_len in zip(_node_group, agg_lens):
-            if agg_len > max_len * centroid_policy_min_len_factor:
-                # append geom
-                x = _multi_graph.nodes[n_uid]['x']
-                y = _multi_graph.nodes[n_uid]['y']
-                node_geoms.append(geometry.Point(x, y))
-                node_names.append(n_uid)
+        for n_uid, agg_len in zip(node_pool, agg_lens):
+            if agg_len >= max_len * centroid_policy_min_len_factor:
+                filtered_nodes.append(n_uid)
     # otherwise, derive the centroid from all nodes
     # this is also a fallback if no nodes selected via minimum degree basis
-    if not node_geoms:
-        node_dupes = set()
-        for n_uid in _node_group:
-            node_names.append(n_uid)
-            x = _multi_graph.nodes[n_uid]['x']
-            y = _multi_graph.nodes[n_uid]['y']
-            # in rare cases opposing geom splitting can cause overlaying nodes
-            # these can swing the gravity of multipoint centroids so screen these out
-            xy_key = f'{x}-{y}'
-            if xy_key in node_dupes:
-                continue
-            else:
-                node_dupes.add(xy_key)
+    if not filtered_nodes:
+        filtered_nodes = _node_group
+    # prepare the names and geoms for all points used for the new centroid
+    node_geoms = []
+    coords_set = set()
+    for n_uid in filtered_nodes:
+        x = _multi_graph.nodes[n_uid]['x']
+        y = _multi_graph.nodes[n_uid]['y']
+        # in rare cases opposing geom splitting can cause overlaying nodes
+        # these can swing the gravity of multipoint centroids so screen these out
+        xy_key = f'{round(x)}-{round(y)}'
+        if xy_key in coords_set:
+            continue
+        else:
+            coords_set.add(xy_key)
             node_geoms.append(geometry.Point(x, y))
-    # find the new centroid
+    # set the new centroid from the centroid of the node group's Multipoint:
     c = geometry.MultiPoint(node_geoms).centroid
+    # now that the centroid is known, go ahead and merge the _node_group
     # add the new node
-    new_nd_name = add_node(_multi_graph, node_names, x=c.x, y=c.y)
-    # iterate the nodes to be removed and connect their existing edge geometries to the new centroid's coordinate
+    new_nd_name = add_node(_multi_graph, _node_group, x=c.x, y=c.y)
+    # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
     for uid in _node_group:
         # iterate the node's existing neighbours
         for nb_uid in nx.neighbors(_multi_graph, uid):
@@ -718,8 +715,8 @@ def nX_consolidate_spatial(networkX_multigraph: nx.MultiGraph,
 
     # iterate origin graph (else node structure changes in place)
     for n, n_d in tqdm(networkX_multigraph.nodes(data=True), disable=checks.quiet_mode):
-        # skip if already consolidated from an adjacent node
-        if n in removed_nodes:
+        # skip if already consolidated from an adjacent node, or if the node's degree doesn't meet min_node_degree
+        if n in removed_nodes or nx.degree(networkX_multigraph, n) < min_node_degree:
             continue
         node_group = recursive_squash(n,  # node uid
                                       n_d['x'],  # x point for buffer
@@ -855,9 +852,19 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                     raise ValueError('Unable to match split geoms to existing nodes')
                 s_new_geom = new_edge_geom_b
                 e_new_geom = new_edge_geom_a
+            # if splitting a looped component, then both new edges will have the same starting and ending nodes
+            # in these cases, there will be multiple edges
+            if s == e:
+                assert _multi_graph.number_of_edges(s, new_nd_name) == 2
+                s_idx = 0
+                e_idx = 1
+            else:
+                assert _multi_graph.number_of_edges(s, new_nd_name) == 1
+                assert _multi_graph.number_of_edges(e, new_nd_name) == 1
+                s_idx = e_idx = 0
             # write the new edges
-            _multi_graph[s][new_nd_name][0]['geom'] = s_new_geom
-            _multi_graph[e][new_nd_name][0]['geom'] = e_new_geom
+            _multi_graph[s][new_nd_name][s_idx]['geom'] = s_new_geom
+            _multi_graph[e][new_nd_name][e_idx]['geom'] = e_new_geom
             # add the new edges to the edge_children dictionary
             edge_key = make_edge_key(s, e)
             edge_children[edge_key] = [(s, new_nd_name, s_new_geom),
@@ -1076,15 +1083,13 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
         raise TypeError('This method requires an undirected networkX MultiGraph.')
     logger.info('Preparing node and edge arrays from networkX graph.')
     g_multi_copy = networkX_multigraph.copy()
-    logger.info('Preparing graph')
+    # accumulate degrees
     total_out_degrees = 0
     for n in tqdm(g_multi_copy.nodes(), disable=checks.quiet_mode):
         # writing node identifier to 'labels' in case conversion to integers method interferes with order
         g_multi_copy.nodes[n]['label'] = n
-        # sum edges
-        for nb in g_multi_copy.neighbors(n):
-            total_out_degrees += 1
-    logger.info('Generating data arrays')
+        for nb in nx.neighbors(g_multi_copy, n):
+            total_out_degrees += g_multi_copy.number_of_edges(n, nb)
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_multi_copy = nx.convert_node_labels_to_integers(g_multi_copy, 0)
     # prepare the node and edge maps

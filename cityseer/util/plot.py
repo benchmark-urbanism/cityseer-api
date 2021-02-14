@@ -51,12 +51,10 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
     def plot_graph(_graph, _is_primal, _node_colour, _node_shape, _edge_colour, _edge_style, _edge_width):
         if not len(_graph.nodes()):
             raise ValueError('Graph contains no nodes to plot.')
-        # setup a node colour list if nodes are individually coloured, this is for filtering by extents
+        iterables = (list, tuple, np.ndarray)
         if _node_colour is not None:
-            if not isinstance(_node_colour, (str, list, tuple)):
-                raise ValueError('Node colours should be a colour string, else a list or tuple of colours.')
-            if isinstance(_node_colour, (list, tuple)) and (len(_node_colour) != 1 or len(_node_colour) != len(_graph)):
-                raise ValueError('A list or tuple of node colours should match the number of nodes in the graph.')
+            if isinstance(_node_colour, iterables) and len(_node_colour) != len(_graph):
+                raise ValueError('A list, tuple, or array of colours should match the number of nodes in the graph.')
         else:
             if _is_primal:
                 _node_colour = secondary
@@ -81,6 +79,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
                 _edge_width = 0.5
         pos = {}
         node_list = []
+        # setup a node colour list if nodes are individually coloured, this is for filtering by extents
         colour_list = []
         for n_idx, (n, d) in enumerate(_graph.nodes(data=True)):
             x = d['x']
@@ -95,12 +94,12 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
             # add to the node list
             node_list.append(n)
             # and add to the node colour list if node colours are a list or tuple
-            if isinstance(_node_colour, (list, tuple)):
+            if isinstance(_node_colour, iterables):
                 colour_list.append(_node_colour[n_idx])
         if not len(node_list):
             raise ValueError('All nodes have been filtered out by the x_lim / y_lim parameter: check your extents')
         # update the node colours to the filtered list of colours if necessary
-        if isinstance(_node_colour, (list, tuple)):
+        if isinstance(_node_colour, iterables):
             _node_colour = colour_list
         # plot edges manually for geoms
         edge_list = []
