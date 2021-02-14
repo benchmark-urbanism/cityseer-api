@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*** override default vite theme styles ***/
+
+/** Base styles */
+:root {
+
+/**
+ * Colors
+ * --------------------------------------------------------------------- */
+
+--c-white: #fff;
+--c-black: #2e2e2e;
+
+--c-divider-light: #ddd;
+--c-divider-dark: #2e2e2e;
+
+--c-text-light-1: #2c3e50;
+--c-text-light-2: #2e2e2e;
+
+--c-brand: #d32f2f;
+--c-brand-light: #9a0007;
+
+/**
+ * Z Indexes
+ * --------------------------------------------------------------------- */
+
+--z-index-navbar: 1100;
+--z-index-sidebar: 1000;
+
+/**
+ * Sizes
+ * --------------------------------------------------------------------- */
+
+--header-height: 3.6rem;
+}
+
+/** Fallback Styles */
+:root {
+
+--c-divider: var(--c-divider-light);
+
+--c-text: var(--c-text-light-1);
+--c-text-light: var(--c-text-light-2);
+
+--c-bg: var(--c-white);
+
+--code-bg-color: #282c34;
+
+}
+
+@layer base {
+
+  /* font-body applies associated theme config to entire site */
+  html {
+
+  }
+
+  body {
+    @apply font-defaults font-normal text-base;
+    @apply text-darkgrey;
+  
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headings;
+  }
+
+  h1, h2, h3 {
+    @apply pt-8 pb-2;
+  }
+
+  h1 {
+    @apply text-4xl font-semibold;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+
+  code {
+    @apply text-xs font-semibold font-mono p-1;
+  }
+
+  ul, li {
+
+  }
+
+  p {
+    @apply py-1
+  }
+
+  a {
+    @apply text-theme font-semibold;
+  }
+
+  @media screen and (max-width: 950px) {
+    body {
+      @apply text-sm;
+    }
+  }
+
+}

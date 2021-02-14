@@ -93,7 +93,7 @@ plt.clf()
 plot.plot_nX(G_messy_decomp, 'graph_messy.png', dpi=150, figsize=(20, 20))
 
 # spatial cleanup
-G_clean_spatial = graphs.nX_consolidate_spatial(G_messy_decomp)
+G_clean_spatial = graphs.nX_consolidate_nodes(G_messy_decomp)
 plt.cla()
 plt.clf()
 plot.plot_nX(G_clean_spatial, 'graph_clean_spatial.png', dpi=150, figsize=(20, 20))

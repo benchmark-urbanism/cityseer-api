@@ -24,22 +24,21 @@ plot.plot_nX(G_utm, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=False
 # basic initial cleanup
 G = graphs.nX_simple_geoms(G_utm)
 G = graphs.nX_remove_filler_nodes(G)
-G = graphs.nX_remove_dangling_nodes(G, despine=10, remove_disconnected=True)
+G = graphs.nX_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
 plot.plot_nX(G, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%
-# initial pass of spatial consolidation to cleanup major intersections
-G1 = graphs.nX_consolidate_spatial(G,
-                                   buffer_dist=10,
-                                   min_node_threshold=2,
-                                   min_node_degree=1,
-                                   crawl=True,
-                                   centroid_policy_min_degree=3,
-                                   # centroid_policy_min_len_factor=0.9,
-                                   merge_edges_by_midline=True,
-                                   max_length_discrepancy_ratio=1.25,
-                                   discrepancy_ratio_min_length=100)
+# initial pass of spatial consolidation to cleanup intersections
+G1 = graphs.nX_consolidate_nodes(G,
+                                 buffer_dist=10,
+                                 min_node_threshold=3,
+                                 min_node_degree=1,
+                                 crawl=True,
+                                 cent_min_degree=3,
+                                 merge_edges_by_midline=True,
+                                 max_len_discrepancy=1.25,
+                                 discrepancy_min_len=100)
 plot.plot_nX(G1, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%
@@ -47,21 +46,17 @@ plot.plot_nX(G1, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, fi
 G2 = graphs.nX_split_opposing_geoms(G1,
                                     buffer_dist=15,
                                     use_midline=True,
-                                    max_length_discrepancy_ratio=1.25,
-                                    discrepancy_ratio_min_length=100)
+                                    max_len_discrepancy=1.25,
+                                    discrepancy_min_len=100)
 plot.plot_nX(G2, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%
-G3 = graphs.nX_consolidate_spatial(G2,
-                                   buffer_dist=15,
-                                   min_node_threshold=2,
-                                   min_node_degree=2,
-                                   max_cumulative_degree=5,
-                                   neighbour_policy='indirect',
-                                   crawl=False,
-                                   merge_edges_by_midline=True,
-                                   max_length_discrepancy_ratio=1.25,
-                                   discrepancy_ratio_min_length=100)
+G3 = graphs.nX_consolidate_nodes(G2,
+                                 buffer_dist=15,
+                                 crawl=True,
+                                 merge_edges_by_midline=True,
+                                 max_len_discrepancy=1.25,
+                                 discrepancy_min_len=100)
 plot.plot_nX(G3, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
 # %%

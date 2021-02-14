@@ -1,25 +1,12 @@
-<template>
-  <div
-          :class="{ important }"
-          class="chip-style"
-  >
-    {{ text }}
-  </div>
+<template lang="pug">
+div.inline-block
+  div#chip-style
+    span {{ text }}
 </template>
 
 <style lang="postcss" scoped>
-
-.chip-style {
-  display: inline-block;
-  font-size: 12px;
-  height: 20px;
-  line-height: 20px;
-  border-radius: 2px;
-  padding: 0 6px;
-  color: white;
-  margin-right: 5px;
-  background-color: #d32f2f;
-  vertical-align: top;
+#chip-style {
+  @apply rounded-sm p-1 text-xs font-bold bg-red-600 text-white inline-block align-top;
 }
 </style>
 

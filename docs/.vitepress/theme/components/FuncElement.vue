@@ -1,71 +1,45 @@
-<template>
-  <div class="container">
-    <div class="column">
-      <div class="elem-name">
-        {{ name }}
-      </div>
-      <div class="elem-type">
-        {{ type }}
-      </div>
-    </div>
-    <div class="elem-content">
+<template lang="pug">
+div
+  div#container
+    div#column
+      div#name
+        span {{ name }}
+      div#type
+        span {{ type }}
+    div#description
       <slot></slot>
-    </div>
-  </div>
 </template>
 
 <style lang="postcss" scoped>
-
-.container {
-  display: flex;
-  flex: 1;
-  margin-top: 30px;
-  margin-bottom: 30px;
+#container {
+  @apply flex py-3 items-start p-1 border-b border-lightgrey;
 }
+#column {
+  @apply flex-col py-1;
 
-.column {
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  width: 30%;
+  min-width: 220px;
+  max-width: 300px;
 }
-
-.elem-content {
-  flex-grow: 1;
-  width: 70%;
+#name {
+  @apply font-mono text-base font-bold;
 }
-
-.elem-name {
-  font-size: 16px;
-  font-family: monospace;
-  font-weight: bold;
+#type {
+  @apply font-mono text-xs font-normal;
 }
-
-.elem-type {
-  font-size: 12px;
+#description {
+  @apply text-sm;
 }
-
-p {
-  margin-top: 0;
-}
-
-@media screen and (max-width: 680px) {
-  .container {
-
-    display: block;
+@media screen and (max-width: 950px) {
+  #container {
+    @apply py-1;
   }
-
-  .elem-content {
-
-    padding-top: 5px;
-    width: 100%;
+  #name {
+    @apply text-sm;
   }
 }
-
 </style>
 
 <script>
-
 export default {
   name: 'DisplayFunction',
   props: {

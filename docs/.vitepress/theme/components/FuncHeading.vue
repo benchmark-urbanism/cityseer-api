@@ -1,18 +1,16 @@
-<template>
-  <div class="heading-style">
+<template lang="pug">
+div
+  div#heading-style
     <slot></slot>
-  </div>
 </template>
 
 <style lang="postcss" scoped>
-
-.heading-style {
-  padding: 4px 0;
-  margin: 10px 0;
-  font-size: 16px;
-  font-weight: 600;
-  border-bottom-style: solid;
-  border-color: #2e2e2e;
-  border-width: 1px;
+#heading-style {
+  @apply py-2 my-2 text-2xl font-semibold border-b-2 border-darkgrey;
+}
+@media screen and (max-width: 950px) {
+  #heading-style {
+    @apply text-xl font-semibold;
+  }
 }
 </style>

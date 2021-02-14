@@ -5,7 +5,7 @@ import FuncElement from './components/FuncElement.vue'
 import FuncHeading from './components/FuncHeading.vue'
 import FuncSignature from './components/FuncSignature.vue'
 import ImageModal from './components/ImageModal.vue'
-import './styles/vars_override.css'
+import './styles/index.css'
 
 export default {
     ...DefaultTheme,

@@ -5,35 +5,43 @@
 cityseer.util.plot
 ==================
 
-Convenience functions for basic plotting. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) / [`matplotlib`](https://matplotlib.org) figures.
+Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
 
 plot\_nX\_primal\_or\_dual
 --------------------------
 <FuncSignature>
 <pre>
-plot_nX_primal_or_dual(primal=None,
-                       dual=None,
-                       path=None,
-                       labels=False,
-                       primal_colour=None,
-                       dual_colour=None,
-                       **figure_kwargs)
+plot_nX_primal_or_dual(primal_graph = None,
+                       dual_graph = None,
+                       path = None,
+                       labels = False,
+                       primal_node_colour = None,
+                       primal_edge_colour = None,
+                       dual_node_colour = None,
+                       dual_edge_colour = None,
+                       primal_edge_width = None,
+                       dual_edge_width = None,
+                       plot_geoms = True,
+                       x_lim = None,
+                       y_lim = None,
+                       **figure_kwargs):
 </pre>
 </FuncSignature>
 
-Plot either or both primal and dual representations of `networkX` graphs.
+Plot either or both primal and dual representations of `networkX` MultiGraphs.
 
 <FuncHeading>Parameters</FuncHeading>
-<FuncElement name="primal" type="nx.Graph">
 
-An optional `NetworkX` graph to plot in the primal representation.
+<FuncElement name="primal_graph" type="nx.MultiGraph">
+
+An optional `NetworkX` MultiGraph to plot in the primal representation.
 
 </FuncElement>
 
-<FuncElement name="dual" type="nx.Graph">
+<FuncElement name="dual_graph" type="nx.MultiGraph">
 
-An optional `NetworkX` graph to plot in the dual representation.
+An optional `NetworkX` MultiGraph to plot in the dual representation.
 
 </FuncElement>
 
@@ -49,15 +57,57 @@ Whether to display node labels.
 
 </FuncElement>
 
-<FuncElement name="primal_colour" type="str, list, tuple, np.ndarray">
+<FuncElement name="primal_node_colour" type="str, list, tuple, np.ndarray">
 
-Primal node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
 
 </FuncElement>
 
-<FuncElement name="dual_colour" type="str, list, tuple, np.ndarray">
+<FuncElement name="primal_edge_colour" type="str">
 
-Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+Primal edge colour as a `matplotlib` compatible colour string.
+
+</FuncElement>
+
+<FuncElement name="dual_node_colour" type="str, list, tuple, np.ndarray">
+
+Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+
+</FuncElement>
+
+<FuncElement name="dual_edge_colour" type="str">
+
+Dual edge colour as a `matplotlib` compatible colour string.
+
+</FuncElement>
+
+<FuncElement name="primal_edge_width" type="int, float">
+
+Linewidths for the primal edge.
+
+</FuncElement>
+
+<FuncElement name="dual_edge_width" type="int, float">
+
+Linewidths for the primal edge.
+
+</FuncElement>
+
+<FuncElement name="plot_geoms" type="bool">
+
+Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to represent edges.
+
+</FuncElement>
+
+<FuncElement name="x_lim" type="tuple, list">
+
+A tuple or list with the minimum and maxium `x` extents to be plotted.
+
+</FuncElement>
+
+<FuncElement name="y_lim" type="tuple, list">
+
+A tuple or list with the minimum and maxium `y` extents to be plotted.
 
 </FuncElement>
 
@@ -93,12 +143,12 @@ plot_nX(networkX_graph,
 </pre>
 </FuncSignature>
 
-Plot a `networkX` graph.
+Plot a `networkX` MultiGraph.
 
 <FuncHeading>Parameters</FuncHeading>
-<FuncElement name="networkX_graph" type="nx.Graph">
+<FuncElement name="networkX_graph" type="nx.MultiGraph">
 
-A `NetworkX` graph.
+A `NetworkX` MultiGraph.
 
 </FuncElement>
 
@@ -116,7 +166,7 @@ Whether to display node labels.
 
 <FuncElement name="colour" type="str, list, tuple, np.ndarray">
 
-Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
 
 </FuncElement>
 
@@ -131,7 +181,7 @@ from cityseer.util import mock, graphs, plot
 from cityseer.metrics import networks
 from matplotlib import colors
 
-# generate a graph and compute gravity
+# generate a MultiGraph and compute gravity
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 50)
@@ -198,7 +248,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 <FuncElement name="node_colour" type="str, list, tuple, np.ndarray">
 
-Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the graph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
 
 </FuncElement>
 

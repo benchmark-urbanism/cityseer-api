@@ -2,7 +2,7 @@
 
 ---
 
-cityseer <Chip text="beta"/>
+cityseer <Chip text="alpha"/>
 ========
 
 `cityseer` is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.

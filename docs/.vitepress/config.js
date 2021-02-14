@@ -5,7 +5,9 @@ module.exports = {
     title: 'Cityseer API Docs',
     description: 'Computational tools for urban analysis',
     head: [
-        ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css?family=Raleway:300,400,500'}],
+        ['link', {rel: 'preconnect', href: 'https://fonts.gstatic.com'}],
+        ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap'}],
+        ['link', {rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap'}],
         ['link', {rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css'}],
         ['link', {
             rel: 'stylesheet',
