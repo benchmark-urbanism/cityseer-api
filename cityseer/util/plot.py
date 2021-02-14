@@ -18,21 +18,23 @@ error = '#ffffff'
 success = '#2e7d32'
 background = '#2e2e2e'
 
-
-def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
-                           dual_graph: nx.Graph = None,
+def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
+                           dual_graph: nx.MultiGraph = None,
                            path: str = None,
                            labels: bool = False,
                            primal_node_colour: (str, tuple, list) = None,
-                           primal_edge_colour: (str, tuple, list) = None,
+                           primal_edge_colour: str = None,
                            dual_node_colour: (str, tuple, list) = None,
-                           dual_edge_colour: (str, tuple, list) = None,
+                           dual_edge_colour: str = None,
                            primal_edge_width: (int, float) = None,
                            dual_edge_width: (int, float) = None,
-                           plot_geoms: bool = False,
+                           plot_geoms: bool = True,
                            x_lim: (tuple, list) = None,
                            y_lim: (tuple, list) = None,
-                           **kwargs):
+                           **figure_kwargs):
+    """
+    Plots either or both a primal or dual MultiGraph
+    """
     # cleanup old plots
     plt.ioff()
     plt.close('all')
@@ -150,7 +152,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.Graph = None,
         plt.show()
 
 
-def plot_nX(networkX_graph: nx.Graph,
+def plot_nX(networkX_graph: nx.MultiGraph,
             path: str = None,
             labels: bool = False,
             node_colour: (str, tuple, list) = None,
@@ -160,6 +162,9 @@ def plot_nX(networkX_graph: nx.Graph,
             x_lim: (tuple, list) = None,
             y_lim: (tuple, list) = None,
             **kwargs):
+    """
+    Convenience method for plotting a primal graph.
+    """
     return plot_nX_primal_or_dual(primal_graph=networkX_graph,
                                   path=path,
                                   labels=labels,
@@ -179,6 +184,9 @@ def plot_assignment(Network_Layer,
                     node_labels: bool = False,
                     data_labels: (list, tuple, np.ndarray) = None,
                     **kwargs):
+    """
+    Plots POI assigments to the network. Mostly used for debugging.
+    """
     plt.figure(**kwargs)
 
     # extract NetworkX
@@ -257,11 +265,13 @@ def plot_assignment(Network_Layer,
         plt.show()
 
 
-def plot_graph_maps(node_uids: [list, tuple, np.ndarray],
-                    node_data: np.ndarray,
+def plot_graph_maps(node_data: np.ndarray,
                     edge_data: np.ndarray,
                     data_map: np.ndarray = None,
                     poly: geometry.Polygon = None):
+    """
+    Plots node and edge data maps. Mostly used for debugging.
+    """
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
