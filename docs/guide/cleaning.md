@@ -141,7 +141,7 @@ You can mix-and-match various steps to further refine the graph, for example, le
 ```python
 # feel free to experiment!
 G = graphs.nX_remove_filler_nodes(G)
-G = graphs.nX_consolidate_spatial(G, buffer_dist=10)
+G = graphs.nX_consolidate_nodes(G, buffer_dist=10)
 G = graphs.nX_remove_filler_nodes(G)
 G = graphs.nX_decompose(G, 50)
 plot.plot_nX(G, figsize=(20, 20), dpi=150)

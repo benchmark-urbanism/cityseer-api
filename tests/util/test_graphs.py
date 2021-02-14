@@ -408,15 +408,15 @@ def test_nX_consolidate():
     # from cityseer.util import plot
     # plot.plot_nX(G, labels=True, plot_geoms=True)
 
-    G_merged_spatial = graphs.nX_consolidate_spatial(G,
-                                                     buffer_dist=25,
-                                                     crawl=True,
-                                                     merge_edges_by_midline=True)
+    G_merged_spatial = graphs.nX_consolidate_nodes(G,
+                                                   buffer_dist=25,
+                                                   crawl=True,
+                                                   merge_edges_by_midline=True)
     # plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
     # simplify first to test lollipop self-loop from node 15
     G_split_opps = graphs.nX_split_opposing_geoms(G, buffer_dist=25, use_midline=True)
     # plot.plot_nX(G_split_opps, labels=True, plot_geoms=True)
-    G_merged_spatial = graphs.nX_consolidate_spatial(G_split_opps, buffer_dist=25, merge_edges_by_midline=True)
+    G_merged_spatial = graphs.nX_consolidate_nodes(G_split_opps, buffer_dist=25, merge_edges_by_midline=True)
     # plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
 
     assert G_merged_spatial.number_of_nodes() == 8

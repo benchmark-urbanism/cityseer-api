@@ -1,6 +1,6 @@
 matplotlib
 networkx>=2.4
-numba>=0.53.0rc1.post1
+numba==0.53.0rc1.post1
 numpy
 pytest
 shapely>=1.7.0

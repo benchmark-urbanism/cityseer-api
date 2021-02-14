@@ -60,7 +60,7 @@ plt.clf()
 plot.plot_nX(G_messy, 'graph_consolidated.png', dpi=150, figsize=(20, 20))
 
 G_messy = graphs.nX_remove_filler_nodes(G_messy)
-G_messy = graphs.nX_consolidate_spatial(G_messy, buffer_dist=10)
+G_messy = graphs.nX_consolidate_nodes(G_messy, buffer_dist=10)
 G_messy = graphs.nX_remove_filler_nodes(G_messy)
 G_messy = graphs.nX_decompose(G_messy, 50)
 plot.plot_nX(G_messy, 'graph_reconsolidated.png', dpi=150, figsize=(20, 20))
