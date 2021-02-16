@@ -1,5 +1,5 @@
 '''
-These plot methods are mainly for testing and debugging
+Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 '''
 from matplotlib import colors
 from matplotlib.collections import LineCollection
@@ -33,7 +33,17 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            y_lim: (tuple, list) = None,
                            **figure_kwargs):
     """
-    Plots either or both a primal or dual MultiGraph
+    Plot either or both primal and dual representations of `networkX` MultiGraphs.
+
+    Args:
+        primal_graph: An optional `NetworkX` MultiGraph to plot in the primal representation.
+        dual_graph: An optional `NetworkX` MultiGraph to plot in the dual representation.
+        path: An optional filepath. If provided, the image will be saved to the path instead of being displayed.
+        labels: Whether to display node labels.
+        primal_node_colour: Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
+        primal_edge_colour: 
+    Returns:
+
     """
     # cleanup old plots
     plt.ioff()
@@ -41,7 +51,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     plt.cla()
     plt.clf()
     # create new plot
-    fig, ax = plt.subplots(1, 1, **kwargs)
+    fig, ax = plt.subplots(1, 1, **figure_kwargs)
     # setup params
     alpha = 0.75
     node_size = 30
@@ -161,7 +171,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
             plot_geoms: bool = False,
             x_lim: (tuple, list) = None,
             y_lim: (tuple, list) = None,
-            **kwargs):
+            **figure_kwargs):
     """
     Convenience method for plotting a primal graph.
     """
@@ -174,7 +184,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
                                   plot_geoms=plot_geoms,
                                   x_lim=x_lim,
                                   y_lim=y_lim,
-                                  **kwargs)
+                                  **figure_kwargs)
 
 
 def plot_assignment(Network_Layer,
@@ -183,11 +193,11 @@ def plot_assignment(Network_Layer,
                     node_colour: (list, tuple, np.ndarray) = None,
                     node_labels: bool = False,
                     data_labels: (list, tuple, np.ndarray) = None,
-                    **kwargs):
+                    **figure_kwargs):
     """
     Plots POI assigments to the network. Mostly used for debugging.
     """
-    plt.figure(**kwargs)
+    plt.figure(**figure_kwargs)
 
     # extract NetworkX
     Graph = Network_Layer.to_networkX()

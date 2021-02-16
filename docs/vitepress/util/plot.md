@@ -1,15 +1,12 @@
 ---
-
 ---
 
-cityseer.util.plot
-==================
+# cityseer.util.plot
 
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
+## plot_nX_primal_or_dual
 
-plot\_nX\_primal\_or\_dual
---------------------------
 <FuncSignature>
 <pre>
 plot_nX_primal_or_dual(primal_graph = None,
@@ -126,13 +123,12 @@ G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple, G_dual, labels=False)
 ```
 
-<img src="../images/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
+<img src="../../images/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
 
 _Dual graph (blue) overlaid on the source primal graph (red)._
 
+## plot_nX
 
-plot\_nX
---------
 <FuncSignature>
 <pre>
 plot_nX(networkX_graph,
@@ -193,7 +189,7 @@ G_after = N.to_networkX()
 vals = []
 for node, data in G_after.nodes(data=True):
     vals.append(data['metrics']['centrality']['gravity'][800])
-    
+
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
 # normalise the values
@@ -205,17 +201,15 @@ cols = cmap(vals)
 plot.plot_nX(G_after, labels=False, colour=cols)
 ```
 
-<img src="../images/plots/graph_colour.png" alt="Example colour plot" class="centre" style="max-height:450px;">
+<img src="../../images/plots/graph_colour.png" alt="Example colour plot" class="centre" style="max-height:450px;">
 
 _$800m$ gravity colour plot on a $50m$ decomposed graph._
 
-
-plot\_assignment
-----------------
+## plot_assignment
 
 <FuncSignature>
 <pre>
-plot_assignment(Network_Layer, 
+plot_assignment(Network_Layer,
                 Data_Layer,
                 path=None,
                 node_colour=None,
@@ -270,13 +264,12 @@ An optional iterable of categorical data labels which will be mapped to colours.
 
 </FuncElement>
 
-<img src="../images/plots/assignment_plot.png" alt="Example assignment plot" class="centre" style="max-height:450px;">
+<img src="../../images/plots/assignment_plot.png" alt="Example assignment plot" class="centre" style="max-height:450px;">
 
 _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
 
+## plot_graph_maps <Chip text="unstable" :important="true"/>
 
-plot\_graph\_maps <Chip text="unstable" :important="true"/>
------------------
 <FuncSignature>
 <pre>
 plot_graph_maps(node_uids,

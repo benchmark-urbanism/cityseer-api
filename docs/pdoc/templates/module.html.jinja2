@@ -1,0 +1,221 @@
+{# omit the defaults #}
+
+{# defaultmacro is defined by pydoc and only creates a macro if it doesn't already exist #}
+{% defaultmacro bases(cls) %}
+{%- if cls.bases -%}
+(
+{%- for base in cls.bases -%}
+{{ base[:2] | link(text=base[2]) }}
+{%- if loop.nextitem %}, {% endif %}
+{%- endfor -%}
+)
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro default_value(var) -%}
+{%- if var.default_value_str -%}
+{{ var.default_value_str }}
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro annotation(var) %}
+{%- if var.annotation_str -%}
+{{ var.annotation_str }}
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro decorators(doc) %}
+{% for d in doc.decorators %}
+{{ d }}
+{% endfor %}
+{% enddefaultmacro %}
+
+{% defaultmacro headerlink(doc) -%}
+[#]({{ doc.qualname }})
+{% enddefaultmacro %}
+
+{% defaultmacro function(fn) %}
+A FUNCTION SIGNATURE
+<FuncSignature>
+<pre>
+{{ fn.signature }}
+</pre>
+</FuncSignature>
+{# link #}
+{{ headerlink(fn) }}
+{{ decorators(fn) }}
+{% if fn.name == "__init__" %}
+{{ ".".join(fn.qualname.split(".")[:-1]) }}
+{{- sig | replace("(self)","()") | replace("(self, ","(") -}}
+{% else %}
+{# {{ fn.funcdef }} #}
+{{ fn.name }}
+{% endif %}
+{% enddefaultmacro %}
+
+{% defaultmacro variable(var) %}
+{{ headerlink(var) }}
+{{ var.name }}
+{{ annotation(var) }}
+{{ default_value(var) }}
+{% enddefaultmacro %}
+
+{% defaultmacro submodule(mod) %}
+{{ headerlink(mod) }}
+{{ (mod.modulename, "") | link }}
+{% enddefaultmacro %}
+
+{% defaultmacro class(cls) %}
+{{ headerlink(cls) }}
+{{ decorators(cls) }}
+class
+{{ cls.qualname }}
+{{- bases(cls) -}}:
+{% enddefaultmacro %}
+
+{% defaultmacro member(doc) %}
+{% if doc.type == "class" %}
+{{ class(doc) }}
+{% elif doc.type == "function" %}
+{{ function(doc) }}
+{% elif doc.type == "module" %}
+{{ submodule(doc) }}
+{% else %}
+{{ variable(doc) }}
+{% endif %}
+{% if doc.type != "variable" %}
+{% endif %}
+{{ docstring(doc) }}
+{% enddefaultmacro %}
+
+{% defaultmacro docstring(var) %}
+{% if var.docstring %}
+{{ var.docstring }}
+{% endif %}
+{% enddefaultmacro %}
+
+{% defaultmacro nav_members(members) %}
+{% for m in members if is_public(m) | trim %}
+{% if m.type == "class" %}
+[{{ m.qualname }}](#{{ m.qualname }})
+{% if m.own_members %}
+{{ nav_members(m.own_members) | indent(12) }}
+{% endif %}
+{% elif m.type == "module" %}
+[{{ m.name }}](#{{ m.name }})
+{% elif m.name == "__init__" %}
+[{{ m.qualname.split(".")[-2] }}](#{{ m.qualname }})
+{% else %}
+{{ m.type }} [{{ m.name }}](#{{ m.qualname }})
+{% endif %}
+{% endfor %}
+{% enddefaultmacro %}
+
+{% defaultmacro is_public(doc) %}
+{#
+This macro is a bit unconventional in that its output is not rendered, but treated as a boolean:
+Returning no text is interpreted as false, returning any other text is iterpreted as true.
+Implementing this as a macro makes it very easy to override with a custom template..
+#}
+{% if not doc.name.startswith("_") %}
+{# members not starting with an underscore are considered public by default #}
+true
+{% elif doc.name == "__init__" %}
+{# the constructor is our special case which we also treat as public #}
+true
+{% elif doc.name is in(module.obj.__all__) %}
+{# members starting with an underscore are still public if mentioned in __all__ #}
+true
+{% endif %}
+{% enddefaultmacro %}
+
+{# fmt: off #}
+{% defaultmacro inherited(cls) %}
+{% for base, members in cls.inherited_members.items() %}
+{% set member_html %}
+{% for m in members if is_public(m) | trim %}
+<dd id="{{ m.qualname }}" class="{{ m.type }}">
+{{- m.taken_from | link(text=m.name.replace("__init__",base[1])) -}}
+</dd>
+{% endfor %}
+{% endset %}
+{# we may not have any public members, in which case we don't want to print anything. #}
+{% if member_html %}
+<div><dt>{{ base | link }}</dt>
+{{ member_html }}
+</div>
+{% endif %}
+{% endfor %}
+{% enddefaultmacro %}
+
+{% defaultmacro module_name() %}
+{% set parts = module.modulename.split(".") %}
+{% for part in parts %}
+{%- set fullname = ".".join(parts[:loop.index]) -%}
+{%- if fullname in all_modules and fullname != module.modulename -%}
+<a href="./{{ "../" * loop.revindex0 }}{{ part }}.html">{{ part }}</a>
+{%- else -%}
+{{ part }}
+{%- endif -%}
+{%- if loop.nextitem %}.{% endif -%}
+{% endfor %}
+{% enddefaultmacro %}
+
+{# module name #}
+{{ module.modulename }}
+{# module docstring #}
+{{ module.docstring }}
+
+{# when parsing more than one module this seems to create nav-links? #}
+{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+{% if parentmodule and parentmodule in all_modules %}
+"../{{ parentmodule.split(".")[-1] }}.html"
+{{- parentmodule -}}
+{% elif all_modules|length > 1 %}
+"./{{ "../" * module.modulename.count(".") }}"
+{% endif %}
+
+{# Builds TOC #}
+{% set index = module.docstring | render_docstring | attr("toc_html") %}
+{% if index %}
+## Index
+{{ index | safe }}
+{% endif %}
+{% if module.submodules %}
+## Submodules
+{% for submodule in module.submodules %}
+- {{ submodule.taken_from | link }}
+{% endfor %}
+{% endif %}
+{% if module.members %}
+## Contents
+{{ nav_members(module.members.values()) }}
+{% endif %}
+
+{# if an edit_url is found it will display this link #}
+{% if edit_url %}
+[Edit on Github]({{ edit_url }})
+{% endif %}
+{# MODULE NAME #}
+{{ module_name() }}
+{# MODULE DOCSTRING - not sure why repeated #}
+{{ docstring(module) }}
+
+{# Displays members of module #}
+{% for m in module.flattened_own_members if is_public(m) | trim %}
+{{ m.qualname or m.name }}
+{{ member(m) }}
+{% if m.type == "class" %}
+{% for m in m.own_members if m.type != "class" and is_public(m) | trim %}
+{{ m.qualname }}
+{{ member(m) }}
+{% endfor %}
+{% set inherited_members = inherited(m) | trim %}
+{% if inherited_members %}
+
+### Inherited Members
+{{ inherited_members }}
+{% endif %}
+{% endif %}
+
+{% endfor %}
