@@ -24,7 +24,7 @@ yarn-error.log*
 node_modules/
 
 # Docs
-docs/.vitepress/dist
+docs/vitepress/.vitepress/dist
 
 # Distribution / packaging
 .Python

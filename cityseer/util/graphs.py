@@ -66,30 +66,35 @@ def _add_node(networkX_multigraph: nx.MultiGraph,
         names = []
         for name in node_names:
             name = str(name)
-            if len(name) > 6:
-                name = f'{name[:3]}|{name[-3:]}'
+            if len(name) > 10:
+                name = f'{name[:5]}|{name[-5:]}'
             names.append(name)
-        new_nd_name = '+'.join(names)
+        new_nd_name = '±'.join(names)
     # first check whether the node already exists
-    append = 1
+    append = 2
+    target_name = new_nd_name
+    dupe = False
     while True:
-        if f'{new_nd_name}v{append}' in networkX_multigraph:
+        if f'{new_nd_name}' in networkX_multigraph:
+            dupe = True
             # if the coordinates also match, then it is probable that the same node is being re-added...
-            nd = networkX_multigraph.nodes[f'{new_nd_name}v{append}']
+            nd = networkX_multigraph.nodes[f'{new_nd_name}']
             if nd['x'] == x and nd['y'] == y:
-                logger.warning(f"Proposed new node {new_nd_name}v{append} would overlay a node that already exists"
-                               f" at the same coordinates. Skipping.")
+                logger.warning(f"Proposed new node {new_nd_name} would overlay a node that already exists "
+                               f"at the same coordinates. Skipping.")
                 return None
             # otherwise, warn and bump the appended node number
+            new_nd_name = f'{target_name}§v{append}'
             append += 1
-            logger.warning(f'A node of the same name already exists in the graph, adding v{append}')
         else:
+            if dupe:
+                logger.info(f'A node of the same name already exists in the graph, '
+                               f'adding this node as {new_nd_name} instead.')
             break
     # add
     attributes = {'x': x, 'y': y}
     if live is not None:
         attributes['live'] = live
-    new_nd_name = f'{new_nd_name}v{append}'
     networkX_multigraph.add_node(new_nd_name, **attributes)
     return new_nd_name
 

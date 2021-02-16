@@ -1,17 +1,25 @@
 {
   "scripts": {
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:serve": "vitepress serve docs"
+    "docs:dev": "vitepress dev docs/vitepress",
+    "docs:build": "vitepress build docs/vitepress",
+    "docs:serve": "vitepress serve docs/vitepress"
   },
   "dependencies": {},
   "devDependencies": {
     "@iktakahiro/markdown-it-katex": "^4.0.1",
     "autoprefixer": "^10.2.4",
+    "eslint": "^7.20.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-vue": "^7.5.0",
     "markdown-it-replacements": "^1.0.1",
     "postcss": "^8.2.6",
+    "prettier": "^2.2.1",
     "pug": "^3.0.0",
     "pug-plain-loader": "^1.1.0",
+    "stylelint": "^13.10.0",
+    "stylelint-config-prettier": "^8.0.2",
+    "stylelint-config-standard": "^20.0.0",
     "tailwindcss": "^2.0.3",
     "vitepress": "^0.12.0"
   }

@@ -59,6 +59,9 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  discrepancy_min_len=100)
 plot.plot_nX(G3, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
+#%%
+decomp = graphs.nX_decompose(G3, decompose_max=50)
+
 # %%
 # create a Network layer from the networkX graph
 N = networks.Network_Layer_From_nX(G3, distances=[1000, 5000, 10000])
