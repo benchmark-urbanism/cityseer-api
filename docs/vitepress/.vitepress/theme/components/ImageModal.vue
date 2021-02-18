@@ -1,27 +1,14 @@
-<template>
-  <div @click="dialogActive=!dialogActive">
-    <img
-            :src="path"
-            :alt="alt"
-    >
-    <em> {{ caption }} </em>
-    <div
-            v-show="dialogActive"
-            class="modal"
-    >
-      <div class="modal-content">
-        <img
-                :src="path"
-                :alt="alt"
-        >
-        <em> {{ caption }} </em>
-      </div>
-    </div>
-  </div>
+<template lang="pug">
+div(@click="dialogActive = !dialogActive")
+  img():src="path" :alt="alt")
+  em {{ caption }} 
+  div(v-show="dialogActive" class="modal")
+    div(class="modal-content")
+      img(:src="path" :alt="alt")
+      em {{ caption }}
 </template>
 
 <style lang="postcss" scoped>
-
 .modal {
   position: fixed;
   z-index: 100 !important;
@@ -42,35 +29,34 @@
   width: 80%;
   max-width: 1500px;
 }
-
 </style>
 
 <script>
-import {ref} from 'vue'
+import { ref } from 'vue'
 
 export default {
   name: 'ImageModal',
   props: {
     path: {
       type: String,
-      required: true
+      required: true,
     },
     alt: {
       type: String,
       required: false,
-      default: ''
+      default: '',
     },
     caption: {
       type: String,
       required: false,
-      default: ''
-    }
+      default: '',
+    },
   },
   setup() {
     const dialogActive = ref(false)
     return {
-      dialogActive
+      dialogActive,
     }
-  }
+  },
 }
 </script>

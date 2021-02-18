@@ -1,6 +1,6 @@
 <template lang="pug">
-div.inline-block
-  div#chip-style
+.inline-block
+  #chip-style
     span {{ text }}
 </template>
 
@@ -11,19 +11,19 @@ div.inline-block
 </style>
 
 <script>
-  export default {
-    name: 'Chip',
-    props: {
-      important: {
-        type: Boolean,
-        required: false,
-        default: false
-      },
-      text: {
-        type: String,
-        required: true,
-        default: 'txt'
-      }
-    }
-  }
+export default {
+  name: 'Chip',
+  props: {
+    important: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    text: {
+      type: String,
+      required: true,
+      default: 'txt',
+    },
+  },
+}
 </script>

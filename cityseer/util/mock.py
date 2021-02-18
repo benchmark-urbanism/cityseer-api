@@ -85,7 +85,9 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (52, {'x': 700400, 'y': 5719650}),
         (53, {'x': 700500, 'y': 5719550}),
         (54, {'x': 700400, 'y': 5719450}),
-        (55, {'x': 700300, 'y': 5719550})
+        (55, {'x': 700300, 'y': 5719550}),
+        # add a parallel edge
+        (56, {'x': 701300, 'y': 5719110})
     ]
 
     G.add_nodes_from(nodes)
@@ -170,7 +172,10 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (52, 53),
         (53, 54),
         (54, 55),
-        (55, 52)
+        (55, 52),
+        # parallel edge
+        (45, 56),
+        (30, 56)
     ]
 
     G.add_edges_from(edges)

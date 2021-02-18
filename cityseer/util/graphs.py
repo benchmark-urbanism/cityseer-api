@@ -80,16 +80,16 @@ def _add_node(networkX_multigraph: nx.MultiGraph,
             # if the coordinates also match, then it is probable that the same node is being re-added...
             nd = networkX_multigraph.nodes[f'{new_nd_name}']
             if nd['x'] == x and nd['y'] == y:
-                logger.warning(f"Proposed new node {new_nd_name} would overlay a node that already exists "
-                               f"at the same coordinates. Skipping.")
+                logger.debug(f'Proposed new node {new_nd_name} would overlay a node that already exists '
+                             f'at the same coordinates. Skipping.')
                 return None
             # otherwise, warn and bump the appended node number
             new_nd_name = f'{target_name}§v{append}'
             append += 1
         else:
             if dupe:
-                logger.info(f'A node of the same name already exists in the graph, '
-                               f'adding this node as {new_nd_name} instead.')
+                logger.debug(f'A node of the same name already exists in the graph, '
+                             f'adding this node as {new_nd_name} instead.')
             break
     # add
     attributes = {'x': x, 'y': y}
@@ -724,7 +724,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
         raise ValueError('Neighbour policy should be one "direct", "indirect", else the default of "None"')
     if crawl and buffer_dist > 25:
         logger.warning('Be cautious with the buffer distance when using crawl.')
-    logger.info(f'Consolidating network by distance buffer.')
+    logger.info('Splitting opposing geoms.')
     _multi_graph = networkX_multigraph.copy()
     # create a nodes STRtree
     nodes_tree = _create_nodes_strtree(_multi_graph)
@@ -818,6 +818,7 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
     The max_len_discrepancy and discrepancy_min_len parameters are used for deciding when to keep separate edges, and
     are described in the _merge_parallel_edges method.
     """
+
     def make_edge_key(s, e):
         return '-'.join(sorted([str(s), str(e)]))
 
@@ -1002,7 +1003,7 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
             # add the new node and edge
             new_nd_name = _add_node(g_multi_copy, [s, sub_node_counter, e], x=x, y=y)
             if new_nd_name is None:
-                raise ValueError(f'Attempted to add a duplicate node. Edges at {s}-{e} may be duplicated?')
+                logger.warning(f'Attempted to add a duplicate node. Edges at {s}-{e} may be duplicated?')
             sub_node_counter += 1
             # add and set live property if present in parent graph
             if 'live' in networkX_multigraph.nodes[s] and 'live' in networkX_multigraph.nodes[e]:
