@@ -28,7 +28,7 @@ G = graphs.nX_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
 plot.plot_nX(G, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)
 
-# %%
+#%%
 # initial pass of spatial consolidation to cleanup intersections
 G1 = graphs.nX_consolidate_nodes(G,
                                  buffer_dist=10,
@@ -55,6 +55,7 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  buffer_dist=15,
                                  crawl=True,
                                  merge_edges_by_midline=True,
+                                 cent_min_degree=4,
                                  max_len_discrepancy=1.25,
                                  discrepancy_min_len=100)
 plot.plot_nX(G3, x_lim=(min_x, max_x), y_lim=(min_y, max_y), plot_geoms=True, figsize=(20, 20), dpi=200)

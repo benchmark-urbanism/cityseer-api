@@ -1,7 +1,7 @@
 <template lang="pug">
 div
-  div#heading-style
-    <slot></slot>
+  #heading-style
+    slot
 </template>
 
 <style lang="postcss" scoped>

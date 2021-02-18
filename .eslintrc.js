@@ -4,7 +4,7 @@ module.exports = {
     node: true,
   },
   extends: ['eslint:recommended', 'plugin:prettier/recommended', 'plugin:vue/recommended'],
-  plugins: ['prettier'],
+  plugins: ['prettier', 'vue'],
   parserOptions: {
     ecmaVersion: 2020,
   },

@@ -7,6 +7,7 @@
   "dependencies": {},
   "devDependencies": {
     "@iktakahiro/markdown-it-katex": "^4.0.1",
+    "@prettier/plugin-pug": "^1.13.3",
     "autoprefixer": "^10.2.4",
     "eslint": "^7.20.0",
     "eslint-config-prettier": "^7.2.0",

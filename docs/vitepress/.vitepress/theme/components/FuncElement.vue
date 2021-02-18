@@ -1,13 +1,13 @@
 <template lang="pug">
 div
-  div#container
-    div#column
-      div#name
+  #container
+    #column
+      #name
         span {{ name }}
-      div#type
+      #type
         span {{ type }}
-    div#description
-      <slot></slot>
+    #description
+      slot
 </template>
 
 <style lang="postcss" scoped>
@@ -45,13 +45,13 @@ export default {
   props: {
     name: {
       type: String,
-      required: true
+      required: true,
     },
     type: {
       type: String,
       required: false,
-      default: ''
-    }
-  }
+      default: '',
+    },
+  },
 }
 </script>
