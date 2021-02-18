@@ -254,10 +254,14 @@ def test_nX_remove_filler_nodes(primal_graph):
     g_edges = g_edges.difference([(52, 53), (53, 54), (54, 55), (52, 55)])  # condensed edges
     g_edges = g_edges.union([(52, 52)])  # the new self loop
     assert list(g_edges).sort() == list(G_simplified.edges).sort()
+    # plot.plot_nX(G_simplified, labels=True, plot_geoms=True)
     # check the integrity of the edges
     for s, e, k, d in G_simplified.edges(data=True, keys=True):
         # ignore the new self-looping disconnected edge
         if s == 52 and e == 52:
+            continue
+        # and the parallel edge
+        if s in [45, 30] and e in [45, 30]:
             continue
         assert G_simplified[s][e][k]['geom'].length == primal_graph[s][e][k]['geom'].length
     # manually check that the new self-looping edge is equal in length to its original segments
@@ -265,10 +269,16 @@ def test_nX_remove_filler_nodes(primal_graph):
     for s, e in [(52, 53), (53, 54), (54, 55), (52, 55)]:
         l += primal_graph[s][e][0]['geom'].length
     assert l == G_simplified[52][52][0]['geom'].length
+    # and that the new parallel edge is correct
+    l = 0
+    for s, e in [(45, 56), (56, 30)]:
+        l += primal_graph[s][e][0]['geom'].length
+    assert l == G_simplified[45][30][0]['geom'].length
     # check that all nodes still have 'x' and 'y' keys
     for n, d in G_simplified.nodes(data=True):
         assert 'x' in d
         assert 'y' in d
+
 
     # lollipop test - where a looping component (all nodes == degree 2) suspends off a node with degree > 2
     G_lollipop = nx.MultiGraph()
@@ -361,7 +371,7 @@ def test_nX_remove_filler_nodes(primal_graph):
         after_len += d['geom'].length
     assert before_len == after_len
     assert G_stairway_simpl['1-down']['1-up'][0]['geom'].wkt == \
-           'LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)'
+       'LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)'
 
     # check that missing geoms throw an error
     G_k = G_messy.copy()
@@ -444,9 +454,14 @@ def test_nX_consolidate():
                                                    merge_edges_by_midline=True)
     # plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
     # simplify first to test lollipop self-loop from node 15
-    G_split_opps = graphs.nX_split_opposing_geoms(G, buffer_dist=25, use_midline=True)
+    G_split_opps = graphs.nX_split_opposing_geoms(G,
+                                                  buffer_dist=25,
+                                                  use_midline=True)
     # plot.plot_nX(G_split_opps, labels=True, plot_geoms=True)
-    G_merged_spatial = graphs.nX_consolidate_nodes(G_split_opps, buffer_dist=25, merge_edges_by_midline=True)
+    G_merged_spatial = graphs.nX_consolidate_nodes(G_split_opps,
+                                                   buffer_dist=25,
+                                                   merge_edges_by_midline=True,
+                                                   cent_min_degree=2)
     # plot.plot_nX(G_merged_spatial, labels=True, plot_geoms=True)
 
     assert G_merged_spatial.number_of_nodes() == 8
@@ -493,13 +508,12 @@ def test_nX_decompose(primal_graph):
     G_decompose = graphs.nX_decompose(G_simple, 50)
 
     # from cityseer.util import plot
-    # plot.plot_nX(G_simple, labels=True)
-    # plot.plot_nX(G_decompose)
-    assert nx.number_of_nodes(G_decompose) == 272
-    assert nx.number_of_edges(G_decompose) == 293
+    # plot.plot_nX(G_simple, labels=True, plot_geoms=True)
+    # plot.plot_nX(G_decompose, plot_geoms=True)
+    assert nx.number_of_nodes(G_decompose) == 292
+    assert nx.number_of_edges(G_decompose) == 314
     for s, e in G_decompose.edges():
         assert G_decompose.number_of_edges(s, e) == 1
-
 
     # check that total lengths are the same
     G_lens = 0
@@ -564,7 +578,7 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     G = diamond_graph.copy()
     G_dual = graphs.nX_to_dual(G)
     # from cityseer.util import plot
-    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=False, labels=True)
+    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=True, labels=True)
 
     assert G_dual.number_of_nodes() == 5
     assert G_dual.number_of_edges() == 8
@@ -631,10 +645,10 @@ def test_nX_to_dual(primal_graph, diamond_graph):
             G[s][e][k]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.nX_to_dual(G)
     # from cityseer.util import plot
-    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=False, labels=True)
+    # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=True, labels=True)
     # 3 + 4 + 1 + 3 + 3 + (9 + 12) + (9 + 12) + (9 + 12) = 77
-    assert G_dual.number_of_nodes() == 77
-    assert G_dual.number_of_edges() == 148
+    assert G_dual.number_of_nodes() == 79
+    assert G_dual.number_of_edges() == 155
     for s, e in G_dual.edges():
         assert G_dual.number_of_edges(s, e) == 1
 

@@ -185,12 +185,12 @@ def test_local_node_centrality(primal_graph):
 
     # test node density
     # node density count doesn't include self-node
-    # connected component == 48 == len(G) - 1
+    # connected component == 49 == len(G) - 1
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
     for n in node_density[4]:  # infinite distance - exceeds cutoff clashes
-        assert n in [48, 3, 1, 0]
+        assert n in [49, 3, 1, 0]
 
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance='length')
@@ -585,7 +585,7 @@ def test_decomposed_local_centrality(primal_graph):
         for d_idx in range(d_range):
             match = np.allclose(segment_measures_data[m_idx][d_idx],
                                 # compare against the original 56 elements (prior to adding decomposed)
-                                segment_measures_data_decomposed[m_idx][d_idx][:56],
+                                segment_measures_data_decomposed[m_idx][d_idx][:57],
                                 atol=0.1,
                                 rtol=0)  # relax precision
             if m_range in (0, 1, 2):
