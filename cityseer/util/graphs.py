@@ -522,6 +522,8 @@ def _squash_adjacent(networkX_multigraph: nx.MultiGraph,
     # now that the centroid is known, go ahead and merge the _node_group
     # add the new node
     new_nd_name = _add_node(networkX_multigraph, node_group, x=c.x, y=c.y)
+    if new_nd_name is None:
+        raise ValueError(f'Attempted to add a duplicate node for node_group {node_group}.')
     # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
     for uid in node_group:
         # iterate the node's existing neighbours
@@ -550,9 +552,26 @@ def _squash_adjacent(networkX_multigraph: nx.MultiGraph,
                 else:
                     target_uid = nb_uid
                 # build the new geom
-                new_line_geom = geometry.LineString(line_coords)
-                # add the new edge
-                networkX_multigraph.add_edge(new_nd_name, target_uid, geom=new_line_geom)
+                new_edge_geom = geometry.LineString(line_coords)
+                # check that a duplicate is not being added
+                dupe = False
+                if networkX_multigraph.has_edge(new_nd_name, target_uid):
+                    # only add parallel edges if substantially different from any existing edges
+                    n_edges = networkX_multigraph.number_of_edges(new_nd_name, target_uid)
+                    for k in range(n_edges):
+                        existing_edge_geom = networkX_multigraph[new_nd_name][target_uid][k]["geom"]
+                        # don't add if the edges have the same number of coords and the coords are similar
+                        # 5m x and y tolerance across all coordinates
+                        if len(new_edge_geom.coords) == len(existing_edge_geom.coords) and \
+                                np.allclose(new_edge_geom.coords, existing_edge_geom.coords, atol=5, rtol=0):
+                            dupe = True
+                            logger.debug(
+                                f'Not adding edge {new_nd_name} to {target_uid}: a similar edge already exists. '
+                                f'Length: {new_edge_geom.length} vs. {existing_edge_geom.length}. '
+                                f'Num coords: {len(new_edge_geom.coords)} vs. {len(existing_edge_geom.coords)}.')
+                if not dupe:
+                    # add the new edge
+                    networkX_multigraph.add_edge(new_nd_name, target_uid, geom=new_edge_geom)
         # drop the node, this will also implicitly drop the old edges
         networkX_multigraph.remove_node(uid)
 
@@ -573,6 +592,11 @@ def _merge_parallel_edges(networkX_multigraph: nx.MultiGraph,
     """
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph (for multiple edges).')
+    if max_len_discrepancy <= 1:
+        raise TypeError('max_len_discrepancy should be a factor greater than 1. ')
+    if max_len_discrepancy < 1.25:
+        logger.warning('Merging by midline and setting max_len_discrepancy too low (e.g. lower than 1.25) may '
+                       'result in an undesirable number of relatively similar parallel edges.')
     # don't use copy() - add nodes only
     deduped_graph = nx.MultiGraph()
     deduped_graph.add_nodes_from(networkX_multigraph.nodes(data=True))
@@ -677,7 +701,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
                          merge_edges_by_midline: bool = True,
                          cent_min_degree: int = 3,
                          cent_min_len: float = None,
-                         max_len_discrepancy: float = 1.25,
+                         max_len_discrepancy: float = 1.5,
                          discrepancy_min_len: float = 100) -> nx.MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -772,12 +796,13 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
                                         node_group,
                                         cent_min_degree,
                                         cent_min_len)
-    # squashing nodes can result in edge duplicates
-    deduped_graph = _merge_parallel_edges(_multi_graph,
+    # remove filler nodes
+    deduped_graph = nX_remove_filler_nodes(_multi_graph)
+    # remove any parallel edges that may have resulted from squashing nodes
+    deduped_graph = _merge_parallel_edges(deduped_graph,
                                           merge_edges_by_midline,
                                           max_len_discrepancy,
                                           discrepancy_min_len)
-    deduped_graph = nX_remove_filler_nodes(deduped_graph)
 
     return deduped_graph
 
@@ -785,8 +810,8 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
 def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                             buffer_dist: float = 10,
                             use_midline: bool = False,
-                            max_len_discrepancy: float = 1.2,
-                            discrepancy_min_len: float = 50) -> nx.MultiGraph:
+                            max_len_discrepancy: float = 1.5,
+                            discrepancy_min_len: float = 100) -> nx.MultiGraph:
     """
     Projects nodes to pierce opposing edges within the buffer distance.
     The pierced nodes are used for facilitating node merging for scenarios such as divided boulevards.
@@ -945,18 +970,19 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
         # test for geom
         if 'geom' not in d:
             raise KeyError(
-                f'No edge geom found for edge {s}-{e}: Please add an edge "geom" attribute consisting of a shapely LineString.')
+                f'No edge geom found for edge {s}-{e}: '
+                f'Please add an edge "geom" attribute consisting of a shapely LineString.')
         # get edge geometry
         line_geom = d['geom']
         if line_geom.type != 'LineString':
             raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
         # check geom coordinates directionality - flip if facing backwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0):
-            line_geom = geometry.LineString(line_geom.coords[::-1])
+        line_geom_coords = _align_linestring_coords(line_geom.coords, (s_x, s_y))
         # double check that coordinates now face the forwards direction
-        if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0) or \
-                not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=checks.tolerance, rtol=0):
+        if not np.allclose((s_x, s_y), line_geom_coords[0][:2], atol=checks.tolerance, rtol=0) or \
+                not np.allclose((e_x, e_y), line_geom_coords[-1][:2], atol=checks.tolerance, rtol=0):
             raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {s}-{e}')
+        line_geom = geometry.LineString(line_geom_coords)
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
         n = np.ceil(line_geom.length / decompose_max)
@@ -975,6 +1001,8 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
             x, y = line_segment.coords[-1]
             # add the new node and edge
             new_nd_name = _add_node(g_multi_copy, [s, sub_node_counter, e], x=x, y=y)
+            if new_nd_name is None:
+                raise ValueError(f'Attempted to add a duplicate node. Edges at {s}-{e} may be duplicated?')
             sub_node_counter += 1
             # add and set live property if present in parent graph
             if 'live' in networkX_multigraph.nodes[s] and 'live' in networkX_multigraph.nodes[e]:
@@ -991,7 +1019,6 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
         # set the last edge manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add edge
         line_segment = ops.substring(line_geom, step, line_geom.length)
-        l = line_segment.length
         g_multi_copy.add_edge(prior_node_id, e, geom=line_segment)
 
     return g_multi_copy
@@ -1193,19 +1220,13 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
                 s_x, s_y = node_data[node_idx][:2]
-                if not np.allclose((s_x, s_y), line_geom.coords[0][:2], atol=checks.tolerance, rtol=0):
-                    line_geom = geometry.LineString(line_geom.coords[::-1])
-                e_x, e_y = (g_multi_copy.nodes[nb]['x'], g_multi_copy.nodes[nb]['y'])
-                # double check that coordinates now face the forwards direction
-                if not np.allclose((s_x, s_y), line_geom.coords[0][:2]) or \
-                        not np.allclose((e_x, e_y), line_geom.coords[-1][:2], atol=checks.tolerance, rtol=0):
-                    raise ValueError(f'Edge geometry endpoint coordinate mismatch for edge {node_idx}-{nb}')
+                line_geom_coords = _align_linestring_coords(line_geom.coords, (s_x, s_y))
                 # iterate the coordinates and calculate the angular change
                 angle_sum = 0
-                for c in range(len(line_geom.coords) - 2):
-                    x_1, y_1 = line_geom.coords[c][:2]
-                    x_2, y_2 = line_geom.coords[c + 1][:2]
-                    x_3, y_3 = line_geom.coords[c + 2][:2]
+                for c in range(len(line_geom_coords) - 2):
+                    x_1, y_1 = line_geom_coords[c][:2]
+                    x_2, y_2 = line_geom_coords[c + 1][:2]
+                    x_3, y_3 = line_geom_coords[c + 2][:2]
                     # arctan2 is y / x order
                     a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
                     a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
@@ -1231,12 +1252,12 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
                     # fallback imp_factor of 1
                     edge_data[edge_idx][4] = 1
                 # EDGE MAP INDEX POSITION 5 - in bearing
-                x_1, y_1 = line_geom.coords[0][:2]
-                x_2, y_2 = line_geom.coords[1][:2]
+                x_1, y_1 = line_geom_coords[0][:2]
+                x_2, y_2 = line_geom_coords[1][:2]
                 edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
                 # EDGE MAP INDEX POSITION 6 - out bearing
-                x_1, y_1 = line_geom.coords[-2][:2]
-                x_2, y_2 = line_geom.coords[-1][:2]
+                x_1, y_1 = line_geom_coords[-2][:2]
+                x_2, y_2 = line_geom_coords[-1][:2]
                 edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
                 # increment the edge_idx
                 edge_idx += 1

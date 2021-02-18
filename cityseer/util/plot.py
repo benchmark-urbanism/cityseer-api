@@ -1,6 +1,6 @@
-'''
+"""
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
-'''
+"""
 from matplotlib import colors
 from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
@@ -8,6 +8,8 @@ import networkx as nx
 import numpy as np
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
+
+from typing import Union
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -22,27 +24,45 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            dual_graph: nx.MultiGraph = None,
                            path: str = None,
                            labels: bool = False,
-                           primal_node_colour: (str, tuple, list) = None,
+                           primal_node_colour: Union[str, tuple, list] = None,
                            primal_edge_colour: str = None,
-                           dual_node_colour: (str, tuple, list) = None,
+                           dual_node_colour: Union[str, tuple, list] = None,
                            dual_edge_colour: str = None,
-                           primal_edge_width: (int, float) = None,
-                           dual_edge_width: (int, float) = None,
+                           primal_edge_width: Union[int, float] = None,
+                           dual_edge_width: Union[int, float] = None,
                            plot_geoms: bool = True,
-                           x_lim: (tuple, list) = None,
-                           y_lim: (tuple, list) = None,
+                           x_lim: Union[tuple, list] = None,
+                           y_lim: Union[tuple, list] = None,
                            **figure_kwargs):
     """
-    Plot either or both primal and dual representations of `networkX` MultiGraphs.
-
     Args:
-        primal_graph: An optional `NetworkX` MultiGraph to plot in the primal representation.
-        dual_graph: An optional `NetworkX` MultiGraph to plot in the dual representation.
-        path: An optional filepath. If provided, the image will be saved to the path instead of being displayed.
-        labels: Whether to display node labels.
-        primal_node_colour: Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly.
-        primal_edge_colour: 
+        param1 (int): The first parameter.
+        param2 (:obj:`str`, optional): The second parameter. Defaults to None.
+            Second line of description should be indented.
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+
     Returns:
+        bool: True if successful, False otherwise.
+
+        The return type is optional and may be specified at the beginning of
+        the ``Returns`` section followed by a colon.
+
+        The ``Returns`` section may span multiple lines and paragraphs.
+        Following lines should be indented to match the first line.
+
+        The ``Returns`` section supports any reStructuredText formatting,
+        including literal blocks::
+
+            {
+                'param1': param1,
+                'param2': param2
+            }
+
+    Raises:
+        AttributeError: The ``Raises`` section is a list of all exceptions
+            that are relevant to the interface.
+        ValueError: If `param2` is equal to `param1`.
 
     """
     # cleanup old plots
@@ -285,18 +305,15 @@ def plot_graph_maps(node_data: np.ndarray,
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
-
     # set extents
     for ax in (ax1, ax2):
         ax.set_xlim(node_data[:, 0].min() - 100, node_data[:, 0].max() + 100)
         ax.set_ylim(node_data[:, 1].min() - 100, node_data[:, 1].max() + 100)
-
     if poly:
         x = [x for x in poly.exterior.coords.xy[0]]
         y = [y for y in poly.exterior.coords.xy[1]]
         ax1.plot(x, y)
         ax2.plot(x, y)
-
     # plot nodes
     cols = []
     for n in node_data[:, 2]:
@@ -306,44 +323,23 @@ def plot_graph_maps(node_data: np.ndarray,
             cols.append(accent)
     ax1.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
     ax2.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
-
-    # check for duplicate edges
-    edges = set()
-
-    # plot edges - requires iteration through maps
-    for src_idx, src_data in enumerate(node_data):
-        # get the starting edge index
-        # isolated nodes don't have edges
-        edge_idx = src_data[3]
-        if np.isnan(edge_idx):
-            continue
-        edge_idx = int(edge_idx)
-        # iterate the neighbours
-        # don't use while True because last node's index increment won't be caught
-        while edge_idx < len(edge_data):
-            # get the corresponding edge data
-            edge_data = edge_data[edge_idx]
-            # get the src node - this is to check that still within src edge - neighbour range
-            fr_idx = edge_data[0]
-            # break once all neighbours visited
-            if fr_idx != src_idx:
-                break
-            # get the neighbour node's index
-            to_idx = edge_data[1]
-            # fetch the neighbour node's data
-            nb_data = node_data[int(to_idx)]
-            # check for duplicates
-            k = str(sorted([fr_idx, to_idx]))
-            if k not in edges:
-                edges.add(k)
-                ax1.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c=accent, linewidth=1)
-            else:
-                ax2.plot([src_data[0], nb_data[0]], [src_data[1], nb_data[1]], c=accent, linewidth=1)
-            edge_idx += 1
-
-    for idx, (x, y) in enumerate(zip(node_data[:, 0], node_data[:, 1])):
-        ax2.annotate(idx, xy=(x, y), size=5)
-
+    # plot edges
+    processed_edges = set()
+    for edge_idx, edge_data in enumerate(edge_data):
+        s, e = edge_data[:2]
+        se_key = '-'.join(sorted([str(s), str(e)]))
+        # bool indicating whether second copy in opposite direction
+        dupe = se_key in processed_edges
+        processed_edges.add(se_key)
+        # get the start and end coords - this is to check that still within src edge - neighbour range
+        s_x, s_y = node_data[int(s), :2]
+        e_x, e_y = node_data[int(e), :2]
+        if not dupe:
+            ax1.plot([s_x, e_x], [s_y, e_y], c=accent, linewidth=1)
+        else:
+            ax2.plot([s_x, e_x], [s_y, e_y], c=accent, linewidth=1)
+    for node_idx, n_data in enumerate(node_data):
+        ax2.annotate(node_idx, xy=n_data[:2], size=5)
     '''
     DATA MAP:
     0 - x
@@ -351,9 +347,7 @@ def plot_graph_maps(node_data: np.ndarray,
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     '''
-
     if data_map is not None:
-
         # plot parents on ax1
         ax1.scatter(x=data_map[:, 0],
                     y=data_map[:, 1],
@@ -367,26 +361,18 @@ def plot_graph_maps(node_data: np.ndarray,
                     edgecolor=warning,
                     alpha=0.9,
                     lw=0.5)
-
-        for i, (x, y, nearest_netw_idx, next_n_netw_idx) in \
-                enumerate(zip(data_map[:, 0],
-                              data_map[:, 1],
-                              data_map[:, 2],
-                              data_map[:, 3])):
-
+        for i, assignment_data in enumerate(data_map):
+            x, y, nearest_netw_idx, next_n_netw_idx = assignment_data
             ax2.annotate(str(int(i)), xy=(x, y), size=8, color='red')
-
             # if the data points have been assigned network indices
             if not np.isnan(nearest_netw_idx):
                 # plot lines to parents for easier viz
                 p_x = node_data[int(nearest_netw_idx)][0]
                 p_y = node_data[int(nearest_netw_idx)][1]
                 ax1.plot([p_x, x], [p_y, y], c=warning, lw=0.75, ls='-')
-
             if not np.isnan(next_n_netw_idx):
                 p_x = node_data[int(next_n_netw_idx)][0]
                 p_y = node_data[int(next_n_netw_idx)][1]
                 ax1.plot([p_x, x], [p_y, y], c=info, lw=0.75, ls='--')
-
     plt.gcf().set_facecolor(background)
     plt.show()

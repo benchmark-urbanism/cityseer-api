@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from cityseer.algos import data, centrality, checks, diversity
+from cityseer.algos import data, centrality, diversity
 from cityseer.metrics import networks, layers
 from cityseer.util import graphs, mock
 from cityseer.util.mock import primal_graph
@@ -67,70 +67,72 @@ def test_assign_to_network(primal_graph):
     data_map[39, :2] = [700750, 5720025]
     data_map[26, :2] = [700400, 5719525]
     # 500m visually confirmed in plots
-    data_map_test_1600 = data_map.copy()
-    data_map_test_1600 = data.assign_to_network(data_map_test_1600,
-                                                node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                max_dist=1600)
+    data_map_1600 = data_map.copy()
+    data_map_1600 = data.assign_to_network(data_map_1600,
+                                           node_data,
+                                           edge_data,
+                                           node_edge_map,
+                                           max_dist=1600)
     targets = [
-        [0, 163, 162],
-        [1, 42, 228],
-        [2, 223, 222],
-        [3, 48, 242],
-        [4, 198, 199],
-        [5, 223, 222],
-        [6, 57, 56],
-        [7, 71, 5],
-        [8, 74, 75],
-        [9, 91, 9],
-        [10, 60, 61],
-        [11, 95, 13],
-        [12, 0, 58],
-        [13, 97, 98],
-        [14, 190, 189],
-        [15, 120, 119],
-        [16, 48, 242],
-        [17, 2, 69],
-        [18, 181, 182],
-        [19, 157, 156],
-        [20, 82, 83],
-        [21, 2.0, np.nan],
-        [22, 170, 169],
-        [23, 246, 52],
-        [24, 82, 83],
-        [25, 87, 11],
-        [26, 49.0, np.nan],
-        [27, 19, 137],
-        [28, 133, 134],
-        [29, 242, 46],
-        [30, 77, 9],
-        [31, 187, 188],
-        [32, 179, 180],
-        [33, 94, 93],
-        [34, 213, 212],
-        [35, 109, 110],
-        [36, 39, 215],
-        [37, 157, 25],
-        [38, 87, 86],
-        [39, 243.0, np.nan],
-        [40, 119, 120],
-        [41, 145, 21],
-        [42, 10, 96],
-        [43, 118, 117],
-        [44, 81, 5],
-        [45, 11, 87],
-        [46, 99, 98],
-        [47, 137, 19],
-        [48, 14.0, np.nan],
-        [49, 105, 104]
+        [0, 164, 163],
+        [1, 42, 241],
+        [2, 236, 235],
+        [3, 48, 262],
+        [4, 211, 212],
+        [5, 236, 235],
+        [6, 58, 57],
+        [7, 72, 5],
+        [8, 75, 76],
+        [9, 92, 9],
+        [10, 61, 62],
+        [11, 96, 13],
+        [12, 0, 59],
+        [13, 98, 99],
+        [14, 203, 202],
+        [15, 121, 120],
+        [16, 48, 262],
+        [17, 2, 70],
+        [18, 182, 183],
+        [19, 158, 157],
+        [20, 83, 84],
+        [21, 2, np.nan],
+        [22, 171, 170],
+        [23, 266, 52],
+        [24, 83, 84],
+        [25, 88, 11],
+        [26, 49, np.nan],
+        [27, 19, 138],
+        [28, 134, 135],
+        [29, 262, 46],
+        [30, 78, 9],
+        [31, 188, 189],
+        [32, 180, 181],
+        [33, 95, 94],
+        [34, 226, 225],
+        [35, 110, 111],
+        [36, 39, 228],
+        [37, 158, 25],
+        [38, 88, 87],
+        [39, 263, np.nan],
+        [40, 120, 121],
+        [41, 146, 21],
+        [42, 10, 97],
+        [43, 119, 118],
+        [44, 82, 5],
+        [45, 11, 88],
+        [46, 100, 99],
+        [47, 138, 19],
+        [48, 14, np.nan],
+        [49, 106, 105]
     ]
-    for i in range(len(data_map_test_1600)):
-        assert data_map_test_1600[i, 2] == targets[i][1]
-        assert np.allclose(data_map_test_1600[i, 3], targets[i][2], equal_nan=True, atol=0.001, rtol=0)
     # for debugging
     # from cityseer.util import plot
-    # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map_test_1600)
+    # plot.plot_graph_maps(node_data, edge_data, data_map)
+    # assignment map includes data x, data y, nearest assigned, next nearest assigned
+    for data_idx, (nearest_nd, next_nearest_nd) in enumerate(data_map_1600[:, 2:]):
+        # print(f'[{data_idx}, {nearest_nd}, {next_nearest_nd}],')
+        assert nearest_nd == targets[data_idx][1]
+        assert np.isclose(next_nearest_nd, targets[data_idx][2], equal_nan=True, atol=0, rtol=0)
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
     data_map_test_0 = data.assign_to_network(data_map_test_0, node_data, edge_data, node_edge_map, max_dist=0)
