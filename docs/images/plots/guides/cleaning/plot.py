@@ -10,7 +10,7 @@ import utm
 from shapely import geometry
 import matplotlib.pyplot as plt
 
-from cityseer.util import graphs, plot
+from cityseer.tools import graphs, plot
 
 # let's download data within a 1,600m buffer around Travalgar Square in London:
 lat, lng = (51.507999, -0.127970)

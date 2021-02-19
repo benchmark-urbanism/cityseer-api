@@ -1,10 +1,10 @@
 <template lang="pug">
-div(@click='dialogActive = !dialogActive')
-  img(:src='path' :alt='alt')
-  em {{ caption }}
-  .modal(v-show='dialogActive')
-    .modal-content
-      img(:src='path' :alt='alt')
+div(@click="dialogActive = !dialogActive")
+  img():src="path" :alt="alt")
+  em {{ caption }} 
+  div(v-show="dialogActive" class="modal")
+    div(class="modal-content")
+      img(:src="path" :alt="alt")
       em {{ caption }}
 </template>
 

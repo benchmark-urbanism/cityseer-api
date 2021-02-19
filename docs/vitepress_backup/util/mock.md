@@ -28,7 +28,7 @@ A `NetworkX` graph with `x` and `y` attributes.
 </FuncElement>
 
 ```python
-from cityseer.util import mock, graphs
+from cityseer.tools import mock, graphs
 
 G = mock.mock_graph()
 ```
@@ -179,7 +179,7 @@ The probability of encountering the respective species classes.
 </FuncElement>
 
 ```python
-from cityseer.util import mock
+from cityseer.tools import mock
 
 for counts, probs in mock.mock_species_data():
     cs = [c for c in counts]

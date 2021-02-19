@@ -6,8 +6,8 @@ import timeit
 
 from cityseer.algos import centrality
 from cityseer.metrics import networks
-from cityseer.util import graphs, plot
-from cityseer.util.mock import primal_graph, dual_graph, diamond_graph
+from cityseer.tools import graphs, plot
+from cityseer.tools.mock import primal_graph, dual_graph, diamond_graph
 
 
 def find_path(start_idx, target_idx, tree_preds):

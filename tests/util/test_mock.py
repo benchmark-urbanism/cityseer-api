@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 import string
 
-from cityseer.util import mock
-from cityseer.util.mock import primal_graph
+from cityseer.tools import mock
+from cityseer.tools.mock import primal_graph
 
 
 def test_mock_graph(primal_graph):
@@ -26,7 +26,7 @@ def test_mock_graph(primal_graph):
             assert 'x' in d and isinstance(d['y'], (int, float))
             assert 'y' in d and isinstance(d['y'], (int, float))
 
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX(G)
 
 

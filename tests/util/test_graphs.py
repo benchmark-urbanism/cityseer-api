@@ -5,8 +5,8 @@ from shapely import geometry, ops
 
 from cityseer.algos import checks
 from cityseer.metrics import networks, layers
-from cityseer.util import mock, graphs
-from cityseer.util.mock import primal_graph, diamond_graph
+from cityseer.tools import mock, graphs
+from cityseer.tools.mock import primal_graph, diamond_graph
 
 
 def test_nX_simple_geoms(primal_graph):
@@ -139,7 +139,7 @@ def test_nX_wgs_to_utm():
     for n, d in G_utm_31.nodes(data=True):
         assert d['x'] != G_utm_30.nodes[n]['x']
 
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX(G_wgs_b, labels=True)
     # plot.plot_nX(G_utm_b, labels=True)
 
@@ -239,7 +239,7 @@ def test_nX_remove_filler_nodes(primal_graph):
     # test that redundant intersections are removed, i.e. where degree == 2
     G_messy = make_messy_graph(primal_graph)
 
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX(G_messy, labels=True)
 
     # simplify and test
@@ -445,7 +445,7 @@ def test_nX_consolidate():
 
     G = graphs.nX_simple_geoms(G)
     # behaviour confirmed visually
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX(G, labels=True, plot_geoms=True)
 
     G_merged_spatial = graphs.nX_consolidate_nodes(G,
@@ -507,7 +507,7 @@ def test_nX_decompose(primal_graph):
     G_simple = graphs.nX_remove_filler_nodes(G)
     G_decompose = graphs.nX_decompose(G_simple, 50)
 
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX(G_simple, labels=True, plot_geoms=True)
     # plot.plot_nX(G_decompose, plot_geoms=True)
     assert nx.number_of_nodes(G_decompose) == 292
@@ -577,7 +577,7 @@ def test_nX_to_dual(primal_graph, diamond_graph):
     # test dual
     G = diamond_graph.copy()
     G_dual = graphs.nX_to_dual(G)
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=True, labels=True)
 
     assert G_dual.number_of_nodes() == 5
@@ -644,7 +644,7 @@ def test_nX_to_dual(primal_graph, diamond_graph):
             flipped_coords = np.fliplr(d['geom'].coords.xy)
             G[s][e][k]['geom'] = geometry.LineString([[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1])])
     G_dual = graphs.nX_to_dual(G)
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_nX_primal_or_dual(primal_graph=G, dual_graph=G_dual, plot_geoms=True, labels=True)
     # 3 + 4 + 1 + 3 + 3 + (9 + 12) + (9 + 12) + (9 + 12) = 77
     assert G_dual.number_of_nodes() == 79
