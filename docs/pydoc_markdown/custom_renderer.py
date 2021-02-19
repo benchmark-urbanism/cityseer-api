@@ -24,6 +24,7 @@ from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer
 from nr.databind.core import Field, Struct
 from nr.interface import implements, override
 from pydoc_markdown.interfaces import Renderer
+import re
 from typing import cast, List, TextIO
 import docspec
 import io
@@ -61,6 +62,11 @@ class CustomizedMarkdownRenderer(MarkdownRenderer):
     #: The title of the "Table of Contents" header.
     render_toc_title = Field(str, default='Table of Contents')
 
+    #: Render the function signature as a code block. This includes the "def"
+    #: keyword, the function name and its arguments. This is enabled by
+    #: default.
+    signature_code_block = Field(bool, default=True)
+
     #: Allows you to override how the "view source" link is rendered into the Markdown
     #: file if a #source_linker is configured. The default is `[[view_source]]({url})`.
     source_format = Field(str, default='[[view_source]]({url})')
@@ -76,6 +82,11 @@ class CustomizedMarkdownRenderer(MarkdownRenderer):
         '---\n\n'
     ))
 
+    ### ADDED
+    def set_filename(self, path):
+        self.filename = path
+
+    ### MODIFIED
     def _format_function_signature(self,
                                    func: docspec.Function,
                                    override_name: str = None,
@@ -93,23 +104,49 @@ class CustomizedMarkdownRenderer(MarkdownRenderer):
             assert parent, func
             parts.append(parent.name + '.')
         parts.append((override_name or func.name))
-        parts.append('(' + self._format_arglist(func) + ')')
+        # go-ahead and add the first param
+        # pad the parameters
+        padding = len(parts[0])
+        raw_string = self._format_arglist(func)
+        # mask out type hints between brackets
+        def repl(m):
+            return '-' * len(m.group())
+        masked_string = re.sub('[\[\(](.*?)[\]\)]', repl, raw_string)
+        # find locations of commas between parameters in masked string
+        param_list = []
+        trailing_idx = 0
+        for find in re.finditer(',', masked_string):
+            # break lines at these locations
+            break_idx = find.regs[0][1]
+            param_list.append(raw_string[trailing_idx:break_idx])
+            trailing_idx = break_idx
+        # add the tail
+        param_list.append(raw_string[trailing_idx:])
+        # start the parameter string
+        param_string = f'{param_list[0]}'
+        # iterate and pad, but skip first arg
+        for idx in range(1, len(param_list)):
+            param_string += f'\n{" " * padding}{param_list[idx]}'
+        parts.append('(' + param_string + ')')
         if func.return_type:
             parts.append(' -> {}'.format(func.return_type))
-        result = 'THIS IS A FUNCTION #####'
+        result = '<FuncSignature>\n<pre>\n```py\n'
         result += ''.join(parts)
+        result += '\n```\n</pre>\n</FuncSignature>\n\n'
         if add_method_bar and self._is_method(func):
             result = '\n'.join(' | ' + l for l in result.split('\n'))
         return result
 
-@implements(Renderer)
-class CustomRenderer(Struct):
-    markdown = Field(CustomizedMarkdownRenderer, default=CustomizedMarkdownRenderer)
-    #: The path where the docs content is. Defaults "docs" folder.
-    docs_base_path = Field(str, default='docs')
-    #: The output path inside the docs_base_path folder, used to output the module reference.
-    relative_output_path = Field(str, default='reference')
+    ### MODIFIED
+    def _render_signature_block(self, fp, obj):
+        if self.classdef_code_block and isinstance(obj, docspec.Class):
+            code = self._format_classdef_signature(obj)
+        elif self.signature_code_block and isinstance(obj, docspec.Function):
+            code = self._format_function_signature(obj)
+        elif self.data_code_block and isinstance(obj, docspec.Data):
+            code = self._format_data_signature(obj)
+        else:
+            return
+        # removed code ticks
+        fp.write(code)
 
-    @override
-    def render(self, modules: List[docspec.Module]) -> None:
-      self.render_to_stream(modules, sys.stdout)
