@@ -680,12 +680,13 @@ def _create_edges_strtree(networkX_multigraph: nx.MultiGraph) -> strtree.STRtree
     Creates an edges-based STRtree spatial index.
     """
     lines = []
-    for s, e, d in networkX_multigraph.edges(data=True):
+    for s, e, k, d in networkX_multigraph.edges(keys=True, data=True):
         if 'geom' not in d:
             raise KeyError(f'Encountered edge missing "geom" attribute.')
         linestring = d['geom']
         linestring.start_uid = s
         linestring.end_uid = e
+        linestring.k = k
         lines.append(linestring)
     return strtree.STRtree(lines)
 
@@ -819,8 +820,26 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
     are described in the _merge_parallel_edges method.
     """
 
-    def make_edge_key(s, e):
-        return '-'.join(sorted([str(s), str(e)]))
+    def make_edge_key(s, e, k):
+        return '-'.join(sorted([str(s), str(e)])) + f'-k{k}'
+
+    # where edges are deleted, keep track of new children edges
+    edge_children = {}
+
+    # recursive function for retrieving nested layers of successively replaced edges
+    def recurse_child_keys(s, e, k, geom, current_edges):
+        """
+        Checks if an edge has been replaced by children, if so, use children instead.
+        Children may also have children, so recurse downwards.
+        """
+        edge_key = make_edge_key(s, e, k)
+        # if an edge does not have children, add to current_edges and return
+        if edge_key not in edge_children:
+            current_edges.append((s, e, k, geom))
+        # otherwise recursively drill-down until newest edges are found
+        else:
+            for child_s, child_e, child_k, child_geom in edge_children[edge_key]:
+                recurse_child_keys(child_s, child_e, child_k, child_geom, current_edges)
 
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')
@@ -828,8 +847,6 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
     _multi_graph = networkX_multigraph.copy()
     # create an edges STRtree (nodes and edges)
     edges_tree = _create_edges_strtree(_multi_graph)
-    # where edges are deleted, keep track of new children edges
-    edge_children = {}
     # iterate origin graph (else node structure changes in place)
     for n, n_d in tqdm(networkX_multigraph.nodes(data=True), disable=checks.quiet_mode):
         # don't split opposing geoms from nodes of degree 1
@@ -842,41 +859,33 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
         # spatial query from point returns all buffers with buffer_dist
         edges = edges_tree.query(n_point.buffer(buffer_dist))
         # extract the start node, end node, geom
-        edges = [(edge.start_uid, edge.end_uid, edge) for edge in edges]
+        edges = [(edge.start_uid, edge.end_uid, edge.k, edge) for edge in edges]
         # check against removed edges
         current_edges = []
-        for s, e, edge_geom in edges:
-            # if removed, use new children edges instead
-            edge_key = make_edge_key(s, e)
-            if edge_key in edge_children:
-                current_edges += edge_children[edge_key]
-            # otherwise it is safe to use original edge
-            else:
-                current_edges.append((s, e, edge_geom))
+        for s, e, k, edge_geom in edges:
+            recurse_child_keys(s, e, k, edge_geom, current_edges)
         # get neighbouring nodes from new graph
         neighbours = list(_multi_graph.neighbors(n))
         # abort if only direct neighbours
         if len(current_edges) <= len(neighbours):
             continue
-        # prepare a list of out-bound edges
-        out_edges_str = [make_edge_key(n, nb) for nb in neighbours]
         # filter current_edges
         gapped_edges = []
-        for s, e, edge_geom in current_edges:
+        for s, e, k, edge_geom in current_edges:
             # skip direct neighbours
-            if make_edge_key(s, e) in out_edges_str:
+            if s == n or e == n:
                 continue
             # check whether the geom is truly within the buffer distance
             if edge_geom.distance(n_point) > buffer_dist:
                 continue
-            gapped_edges.append((s, e, edge_geom))
+            gapped_edges.append((s, e, k, edge_geom))
         # abort if no gapped edges
         if not gapped_edges:
             continue
         # prepare the root node's point geom
         n_geom = geometry.Point(n_d['x'], n_d['y'])
         # iter gapped edges
-        for s, e, edge_geom in gapped_edges:
+        for s, e, k, edge_geom in gapped_edges:
             # see if start node is within buffer distance already
             s_nd_data = _multi_graph.nodes[s]
             s_nd_geom = geometry.Point(s_nd_data['x'], s_nd_data['y'])
@@ -922,22 +931,22 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
             # in these cases, there will be multiple edges
             if s == e:
                 assert _multi_graph.number_of_edges(s, new_nd_name) == 2
-                s_idx = 0
-                e_idx = 1
+                s_k = 0
+                e_k = 1
             else:
                 assert _multi_graph.number_of_edges(s, new_nd_name) == 1
                 assert _multi_graph.number_of_edges(e, new_nd_name) == 1
-                s_idx = e_idx = 0
+                s_k = e_k = 0
             # write the new edges
-            _multi_graph[s][new_nd_name][s_idx]['geom'] = s_new_geom
-            _multi_graph[e][new_nd_name][e_idx]['geom'] = e_new_geom
+            _multi_graph[s][new_nd_name][s_k]['geom'] = s_new_geom
+            _multi_graph[e][new_nd_name][e_k]['geom'] = e_new_geom
             # add the new edges to the edge_children dictionary
-            edge_key = make_edge_key(s, e)
-            edge_children[edge_key] = [(s, new_nd_name, s_new_geom),
-                                       (e, new_nd_name, e_new_geom)]
+            edge_key = make_edge_key(s, e, k)
+            edge_children[edge_key] = [(s, new_nd_name, s_k, s_new_geom),
+                                       (e, new_nd_name, e_k, e_new_geom)]
             # drop the old edge from _multi_graph
-            if _multi_graph.has_edge(s, e):
-                _multi_graph.remove_edge(s, e)
+            if _multi_graph.has_edge(s, e, k):
+                _multi_graph.remove_edge(s, e, k)
     # squashing nodes can result in edge duplicates
     deduped_graph = _merge_parallel_edges(_multi_graph,
                                           use_midline,
@@ -1003,7 +1012,7 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
             # add the new node and edge
             new_nd_name = _add_node(g_multi_copy, [s, sub_node_counter, e], x=x, y=y)
             if new_nd_name is None:
-                logger.warning(f'Attempted to add a duplicate node. Edges at {s}-{e} may be duplicated?')
+                raise ValueError(f'Attempted to add a duplicate node. Edges at {s}-{e} may be duplicated?')
             sub_node_counter += 1
             # add and set live property if present in parent graph
             if 'live' in networkX_multigraph.nodes[s] and 'live' in networkX_multigraph.nodes[e]:

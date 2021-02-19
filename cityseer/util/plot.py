@@ -1,6 +1,7 @@
 """
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 """
+import logging
 from matplotlib import colors
 from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
@@ -10,6 +11,9 @@ from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
 from typing import Union
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -141,7 +145,11 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
             if s not in node_list and e not in node_list:
                 continue
             if plot_geoms:
-                x_arr, y_arr = data['geom'].coords.xy
+                try:
+                    x_arr, y_arr = data['geom'].coords.xy
+                except KeyError:
+                    raise KeyError(f"Can't plot geoms because a 'geom' key can't be found for edge {s} to {e}. "
+                                   f"Use the nX_simple_geoms() method if you need to create geoms for a graph.")
                 edge_geoms.append(tuple(zip(x_arr, y_arr)))
             else:
                 edge_list.append((s, e))
