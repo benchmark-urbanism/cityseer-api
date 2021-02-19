@@ -9,7 +9,7 @@ import numpy as np
 from numba.typed import Dict
 
 from cityseer.algos import centrality, checks
-from cityseer.util import graphs
+from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -3,8 +3,8 @@ import pytest
 
 from cityseer.algos import data, checks
 from cityseer.metrics import networks, layers
-from cityseer.util import graphs, mock
-from cityseer.util.mock import primal_graph
+from cityseer.tools import graphs, mock
+from cityseer.tools.mock import primal_graph
 
 
 def test_progress_bar():
@@ -83,7 +83,7 @@ def test_check_data_map(primal_graph):
 def test_check_network_maps(primal_graph):
     # network maps
     N = networks.Network_Layer_From_nX(primal_graph, distances=[500])
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_networkX_primal_or_dual(primal=G)
     # plot.plot_graph_maps(N.uids, N._node_data, N._edge_data)
     # catch zero length node and edge arrays

@@ -83,14 +83,6 @@
     @apply text-xs font-semibold font-mono p-1;
   }
 
-  pre code {
-    @apply font-bold;
-  }
-
-  pre code .token {
-    @apply text-lightgrey;
-  }
-
   ul,
   li {
   }

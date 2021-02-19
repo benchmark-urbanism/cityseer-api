@@ -3,8 +3,8 @@ import pytest
 
 from cityseer.algos import data, centrality, diversity
 from cityseer.metrics import networks, layers
-from cityseer.util import graphs, mock
-from cityseer.util.mock import primal_graph
+from cityseer.tools import graphs, mock
+from cityseer.tools.mock import primal_graph
 
 
 def test_radial_filter(primal_graph):
@@ -126,7 +126,7 @@ def test_assign_to_network(primal_graph):
         [49, 106, 105]
     ]
     # for debugging
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_graph_maps(node_data, edge_data, data_map)
     # assignment map includes data x, data y, nearest assigned, next nearest assigned
     for data_idx, (nearest_nd, next_nearest_nd) in enumerate(data_map_1600[:, 2:]):
@@ -169,7 +169,7 @@ def test_aggregate_to_src_idx(primal_graph):
                                                                                             max_dist,
                                                                                             angular=angular)
                 # for debugging
-                # from cityseer.util import plot
+                # from cityseer.tools import plot
                 # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map)
                 # compare to manual checks on distances:
                 netw_x_arr = node_data[:, 0]
@@ -546,7 +546,7 @@ def test_local_aggregator_numerical_components(primal_graph):
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # for debugging
-    # from cityseer.util import plot
+    # from cityseer.tools import plot
     # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map)
 
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance

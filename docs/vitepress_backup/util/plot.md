@@ -115,7 +115,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted.
 </FuncElement>
 
 ```python
-from cityseer.util import mock, graphs, plot
+from cityseer.tools import mock, graphs, plot
 
 G = mock.mock_graph()
 G_simple = graphs.nX_simple_geoms(G)
@@ -173,7 +173,7 @@ Node colour or colours. When passing a list of colours, the number of colours sh
 </FuncElement>
 
 ```python
-from cityseer.util import mock, graphs, plot
+from cityseer.tools import mock, graphs, plot
 from cityseer.metrics import networks
 from matplotlib import colors
 

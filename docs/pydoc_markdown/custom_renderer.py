@@ -106,33 +106,34 @@ class CustomizedMarkdownRenderer(MarkdownRenderer):
         parts.append((override_name or func.name))
         # go-ahead and add the first param
         # pad the parameters
-        padding = len(parts[0])
+        spaces = len(parts[0])
         raw_string = self._format_arglist(func)
-        # mask out type hints between brackets
-        def repl(m):
-            return '-' * len(m.group())
-        masked_string = re.sub('[\[\(](.*?)[\]\)]', repl, raw_string)
-        # find locations of commas between parameters in masked string
-        param_list = []
-        trailing_idx = 0
-        for find in re.finditer(',', masked_string):
-            # break lines at these locations
-            break_idx = find.regs[0][1]
-            param_list.append(raw_string[trailing_idx:break_idx])
-            trailing_idx = break_idx
-        # add the tail
-        param_list.append(raw_string[trailing_idx:])
-        # start the parameter string
-        param_string = f'{param_list[0]}'
-        # iterate and pad, but skip first arg
-        for idx in range(1, len(param_list)):
-            param_string += f'\n{" " * padding}{param_list[idx]}'
-        parts.append('(' + param_string + ')')
+        # strip out types between colon and equals
+        pruned = re.sub(':(.*)=', ' =', raw_string)
+        # strip out types between colon and commas (next)
+        pruned = re.sub(':(.*),', ',', pruned)
+        # strip out types before closing brackets (last)
+        pruned = re.sub(':(.*)\)', ')', pruned)
+        splits = pruned.split(',')
+        # gather the params
+        pad = ''
+        joiner = ','
+        # split over multiple lines if more than x params or if more than y characters
+        if len(splits) > 4 or len(pruned) > 65:
+            pad = ' ' * spaces
+            joiner = ',\n'
+        # insert the first param without spacing
+        params = [splits[0]]
+        # iterate and pad the splits
+        for idx, split in enumerate(splits[1:]):
+            params.append(f'{pad}{split}')
+        # rejoin and concat
+        parts.append(f'({joiner.join(params)})')
         if func.return_type:
-            parts.append(' -> {}'.format(func.return_type))
-        result = '<FuncSignature>\n<pre>\n```py\n'
+            parts.append(f' -> {func.return_type}')
+        result = '<FuncSignature>\n\n'
         result += ''.join(parts)
-        result += '\n```\n</pre>\n</FuncSignature>\n\n'
+        result += '\n\n</FuncSignature>\n\n'
         if add_method_bar and self._is_method(func):
             result = '\n'.join(' | ' + l for l in result.split('\n'))
         return result

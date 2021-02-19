@@ -88,7 +88,6 @@ module.exports = {
   },
   locales: {},
   markdown: {
-    anchor: { permalink: true },
     lineNumbers: true,
     toc: { includeLevel: [1, 2] },
     config: (md) => {

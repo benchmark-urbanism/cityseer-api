@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import colors
 
 from cityseer.metrics import networks, layers
-from cityseer.util import mock, graphs, plot
+from cityseer.tools import mock, graphs, plot
 
 plt.style.use('./matplotlibrc')
 

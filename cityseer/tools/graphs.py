@@ -725,7 +725,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
         raise ValueError('Neighbour policy should be one "direct", "indirect", else the default of "None"')
     if crawl and buffer_dist > 25:
         logger.warning('Be cautious with the buffer distance when using crawl.')
-    logger.info('Splitting opposing geoms.')
+    logger.info('Consolidating nodes.')
     _multi_graph = networkX_multigraph.copy()
     # create a nodes STRtree
     nodes_tree = _create_nodes_strtree(_multi_graph)

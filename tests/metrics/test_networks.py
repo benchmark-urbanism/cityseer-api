@@ -3,8 +3,8 @@ import pytest
 
 from cityseer.algos import checks, centrality
 from cityseer.metrics import networks, layers
-from cityseer.util import mock, graphs
-from cityseer.util.mock import primal_graph
+from cityseer.tools import mock, graphs
+from cityseer.tools.mock import primal_graph
 
 
 def test_distance_from_beta():

@@ -253,7 +253,7 @@ A decomposed `networkX` graph with no edge longer than the `decompose_max` param
 </FuncElement>
 
 ```python
-from cityseer.util import mock, graphs
+from cityseer.tools import mock, graphs
 
 G = mock.mock_graph()
 G_simple = graphs.nX_simple_geoms(G)
@@ -303,7 +303,7 @@ The primal `geom` edge attributes will be split and welded to form the new dual 
 </FuncElement>
 
 ```python
-from cityseer.util import mock, graphs
+from cityseer.tools import mock, graphs
 
 G = mock.mock_graph()
 G_simple = graphs.nX_simple_geoms(G)

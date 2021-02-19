@@ -3,7 +3,7 @@ import pytest
 from scipy.stats import entropy
 
 from cityseer.algos import diversity
-from cityseer.util import mock
+from cityseer.tools import mock
 
 
 def test_hill_diversity():
