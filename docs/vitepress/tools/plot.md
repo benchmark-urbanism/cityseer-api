@@ -2,12 +2,12 @@
 
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
-### plot_nX_primal_or_dual
+### plot\_nX\_primal\_or\_dual
 
 <FuncSignature>
 
 plot_nX_primal_or_dual(primal_graph = None,
-\*\*figure_kwargs)
+                       **figure_kwargs)
 
 </FuncSignature>
 
@@ -20,6 +20,7 @@ instead.
 Arguments
 
 </FuncHeading>
+
 
 <FuncElement name="primal_graph" type="nx.MultiGraph, optional">
 
@@ -105,29 +106,32 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
+  
+
 <FuncHeading>
 
 Example
 
 </FuncHeading>
 
-```py
-from cityseer.tools import mock, graphs, plot
-G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple, G_dual, plot_geoms=False)
-```
 
-![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
-_A dual graph in blue overlaid on the source primal graph in red._
+  
+  ```py
+  from cityseer.tools import mock, graphs, plot
+  G = mock.mock_graph()
+  G_simple = graphs.nX_simple_geoms(G)
+  G_dual = graphs.nX_to_dual(G_simple)
+  plot.plot_nX_primal_or_dual(G_simple, G_dual, plot_geoms=False)
+  ```
+  ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
+  _A dual graph in blue overlaid on the source primal graph in red._
 
-### plot_nX
+### plot\_nX
 
 <FuncSignature>
 
 plot_nX(networkX_graph = None,
-\*\*figure_kwargs)
+        **figure_kwargs)
 
 </FuncSignature>
 
@@ -138,6 +142,7 @@ Plot a `networkX` MultiGraph.
 Arguments
 
 </FuncHeading>
+
 
 <FuncElement name="networkX_graph" type="nx.MultiGraph, optional">
 
@@ -199,47 +204,51 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
+  
+
 <FuncHeading>
 
 Example
 
 </FuncHeading>
 
-```py
-from cityseer.tools import mock, graphs, plot
-from cityseer.metrics import networks
-from matplotlib import colors
-# generate a MultiGraph and compute gravity
-G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
-G = graphs.nX_decompose(G, 50)
-N = networks.Network_Layer_From_nX(G, distances=[800])
-N.compute_node_centrality(measures=['node_beta'])
-G_after = N.to_networkX()
-# let's extract and normalise the values
-vals = []
-for node, data in G_after.nodes(data=True): vals.append(data['metrics']['centrality']['node_beta'][800])
-# let's create a custom colourmap using matplotlib
-cmap = colors.LinearSegmentedColormap.from_list('cityseer', [(100/255, 193/255, 255/255, 255/255), (211/255, 47/255, 47/255, 1/255)])
-# normalise the values
-vals = colors.Normalize()(vals)
-# cast against the colour map
-cols = cmap(vals)
-# plot
-plot.plot_nX(G_after, node_colour=cols)
-```
 
-![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
-_Colour plot of 800m gravity index centrality on a 50m decomposed graph._
+  
+  ```py
+  from cityseer.tools import mock, graphs, plot
+  from cityseer.metrics import networks
+  from matplotlib import colors
+  # generate a MultiGraph and compute gravity
+  G = mock.mock_graph()
+  G = graphs.nX_simple_geoms(G)
+  G = graphs.nX_decompose(G, 50)
+  N = networks.Network_Layer_From_nX(G, distances=[800])
+  N.compute_node_centrality(measures=['node_beta'])
+  G_after = N.to_networkX()
+  # let's extract and normalise the values
+  vals = []
+  for node, data in G_after.nodes(data=True): vals.append(data['metrics']['centrality']['node_beta'][800])
+  # let's create a custom colourmap using matplotlib
+  cmap = colors.LinearSegmentedColormap.from_list('cityseer', [(100/255, 193/255, 255/255, 255/255), (211/255, 47/255, 47/255, 1/255)])
+  # normalise the values
+  vals = colors.Normalize()(vals)
+  # cast against the colour map
+  cols = cmap(vals)
+  # plot
+  plot.plot_nX(G_after, node_colour=cols)
+  ```
+  
+  ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
+  _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
-### plot_assignment
+### plot\_assignment
 
 <FuncSignature>
 
 plot_assignment(Network_Layer,
-Data_Layer,
-path = None,
-\*\*figure_kwargs)
+                Data_Layer,
+                path = None,
+                **figure_kwargs)
 
 </FuncSignature>
 
@@ -250,6 +259,7 @@ Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignmen
 Arguments
 
 </FuncHeading>
+
 
 <FuncElement name="Network_Layer" type="Network_Layer">
 
@@ -271,7 +281,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 <FuncElement name="node_colour" type="list, tuple, np.ndarray">
 
-Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
+Node colour or colours. When passing a list of colours, the number of  colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
 </FuncElement>
 
@@ -283,7 +293,7 @@ Whether to plot the node labels. Defaults to False.
 
 <FuncElement name="data_labels" type="list, tuple, np.ndarray">
 
-An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `Data_Layer`. Defaults to None.
+An optional iterable of categorical data labels which will be mapped to  colours. The number of labels should match the number of data points in `Data_Layer`. Defaults to None.
 
 </FuncElement>
 
@@ -293,16 +303,19 @@ An optional iterable of categorical data labels which will be mapped to colours.
 
 </FuncElement>
 
+  
+
 <FuncHeading>
 
 Example
 
 </FuncHeading>
 
-![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
-_An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
 
-### plot_graph_maps
+  ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
+  _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
+
+### plot\_graph\_maps
 
 <FuncSignature>
 
@@ -319,6 +332,7 @@ algorithms during the software development cycle.
 Arguments
 
 </FuncHeading>
+
 
 <FuncElement name="node_data" type="np.ndarray">
 
@@ -343,3 +357,5 @@ An optional data map. Defaults to None.
 An optional polygon. Defaults to None.
 
 </FuncElement>
+
+
