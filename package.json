@@ -1,10 +1,10 @@
 {
   "scripts": {
-    "setupPython": "pip install -r requirements.txt",
-    "buildDocs": "node buildDocs.js",
-    "docs:dev": "buildMarkdown && lintMarkdown && vitepress dev docs/vitepress",
-    "docs:build": "buildMarkdown && lintMarkdown && vitepress build docs/vitepress",
-    "docs:serve": "buildMarkdown && lintMarkdown && vitepress serve docs/vitepress"
+    "generate": "node docs/pydoc_markdown/generateDocs.js",
+    "lint": "markdownlint 'docs/**/*.md' --fix",
+    "dev": "yarn run generate && yarn run lint && vitepress dev docs/vitepress",
+    "build": "yarn run generate && yarn run lint && vitepress build docs/vitepress",
+    "serve": "yarn run generate && yarn run lint && vitepress serve docs/vitepress"
   },
   "dependencies": {},
   "devDependencies": {

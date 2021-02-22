@@ -13,6 +13,7 @@ Installation
 ------------
 
 `cityseer` is a `python` package that can be installed with `pip`:
+
 ```bash
 pip install cityseer
 ```
@@ -110,7 +111,7 @@ The data points will be assigned to the two closest network nodes — one in eit
 
 _Data assigned to the network (left); note that assignment becomes more contextually precise on decomposed graphs (right)._
 
-Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`Data_Layer.hill_diversity`](/metrics/layers.html#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`Data_Layer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple). 
+Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`Data_Layer.hill_diversity`](/metrics/layers.html#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`Data_Layer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple).
 
 ```python
 # landuse labels can be used to generate mixed-use and land-use accessibility measures
@@ -207,7 +208,6 @@ plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labe
 <img src="./images/plots/intro_segment_harmonic.png" alt="Example gravity index plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
 
 _$800m$ segmentised harmonic closeness centrality (left) and $400m$ branch-weighted mixed-uses (right) plots on a $20m$ decomposed graph._
-
 
 Issues & Contributions
 ----------------------

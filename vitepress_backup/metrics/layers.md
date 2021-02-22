@@ -5,7 +5,6 @@
 cityseer.metrics.layers
 =======================
 
-
 dict\_wgs\_to\_utm
 ------------------
 
@@ -70,7 +69,6 @@ for i, (key, value) in enumerate(data_dict_UTM.items()):
         break
 ```
 
-
 encode\_categorical
 -------------------
 
@@ -112,7 +110,6 @@ class_descriptors, class_encodings = layers.encode_categorical(classes)
 print(class_descriptors)  # prints: ('cat', 'dog', 'owl')
 print(list(class_encodings))  # prints: [0, 1, 0, 2, 1]
 ```
-
 
 data\_map\_from\_dict
 ---------------------
@@ -163,12 +160,11 @@ A 2d numpy array representing the data points. The indices of the second dimensi
 | 0 | `x` coordinate |
 | 1 | `y` coordinate |
 | 2 | assigned network index - nearest |
-| 3 | assigned network index - next-nearest | 
+| 3 | assigned network index - next-nearest |
 
 The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
 
 </FuncElement>
-
 
 Data\_Layer <Chip text="class"/>
 -----------
@@ -198,7 +194,7 @@ A 2d `numpy` array representing the data points. The length of the first dimensi
 | 0 | `x` coordinate |
 | 1 | `y` coordinate |
 | 2 | assigned network index - nearest |
-| 3 | assigned network index - next-nearest | 
+| 3 | assigned network index - next-nearest |
 
 The arrays at indices `2` and `3` will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
 
@@ -211,7 +207,6 @@ The arrays at indices `2` and `3` will be populated when the [Data_Layer.assign_
 A `Data_Layer`.
 
 </FuncElement>
-
 
 @assign\_to\_network
 ---------------------
@@ -438,7 +433,7 @@ An optional list of strings describing which mixed-use metrics to compute, conta
 | <small>hill_branch_wt</small> | $\scriptstyle\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \scriptstyle\bar{T} = \sum_{i}^{S}d_{i}p_{i}$ | <small>This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)</small>|
 | <small>hill_pairwise_wt</small> | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | <small>This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)</small>|
 | <small>hill_pairwise_disparity</small> | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i} p_{j}$ | <small>This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.</small>|
-| <small>shannon</small> | $\scriptstyle -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$ | <small>Shannon diversity (or _information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.</small>|
+| <small>shannon</small> | $\scriptstyle -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$ | <small>Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.</small>|
 | <small>gini_simpson</small> | $\scriptstyle 1 - \sum_{i}^{S} p_{i}^2$ | <small>Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.</small>|
 | <small>raos_pairwise_disparity</small> | $\scriptstyle \sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$ | <small>Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.</small>|
 
@@ -454,13 +449,13 @@ An optional `list` or `tuple` of land-use classifications for which to calculate
 
 <FuncElement name="cl_disparity_wt_matrix" type="list, tuple, np.ndarray">
 
-A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by [`encode_categorical`](#encode-categorical). 
+A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by [`encode_categorical`](#encode-categorical).
 
 </FuncElement>
 
 <FuncElement name="qs" type="list, tuple, np.ndarray">
 
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures. 
+The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures.
 
 </FuncElement>
 
@@ -486,7 +481,6 @@ stats_data_arrs = [
 ]
 ```
 
-
 @hill\_diversity
 ----------------
 
@@ -510,7 +504,6 @@ The data key is `hill`, e.g.:
 
 <small>`Network_Layer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
 
-
 @hill\_branch\_wt\_diversity
 ----------------------------
 
@@ -533,7 +526,6 @@ The values of `q` for which to compute Hill diversity.
 The data key is `hill_branch_wt`, e.g.:
 
 <small>`Network_Layer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
-
 
 @compute\_accessibilities
 -------------------------
@@ -564,9 +556,9 @@ The data keys will correspond to the `accessibility_keys` specified, e.g. where 
 <small>`Network_Layer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`</small><br>
 <small>`Network_Layer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`</small>
 
-
 @compute\_stats\_single
 -----------------------
+
 <FuncSignature>
 <pre>
 Data_Layer.compute_stats_single(stats_key, stats_data_arr)
@@ -591,15 +583,14 @@ The data key will correspond to the `stats_key` parameter, e.g. where using `occ
 
 <small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
 
-
 ::: tip Hint
 Per the above working example, the following stat types will be available for each `stats_key` for each of the computed distances:
+
 - `max` and `min`
 - `sum` and `sum_weighted`
 - `mean` and `mean_weighted`
 - `variance` and `variance_weighted`
 :::
-
 
 @compute\_stats\_multiple
 -------------------------
@@ -637,7 +628,6 @@ The data keys will correspond to the `stats_keys` parameter:
 <small>`Network_Layer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
 <small>`Network_Layer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
 <small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
-
 
 Data_Layer_From_Dict <Chip text="class"/>
 --------------------

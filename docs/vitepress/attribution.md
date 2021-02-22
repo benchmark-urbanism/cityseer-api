@@ -1,6 +1,7 @@
 ---
-
 ---
+
+# Attribution
 
 Clearly legible attribution should be provided when using this package.
 

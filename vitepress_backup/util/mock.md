@@ -7,9 +7,9 @@ cityseer.util.mock
 
 A collection of functions for the generation of mock data. This module is predominately used for writing code tests.
 
-
 mock\_graph
 -----------
+
 <FuncSignature>mock_graph(wgs84_coords=False)</FuncSignature>
 Generates a `NetworkX` graph for testing or experimentation purposes.
 
@@ -35,9 +35,9 @@ G = mock.mock_graph()
 
 <img src="../../vitepress/.vitepress/images/plots/graph_example.png" alt="Example graph" class="centre" style="max-height:450px;">
 
-
 mock\_data\_dict
 ----------------
+
 <FuncSignature>mock_data_dict(G, length=50, random_seed=None)</FuncSignature>
 
 Generates a dictionary containing mock data for testing or experimentation purposes.
@@ -69,9 +69,9 @@ A dictionary where each entry consists of a `key` representing a distinct data p
 
 </FuncElement>
 
-
 mock\_categorical\_data
 -----------------------
+
 <FuncSignature>mock_categorical_data(length, num_classes=10, random_seed=None)</FuncSignature>
 
 Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.
@@ -103,9 +103,9 @@ A `numpy` array containing categorical data elements. The number of elements wil
 
 </FuncElement>
 
-
 mock\_numerical\_data
 ---------------------
+
 <FuncSignature>mock_numerical_data(length, min=0, max=100000, num_arrs=1, random_seed=None)</FuncSignature>
 
 Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
@@ -148,7 +148,6 @@ For the use of a specified random seed.
 A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number of data elements and will match the `length` parameter. The numerical data will consist of randomly selected integers.
 
 </FuncElement>
-
 
 mock\_species\_data
 -------------------
@@ -201,7 +200,6 @@ for counts, probs in mock.mock_species_data():
 # etc.
 
 ```
-
 
 mock\_osm\_data
 ---------------
