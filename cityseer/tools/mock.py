@@ -319,7 +319,7 @@ def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
         yield counts, probs
 
 
-def fetch_osm_response(geom_osm: str, timeout: int = 30) -> requests.Response:
+def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response:
     request = f'''
     /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
     */
@@ -366,12 +366,21 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30) -> requests.Response:
     */
     out skel qt;
     '''
-    try:
+
+    osm_response = None
+    while max_tries:
         osm_response = requests.get('https://overpass-api.de/api/interpreter',
                                     timeout=timeout,
                                     params={'data': request})
-    except requests.exceptions.RequestException as e:
-        raise e
+        # break if OK response
+        if osm_response is not None and osm_response.status_code == 200:
+            break
+        # otherwise try until max_tries is exhausted
+        logger.warning(f'Unsuccessful OSM API request response, trying again...')
+        max_tries -= 1
+
+    if osm_response is None or not osm_response.status_code == 200:
+        raise('Unsuccessful OSM API request.')
 
     return osm_response
 

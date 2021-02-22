@@ -1,13 +1,13 @@
 <template lang="pug">
 div
-  pre
-    #sig-style
+  #sig-style
+    pre
       slot
 </template>
 
 <style lang="postcss" scoped>
 #sig-style {
-  @apply mt-8 mb-4 py-6 px-4 rounded-lg border border-darkgrey;
+  @apply mt-8 mb-4 p-4 border-t-2 border-darkgrey;
   @apply text-base font-semibold leading-normal text-darkgrey bg-lightgrey;
 }
 
@@ -15,9 +15,14 @@ div
 #sig-style pre {
   @apply m-0 p-0;
 }
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 958px) {
   #sig-style {
     @apply text-sm;
+  }
+}
+@media screen and (max-width: 600px) {
+  #sig-style {
+    @apply text-xs;
   }
 }
 </style>

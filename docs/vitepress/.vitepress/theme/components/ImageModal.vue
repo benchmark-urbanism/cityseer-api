@@ -1,39 +1,27 @@
 <template lang="pug">
-div(@click='dialogActive = !dialogActive')
+div
   img(:src='path' :alt='alt')
   em {{ caption }}
-  .modal(v-show='dialogActive')
-    .modal-content
-      img(:src='path' :alt='alt')
-      em {{ caption }}
 </template>
 
 <style lang="postcss" scoped>
 .modal {
-  position: fixed;
-  z-index: 100 !important;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.6);
+  @apply fixed w-full h-full z-50;
+
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 /* Modal Content/Box */
 .modal-content {
-  position: relative;
-  background-color: #2e2e2e;
+  @apply relative bg-darkgrey p-4;
+
   margin: 15% auto;
-  padding: 20px;
   width: 80%;
   max-width: 1500px;
 }
 </style>
 
 <script>
-import { ref } from 'vue'
-
 export default {
   name: 'ImageModal',
   props: {
@@ -51,12 +39,6 @@ export default {
       required: false,
       default: '',
     },
-  },
-  setup() {
-    const dialogActive = ref(false)
-    return {
-      dialogActive,
-    }
   },
 }
 </script>
