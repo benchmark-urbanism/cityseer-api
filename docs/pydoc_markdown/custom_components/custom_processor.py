@@ -49,13 +49,17 @@ class CustomProcessor(GoogleProcessor):
                 lines.extend(current_lines)
             current_lines.clear()
 
-        '    primal_graph (nx.MultiGraph, optional): An optional `NetworkX` MultiGraph to plot in the primal representation.'
         compacted_lines = []
         for line in node.docstring.split('\n'):
-            if line.startswith('        '):
-                compacted_lines[-1] = compacted_lines[-1] + ' ' + line.strip()
-            elif line.startswith('    '):
+            # Retain spacing (markdown will be linted anyway)
+            if line.strip() == '':
                 compacted_lines.append(line)
+            # don't mess with bullet points or numbering
+            elif line.strip().startswith('-') or line.strip().startswith('*') or line.strip()[0].isnumeric():
+                compacted_lines.append(line)
+            # wrap trailing lines
+            elif line.startswith('        '):
+                compacted_lines[-1] = compacted_lines[-1] + ' ' + line.strip()
             else:
                 compacted_lines.append(line)
 
@@ -69,10 +73,9 @@ class CustomProcessor(GoogleProcessor):
                 current_lines.append(line)
                 continue
 
-            line = line.strip()
-            if line in self._keywords_map:
+            if line.strip() in self._keywords_map:
                 _commit()
-                keyword = self._keywords_map[line]
+                keyword = self._keywords_map[line.strip()]
                 continue
 
             if keyword is None:
@@ -80,7 +83,7 @@ class CustomProcessor(GoogleProcessor):
                 continue
 
             for param_re in self._param_res:
-                param_match = param_re.match(line)
+                param_match = param_re.match(line.strip())
                 if param_match:
                     if 'type' in param_match.groupdict():
                         # TODO: MODIFIED

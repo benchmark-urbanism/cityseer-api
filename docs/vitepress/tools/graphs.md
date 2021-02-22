@@ -217,16 +217,16 @@ nX_consolidate_nodes(networkX_multigraph = 100) -> nx.MultiGraph
 Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
 the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
 
-- Firstly, nodes within the buffer distance of each other are merged. A new centroid will be determined and all
-existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
-- The centroid of the node group;
-- Else, all nodes of degree greater or equal to `cent_min_degree`;
-- Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
-with the greatest aggregate length for adjacent edges.
-- Secondly, the merging of nodes creates parallel edges which may start and end at a shared node on either side.
-These edges are replaced by a single new edge, with the new geometry selected from either:
-- An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded.
+- Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
+    edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
+  - The centroid of the node group;
+  - Else, all nodes of degree greater or equal to `cent_min_degree`;
+  - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
+    with the greatest aggregate length for adjacent edges.
+- The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
+    are replaced by a single new edge, with the new geometry selected from either:
+  - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+  - Else, the shortest edge, with longer edges discarded.
 
 <FuncHeading>
 
@@ -330,13 +330,13 @@ Example
 
 </FuncHeading>
 
-  See the guide on [graph cleaning](/guide/cleaning) for more information.
+      See the guide on [graph cleaning](/guide/cleaning) for more information.
   
-  ![Example raw graph from OSM](../.vitepress/plots/images/graph_cleaning_1.png)
-  _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
+      ![Example raw graph from OSM](../.vitepress/plots/images/graph_cleaning_1.png)
+      _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
   
-  ![Example cleaned graph](../.vitepress/plots/images/graph_cleaning_5.png)
-  _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
+      ![Example cleaned graph](../.vitepress/plots/images/graph_cleaning_5.png)
+      _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
 ### nX\_split\_opposing\_geoms
 
@@ -461,20 +461,20 @@ Example
 
 </FuncHeading>
 
-  ```python
-  from cityseer.tools import mock, graphs, plot
+      ```python
+      from cityseer.tools import mock, graphs, plot
   
-  G = mock.mock_graph()
-  G_simple = graphs.nX_simple_geoms(G)
-  G_decomposed = graphs.nX_decompose(G_simple, 100)
-  plot.plot_nX(G_decomposed)
-  ```
+      G = mock.mock_graph()
+      G_simple = graphs.nX_simple_geoms(G)
+      G_decomposed = graphs.nX_decompose(G_simple, 100)
+      plot.plot_nX(G_decomposed)
+      ```
   
-  ![Example graph](../.vitepress/plots/images/graph_simple.png)
-  _Example graph prior to decomposition._
+      ![Example graph](../.vitepress/plots/images/graph_simple.png)
+      _Example graph prior to decomposition._
   
-  ![Example decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
-  _Example graph after decomposition._
+      ![Example decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
+      _Example graph after decomposition._
 
 ### nX\_to\_dual
 

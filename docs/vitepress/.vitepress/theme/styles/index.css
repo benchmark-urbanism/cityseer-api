@@ -5,12 +5,18 @@
 /*** override default vite theme styles ***/
 
 .sidebar {
-  width: 250px !important;
+  width: 235px !important;
 }
 
 .container {
   padding: 30px !important;
   max-width: 850px !important;
+}
+
+.logo {
+  display: inline-block !important;
+  width: 30px !important;
+  height: 30px !important;
 }
 
 /** Base styles */
@@ -40,10 +46,9 @@
  * --------------------------------------------------------------------- */
 
   --header-height: 3.6rem;
-}
 
-/** Fallback Styles */
-:root {
+  /** Fallback Styles */
+
   --c-divider: var(--c-divider-light);
   --c-text: var(--c-text-light-1);
   --c-text-light: var(--c-text-light-2);
@@ -52,10 +57,6 @@
 }
 
 @layer base {
-  /* font-body applies associated theme config to entire site */
-  html {
-  }
-
   body {
     @apply font-defaults font-normal text-base;
     @apply text-darkgrey;
@@ -96,12 +97,23 @@
     @apply font-bold;
   }
 
-  pre code .token {
-    @apply text-lightgrey;
+  ul {
+    @apply py-0 pl-5;
+
+    list-style-type: disc;
+    list-style-position: outside;
   }
 
-  ul,
-  li {
+  ul > li {
+    @apply py-1;
+  }
+
+  ul > li > ul {
+    @apply py-0;
+  }
+
+  ul > li > ul > li {
+    @apply py-0;
   }
 
   p {
