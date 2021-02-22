@@ -4,11 +4,11 @@ Graph cleaning
 ==============
 
 Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
+
 - The network has been simplified to its essential structure: i.e. unnecessarily complex representations of intersections; on-ramps; split roadways; etc. have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. This is in contrast to network representations focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)): these introduce unnecessary complexity serving to hinder rather than help shortest-path algorithms.
 - The topology of the network is kept distinct from the geometry of the streets. Oftentimes, as can be seen with [Open Street Map](https://www.openstreetmap.org), additional nodes are added to streets for the purpose of representing geometric twists and turns along a roadway. These additional nodes cause topological distortions that impact network centrality measures.
 
 When a high-quality source is available, it may be best not to attempt additional cleanup unless there is a particular reason to do so. On the other-hand, many indispensable sources of network information, particularly Open Street Map data, can be messy for the purposes of network analysis. This section describes how such sources can be cleaned and prepared for subsequent analysis.
-
 
 Downloading data
 ----------------
@@ -59,7 +59,6 @@ except requests.exceptions.RequestException as e:
 You may want to experiment with the filtering applied to the OSM query. See the [OSM Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) for more information.
 :::
 
-
 Generating a graph
 ------------------
 
@@ -77,7 +76,6 @@ plot.plot_nX(G_utm, figsize=(20, 20), dpi=150)
 ```
 
 <ImageModal path='../images/plots/guides/cleaning/graph_raw.png' alt='Raw OSM graph' caption='The raw OSM graph after conversion to UTM coordinates. © OpenStreetMap contributors.'></ImageModal>
-
 
 Deducing the network topology
 -----------------------------
@@ -109,13 +107,13 @@ plot.plot_nX(G, figsize=(20, 20), dpi=150)
 At this point it may initially appear that the roadway geometries have now gone missing. However, this information is still present in the `LineString` geometries assigned to each street edge. Put differently, the plotted representation is now topological, not geometric. During conversion to a `cityseer` network map, `cityseer` will automatically compute the length and comulative angular change for each of these `LineString` geoms. The entry and exit angle of each network edge is also determined and is used internally to compute and aggregate angular change from one street to another.
 :::
 
-
 Refining the network
 --------------------
 
-The final step involves the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations. 
+The final step involves the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
 Two different methods can be used for this purpose:
+
 - [`nX_consolidate_spatial`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-spatial) consolidates adjacent nodes based on a crow-flies distance threshold;
 - [`nX_consolidate_parallel`](https://cityseer.github.io/cityseer/util/graphs.html#nx-consolidate-parallel) consolidates adjacent nodes for parallel edges, and tends to give superior results.
 Both methods take a `buffer_dist` parameter specifying the threshold distance at which to apply consolidation, and may involve a degree of experimentation to find suitable distance.

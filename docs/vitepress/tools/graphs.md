@@ -21,14 +21,11 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with `x` and `y` node attributes.
 
 </FuncElement>
-
-  
 
 <FuncHeading>
 
@@ -36,13 +33,11 @@ Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge `geom` attributes.
 
 </FuncElement>
-
 
 ### nX\_from\_osm
 
@@ -60,14 +55,11 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="osm_json" type="str">
 
 A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), consisting of `nodes` and `ways`.
 
 </FuncElement>
-
-  
 
 <FuncHeading>
 
@@ -75,13 +67,11 @@ Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
 
 </FuncElement>
-
 
 ### nX\_wgs\_to\_utm
 
@@ -103,7 +93,6 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
@@ -116,21 +105,17 @@ An optional UTM zone number for coercing all conversions to an explicit UTM zone
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge `geom` attributes are present, these will also be converted.
 
 </FuncElement>
-
 
 ### nX\_remove\_dangling\_nodes
 
@@ -148,7 +133,6 @@ datasets.
 Arguments
 
 </FuncHeading>
-
 
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
@@ -168,21 +152,17 @@ Whether to remove disconnected components. If set to `True`, only the largest co
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
 
 </FuncElement>
-
 
 ### nX\_remove\_filler\_nodes
 
@@ -208,14 +188,11 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
 
 </FuncElement>
-
-  
 
 <FuncHeading>
 
@@ -223,13 +200,11 @@ Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.
 
 </FuncElement>
-
 
 ### nX\_consolidate\_nodes
 
@@ -241,6 +216,7 @@ nX_consolidate_nodes(networkX_multigraph = 100) -> nx.MultiGraph
 
 Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
 the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
+
 - Firstly, nodes within the buffer distance of each other are merged. A new centroid will be determined and all
 existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
 - The centroid of the node group;
@@ -257,7 +233,6 @@ These edges are replaced by a single new edge, with the new geometry selected fr
 Arguments
 
 </FuncHeading>
-
 
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
@@ -337,14 +312,11 @@ See `multi_edge_len_factor`. Defaults to 100.
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Returns
 
 </FuncHeading>
-
 
 <FuncElement name="nx.MultiGraph">
 
@@ -352,14 +324,11 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Example
 
 </FuncHeading>
-
 
   See the guide on [graph cleaning](/guide/cleaning) for more information.
   
@@ -385,7 +354,6 @@ merging for scenarios such as divided boulevards.
 Arguments
 
 </FuncHeading>
-
 
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
@@ -417,21 +385,17 @@ See `multi_edge_len_factor`. Defaults to 100.
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A `networkX` `MultiGraph` with consolidated nodes.
 
 </FuncElement>
-
 
 ### nX\_decompose
 
@@ -467,21 +431,17 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="networkX_multigraph" type="nx.MultiGraph">
 
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
 
 </FuncElement>
 
-  
 <FuncElement name="decompose_max" type="float">
 
 The maximum length threshold for decomposed edges.
 
 </FuncElement>
-
-  
 
 <FuncHeading>
 
@@ -489,14 +449,11 @@ Returns
 
 </FuncHeading>
 
-
 <FuncElement name="nx.MultiGraph">
 
 A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will be set to match the lengths of the new edges.
 
 </FuncElement>
-
-  
 
 <FuncHeading>
 
@@ -504,8 +461,6 @@ Example
 
 </FuncHeading>
 
-
-  
   ```python
   from cityseer.tools import mock, graphs, plot
   
@@ -554,4 +509,3 @@ nX_from_graph_maps(node_uids = None) -> nx.MultiGraph
 </FuncSignature>
 
 Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if provided.
-

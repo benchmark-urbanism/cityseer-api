@@ -1,3 +1,5 @@
 {
-  "include": ["./docs/**/*", "buildDocs.js"]
+  "include": ["./docs/**/*",
+    "docs/pydoc_markdown/buildDocs.js"
+  ]
 }

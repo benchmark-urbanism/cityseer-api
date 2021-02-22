@@ -21,7 +21,6 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="primal_graph" type="nx.MultiGraph, optional">
 
 An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.
@@ -106,16 +105,12 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Example
 
 </FuncHeading>
 
-
-  
   ```py
   from cityseer.tools import mock, graphs, plot
   G = mock.mock_graph()
@@ -123,6 +118,7 @@ Example
   G_dual = graphs.nX_to_dual(G_simple)
   plot.plot_nX_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   ```
+
   ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
   _A dual graph in blue overlaid on the source primal graph in red._
 
@@ -142,7 +138,6 @@ Plot a `networkX` MultiGraph.
 Arguments
 
 </FuncHeading>
-
 
 <FuncElement name="networkX_graph" type="nx.MultiGraph, optional">
 
@@ -204,16 +199,12 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Example
 
 </FuncHeading>
 
-
-  
   ```py
   from cityseer.tools import mock, graphs, plot
   from cityseer.metrics import networks
@@ -260,7 +251,6 @@ Arguments
 
 </FuncHeading>
 
-
 <FuncElement name="Network_Layer" type="Network_Layer">
 
 A [`Network_Layer`](/metrics/networks.html#network-layer).
@@ -303,14 +293,11 @@ An optional iterable of categorical data labels which will be mapped to  colours
 
 </FuncElement>
 
-  
-
 <FuncHeading>
 
 Example
 
 </FuncHeading>
-
 
   ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
   _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
@@ -332,7 +319,6 @@ algorithms during the software development cycle.
 Arguments
 
 </FuncHeading>
-
 
 <FuncElement name="node_data" type="np.ndarray">
 
@@ -357,5 +343,3 @@ An optional data map. Defaults to None.
 An optional polygon. Defaults to None.
 
 </FuncElement>
-
-

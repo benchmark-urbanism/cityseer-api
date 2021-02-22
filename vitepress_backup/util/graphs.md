@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 nX\_to\_dual
 ------------
 
@@ -50,7 +44,6 @@ This function will automatically orient the `geom` attribute LineStrings in the 
 
 :::
 
-
 graph\_maps\_from\_nX
 ---------------------
 
@@ -88,7 +81,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 0 | `x` coordinate |
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live` |
-| 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. | 
+| 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. |
 
 </FuncElement>
 
@@ -106,7 +99,7 @@ A 2d `numpy` array representing the graph's edges. Each edge will be described s
 | 5 | the edge's entry angular bearing |
 | 6 | the edge's exit angular bearing |
 
-All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges. 
+All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
 
 </FuncElement>
 
@@ -115,7 +108,6 @@ All edge attributes will be generated automatically, however, the impedance fact
 A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge indices for each node.  
 
 </FuncElement>
-
 
 nX\_from\_graph\_maps
 ---------------------
@@ -154,7 +146,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 0 | `x` coordinate |
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live` |
-| 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. | 
+| 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. |
 
 </FuncElement>
 
@@ -198,7 +190,7 @@ An optional dictionary with keys corresponding to the identifiers in `node_uids`
 
 A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated.
 
-`x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data` to the graph edges. 
+`x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data` to the graph edges.
 
 If a `metrics_dict` is provided, all data will be copied to the graph nodes based on matching node identifiers.
 
