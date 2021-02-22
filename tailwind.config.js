@@ -6,7 +6,7 @@ module.exports = {
       fontFamily: {
         defaults: ['Raleway', 'serif'],
         headings: ['Raleway', 'sans-serif'],
-        mono: ['Roboto+Mono', 'monospace']
+        mono: ['Roboto+Mono', 'monospace'],
       },
       fontSize: {
         xs: '0.7rem',
@@ -54,7 +54,7 @@ module.exports = {
       colors: {
         theme: '#d32f2f',
         black: '#000',
-        lightgrey: '#e8e8e8',
+        lightgrey: '#f5f5f5',
         darkgrey: '#2e2e2e',
         white: '#fff',
       },

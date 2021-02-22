@@ -29,7 +29,7 @@ div
 #description {
   @apply text-sm;
 }
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 958px) {
   #container {
     @apply py-1;
   }

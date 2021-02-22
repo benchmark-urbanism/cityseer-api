@@ -33,7 +33,7 @@ from cityseer.tools import mock, graphs
 G = mock.mock_graph()
 ```
 
-<img src="../../images/plots/graph_example.png" alt="Example graph" class="centre" style="max-height:450px;">
+<img src="../../vitepress/.vitepress/images/plots/graph_example.png" alt="Example graph" class="centre" style="max-height:450px;">
 
 
 mock\_data\_dict

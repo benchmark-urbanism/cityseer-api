@@ -51,7 +51,7 @@ plot.plot_nX(G, labels=True)
 # NOTE: this code block combines with the following blocks for a continuous example
 ```
 
-<img src="../images/plots/graph.png" alt="Example graph" class="centre" style="max-height:500px;">
+<img src=".vitepress/images/plots/graph.png" alt="Example graph" class="centre" style="max-height:500px;">
 
 The [`util.graphs`](/util/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` graphs. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
 

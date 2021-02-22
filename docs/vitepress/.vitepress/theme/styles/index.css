@@ -4,6 +4,15 @@
 
 /*** override default vite theme styles ***/
 
+.sidebar {
+  width: 250px !important;
+}
+
+.container {
+  padding: 30px !important;
+  max-width: 850px !important;
+}
+
 /** Base styles */
 :root {
   /**
@@ -64,7 +73,7 @@
   h1,
   h2,
   h3 {
-    @apply pt-8 pb-2;
+    @apply pt-8 leading-snug;
   }
 
   h1 {
@@ -103,7 +112,7 @@
     @apply text-theme font-semibold;
   }
 
-  @media screen and (max-width: 1024px) {
+  @media screen and (max-width: 958px) {
     body {
       @apply text-sm;
     }
