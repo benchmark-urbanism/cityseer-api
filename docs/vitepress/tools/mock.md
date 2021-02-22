@@ -23,16 +23,16 @@ diamond_graph()
 </FuncSignature>
 
 For manual checks of all node and segmentised methods
-3
-/ \
-/   \
-/  a  \
+    3
+   / \
+  /   \
+ /  a  \
 1-------2
-\  |  /
-\ |b/ c
-\|/
-0
-a = 100m = 2 * 50m
-b = 86.60254m
-c = 100m
-all inner angles = 60º
+ \  |  /
+  \ |b/ c
+   \|/
+    0
+ a = 100m = 2 * 50m
+ b = 86.60254m
+ c = 100m
+ all inner angles = 60º

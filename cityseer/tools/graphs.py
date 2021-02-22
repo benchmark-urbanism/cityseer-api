@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def nX_simple_geoms(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. 
+    Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes.
     The edge geometry will be stored to the edge `geom` attribute.
 
     Args:
@@ -770,16 +770,16 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     """
     Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
     the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
-    - Firstly, nodes within the buffer distance of each other are merged. A new centroid will be determined and all
-      existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
-      - The centroid of the node group;
-      - Else, all nodes of degree greater or equal to `cent_min_degree`;
-      - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
+    - Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
+        edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
+        - The centroid of the node group;
+        - Else, all nodes of degree greater or equal to `cent_min_degree`;
+        - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
         with the greatest aggregate length for adjacent edges.
-    - Secondly, the merging of nodes creates parallel edges which may start and end at a shared node on either side.
-      These edges are replaced by a single new edge, with the new geometry selected from either:
-      - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-      - Else, the shortest edge, with longer edges discarded.
+    - The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
+        are replaced by a single new edge, with the new geometry selected from either:
+        - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+        - Else, the shortest edge, with longer edges discarded.
 
     Args:
         networkX_multigraph (nx.MultiGraph): A `networkX` `MultiGraph` in a projected coordinate system, containing `x`

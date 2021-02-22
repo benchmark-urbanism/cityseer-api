@@ -111,16 +111,15 @@ Example
 
 </FuncHeading>
 
-  ```py
-  from cityseer.tools import mock, graphs, plot
-  G = mock.mock_graph()
-  G_simple = graphs.nX_simple_geoms(G)
-  G_dual = graphs.nX_to_dual(G_simple)
-  plot.plot_nX_primal_or_dual(G_simple, G_dual, plot_geoms=False)
-  ```
-
-  ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
-  _A dual graph in blue overlaid on the source primal graph in red._
+      ```py
+      from cityseer.tools import mock, graphs, plot
+      G = mock.mock_graph()
+      G_simple = graphs.nX_simple_geoms(G)
+      G_dual = graphs.nX_to_dual(G_simple)
+      plot.plot_nX_primal_or_dual(G_simple, G_dual, plot_geoms=False)
+      ```
+      ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
+      _A dual graph in blue overlaid on the source primal graph in red._
 
 ### plot\_nX
 
@@ -205,32 +204,32 @@ Example
 
 </FuncHeading>
 
-  ```py
-  from cityseer.tools import mock, graphs, plot
-  from cityseer.metrics import networks
-  from matplotlib import colors
-  # generate a MultiGraph and compute gravity
-  G = mock.mock_graph()
-  G = graphs.nX_simple_geoms(G)
-  G = graphs.nX_decompose(G, 50)
-  N = networks.Network_Layer_From_nX(G, distances=[800])
-  N.compute_node_centrality(measures=['node_beta'])
-  G_after = N.to_networkX()
-  # let's extract and normalise the values
-  vals = []
-  for node, data in G_after.nodes(data=True): vals.append(data['metrics']['centrality']['node_beta'][800])
-  # let's create a custom colourmap using matplotlib
-  cmap = colors.LinearSegmentedColormap.from_list('cityseer', [(100/255, 193/255, 255/255, 255/255), (211/255, 47/255, 47/255, 1/255)])
-  # normalise the values
-  vals = colors.Normalize()(vals)
-  # cast against the colour map
-  cols = cmap(vals)
-  # plot
-  plot.plot_nX(G_after, node_colour=cols)
-  ```
+      ```py
+      from cityseer.tools import mock, graphs, plot
+      from cityseer.metrics import networks
+      from matplotlib import colors
+      # generate a MultiGraph and compute gravity
+      G = mock.mock_graph()
+      G = graphs.nX_simple_geoms(G)
+      G = graphs.nX_decompose(G, 50)
+      N = networks.Network_Layer_From_nX(G, distances=[800])
+      N.compute_node_centrality(measures=['node_beta'])
+      G_after = N.to_networkX()
+      # let's extract and normalise the values
+      vals = []
+      for node, data in G_after.nodes(data=True): vals.append(data['metrics']['centrality']['node_beta'][800])
+      # let's create a custom colourmap using matplotlib
+      cmap = colors.LinearSegmentedColormap.from_list('cityseer', [(100/255, 193/255, 255/255, 255/255), (211/255, 47/255, 47/255, 1/255)])
+      # normalise the values
+      vals = colors.Normalize()(vals)
+      # cast against the colour map
+      cols = cmap(vals)
+      # plot
+      plot.plot_nX(G_after, node_colour=cols)
+      ```
   
-  ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
-  _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
+      ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
+      _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
 ### plot\_assignment
 
@@ -299,8 +298,8 @@ Example
 
 </FuncHeading>
 
-  ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
-  _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
+      ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
+      _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
 
 ### plot\_graph\_maps
 
