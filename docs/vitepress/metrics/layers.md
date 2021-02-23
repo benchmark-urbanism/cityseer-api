@@ -3,9 +3,9 @@
 ### data\_map\_from\_dict
 
 <FuncSignature>
-
-data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]
-
+<pre>
+data_map_from_dict(data_dict) -> Tuple[tuple, np.ndarray]
+</pre>
 </FuncSignature>
 
 DATA MAP:
@@ -25,19 +25,19 @@ class Data_Layer()DATA MAP:
 ### Data\_Layer.compute\_aggregated
 
  | <FuncSignature>
- |
+ | <pre>
  | compute_aggregated(landuse_labels = None,
- |                    stats_data_arrs,
- |
- |                                                   Tuple[Union[list,
- |                    tuple,
- |                    np.ndarray]],
- |
- |                                                   np.ndarray] = None,
+ |                    mixed_use_keys = None,
+ |                    accessibility_keys = None,
+ |                    cl_disparity_wt_matrix = None,
+ |                    qs = None,
+ |                    stats_keys = None,
+ |                    stats_data_arrs = None,
  |                    angular = False)
- |
+ | </pre>
  | </FuncSignature>
- |
+ | 
  | This method provides full access to the underlying diversity.local_landuses method
 
 Try not to duplicate underlying type or signature checks here
+

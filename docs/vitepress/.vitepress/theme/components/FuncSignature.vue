@@ -1,14 +1,12 @@
 <template lang="pug">
-div
-  #sig-style
-    pre
-      slot
+#sig-style
+  slot
 </template>
 
 <style lang="postcss" scoped>
 #sig-style {
-  @apply mt-8 mb-4 p-4 border-t-2 border-darkgrey;
-  @apply text-base font-semibold leading-normal text-darkgrey bg-lightgrey;
+  @apply border-t-3 border-theme text-darkgrey bg-gray-50 mt-1 mb-4 p-4;
+  @apply text-sm font-mono font-semibold leading-normal;
 }
 
 /* necessary for when wrapping signatures with <pre></pre> tags for spacing */

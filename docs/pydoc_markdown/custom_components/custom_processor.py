@@ -49,13 +49,14 @@ class CustomProcessor(GoogleProcessor):
                 lines.extend(current_lines)
             current_lines.clear()
 
+        # TODO: modified so that trailing lines are wrapped and appended to prior lines
         compacted_lines = []
         for line in node.docstring.split('\n'):
             # Retain spacing (markdown will be linted anyway)
             if line.strip() == '':
-                compacted_lines.append(line)
-            # don't mess with bullet points or numbering
-            elif line.strip().startswith('-') or line.strip().startswith('*') or line.strip()[0].isnumeric():
+                compacted_lines.append('')
+            # don't mess with bullet points, numbering, or tables
+            elif line.strip()[0] in ['*', '-', '|'] or line.strip()[0].isnumeric():
                 compacted_lines.append(line)
             # wrap trailing lines
             elif line.startswith('        '):
@@ -68,20 +69,16 @@ class CustomProcessor(GoogleProcessor):
                 in_codeblock = not in_codeblock
                 current_lines.append(line)
                 continue
-
             if in_codeblock:
                 current_lines.append(line)
                 continue
-
             if line.strip() in self._keywords_map:
                 _commit()
                 keyword = self._keywords_map[line.strip()]
                 continue
-
             if keyword is None:
                 lines.append(line)
                 continue
-
             for param_re in self._param_res:
                 param_match = param_re.match(line.strip())
                 if param_match:

@@ -1,49 +1,4 @@
 
-nX\_to\_dual
-------------
-
-<FuncSignature>nX_to_dual(networkX_graph)</FuncSignature>
-
-Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation, such that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
-
-<FuncHeading>Parameters</FuncHeading>
-
-<FuncElement name="networkX_graph" type="nx.Graph">
-
-A `networkX` graph in UTM coordinates, containing `x` and `y` node attributes, and a `geom` edge attribute containing `LineString` geoms. Optional `live` node attributes.
-
-</FuncElement>
-
-<FuncHeading>Returns</FuncHeading>
-
-<FuncElement name="graph" type="nx.Graph">
-
-A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges.
-
-If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`.
-
-The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
-
-</FuncElement>
-
-```python
-from cityseer.tools import mock, graphs
-
-G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_dual = graphs.nX_to_dual(G_simple)
-```
-
-<img src="../images/plots/graph_dual.png" alt="Example dual graph" class="centre" style="max-height:450px;">
-
-_Dual graph (blue) overlaid on the source primal graph (red)._
-
-::: tip Hint
-
-This function will automatically orient the `geom` attribute LineStrings in the correct direction when splitting and welding; i.e. there is no need to order the geometry's coordinates in a particular direction.
-
-:::
-
 graph\_maps\_from\_nX
 ---------------------
 
@@ -51,19 +6,10 @@ graph\_maps\_from\_nX
 
 Transposes a `networkX` graph into `numpy` arrays for use by `Network_Layer` classes.
 
-::: warning Note
-It is generally not necessary to use this function directly. This function will be called internally when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
-:::
+
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name="networkX_graph" type="nx.Graph">
-
-A `networkX` graph in UTM coordinates.
-
-`x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. The `ghosted` attribute should be applied to 'ghosted' nodes on decomposed graphs -- this will be added automatically if using [`nX_decompose`](#nx_decompose). See [`Network_Layer`](#network-layer) for more information about what these attributes represent.
-
-</FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
 <FuncElement name="node_uids" type="tuple">
