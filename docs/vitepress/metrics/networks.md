@@ -7,11 +7,17 @@ Centrality methods
 class Network_Layer()### Network\_Layer.\_\_init\_\_
 
  | <FuncSignature>
- |
- | __init__(node_uids = checks.def_min_thresh_wt)
- |
+ | <pre>
+ | __init__(node_uids,
+ |          node_data,
+ |          edge_data,
+ |          node_edge_map,
+ |          distances = None,
+ |          betas = None,
+ |          min_threshold_wt = checks.def_min_thresh_wt)
+ | </pre>
  | </FuncSignature>
- |
+ | 
  | NODE MAP:
 0 - x
 1 - y
@@ -29,9 +35,10 @@ EDGE MAP:
 ### Network\_Layer.metrics\_to\_dict
 
  | <FuncSignature>
- |
+ | <pre>
  | metrics_to_dict()
- |
+ | </pre>
  | </FuncSignature>
- |
+ | 
  | metrics are stored in arrays, this method unpacks per uid
+

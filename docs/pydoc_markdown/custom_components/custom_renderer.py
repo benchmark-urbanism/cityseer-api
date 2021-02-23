@@ -25,6 +25,7 @@ import re
 from typing import List
 
 import docspec
+from docspec import Argument
 from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer
 from nr.databind.core import Field
 
@@ -117,19 +118,13 @@ class CustomMarkdownRenderer(MarkdownRenderer):
         # go-ahead and add the first param
         # pad the parameters
         spaces = len(parts[0])
-        raw_string = self._format_arglist(func)
-        # strip out types between colon and equals
-        pruned = re.sub(':(.*)=', ' =', raw_string)
-        # strip out types between colon and commas (next)
-        pruned = re.sub(':(.*),', ',', pruned)
-        # strip out types before closing brackets (last)
-        pruned = re.sub(':(.*)\)', ')', pruned)
-        splits = pruned.split(',')
+        arg_list_str = self._format_arglist(func)
+        splits = arg_list_str.split(',')
         # gather the params
         pad = ''
         joiner = ','
         # split over multiple lines if more than x params or if more than y characters
-        if len(splits) > 1 or len(pruned) > 40:
+        if len(splits) > 1 or len(arg_list_str) > 40:
             pad = ' ' * spaces
             joiner = ',\n'
         # insert the first param without spacing
@@ -143,12 +138,36 @@ class CustomMarkdownRenderer(MarkdownRenderer):
             parts.append(f' -> {func.return_type}')
         # TODO: adding FuncSignature tags
         # pre tag prevents stripping of spaces or newlines
-        result = '<FuncSignature>\n\n'
+        result = '<FuncSignature>\n<pre>\n'
         result += ''.join(parts)
-        result += '\n\n</FuncSignature>\n\n'
+        result += '\n</pre>\n</FuncSignature>\n\n'
         if add_method_bar and self._is_method(func):
             result = '\n'.join(' | ' + l for l in result.split('\n'))
         return result
+
+    ### TEMPORARY UNTIL docspec-python MERGE - THEN THIS CAN BE REMOVED...
+    def _format_arglist(self, func: docspec.Function) -> str:
+        args = func.args[:]
+        if self._is_method(func) and args and args[0].name == 'self':
+            args.pop(0)
+        # TODO: temporarily recreating docspec-python format_arglist function here until / if Pull request is merged.
+        result = []
+        for arg in args:
+            if arg.type == Argument.Type.KeywordOnly and '*' not in result:
+                result.append('*')
+            parts = [arg.name]
+            if arg.default_value:
+                parts.append(' = ')
+            if arg.default_value:
+                parts.append(arg.default_value)
+            if arg.type == Argument.Type.PositionalRemainder:
+                parts.insert(0, '*')
+            elif arg.type == Argument.Type.KeywordRemainder:
+                parts.insert(0, '**')
+            result.append(''.join(parts))
+
+        return ', '.join(result)
+
 
     ### MODIFIED
     def _render_signature_block(self, fp, obj):
@@ -185,5 +204,7 @@ class CustomMarkdownRenderer(MarkdownRenderer):
                 if re.match('\*\*.*\*\*:', line) is not None:
                     line = line.strip('*:')
                     lines[idx] = f'<FuncHeading>\n\n{line}\n\n</FuncHeading>\n'
+                else:
+                    lines[idx] = line.strip()
             fp.write('\n'.join(lines))
             fp.write('\n\n')

@@ -1203,11 +1203,44 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
 
 def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Converts a primal `MultiGraph` to a dual `MultiGraph`.
+    Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the
+    dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom`
+    attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
+
+    :::tip Note
+    
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
     e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
     primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
+    
+    :::
+
+    Args:
+        networkX_multigraph (nx.MultiGraph): A `networkX` `MultiGraph` in a projected coordinate system, containing `x`
+            and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
+
+    Returns:
+        nx.MultiGraph: A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes 
+            corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then
+            the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
+
+    Example:
+
+    ```python
+    from cityseer.tools import graphs, mock, plot
+
+    G = mock.mock_graph()
+    G_simple = graphs.nX_simple_geoms(G)
+    G_dual = graphs.nX_to_dual(G_simple)
+    plot.plot_nX_primal_or_dual(G_simple,
+                                G_dual,
+                                plot_geoms=False)
+    ```
+    ![Example dual graph](../.vitepress/plots/images/graph_dual.png)
+    _Dual graph (blue) overlaid on the source primal graph (red)._
+
     """
+
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')
     logger.info('Converting graph to dual.')
@@ -1318,10 +1351,46 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 
 def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
-    '''
-    Generates node and edge data maps from a `MultiGraph`.
-    Calculates length and angle attributes, as well as in and out bearings and stores these in the data maps.
-    '''
+    """
+    Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `Network_Layer` classes. Calculates length and
+    angle attributes, as well as in and out bearings and stores these in the returned data maps.
+
+    ::: warning Note
+    It is generally not necessary to use this function directly. This function will be called internally when invoking
+    [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
+    :::
+
+    Args:
+        networkX_multigraph (nx.MultiGraph): A `networkX` `MultiGraph` in a projected coordinate system, containing `x`
+            and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
+
+    Returns:
+        node_uids: A tuple of node `uids` corresponding to the node identifiers in the source `networkX` graph.
+        node_data: A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as
+            follows:
+            | idx | property |
+            |-----|:----------|
+            | 0 | `x` coordinate |
+            | 1 | `y` coordinate |
+            | 2 | `bool` describing whether the node is `live` |
+            | 3 | `ghosted` describing whether the node is a 'ghosted' or 'decomposed' node that is not essential to the network topology. |
+
+        edge_data: A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each
+            direction of travel. The indices of the second dimension correspond as follows:
+            | idx | property |
+            |-----|:----------|
+            | 0 | start node `idx` |
+            | 1 | end node `idx` |
+            | 2 | the segment length in metres |
+            | 3 | the sum of segment's angular change |
+            | 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on
+            shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
+            | 5 | the edge's entry angular bearing |
+            | 6 | the edge's exit angular bearing |
+            All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
+        node_edge_map: A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing
+            the out-edge indices for each node.  
+    """
 
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')

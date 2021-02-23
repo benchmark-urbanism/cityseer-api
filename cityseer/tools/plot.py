@@ -44,37 +44,36 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     instead.
 
     Args:
-        primal_graph (nx.MultiGraph, optional): An optional `NetworkX` MultiGraph to plot in the primal representation.
+        primal_graph: An optional `NetworkX` MultiGraph to plot in the primal representation.
             Defaults to None.
-        dual_graph (nx.MultiGraph, optional): An optional `NetworkX` MultiGraph to plot in the dual representation.
+        dual_graph: An optional `NetworkX` MultiGraph to plot in the dual representation.
             Defaults to None.
-        path (str, optional): An optional filepath: if provided, the image will be saved to the path instead of being
+        path: An optional filepath: if provided, the image will be saved to the path instead of being
             displayed. Defaults to None.
-        labels (bool, optional): Whether to display node labels. Defaults to False.
-        primal_node_colour (Union[str, tuple, list], optional): Primal node colour or colours. When passing an iterable
+        labels: Whether to display node labels. Defaults to False.
+        primal_node_colour: Primal node colour or colours. When passing an iterable
             of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours
             are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
             method and should be formatted accordingly. Defaults to None.
-        primal_edge_colour (str, optional): Primal edge colour as a `matplotlib` compatible colour string.
+        primal_edge_colour: Primal edge colour as a `matplotlib` compatible colour string.
             Defaults to None.
-        dual_node_colour (Union[str, tuple, list], optional): Dual node colour or colours.
+        dual_node_colour: Dual node colour or colours.
             When passing a list of colours, the number of colours should match the order and number of nodes in the
             MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
             method and should be formatted accordingly. Defaults to None.
-        dual_edge_colour (str, optional): Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
-        primal_edge_width (Union[int, float], optional): Linewidths for the primal edge. Defaults to None.
-        dual_edge_width (Union[int, float], optional): Linewidths for the dual edge. Defaults to None.
-        plot_geoms (bool, optional): Whether to plot the edge geometries. If set to `False`, straight lines will be
+        dual_edge_colour: Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
+        primal_edge_width: Linewidths for the primal edge. Defaults to None.
+        dual_edge_width: Linewidths for the dual edge. Defaults to None.
+        plot_geoms: Whether to plot the edge geometries. If set to `False`, straight lines will be
             drawn from node-to-node to represent edges. Defaults to True.
-        x_lim (Union[tuple, list], optional): A tuple or list with the minimum and maxium `x` extents to be plotted.
+        x_lim: A tuple or list with the minimum and maxium `x` extents to be plotted.
             Defaults to None.
-        y_lim (Union[tuple, list], optional): A tuple or list with the minimum and maxium `y` extents to be plotted.
+        y_lim: A tuple or list with the minimum and maxium `y` extents to be plotted.
             Defaults to None.
-        figure_kwargs (key=value pairs): `kwargs` which will be passed to the `matplotlib` figure parameters. If
+        figure_kwargs: `kwargs` which will be passed to the `matplotlib` figure parameters. If
             provided, these will override the default figure size or dpi parameters.
 
     Example:
-
         ```py
         from cityseer.tools import mock, graphs, plot
         G = mock.mock_graph()
@@ -222,23 +221,23 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     Plot a `networkX` MultiGraph.
 
     Args:
-        networkX_graph (nx.MultiGraph, optional): A `NetworkX` MultiGraph.
-        path (str, optional): An optional filepath: if provided, the image will be saved to the path instead of being
+        networkX_graph: A `NetworkX` MultiGraph.
+        path: An optional filepath: if provided, the image will be saved to the path instead of being
             displayed. Defaults to None.
-        labels (bool, optional): Whether to display node labels. Defaults to False.
-        node_colour (Union[str, tuple, list], optional): Node colour or colours. When passing an iterable of colours,
+        labels: Whether to display node labels. Defaults to False.
+        node_colour: Node colour or colours. When passing an iterable of colours,
             the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed
             to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
             method and should be formatted accordingly. Defaults to None.
-        edge_colour (str, optional): Edges colour as a `matplotlib` compatible colour string. Defaults to None.
-        edge_width (Union[int, float], optional): Linewidths for edges. Defaults to None.
-        plot_geoms (bool, optional): Whether to plot the edge geometries. If set to `False`, straight lines will be
+        edge_colour: Edges colour as a `matplotlib` compatible colour string. Defaults to None.
+        edge_width: Linewidths for edges. Defaults to None.
+        plot_geoms: Whether to plot the edge geometries. If set to `False`, straight lines will be
             drawn from node-to-node to represent edges. Defaults to True.
-        x_lim (Union[tuple, list], optional): A tuple or list with the minimum and maxium `x` extents to be plotted.
+        x_lim: A tuple or list with the minimum and maxium `x` extents to be plotted.
             Defaults to None.
-        y_lim (Union[tuple, list], optional): A tuple or list with the minimum and maxium `y` extents to be plotted.
+        y_lim: A tuple or list with the minimum and maxium `y` extents to be plotted.
             Defaults to None.
-        figure_kwargs (key=value pairs): `kwargs` which will be passed to the `matplotlib` figure parameters. If
+        figure_kwargs: `kwargs` which will be passed to the `matplotlib` figure parameters. If
             provided, these will override the default figure size or dpi parameters.
 
     Example:
@@ -296,18 +295,18 @@ def plot_assignment(Network_Layer,
     Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
 
     Args:
-        Network_Layer (Network_Layer): A [`Network_Layer`](/metrics/networks.html#network-layer).
-        Data_Layer (Data_Layer): A [`Data_Layer`](/metrics/layers.html#data-layer).
-        path (str): An optional filepath: if provided, the image will be saved to the path instead of being displayed.
+        Network_Layer: A [`Network_Layer`](/metrics/networks.html#network-layer).
+        Data_Layer: A [`Data_Layer`](/metrics/layers.html#data-layer).
+        path: An optional filepath: if provided, the image will be saved to the path instead of being displayed.
             Defaults to None.
-        node_colour (list, tuple, np.ndarray): Node colour or colours. When passing a list of colours, the number of 
+        node_colour: Node colour or colours. When passing a list of colours, the number of 
             colours should match the order and number of nodes in the MultiGraph. The colours are passed to the
             underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) 
             method and should be formatted accordingly. Defaults to None.
-        node_labels (bool): Whether to plot the node labels. Defaults to False.
-        data_labels (list, tuple, np.ndarray): An optional iterable of categorical data labels which will be mapped to 
+        node_labels: Whether to plot the node labels. Defaults to False.
+        data_labels: An optional iterable of categorical data labels which will be mapped to 
             colours. The number of labels should match the number of data points in `Data_Layer`. Defaults to None.
-        figure_kwargs (key=value pairs): `kwargs` which will be passed to the `matplotlib` figure parameters. If
+        figure_kwargs: `kwargs` which will be passed to the `matplotlib` figure parameters. If
             provided, these will override the default figure size or dpi parameters.
 
     Example:
@@ -402,10 +401,10 @@ def plot_graph_maps(node_data: np.ndarray,
     algorithms during the software development cycle.
 
     Args:
-        node_data (np.ndarray): `cityseer` node map.
-        edge_data (np.ndarray): `cityseer` edge map.
-        data_map (np.ndarray): An optional data map. Defaults to None.
-        poly (geometry.Polygon): An optional polygon. Defaults to None.
+        node_data: `cityseer` node map.
+        edge_data: `cityseer` edge map.
+        data_map: An optional data map. Defaults to None.
+        poly: An optional polygon. Defaults to None.
     """
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
