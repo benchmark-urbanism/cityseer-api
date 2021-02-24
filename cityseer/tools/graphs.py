@@ -124,7 +124,8 @@ def nX_from_osm(osm_json: str) -> nx.MultiGraph:
         A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
         consisting of `nodes` and `ways`.
 
-    Returns:
+    Returns
+    -------
     nx.MultiGraph
         A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
         coordinates.

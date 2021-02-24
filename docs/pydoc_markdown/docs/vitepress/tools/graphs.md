@@ -52,11 +52,7 @@ A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.
 
 </FuncElement>
 
-
-
-<FuncHeading>Returns</FuncHeading>
-
-
+Returns:nx.MultiGraph    A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
 
 ### nX_wgs_to_utm
 

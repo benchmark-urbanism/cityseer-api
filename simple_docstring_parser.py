@@ -42,6 +42,10 @@ param_template = '\n\n**{name}** _{type}_: {description}\n\n'
 if 'param_template' in config:
     param_template = config['param_template']
 
+return_template = '\n\n**{name}**: {description}\n\n'
+if 'return_template' in config:
+    return_template = config['return_template']
+
 # parse the module / doc path pairs
 if not 'module_map' in config:
     raise KeyError('The configuration file requires a dictionary mapping modules to output paths for markdown.')
@@ -61,7 +65,7 @@ for module_name, doc_path in config['module_map'].items():
                 continue
 
             # process the signature
-            if isinstance(member, docspec.Function):
+            if isinstance(member, docspec.Function) and not member.name.startswith('_'):
                 # keep track of the arguments and their types for automatically building function parameters later-on
                 arg_types_map = {}
                 # the name as header, followed by Vue component and function name
@@ -161,10 +165,14 @@ for module_name, doc_path in config['module_map'].items():
                                             lookahead_idx, next_line = next(splits_enum)
                                             param_description += ' ' + next_line.strip()
                                         # wrap-up param
-                                        param_type = arg_types_map[param_name]
-                                        param = param_template.format(name=param_name,
-                                                                      type=param_type,
-                                                                      description=param_description)
+                                        if heading == 'Parameters':
+                                            param_type = arg_types_map[param_name]
+                                            param = param_template.format(name=param_name,
+                                                                          type=param_type,
+                                                                          description=param_description)
+                                        else:
+                                            param = return_template.format(name=param_name,
+                                                                          description=param_description)
                                         lines.append(param)
                             # otherwise, just return the line
                             lines.append(next_line)
