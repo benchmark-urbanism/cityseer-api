@@ -1,10 +1,6 @@
 const path = require('path')
 const { PythonShell } = require('python-shell')
 
-console.log(path.resolve(__dirname, '.'))
-
-// install requirements
-
 const options = {
   mode: 'text',
   pythonPath: 'venv/bin/python',
@@ -14,7 +10,6 @@ const options = {
   args: [],
 }
 
-PythonShell.run('pydoc_builder.py', options, function (err) {
+PythonShell.run('simple_docstring_parser.py', options, function (err) {
   if (err) throw err
-  console.log('finished')
 })

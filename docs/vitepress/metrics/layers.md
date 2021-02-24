@@ -36,8 +36,7 @@ class Data_Layer()DATA MAP:
  |                    angular = False)
  | </pre>
  | </FuncSignature>
- | 
+ |
  | This method provides full access to the underlying diversity.local_landuses method
 
 Try not to duplicate underlying type or signature checks here
-

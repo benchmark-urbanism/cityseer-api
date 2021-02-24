@@ -10,7 +10,7 @@ mock_graph(wgs84_coords = False) -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
-Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
+Prepares a Tutte graph per <https://en.wikipedia.org/wiki/Tutte_graph>
 :return: NetworkX graph
 
 ### diamond\_graph
@@ -36,4 +36,3 @@ a = 100m = 2 * 50m
 b = 86.60254m
 c = 100m
 all inner angles = 60º
-
