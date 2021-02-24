@@ -8,3 +8,4 @@ shapely>=1.7.0
 sklearn
 tqdm
 utm
+pyyaml

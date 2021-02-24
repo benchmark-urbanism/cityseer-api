@@ -17,7 +17,7 @@ class Network_Layer()### Network\_Layer.\_\_init\_\_
  |          min_threshold_wt = checks.def_min_thresh_wt)
  | </pre>
  | </FuncSignature>
- | 
+ |
  | NODE MAP:
 0 - x
 1 - y
@@ -39,6 +39,5 @@ EDGE MAP:
  | metrics_to_dict()
  | </pre>
  | </FuncSignature>
- | 
+ |
  | metrics are stored in arrays, this method unpacks per uid
-
