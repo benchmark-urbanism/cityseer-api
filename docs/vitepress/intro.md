@@ -15,7 +15,7 @@ The use of `python` facilitates interaction with popular tools for network, geos
 pip install cityseer
 ```
 
-Code tests are run against `python 3.8`.
+Code tests are run against `python 3.9`.
 
 [![Actions Status](https://github.com/cityseer/cityseer/workflows/publish%20package/badge.svg)](https://github.com/cityseer/cityseer/actions)
 
@@ -28,41 +28,33 @@ Code tests are run against `python 3.8`.
 `cityseer` revolves around networks (graphs). If you're comfortable with `numpy` and abstract data handling, then the underlying data structures can be created and manipulated directly. However, it is generally more convenient to sketch the graph using [`NetworkX`](https://networkx.github.io/) and to let `cityseer` take care of initialising and converting the graph for you.
 
 ```python
-# any networkX graph with 'x' and 'y' node attributes will do
+# any networkX MultiGraph with 'x' and 'y' node attributes will do
 # here we'll use the cityseer mock module to generate an example networkX graph
+import networkx as nx
 from cityseer.tools import mock
-G = mock.mock_graph()
-'''
-import networkX as nx
-print(nx.info(G))
-# Name:
-# Type: Graph
-# Number of nodes: 56
-# Number of edges: 77
-# Average degree:   2.7500
-'''
-# let's plot the network
 from cityseer.tools import plot
-plot.plot_nX(G, labels=True)
+
+G = mock.mock_graph()
+print(nx.info(G), '\n')
+
+# let's plot the network
+plot.plot_nX(G, labels=True, dpi=100)
 
 # NOTE: this code block combines with the following blocks for a continuous example
 ```
 
-<img src=".vitepress/images/plots/graph.png" alt="Example graph" class="centre" style="max-height:500px;">
+![Example graph](../.vitepress/plots/images/graph.png)
+_Example graph._
 
-The [`util.graphs`](/util/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` graphs. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
+The [`tools.graphs`](/tools/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` graphs. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
 
 There are generally two scenarios when creating a street network graph:
 
-1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node]['geom'] = linestring_geom`.
+- In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node]['geom'] = linestring_geom`.
 
-2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/util/graphs.html#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to remove frivolous nodes. For example, [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) for coordinate conversions; [`nX_remove_dangling_nodes`](/util/graphs.html#nx-remove-dangling-nodes) to remove roadway stubs, [`nX_remove_filler_nodes`](/util/graphs.html#nx-remove-filler-nodes) to strip-out filler nodes, and [`nX_consolidate_parallel`](/util/graphs.html#nx-consolidate-parallel) to further simplify the network.
+- In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs.html#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to remove frivolous nodes. For example, [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm) for coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs.html#nx-remove-dangling-nodes) to remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs.html#nx-remove-filler-nodes) to strip-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs.html#nx-consolidate-nodes) to further simplify the network.
 
-<img src="./images/plots/graph_decomposed.png" alt="Example 100m decomposed graph" class="left"><img src="./images/plots/graph_dual.png" alt="Example dual graph" class="right">
-
-_A $100m$ decomposed variant of the graph (left) and an example primal / dual transformation of the (undecomposed) graph (right). Decomposed or "ghosted" nodes provide granular snapshots at regular intervals along streetfronts._
-
-Once the network is prepared, [`nX_decompose`](/util/graphs.html#nx-decompose) can be used for the purpose of generating granular graph representations; whereas [`nX_to_dual`](/util/graphs.html#nx-to-dual) can be used to cast a primal graph representation to its dual.
+Once the network is prepared, [`nX_decompose`](/tools/graphs.html#nx-decompose) can be used for the purpose of generating granular graph representations; whereas [`nX_to_dual`](/tools/graphs.html#nx-to-dual) can be used to cast a primal graph representation to its dual.
 
 ```python
 from cityseer.tools import graphs
@@ -70,9 +62,21 @@ from cityseer.tools import graphs
 # else, auto-generate simple geometries from the start to end node of each network edge
 G = graphs.nX_simple_geoms(G)
 
-# optionally decompose (or cast to dual)
-G = graphs.nX_decompose(G, 20)
+# optionally decompose
+G_decomp = graphs.nX_decompose(G, 50)
+plot.plot_nX(G_decomp, labels=False, dpi=100)
+
+# optionally cast to a dual network
+G_dual = graphs.nX_to_dual(G)
+# here we are plotting the newly decomposed graph (blue) against the original graph (red)
+plot.plot_nX_primal_or_dual(G, G_dual, plot_geoms=False, dpi=100)
 ```
+
+![Example 100m decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
+_A 100m decomposed variant of the graph._
+
+![Example dual graph](../.vitepress/plots/images/graph_dual.png)
+_An example primal / dual transformation of the (undecomposed) graph._
 
 The `networkX` graph can now be transformed into a [`Network_Layer`](/metrics/networks.html#network-layer) by invoking [`Network_Layer_From_nX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
@@ -81,7 +85,7 @@ The [`Network_Layer.compute_node_centrality`](/metrics/networks.html#compute-nod
 ```python
 from cityseer.metrics import networks
 # create a Network layer from the networkX graph
-N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
+N = networks.Network_Layer_From_nX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 N.compute_segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 ```
@@ -93,12 +97,16 @@ As with Network Layers, the underlying data structures can be created and manipu
 ```python
 from cityseer.metrics import layers
 # a mock data dictionary representing the 'x', 'y' attributes for data points
-data_dict = mock.mock_data_dict(G, random_seed=25)
+data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
+print(data_dict[0], data_dict[1], 'etc.')
+
 # generate a data layer
 D = layers.Data_Layer_From_Dict(data_dict)
 # assign to the prior Network Layer
 # max_dist represents the farthest to search for adjacent street edges
 D.assign_to_network(N, max_dist=400)
+# let's plot the assignments
+plot.plot_assignment(N, D, dpi=100)
 ```
 
 The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
@@ -113,6 +121,8 @@ Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/
 # landuse labels can be used to generate mixed-use and land-use accessibility measures
 # for demonstration purposes, lets create mock landuse labels for the points in our data dictionary
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
+print(landuse_labels)
+
 # example easy-wrapper method for computing mixed-uses
 # the hill q paramater controls the emphasis on unique land-uses vs. balanced preponderances thereof
 D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
@@ -127,6 +137,8 @@ D.compute_aggregated(landuse_labels,
 
 # let's generate some mock numerical data for the points in our data dictionary
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
+print(mock_valuations_data)
+
 # compute max, min, mean, mean-weighted, variance, and variance-weighted
 D.compute_stats_single(stats_key='valuations', stats_data_arr=mock_valuations_data[0])
 ```
@@ -137,43 +149,41 @@ The data is aggregated and computed over the street network relative to the `Net
 # access the data arrays at the respective keys, e.g.
 distance_idx = 800  # any of the initialised distances
 q_idx = 0  # q index: any of the invoked q parameters
-node_idx = 0  # a node idx
 print('centrality keys:', list(N.metrics['centrality'].keys()))
-# prints: centrality keys: ['segment_harmonic', 'segment_betweenness']
+# centrality keys: ['segment_harmonic', 'segment_betweenness']
 print('distance keys:', list(N.metrics['centrality']['segment_harmonic'].keys()))
-# prints: distance keys: [200, 400, 800, 1600]
+# distance keys: [200, 400, 800, 1600]
 print(N.metrics['centrality']['segment_harmonic'][distance_idx][:4])
-# prints: [36.46092  34.097134 29.37572  28.52696 ]
+# [36.8227   34.135193 29.375732 28.526955]
 
 print('mixed-use keys:', list(N.metrics['mixed_uses'].keys()))
-# prints: mixed-use keys: ['hill_branch_wt', 'hill', 'shannon']
+# mixed-use keys: ['hill_branch_wt', 'hill', 'shannon']
+# here we are indexing in to the specified q_idx, distance_idx
 print(N.metrics['mixed_uses']['hill_branch_wt'][q_idx][distance_idx][:4])
-# prints: [3.71650513 3.37621501 3.67013477 2.66319178]
+# [3.77794601 3.38890755 3.68395318 2.67093971]
 
 # statistical keys can be retrieved the same way:
 print('stats keys:', list(N.metrics['stats'].keys()))
-# prints: stats keys: ['valuations']
+# stats keys: ['valuations']
 print('valuations keys:', list(N.metrics['stats']['valuations'].keys()))
-# prints: valuations keys: ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
+# valuations keys: ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
 print('valuations weighted by 1600m decay:', N.metrics['stats']['valuations']['mean_weighted'][1600][:4])
-# prints: valuations weighted by 1600m decay: [54241.13370171 52637.06525419 49104.04636187 52314.00371644]
-
+# valuations weighted by 1600m decay: [54197.16775872 52605.12914212 49085.95351109 52261.44967792]
 
 # the data can also be convert back to a NetworkX graph
-import networkx as nx
 G_metrics = N.to_networkX()
 print(nx.info(G_metrics))
 # the data arrays are unpacked accordingly
 print(G_metrics.nodes[0]['metrics']['centrality']['segment_betweenness'][200])
-# prints: 1022.12555
+# 590.8659
 
 # the data can also be extracted to a dictionary:
 G_dict = N.metrics_to_dict()
 print(G_dict[0]['centrality']['segment_betweenness'][200])
-# prints: 1022.12555
+# prints: 590.8659
 ```
 
-The data can then be passed to data analysis or plotting methods. For example, the [`util.plot`](/util/plot.html) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
+The data can then be passed to data analysis or plotting methods. For example, the [`tools.plot`](/tools/plot.html) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
 
 ```python
 # plot centrality
@@ -193,17 +203,19 @@ segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 # cast against the colour map
 segment_harmonic_cols = cmap(segment_harmonic_vals)
 # plot segment_harmonic
-plot.plot_nX(G_metrics, labels=False, colour=segment_harmonic_cols)
+plot.plot_nX(G_metrics, labels=False, node_colour=segment_harmonic_cols, dpi=100)
 
 # plot distance-weighted hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
-plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels)
+plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels, dpi=100)
 ```
 
-<img src="./images/plots/intro_segment_harmonic.png" alt="Example gravity index plot" class="left"><img src="./images/plots/intro_mixed_uses.png" alt="Example mixed uses plot" class="right">
+![Example segmentised harmonic closeness plot](../.vitepress/plots/images/intro_segment_harmonic.png)
+_800m segmentised harmonic closeness centrality on a 20m decomposed graph._
 
-_$800m$ segmentised harmonic closeness centrality (left) and $400m$ branch-weighted mixed-uses (right) plots on a $20m$ decomposed graph._
+![Example mixed uses plot](../.vitepress/plots/images/intro_mixed_uses.png)
+_400m branch-weighted mixed-uses plot on a 20m decomposed graph._
 
 ## Issues & Contributions
 

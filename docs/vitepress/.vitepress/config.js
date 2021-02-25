@@ -89,8 +89,8 @@ module.exports = {
   locales: {},
   markdown: {
     anchor: { permalink: true },
-    lineNumbers: true,
-    toc: { includeLevel: [1, 2] },
+    lineNumbers: false,
+    toc: true,
     config: (md) => {
       md.use(require('@iktakahiro/markdown-it-katex')).use(require('markdown-it-replacements'))
       // replace tags for rendering katex

@@ -22,9 +22,17 @@ if config is None:
                      f'directory and should be name either {" or ".join([f_n for f_n in file_names])}')
 
 # use double breaks - linter will strip out redundancies
+frontmatter_template = None
+if 'frontmatter_template' in config:
+    frontmatter_template = config['frontmatter_template']
+
 module_name_template = '# {module_name}\n\n'
 if 'module_name_template' in config:
     module_name_template = config['module_name_template']
+
+toc_template = None
+if 'toc_template' in config:
+    toc_template = config['toc_template']
 
 function_name_template = '\n\n### {function_name}\n\n'
 if 'function_name_template' in config:
@@ -54,8 +62,19 @@ for module_name, doc_path in config['module_map'].items():
     modules = docspec_python.load_python_modules(modules=[module_name])
     for module in modules:
 
-        # first-off, add the module name
-        lines = [module_name_template.format(module_name=module_name)]
+        lines = []
+
+        # frontmatter
+        if frontmatter_template is not None:
+            lines.append(frontmatter_template)
+
+        # module name
+        lines.append(module_name_template.format(module_name=module_name).replace('_', '\_'))
+        # module docstring
+        lines.append(module.docstring.strip().replace('\n', ' '))
+
+        if toc_template is not None:
+            lines.append(toc_template)
 
         # iterate the module's members
         for member in module.members:
@@ -70,7 +89,7 @@ for module_name, doc_path in config['module_map'].items():
                 arg_types_map = {}
                 # the name as header, followed by Vue component and function name
                 function_name = member.name
-                lines.append(function_name_template.format(function_name=function_name))
+                lines.append(function_name_template.format(function_name=function_name).replace('_', '\_'))
                 # prepare the signature string
                 signature = f'{function_name}('
                 # the spacer is used for lining up wrapped lines
@@ -92,7 +111,7 @@ for module_name, doc_path in config['module_map'].items():
                         signature += f'{" " * spacer}{param_name}'
                     # add default values where present
                     if arg.default_value is not None:
-                        signature += f' = {arg.default_value}'
+                        signature += f'={arg.default_value}'
                     # if not the last argument, add a comma
                     if idx != len(member.args) - 1:
                         signature += ',\n'
@@ -116,7 +135,7 @@ for module_name, doc_path in config['module_map'].items():
                             lookahead_idx, next_line = next(splits_enum)
                             # empty lines
                             if next_line.strip() == '':
-                                lines.append('')
+                                lines.append('\n')
                                 continue
                             # code blocks
                             if next_line.strip().startswith('```'):
@@ -128,8 +147,19 @@ for module_name, doc_path in config['module_map'].items():
                                         break
                                 lines.append(code)
                                 continue
+                            # tip blocks
+                            if next_line.strip().startswith(':::'):
+                                hint = '\n' + next_line.strip() + '\n\n'
+                                while True:
+                                    lookahead_idx, next_line = next(splits_enum)
+                                    if next_line.startswith(':::'):
+                                        hint += '\n\n' + next_line + '\n\n'
+                                        break
+                                    hint += ' ' + next_line
+                                lines.append(hint)
+                                continue
                             # look-ahead to find headings
-                            if splits[lookahead_idx].startswith('---'):
+                            if lookahead_idx < len(splits) and splits[lookahead_idx].startswith('---'):
                                 heading = next_line.strip()
                                 lines.append(heading_template.format(heading=heading))
                                 # skip the next line
@@ -158,12 +188,19 @@ for module_name, doc_path in config['module_map'].items():
                                         param_description = next_line.strip()
                                         # wrap any subsequent lines
                                         while True:
-                                            # break once encountering another parameter or an empty line
-                                            if splits[lookahead_idx] == '' \
+                                            # break once encountering the end of the splits, another parameter,
+                                            # or an empty line
+                                            if lookahead_idx == len(splits) \
+                                                    or splits[lookahead_idx] == '' \
                                                     or not splits[lookahead_idx].startswith('    '):
                                                 break
                                             lookahead_idx, next_line = next(splits_enum)
-                                            param_description += ' ' + next_line.strip()
+                                            # don't wrap if the line starts with a bullet point, picture, or table
+                                            if next_line.strip()[0] in ['-', '!', '|']:
+                                                param_description += '\n' + next_line.strip()
+                                            # else wrap
+                                            else:
+                                                param_description += ' ' + next_line.strip()
                                         # wrap-up param
                                         if heading == 'Parameters':
                                             param_type = arg_types_map[param_name]
@@ -172,13 +209,19 @@ for module_name, doc_path in config['module_map'].items():
                                                                           description=param_description)
                                         else:
                                             param = return_template.format(name=param_name,
-                                                                          description=param_description)
+                                                                           description=param_description)
                                         lines.append(param)
-                            # otherwise, just return the line
-                            lines.append(next_line)
+                            # top level docstrings and non Parameters / Returns blocks are parsed here
+                            # check for lists, pictures, captions, and tables
+                            if not len(lines) > 1 or (
+                                    next_line.strip() != '' and next_line.strip()[0] in ['-', '_', '!', '|']):
+                                lines.append('\n' + next_line)
+                            # otherwise wrap the next line
+                            else:
+                                lines[-1] += ' ' + next_line
                             continue
                         # break when iter exhausted
-                        except IndexError:
+                        except StopIteration:
                             break
 
         # create the path and output directories as needed

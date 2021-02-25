@@ -5,7 +5,7 @@
 
 <style lang="postcss" scoped>
 #sig-style {
-  @apply border-t-3 border-theme text-darkgrey bg-gray-50 mt-1 mb-4 p-4;
+  @apply border-t-3 border-theme text-darkgrey bg-gray-50 mt-0.5 mb-4 p-4;
   @apply text-sm font-mono font-semibold leading-normal;
 }
 

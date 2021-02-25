@@ -5,7 +5,7 @@
 /*** override default vite theme styles ***/
 
 .sidebar {
-  width: 235px !important;
+  width: 250px !important;
 }
 
 .container {
@@ -74,11 +74,11 @@
   h1,
   h2,
   h3 {
-    @apply pt-8 leading-snug;
+    @apply mt-10 leading-snug;
   }
 
   h1 {
-    @apply text-4xl font-semibold;
+    @apply text-4xl font-semibold mb-10;
   }
 
   h2 {
@@ -89,8 +89,22 @@
     @apply text-2xl font-semibold;
   }
 
+  h4,
+  h5,
+  h6 {
+    @apply my-3;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
   code {
-    @apply text-xs font-semibold font-mono p-1;
+    @apply text-xs font-semibold font-mono p-0.5;
   }
 
   pre code {
