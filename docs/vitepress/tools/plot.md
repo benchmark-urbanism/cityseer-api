@@ -1,35 +1,31 @@
 # cityseer.tools.plot
 
+Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
-
-### plot_nX_primal_or_dual
-
-
+## plot\_nX\_primal\_or\_dual
 
 <FuncSignature>
 <pre>
-plot_nX_primal_or_dual(primal_graph = None,
-                       dual_graph = None,
-                       path = None,
-                       labels = False,
-                       primal_node_colour = None,
-                       primal_edge_colour = None,
-                       dual_node_colour = None,
-                       dual_edge_colour = None,
-                       primal_edge_width = None,
-                       dual_edge_width = None,
-                       plot_geoms = True,
-                       x_lim = None,
-                       y_lim = None,
+plot_nX_primal_or_dual(primal_graph=None,
+                       dual_graph=None,
+                       path=None,
+                       labels=False,
+                       primal_node_colour=None,
+                       primal_edge_colour=None,
+                       dual_node_colour=None,
+                       dual_edge_colour=None,
+                       primal_edge_width=None,
+                       dual_edge_width=None,
+                       plot_geoms=True,
+                       x_lim=None,
+                       y_lim=None,
                        **figure_kwargs)
 </pre>
 </FuncSignature>
 
-Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly ifexplicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) methodinstead.
+ Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method instead.
 
 <FuncHeading>Parameters</FuncHeading>
-
-
 
 <FuncElement name='primal_graph' type='nx.MultiGraph'>
 
@@ -37,15 +33,11 @@ An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults
 
 </FuncElement>
 
-
-
 <FuncElement name='dual_graph' type='nx.MultiGraph'>
 
 An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='path' type='str'>
 
@@ -53,15 +45,11 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 </FuncElement>
 
-
-
 <FuncElement name='labels' type='bool'>
 
 Whether to display node labels. Defaults to False.
 
 </FuncElement>
-
-
 
 <FuncElement name='primal_node_colour' type='Union[str, tuple, list]'>
 
@@ -69,15 +57,11 @@ Primal node colour or colours. When passing an iterable of colours, the number o
 
 </FuncElement>
 
-
-
 <FuncElement name='primal_edge_colour' type='str'>
 
 Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='dual_node_colour' type='Union[str, tuple, list]'>
 
@@ -85,15 +69,11 @@ Dual node colour or colours. When passing a list of colours, the number of colou
 
 </FuncElement>
 
-
-
 <FuncElement name='dual_edge_colour' type='str'>
 
 Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='primal_edge_width' type='Union[int, float]'>
 
@@ -101,15 +81,11 @@ Linewidths for the primal edge. Defaults to None.
 
 </FuncElement>
 
-
-
 <FuncElement name='dual_edge_width' type='Union[int, float]'>
 
 Linewidths for the dual edge. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='plot_geoms' type='bool'>
 
@@ -117,15 +93,11 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
 
 </FuncElement>
 
-
-
 <FuncElement name='x_lim' type='Union[tuple, list]'>
 
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='y_lim' type='Union[tuple, list]'>
 
@@ -133,15 +105,11 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
-
-
 <FuncElement name='figure_kwargs' type='None'>
 
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
 
 </FuncElement>
-
-
 
 <FuncHeading>Example</FuncHeading>
 
@@ -154,32 +122,30 @@ plot.plot_nX_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=False)
 ```
+
 ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
+_A dual graph in blue overlaid on the source primal graph in red._
 
-### plot_nX
-
-
+## plot\_nX
 
 <FuncSignature>
 <pre>
 plot_nX(networkX_graph,
-        path = None,
-        labels = False,
-        node_colour = None,
-        edge_colour = None,
-        edge_width = None,
-        plot_geoms = False,
-        x_lim = None,
-        y_lim = None,
+        path=None,
+        labels=False,
+        node_colour=None,
+        edge_colour=None,
+        edge_width=None,
+        plot_geoms=False,
+        x_lim=None,
+        y_lim=None,
         **figure_kwargs)
 </pre>
 </FuncSignature>
 
-Plot a `networkX` MultiGraph.
+ Plot a `networkX` MultiGraph.
 
 <FuncHeading>Parameters</FuncHeading>
-
-
 
 <FuncElement name='networkX_graph' type='nx.MultiGraph'>
 
@@ -187,15 +153,11 @@ A `NetworkX` MultiGraph.
 
 </FuncElement>
 
-
-
 <FuncElement name='path' type='str'>
 
 An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='labels' type='bool'>
 
@@ -203,15 +165,11 @@ Whether to display node labels. Defaults to False.
 
 </FuncElement>
 
-
-
 <FuncElement name='node_colour' type='Union[str, tuple, list]'>
 
 Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='edge_colour' type='Union[str, tuple, list]'>
 
@@ -219,15 +177,11 @@ Edges colour as a `matplotlib` compatible colour string. Defaults to None.
 
 </FuncElement>
 
-
-
 <FuncElement name='edge_width' type='Union[int, float]'>
 
 Linewidths for edges. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='plot_geoms' type='bool'>
 
@@ -235,15 +189,11 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
 
 </FuncElement>
 
-
-
 <FuncElement name='x_lim' type='Union[tuple, list]'>
 
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='y_lim' type='Union[tuple, list]'>
 
@@ -251,15 +201,11 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
-
-
 <FuncElement name='figure_kwargs' type='None'>
 
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
 
 </FuncElement>
-
-
 
 <FuncHeading>Notes</FuncHeading>
 
@@ -289,29 +235,27 @@ cols = cmap(vals)
 # plot
 plot.plot_nX(G_after, node_colour=cols)
 ```
+
 ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
+_Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
-### plot_assignment
-
-
+## plot\_assignment
 
 <FuncSignature>
 <pre>
 plot_assignment(Network_Layer,
                 Data_Layer,
-                path = None,
-                node_colour = None,
-                node_labels = False,
-                data_labels = None,
+                path=None,
+                node_colour=None,
+                node_labels=False,
+                data_labels=None,
                 **figure_kwargs)
 </pre>
 </FuncSignature>
 
-Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
+ Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
 
 <FuncHeading>Parameters</FuncHeading>
-
-
 
 <FuncElement name='Network_Layer' type='None'>
 
@@ -319,15 +263,11 @@ A [`Network_Layer`](/metrics/networks.html#network-layer).
 
 </FuncElement>
 
-
-
 <FuncElement name='Data_Layer' type='None'>
 
 A [`Data_Layer`](/metrics/layers.html#data-layer).
 
 </FuncElement>
-
-
 
 <FuncElement name='path' type='str'>
 
@@ -335,15 +275,11 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 </FuncElement>
 
-
-
 <FuncElement name='node_colour' type='Union[list, tuple, np.ndarray]'>
 
 Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='node_labels' type='bool'>
 
@@ -351,15 +287,11 @@ Whether to plot the node labels. Defaults to False.
 
 </FuncElement>
 
-
-
 <FuncElement name='data_labels' type='Union[list, tuple, np.ndarray]'>
 
 An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `Data_Layer`. Defaults to None.
 
 </FuncElement>
-
-
 
 <FuncElement name='figure_kwargs' type='None'>
 
@@ -367,30 +299,25 @@ An optional iterable of categorical data labels which will be mapped to colours.
 
 </FuncElement>
 
-
-
 <FuncHeading>Notes</FuncHeading>
 
 ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
+_An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
 
-### plot_graph_maps
-
-
+## plot\_graph\_maps
 
 <FuncSignature>
 <pre>
 plot_graph_maps(node_data,
                 edge_data,
-                data_map = None,
-                poly = None)
+                data_map=None,
+                poly=None)
 </pre>
 </FuncSignature>
 
-Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pendingshort-term development requirements. It is used mainly to visually confirm the correct behaviour of particularalgorithms during the software development cycle.
+ Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
 
 <FuncHeading>Parameters</FuncHeading>
-
-
 
 <FuncElement name='node_data' type='np.ndarray'>
 
@@ -398,15 +325,11 @@ Plot a graph from raw `cityseer` data structures. Note that this function is sub
 
 </FuncElement>
 
-
-
 <FuncElement name='edge_data' type='np.ndarray'>
 
 `cityseer` edge map.
 
 </FuncElement>
-
-
 
 <FuncElement name='data_map' type='np.ndarray'>
 
@@ -414,3 +337,8 @@ An optional data map. Defaults to None.
 
 </FuncElement>
 
+<FuncElement name='poly' type='geometry.Polygon'>
+
+An optional polygon. Defaults to None.
+
+</FuncElement>

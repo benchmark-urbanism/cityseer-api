@@ -1,14 +1,16 @@
-'''
-Generate a graph for testing and documentation purposes.
-'''
+"""
+A collection of functions for the generation of mock data. This module is predominately used for writing code tests,
+but can otherwise be useful for demonstration and utility purposes.
+"""
 import logging
+import string
+from typing import Tuple
+
 import networkx as nx
 import numpy as np
 import pytest
 import requests
 from shapely import geometry
-import string
-from typing import Tuple
 import utm
 
 from cityseer.tools import graphs
@@ -18,12 +20,35 @@ logger = logging.getLogger(__name__)
 
 
 def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
-    '''
-    Prepares a Tutte graph per https://en.wikipedia.org/wiki/Tutte_graph
-    :return: NetworkX graph
-    '''
+    """
+    Generates a `NetworkX` `MultiGraph` for testing or experimentation purposes.
 
-    G = nx.MultiGraph()
+    Parameters
+    ----------
+    wgs84_coords
+        If set to `True`, the `x` and `y` attributes will be in [`WGS84`](https://epsg.io/4326) geographic coordinates
+        instead of a projected cartesion coordinate system. By default False
+
+    Returns
+    -------
+    nx.MultiGraph
+        A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
+    
+    Notes
+    -----
+
+    ```python
+    from cityseer.tools import mock, plot
+    networkX_multigraph = mock.mock_graph()
+    plot.plot_nX(networkX_multigraph)
+    ```
+
+    ![Example graph](../.vitepress/plots/images/graph_example.png)
+    _Mock graph._
+
+    """
+
+    networkX_multigraph = nx.MultiGraph()
 
     nodes = [
         (0, {'x': 700700, 'y': 5719700}),
@@ -90,7 +115,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (56, {'x': 701300, 'y': 5719110})
     ]
 
-    G.add_nodes_from(nodes)
+    networkX_multigraph.add_nodes_from(nodes)
 
     edges = [
         (0, 1),
@@ -178,30 +203,42 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (30, 56)
     ]
 
-    G.add_edges_from(edges)
+    networkX_multigraph.add_edges_from(edges)
 
     if wgs84_coords:
-        for n, d in G.nodes(data=True):
+        for n, d in networkX_multigraph.nodes(data=True):
             easting = d['x']
             northing = d['y']
             # be cognisant of parameter and return order
             # returns in lat, lng order
             lat, lng = utm.to_latlon(easting, northing, 30, 'U')
-            G.nodes[n]['x'] = lng
-            G.nodes[n]['y'] = lat
+            networkX_multigraph.nodes[n]['x'] = lng
+            networkX_multigraph.nodes[n]['y'] = lat
 
-    return G
+    return networkX_multigraph
 
 
 @pytest.fixture
-def primal_graph():
+def primal_graph() -> nx.MultiGraph:
+    """
+    Returns
+    -------
+    nx.MultiGraph
+        A primal `NetworkX` `MultiGraph` for `pytest` tests.
+    """
     G_primal = mock_graph()
     G_primal = graphs.nX_simple_geoms(G_primal)
     return G_primal
 
 
 @pytest.fixture
-def dual_graph():
+def dual_graph() -> nx.MultiGraph:
+    """
+    Returns
+    -------
+    nx.MultiGraph
+        A dual `NetworkX` `MultiGraph` for `pytest` tests.
+    """
     G_dual = mock_graph()
     G_dual = graphs.nX_simple_geoms(G_dual)
     G_dual = graphs.nX_to_dual(G_dual)
@@ -209,23 +246,36 @@ def dual_graph():
 
 
 @pytest.fixture
-def diamond_graph():
-    '''
-    For manual checks of all node and segmentised methods
-       3
-      / \
-     /   \
-    /  a  \
-   1-------2
-    \  |  /
-     \ |b/ c
-      \|/
-       0
-    a = 100m = 2 * 50m
-    b = 86.60254m
-    c = 100m
-    all inner angles = 60º
-    '''
+def diamond_graph() -> nx.MultiGraph:
+    """
+    Generates a diamond shaped `NetworkX` `MultiGraph` for testing or experimentation purposes. For manual checks of all
+    node and segmentised methods.
+    
+    Returns
+    -------
+    nx.MultiGraph
+        A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
+    
+    Notes
+    -----
+
+    ```python
+    #     3
+    #    / \
+    #   /   \
+    #  /  a  \
+    # 1-------2
+    #  \  |  /
+    #   \ |b/ c
+    #    \|/
+    #     0
+    # a = 100m = 2 * 50m
+    # b = 86.60254m
+    # c = 100m
+    # all inner angles = 60º
+    ```
+
+    """
     G_diamond = nx.MultiGraph()
     G_diamond.add_nodes_from([
         (0, {'x': 50, 'y': 0}),
@@ -238,14 +288,25 @@ def diamond_graph():
     return G_diamond
 
 
-def get_graph_extents(G: nx.MultiGraph) -> Tuple[float, float, float, float]:
+def get_graph_extents(networkX_multigraph: nx.MultiGraph) -> Tuple[float, float, float, float]:
+    """
+    Parameters
+    ----------
+    networkX_multigraph
+        A `NetworkX` `MultiGraph` with `x` and `y` node parameters.
+
+    Returns
+    -------
+    Tuple
+        A tuple of `min_x`, `min_y`, `max_x`, `max_y` values.
+    """
     # get min and maxes for x and y
     min_x = np.inf
     max_x = -np.inf
     min_y = np.inf
     max_y = -np.inf
 
-    for n, d in G.nodes(data=True):
+    for n, d in networkX_multigraph.nodes(data=True):
         if d['x'] < min_x:
             min_x = d['x']
         if d['x'] > max_x:
@@ -258,11 +319,30 @@ def get_graph_extents(G: nx.MultiGraph) -> Tuple[float, float, float, float]:
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(G: nx.MultiGraph, length: int = 50, random_seed: int = None) -> dict:
+def mock_data_dict(networkX_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = None) -> dict:
+    """
+    Generates a dictionary containing mock data for testing or experimentation purposes.
+
+    Parameters
+    ----------
+    networkX_multigraph
+        A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
+        network. The returned data will be within these extents.
+    length
+        The number of data elements to return in the dictionary, by default 50.
+    random_seed
+        An optional random seed, by default None.
+
+    Returns
+    -------
+    dict
+        A dictionary where each entry consists of a `key` representing a distinct data point `uid`, and corresponding
+        `x`, `y` and `live` values.
+    """
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
-    min_x, min_y, max_x, max_y = get_graph_extents(G)
+    min_x, min_y, max_x, max_y = get_graph_extents(networkX_multigraph)
 
     data_dict = {}
 
@@ -276,6 +356,27 @@ def mock_data_dict(G: nx.MultiGraph, length: int = 50, random_seed: int = None) 
 
 
 def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int = None) -> np.ndarray:
+    """
+    Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.
+
+    Parameters
+    ----------
+    length
+        The number of categorical elements to return in the array.
+    num_classes
+        The maximum number of unique classes to return in the randomly assigned categorical data. The classes are
+        randomly generated from a pool of unique class labels of length `num_classes`. The number of returned unique
+        classes will be less than or equal to `num_classes`. By default 10
+    random_seed
+        An optional random seed, by default None
+
+    Returns
+    -------
+    np.ndarray
+        A `numpy` array containing categorical data elements. The number of elements will match the `length` parameter.
+        The categorical data will consist of randomly selected letters.
+
+    """
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
@@ -292,8 +393,35 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
     return np.array(d)
 
 
-def mock_numerical_data(length: int, min: int = 0, max: int = 100000, num_arrs: int = 1,
+def mock_numerical_data(length: int,
+                        min: int = 0,
+                        max: int = 100000,
+                        num_arrs: int = 1,
                         random_seed: int = None) -> np.ndarray:
+    """
+    Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
+
+    Parameters
+    ----------
+    length
+        The number of numerical elements to return in the array.
+    min
+        The (inclusive) minimum value in the `min`, `max` range of randomly generated integers.
+    max
+        The (exclusive) maximum value in the `min`, `max` range of randomly generated integers.
+    num_arrs
+        The number of arrays to nest in the returned 2d array.
+    random_seed
+        An optional random seed, by default None
+
+    Returns
+    -------
+    np.ndarray
+        A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data
+        arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number
+        of data elements and will match the `length` parameter. The numerical data will consist of randomly selected
+        integers.
+    """
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
@@ -305,6 +433,50 @@ def mock_numerical_data(length: int, min: int = 0, max: int = 100000, num_arrs: 
 
 
 def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    A generator function returning a series of randomly generated counts and corresponding probabilities for testing
+    diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10.
+    Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
+
+    Parameters
+    ----------
+    random_seed
+        An optional random seed, by default None
+
+    Yields
+    -------
+    counts
+        The number of members for each species class.
+    probs
+        The probability of encountering the respective species classes.
+
+    Notes
+    -----
+
+    ```python
+    from cityseer.tools import mock
+
+    for counts, probs in mock.mock_species_data():
+        cs = [c for c in counts]
+        print(f'c = {cs}')
+        ps = [round(p, 3) for p in probs]
+        print(f'p = {ps}')
+
+    # c = [1]
+    # p = [1.0]
+
+    # c = [1, 1, 2, 2]
+    # p = [0.167, 0.167, 0.333, 0.333]
+
+    # c = [3, 2, 1, 1, 1, 3]
+    # p = [0.273, 0.182, 0.091, 0.091, 0.091, 0.273]
+
+    # c = [3, 3, 2, 2, 1, 1, 1, 2, 1]
+    # p = [0.188, 0.188, 0.125, 0.125, 0.062, 0.062, 0.062, 0.125, 0.062]
+
+    # etc.
+    ```
+    """
     if random_seed is not None:
         np.random.seed(seed=random_seed)
 
@@ -320,13 +492,28 @@ def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response:
+    """
+    Fetches an OSM response.
+
+    Parameters
+    ----------
+    geom_osm
+        A string representing a polygon for the request extents, formatting according to OSM conventions.
+    timeout
+        An optional timeout, by default 30s
+    max_tries
+        The number of attempts to fetch a response before raising, by default 3
+
+    Returns
+    -------
+    requests.Response
+        An OSM API response.
+    """
+
     request = f'''
-    /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
-    */
+    /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
     [out:json][timeout:{timeout}];
-    /*
-    build spatial_set from highways based on extent
-    */
+    /* build spatial_set from highways based on extent */
     way["highway"]
       ["area"!="yes"]
       ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|abandoned|platform|construction"]
@@ -342,31 +529,22 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
       ["access"!~"private|customers"]
       ["indoor"!="yes"]
       (poly:"{geom_osm}") -> .spatial_set;
-    /*
-    build union_set from spatial_set
-    */
+    /* build union_set from spatial_set */
     (
       way.spatial_set["highway"];
       way.spatial_set["foot"~"yes|designated"];
       way.spatial_set["bicycle"~"yes|designated"];
     ) -> .union_set;
-    /*
-    filter union_set
-    */
+    /* filter union_set */
     way.union_set -> .filtered_set;
-    /*
-    union filtered_set ways with nodes via recursion
-    */
+    /* union filtered_set ways with nodes via recursion */
     (
       .filtered_set;
       >;
     );
-    /*
-    return only basic info
-    */
+    /* return only basic info */
     out skel qt;
     '''
-
     osm_response = None
     while max_tries:
         osm_response = requests.get('https://overpass-api.de/api/interpreter',
@@ -388,6 +566,22 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
 def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGraph:
     """
 
+    Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`
+    parameter.
+
+    Parameters
+    ----------
+    lng
+        The longitude argument for the request.
+    lat
+        The latitude argument for the request.
+    buffer
+        The buffer distance.
+
+    Returns
+    -------
+    nx.MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes that have been converted to UTM.
     """
     # cast the WGS coordinates to UTM prior to buffering
     easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)

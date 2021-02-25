@@ -1,5 +1,5 @@
 module_name_template: "# {module_name}\n\n"
-function_name_template: "\n\n### {function_name}\n\n"
+function_name_template: "\n\n## {function_name}\n\n"
 signature_template: "\n\n<FuncSignature>\n<pre>\n{signature}\n</pre>\n</FuncSignature>\n\n"
 heading_template: "\n\n<FuncHeading>{heading}</FuncHeading>\n\n"
 param_template: "\n\n<FuncElement name='{name}' type='{type}'>\n\n{description}\n\n</FuncElement>\n\n"
@@ -7,6 +7,6 @@ return_template: "\n\n<FuncElement name='{name}'>\n\n{description}\n\n</FuncElem
 module_map:
   cityseer.tools.plot: docs/vitepress/tools/plot.md
   cityseer.tools.graphs: docs/vitepress/tools/graphs.md
-# cityseer.tools.mock: docs/vitepress/tools/mock.md
+  cityseer.tools.mock: docs/vitepress/tools/mock.md
 # cityseer.metrics.layers: docs/vitepress/metrics/layers.md
 # cityseer.metrics.networks: docs/vitepress/metrics/networks.md
