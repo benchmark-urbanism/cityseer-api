@@ -16,7 +16,7 @@ DATA MAP:
 
 ## Data\_Layer
 
-class Data_Layer()DATA MAP:
+class DataLayer()DATA MAP:
 0 - x
 1 - y
 2 - assigned network index - nearest

@@ -42,10 +42,6 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            y_lim: Union[tuple, list] = None,
                            **figure_kwargs):
     """
-    Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method
-    instead.
-
     Parameters
     ----------
     primal_graph
@@ -86,8 +82,12 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         `kwargs` which will be passed to the `matplotlib` figure parameters. If
         provided, these will override the default figure size or dpi parameters.
 
-    Example
-    -------
+    Notes
+    -----
+    Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method
+    instead.
+
     ```py
     from cityseer.tools import mock, graphs, plot
     G = mock.mock_graph()
@@ -272,8 +272,8 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     G = mock.mock_graph()
     G = graphs.nX_simple_geoms(G)
     G = graphs.nX_decompose(G, 50)
-    N = networks.Network_Layer_From_nX(G, distances=[800])
-    N.compute_node_centrality(measures=['node_beta'])
+    N = networks.NetworkLayerFromNX(G, distances=[800])
+    N.node_centrality(measures=['node_beta'])
     G_after = N.to_networkX()
     # let's extract and normalise the values
     vals = []
@@ -314,14 +314,14 @@ def plot_assignment(Network_Layer,
                     data_labels: Union[list, tuple, np.ndarray] = None,
                     **figure_kwargs):
     """
-    Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
+    Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
 
     Parameters
     ----------
     Network_Layer
-        A [`Network_Layer`](/metrics/networks.html#network-layer).
+        A [`NetworkLayer`](/metrics/networks.html#network-layer).
     Data_Layer
-        A [`Data_Layer`](/metrics/layers.html#data-layer).
+        A [`DataLayer`](/metrics/layers.html#data-layer).
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -333,7 +333,7 @@ def plot_assignment(Network_Layer,
         Whether to plot the node labels. Defaults to False.
     data_labels
         An optional iterable of categorical data labels which will be mapped to colours. The number of labels should
-        match the number of data points in `Data_Layer`. Defaults to None.
+        match the number of data points in `DataLayer`. Defaults to None.
     figure_kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
@@ -341,7 +341,7 @@ def plot_assignment(Network_Layer,
     Notes
     -----
     ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
-    _An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
+    _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
     """
     plt.figure(**figure_kwargs)
 

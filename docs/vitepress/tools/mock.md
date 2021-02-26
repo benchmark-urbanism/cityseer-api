@@ -2,15 +2,16 @@
 
 A collection of functions for the generation of mock data. This module is predominately used for writing code tests, but can otherwise be useful for demonstration and utility purposes.
 
-## mock\_graph
+### mock_graph
 
 <FuncSignature>
 <pre>
-mock_graph(wgs84_coords=False) -> nx.MultiGraph
+mock_graph(wgs84_coords=False)
+           -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Generates a `NetworkX` `MultiGraph` for testing or experimentation purposes.
+Generates a `NetworkX` `MultiGraph` for testing or experimentation purposes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -39,11 +40,12 @@ plot.plot_nX(networkX_multigraph)
 ![Example graph](../.vitepress/plots/images/graph_example.png)
 _Mock graph._
 
-## primal\_graph
+### primal_graph
 
 <FuncSignature>
 <pre>
-primal_graph() -> nx.MultiGraph
+primal_graph()
+             -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
@@ -55,11 +57,12 @@ A primal `NetworkX` `MultiGraph` for `pytest` tests.
 
 </FuncElement>
 
-## dual\_graph
+### dual_graph
 
 <FuncSignature>
 <pre>
-dual_graph() -> nx.MultiGraph
+dual_graph()
+           -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
@@ -71,15 +74,16 @@ A dual `NetworkX` `MultiGraph` for `pytest` tests.
 
 </FuncElement>
 
-## diamond\_graph
+### diamond_graph
 
 <FuncSignature>
 <pre>
-diamond_graph() -> nx.MultiGraph
+diamond_graph()
+              -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Generates a diamond shaped `NetworkX` `MultiGraph` for testing or experimentation purposes. For manual checks of all node and segmentised methods.
+Generates a diamond shaped `NetworkX` `MultiGraph` for testing or experimentation purposes. For manual checks of all node and segmentised methods.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -107,11 +111,12 @@ A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
 # all inner angles = 60º
 ```
 
-## get\_graph\_extents
+### get_graph_extents
 
 <FuncSignature>
 <pre>
-get_graph_extents(networkX_multigraph) -> Tuple[float, float, float, float]
+get_graph_extents(networkX_multigraph)
+                  -> Tuple[float, float, float, float]
 </pre>
 </FuncSignature>
 
@@ -131,17 +136,18 @@ A tuple of `min_x`, `min_y`, `max_x`, `max_y` values.
 
 </FuncElement>
 
-## mock\_data\_dict
+### mock_data_dict
 
 <FuncSignature>
 <pre>
 mock_data_dict(networkX_multigraph,
                length=50,
-               random_seed=None) -> dict
+               random_seed=None)
+               -> dict
 </pre>
 </FuncSignature>
 
- Generates a dictionary containing mock data for testing or experimentation purposes.
+Generates a dictionary containing mock data for testing or experimentation purposes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -171,17 +177,18 @@ A dictionary where each entry consists of a `key` representing a distinct data p
 
 </FuncElement>
 
-## mock\_categorical\_data
+### mock_categorical_data
 
 <FuncSignature>
 <pre>
 mock_categorical_data(length,
                       num_classes=10,
-                      random_seed=None) -> np.ndarray
+                      random_seed=None)
+                      -> np.ndarray
 </pre>
 </FuncSignature>
 
- Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.
+Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -211,7 +218,7 @@ A `numpy` array containing categorical data elements. The number of elements wil
 
 </FuncElement>
 
-## mock\_numerical\_data
+### mock_numerical_data
 
 <FuncSignature>
 <pre>
@@ -219,11 +226,12 @@ mock_numerical_data(length,
                     min=0,
                     max=100000,
                     num_arrs=1,
-                    random_seed=None) -> np.ndarray
+                    random_seed=None)
+                    -> np.ndarray
 </pre>
 </FuncSignature>
 
- Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
+Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -265,15 +273,16 @@ A 2d `numpy` array containing numerical data elements. The first dimension corre
 
 </FuncElement>
 
-## mock\_species\_data
+### mock_species_data
 
 <FuncSignature>
 <pre>
-mock_species_data(random_seed=None) -> Tuple[np.ndarray, np.ndarray]
+mock_species_data(random_seed=None)
+                  -> Tuple[np.ndarray, np.ndarray]
 </pre>
 </FuncSignature>
 
- A generator function returning a series of randomly generated counts and corresponding probabilities for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
+A generator function returning a series of randomly generated counts and corresponding probabilities for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -323,17 +332,18 @@ for counts, probs in mock.mock_species_data():
 # etc.
 ```
 
-## fetch\_osm\_response
+### fetch_osm_response
 
 <FuncSignature>
 <pre>
 fetch_osm_response(geom_osm,
                    timeout=30,
-                   max_tries=3) -> requests.Response
+                   max_tries=3)
+                   -> requests.Response
 </pre>
 </FuncSignature>
 
- Fetches an OSM response.
+Fetches an OSM response.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -363,17 +373,18 @@ An OSM API response.
 
 </FuncElement>
 
-## make\_buffered\_osm\_graph
+### make_buffered_osm_graph
 
 <FuncSignature>
 <pre>
 make_buffered_osm_graph(lng,
                         lat,
-                        buffer) -> nx.MultiGraph
+                        buffer)
+                        -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat` parameter.
+Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat` parameter.
 
 <FuncHeading>Parameters</FuncHeading>
 

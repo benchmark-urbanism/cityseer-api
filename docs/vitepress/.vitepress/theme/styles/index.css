@@ -5,7 +5,7 @@
 /*** override default vite theme styles ***/
 
 .sidebar {
-  width: 250px !important;
+  width: 310px !important;
 }
 
 .container {
@@ -92,15 +92,7 @@
   h4,
   h5,
   h6 {
-    @apply my-3;
-  }
-
-  h4 {
-    @apply text-xl;
-  }
-
-  h5 {
-    @apply text-lg;
+    @apply text-base font-semibold leading-snug mt-3;
   }
 
   code {
@@ -131,7 +123,7 @@
   }
 
   p {
-    @apply py-1;
+    @apply pb-2;
   }
 
   a {
@@ -140,6 +132,23 @@
 
   @media screen and (max-width: 958px) {
     body {
+      @apply text-sm;
+    }
+    h1 {
+      @apply text-xl;
+    }
+
+    h2 {
+      @apply text-lg;
+    }
+
+    h3 {
+      @apply text-base;
+    }
+
+    h4,
+    h5,
+    h6 {
       @apply text-sm;
     }
   }

@@ -63,15 +63,15 @@ def test_Network_Layer(primal_graph):
     betas = [-0.02, -0.005]
     distances = networks.distance_from_beta(betas)
 
-    # test Network_Layer's class
+    # test NetworkLayer's class
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
-            N = networks.Network_Layer(node_uids,
-                                       node_data,
-                                       edge_data,
-                                       node_edge_map,
-                                       distances=d,
-                                       betas=b)
+            N = networks.NetworkLayer(node_uids,
+                                      node_data,
+                                      edge_data,
+                                      node_edge_map,
+                                      distances=d,
+                                      betas=b)
             assert np.allclose(N.uids, node_uids, atol=0.001, rtol=0)
             assert np.allclose(N._node_data, node_data, atol=0.001, rtol=0)
             assert np.allclose(N._edge_data, edge_data, atol=0.001, rtol=0)
@@ -79,22 +79,22 @@ def test_Network_Layer(primal_graph):
                                rtol=0)  # inferred automatically when only betas provided
             assert np.allclose(N.betas, betas, atol=0.001,
                                rtol=0)  # inferred automatically when only distances provided
-            assert N.min_threshold_wt == checks.def_min_thresh_wt
-            assert np.allclose(N.x_arr, x_arr, atol=0.001, rtol=0)
-            assert np.allclose(N.y_arr, y_arr, atol=0.001, rtol=0)
-            assert np.allclose(N.live, node_data[:, 2], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_lengths, edge_data[:, 2], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_angles, edge_data[:, 3], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_impedance_factor, edge_data[:, 4], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_in_bearing, edge_data[:, 5], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_out_bearing, edge_data[:, 6], atol=0.001, rtol=0)
+            assert N._min_threshold_wt == checks.def_min_thresh_wt
+            assert np.allclose(N.node_x_arr, x_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.node_y_arr, y_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.node_live_arr, node_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_lengths_arr, edge_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_angles_arr, edge_data[:, 3], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_impedance_factors_arr, edge_data[:, 4], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_in_bearings_arr, edge_data[:, 5], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_out_bearings_arr, edge_data[:, 6], atol=0.001, rtol=0)
 
-    # test round-trip graph to and from Network_Layer
-    N = networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               distances=distances)
+    # test round-trip graph to and from NetworkLayer
+    N = networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              distances=distances)
     G_round_trip = N.to_networkX()
     # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
     # i.e. can't simply check that all nodes equal, so check properties manually
@@ -107,62 +107,62 @@ def test_Network_Layer(primal_graph):
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
-    N = networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               betas=betas,
-                               min_threshold_wt=alt_min)
+    N = networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              betas=betas,
+                              min_threshold_wt=alt_min)
     assert np.allclose(N.distances, alt_distances, atol=0.001, rtol=0)
     # check for malformed signatures
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids[:-1],
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               distances)
+        networks.NetworkLayer(node_uids[:-1],
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
+        networks.NetworkLayer(node_uids,
                                node_data[:, :-1],
-                               edge_data,
-                               node_edge_map,
-                               distances)
+                              edge_data,
+                              node_edge_map,
+                              distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
+        networks.NetworkLayer(node_uids,
+                              node_data,
                                edge_data[:, :-1],
-                               node_edge_map,
-                               distances)
+                              node_edge_map,
+                              distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
+        networks.NetworkLayer(node_uids,
+                              node_data,
                                edge_data[:, :-1],
-                               node_edge_map,
-                               distances)
+                              node_edge_map,
+                              distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map)  # no betas or distances
+        networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map)  # no betas or distances
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               distances=None,
-                               betas=None)
+        networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              distances=None,
+                              betas=None)
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               distances=[])
+        networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              distances=[])
     with pytest.raises(ValueError):
-        networks.Network_Layer(node_uids,
-                               node_data,
-                               edge_data,
-                               node_edge_map,
-                               betas=[])
+        networks.NetworkLayer(node_uids,
+                              node_data,
+                              edge_data,
+                              node_edge_map,
+                              betas=[])
 
 
 def test_Network_Layer_From_nX(primal_graph):
@@ -175,7 +175,7 @@ def test_Network_Layer_From_nX(primal_graph):
     # test Network_Layer_From_NetworkX's class
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
-            N = networks.Network_Layer_From_nX(primal_graph, distances=d, betas=b)
+            N = networks.NetworkLayerFromNX(primal_graph, distances=d, betas=b)
             assert np.allclose(N.uids, node_uids, atol=0.001, rtol=0)
             assert np.allclose(N._node_data, node_data, atol=0.001, rtol=0)
             assert np.allclose(N._edge_data, edge_data, atol=0.001, rtol=0)
@@ -183,33 +183,33 @@ def test_Network_Layer_From_nX(primal_graph):
                                rtol=0)  # inferred automatically when only betas provided
             assert np.allclose(N.betas, betas, atol=0.001,
                                rtol=0)  # inferred automatically when only distances provided
-            assert N.min_threshold_wt == checks.def_min_thresh_wt
-            assert np.allclose(N.x_arr, x_arr, atol=0.001, rtol=0)
-            assert np.allclose(N.y_arr, y_arr, atol=0.001, rtol=0)
-            assert np.allclose(N.live, node_data[:, 2], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_lengths, edge_data[:, 2], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_angles, edge_data[:, 3], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_impedance_factor, edge_data[:, 4], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_in_bearing, edge_data[:, 5], atol=0.001, rtol=0)
-            assert np.allclose(N.edge_out_bearing, edge_data[:, 6], atol=0.001, rtol=0)
+            assert N._min_threshold_wt == checks.def_min_thresh_wt
+            assert np.allclose(N.node_x_arr, x_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.node_y_arr, y_arr, atol=0.001, rtol=0)
+            assert np.allclose(N.node_live_arr, node_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_lengths_arr, edge_data[:, 2], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_angles_arr, edge_data[:, 3], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_impedance_factors_arr, edge_data[:, 4], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_in_bearings_arr, edge_data[:, 5], atol=0.001, rtol=0)
+            assert np.allclose(N.edge_out_bearings_arr, edge_data[:, 6], atol=0.001, rtol=0)
 
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
-    N = networks.Network_Layer_From_nX(primal_graph, betas=betas, min_threshold_wt=alt_min)
+    N = networks.NetworkLayerFromNX(primal_graph, betas=betas, min_threshold_wt=alt_min)
     assert np.allclose(N.distances, alt_distances, atol=0.001, rtol=0)
 
     # check for malformed signatures
     with pytest.raises(TypeError):
-        networks.Network_Layer_From_nX('boo', distances=distances)
+        networks.NetworkLayerFromNX('boo', distances=distances)
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(primal_graph)  # no betas or distances
+        networks.NetworkLayerFromNX(primal_graph)  # no betas or distances
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(primal_graph, distances=None, betas=None)
+        networks.NetworkLayerFromNX(primal_graph, distances=None, betas=None)
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(primal_graph, distances=[])
+        networks.NetworkLayerFromNX(primal_graph, distances=[])
     with pytest.raises(ValueError):
-        networks.Network_Layer_From_nX(primal_graph, betas=[])
+        networks.NetworkLayerFromNX(primal_graph, betas=[])
 
 
 def dict_check(m_dict, Network):
@@ -248,14 +248,14 @@ def dict_check(m_dict, Network):
 
 def test_metrics_to_dict(primal_graph):
     # create a network layer and run some metrics
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[500, 1000])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
 
     # check with no metrics
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
     # check with centrality metrics
-    N.compute_node_centrality(measures=['node_harmonic'])
+    N.node_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 
@@ -265,7 +265,7 @@ def test_metrics_to_dict(primal_graph):
     numerical_data = mock.mock_numerical_data(len(data_dict))
     # TODO:
     '''
-    D = layers.Data_Layer_From_Dict(data_dict)
+    D = layers.DataLayerFromDict(data_dict)
     D.assign_to_network(N, max_dist=400)
     D.compute_aggregated(landuse_labels,
                          mixed_use_keys=['hill', 'shannon'],
@@ -303,8 +303,8 @@ def test_to_networkX(primal_graph):
         break
 
     # test with metrics
-    N = networks.Network_Layer_From_nX(G, distances=[500])
-    N.compute_node_centrality(measures=['node_harmonic'])
+    N = networks.NetworkLayerFromNX(G, distances=[500])
+    N.node_centrality(measures=['node_harmonic'])
     metrics_dict = N.metrics_to_dict()
     G_round_trip = N.to_networkX()
     for n, d in G.nodes(data=True):
@@ -329,7 +329,7 @@ def test_compute_centrality(primal_graph):
     betas = np.array([-0.01, -0.005])
     distances = networks.distance_from_beta(betas)
     # generate data structures
-    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
+    N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
     node_data = N._node_data
     edge_data = N._edge_data
     node_edge_map = N._node_edge_map
@@ -346,8 +346,8 @@ def test_compute_centrality(primal_graph):
                          'node_betweenness_angular']
 
     # check measures against underlying method
-    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
-    N.compute_node_centrality(measures=['node_density'])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
+    N.node_centrality(measures=['node_density'])
     # test against underlying method
     measures_data = centrality.local_node_centrality(node_data,
                                                      edge_data,
@@ -362,8 +362,8 @@ def test_compute_centrality(primal_graph):
     # not necessary to do all labels, first few should do
     for min_idx in range(3):
         measure_keys = np.array(node_measures[min_idx:])
-        N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
-        N.compute_node_centrality(measures=node_measures)
+        N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
+        N.node_centrality(measures=node_measures)
         # test against underlying method
         measures_data = centrality.local_node_centrality(node_data,
                                                          edge_data,
@@ -376,21 +376,21 @@ def test_compute_centrality(primal_graph):
                 assert np.allclose(N.metrics['centrality'][measure_name][d_key],
                                    measures_data[m_idx][d_idx], atol=0.001, rtol=0)
     # check that angular gets passed through
-    N_ang = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
-    N_ang.compute_node_centrality(measures=['node_harmonic_angular'], angular=True)
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
-    N.compute_node_centrality(measures=['node_harmonic'], angular=False)
+    N_ang = networks.NetworkLayerFromNX(primal_graph, distances=[2000])
+    N_ang.node_centrality(measures=['node_harmonic_angular'], angular=True)
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[2000])
+    N.node_centrality(measures=['node_harmonic'], angular=False)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
                            N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     assert not np.allclose(N_ang.metrics['centrality']['node_harmonic_angular'][2000],
                            N.metrics['centrality']['node_harmonic'][2000], atol=0.001, rtol=0)
     # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
-        N.compute_node_centrality(measures=['spelling_typo'])
+        N.node_centrality(measures=['spelling_typo'])
     with pytest.raises(ValueError):
-        N.compute_node_centrality(measures=['node_density', 'node_density'])
+        N.node_centrality(measures=['node_density', 'node_density'])
     with pytest.raises(ValueError):
-        N.compute_node_centrality(measures=['node_density', 'node_harmonic_angular'])
+        N.node_centrality(measures=['node_density', 'node_harmonic_angular'])
 
     # CHECK SEGMENTISED
     segment_measures = ['segment_density',
@@ -401,8 +401,8 @@ def test_compute_centrality(primal_graph):
                             'segment_betweeness_hybrid']
 
     # check measures against underlying method
-    N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
-    N.compute_segment_centrality(measures=['segment_density'])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
+    N.segment_centrality(measures=['segment_density'])
     # test against underlying method
     measures_data = centrality.local_segment_centrality(node_data,
                                                         edge_data,
@@ -417,8 +417,8 @@ def test_compute_centrality(primal_graph):
     # not necessary to do all labels, first few should do
     for min_idx in range(3):
         measure_keys = np.array(segment_measures[min_idx:])
-        N = networks.Network_Layer_From_nX(primal_graph, distances=distances)
-        N.compute_segment_centrality(measures=segment_measures)
+        N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
+        N.segment_centrality(measures=segment_measures)
         # test against underlying method
         measures_data = centrality.local_segment_centrality(node_data,
                                                             edge_data,
@@ -431,21 +431,21 @@ def test_compute_centrality(primal_graph):
                 assert np.allclose(N.metrics['centrality'][measure_name][d_key],
                                    measures_data[m_idx][d_idx], atol=0.001, rtol=0)
     # check that angular gets passed through
-    N_ang = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
-    N_ang.compute_segment_centrality(measures=['segment_harmonic_hybrid'], angular=True)
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[2000])
-    N.compute_segment_centrality(measures=['segment_harmonic'], angular=False)
+    N_ang = networks.NetworkLayerFromNX(primal_graph, distances=[2000])
+    N_ang.segment_centrality(measures=['segment_harmonic_hybrid'], angular=True)
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[2000])
+    N.segment_centrality(measures=['segment_harmonic'], angular=False)
     assert not np.allclose(N_ang.metrics['centrality']['segment_harmonic_hybrid'][2000],
                            N.metrics['centrality']['segment_harmonic'][2000], atol=0.001, rtol=0)
     assert not np.allclose(N_ang.metrics['centrality']['segment_harmonic_hybrid'][2000],
                            N.metrics['centrality']['segment_harmonic'][2000], atol=0.001, rtol=0)
     # check that typos, duplicates, and mixed angular / non-angular are caught
     with pytest.raises(ValueError):
-        N.compute_segment_centrality(measures=['spelling_typo'])
+        N.segment_centrality(measures=['spelling_typo'])
     with pytest.raises(ValueError):
-        N.compute_segment_centrality(measures=['segment_density', 'segment_density'])
+        N.segment_centrality(measures=['segment_density', 'segment_density'])
     with pytest.raises(ValueError):
-        N.compute_segment_centrality(measures=['segment_density', 'segment_harmonic_hybrid'])
+        N.segment_centrality(measures=['segment_density', 'segment_harmonic_hybrid'])
 
     # check that the deprecated method raises:
     with pytest.raises(DeprecationWarning):

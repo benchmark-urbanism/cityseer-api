@@ -801,7 +801,9 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     - The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
         are replaced by a single new edge, with the new geometry selected from either:
         - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-        - Else, the shortest edge, with longer edges discarded.
+        - Else, the shortest edge, with longer edges discarded;
+        - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed
+          `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
 
     Parameters
     ----------
@@ -1123,18 +1125,14 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     arise as a consequence of varied node densities.
 
     ::: warning Note
-
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
     unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller
     20m, and 50m may already be sufficient for the majority of cases.
-
     :::
 
     ::: tip Hint
-
     This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting
     into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
-
     :::
 
     Parameters
@@ -1253,11 +1251,9 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
     :::tip Note
-
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
     e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
     primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
-
     :::
 
     Parameters
@@ -1405,14 +1401,12 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
     """
-    Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `Network_Layer` classes. Calculates length and
+    Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and
     angle attributes, as well as in and out bearings and stores these in the returned data maps.
 
     ::: warning Note
-
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
-
+    [NetworkLayerFromNX](/metrics/networks.html#network-layer-from-nx)
     :::
 
     Parameters
@@ -1583,10 +1577,8 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
     graph is provided as an argument to the `networkX_multigraph` parameter.
 
     ::: warning Note
-
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [Network_Layer.to_networkX](/metrics/networks.html#to-networkX)
-
+    [NetworkLayer.to_networkX](/metrics/networks.html#to-networkX)
     :::
 
     Parameters

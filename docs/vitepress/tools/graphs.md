@@ -2,15 +2,16 @@
 
 A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
-## nX\_simple\_geoms
+### nX_simple_geoms
 
 <FuncSignature>
 <pre>
-nX_simple_geoms(networkX_multigraph) -> nx.MultiGraph
+nX_simple_geoms(networkX_multigraph)
+                -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. The edge geometry will be stored to the edge `geom` attribute.
+Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. The edge geometry will be stored to the edge `geom` attribute.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -28,15 +29,16 @@ A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthed
 
 </FuncElement>
 
-## nX\_from\_osm
+### nX_from_osm
 
 <FuncSignature>
 <pre>
-nX_from_osm(osm_json) -> nx.MultiGraph
+nX_from_osm(osm_json)
+            -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Generates a `NetworkX` `MultiGraph` from [`Open Street Map`](https://www.openstreetmap.org) data.
+Generates a `NetworkX` `MultiGraph` from [`Open Street Map`](https://www.openstreetmap.org) data.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -54,16 +56,17 @@ A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io
 
 </FuncElement>
 
-## nX\_wgs\_to\_utm
+### nX_wgs_to_utm
 
 <FuncSignature>
 <pre>
 nX_wgs_to_utm(networkX_multigraph,
-              force_zone_number=None) -> nx.MultiGraph
+              force_zone_number=None)
+              -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
+Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -87,17 +90,18 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the loca
 
 </FuncElement>
 
-## nX\_remove\_dangling\_nodes
+### nX_remove_dangling_nodes
 
 <FuncSignature>
 <pre>
 nX_remove_dangling_nodes(networkX_multigraph,
                          despine=None,
-                         remove_disconnected=True) -> nx.MultiGraph
+                         remove_disconnected=True)
+                         -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network datasets.
+Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network datasets.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -127,19 +131,20 @@ A `networkX` `MultiGraph` with disconnected components optionally removed, and d
 
 </FuncElement>
 
-## nX\_remove\_filler\_nodes
+### nX_remove_filler_nodes
 
 <FuncSignature>
 <pre>
-nX_remove_filler_nodes(networkX_multigraph) -> nx.MultiGraph
+nX_remove_filler_nodes(networkX_multigraph)
+                       -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
+Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
 
 :::tip Note
 
- Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects when computing network centralities, which arise as a function of varied node intensities.
+Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects when computing network centralities, which arise as a function of varied node intensities.
 
 :::
 
@@ -159,7 +164,7 @@ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be
 
 </FuncElement>
 
-## nX\_consolidate\_nodes
+### nX_consolidate_nodes
 
 <FuncSignature>
 <pre>
@@ -175,19 +180,21 @@ nX_consolidate_nodes(networkX_multigraph,
                      cent_min_len_factor=None,
                      merge_edges_by_midline=True,
                      multi_edge_len_factor=1.5,
-                     multi_edge_min_len=100) -> nx.MultiGraph
+                     multi_edge_min_len=100)
+                     -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
+Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
 
-- Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing     edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
+- Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
   - The centroid of the node group;
   - Else, all nodes of degree greater or equal to `cent_min_degree`;
-  - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node     with the greatest aggregate length for adjacent edges.
-- The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges     are replaced by a single new edge, with the new geometry selected from either:
+  - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node with the greatest aggregate length for adjacent edges.
+- The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
   - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-  - Else, the shortest edge, with longer edges discarded.
+  - Else, the shortest edge, with longer edges discarded;
+  - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -279,7 +286,7 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 <FuncHeading>Notes</FuncHeading>
 
- See the guide on [graph cleaning](/guide/cleaning) for more information.
+See the guide on [graph cleaning](/guide/cleaning) for more information.
 
 ![Example raw graph from OSM](../.vitepress/plots/images/graph_cleaning_1.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
@@ -287,7 +294,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![Example cleaned graph](../.vitepress/plots/images/graph_cleaning_5.png)
 _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
-## nX\_split\_opposing\_geoms
+### nX_split_opposing_geoms
 
 <FuncSignature>
 <pre>
@@ -295,11 +302,12 @@ nX_split_opposing_geoms(networkX_multigraph,
                         buffer_dist=10,
                         merge_edges_by_midline=False,
                         multi_edge_len_factor=1.5,
-                        multi_edge_min_len=100) -> nx.MultiGraph
+                        multi_edge_min_len=100)
+                        -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Projects nodes to pierce opposing edges within a buffer distance. The pierced nodes facilitate subsequent merging for scenarios such as divided boulevards.
+Projects nodes to pierce opposing edges within a buffer distance. The pierced nodes facilitate subsequent merging for scenarios such as divided boulevards.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -341,26 +349,27 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 </FuncElement>
 
-## nX\_decompose
+### nX_decompose
 
 <FuncSignature>
 <pre>
 nX_decompose(networkX_multigraph,
-             decompose_max) -> nx.MultiGraph
+             decompose_max)
+             -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
+Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
 
 ::: warning Note
 
-  Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
+Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
 
 :::
 
 ::: tip Hint
 
-  This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
+This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
 
 :::
 
@@ -372,7 +381,11 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
 
 </FuncElement>
 
-  decompose_max     The maximum length threshold for decomposed edges.
+<FuncElement name='decompose_max' type='float'>
+
+The maximum length threshold for decomposed edges.
+
+</FuncElement>
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -399,19 +412,20 @@ _Example graph prior to decomposition._
 ![Example decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
 _Example graph after decomposition._
 
-## nX\_to\_dual
+### nX_to_dual
 
 <FuncSignature>
 <pre>
-nX_to_dual(networkX_multigraph) -> nx.MultiGraph
+nX_to_dual(networkX_multigraph)
+           -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
+Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
 :::tip Note
 
-  Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
+Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
 
 :::
 
@@ -447,19 +461,20 @@ plot.plot_nX_primal_or_dual(G_simple,
 ![Example dual graph](../.vitepress/plots/images/graph_dual.png)
 _Dual graph (blue) overlaid on the source primal graph (red)._
 
-## graph\_maps\_from\_nX
+### graph_maps_from_nX
 
 <FuncSignature>
 <pre>
-graph_maps_from_nX(networkX_multigraph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]
+graph_maps_from_nX(networkX_multigraph)
+                   -> Tuple[tuple, np.ndarray, np.ndarray, Dict]
 </pre>
 </FuncSignature>
 
- Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `Network_Layer` classes. Calculates length and angle attributes, as well as in and out bearings and stores these in the returned data maps.
+Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and angle attributes, as well as in and out bearings and stores these in the returned data maps.
 
 ::: warning Note
 
-  It is generally not necessary to use this function directly. This function will be called internally when invoking [Network_Layer_From_nX](/metrics/networks.html#network-layer-from-nx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks.html#network-layer-from-nx)
 
 :::
 
@@ -501,7 +516,8 @@ A 2d `numpy` array representing the graph's edges. Each edge will be described s
 | 3 | the sum of segment's angular change |
 | 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
 | 5 | the edge's entry angular bearing |
-| 6 | the edge's exit angular bearing | All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
+| 6 | the edge's exit angular bearing |
+All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
 
 </FuncElement>
 
@@ -511,7 +527,7 @@ A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as va
 
 </FuncElement>
 
-## nX\_from\_graph\_maps
+### nX_from_graph_maps
 
 <FuncSignature>
 <pre>
@@ -520,15 +536,16 @@ nX_from_graph_maps(node_uids,
                    edge_data,
                    node_edge_map,
                    networkX_multigraph=None,
-                   metrics_dict=None) -> nx.MultiGraph
+                   metrics_dict=None)
+                   -> nx.MultiGraph
 </pre>
 </FuncSignature>
 
- Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `networkX_multigraph` parameter.
+Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `networkX_multigraph` parameter.
 
 ::: warning Note
 
-  It is generally not necessary to use this function directly. This function will be called internally when invoking [Network_Layer.to_networkX](/metrics/networks.html#to-networkX)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks.html#to-networkX)
 
 :::
 
@@ -553,7 +570,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 
 <FuncElement name='edge_data' type='np.ndarray'>
 
-A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should correspond as follows:
+A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should  correspond as follows:
 | idx | property |
 | --- | :------- |
 | 0   | start node `idx` |
