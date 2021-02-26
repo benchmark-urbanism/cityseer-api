@@ -2,7 +2,7 @@
 
 A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
-### nX_simple_geoms
+## nX\_simple\_geoms
 
 <FuncSignature>
 <pre>
@@ -29,7 +29,7 @@ A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthed
 
 </FuncElement>
 
-### nX_from_osm
+## nX\_from\_osm
 
 <FuncSignature>
 <pre>
@@ -56,7 +56,7 @@ A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io
 
 </FuncElement>
 
-### nX_wgs_to_utm
+## nX\_wgs\_to\_utm
 
 <FuncSignature>
 <pre>
@@ -90,7 +90,7 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the loca
 
 </FuncElement>
 
-### nX_remove_dangling_nodes
+## nX\_remove\_dangling\_nodes
 
 <FuncSignature>
 <pre>
@@ -131,7 +131,7 @@ A `networkX` `MultiGraph` with disconnected components optionally removed, and d
 
 </FuncElement>
 
-### nX_remove_filler_nodes
+## nX\_remove\_filler\_nodes
 
 <FuncSignature>
 <pre>
@@ -164,7 +164,7 @@ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be
 
 </FuncElement>
 
-### nX_consolidate_nodes
+## nX\_consolidate\_nodes
 
 <FuncSignature>
 <pre>
@@ -294,7 +294,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![Example cleaned graph](../.vitepress/plots/images/graph_cleaning_5.png)
 _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
-### nX_split_opposing_geoms
+## nX\_split\_opposing\_geoms
 
 <FuncSignature>
 <pre>
@@ -349,7 +349,7 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 </FuncElement>
 
-### nX_decompose
+## nX\_decompose
 
 <FuncSignature>
 <pre>
@@ -412,7 +412,7 @@ _Example graph prior to decomposition._
 ![Example decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
 _Example graph after decomposition._
 
-### nX_to_dual
+## nX\_to\_dual
 
 <FuncSignature>
 <pre>
@@ -461,7 +461,7 @@ plot.plot_nX_primal_or_dual(G_simple,
 ![Example dual graph](../.vitepress/plots/images/graph_dual.png)
 _Dual graph (blue) overlaid on the source primal graph (red)._
 
-### graph_maps_from_nX
+## graph\_maps\_from\_nX
 
 <FuncSignature>
 <pre>
@@ -527,7 +527,7 @@ A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as va
 
 </FuncElement>
 
-### nX_from_graph_maps
+## nX\_from\_graph\_maps
 
 <FuncSignature>
 <pre>

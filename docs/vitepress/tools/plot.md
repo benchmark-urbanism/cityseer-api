@@ -2,7 +2,7 @@
 
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
-### plot_nX_primal_or_dual
+## plot\_nX\_primal\_or\_dual
 
 <FuncSignature>
 <pre>
@@ -126,7 +126,7 @@ plot.plot_nX_primal_or_dual(G_simple,
 ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
 _A dual graph in blue overlaid on the source primal graph in red._
 
-### plot_nX
+## plot\_nX
 
 <FuncSignature>
 <pre>
@@ -239,7 +239,7 @@ plot.plot_nX(G_after, node_colour=cols)
 ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
 _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
-### plot_assignment
+## plot\_assignment
 
 <FuncSignature>
 <pre>
@@ -304,7 +304,7 @@ An optional iterable of categorical data labels which will be mapped to colours.
 ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
 _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
 
-### plot_graph_maps
+## plot\_graph\_maps
 
 <FuncSignature>
 <pre>
