@@ -116,17 +116,17 @@ data\_map\_from\_dict
 
 <FuncSignature>data_map_from_dict(data_dict)</FuncSignature>
 
-Converts a data dictionary into a `numpy` array for use by `Data_Layer` classes.
+Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
 ::: warning Note
-It is generally not necessary to use this function directly. This function will be called implicitly when invoking [Data_Layer_From_Dict](#data-layer-from-dict)
+It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#data-layer-from-dict)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name="data_dict" type="dict">
 
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`Network_Layer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
 
 ```python
 
@@ -162,20 +162,20 @@ A 2d numpy array representing the data points. The indices of the second dimensi
 | 2 | assigned network index - nearest |
 | 3 | assigned network index - next-nearest |
 
-The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [DataLayer.assign_to_network](#assign-to-network) method is invoked.
 
 </FuncElement>
 
 Data\_Layer <Chip text="class"/>
 -----------
 
-<FuncSignature>Data_Layer(data_uids, data_map)</FuncSignature>
+<FuncSignature>DataLayer(data_uids, data_map)</FuncSignature>
 
-Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
+Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`DataLayer`](/metrics/layers.html#data-layer). A `DataLayer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
 
 The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
-Note that in many cases, the [`Data_Layer_From_Dict`](#data-layer-from-dict) class will provide a more convenient alternative for instantiating this class.
+Note that in many cases, the [`DataLayerFromDict`](#data-layer-from-dict) class will provide a more convenient alternative for instantiating this class.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -196,7 +196,7 @@ A 2d `numpy` array representing the data points. The length of the first dimensi
 | 2 | assigned network index - nearest |
 | 3 | assigned network index - next-nearest |
 
-The arrays at indices `2` and `3` will be populated when the [Data_Layer.assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be populated when the [DataLayer.assign_to_network](#assign-to-network) method is invoked.
 
 </FuncElement>
 
@@ -204,24 +204,24 @@ The arrays at indices `2` and `3` will be populated when the [Data_Layer.assign_
 
 <FuncElement name="Data_Layer" type="class">
 
-A `Data_Layer`.
+A `DataLayer`.
 
 </FuncElement>
 
 @assign\_to\_network
 ---------------------
 
-Once created, a [`Data_Layer`](#data-layer) should be assigned to a [`Network_Layer`](#network-layer). The `Network_Layer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `Network_Layer`.
+Once created, a [`DataLayer`](#data-layer) should be assigned to a [`NetworkLayer`](#network-layer). The `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
 
 The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
 
-<FuncSignature>Data_Layer.assign_to_network(Network_Layer, max_dist)</FuncSignature>
+<FuncSignature>DataLayer.assign_to_network(NetworkLayer, max_dist)</FuncSignature>
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name="Network_Layer" type="networks.Network_Layer">
+<FuncElement name="Network_Layer" type="networks.NetworkLayer">
 
-A [`Network_Layer`](#network-layer).
+A [`NetworkLayer`](#network-layer).
 
 </FuncElement>
 
@@ -248,7 +248,7 @@ _Assignment of data to network nodes becomes more contextually precise on decomp
 
 <FuncSignature>
 <pre>
-Data_Layer.compute_aggregated(landuse_labels,
+DataLayer.compute_aggregated(landuse_labels,
                               mixed_use_keys,
                               accessibility_keys,
                               cl_disparity_wt_matrix,
@@ -258,14 +258,14 @@ Data_Layer.compute_aggregated(landuse_labels,
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`Data_Layer.hill_diversity`](#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](#compute-accessibilities), [`Data_Layer.compute_stats_single`](#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](#compute-stats-multiple) methods.
+This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](#compute-accessibilities), [`DataLayer.compute_stats_single`](#compute-stats-single), and [`DataLayer.compute_stats_multiple`](#compute-stats-multiple) methods.
 
-The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
 For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a `valuations` stats keys are computed on a `Network Layer` instantiated with $800m$ and $1600m$ distance thresholds, then the dictionary would assume the following structure:
 
 ```python
-Network_Layer.metrics = {
+NetworkLayer.metrics = {
     'mixed_uses': {
         # note that hill measures have q keys
         'hill': {
@@ -361,7 +361,7 @@ G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
 
 # generate the network layer
-N = networks.Network_Layer_From_nX(G, distances=[200, 400, 800, 1600])
+N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 
 # prepare a mock data dictionary
 data_dict = mock.mock_data_dict(G, random_seed=25)
@@ -371,7 +371,7 @@ landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
 stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
 
 # generate a data layer
-L = layers.Data_Layer_From_Dict(data_dict)
+L = layers.DataLayerFromDict(data_dict)
 # assign to the network
 L.assign_to_network(N, max_dist=500)
 # compute some metrics
@@ -387,7 +387,7 @@ L.compute_aggregated(landuse_labels=landuses,
 L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
 
 # let's prepare some keys for accessing the computational outputs
-# distance idx: any of the distances with which the Network_Layer was initialised
+# distance idx: any of the distances with which the NetworkLayer was initialised
 distance_idx = 200
 # q index: any of the invoked q parameters
 q_idx = 0
@@ -405,7 +405,7 @@ print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
 # prints: 71297.82967202332
 ```
 
-Note that the data can also be unpacked to a dictionary using [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx).
+Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks.html#to-networkx).
 
 ::: danger Caution
 
@@ -467,12 +467,12 @@ A `list` or `tuple` of keys corresponding to the number of nested arrays passed 
 
 <FuncElement name="stats_data_arrs" type="list, tuple, np.ndarray">
 
-A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `Data_Layer`. See the below example.
+A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`. See the below example.
 
 </FuncElement>
 
 ```python
-# for a Data_Layer containg 5 data points
+# for a DataLayer containg 5 data points
 stats_keys = ['valuations', 'floors', 'occupants']
 stats_data_arrs = [
     [50000, 60000, 55000, 42000, 46000],  # valuations
@@ -484,9 +484,9 @@ stats_data_arrs = [
 @hill\_diversity
 ----------------
 
-<FuncSignature>Data_Layer.hill_diversity(landuse_labels, qs)</FuncSignature>
+<FuncSignature>DataLayer.hill_diversity(landuse_labels, qs)</FuncSignature>
 
-Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
@@ -502,14 +502,14 @@ The values of `q` for which to compute Hill diversity.
 
 The data key is `hill`, e.g.:
 
-<small>`Network_Layer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
+<small>`NetworkLayer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
 
 @hill\_branch\_wt\_diversity
 ----------------------------
 
-<FuncSignature>Data_Layer.hill_branch_wt_diversity(landuse_labels, qs)</FuncSignature>
+<FuncSignature>DataLayer.hill_branch_wt_diversity(landuse_labels, qs)</FuncSignature>
 
-Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
@@ -525,19 +525,19 @@ The values of `q` for which to compute Hill diversity.
 
 The data key is `hill_branch_wt`, e.g.:
 
-<small>`Network_Layer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
+<small>`NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`</small>
 
 @compute\_accessibilities
 -------------------------
 
 <FuncSignature>
 <pre>
-Data_Layer.compute_accessibilities(landuse_labels,
+DataLayer.compute_accessibilities(landuse_labels,
                                    accessibility_keys)
 </pre>
 </FuncSignature>
 
-Compute land-use accessibilities for the specified land-use classification keys. See [Data_Layer.compute_aggregated](#compute-aggregated) for additional information.
+Compute land-use accessibilities for the specified land-use classification keys. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
 
 <FuncElement name="landuse_labels" type="list, tuple, np.ndarray">
 
@@ -553,19 +553,19 @@ The land-use keys for which to compute accessibilies. The keys should be selecte
 
 The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail` accessibility:
 
-<small>`Network_Layer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`</small><br>
-<small>`Network_Layer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`</small>
+<small>`NetworkLayer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`</small><br>
+<small>`NetworkLayer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`</small>
 
 @compute\_stats\_single
 -----------------------
 
 <FuncSignature>
 <pre>
-Data_Layer.compute_stats_single(stats_key, stats_data_arr)
+DataLayer.compute_stats_single(stats_key, stats_data_arr)
 </pre>
 </FuncSignature>
 
-Compute stats for a single `stats_key` parameter. As with the landuse and mixed-use measures: stats will be computed for each distance that was specified when initialising the `Network_Layer`.
+Compute stats for a single `stats_key` parameter. As with the landuse and mixed-use measures: stats will be computed for each distance that was specified when initialising the `NetworkLayer`.
 
 <FuncElement name="stats_key" type="str">
 
@@ -575,13 +575,13 @@ A `str` key describing the stats computed for the `stats_data_arr` parameter. Th
 
 <FuncElement name="stats_data_arr" type="list, tuple, np.ndarray">
 
-A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `Data_Layer`.
+A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `DataLayer`.
 
 </FuncElement>
 
 The data key will correspond to the `stats_key` parameter, e.g. where using `occupants` as the key:
 
-<small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
+<small>`NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
 
 ::: tip Hint
 Per the above working example, the following stat types will be available for each `stats_key` for each of the computed distances:
@@ -597,7 +597,7 @@ Per the above working example, the following stat types will be available for ea
 
 <FuncSignature>
 <pre>
-Data_Layer.compute_stats_multiple(stats_keys, stats_data_arr)
+DataLayer.compute_stats_multiple(stats_keys, stats_data_arr)
 </pre>
 </FuncSignature>
 
@@ -609,12 +609,12 @@ A `list` or `tuple` of keys corresponding to the number of nested arrays passed 
 
 <FuncElement name="stats_data_arrs" type="list, tuple, np.ndarray">
 
-A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `Data_Layer`. See the below example.
+A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`. See the below example.
 
 </FuncElement>
 
 ```python
-# for a Data_Layer containg 5 data points
+# for a DataLayer containg 5 data points
 stats_keys = ['valuations', 'floors', 'occupants']
 stats_data_arrs = [
     [50000, 60000, 55000, 42000, 46000],  # valuations
@@ -625,20 +625,20 @@ stats_data_arrs = [
 
 The data keys will correspond to the `stats_keys` parameter:
 
-<small>`Network_Layer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
-<small>`Network_Layer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
-<small>`Network_Layer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
+<small>`NetworkLayer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
+<small>`NetworkLayer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`</small><br>
+<small>`NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`</small>
 
-Data_Layer_From_Dict <Chip text="class"/>
+DataLayerFromDict <Chip text="class"/>
 --------------------
 
-<FuncSignature>Data_Layer_From_Dict(data_dict)</FuncSignature>
+<FuncSignature>DataLayerFromDict(data_dict)</FuncSignature>
 
-Directly transposes an appropriately prepared data dictionary into a `Data_Layer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`Data_Layer`](#data-layer) class, which can be referenced for more information.
+Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#data-layer) class, which can be referenced for more information.
 
 <FuncElement name="data_dict" type="dict">
 
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`Network_Layer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](http://localhost:8080/cityseer/metrics/networks.html#network-layer) to which the data will be assigned.
 
 ```python
 
@@ -660,6 +660,6 @@ example_data_dict = {
 
 <FuncElement name="Data_Layer" type="class">
 
-A [`Data_Layer`](#data-layer).
+A [`DataLayer`](#data-layer).
 
 </FuncElement>

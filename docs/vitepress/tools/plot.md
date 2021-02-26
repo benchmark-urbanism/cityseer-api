@@ -2,7 +2,7 @@
 
 Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 
-## plot\_nX\_primal\_or\_dual
+### plot_nX_primal_or_dual
 
 <FuncSignature>
 <pre>
@@ -22,8 +22,6 @@ plot_nX_primal_or_dual(primal_graph=None,
                        **figure_kwargs)
 </pre>
 </FuncSignature>
-
- Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method instead.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -111,7 +109,9 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
-<FuncHeading>Example</FuncHeading>
+<FuncHeading>Notes</FuncHeading>
+
+Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method instead.
 
 ```py
 from cityseer.tools import mock, graphs, plot
@@ -126,7 +126,7 @@ plot.plot_nX_primal_or_dual(G_simple,
 ![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
 _A dual graph in blue overlaid on the source primal graph in red._
 
-## plot\_nX
+### plot_nX
 
 <FuncSignature>
 <pre>
@@ -143,7 +143,7 @@ plot_nX(networkX_graph,
 </pre>
 </FuncSignature>
 
- Plot a `networkX` MultiGraph.
+Plot a `networkX` MultiGraph.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -217,8 +217,8 @@ from matplotlib import colors
 G = mock.mock_graph()
 G = graphs.nX_simple_geoms(G)
 G = graphs.nX_decompose(G, 50)
-N = networks.Network_Layer_From_nX(G, distances=[800])
-N.compute_node_centrality(measures=['node_beta'])
+N = networks.NetworkLayerFromNX(G, distances=[800])
+N.node_centrality(measures=['node_beta'])
 G_after = N.to_networkX()
 # let's extract and normalise the values
 vals = []
@@ -239,7 +239,7 @@ plot.plot_nX(G_after, node_colour=cols)
 ![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
 _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
-## plot\_assignment
+### plot_assignment
 
 <FuncSignature>
 <pre>
@@ -253,19 +253,19 @@ plot_assignment(Network_Layer,
 </pre>
 </FuncSignature>
 
- Plot a `Network_Layer` and `Data_Layer` for the purpose of visualising assignment of data points to respective nodes.
+Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name='Network_Layer' type='None'>
 
-A [`Network_Layer`](/metrics/networks.html#network-layer).
+A [`NetworkLayer`](/metrics/networks.html#network-layer).
 
 </FuncElement>
 
 <FuncElement name='Data_Layer' type='None'>
 
-A [`Data_Layer`](/metrics/layers.html#data-layer).
+A [`DataLayer`](/metrics/layers.html#data-layer).
 
 </FuncElement>
 
@@ -289,7 +289,7 @@ Whether to plot the node labels. Defaults to False.
 
 <FuncElement name='data_labels' type='Union[list, tuple, np.ndarray]'>
 
-An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `Data_Layer`. Defaults to None.
+An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `DataLayer`. Defaults to None.
 
 </FuncElement>
 
@@ -302,9 +302,9 @@ An optional iterable of categorical data labels which will be mapped to colours.
 <FuncHeading>Notes</FuncHeading>
 
 ![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
-_An assignment plot to a $50m$ decomposed graph, with the data points coloured by categorical labels._
+_An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
 
-## plot\_graph\_maps
+### plot_graph_maps
 
 <FuncSignature>
 <pre>
@@ -315,7 +315,7 @@ plot_graph_maps(node_data,
 </pre>
 </FuncSignature>
 
- Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
+Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
 
 <FuncHeading>Parameters</FuncHeading>
 

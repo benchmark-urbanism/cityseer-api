@@ -10,7 +10,7 @@ from cityseer.tools.mock import primal_graph
 def test_radial_filter(primal_graph):
     # generate some data
     data_dict = mock.mock_data_dict(primal_graph)
-    D = layers.Data_Layer_From_Dict(data_dict)
+    D = layers.DataLayerFromDict(data_dict)
     # generate some random source nodes
     rd_src_idxs = np.random.randint(0, len(data_dict), 10)
     for src_idx in rd_src_idxs:
@@ -31,16 +31,16 @@ def test_radial_filter(primal_graph):
 
 
 def test_nearest_idx(primal_graph):
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[100])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[100])
     # generate some data
     data_dict = mock.mock_data_dict(primal_graph)
-    D = layers.Data_Layer_From_Dict(data_dict)
+    D = layers.DataLayerFromDict(data_dict)
     # test the filter - iterating each point in data map
     for d in D._data:
         d_x = d[0]
         d_y = d[1]
         # find the closest point on the network
-        min_idx, min_dist = data.find_nearest(d_x, d_y, N.x_arr, N.y_arr, max_dist=500)
+        min_idx, min_dist = data.find_nearest(d_x, d_y, N.node_x_arr, N.node_y_arr, max_dist=500)
         # check that no other indices are nearer
         for i, n in enumerate(N._node_data):
             n_x = n[0]

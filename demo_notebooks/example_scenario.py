@@ -126,9 +126,9 @@ for gr in [G3, decomp]:
 
 # %%
 # create a Network layer from the networkX graph
-N = networks.Network_Layer_From_nX(G3, distances=[1000, 5000, 10000])
+N = networks.NetworkLayerFromNX(G3, distances=[1000, 5000, 10000])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-N.compute_node_centrality(measures=['node_harmonic', 'node_betweenness'])
+N.node_centrality(measures=['node_harmonic', 'node_betweenness'])
 #
 G_metrics = N.to_networkX()
 

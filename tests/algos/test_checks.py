@@ -51,7 +51,7 @@ def test_check_categorical_data():
 
 
 def test_check_data_map(primal_graph):
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[500])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[500])
     data_dict = mock.mock_data_dict(primal_graph)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
 
@@ -82,7 +82,7 @@ def test_check_data_map(primal_graph):
 
 def test_check_network_maps(primal_graph):
     # network maps
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[500])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[500])
     # from cityseer.tools import plot
     # plot.plot_networkX_primal_or_dual(primal=G)
     # plot.plot_graph_maps(N.uids, N._node_data, N._edge_data)

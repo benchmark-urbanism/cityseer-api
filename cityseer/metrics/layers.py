@@ -85,7 +85,7 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
     return tuple(data_uids), data_map
 
 
-class Data_Layer:
+class DataLayer:
     '''
     DATA MAP:
     0 - x
@@ -125,7 +125,7 @@ class Data_Layer:
         return self._Network
 
     def assign_to_network(self,
-                          Network_Layer: networks.Network_Layer,
+                          Network_Layer: networks.NetworkLayer,
                           max_dist: [int, float]):
         self._Network = Network_Layer
         data.assign_to_network(self._data,
@@ -350,7 +350,7 @@ class Data_Layer:
 
         if stats_data_arr.ndim != 1:
             raise ValueError(
-                'The stats_data_arr must be a single dimensional array with a length corresponding to the number of data points in the Data_Layer.')
+                'The stats_data_arr must be a single dimensional array with a length corresponding to the number of data points in the DataLayer.')
 
         return self.compute_aggregated(stats_keys=[stats_key], stats_data_arrs=[stats_data_arr])
 
@@ -390,7 +390,7 @@ class Data_Layer:
             self.Network.metrics['models'][key][d_key]['network_flows'] = netw_flows[d_idx]
 
 
-class Data_Layer_From_Dict(Data_Layer):
+class DataLayerFromDict(DataLayer):
 
     def __init__(self, data_dict: dict):
         data_uids, data_map = data_map_from_dict(data_dict)

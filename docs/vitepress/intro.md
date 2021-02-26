@@ -78,21 +78,22 @@ _A 100m decomposed variant of the graph._
 ![Example dual graph](../.vitepress/plots/images/graph_dual.png)
 _An example primal / dual transformation of the (undecomposed) graph._
 
-The `networkX` graph can now be transformed into a [`Network_Layer`](/metrics/networks.html#network-layer) by invoking [`Network_Layer_From_nX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
+The `networkX` graph can now be transformed into a [`NetworkLayer`](/metrics/networks.html#network-layer) by invoking [`NetworkLayerFromNX`](/metrics/networks.html#network-layer-from-nx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`Network_Layer.compute_node_centrality`](/metrics/networks.html#compute-node-centrality) and [`Network_Layer.compute_segment_centrality`](/metrics/networks.html#compute-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `Network_Layer` class, and can be accessed at the `Network_Layer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`Network_Layer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`Network_Layer.to_networkX`](/metrics/networks.html#to-networkx) method.
+The [`NetworkLayer.node_centrality`](/metrics/networks.html#node-centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks.html#segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks.html#to-networkx) method.
 
 ```python
 from cityseer.metrics import networks
+
 # create a Network layer from the networkX graph
-N = networks.Network_Layer_From_nX(G_decomp, distances=[200, 400, 800, 1600])
+N = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-N.compute_segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
+N.segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 ```
 
-Categorical and numerical data can be assigned to the network as a [`Data_Layer`](/metrics/layers.html#data-layer). A `Data_Layer` represents the spatial locations of data points, and is used for the calculation of various mixed-use, land-use accessibility, and statistical measures. These measures are computed directly over the street network and offer distance-weighted variants. This makes them more contextually sensitive than methods based on simple crow-flies aggregation.
+Categorical and numerical data can be assigned to the network as a [`DataLayer`](/metrics/layers.html#data-layer). A `DataLayer` represents the spatial locations of data points, and is used for the calculation of various mixed-use, land-use accessibility, and statistical measures. These measures are computed directly over the street network and offer distance-weighted variants. This makes them more contextually sensitive than methods based on simple crow-flies aggregation.
 
-As with Network Layers, the underlying data structures can be created and manipulated directly. However, it is generally simpler to create a python dictionary containing the `x` and `y` node attributes for each data point, and to then use [`Data_Layer_From_Dict`](/metrics/layers.html#data-layer-from-dict) to instance a `Data_Layer` directly. After instantiation, the `Data_Layer` is then assigned to the `Network_Layer` through use of the [`Data_Layer.assign_to_network`](/metrics/layers.html#assign-to-network) method.
+As with Network Layers, the underlying data structures can be created and manipulated directly. However, it is generally simpler to create a python dictionary containing the `x` and `y` node attributes for each data point, and to then use [`DataLayerFromDict`](/metrics/layers.html#data-layer-from-dict) to instance a `DataLayer` directly. After instantiation, the `DataLayer` is then assigned to the `NetworkLayer` through use of the [`DataLayer.assign_to_network`](/metrics/layers.html#assign-to-network) method.
 
 ```python
 from cityseer.metrics import layers
@@ -101,7 +102,7 @@ data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
 print(data_dict[0], data_dict[1], 'etc.')
 
 # generate a data layer
-D = layers.Data_Layer_From_Dict(data_dict)
+D = layers.DataLayerFromDict(data_dict)
 # assign to the prior Network Layer
 # max_dist represents the farthest to search for adjacent street edges
 D.assign_to_network(N, max_dist=400)
@@ -115,7 +116,7 @@ The data points will be assigned to the two closest network nodes — one in eit
 
 _Data assigned to the network (left); note that assignment becomes more contextually precise on decomposed graphs (right)._
 
-Once the data has been assigned, the [`Data_Layer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`Data_Layer.hill_diversity`](/metrics/layers.html#hill-diversity), [`Data_Layer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`Data_Layer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`Data_Layer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`Data_Layer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple).
+Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers.html#compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers.html#hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers.html#hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/metrics/layers.html#compute-accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers.html#compute-stats-single), and [`DataLayer.compute_stats_multiple`](/metrics/layers.html#compute-stats-multiple).
 
 ```python
 # landuse labels can be used to generate mixed-use and land-use accessibility measures
@@ -143,7 +144,7 @@ print(mock_valuations_data)
 D.compute_stats_single(stats_key='valuations', stats_data_arr=mock_valuations_data[0])
 ```
 
-The data is aggregated and computed over the street network relative to the `Network_Layer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `Network_Layer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+The data is aggregated and computed over the street network relative to the `NetworkLayer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
 ```python
 # access the data arrays at the respective keys, e.g.

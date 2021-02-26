@@ -801,12 +801,12 @@ def test_nX_from_graph_maps(primal_graph):
     assert list(G_round_trip.edges) == list(primal_graph.edges)
 
     # check with metrics dictionary
-    N = networks.Network_Layer_From_nX(primal_graph, distances=[500, 1000])
+    N = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
 
-    N.compute_node_centrality(measures=['node_harmonic'])
+    N.node_centrality(measures=['node_harmonic'])
     data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
-    D = layers.Data_Layer_From_Dict(data_dict)
+    D = layers.DataLayerFromDict(data_dict)
     D.assign_to_network(N, max_dist=400)
     D.compute_aggregated(landuse_labels,
                          mixed_use_keys=['hill', 'shannon'],
