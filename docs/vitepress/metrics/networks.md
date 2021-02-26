@@ -2,7 +2,7 @@
 
 Centrality methods
 
-### distance_from_beta
+## distance\_from\_beta
 
 <FuncSignature>
 <pre>
@@ -84,7 +84,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
 | $-0.005$ | $0.01$ | $921m$ |
 | $-0.0025$ | $0.01$ | $1842m$ |
 
-### beta_from_distance
+## beta\_from\_distance
 
 <FuncSignature>
 <pre>
@@ -148,7 +148,7 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 | $800m$ | $-0.005$ |
 | $1600m$ | $-0.0025$ |
 
-### NetworkLayer.NetworkLayer
+## class NetworkLayer
 
 Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#network-layer-from-nx) should be used instead if converting from a `NetworkX` graph to a `NetworkLayer`.
 
@@ -175,7 +175,7 @@ print(N.distances)  # prints: [200, 400, 800, 1600]
 print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
 ```
 
-### NetworkLayer
+## NetworkLayer.\_\_init\_\_
 
 <FuncSignature>
 <pre>
@@ -262,43 +262,41 @@ A `NetworkLayer`.
 
 </FuncElement>
 
-<FuncHeading>Notes</FuncHeading>
-
 <FuncHeading>Properties</FuncHeading>
 
-#### NetworkLayer.uids
+### @.uids
 
 Node uids corresponding to each node in the graph's node_map.
 
-#### NetworkLayer.distances
+### @.distances
 
 The distance threshold/s at which the class has been initialised.
 
-#### NetworkLayer.betas
+### @.betas
 
 The distance decay $\beta$ thresholds (spatial impedance) at which the class is initialised.
 
-#### NetworkLayer.node\_x\_arr
+### @.node\_x\_arr
 
-#### NetworkLayer.node\_y\_arr
+### @.node\_y\_arr
 
-#### NetworkLayer.node\_live\_arr
+### @.node\_live\_arr
 
-#### NetworkLayer.edge\_lengths\_arr
+### @.edge\_lengths\_arr
 
-#### NetworkLayer.edge\_angles\_arr
+### @.edge\_angles\_arr
 
-#### NetworkLayer.edge\_impedance\_factors\_arr
+### @.edge\_impedance\_factors\_arr
 
-#### NetworkLayer.edge\_in\_bearings\_arr
+### @.edge\_in\_bearings\_arr
 
-#### NetworkLayer.edge\_out\_bearings\_arr
+### @.edge\_out\_bearings\_arr
 
-#### NetworkLayer.networkX\_multigraph
+### @.networkX\_multigraph
 
 If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived.
 
-### NetworkLayer.metrics\_to\_dict
+## NetworkLayer.metrics\_to\_dict
 
 <FuncSignature>
 <pre>
@@ -308,7 +306,7 @@ metrics_to_dict()
 
 metrics are stored in arrays, this method unpacks per uid
 
-### NetworkLayer.to\_networkX
+## NetworkLayer.to\_networkX
 
 <FuncSignature>
 <pre>
@@ -316,7 +314,7 @@ to_networkX()
 </pre>
 </FuncSignature>
 
-### NetworkLayer.compute\_centrality
+## NetworkLayer.compute\_centrality
 
 <FuncSignature>
 <pre>
@@ -324,7 +322,7 @@ compute_centrality(**kwargs)
 </pre>
 </FuncSignature>
 
-### NetworkLayer.node\_centrality
+## NetworkLayer.node\_centrality
 
 <FuncSignature>
 <pre>
@@ -333,7 +331,7 @@ node_centrality(measures=None,
 </pre>
 </FuncSignature>
 
-### NetworkLayer.segment\_centrality
+## NetworkLayer.segment\_centrality
 
 <FuncSignature>
 <pre>
@@ -342,9 +340,9 @@ segment_centrality(measures=None,
 </pre>
 </FuncSignature>
 
-### NetworkLayerFromNX.NetworkLayerFromNX
+## class NetworkLayerFromNX
 
-### NetworkLayerFromNX
+## NetworkLayerFromNX.\_\_init\_\_
 
 <FuncSignature>
 <pre>

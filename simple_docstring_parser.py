@@ -30,9 +30,9 @@ config = {
     'frontmatter_template': None,
     'module_name_template': '# {module_name}\n\n',
     'toc_template': None,
-    'function_name_template': '\n\n### {function_name}\n\n',
+    'function_name_template': '\n\n## {function_name}\n\n',
     'class_name_template': '\n\n## class {class_name}\n\n',
-    'class_property_template': '\n\n#### {prop_name}\n\n',
+    'class_property_template': '\n\n### {prop_name}\n\n',
     'signature_template': '\n\n```py\n{signature}\n```\n\n',
     'heading_template': '\n\n#### {heading}\n\n',
     'param_template': '\n\n**{name}** _{type}_: {description}\n\n',
@@ -67,8 +67,8 @@ def is_setter(mem):
 
 def extract_text_block(splits_enum, splits, indented_block=False):
     """
-    parses a block of text and decides whether or not to wrap
-    Breaks on end of indentation (optional) or start of new heading
+    Parses a block of text and decides whether or not to wrap.
+    Breaks if iters finish or on end of indentation (optional) or start of new heading
     """
     block = []
     while True:
@@ -141,22 +141,22 @@ def process_member(member, lines, class_name=None):
     member_name = member.name.replace('_', '\_')
     if class_name is not None:
         class_name_esc = class_name.replace('_', '\_')
-        # if the class __init__, then display only the class name
-        if class_name and member.name == '__init__':
-            lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}'))
+        # if a class definition use the class template
+        if isinstance(member, docspec.Class):
+            # when the class is passed-in directly its name is captured in the member_name
+            lines.append(config['class_name_template'].format(class_name=class_name_esc))
+        # if the class __init__, then display the class name and .__init__
+        elif class_name and member.name == '__init__':
+            lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}.\_\_init\_\_'))
         # if a class property
         elif class_name is not None and is_property(member):
-            lines.append(config['class_property_template'].format(prop_name=f'{class_name_esc}.{member_name}'))
+            lines.append(config['class_property_template'].format(prop_name=f'@.{member_name}'))
         # if a class method
         elif class_name is not None:
             lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}.{member_name}'))
-    # if a class definition use the class template
-    elif isinstance(member, docspec.Class):
-        # when the class is passed-in directly its name is captured in the member_name
-        lines.append(config['class_name_template'].format(class_name=member_name))
     # otherwise a function
     else:
-        lines.append(config['function_name_template'].format(function_name=member.name))
+        lines.append(config['function_name_template'].format(function_name=member_name))
     # process the member's signature if a method or a function - classes won't have args
     if hasattr(member, 'args') and not is_property(member):
         # prepare the signature string - use member.name instead of escaped versions

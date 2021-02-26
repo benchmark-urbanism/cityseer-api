@@ -2,7 +2,7 @@
 
 A collection of functions for the generation of mock data. This module is predominately used for writing code tests, but can otherwise be useful for demonstration and utility purposes.
 
-### mock_graph
+## mock\_graph
 
 <FuncSignature>
 <pre>
@@ -40,7 +40,7 @@ plot.plot_nX(networkX_multigraph)
 ![Example graph](../.vitepress/plots/images/graph_example.png)
 _Mock graph._
 
-### primal_graph
+## primal\_graph
 
 <FuncSignature>
 <pre>
@@ -57,7 +57,7 @@ A primal `NetworkX` `MultiGraph` for `pytest` tests.
 
 </FuncElement>
 
-### dual_graph
+## dual\_graph
 
 <FuncSignature>
 <pre>
@@ -74,7 +74,7 @@ A dual `NetworkX` `MultiGraph` for `pytest` tests.
 
 </FuncElement>
 
-### diamond_graph
+## diamond\_graph
 
 <FuncSignature>
 <pre>
@@ -111,7 +111,7 @@ A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
 # all inner angles = 60º
 ```
 
-### get_graph_extents
+## get\_graph\_extents
 
 <FuncSignature>
 <pre>
@@ -136,7 +136,7 @@ A tuple of `min_x`, `min_y`, `max_x`, `max_y` values.
 
 </FuncElement>
 
-### mock_data_dict
+## mock\_data\_dict
 
 <FuncSignature>
 <pre>
@@ -177,7 +177,7 @@ A dictionary where each entry consists of a `key` representing a distinct data p
 
 </FuncElement>
 
-### mock_categorical_data
+## mock\_categorical\_data
 
 <FuncSignature>
 <pre>
@@ -218,7 +218,7 @@ A `numpy` array containing categorical data elements. The number of elements wil
 
 </FuncElement>
 
-### mock_numerical_data
+## mock\_numerical\_data
 
 <FuncSignature>
 <pre>
@@ -273,7 +273,7 @@ A 2d `numpy` array containing numerical data elements. The first dimension corre
 
 </FuncElement>
 
-### mock_species_data
+## mock\_species\_data
 
 <FuncSignature>
 <pre>
@@ -332,7 +332,7 @@ for counts, probs in mock.mock_species_data():
 # etc.
 ```
 
-### fetch_osm_response
+## fetch\_osm\_response
 
 <FuncSignature>
 <pre>
@@ -373,7 +373,7 @@ An OSM API response.
 
 </FuncElement>
 
-### make_buffered_osm_graph
+## make\_buffered\_osm\_graph
 
 <FuncSignature>
 <pre>
