@@ -16,7 +16,7 @@ Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the
 
 ::: warning Note
 
-It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [NetworkLayer](#networklayer) or [NetworkLayerFromNX](#networklayerfromnx).
+It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -61,7 +61,7 @@ The strength of the decay is controlled by the $\beta$ parameter, which reflects
 
 ![Example beta decays](../.vitepress/plots/images/betas.png)
 
-[NetworkLayer](#networklayer) and [NetworkLayerFromNX](/metrics/networks.html#networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
 $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -93,11 +93,11 @@ beta_from_distance(distance,
 </pre>
 </FuncSignature>
 
-Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [distance_from_beta](#distance-from-beta) for additional discussion.
+Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
 
 ::: warning Note
 
-It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [NetworkLayer](#networklayer) or [NetworkLayerFromNX](#networklayerfromnx).
+It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -133,7 +133,7 @@ betas = networks.beta_from_distance(distances)
 print(betas)  # prints: array([-0.01, -0.02])
 ```
 
-[NetworkLayer](#networklayer) and [NetworkLayerFromNX](#networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
 
 $$\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
 
@@ -148,9 +148,9 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 
 ## **class** NetworkLayer
 
-Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#networklayerfromnx) should be used instead if converting from a `NetworkX` `MultiGraph` to a `NetworkLayer`.
+Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a `NetworkX` `MultiGraph` to a `NetworkLayer`.
 
-A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [distance_from_beta](#distance-from-beta) for more information. These distances and betas are used for any subsequent centrality and land-use calculations.
+A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [`distance_from_beta`](#distance-from-beta) for more information. These distances and betas are used for any subsequent centrality and land-use calculations.
 
 ```python
 from cityseer.metrics import networks
@@ -175,8 +175,8 @@ print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
 
 There are two network centrality methods available depending on whether you're using a node-based or segment-based approach:
 
-- [compute_node_centrality](#compute-node-centrality)
-- [compute_segment_centrality](#compute-segment-centrality)
+- [`compute_node_centrality`](#networklayer-node-centrality)
+- [`compute_segment_centrality`](#networklayer-segment-centrality)
 
 These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
 
@@ -184,7 +184,7 @@ These methods wrap the underlying `numba` optimised functions for computing cent
 
 The reasons for picking one approach over another are varied:
 
-- Node based centralities compute the measures relative to each reachable node within the threshold distances. For this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of street intersections. In these cases, the network should first be cleaned using methods such as those available in the [graph](/util/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be preferable because they are based on segment distances: segment aggregations remain the same regardless of the number of intervening nodes, however, are not immune from situations such as needlessly complex representations of roadway intersections or a proliferation of walking paths in greenspaces;
+- Node based centralities compute the measures relative to each reachable node within the threshold distances. For this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of street intersections. In these cases, the network should first be cleaned using methods such as those available in the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be preferable because they are based on segment distances: segment aggregations remain the same regardless of the number of intervening nodes, however, are not immune from situations such as needlessly complex representations of roadway intersections or a proliferation of walking paths in greenspaces;
 - Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once impedances decrease below $1$.
 - Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based) and dual graphs (node only).
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed on primal graphs because this does not account for the impact of differing topologies. Dual graph representations can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual. This effect is amplified for denser regions of the network.
@@ -239,7 +239,7 @@ print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
 # prints [76.01161, 45.261307, 6.805982, 11.478158, 33.74703]
 ```
 
-The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#metrics-to-dict) or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](#to-networkx).
+The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
 
 ## NetworkLayer
 
@@ -273,7 +273,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects.
 
@@ -324,7 +324,7 @@ A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the ex
 
 <FuncElement name='min_threshold_wt' type='float'>
 
-The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [distance_from_beta](#distance-from-beta) for more information.
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
 
 </FuncElement>
 
@@ -385,7 +385,7 @@ NetworkLayer.metrics_to_dict()
 </pre>
 </FuncSignature>
 
-' Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary. The dictionary `keys` will correspond to the node `uids`.
+Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary. The dictionary `keys` will correspond to the node `uids`.
 
 <FuncHeading>Notes</FuncHeading>
 
@@ -426,7 +426,7 @@ NetworkLayer.to_networkX()
 </pre>
 </FuncSignature>
 
-Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [nX_from_graph_maps](/util/graphs.html#nx-from-graph-maps) internally.
+Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs.html#nx-from-graph-maps) internally.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -482,7 +482,7 @@ NetworkLayer.compute_centrality(**kwargs)
 </pre>
 </FuncSignature>
 
-This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [compute_node_centrality](#compute-node-centrality) or [compute_segment_centrality](#compute-segment-centrality) instead.
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_node_centrality`](#networklayer-node-centrality) or [`compute_segment_centrality`](#networklayer-segment-centrality) instead.
 
 <FuncHeading>Raises</FuncHeading>
 
@@ -587,7 +587,7 @@ NetworkLayerFromNX(networkX_multigraph,
 </pre>
 </FuncSignature>
 
-Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/util/graphs.html#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
+Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs.html#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -595,7 +595,7 @@ Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class
 
 A `networkX` `MultiGraph`.
 
-`x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See [`NetworkLayer`](#networklayer) for more information about what these attributes represent.
+`x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See [`NetworkLayer`](#class-networklayer) for more information about what these attributes represent.
 
 </FuncElement>
 

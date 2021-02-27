@@ -130,6 +130,10 @@
     @apply text-theme font-semibold;
   }
 
+  a > code {
+    @apply text-theme;
+  }
+
   td {
     @apply text-sm font-medium;
   }

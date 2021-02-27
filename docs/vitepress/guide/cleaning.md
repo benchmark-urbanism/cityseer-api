@@ -115,7 +115,7 @@ _After an initial pass of node consolidation._
 
 Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
 
-In Step 2, we'll use [`graphs.nX_split_opposing_geoms()`](/tools/graphs.html#nX-split-opposing-geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
+In Step 2, we'll use [`graphs.nX_split_opposing_geoms()`](/tools/graphs.html#nx-split-opposing-geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
 
 ```py
 G2 = graphs.nX_split_opposing_geoms(G1,

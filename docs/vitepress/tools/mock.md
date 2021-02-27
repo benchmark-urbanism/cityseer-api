@@ -17,7 +17,7 @@ Generates a `NetworkX` `MultiGraph` for testing or experimentation purposes.
 
 <FuncElement name='wgs84_coords' type='bool'>
 
-If set to `True`, the `x` and `y` attributes will be in [`WGS84`](https://epsg.io/4326) geographic coordinates instead of a projected cartesion coordinate system. By default False
+If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/4326) geographic coordinates instead of a projected cartesion coordinate system. By default False
 
 </FuncElement>
 

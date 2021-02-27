@@ -134,14 +134,14 @@ Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
 ::: warning Note
 
-It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#datalayer-from-dict)
+It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-#datalayerfromdict)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name='data_dict' type='dict'>
 
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](http://localhost:8080/cityseer/metrics/networks.html#networklayer) to which the data will be assigned.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks#class-networklayer) to which the data will be assigned.
 
 ```python
 example_data_dict = {
@@ -177,17 +177,17 @@ A 2d numpy array representing the data points. The indices of the second dimensi
 | 2   | assigned network index - nearest |
 | 3   | assigned network index - next-nearest |
 
-The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [DataLayer.assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
 
 </FuncElement>
 
 ## **class** DataLayer
 
-Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`DataLayer`](/metrics/layers.html#datalayer). A `DataLayer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
+Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`DataLayer`](/metrics/layers#class-datalayer). A `DataLayer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
 
 The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
-Note that in many cases, the [`DataLayerFromDict`](#datalayer-from-dict) class will provide a more convenient alternative for instantiating this class.
+Note that in many cases, the [`DataLayerFromDict`](#class-#datalayerfromdict) class will provide a more convenient alternative for instantiating this class.
 
 ## DataLayer
 
@@ -217,7 +217,7 @@ A 2d `numpy` array representing the data points. The length of the first dimensi
 | 2 | assigned network index - nearest |
 | 3 | assigned network index - next-nearest |
 
-The arrays at indices `2` and `3` will be populated when the [DataLayer.assign_to_network](#assign-to-network) method is invoked.
+The arrays at indices `2` and `3` will be populated when the [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
 
 </FuncElement>
 
@@ -250,7 +250,7 @@ DataLayer.assign_to_network(Network_Layer,
 </pre>
 </FuncSignature>
 
-Once created, a [`DataLayer`](#datalayer) should be assigned to a [`NetworkLayer`](#networklayer). The  `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
+Once created, a [`DataLayer`](#class-datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks#class-networklayer). The `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
 
 The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
 
@@ -258,7 +258,7 @@ The data points will be assigned to the two closest network nodes — one in eit
 
 <FuncElement name='Network_Layer' type='networks.NetworkLayer'>
 
-A [`NetworkLayer`](#networklayer).
+A [`NetworkLayer`](/metrics/networks#class-networklayer).
 
 </FuncElement>
 
@@ -277,7 +277,7 @@ The `max_dist` parameter should not be set too small. There are two steps in the
 
 ::: warning Note
 
-The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/util/graphs.html#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
+The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/tools/graphs.html#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
 :::
 
 ![Example assignment of data to a network](../.vitepress/plots/images/assignment.png)
@@ -301,7 +301,7 @@ DataLayer.compute_aggregated(landuse_labels=None,
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](#compute-accessibilities), [`DataLayer.compute_stats_single`](#compute-stats-single), and [`DataLayer.compute_stats_multiple`](#compute-stats-multiple) methods.
+This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](#datalayer-compute-stats-multiple) methods.
 
 The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
@@ -460,8 +460,8 @@ Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic wh
 | key | formula | notes |
 |-----|:-------:|-------|
 | hill | $\scriptstyle\big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)}\ q\geq0,\ q\neq1 \\ \scriptstyle lim_{q\to1}\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
-| hill_branch_wt | $\scriptstyle\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \scriptstyle\bar{T} = \sum_{i}^{S}d_{i}p_{i}$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)|
-| hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks.html#distance-from-beta).)|
+| hill_branch_wt | $\scriptstyle\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \scriptstyle\bar{T} = \sum_{i}^{S}d_{i}p_{i}$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks#distance-from-beta).)|
+| hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see [distance_from_beta](/metrics/networks#distance-from-beta).)|
 | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i} p_{j}$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.|
 | shannon | $\scriptstyle -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
 | gini_simpson | $\scriptstyle 1 - \sum_{i}^{S} p_{i}^2$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
@@ -527,7 +527,7 @@ print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
 # prints: 71297.82967202332
 ```
 
-Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks.html#metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks.html#to-networkx).
+Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks#networklayer-to-networkx).
 
 ::: danger Caution
 
@@ -543,7 +543,7 @@ DataLayer.hill_diversity(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_aggregated`](#datalayer-compute-aggregated) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -574,7 +574,7 @@ DataLayer.hill_branch_wt_diversity(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_aggregated`](#datalayer-compute-aggregated) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -605,7 +605,7 @@ DataLayer.compute_accessibilities(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute land-use accessibilities for the specified land-use classification keys. See [DataLayer.compute_aggregated](#compute-aggregated) for additional information.
+Compute land-use accessibilities for the specified land-use classification keys. See [`DataLayer.compute_aggregated`](#datalayer-compute-aggregated) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -727,7 +727,7 @@ Undocumented method for computing singly-constrained interactions.
 
 ## **class** DataLayerFromDict
 
-Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#datalayer) class, which can be referenced for more information.
+Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#class-datalayer) class, which can be referenced for more information.
 
 ## DataLayerFromDict
 
@@ -742,7 +742,7 @@ DataLayerFromDict(data_dict)
 
 <FuncElement name='data_dict' type='dict'>
 
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](http://localhost:8080/cityseer/metrics/networks.html#networklayer) to which the data will be assigned.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks#class-networklayer) to which the data will be assigned.
 
 </FuncElement>
 
@@ -750,7 +750,7 @@ A dictionary representing distinct data points, where each `key` represents a `u
 
 <FuncElement name='DataLayer'>
 
-Returns a [`DataLayer`](#datalayer).
+Returns a [`DataLayer`](#class-datalayer).
 
 </FuncElement>
 

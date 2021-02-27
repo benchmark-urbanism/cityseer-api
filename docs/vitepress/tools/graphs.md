@@ -38,7 +38,7 @@ nX_from_osm(osm_json)
 </pre>
 </FuncSignature>
 
-Generates a `NetworkX` `MultiGraph` from [`Open Street Map`](https://www.openstreetmap.org) data.
+Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -470,7 +470,7 @@ Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLaye
 
 ::: warning Note
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks.html#networklayerfromnx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks#class-networklayerfromnx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -540,7 +540,7 @@ Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an exi
 
 ::: warning Note
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks.html#to-networkX)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks#to-networkX)
 :::
 
 <FuncHeading>Parameters</FuncHeading>

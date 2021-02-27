@@ -26,7 +26,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     Parameters
     ----------
     wgs84_coords
-        If set to `True`, the `x` and `y` attributes will be in [`WGS84`](https://epsg.io/4326) geographic coordinates
+        If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/4326) geographic coordinates
         instead of a projected cartesion coordinate system. By default False
 
     Returns

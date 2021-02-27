@@ -111,7 +111,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 <FuncHeading>Notes</FuncHeading>
 
-Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method instead.
+Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](plot#plot-nx) method instead.
 
 ```py
 from cityseer.tools import mock, graphs, plot
@@ -259,13 +259,13 @@ Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment 
 
 <FuncElement name='Network_Layer' type='None'>
 
-A [`NetworkLayer`](/metrics/networks.html#networklayer).
+A [`NetworkLayer`](/metrics/networks#class-networklayer).
 
 </FuncElement>
 
 <FuncElement name='Data_Layer' type='None'>
 
-A [`DataLayer`](/metrics/layers.html#datalayer).
+A [`DataLayer`](/metrics/layers#class-datalayer).
 
 </FuncElement>
 
