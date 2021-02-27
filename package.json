@@ -2,9 +2,9 @@
   "scripts": {
     "generate": "node generateDocs.js",
     "lint": "markdownlint 'docs/**/*.md' --fix",
-    "dev": "yarn run generate && yarn run lint && vitepress dev docs/vitepress",
-    "build": "yarn run generate && yarn run lint && vitepress build docs/vitepress",
-    "serve": "yarn run generate && yarn run lint && vitepress serve docs/vitepress"
+    "dev": "yarn run generate && yarn run lint && vitepress dev docs",
+    "build": "yarn run generate && yarn run lint && vitepress build docs",
+    "serve": "yarn run generate && yarn run lint && vitepress serve docs"
   },
   "dependencies": {},
   "devDependencies": {
