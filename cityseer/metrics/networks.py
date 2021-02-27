@@ -21,7 +21,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
     ::: warning Note
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [NetworkLayer](#networklayer) or [NetworkLayerFromNX](#networklayerfromnx).
+    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
 
     Parameters
@@ -57,7 +57,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
 
     ![Example beta decays](../.vitepress/plots/images/betas.png)
     
-    [NetworkLayer](#networklayer) and [NetworkLayerFromNX](/metrics/networks.html#networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
     $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -104,10 +104,10 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
 
-    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [distance_from_beta](#distance-from-beta) for additional discussion.
+    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
 
     ::: warning Note
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [NetworkLayer](#networklayer) or [NetworkLayerFromNX](#networklayerfromnx).
+    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
 
     Parameters
@@ -134,7 +134,7 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     print(betas)  # prints: array([-0.01, -0.02])
     ```
 
-    [NetworkLayer](#networklayer) and [NetworkLayerFromNX](#networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
 
     $$\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
 
@@ -168,13 +168,13 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
 
 class NetworkLayer:
     """
-    Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#networklayerfromnx) should be used instead if converting from a `NetworkX`
+    Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a `NetworkX`
     `MultiGraph` to a `NetworkLayer`.
 
     A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters
     $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and
     unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from
-    one to the other: see [distance_from_beta](#distance-from-beta) for more information. These distances and betas
+    one to the other: see [`distance_from_beta`](#distance-from-beta) for more information. These distances and betas
     are used for any subsequent centrality and land-use calculations.
 
     ```python
@@ -201,8 +201,8 @@ class NetworkLayer:
     There are two network centrality methods available depending on whether you're using a node-based or segment-based
     approach:
 
-    - [compute_node_centrality](#compute-node-centrality)
-    - [compute_segment_centrality](#compute-segment-centrality)
+    - [`compute_node_centrality`](#networklayer-node-centrality)
+    - [`compute_segment_centrality`](#networklayer-segment-centrality)
 
     These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
     all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
@@ -215,7 +215,7 @@ class NetworkLayer:
     this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
     concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of
     street intersections. In these cases, the network should first be cleaned using methods such as those available in
-    the [graph](/util/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network
+    the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network
     topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be
     preferable because they are based on segment distances: segment aggregations remain the same regardless of the
     number of intervening nodes, however, are not immune from situations such as needlessly complex representations of
@@ -295,8 +295,8 @@ class NetworkLayer:
     ```
 
     The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using
-    [`NetworkLayer.metrics_to_dict`](#metrics-to-dict) or transposed to a `networkX` graph using
-    [`NetworkLayer.to_networkX`](#to-networkx).
+    [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using
+    [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
     """
 
     def __init__(self,
@@ -324,7 +324,7 @@ class NetworkLayer:
             | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
             The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/util/graphs.html#nx-wgs-to-utm)
+            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm)
             can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
             UTM `x`, `y` projected coordinate system.
 
@@ -383,7 +383,7 @@ class NetworkLayer:
             `betas` parameter is not provided, then the `distance` parameter must be provided instead.
         min_threshold_wt
             The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-            `distance` and `beta` parameters. See [distance_from_beta](#distance-from-beta) for more information.
+            `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
 
         Returns
         -------
@@ -509,7 +509,7 @@ class NetworkLayer:
 
     # for retrieving metrics to a dictionary
     def metrics_to_dict(self):
-        """'
+        """
         Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary. The
         dictionary `keys` will correspond to the node `uids`.
 
@@ -590,7 +590,7 @@ class NetworkLayer:
     def to_networkX(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [nX_from_graph_maps](/util/graphs.html#nx-from-graph-maps) internally.
+        [`nX_from_graph_maps`](/tools/graphs.html#nx-from-graph-maps) internally.
 
         Returns
         -------
@@ -649,7 +649,7 @@ class NetworkLayer:
     def compute_centrality(self, **kwargs):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [compute_node_centrality](#compute-node-centrality) or [compute_segment_centrality](#compute-segment-centrality)
+        [`compute_node_centrality`](#networklayer-node-centrality) or [`compute_segment_centrality`](#networklayer-segment-centrality)
         instead.
 
         Raises
@@ -860,8 +860,8 @@ class NetworkLayerFromNX(NetworkLayer):
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/util/graphs.html#graph-maps-from-nx) internally.
-        Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
+        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs.html#graph-maps-from-nx) internally.
+        Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
         Parameters
         ----------
@@ -869,7 +869,7 @@ class NetworkLayerFromNX(NetworkLayer):
             A `networkX` `MultiGraph`.
             
             `x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See
-            [`NetworkLayer`](#networklayer) for more information about what these attributes represent.
+            [`NetworkLayer`](#class-networklayer) for more information about what these attributes represent.
         distances
             See [`NetworkLayer`](#networklayer).
         betas

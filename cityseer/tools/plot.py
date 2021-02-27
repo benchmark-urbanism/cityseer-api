@@ -85,7 +85,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     Notes
     -----
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX()`](plot#plot-nx) method
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](plot#plot-nx) method
     instead.
 
     ```py
@@ -319,9 +319,9 @@ def plot_assignment(Network_Layer,
     Parameters
     ----------
     Network_Layer
-        A [`NetworkLayer`](/metrics/networks.html#networklayer).
+        A [`NetworkLayer`](/metrics/networks#class-networklayer).
     Data_Layer
-        A [`DataLayer`](/metrics/layers.html#datalayer).
+        A [`DataLayer`](/metrics/layers#class-datalayer).
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
