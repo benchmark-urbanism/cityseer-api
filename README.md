@@ -10,5 +10,3 @@ cityseer
 The use of `python` facilitates interaction with popular tools for network, geospatial, and scientific data analysis, i.e. [`networkX`](https://networkx.github.io/), [`shapely`](https://shapely.readthedocs.io), and the [`numpy`](http://www.numpy.org/) stack. The underlying algorithms are designed for efficient large-scale urban analysis and have been implemented in [`numba`](https://numba.pydata.org/) JIT compiled code.
 
 [Documentation](https://cityseer.github.io/cityseer)
-
-Supports Python 3.8 but not Python 3.9 (pending updated llvmlite).

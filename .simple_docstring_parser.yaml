@@ -3,8 +3,8 @@ heading_template: "\n\n<FuncHeading>{heading}</FuncHeading>\n\n"
 param_template: "\n\n<FuncElement name='{name}' type='{type}'>\n\n{description}\n\n</FuncElement>\n\n"
 return_template: "\n\n<FuncElement name='{name}'>\n\n{description}\n\n</FuncElement>\n\n"
 module_map:
-  cityseer.tools.plot: docs/vitepress/tools/plot.md
-  cityseer.tools.graphs: docs/vitepress/tools/graphs.md
-  cityseer.tools.mock: docs/vitepress/tools/mock.md
-  cityseer.metrics.networks: docs/vitepress/metrics/networks.md
-  cityseer.metrics.layers: docs/vitepress/metrics/layers.md
+  cityseer.tools.plot: docs/tools/plot.md
+  cityseer.tools.graphs: docs/tools/graphs.md
+  cityseer.tools.mock: docs/tools/mock.md
+  cityseer.metrics.networks: docs/metrics/networks.md
+  cityseer.metrics.layers: docs/metrics/layers.md
