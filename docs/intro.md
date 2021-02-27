@@ -36,7 +36,7 @@ print(nx.info(G), '\n')
 plot.plot_nX(G, labels=True, dpi=100)
 ```
 
-![An example graph](./.vitepress/plots/images/graph.png)
+![An example graph](.vitepress/plots/images/graph.png)
 _An example graph._
 
 The [`tools.graphs`](/tools/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` `MultiGraphs`, i.e. undirected graphs allowing for parallel edges. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
@@ -56,7 +56,7 @@ G = graphs.nX_simple_geoms(G)
 plot.plot_nX(G, labels=True, plot_geoms=True, dpi=100)
 ```
 
-![An example graph](./.vitepress/plots/images/graph_example.png)
+![An example graph](.vitepress/plots/images/graph_example.png)
 _A graph with inferred geometries. In this case the geometries are all exactly straight._
 
 We have now inferred geometries for each edge, meaning that each edge now has an associated `LineString` geometry. Any further manipulation of the graph using the `cityseer.graph` module will retain and further manipulate these geometries in-place.
@@ -68,7 +68,7 @@ G_decomp = graphs.nX_decompose(G, 50)
 plot.plot_nX(G_decomp, plot_geoms=True, labels=False, dpi=100)
 ```
 
-![An example decomposed graph](./.vitepress/plots/images/graph_decomposed.png)
+![An example decomposed graph](.vitepress/plots/images/graph_decomposed.png)
 _A decomposed graph._
 
 ```python
@@ -78,7 +78,7 @@ G_dual = graphs.nX_to_dual(G)
 plot.plot_nX_primal_or_dual(G, G_dual, plot_geoms=False, dpi=100)
 ```
 
-![An example dual graph](./.vitepress/plots/images/graph_dual.png)
+![An example dual graph](.vitepress/plots/images/graph_dual.png)
 _A dual graph (blue) plotted against the primal source graph (red). In this case, the true geometry has not been plotted so that the dual graph is easily delineated from the primal graph._
 
 ## Network Layers
@@ -113,10 +113,10 @@ D.assign_to_network(N, max_dist=400)
 plot.plot_assignment(N, D, dpi=100)
 ```
 
-![DataLayer assigned to NetworkLayer](./.vitepress/plots/images/assignment.png)
+![DataLayer assigned to NetworkLayer](.vitepress/plots/images/assignment.png)
 _Data points assigned to a Network Layer._
 
-![DataLayer assigned to a decomposed NetworkLayer](./.vitepress/plots/images/assignment_decomposed.png)
+![DataLayer assigned to a decomposed NetworkLayer](.vitepress/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
 Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers#datalayer-compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/metrics/layers#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](/metrics/layers#datalayer-compute-stats-multiple).
@@ -197,7 +197,7 @@ segment_harmonic_cols = cmap(segment_harmonic_vals)
 plot.plot_nX(G_metrics, labels=False, node_colour=segment_harmonic_cols, dpi=100)
 ```
 
-![Example centrality plot](./.vitepress/plots/images/intro_segment_harmonic.png)
+![Example centrality plot](.vitepress/plots/images/intro_segment_harmonic.png)
 _800m segmentised harmonic centrality._
 
 ```python
@@ -207,7 +207,7 @@ mixed_uses_cols = cmap(mixed_uses_vals)
 plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels, dpi=100)
 ```
 
-![Example mixed-use plot](./.vitepress/plots/images/intro_mixed_uses.png)
+![Example mixed-use plot](.vitepress/plots/images/intro_mixed_uses.png)
 _400m distance-weighted mixed-uses._
 
 ## Issues & Contributions
