@@ -145,7 +145,6 @@ Removes nodes of degree=2: such nodes represent no route-choices other than trav
 :::tip Note
 
 Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects when computing network centralities, which arise as a function of varied node intensities.
-
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -364,13 +363,11 @@ Decomposes a graph so that no edge is longer than a set maximum. Decomposition p
 ::: warning Note
 
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
-
 :::
 
 ::: tip Hint
 
 This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
-
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -426,7 +423,6 @@ Converts a primal graph representation, where intersections are represented as n
 :::tip Note
 
 Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
-
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -474,8 +470,7 @@ Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLaye
 
 ::: warning Note
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks.html#network-layer-from-nx)
-
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks.html#networklayerfromnx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -546,7 +541,6 @@ Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an exi
 ::: warning Note
 
 It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks.html#to-networkX)
-
 :::
 
 <FuncHeading>Parameters</FuncHeading>

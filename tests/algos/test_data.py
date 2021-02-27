@@ -18,12 +18,12 @@ def test_radial_filter(primal_graph):
         src_x = primal_graph.nodes[src_idx]['x']
         src_y = primal_graph.nodes[src_idx]['y']
         for max_dist in [0, 200, 500, 750, np.inf]:
-            data_filter = data.radial_filter(src_x, src_y, D.x_arr, D.y_arr, max_dist)
+            data_filter = data.radial_filter(src_x, src_y, D.data_x_arr, D.data_y_arr, max_dist)
             # check that the full_to_trim map is the correct number of elements
             assert len(data_filter) == len(D._data)
             # test that all reachable indices are, in fact, within the max distance
             for i, reachable in enumerate(data_filter):
-                dist = np.sqrt((D.x_arr[i] - src_x) ** 2 + (D.y_arr[i] - src_y) ** 2)
+                dist = np.sqrt((D.data_x_arr[i] - src_x) ** 2 + (D.data_y_arr[i] - src_y) ** 2)
                 if reachable:
                     assert dist <= max_dist
                 else:

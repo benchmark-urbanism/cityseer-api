@@ -7,4 +7,4 @@ module_map:
   cityseer.tools.graphs: docs/vitepress/tools/graphs.md
   cityseer.tools.mock: docs/vitepress/tools/mock.md
   cityseer.metrics.networks: docs/vitepress/metrics/networks.md
-  # cityseer.metrics.layers: docs/vitepress/metrics/layers.md
+  cityseer.metrics.layers: docs/vitepress/metrics/layers.md

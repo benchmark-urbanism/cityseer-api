@@ -111,8 +111,8 @@ def test_Data_Layer_From_Dict(primal_graph):
     D = layers.DataLayerFromDict(data_dict)
     assert D.uids == data_uids
     assert np.allclose(D._data, data_map, equal_nan=True)
-    assert np.allclose(D.x_arr, x_arr, atol=0.001, rtol=0)
-    assert np.allclose(D.y_arr, y_arr, atol=0.001, rtol=0)
+    assert np.allclose(D.data_x_arr, x_arr, atol=0.001, rtol=0)
+    assert np.allclose(D.data_y_arr, y_arr, atol=0.001, rtol=0)
 
 
 def test_compute_aggregated_A(primal_graph):
