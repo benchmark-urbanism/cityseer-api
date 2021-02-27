@@ -7,13 +7,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@main
       - name: build docs
         run: |
           yarn install
-          yarn run docs:build
+          yarn run build
       - name: deploy docs
-        uses: alex-page/blazing-fast-gh-pages-deploy@v1.0.1
+        uses: alex-page/blazing-fast-gh-pages-deploy@v1.1.0
         with:
           repo-token: ${{ secrets.GH_PAT }}
           site-directory: docs/.vitepress/dist
