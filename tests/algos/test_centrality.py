@@ -199,8 +199,8 @@ def test_local_node_centrality(primal_graph):
 
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
-    # nx node centrality not implemented for MultiGraph
-    G_non_multi = nx.MultiGraph()
+    # nx node centrality NOT implemented for MultiGraph
+    G_non_multi = nx.Graph()  # don't change to MultiGraph!!!
     G_non_multi.add_nodes_from(G_round_trip.nodes())
     for s, e, k, d in G_round_trip.edges(keys=True, data=True):
         assert k == 0
