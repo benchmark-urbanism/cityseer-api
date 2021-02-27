@@ -12,7 +12,7 @@ jobs:
         with:
           python-version: '3.9'
       - name: prep python
-        run: pip install docspec docspec-python
+        run: pip install docspec docspec-python yaml
       - name: build docs
         run: |
           yarn install
