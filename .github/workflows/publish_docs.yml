@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@main
       - name: build docs
         run: |
-          pip install pydoc docspec-python
+          pip install docspec docspec-python
           yarn install
           yarn run build
       - name: deploy docs
