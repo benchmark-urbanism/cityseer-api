@@ -109,6 +109,7 @@ plot.plot_nX(G1,
              figsize=(20, 20),
              dpi=200)
 ```
+
 ![First step of node consolidation](../.vitepress/plots/images/graph_cleaning_3.png)
 _After an initial pass of node consolidation._
 
@@ -130,6 +131,7 @@ plot.plot_nX(G2,
              figsize=(20, 20),
              dpi=200)
 ```
+
 ![Splitting opposing geoms](../.vitepress/plots/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
@@ -152,6 +154,7 @@ plot.plot_nX(G3,
              figsize=(20, 20),
              dpi=200)
 ```
+
 ![Final step of node consolidation](../.vitepress/plots/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
