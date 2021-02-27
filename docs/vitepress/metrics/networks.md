@@ -579,7 +579,7 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 
 <FuncSignature>
 <pre>
-NetworkLayerFromNX(networkX_graph,
+NetworkLayerFromNX(networkX_multigraph,
                    distances=None,
                    betas=None,
                    min_threshold_wt=checks.def_min_thresh_wt)
@@ -591,7 +591,7 @@ Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='networkX_graph' type='nx.MultiGraph'>
+<FuncElement name='networkX_multigraph' type='nx.MultiGraph'>
 
 A `networkX` `MultiGraph`.
 

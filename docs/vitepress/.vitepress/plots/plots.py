@@ -94,13 +94,14 @@ plot.plot_nX_primal_or_dual(G_simple,
                             dpi=150)
 
 # graph cleanup examples
-lng, lat = -0.12703449136137396, 51.51380802050974
-G_utm = mock.make_buffered_osm_graph(lng, lat, 650)
+lng, lat = -0.13396079424572427, 51.51371088849723
+G_utm = mock.make_buffered_osm_graph(lng, lat, 1250)
 easting, northing, _zone, _letter = utm.from_latlon(lat, lng)
-min_x = easting - 500
-max_x = easting + 500
-min_y = northing - 500
-max_y = northing + 500
+buffer = 750
+min_x = easting - buffer
+max_x = easting + buffer
+min_y = northing - buffer
+max_y = northing + buffer
 #
 G = graphs.nX_simple_geoms(G_utm)
 plot.plot_nX(G,
@@ -141,8 +142,8 @@ plot.plot_nX(G1,
 G2 = graphs.nX_split_opposing_geoms(G1,
                                     buffer_dist=15,
                                     merge_edges_by_midline=True,
-                                    max_len_discrepancy=1.25,
-                                    discrepancy_min_len=100)
+                                    multi_edge_len_factor=1.25,
+                                    multi_edge_min_len=100)
 plot.plot_nX(G2,
              labels=False,
              plot_geoms=True,

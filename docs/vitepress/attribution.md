@@ -1,18 +1,18 @@
----
----
-
 # Attribution
 
-Clearly legible attribution should be provided when using this package.
+The development and maintenance of the `cityseer` package takes substantial know-how, time, and effort. Please indicate your use and support of the package by displaying clearly legible attribution with a link to the documentation website and one of the following logos if producing visual outputs.
 
-This should include a link to the documentation website, as well as one of the following logos if producing visual outputs.
+![Cityseer white logo](../.vitepress/plots/logos/cityseer_logo_white.png)
+_Cityseer white logo._
 
-<img src=".vitepress/images/logos/cityseer_logo_white.png" alt="cityseer white logo" class="centre" style="max-width:500px;">
+![Cityseer light blue logo](../.vitepress/plots/logos/cityseer_logo_light_blue.png)
+_Cityseer light blue logo._
 
-<img src=".vitepress/images/logos/cityseer_logo_light_blue.png" alt="cityseer light blue logo" class="centre" style="max-width:500px;">
+![Cityseer deep blue logo](../.vitepress/plots/logos/cityseer_logo_deep_blue.png)
+_Cityseer deep blue logo._
 
-<img src=".vitepress/images/logos/cityseer_logo_deep_blue.png" alt="cityseer deep blue logo" class="centre" style="max-width:500px;">
+![Cityseer light red logo](../.vitepress/plots/logos/cityseer_logo_light_red.png)
+_Cityseer light red logo._
 
-<img src=".vitepress/images/logos/cityseer_logo_light_red.png" alt="cityseer light red logo" class="centre" style="max-width:500px;">
-
-<img src=".vitepress/images/logos/cityseer_logo_deep_red.png" alt="cityseer deep red logo" class="centre" style="max-width:500px;">
+![Cityseer deep red logo](../.vitepress/plots/logos/cityseer_logo_deep_red.png)
+_Cityseer deep red logo._

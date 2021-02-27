@@ -625,7 +625,8 @@ The land-use keys for which to compute accessibilies. The keys should be selecte
 
 The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail` accessibility:
 
-`NetworkLayer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`<br> `NetworkLayer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
+`NetworkLayer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`<br>
+`NetworkLayer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
 
 ## DataLayer.compute\_stats\_single
 
@@ -705,7 +706,9 @@ stats_data_arrs = [
 
  The data keys will correspond to the `stats_keys` parameter:
 
-`NetworkLayer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`<br> `NetworkLayer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`<br> `NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+`NetworkLayer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
+`NetworkLayer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
+`NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
 
 ## DataLayer.model\_singly\_constrained
 

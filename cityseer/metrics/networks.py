@@ -854,7 +854,7 @@ class NetworkLayer:
 
 class NetworkLayerFromNX(NetworkLayer):
     def __init__(self,
-                 networkX_graph: nx.MultiGraph,
+                 networkX_multigraph: nx.MultiGraph,
                  distances: Union[list, tuple, np.ndarray] = None,
                  betas: Union[list, tuple, np.ndarray] = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
@@ -865,7 +865,7 @@ class NetworkLayerFromNX(NetworkLayer):
 
         Parameters
         ----------
-        networkX_graph
+        networkX_multigraph
             A `networkX` `MultiGraph`.
             
             `x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See
@@ -882,7 +882,7 @@ class NetworkLayerFromNX(NetworkLayer):
         NetworkLayer
             A `NetworkLayer`.
         """
-        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(networkX_graph)
+        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(networkX_multigraph)
         super().__init__(node_uids,
                          node_data,
                          edge_data,
@@ -891,4 +891,4 @@ class NetworkLayerFromNX(NetworkLayer):
                          betas,
                          min_threshold_wt)
         # keep reference to networkX graph
-        self.networkX = networkX_graph
+        self.networkX_multigraph = networkX_multigraph
