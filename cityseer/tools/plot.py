@@ -319,9 +319,9 @@ def plot_assignment(Network_Layer,
     Parameters
     ----------
     Network_Layer
-        A [`NetworkLayer`](/metrics/networks.html#network-layer).
+        A [`NetworkLayer`](/metrics/networks.html#networklayer).
     Data_Layer
-        A [`DataLayer`](/metrics/layers.html#data-layer).
+        A [`DataLayer`](/metrics/layers.html#datalayer).
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.

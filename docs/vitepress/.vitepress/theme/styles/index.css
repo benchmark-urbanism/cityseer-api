@@ -130,6 +130,10 @@
     @apply text-theme font-semibold;
   }
 
+  td {
+    @apply text-sm font-medium;
+  }
+
   @media screen and (max-width: 958px) {
     body {
       @apply text-sm;
@@ -150,6 +154,10 @@
     h5,
     h6 {
       @apply text-sm;
+    }
+
+    td {
+      @apply text-xs;
     }
   }
 }

@@ -259,13 +259,13 @@ Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment 
 
 <FuncElement name='Network_Layer' type='None'>
 
-A [`NetworkLayer`](/metrics/networks.html#network-layer).
+A [`NetworkLayer`](/metrics/networks.html#networklayer).
 
 </FuncElement>
 
 <FuncElement name='Data_Layer' type='None'>
 
-A [`DataLayer`](/metrics/layers.html#data-layer).
+A [`DataLayer`](/metrics/layers.html#datalayer).
 
 </FuncElement>
 

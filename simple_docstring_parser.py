@@ -2,6 +2,10 @@
 Uses docspec to parse docstrings to markdown.
 
 Intended for use with static site generators where further linting / linking / styling is done downstream.
+
+Loosely based on Numpy-style docstrings.
+
+Automatically infers types from signature typehints. Explicitly documented types are NOT supported in docstrings.
 """
 import pathlib
 
@@ -31,8 +35,8 @@ config = {
     'module_name_template': '# {module_name}\n\n',
     'toc_template': None,
     'function_name_template': '\n\n## {function_name}\n\n',
-    'class_name_template': '\n\n## class {class_name}\n\n',
-    'class_property_template': '\n\n### {prop_name}\n\n',
+    'class_name_template': '\n\n## **class** {class_name}\n\n',
+    'class_property_template': '\n\n#### **{prop_name}**\n\n',
     'signature_template': '\n\n```py\n{signature}\n```\n\n',
     'heading_template': '\n\n#### {heading}\n\n',
     'param_template': '\n\n**{name}** _{type}_: {description}\n\n',
@@ -46,7 +50,7 @@ for def_key in config.keys():
 if not 'module_map' in yam:
     raise KeyError('The configuration file requires a dictionary mapping modules to output paths for markdown.')
 
-line_break_chars = ['-', '_', '!', '|']
+line_break_chars = ['-', '_', '!', '|', '>', ':']
 
 
 def is_property(mem):
@@ -65,45 +69,49 @@ def is_setter(mem):
     return False
 
 
-def extract_text_block(splits_enum, splits, indented_block=False):
+def extract_text_block(splits_enum, splits, indented_block=False, is_hint_block=False):
     """
     Parses a block of text and decides whether or not to wrap.
-    Breaks if iters finish or on end of indentation (optional) or start of new heading
+    Return if iters finish or on end of indentation (optional) or on start of new heading
     """
     block = []
     while True:
         # feed
         lookahead_idx, next_line = next(splits_enum)
-        # break if indented block and next is not indented (but don't get tripped up with empty lines)
+        # return if indented block and next is not indented (but don't get tripped up with empty lines)
         if indented_block and not next_line.startswith(' ') and not next_line.strip() == '':
             return lookahead_idx, next_line, '\n'.join(block)
-        # break if the next next-line would be a new heading
+        # return if the next next-line would be a new heading
         elif lookahead_idx < len(splits) and splits[lookahead_idx].startswith('---'):
             return lookahead_idx, next_line, '\n'.join(block)
-        # if parsing indented blocks, strip the first four characters
+        # return if inside a hint block and the end of the hint block has been encountered
+        elif is_hint_block and next_line.strip().startswith(':::'):
+            return lookahead_idx, next_line, '\n'.join(block)
+        # be careful with stripping content for lines with intentional breaks, e.g. indented bullets...
+        # if parsing indented blocks, strip the first four spaces
         if indented_block:
             next_line = next_line[4:]
         # code blocks
         if next_line.strip().startswith('```'):
-            code = next_line.strip() + '\n'
+            code_block = next_line.strip() + '\n'
             while True:
                 lookahead_idx, next_line = next(splits_enum)
-                code += next_line + '\n'
+                if indented_block:
+                    next_line = next_line[4:]
+                code_block += next_line + '\n'
                 if next_line.startswith('```'):
                     break
-            block.append(code)
+            block.append(code_block)
         # tip blocks
         elif next_line.strip().startswith(':::'):
             hint_in = '\n' + next_line.strip() + '\n\n'
-            hint_text = []
-            while True:
-                lookahead_idx, next_line = next(splits_enum)
-                if next_line.startswith(':::'):
-                    hint_out = '\n\n' + next_line.strip() + '\n\n'
-                    break
-                hint_text.append(next_line)
-            block.append(hint_in + ' '.join(hint_text) + hint_out)
-        # be careful with stripping content for lines with intentional breaks, e.g. indented bullets...
+            # unpacks hint block
+            lookahead_idx, next_line, hint_block = extract_text_block(splits_enum,
+                                                                      splits,
+                                                                      indented_block=indented_block,
+                                                                      is_hint_block=True)
+            # next line will be closing characters, i.e. ':::', insert manually to add newline
+            block.append(hint_in + hint_block + '\n:::')
         # if no block content exists yet
         elif not len(block):
             block.append(next_line)
@@ -123,7 +131,7 @@ def extract_text_block(splits_enum, splits, indented_block=False):
         else:
             # should be safe to strip text when wrapping
             block[-1] += ' ' + next_line.strip()
-        # break if iters exhausted
+        # return if iters exhausted
         if lookahead_idx == len(splits):
             return lookahead_idx, next_line, '\n'.join(block)
 
@@ -137,7 +145,7 @@ def process_member(member, lines, class_name=None):
         return
     # keep track of the arguments and their types for automatically building function parameters later-on
     arg_types_map = {}
-    # escape underscores in class / member / function names
+    # escape underscores in class / method / function names
     member_name = member.name.replace('_', '\_')
     if class_name is not None:
         class_name_esc = class_name.replace('_', '\_')
@@ -147,10 +155,10 @@ def process_member(member, lines, class_name=None):
             lines.append(config['class_name_template'].format(class_name=class_name_esc))
         # if the class __init__, then display the class name and .__init__
         elif class_name and member.name == '__init__':
-            lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}.\_\_init\_\_'))
+            lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}'))
         # if a class property
         elif class_name is not None and is_property(member):
-            lines.append(config['class_property_template'].format(prop_name=f'@.{member_name}'))
+            lines.append(config['class_property_template'].format(prop_name=f'{class_name_esc}.{member_name}'))
         # if a class method
         elif class_name is not None:
             lines.append(config['function_name_template'].format(function_name=f'{class_name_esc}.{member_name}'))
@@ -162,6 +170,8 @@ def process_member(member, lines, class_name=None):
         # prepare the signature string - use member.name instead of escaped versions
         if class_name is not None and member.name == '__init__':
             signature = f'{class_name}('
+        elif class_name is not None:
+            signature = f'{class_name}.{member.name}('
         else:
             signature = f'{member.name}('
         # the spacer is used for lining up wrapped lines
@@ -218,20 +228,21 @@ def process_member(member, lines, class_name=None):
             while lookahead_idx < len(splits):
                 # break if not a heading
                 if not splits[lookahead_idx].startswith('---'):
-                    raise ValueError('Out of sync heading.')
+                    raise ValueError('Parser out of lockstep with headings.')
                 heading = next_line.strip()
                 lines.append(config['heading_template'].format(heading=heading))
                 # skip the underscore line
                 next(splits_enum)
-                # if not param-type headings
+                # if not param-type headings - just extract the text blocks
                 if heading not in ['Parameters', 'Returns', 'Yields', 'Raises']:
                     lookahead_idx, next_line, text_block = extract_text_block(splits_enum, splits)
                     if len(text_block):
                         lines.append(text_block)
+                # otherwise iterate the parameters and their indented arguments
                 else:
                     # initial prime to move from heading to parameter name
                     lookahead_idx, next_line = next(splits_enum)
-                    # These have nested parameters
+                    # Iterate nested parameters
                     while True:
                         # this parser doesn't process typehints, use typehints in function declarations instead
                         if ' ' in next_line.strip() or ':' in next_line.strip():
@@ -255,7 +266,7 @@ def process_member(member, lines, class_name=None):
                         # break if a new heading found
                         if lookahead_idx == len(splits) or splits[lookahead_idx].startswith('---'):
                             break
-        # ignore when exhausting enum
+        # catch exhausted enum
         except StopIteration:
             pass
 
@@ -271,7 +282,8 @@ for module_name, doc_path in yam['module_map'].items():
         # module name
         lines.append(config['module_name_template'].format(module_name=module_name).replace('_', '\_'))
         # module docstring
-        lines.append(module.docstring.strip().replace('\n', ' '))
+        if module.docstring is not None:
+            lines.append(module.docstring.strip().replace('\n', ' '))
         if config['toc_template'] is not None:
             lines.append(config['toc_template'])
         # iterate the module's members
