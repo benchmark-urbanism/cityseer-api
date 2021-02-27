@@ -6,7 +6,4 @@ module.exports = {
   pugCommentPreserveSpaces: 'trim-all',
   pugWrapAttributesThreshold: -1,
   pugEmptyAttributes: 'as-is',
-  parser: {
-    markdown: 'markdownlint',
-  },
 }
