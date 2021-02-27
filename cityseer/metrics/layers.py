@@ -153,7 +153,7 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
     ::: warning Note
-    It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-#datalayerfromdict)
+    It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-datalayerfromdict)
     :::
 
     Parameters
@@ -515,14 +515,14 @@ class DataLayer:
         on the distances from the point of computation to the nearest example of a particular land-use. It therefore
         gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
         function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see
-        [distance_from_beta](/metrics/networks#distance-from-beta).)|
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
         | hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
         \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a
         pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
         examples of the pairwise distinct land-use combinations as routed through the point of computation.
         $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay.
         ($-\beta$ is provided by the `Network Layer`, see
-        [distance_from_beta](/metrics/networks#distance-from-beta).)|
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
         | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
         p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
         p_{j}$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
