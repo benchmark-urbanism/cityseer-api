@@ -39,13 +39,13 @@ plot.plot_nX(G, labels=True, dpi=100)
 ![An example graph](.vitepress/plots/images/graph.png)
 _An example graph._
 
-The [`tools.graphs`](/tools/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` `MultiGraphs`, i.e. undirected graphs allowing for parallel edges. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
+The [`tools.graphs`](/cityseer/tools/graphs.html) module contains a collection of convenience functions for the preparation and conversion of `networkX` `MultiGraphs`, i.e. undirected graphs allowing for parallel edges. These functions are designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
 
 There are generally two scenarios when creating a street network graph:
 
 1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node][0]['geom'] = linestring_geom`.
 
-2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs.html#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs.html#nx-remove-dangling-nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs.html#nx-remove-filler-nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs.html#nx-consolidate-nodes) assists in cleanin-up the network.
+2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/cityseer/tools/graphs.html#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/cityseer/tools/graphs.html#nx-wgs-to-utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/cityseer/tools/graphs.html#nx-remove-dangling-nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/cityseer/tools/graphs.html#nx-remove-filler-nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/cityseer/tools/graphs.html#nx-consolidate-nodes) assists in cleanin-up the network.
 
 ## Example
 
@@ -61,7 +61,7 @@ _A graph with inferred geometries. In this case the geometries are all exactly s
 
 We have now inferred geometries for each edge, meaning that each edge now has an associated `LineString` geometry. Any further manipulation of the graph using the `cityseer.graph` module will retain and further manipulate these geometries in-place.
 
-Once the geoms are readied, we can use tools such as [`nX_decompose`](/tools/graphs.html#nx-decompose) for generating granular graph representations and [`nX_to_dual`](/tools/graphs.html#nx-to-dual) for casting a primal graph representation to its dual.
+Once the geoms are readied, we can use tools such as [`nX_decompose`](/cityseer/tools/graphs.html#nx-decompose) for generating granular graph representations and [`nX_to_dual`](/cityseer/tools/graphs.html#nx-to-dual) for casting a primal graph representation to its dual.
 
 ```python
 G_decomp = graphs.nX_decompose(G, 50)
@@ -83,9 +83,9 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 ## Network Layers
 
-The `networkX` graph can now be transformed into a [`NetworkLayer`](/metrics/networks#class-networklayer) by invoking [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
+The `networkX` graph can now be transformed into a [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer) by invoking [`NetworkLayerFromNX`](/cityseer/metrics/networks#class-networklayerfromnx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`NetworkLayer.node_centrality`](/metrics/networks#networklayer-node-centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks#networklayer-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks#networklayer-metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks#networklayer-to-networkx) method.
+The [`NetworkLayer.node_centrality`](/cityseer/metrics/networks#networklayer-node-centrality) and [`NetworkLayer.segment_centrality`](/cityseer/metrics/networks#networklayer-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/cityseer/metrics/networks#networklayer-metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/cityseer/metrics/networks#networklayer-to-networkx) method.
 
 ```python
 from cityseer.metrics import networks
@@ -97,7 +97,7 @@ N.segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 
 ## Data Layers
 
-A [`DataLayer`](/metrics/layers#class-datalayer) represents data points. A `DataLayer` can be assigned to a [`NetworkLayer`](/metrics/networks#class-networklayer), which means that each data point will be associated with the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables `cityseer` to use dynamic spatial aggregation methods that more accurately describes distances from the perspective of pedestrians travelling over the network, and relative to the direction of approach.
+A [`DataLayer`](/cityseer/metrics/layers#class-datalayer) represents data points. A `DataLayer` can be assigned to a [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer), which means that each data point will be associated with the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables `cityseer` to use dynamic spatial aggregation methods that more accurately describes distances from the perspective of pedestrians travelling over the network, and relative to the direction of approach.
 
 ```python
 from cityseer.metrics import layers
@@ -119,7 +119,7 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](.vitepress/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers#datalayer-compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/metrics/layers#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](/metrics/layers#datalayer-compute-stats-multiple).
+Once the data has been assigned, the [`DataLayer.compute_aggregated`](/cityseer/metrics/layers#datalayer-compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/cityseer/metrics/layers#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/cityseer/metrics/layers#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/cityseer/metrics/layers#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](/cityseer/metrics/layers#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](/cityseer/metrics/layers#datalayer-compute-stats-multiple).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
@@ -176,7 +176,7 @@ G_dict = N.metrics_to_dict()
 print(G_dict[0]['centrality']['segment_betweenness'][200])
 ```
 
-The data can then be passed to data analysis or plotting methods. For example, the [`tools.plot`](/tools/plot.html) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
+The data can then be passed to data analysis or plotting methods. For example, the [`tools.plot`](/cityseer/tools/plot.html) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
 
 ```python
 # plot centrality

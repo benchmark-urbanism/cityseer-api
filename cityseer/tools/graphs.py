@@ -1406,7 +1406,7 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
 
     ::: warning Note
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayerFromNX](/metrics/networks#class-networklayerfromnx)
+    [NetworkLayerFromNX](/cityseer/metrics/networks#class-networklayerfromnx)
     :::
 
     Parameters
@@ -1578,7 +1578,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     ::: warning Note
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayer.to_networkX](/metrics/networks#to-networkX)
+    [NetworkLayer.to_networkX](/cityseer/metrics/networks#to-networkX)
     :::
 
     Parameters

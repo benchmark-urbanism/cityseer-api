@@ -319,9 +319,9 @@ def plot_assignment(Network_Layer,
     Parameters
     ----------
     Network_Layer
-        A [`NetworkLayer`](/metrics/networks#class-networklayer).
+        A [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer).
     Data_Layer
-        A [`DataLayer`](/metrics/layers#class-datalayer).
+        A [`DataLayer`](/cityseer/metrics/layers#class-datalayer).
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
