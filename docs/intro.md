@@ -49,7 +49,7 @@ There are generally two scenarios when creating a street network graph:
 
 ## Example
 
-Here, we'll walk through a high-level overview showing how to create and use `cityseer`. You can provide your own shapely geometries if you need precise street lengths / angles, else, you can auto-infer simple geometries from the start to end node of each network edge, which works well for graphs where nodes have been used to enscribe roadway geometries.
+Here, we'll walk through a high-level overview showing how to use `cityseer`. You can provide your own shapely geometries if you need precise street lengths / angles, else, you can auto-infer simple geometries from the start to end node of each network edge, which works well for graphs where nodes have been used to enscribe roadway geometries.
 
 ```python
 G = graphs.nX_simple_geoms(G)
