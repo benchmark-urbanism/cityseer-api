@@ -57,7 +57,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
 
     ![Example beta decays](../.vitepress/plots/images/betas.png)
     
-    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/cityseer/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
     $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -215,7 +215,7 @@ class NetworkLayer:
     this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
     concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of
     street intersections. In these cases, the network should first be cleaned using methods such as those available in
-    the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network
+    the [`graph`](/cityseer/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network
     topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be
     preferable because they are based on segment distances: segment aggregations remain the same regardless of the
     number of intervening nodes, however, are not immune from situations such as needlessly complex representations of
@@ -324,7 +324,7 @@ class NetworkLayer:
             | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
             The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm)
+            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/cityseer/tools/graphs.html#nx-wgs-to-utm)
             can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
             UTM `x`, `y` projected coordinate system.
 
@@ -590,7 +590,7 @@ class NetworkLayer:
     def to_networkX(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [`nX_from_graph_maps`](/tools/graphs.html#nx-from-graph-maps) internally.
+        [`nX_from_graph_maps`](/cityseer/tools/graphs.html#nx-from-graph-maps) internally.
 
         Returns
         -------
@@ -860,7 +860,7 @@ class NetworkLayerFromNX(NetworkLayer):
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs.html#graph-maps-from-nx) internally.
+        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/cityseer/tools/graphs.html#graph-maps-from-nx) internally.
         Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
         Parameters

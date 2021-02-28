@@ -259,13 +259,13 @@ Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment 
 
 <FuncElement name='Network_Layer' type='None'>
 
-A [`NetworkLayer`](/metrics/networks#class-networklayer).
+A [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer).
 
 </FuncElement>
 
 <FuncElement name='Data_Layer' type='None'>
 
-A [`DataLayer`](/metrics/layers#class-datalayer).
+A [`DataLayer`](/cityseer/metrics/layers#class-datalayer).
 
 </FuncElement>
 

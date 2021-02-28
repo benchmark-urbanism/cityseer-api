@@ -61,7 +61,7 @@ The strength of the decay is controlled by the $\beta$ parameter, which reflects
 
 ![Example beta decays](../.vitepress/plots/images/betas.png)
 
-[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/cityseer/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
 $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -184,7 +184,7 @@ These methods wrap the underlying `numba` optimised functions for computing cent
 
 The reasons for picking one approach over another are varied:
 
-- Node based centralities compute the measures relative to each reachable node within the threshold distances. For this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of street intersections. In these cases, the network should first be cleaned using methods such as those available in the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be preferable because they are based on segment distances: segment aggregations remain the same regardless of the number of intervening nodes, however, are not immune from situations such as needlessly complex representations of roadway intersections or a proliferation of walking paths in greenspaces;
+- Node based centralities compute the measures relative to each reachable node within the threshold distances. For this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of street intersections. In these cases, the network should first be cleaned using methods such as those available in the [`graph`](/cityseer/tools/graphs) module (see the [graph cleaning guide](/guide/cleaning) for examples). If a network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods can be preferable because they are based on segment distances: segment aggregations remain the same regardless of the number of intervening nodes, however, are not immune from situations such as needlessly complex representations of roadway intersections or a proliferation of walking paths in greenspaces;
 - Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once impedances decrease below $1$.
 - Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based) and dual graphs (node only).
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed on primal graphs because this does not account for the impact of differing topologies. Dual graph representations can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual. This effect is amplified for denser regions of the network.
@@ -273,7 +273,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/cityseer/tools/graphs.html#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects.
 
@@ -426,7 +426,7 @@ NetworkLayer.to_networkX()
 </pre>
 </FuncSignature>
 
-Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs.html#nx-from-graph-maps) internally.
+Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/cityseer/tools/graphs.html#nx-from-graph-maps) internally.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -587,7 +587,7 @@ NetworkLayerFromNX(networkX_multigraph,
 </pre>
 </FuncSignature>
 
-Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs.html#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
+Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/cityseer/tools/graphs.html#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
 <FuncHeading>Parameters</FuncHeading>
 
