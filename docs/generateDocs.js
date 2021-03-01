@@ -10,7 +10,7 @@ const options = {
 }
 
 if (!process.env.CI) {
-  options['pythonPath'] = 'venv/bin/python'
+  options['pythonPath'] = path.resolve(__dirname, '../venv/bin/python')
 }
 
 PythonShell.run('simple_docstring_parser.py', options, function (err) {

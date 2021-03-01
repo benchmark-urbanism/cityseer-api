@@ -8,6 +8,7 @@ Loosely based on Numpy-style docstrings.
 Automatically infers types from signature typehints. Explicitly documented types are NOT supported in docstrings.
 """
 import pathlib
+import sys
 
 import docspec
 import docspec_python
@@ -29,6 +30,14 @@ for file_name in file_names:
 if yam is None:
     raise ValueError(f'Unable to find valid configuration file. This file should be placed in the project root'
                      f'directory and should be name either {" or ".join([f_n for f_n in file_names])}')
+
+# check and add package root path if spec'd in config
+# this should only be necessary if the script is placed somewhere other than the package root
+if 'package_root_relative_path' in yam:
+    package_path = pathlib.Path(root_dir, yam['package_root_relative_path'])
+    print(package_path)
+    sys.path.append(package_path)
+
 # prepare the defaults
 config = {
     'frontmatter_template': None,
