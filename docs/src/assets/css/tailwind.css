@@ -1,0 +1,90 @@
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+@layer base {
+  /* font-body applies associated theme config to entire site */
+  html {
+  }
+
+  body {
+    @apply font-defaults font-normal text-base;
+    @apply bg-lightgrey text-darkgrey;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-headings leading-tight;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply pt-4 pb-2;
+  }
+
+  ul,
+  li {
+    @apply ml-3;
+
+    list-style-type: disc;
+  }
+
+  p {
+    @apply py-1;
+  }
+
+  a {
+    @apply text-theme;
+  }
+}
+
+/* FADE TRANSITION */
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+.fade-enter-to,
+.fade-leave {
+  opacity: 1;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 250ms ease-out;
+}
+.foreground-pulse {
+  opacity: 1;
+  animation-name: foreground-pulsate;
+  animation-duration: 0.5s;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes foreground-pulsate {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.95;
+  }
+}
+
+/* Markdown Admonitions */
+.admonition {
+  @apply border border-t-2 border-darkgrey bg-lightgrey shadow-md my-4 p-3 pb-4;
+}
+.admonition-heading {
+  @apply text-lg font-medium pb-2;
+}
+.admonition-content {
+  @apply text-sm font-medium;
+}
