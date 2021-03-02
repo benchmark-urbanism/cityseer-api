@@ -123,7 +123,7 @@ plot.plot_nX_primal_or_dual(G_simple,
                             plot_geoms=False)
 ```
 
-![Example primal and dual graph plot.](../.vitepress/plots/images/graph_dual.png)
+![Example primal and dual graph plot.](../../src/assets/plots/images/graph_dual.png)
 _A dual graph in blue overlaid on the source primal graph in red._
 
 ## plot\_nX
@@ -236,7 +236,7 @@ cols = cmap(vals)
 plot.plot_nX(G_after, node_colour=cols)
 ```
 
-![Example Colour Plot.](../.vitepress/plots/images/graph_colour.png)
+![Example Colour Plot.](../../src/assets/plots/images/graph_colour.png)
 _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
 ## plot\_assignment
@@ -259,13 +259,13 @@ Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment 
 
 <FuncElement name='Network_Layer' type='None'>
 
-A [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer).
+A [`NetworkLayer`](/metrics/networks#class-networklayer).
 
 </FuncElement>
 
 <FuncElement name='Data_Layer' type='None'>
 
-A [`DataLayer`](/cityseer/metrics/layers#class-datalayer).
+A [`DataLayer`](/metrics/layers#class-datalayer).
 
 </FuncElement>
 
@@ -301,7 +301,7 @@ An optional iterable of categorical data labels which will be mapped to colours.
 
 <FuncHeading>Notes</FuncHeading>
 
-![Example assignment plot.](../.vitepress/plots/images/assignment_plot.png)
+![Example assignment plot.](../../src/assets/plots/images/assignment_plot.png)
 _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
 
 ## plot\_graph\_maps

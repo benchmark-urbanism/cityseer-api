@@ -1,4 +1,4 @@
-# Graph cleaning
+# Graph Cleaning
 
 :::tip Note
 A notebook of this guide can be found at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
@@ -43,14 +43,14 @@ plot.plot_nX(G_utm,
              dpi=200)
 ```
 
-![The raw graph from OSM](../.vitepress/plots/images/graph_cleaning_1.png)
+![The raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
 ## Deducing the network topology
 
 Once OSM data has been converted to a `NetworkX` `MultiGraph`, `cityseer.tools` can be used to clean the network.
 
-> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with the [`graphs.nX_wgs_to_utm()`](/cityseer/tools/graphs.html#nx-wgs-to-utm) convenience method.
+> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with the [`graphs.nX_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm) convenience method.
 
 Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
 
@@ -80,7 +80,7 @@ plot.plot_nX(G,
              dpi=200)
 ```
 
-![Initial graph cleaning](../.vitepress/plots/images/graph_cleaning_2.png)
+![Initial graph cleaning](../../src/assets/plots/images/graph_cleaning_2.png)
 _After removal of filler nodes, dangling nodes, and disconnected components._
 
 ## Refining the network
@@ -89,7 +89,7 @@ Things are already looked much better, but we still have areas with large concen
 
 We'll do this in three steps:
 
-Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes()`](/cityseer/tools/graphs.html#nx-consolidate-nodes) function. The arguments passed to the parameters allow for several different strategies, and are explained more fully in the documentation.
+Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) function. The arguments passed to the parameters allow for several different strategies, and are explained more fully in the documentation.
 
 ```py
 G1 = graphs.nX_consolidate_nodes(G,
@@ -110,12 +110,12 @@ plot.plot_nX(G1,
              dpi=200)
 ```
 
-![First step of node consolidation](../.vitepress/plots/images/graph_cleaning_3.png)
+![First step of node consolidation](../../src/assets/plots/images/graph_cleaning_3.png)
 _After an initial pass of node consolidation._
 
 Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
 
-In Step 2, we'll use [`graphs.nX_split_opposing_geoms()`](/cityseer/tools/graphs.html#nx-split-opposing-geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
+In Step 2, we'll use [`graphs.nX_split_opposing_geoms`](/tools/graphs#nx-split-opposing-geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
 
 ```py
 G2 = graphs.nX_split_opposing_geoms(G1,
@@ -132,7 +132,7 @@ plot.plot_nX(G2,
              dpi=200)
 ```
 
-![Splitting opposing geoms](../.vitepress/plots/images/graph_cleaning_4.png)
+![Splitting opposing geoms](../../src/assets/plots/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
 In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes:
@@ -155,7 +155,7 @@ plot.plot_nX(G3,
              dpi=200)
 ```
 
-![Final step of node consolidation](../.vitepress/plots/images/graph_cleaning_5.png)
+![Final step of node consolidation](../../src/assets/plots/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
 The above recipe should be enough to get you started, but manyfold other strategies may also work, and may further be necessitated by different network topologies.

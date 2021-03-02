@@ -37,7 +37,7 @@ networkX_multigraph = mock.mock_graph()
 plot.plot_nX(networkX_multigraph)
 ```
 
-![Example graph](../.vitepress/plots/images/graph_example.png)
+![Example graph](../../src/assets/plots/images/graph_example.png)
 _Mock graph._
 
 ## primal\_graph

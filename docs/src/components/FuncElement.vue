@@ -10,35 +10,6 @@ div
       slot
 </template>
 
-<style lang="postcss" scoped>
-#container {
-  @apply flex py-3 items-start p-1 border-b border-lightgrey;
-}
-#column {
-  @apply flex-col py-1;
-
-  min-width: 220px;
-  max-width: 300px;
-}
-#name {
-  @apply font-mono text-base font-bold;
-}
-#type {
-  @apply font-mono text-xs font-normal;
-}
-#description {
-  @apply text-sm;
-}
-@media screen and (max-width: 958px) {
-  #container {
-    @apply py-1;
-  }
-  #name {
-    @apply text-sm;
-  }
-}
-</style>
-
 <script>
 export default {
   name: 'DisplayFunction',
@@ -55,3 +26,36 @@ export default {
   },
 }
 </script>
+
+<style lang="postcss" scoped>
+#container {
+  @apply flex py-3 items-start p-1 border-b border-midgrey;
+}
+#column {
+  @apply flex-col py-1;
+
+  min-width: 220px;
+  max-width: 300px;
+}
+#name {
+  @apply font-mono text-sm font-semibold;
+}
+#type {
+  @apply font-mono text-xs font-light;
+}
+#description > p {
+  @apply text-sm;
+}
+#description > * > code,
+#description > * > * > code {
+  @apply text-xs px-0.5 py-0;
+}
+@media screen and (max-width: 958px) {
+  #container {
+    @apply py-1;
+  }
+  #name {
+    @apply text-sm;
+  }
+}
+</style>
