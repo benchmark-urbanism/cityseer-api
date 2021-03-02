@@ -7,6 +7,46 @@ const postcssImport = require('postcss-import')
 const tailwindcss = require('tailwindcss')
 const autoprefixer = require('autoprefixer')
 
+const markdownPlugins = [
+  // autolink headings - included in transformer remark by default but want clickable link symbol
+  [
+    'remark-autolink-headings',
+    {
+      content: {
+        type: 'element',
+        tagName: 'font-awesome',
+        properties: { icon: 'link', size: 'xs', class: ['text-theme', 'px-1', 'mx-1'] },
+      },
+    },
+  ],
+  // emojis
+  'remark-emoji',
+  // makes emojis accessible
+  '@fec/remark-a11y-emoji',
+  // em-dashes and ellipses, etc.
+  [
+    '@silvenon/remark-smartypants',
+    {
+      dashes: 'oldschool',
+    },
+  ],
+  // note boxes
+  [
+    'gridsome-plugin-remark-container',
+    {
+      customTypes: {},
+      useDefaultTypes: true, // set to false if you don't want to use defaults
+      tag: ':::',
+      icons: 'none', // can be 'emoji' or 'none'
+      classMaster: 'admonition', // generate xyz-content, xyz-icon, heading, etc.
+    },
+  ],
+  // code blogs
+  '@gridsome/remark-prismjs',
+  // latex maths
+  'gridsome-remark-katex',
+]
+
 module.exports = {
   siteName: 'Cityseer API Docs',
   siteDescription:
@@ -14,28 +54,25 @@ module.exports = {
   siteUrl: 'https://cityseer.github.io/',
   pathPrefix: '/cityseer', // only used in production
   plugins: [
-    // https://gridsome.org/plugins/@gridsome/source-filesystem
     {
-      use: '@gridsome/source-filesystem',
+      use: '@gridsome/vue-remark',
       options: {
-        path: '*/*.md',
-        typeName: 'Docs',
+        typeName: 'Landing',
         baseDir: './content',
-        remark: {
-          plugins: [],
-        },
+        template: './src/templates/Landing.vue',
+        route: '/',
+        includePaths: ['landing.md'],
+        index: ['landing'],
       },
     },
     {
-      use: '@gridsome/source-filesystem',
+      use: '@gridsome/vue-remark',
       options: {
-        path: 'landing.md',
-        typeName: 'Landing',
+        typeName: 'Doc',
         baseDir: './content',
-        index: ['landing'],
-        remark: {
-          plugins: [],
-        },
+        template: './src/templates/Doc.vue',
+        ignore: ['landing.md'],
+        plugins: markdownPlugins,
       },
     },
     // https://gridsome.org/plugins/gridsome-plugin-pug
@@ -77,32 +114,6 @@ module.exports = {
       },
     },
   ],
-  transformers: {
-    remark: {
-      plugins: [
-        // '@iktakahiro/markdown-it-katex',
-        // 'markdown-it-replacements',
-        'remark-emoji',
-        '@fec/remark-a11y-emoji',
-        [
-          '@silvenon/remark-smartypants',
-          {
-            dashes: 'oldschool',
-          },
-        ],
-        [
-          'gridsome-plugin-remark-container',
-          {
-            customTypes: {},
-            useDefaultTypes: true, // set to false if you don't want to use default types
-            tag: ':::',
-            icons: 'none', // can be 'emoji' or 'none'
-            classMaster: 'admonition', // generate xyz-content, xyz-icon, xyz-heading
-          },
-        ],
-      ],
-    },
-  },
   css: {
     loaderOptions: {
       postcss: {

@@ -7,10 +7,11 @@
 @layer base {
   /* font-body applies associated theme config to entire site */
   html {
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply font-defaults font-normal text-base;
+    @apply font-defaults font-normal text-base leading-normal;
     @apply bg-lightgrey text-darkgrey;
   }
 
@@ -20,13 +21,36 @@
   h4,
   h5,
   h6 {
-    @apply font-headings leading-tight;
+    @apply font-headings;
   }
 
-  h1,
+  h1 {
+    @apply text-4xl pt-28 pb-4;
+  }
+
   h2,
   h3 {
-    @apply pt-4 pb-2;
+    @apply pt-8 pb-2;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
   }
 
   ul,
@@ -37,28 +61,40 @@
   }
 
   p {
-    @apply py-1;
+    @apply text-base py-1;
+  }
+
+  code {
+    @apply font-mono text-sm font-medium px-1 py-0.5 bg-midgrey rounded;
+  }
+
+  pre > code {
+    @apply font-mono text-sm !important;
   }
 
   a {
     @apply text-theme;
   }
+
+  table {
+  }
+
+  th {
+    @apply border-b border-midgrey py-2;
+  }
+
+  td {
+    @apply p-1 text-xs;
+  }
+
+  td > code,
+  td > a > code {
+    @apply text-xs px-0.5 py-0;
+  }
 }
 
 /* FADE TRANSITION */
 
-.fade-enter,
-.fade-leave-to {
-  opacity: 0;
-}
-.fade-enter-to,
-.fade-leave {
-  opacity: 1;
-}
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 250ms ease-out;
-}
 .foreground-pulse {
   opacity: 1;
   animation-name: foreground-pulsate;
@@ -80,11 +116,10 @@
 
 /* Markdown Admonitions */
 .admonition {
-  @apply border border-t-2 border-darkgrey bg-lightgrey shadow-md my-4 p-3 pb-4;
+  @apply border border-t-3 border-darkgrey rounded-b-md bg-white shadow my-4 p-3 pb-4;
 }
 .admonition-heading {
-  @apply text-lg font-medium pb-2;
+  @apply text-lg font-semibold pb-2;
 }
 .admonition-content {
-  @apply text-sm font-medium;
 }

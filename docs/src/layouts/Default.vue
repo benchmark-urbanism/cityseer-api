@@ -1,9 +1,6 @@
 <template lang="pug">
-div
-  main#layout-container
-    slot
-    section
-      slot(name='left')
+.w-full.h-full
+  slot
 </template>
 
 <script>

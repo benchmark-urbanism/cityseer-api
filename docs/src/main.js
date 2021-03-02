@@ -1,21 +1,37 @@
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { config, library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowRight, faArrowLeft, faHome } from '@fortawesome/free-solid-svg-icons'
-import '@fortawesome/fontawesome-svg-core/styles.css'
 import Vuex from 'vuex'
 import { format } from 'date-fns'
-
+// font awesome
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { config, library } from '@fortawesome/fontawesome-svg-core'
+import { faArrowRight, faArrowLeft, faHome, faLink } from '@fortawesome/free-solid-svg-icons'
+import '@fortawesome/fontawesome-svg-core/styles.css'
+// tailwind
 import './assets/css/tailwind.css'
+// prism
+import 'prismjs/themes/prism-okaidia.css'
+// default layout
 import DefaultLayout from '~/layouts/Default.vue'
+// import custom components
+import Chip from './components/Chip.vue'
+import FuncElement from './components/FuncElement.vue'
+import FuncHeading from './components/FuncHeading.vue'
+import FuncSignature from './components/FuncSignature.vue'
 
 // setup fontAwesome
 config.autoAddCss = false
-library.add(faArrowRight, faArrowLeft, faHome)
+library.add(faArrowRight, faArrowLeft, faHome, faLink)
 
 export default function (Vue, { appOptions, head }) {
   // Set default layout as a global component
   Vue.component('Layout', DefaultLayout)
+  // Add global components for rendering markdown
+  Vue.component('Chip', Chip)
+  Vue.component('FuncElement', FuncElement)
+  Vue.component('FuncHeading', FuncHeading)
+  Vue.component('FuncSignature', FuncSignature)
+  // Font Awesome
   Vue.component('FontAwesome', FontAwesomeIcon)
+  // Head
   head.link.push({ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' })
   head.link.push({ rel: 'preconnect', href: 'https://fonts.gstatic.com' })
   head.link.push({
@@ -54,7 +70,7 @@ export default function (Vue, { appOptions, head }) {
     getters: {
       smallMode: (state) => {
         if (state.innerWidth && state.innerHeight) {
-          return state.innerWidth < 1024
+          return state.innerWidth < 958
         }
         return false
       },

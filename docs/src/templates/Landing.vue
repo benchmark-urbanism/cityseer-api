@@ -1,26 +1,18 @@
 <template lang="pug">
 Layout
   template
-    #landing-container
-      #title {{ $page.metadata.siteName }}
-      #landing-content
-        div
-          #tagline
-            h1 {{ landing.tagline }}
-          #features
-            div(v-for='feature in landing.features')
-              h2.feature-heading {{ feature.title }}
-              p.feature-blurb {{ feature.details }}
+    #landing-content
+      div
+        #tagline
+          h1 {{ landing.tagline }}
+        #features
+          div(v-for='feature in landing.features')
+            h2.feature-heading {{ feature.title }}
+            p.feature-blurb {{ feature.details }}
 </template>
 
 <page-query>
 query ($id: ID) {
-  metadata {
-    siteName
-    siteDescription
-    siteUrl
-    pathPrefix
-  }
   landing: landing (id: $id) {
     id
     tagline
@@ -29,7 +21,7 @@ query ($id: ID) {
       details
     }
   }
-  docs: allDocs {
+  docs: allDoc {
     edges {
       node {
         id
@@ -63,16 +55,6 @@ export default {
 </script>
 
 <style lang="postcss" scoped>
-#landing-container {
-  @apply flex mx-0.5 bg-blue-100;
-}
-#title {
-  @apply px-3 py-8;
-  @apply text-6xl tracking-tight font-extralight;
-
-  text-shadow: 0 -0.5px 1px #fff;
-  writing-mode: vertical-lr;
-}
 #landing-content {
   @apply w-full flex justify-center bg-red-100;
 }
@@ -107,7 +89,7 @@ export default {
   }
 }
 
-@media only screen and (max-height: 1024px) {
+@media only screen and (max-height: 958px) {
   #page-title {
     @apply text-4xl font-light px-2 pt-4;
   }
@@ -126,7 +108,7 @@ export default {
   }
 }
 
-@media only screen and (max-width: 1024px) {
+@media only screen and (max-width: 958px) {
   #page-title {
     @apply text-xl py-4 font-medium;
   }

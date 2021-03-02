@@ -287,10 +287,10 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 See the guide on [graph cleaning](/guide/cleaning) for more information.
 
-![Example raw graph from OSM](../.vitepress/plots/images/graph_cleaning_1.png)
+![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
-![Example cleaned graph](../.vitepress/plots/images/graph_cleaning_5.png)
+![Example cleaned graph](../../src/assets/plots/images/graph_cleaning_5.png)
 _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
 ## nX\_split\_opposing\_geoms
@@ -330,7 +330,7 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
 
 <FuncElement name='multi_edge_len_factor' type='float'>
 
-In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
+In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the `multi_edge_len_factor` as a factor of the shortest length but with the exception that (longer) edges still shorter than `multi_edge_min_len` are removed regardless. Defaults to 1.5.
 
 </FuncElement>
 
@@ -360,12 +360,12 @@ nX_decompose(networkX_multigraph,
 
 Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
 
-::: warning Note
+:::warning Note
 
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
 :::
 
-::: tip Hint
+:::tip Hint
 
 This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
 :::
@@ -403,10 +403,10 @@ G_decomposed = graphs.nX_decompose(G_simple, 100)
 plot.plot_nX(G_decomposed)
 ```
 
-![Example graph](../.vitepress/plots/images/graph_simple.png)
+![Example graph](../../src/assets/plots/images/graph_simple.png)
 _Example graph prior to decomposition._
 
-![Example decomposed graph](../.vitepress/plots/images/graph_decomposed.png)
+![Example decomposed graph](../../src/assets/plots/images/graph_decomposed.png)
 _Example graph after decomposition._
 
 ## nX\_to\_dual
@@ -454,7 +454,7 @@ plot.plot_nX_primal_or_dual(G_simple,
                             plot_geoms=False)
 ```
 
-![Example dual graph](../.vitepress/plots/images/graph_dual.png)
+![Example dual graph](../../src/assets/plots/images/graph_dual.png)
 _Dual graph (blue) overlaid on the source primal graph (red)._
 
 ## graph\_maps\_from\_nX
@@ -468,9 +468,9 @@ graph_maps_from_nX(networkX_multigraph)
 
 Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and angle attributes, as well as in and out bearings and stores these in the returned data maps.
 
-::: warning Note
+:::warning Note
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/cityseer/metrics/networks#class-networklayerfromnx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks#class-networklayerfromnx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -538,9 +538,9 @@ nX_from_graph_maps(node_uids,
 
 Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `networkX_multigraph` parameter.
 
-::: warning Note
+:::warning Note
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/cityseer/metrics/networks#to-networkX)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks#to-networkX)
 :::
 
 <FuncHeading>Parameters</FuncHeading>

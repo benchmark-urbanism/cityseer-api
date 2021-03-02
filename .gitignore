@@ -17,9 +17,6 @@ __pycache__/
 # C extensions
 *.so
 
-# Docs
-docs/.vitepress/dist
-
 # node modules and gridsome are nested into the docs directory
 docs/yarn.lock
 docs/yarn-debug.log*

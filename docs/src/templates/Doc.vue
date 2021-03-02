@@ -1,10 +1,6 @@
-<template>
-  <Layout>
-    <p class="intro">
-      {{ $page.doc.excerpt }}
-    </p>
-    <VueRemarkContent />
-  </Layout>
+<template lang="pug">
+Layout
+  VueRemarkContent
 </template>
 
 <!-- Front-matter fields can be queried from GraphQL layer -->
