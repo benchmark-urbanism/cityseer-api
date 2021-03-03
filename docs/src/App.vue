@@ -39,7 +39,7 @@ main.app-container
     footer#footer-container
       div Copyright © 2018-present Gareth Simons
   // right side of page is content
-  section#content-column(ref='routerView')
+  section#content-column.pb-20(ref='routerView')
     router-view
 </template>
 
@@ -110,14 +110,14 @@ export default {
       largeSize: 250,
       smallSize: 100,
       navPaths: [
-        '/intro/',
-        '/guide/cleaning/',
-        '/tools/graphs/',
-        '/tools/plot/',
-        '/tools/mock/',
-        '/metrics/layers/',
-        '/metrics/networks/',
-        '/attribution/',
+        '/intro',
+        '/guide/cleaning',
+        '/tools/graphs',
+        '/tools/plot',
+        '/tools/mock',
+        '/metrics/layers',
+        '/metrics/networks',
+        '/attribution',
       ],
     }
   },
@@ -132,9 +132,14 @@ export default {
       const sortedDocs = {}
       // iterate the paths in order
       this.navPaths.forEach((navPath) => {
-        const thisDoc = this.docs.filter((doc) => doc.path == navPath).pop()
+        const thisDoc = this.docs.filter((doc) => doc.path === navPath).pop()
         // note if a document is active
-        const isActive = thisDoc.path === this.$route.path
+        // catch URLs with extra trailing slash when checking for active paths
+        let routerPath = this.$route.path
+        if (routerPath[routerPath.length - 1] === '/') {
+          routerPath = routerPath.substring(0, routerPath.length - 1)
+        }
+        const isActive = thisDoc.path === routerPath
         // and if so, collect the h2 children
         const children = []
         if (isActive) {
@@ -166,11 +171,13 @@ export default {
     docNav: {
       immediate: true,
       handler(newDocNav) {
+        if (!newDocNav) return
         // reset h2 element state for interactive nav
         // find the active route / tab
         const activeNav = Object.values(newDocNav)
           .filter((doc) => doc.active)
           .pop()
+        if (!activeNav) return
         // setup the state dictionary
         this.h2Elems = {}
         activeNav.children.forEach((h2) => {
