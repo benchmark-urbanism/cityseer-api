@@ -82,7 +82,7 @@ encode_categorical(classes)
 
 Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique elements.
 
-:::warning Note
+:::warning Comment
 
 It is generally not necessary to utilise this function directly. It will be called implicitly if calculating land-use metrics.
 :::
@@ -132,7 +132,7 @@ data_map_from_dict(data_dict)
 
 Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
-:::warning Note
+:::warning Comment
 
 It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-datalayerfromdict)
 :::
@@ -270,12 +270,12 @@ The maximum distance to consider when assigning respective data points to the ne
 
 <FuncHeading>Notes</FuncHeading>
 
-:::tip Hint
+:::tip Comment
 
 The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max_dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
 :::
 
-:::warning Note
+:::warning Comment
 
 The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/tools/graphs#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
 :::
@@ -467,7 +467,7 @@ Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic wh
 | gini_simpson | $\scriptstyle 1 - \sum_{i}^{S} p_{i}^2$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
 | raos_pairwise_disparity | $\scriptstyle \sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.|
 
-:::tip Hint
+:::tip Comment
 
 The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse classifications schemas.
 :::
@@ -659,7 +659,7 @@ The data key will correspond to the `stats_key` parameter, e.g. where using `occ
 
 `NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
 
-:::tip Hint
+:::tip Comment
 
 Per the above worked example, the following stat types will be available for each `stats_key` for each of the computed distances:
 
@@ -667,6 +667,7 @@ Per the above worked example, the following stat types will be available for eac
 - `sum` and `sum_weighted`
 - `mean` and `mean_weighted`
 - `variance` and `variance_weighted`
+
 :::
 
 ## DataLayer.compute\_stats\_multiple

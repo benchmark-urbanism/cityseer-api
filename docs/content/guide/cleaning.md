@@ -1,6 +1,6 @@
 # Graph Cleaning
 
-:::tip Note
+:::tip Comment
 A notebook of this guide can be found at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
 :::
 
