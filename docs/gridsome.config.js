@@ -114,6 +114,9 @@ module.exports = {
       },
     },
   ],
+  permalinks: {
+    trailingSlash: false,
+  },
   css: {
     loaderOptions: {
       postcss: {
