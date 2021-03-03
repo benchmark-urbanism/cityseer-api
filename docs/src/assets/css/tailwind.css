@@ -65,11 +65,11 @@
   }
 
   code {
-    @apply font-mono text-sm font-medium px-1 py-0.5 bg-midgrey rounded;
+    @apply font-mono text-xs font-medium px-1 py-0.5 bg-midgrey rounded;
   }
 
   pre > code {
-    @apply font-mono text-sm !important;
+    @apply font-mono text-xs font-medium !important;
   }
 
   a {
@@ -91,26 +91,8 @@
   td > a > code {
     @apply text-xs px-0.5 py-0;
   }
-}
 
-/* FADE TRANSITION */
-
-.foreground-pulse {
-  opacity: 1;
-  animation-name: foreground-pulsate;
-  animation-duration: 0.5s;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-}
-
-@keyframes foreground-pulsate {
-  0% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.95;
+  @media only screen and (max-height: 958px), (max-width: 958px) {
   }
 }
 

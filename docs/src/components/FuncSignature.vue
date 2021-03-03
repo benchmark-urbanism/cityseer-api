@@ -15,14 +15,9 @@ div
 #sig-style pre {
   @apply m-0 p-0;
 }
-@media screen and (max-width: 958px) {
+@media only screen and (max-height: 958px), (max-width: 958px) {
   #sig-style {
     @apply text-sm;
-  }
-}
-@media screen and (max-width: 600px) {
-  #sig-style {
-    @apply text-xs;
   }
 }
 </style>

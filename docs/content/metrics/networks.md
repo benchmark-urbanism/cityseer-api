@@ -14,7 +14,7 @@ distance_from_beta(beta,
 
 Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
-:::warning Note
+:::warning Comment
 
 It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
 :::
@@ -95,7 +95,7 @@ beta_from_distance(distance,
 
 Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
 
-:::warning Note
+:::warning Comment
 
 It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
 :::
@@ -180,7 +180,7 @@ There are two network centrality methods available depending on whether you're u
 
 These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
 
-:::tip Hints
+:::tip Comment
 
 The reasons for picking one approach over another are varied:
 
@@ -338,7 +338,7 @@ A `NetworkLayer`.
 
 <FuncHeading>Notes</FuncHeading>
 
-:::tip Hint
+:::tip Comment
 
 It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance` parameter values to `np.inf`. Note that this may substantially increase the computational time required for the completion of the algorithms on large networks.
 :::

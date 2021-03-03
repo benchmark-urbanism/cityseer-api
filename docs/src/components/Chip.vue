@@ -4,12 +4,6 @@
     span {{ text }}
 </template>
 
-<style lang="postcss" scoped>
-#chip-style {
-  @apply rounded-sm py-0.5 px-1 text-xs font-bold bg-red-600 text-white inline-block align-top shadow;
-}
-</style>
-
 <script>
 export default {
   name: 'Chip',
@@ -27,3 +21,9 @@ export default {
   },
 }
 </script>
+
+<style lang="postcss" scoped>
+#chip-style {
+  @apply rounded-sm py-0.5 px-1 text-xs font-bold bg-red-600 text-white inline-block align-top shadow;
+}
+</style>

@@ -70,45 +70,7 @@ export default {
 .feature-blurb {
 }
 
-@media only screen and (max-width: 1500px) {
-  #page-title {
-    @apply text-4xl font-light px-2 pt-4;
-  }
-  #intro-text {
-    @apply text-xl px-6 py-2 font-medium;
-  }
-  .row {
-    @apply py-6;
-  }
-  .trip-title,
-  .excerpt {
-    @apply px-6;
-  }
-  .trip-title {
-    @apply text-xl;
-  }
-}
-
-@media only screen and (max-height: 958px) {
-  #page-title {
-    @apply text-4xl font-light px-2 pt-4;
-  }
-  #intro-text {
-    @apply text-right text-lg font-medium px-6 py-2;
-  }
-  .row {
-    @apply py-6;
-  }
-  .trip-title,
-  .excerpt {
-    @apply text-base px-6;
-  }
-  .trip-title {
-    @apply text-xl;
-  }
-}
-
-@media only screen and (max-width: 958px) {
+@media only screen and (max-height: 958px), (max-width: 958px) {
   #page-title {
     @apply text-xl py-4 font-medium;
   }

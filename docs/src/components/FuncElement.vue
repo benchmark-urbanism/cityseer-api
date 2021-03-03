@@ -41,7 +41,7 @@ export default {
   @apply font-mono text-sm font-semibold;
 }
 #type {
-  @apply font-mono text-xs font-light;
+  @apply font-mono text-xxs font-normal;
 }
 #description > p {
   @apply text-sm;
@@ -50,7 +50,7 @@ export default {
 #description > * > * > code {
   @apply text-xs px-0.5 py-0;
 }
-@media screen and (max-width: 958px) {
+@media only screen and (max-height: 958px), (max-width: 958px) {
   #container {
     @apply py-1;
   }

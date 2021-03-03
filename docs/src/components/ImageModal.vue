@@ -4,23 +4,6 @@ div
   em {{ caption }}
 </template>
 
-<style lang="postcss" scoped>
-.modal {
-  @apply fixed w-full h-full z-50;
-
-  background-color: rgba(0, 0, 0, 0.9);
-}
-
-/* Modal Content/Box */
-.modal-content {
-  @apply relative bg-darkgrey p-4;
-
-  margin: 15% auto;
-  width: 80%;
-  max-width: 1500px;
-}
-</style>
-
 <script>
 export default {
   name: 'ImageModal',
@@ -42,3 +25,20 @@ export default {
   },
 }
 </script>
+
+<style lang="postcss" scoped>
+.modal {
+  @apply fixed w-full h-full z-50;
+
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Modal Content/Box */
+.modal-content {
+  @apply relative bg-darkgrey p-4;
+
+  margin: 15% auto;
+  width: 80%;
+  max-width: 1500px;
+}
+</style>

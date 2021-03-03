@@ -9,8 +9,9 @@ module.exports = {
         mono: ['Roboto Mono', 'monospace'],
       },
       fontSize: {
-        xs: '0.7rem',
-        sm: '0.85rem',
+        xxs: '0.7rem',
+        xs: '0.8rem',
+        sm: '0.9rem',
         base: '1.0rem',
         lg: '1.1rem',
         xl: '1.3rem',
