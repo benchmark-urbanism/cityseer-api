@@ -2,28 +2,29 @@
 // don't use id# because overriden (#app) from elsewhere
 main.app-container
   aside#nav-column
-    header
-      router-link#logo-route(
-        to='/'
-        :class='{ "pointer-events-none": $route.path === "/" }'
-        title='home'
-      )
-        img#logo-img.foreground-pulse(src='./assets/logos/cityseer_logo_light_red.png' alt='logo')
-    section.flex.flex-grow
-      title#title {{ $static.metadata.siteName }}
-      nav#nav-container
-        router-link.nav-link.self-center.p-6(to='/' title='to home')
-          // figure out how to inject link SVG...?
-          span.svg-inline--fa.fa-link.fa-w-18.fa-lg.text-theme
-          font-awesome.text-theme(icon='home' size='lg')
-        div(v-for='doc in docNav' :key='doc.id' @click='animChildren(doc.path)')
-          .nav-link(:class='{ "nav-link-active": doc.active }') {{ doc.title }}
-          .nested-link(v-for='h2 in doc.children' :key='h2.anchor' @click='scrollTo(h2.anchor)') {{ h2.value }}
-          .pb-2(v-if='doc.active')
+    section.flex-grow.flex
+      #title {{ $static.metadata.siteName }}
+      nav#nav-container(ref='navContainer')
+        router-link#logo-route(
+          to='/'
+          :class='{ "pointer-events-none": $route.path === "/" }'
+          title='home'
+        )
+          img#logo-img.foreground-pulse(
+            src='./assets/logos/cityseer_logo_light_red.png'
+            alt='logo'
+          )
+        .flex.flex-col.justify-end(v-for='doc in docNav' :key='doc.id')
+          .nav-link(
+            @click.self='animChildren(doc.path)'
+            :class='{ "nav-link-active": doc.active }'
+          ) {{ doc.title }}
+          router-link(v-for='h2 in doc.children' :key='h2.anchor' :to='h2.anchor')
+            .nested-link.pb-2(:id='h2.anchor') {{ h2.value }}
     footer#footer-container
       div Copyright © 2018-present Gareth Simons
-  #content-column.overflow-y-auto(ref='routerView')
-    router-view.max-w-3xl
+  #content-column(ref='routerView')
+    router-view
 </template>
 
 <static-query>
@@ -119,8 +120,6 @@ export default {
           children: isActive ? thisDoc.headings : [],
         }
       })
-      console.log(sortedDocs)
-      console.log(this.$route.path, sortedDocs)
       return sortedDocs
     },
   },
@@ -142,16 +141,15 @@ export default {
     window.addEventListener('resize', () => this.domDims())
     // check the logo size is in sync
     this.updateLogoSize()
-
     // active scroll
     this.observer = new IntersectionObserver(this.onElementObserved, {
       root: this.$refs.scrollable,
       rootMargin: '0px',
       theshold: 1.0,
     })
-    // this.$refs.scrollable.querySelectorAll('h2').forEach((el) => {
-    //   this.observer.observe(el)
-    // })
+    this.$refs.routerView.querySelectorAll('h2').forEach((el) => {
+      this.observer.observe(el)
+    })
   },
   unmounted() {
     if (!process.isClient) return
@@ -219,6 +217,8 @@ export default {
     onElementObserved(entries) {
       entries.forEach(({ target, isIntersecting }) => {
         console.log(target, isIntersecting)
+        const navLink = this.$refs.navContainer.querySelector(`#${target.id}`)
+        console.log(navLink)
       })
     },
   },
@@ -244,22 +244,20 @@ export default {
 
 <style lang="postcss" scoped>
 .app-container {
-  @apply h-screen w-screen grid gap-0;
-
-  grid-template-columns: 30% 70%;
+  @apply min-h-screen w-screen flex;
 }
 
 #nav-column {
-  @apply col-start-1 col-span-1 sticky top-0 w-full max-h-screen;
-  @apply flex flex-col text-right;
+  @apply sticky top-0 h-screen bg-red-50 overflow-y-auto;
+  @apply flex flex-col items-end text-right border-r border-midgrey;
 }
 
 #content-column {
-  @apply col-start-2 col-span-1;
+  @apply max-w-3xl px-6;
 }
 
 #logo-route {
-  @apply relative flex items-end m-4 self-end;
+  @apply w-full flex items-end py-10;
 
   width: 250px;
 }
@@ -273,23 +271,27 @@ export default {
 }
 
 #title-container {
-  @apply flex mx-0.5 bg-blue-100;
+  @apply flex mx-0.5 bg-blue-500;
 }
 
 #title {
-  @apply px-3 py-8;
-  @apply text-6xl tracking-tight font-extralight;
+  @apply px-0 py-10;
+  @apply text-4xl tracking-tight leading-normal font-extralight;
 
   text-shadow: 0 -0.5px 1px #fff;
   writing-mode: vertical-lr;
 }
 
+#footer-container {
+  @apply w-full text-right text-xs px-2 py-0.5;
+}
+
 #nav-container {
-  @apply w-full pr-8;
+  @apply w-full pr-4 flex flex-col;
 }
 
 .nav-link {
-  @apply text-lg text-theme font-normal py-1 px-4 cursor-pointer;
+  @apply text-lg text-theme font-normal px-4 py-1 cursor-pointer;
 }
 
 .nav-link-active,
@@ -309,10 +311,6 @@ export default {
 
 #app-content {
   @apply flex-1 w-full pt-5;
-}
-
-#footer-container {
-  @apply w-full flex justify-between items-center text-xs p-2;
 }
 
 @media only screen and (max-height: 958px) {
