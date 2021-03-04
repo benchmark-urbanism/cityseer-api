@@ -1,0 +1,51 @@
+{
+  "scripts": {
+    "generate": "node generateDocs.js",
+    "lint": "markdownlint 'content/**/*.md' --fix",
+    "dev": "yarn run generate && yarn run lint && gridsome develop",
+    "build": "yarn run generate && yarn run lint && gridsome build",
+    "explore": "yarn run generate && yarn run lint && gridsome explore"
+  },
+  "dependencies": {
+    "animejs": "^3.2.1",
+    "date-fns": "^2.17.0",
+    "gridsome": "^0.7.23",
+    "lodash": "^4.17.21",
+    "vuex": "^3.6.2"
+  },
+  "devDependencies": {
+    "@fec/remark-a11y-emoji": "^3.0.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.34",
+    "@fortawesome/free-solid-svg-icons": "^5.15.2",
+    "@fortawesome/vue-fontawesome": "^2.0.0",
+    "@gridsome/plugin-sitemap": "^0.4.0",
+    "@gridsome/remark-prismjs": "^0.5.0",
+    "@gridsome/source-filesystem": "^0.6.2",
+    "@gridsome/transformer-remark": "^0.6.4",
+    "@gridsome/vue-remark": "^0.2.6",
+    "@prettier/plugin-pug": "^1.13.4",
+    "@silvenon/remark-smartypants": "^1.0.0",
+    "@tailwindcss/postcss7-compat": "^2.0.3",
+    "autoprefixer": "^9",
+    "eslint": "^7.20.0",
+    "eslint-config-prettier": "^8.0.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-vue": "^7.6.0",
+    "gridsome-plugin-pug": "^0.0.3",
+    "gridsome-plugin-remark-container": "^0.1.3",
+    "gridsome-plugin-robots-txt": "^1.0.2",
+    "gridsome-remark-katex": "^0.1.1",
+    "markdownlint-cli": "^0.26.0",
+    "postcss": "^7",
+    "postcss-import": "^12",
+    "prettier": "^2.2.1",
+    "pug": "^3.0.0",
+    "pug-plain-loader": "^1.1.0",
+    "python-shell": "^2.0.3",
+    "remark-emoji": "^2.1.0",
+    "stylelint": "^13.11.0",
+    "stylelint-config-prettier": "^8.0.2",
+    "stylelint-config-standard": "^20.0.0",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat"
+  }
+}
