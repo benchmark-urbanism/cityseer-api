@@ -4,7 +4,7 @@ heading_template: "\n\n<FuncHeading>{heading}</FuncHeading>\n\n"
 param_template: "\n\n<FuncElement name='{name}' type='{type}'>\n\n{description}\n\n</FuncElement>\n\n"
 return_template: "\n\n<FuncElement name='{name}'>\n\n{description}\n\n</FuncElement>\n\n"
 module_map:
-  cityseer.tools.plot: content/tools/plot.md
+  # cityseer.tools.plot: content/tools/plot.md
   cityseer.tools.graphs: content/tools/graphs.md
   cityseer.tools.mock: content/tools/mock.md
   cityseer.metrics.networks: content/metrics/networks.md
