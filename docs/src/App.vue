@@ -147,7 +147,12 @@ export default {
       const sortedDocs = {}
       // iterate the paths in order
       this.navPaths.forEach((navPath) => {
-        const thisDoc = this.docs.filter((doc) => doc.path === navPath).pop()
+        const filteredDocs = this.docs.filter((doc) => {
+          console.log(doc.path)
+          return doc.path === navPath
+        })
+        if (filteredDocs.length === 0) console.log('nothing here')
+        const thisDoc = filteredDocs.pop()
         // note if a document is active
         // catch URLs with extra trailing slash when checking for active paths
         let routerPath = this.$route.path
