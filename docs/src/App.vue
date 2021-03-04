@@ -151,12 +151,7 @@ export default {
       const sortedDocs = {}
       // iterate the paths in order
       this.navPaths.forEach((navPath) => {
-        const filteredDocs = this.docs.filter((doc) => {
-          console.log(doc.path)
-          return doc.path === navPath
-        })
-        if (filteredDocs.length === 0) console.log('nothing here')
-        const thisDoc = filteredDocs.pop()
+        const thisDoc = this.docs.filter((doc) => doc.path === navPath).pop()
         // note if a document is active
         // catch URLs with extra trailing slash when checking for active paths
         let routerPath = this.$route.path
@@ -392,7 +387,9 @@ export default {
 }
 
 #nav-tree {
-  @apply flex-grow w-full flex flex-col items-end bg-red-50;
+  @apply flex-grow w-full flex flex-col items-end;
+
+  background-color: rgba(211, 47, 47, 0.075);
 }
 
 #nested-nav-tree {
@@ -464,7 +461,7 @@ export default {
     @apply flex-col items-center;
   }
   #go-box {
-    @apply py-6;
+    @apply py-8;
   }
   #go-button {
     @apply w-16 h-16;
@@ -473,8 +470,10 @@ export default {
     @apply self-center;
   }
   #nav-column {
-    @apply w-full relative min-h-0 items-start pl-0;
+    @apply w-full relative items-start pl-0;
     @apply border-r-0 border-b-1 border-theme;
+
+    min-height: 50vh;
   }
   #nav-side-by-side {
     @apply w-full;
