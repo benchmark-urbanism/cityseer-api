@@ -18,6 +18,9 @@ jobs:
         run: |
           cd docs
           yarn install
+          yarn run generate
+          yarn run lint
+          cat content/tools/plot.md
           yarn run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
