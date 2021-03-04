@@ -65,11 +65,12 @@
   }
 
   code {
-    @apply font-mono text-xs font-medium px-1 py-0.5 bg-midgrey rounded;
+    @apply font-mono text-xs tracking-tight font-medium px-1 py-0.5 bg-gray-200 rounded;
   }
 
   pre > code {
-    @apply font-mono text-xs font-medium !important;
+    @apply whitespace-pre-wrap overflow-x-auto !important;
+    @apply font-mono text-xs tracking-tight font-normal !important;
   }
 
   a {
@@ -77,14 +78,15 @@
   }
 
   table {
+    @apply table-auto border-t border-r border-midgrey;
   }
 
   th {
-    @apply border-b border-midgrey py-2;
+    @apply border-l border-b border-midgrey py-2;
   }
 
   td {
-    @apply p-1 text-xs;
+    @apply px-1 py-2 text-xs border-l border-b border-midgrey;
   }
 
   td > code,
@@ -99,7 +101,7 @@
 
     h2,
     h3 {
-      @apply pt-4 pb-1;
+      @apply pt-6 pb-1 font-medium;
     }
 
     h2 {
@@ -153,9 +155,43 @@
   }
 }
 
+.fade-enter,
+.fade-leave-to {
+  transform: scaleY(0);
+}
+.fade-enter-to,
+.fade-leave {
+  transform: scaleY(1);
+}
+.fade-enter-active {
+  transition: all 250ms ease-out;
+}
+.fade-leave-active {
+  transition: all 0s linear;
+}
+
+.foreground-pulse {
+  opacity: 1;
+  animation-name: foreground-pulsate;
+  animation-duration: 0.75s;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes foreground-pulsate {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.95;
+  }
+}
+
 /* Markdown Admonitions */
 .admonition {
-  @apply border border-t-3 border-darkgrey rounded-b-md bg-white shadow my-4 p-3 pb-4;
+  @apply border border-t-3 border-midgrey rounded-b-md my-4 p-3 pb-4;
 }
 .admonition-heading {
   @apply text-lg font-semibold pb-2;

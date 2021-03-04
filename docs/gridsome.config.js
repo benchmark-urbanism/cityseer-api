@@ -57,21 +57,9 @@ module.exports = {
     {
       use: '@gridsome/vue-remark',
       options: {
-        typeName: 'Landing',
-        baseDir: './content',
-        template: './src/templates/Landing.vue',
-        route: '/',
-        includePaths: ['landing.md'],
-        index: ['landing'],
-      },
-    },
-    {
-      use: '@gridsome/vue-remark',
-      options: {
         typeName: 'Doc',
         baseDir: './content',
         template: './src/templates/Doc.vue',
-        ignore: ['landing.md'],
         plugins: markdownPlugins,
       },
     },

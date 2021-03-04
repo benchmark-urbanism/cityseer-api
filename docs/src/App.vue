@@ -6,7 +6,7 @@ main.app-container
     // split into two
     section#nav-side-by-side
       // left narrow bit for title
-      g-link#title(to='/' :class='{ "pointer-events-none": $route.path === "/" }')
+      g-link#title(v-show='!isHome' to='/' :class='{ "pointer-events-none": $route.path === "/" }')
         h1 {{ $static.metadata.siteName }}
       // navigation
       nav#nav-tree(ref='navView')
@@ -16,16 +16,34 @@ main.app-container
           :class='{ "pointer-events-none": $route.path === "/" }'
           title='home'
         )
-          img#logo-img.foreground-pulse(
+          g-image#logo-img.foreground-pulse(
             src='./assets/logos/cityseer_logo_light_red.png'
             alt='logo'
+            width='1000'
+            quality='100'
           )
+        // go button
+        g-link#go-box(v-show='isHome' to='/intro/')
+          #go-button.foreground-pulse(title='Get Started!')
+            font-awesome(icon='rocket' :size='smallMode ? "lg" : "2x"')
+          .text-2xl.font-medium.py-2 Get Started!
         // navigation tree
-        g-link#nested-nav-tree(v-for='doc in docNav' :key='doc.id' :to='doc.path')
-          button.nav-link(:title='doc.title' :class='{ "nav-link-active": doc.active }') {{ doc.title }}
-          // when active, each entry has a nested-tree to H2 headers
-          g-link(v-for='h2 in doc.children' :key='h2.ref' :to='h2.path')
-            button.nested-link(:title='h2.value' :id='h2.ref') {{ h2.value }}
+        div(v-show='!isHome' v-for='doc in docNav')
+          transition-group#nested-nav-tree
+            g-link.nav-link(
+              :key='doc.id'
+              :title='doc.title'
+              :to='doc.path'
+              :class='{ "nav-link-active": doc.active }'
+            ) {{ doc.title }}
+            // when active, each entry has a nested-tree to H2 headers
+            g-link.nested-link(
+              v-for='h2 in doc.children'
+              :key='h2.ref'
+              :title='h2.value'
+              :to='h2.path'
+              :id='h2.ref'
+            ) {{ h2.value }}
     // footer
     footer#footer-container
       div Copyright © 2018-present Gareth Simons
@@ -33,7 +51,7 @@ main.app-container
   #content-column(ref='routerView')
     router-view
   // back to top button
-  button#back-to-top.foreground-pulse(v-if='scrollToTopVisible' @click='scrollTop()')
+  button#back-to-top.foreground-pulse(v-show='scrollToTopVisible' @click='scrollTop()')
     font-awesome(icon='angle-double-up' size='lg')
 </template>
 
@@ -101,7 +119,7 @@ export default {
       laggedElem: null,
       fillerElem: null,
       scrollToTopVisible: false,
-      largeSize: 400,
+      largeSize: 500,
       smallSize: 200,
       navPaths: [
         '/intro/',
@@ -117,6 +135,9 @@ export default {
   },
   computed: {
     ...mapGetters(['smallMode']),
+    isHome() {
+      return this.$route.path === '/'
+    },
     docs() {
       return this.$static.docs.edges.map((edge) => edge.node)
     },
@@ -154,15 +175,20 @@ export default {
           children,
         }
       })
-      console.log(sortedDocs)
       return sortedDocs
     },
   },
   watch: {
+    smallMode() {
+      if (!process.isClient) return
+      // update logo size
+      this.updateLogoSize()
+    },
     docNav: {
       immediate: true,
       handler(newDocNav) {
         if (!newDocNav) return
+        if (!process.isClient) return
         // update logo size
         this.updateLogoSize()
         // trigger the h2 headings animation
@@ -225,7 +251,6 @@ export default {
       })
     }, 50),
     scrollTo(targetEl) {
-      console.log(targetEl)
       this.$router.push(targetEl)
     },
     scrollTop() {
@@ -233,9 +258,9 @@ export default {
     },
     updateLogoSize() {
       setTimeout(() => {
-        if (this.$route.path === '/') {
+        if (this.isHome && !this.smallMode) {
           this.animLogoLarge()
-        } else if (this.$route.path !== '/') {
+        } else {
           this.animLogoSmall()
         }
       }, 50)
@@ -244,7 +269,8 @@ export default {
       anime({
         targets: '#logo-container',
         width: this.smallSize,
-        duration: 500,
+        duration: 300,
+        easing: 'easeOutExpo',
       })
     },
     animLogoLarge() {
@@ -252,25 +278,18 @@ export default {
         targets: '#logo-container',
         width: this.largeSize,
         duration: 500,
+        easing: 'easeOutElastic',
       })
     },
     h2Anim() {
       this.$nextTick(() => {
         anime({
           targets: '.nested-link',
-          opacity: 0,
-          scale: 0.95,
-          duration: 0,
-          complete() {
-            anime({
-              targets: '.nested-link',
-              opacity: 1,
-              scale: [0.95, 1],
-              duration: 150,
-              delay: anime.stagger(15),
-              easing: 'easeInQuint',
-            })
-          },
+          opacity: [0.5, 1],
+          scale: [0.98, 1],
+          duration: 100,
+          delay: anime.stagger(10),
+          easing: 'linear',
         })
       })
     },
@@ -327,50 +346,28 @@ export default {
 }
 </script>
 
-<style lang="postcss">
-.fade-enter,
-.fade-leave-to {
-  transform: scaleY(0);
-}
-.fade-enter-to,
-.fade-leave {
-  transform: scaleY(1);
-}
-.fade-enter-active {
-  transition: all 250ms ease-out;
-}
-.fade-leave-active {
-  transition: all 0s linear;
-}
-
-.foreground-pulse {
-  opacity: 1;
-  animation-name: foreground-pulsate;
-  animation-duration: 0.75s;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-}
-
-@keyframes foreground-pulsate {
-  0% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.95;
-  }
-}
-</style>
-
 <style lang="postcss" scoped>
 .app-container {
   @apply min-h-screen w-screen flex;
 }
 
+#go-box {
+  @apply flex-auto w-full flex flex-col items-center justify-center my-12;
+}
+
+#go-box:hover {
+  transform: scale(1.1);
+}
+
+#go-button {
+  @apply w-20 h-20 flex items-center justify-center;
+  @apply border-2 border-lightgrey rounded-full shadow;
+  @apply bg-theme text-lightgrey;
+}
+
 #nav-column {
   @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
-  @apply bg-red-50 border-r border-midgrey shadow;
+  @apply bg-red-50 border-r border-midgrey;
 
   min-width: 350px;
 }
@@ -388,7 +385,7 @@ export default {
 }
 
 #logo-container {
-  @apply w-full flex items-end py-10;
+  @apply w-full flex items-end pt-20 pb-10 ml-12;
 
   width: 200px;
 }
@@ -424,14 +421,14 @@ export default {
 }
 
 .nested-link {
-  @apply text-sm font-light py-1 pr-4 cursor-pointer;
+  @apply text-sm font-normal py-1 pr-4 cursor-pointer;
   @apply border-r border-theme;
 }
 
 .nested-link-active,
 .nested-link:hover,
 .nested-link:active {
-  @apply border-r-3 font-medium pr-3;
+  @apply border-r-3 font-medium;
 }
 
 #footer-container {
@@ -439,7 +436,7 @@ export default {
 }
 
 #content-column {
-  @apply flex-1 min-w-0 max-w-3xl px-10 pb-20;
+  @apply flex-1 min-w-0 max-w-3xl px-4 pb-20;
 }
 
 #back-to-top {
@@ -452,11 +449,14 @@ export default {
   .app-container {
     @apply flex-col items-center;
   }
+  #go-button {
+    @apply w-16 h-16;
+  }
   #logo-container {
-    @apply pb-4 pl-2;
+    @apply pb-4 pl-0 ml-0;
   }
   #nav-column {
-    @apply w-full relative min-h-0 items-start pl-32;
+    @apply w-full relative min-h-0 items-center pl-0;
     @apply border-r-0 border-b-1 border-theme;
   }
   #nav-tree {
@@ -476,6 +476,9 @@ export default {
   }
   #footer-container {
     @apply text-xxs self-end text-right px-2;
+  }
+  #content-column {
+    @apply max-w-full;
   }
 }
 </style>
