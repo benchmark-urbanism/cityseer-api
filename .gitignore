@@ -18,13 +18,18 @@ __pycache__/
 *.so
 
 # node modules and gridsome are nested into the docs directory
-docs/yarn.lock
-docs/yarn-debug.log*
-docs/yarn-error.log*
-docs/node_modules/
-docs/.cache
-docs/src/.temp
-docs/dist
+**/logs
+**/*.log
+**/yarn.lock
+**/yarn-debug.log*
+**/yarn-error.log*
+**/node_modules/
+**/.cache
+**/.temp
+**/dist
+
+# firebase
+**/.firebase*
 
 # Distribution / packaging
 .Python

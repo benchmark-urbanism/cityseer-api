@@ -1,16 +1,14 @@
 <template lang="pug">
 div
   #home-container
-    h1 {{ tagline }}
+    h1.text-4xl.font-normal.leading-tight.pt-32.pb-16 {{ tagline }}
     #feature-content
       div(v-for='feature in features')
-        h2 {{ feature.title }}
+        h2.text-2xl.font-medium.leading-tight {{ feature.title }}
         p {{ feature.details }}
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-
 export default {
   name: 'Home',
   data() {
@@ -35,25 +33,15 @@ export default {
       ],
     }
   },
-  computed: {
-    ...mapGetters(['smallMode', 'makeMonthDate']),
-    landing() {
-      console.log(this.$page.landing)
-      return this.$page.landing
-    },
-    docs() {
-      return this.$page.docs.edges.map((edge) => edge.node)
-    },
-  },
 }
 </script>
 
 <style lang="postcss" scoped>
 #home-container {
-  @apply flex flex-col items-start pt-72;
+  @apply flex flex-col items-start;
 }
 #feature-content {
-  @apply flex flex-col max-w-lg;
+  @apply flex flex-col max-w-md;
 }
 
 @media only screen and (max-width: 958px) {
