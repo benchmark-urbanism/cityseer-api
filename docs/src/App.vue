@@ -16,8 +16,8 @@ main.app-container
           g-image#logo-img.foreground-pulse(
             src='./assets/logos/cityseer_logo_light_red.png'
             alt='logo'
-            width='1000'
-            quality='100'
+            quality='90'
+            :width='largeSize'
           )
         // go button
         g-link#go-box(v-show='isHome' to='/intro/')
@@ -402,7 +402,7 @@ export default {
 }
 
 #logo-img {
-  @apply transition-all w-full object-contain;
+  @apply transition-all object-contain;
 }
 
 #logo-img:hover {
