@@ -7,6 +7,7 @@ Loosely based on Numpy-style docstrings.
 
 Automatically infers types from signature typehints. Explicitly documented types are NOT supported in docstrings.
 """
+import logging
 import pathlib
 import sys
 
@@ -14,6 +15,10 @@ import docspec
 import docspec_python
 import yaml
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info('Parsing config.')
 root_dir = pathlib.Path(__file__).parent
 
 # load the config
@@ -281,6 +286,7 @@ def process_member(member, lines, class_name=None):
 
 
 for module_name, doc_path in yam['module_map'].items():
+    logger.info(f'Processing {module_name} to {doc_path}')
     # process the module
     modules = docspec_python.load_python_modules(modules=[module_name])
     for module in modules:
@@ -316,3 +322,5 @@ for module_name, doc_path in yam['module_map'].items():
         with open(out_file, mode='w') as out_file:
             for line in lines:
                 out_file.write(line)
+
+logger.info('Done parsing python to  markdown.')
