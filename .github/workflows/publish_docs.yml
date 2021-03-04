@@ -12,9 +12,11 @@ jobs:
         with:
           python-version: "3.9"
       - name: prep python
-        run: pip install docspec docspec-python pyyaml
+        run: |
+          pip install docspec docspec-python pyyaml
       - name: build docs
         run: |
+          cd docs
           yarn install
           yarn run build
       - name: deploy docs

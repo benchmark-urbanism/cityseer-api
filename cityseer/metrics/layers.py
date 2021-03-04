@@ -222,7 +222,7 @@ class DataLayer:
     The coordinates of data points should correspond as precisely as possible to the location of the feature in space;
     or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
-    Note that in many cases, the [`DataLayerFromDict`](#class-#datalayerfromdict) class will provide a more convenient
+    Note that in many cases, the [`DataLayerFromDict`](#class-datalayerfromdict) class will provide a more convenient
     alternative for instantiating this class.
     """
     def __init__(self,

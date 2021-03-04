@@ -7,8 +7,9 @@ div
 
 <style lang="postcss" scoped>
 #sig-style {
-  @apply border-t border-lightgrey bg-midgrey mt-0.5 mb-4 px-4 py-2;
-  @apply text-sm font-mono font-semibold leading-normal overflow-auto;
+  @apply mb-4 py-3 px-4 overflow-x-auto whitespace-pre-wrap;
+  @apply border border-midgrey bg-gray-200 rounded-br-md rounded-bl-md;
+  @apply text-sm font-mono font-semibold leading-normal;
 }
 
 /* necessary for when wrapping signatures with <pre></pre> tags for spacing */
