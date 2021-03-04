@@ -52,7 +52,7 @@ module.exports = {
   siteDescription:
     'Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.',
   siteUrl: 'https://cityseer.github.io/',
-  pathPrefix: '/cityseer', // only used in production
+  pathPrefix: '/cityseer/', // only used in production
   plugins: [
     {
       use: '@gridsome/vue-remark',
