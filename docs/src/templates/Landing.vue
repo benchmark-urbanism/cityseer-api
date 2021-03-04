@@ -70,7 +70,7 @@ export default {
 .feature-blurb {
 }
 
-@media only screen and (max-height: 958px), (max-width: 958px) {
+@media only screen and (max-width: 958px) {
   #page-title {
     @apply text-xl py-4 font-medium;
   }

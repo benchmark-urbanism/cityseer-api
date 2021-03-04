@@ -57,7 +57,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
 
     ![Example beta decays](../../src/assets/plots/images/betas.png)
     
-    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
     $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -324,7 +324,7 @@ class NetworkLayer:
             | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
             The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm)
+            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
             can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
             UTM `x`, `y` projected coordinate system.
 
@@ -590,7 +590,7 @@ class NetworkLayer:
     def to_networkX(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [`nX_from_graph_maps`](/tools/graphs#nx-from-graph-maps) internally.
+        [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
 
         Returns
         -------
@@ -860,7 +860,7 @@ class NetworkLayerFromNX(NetworkLayer):
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs#graph-maps-from-nx) internally.
+        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally.
         Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
         Parameters

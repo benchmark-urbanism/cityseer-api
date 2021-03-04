@@ -8,16 +8,16 @@ div
 <style lang="postcss" scoped>
 #sig-style {
   @apply border-t border-lightgrey bg-midgrey mt-0.5 mb-4 px-4 py-2;
-  @apply text-base font-mono font-semibold leading-normal;
+  @apply text-sm font-mono font-semibold leading-normal overflow-auto;
 }
 
 /* necessary for when wrapping signatures with <pre></pre> tags for spacing */
 #sig-style pre {
   @apply m-0 p-0;
 }
-@media only screen and (max-height: 958px), (max-width: 958px) {
+@media screen and (max-width: 958px) {
   #sig-style {
-    @apply text-sm;
+    @apply text-xs;
   }
 }
 </style>

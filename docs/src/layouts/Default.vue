@@ -1,5 +1,5 @@
 <template lang="pug">
-.w-full.h-full
+.flex
   slot
 </template>
 

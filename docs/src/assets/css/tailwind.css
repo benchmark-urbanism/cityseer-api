@@ -92,7 +92,64 @@
     @apply text-xs px-0.5 py-0;
   }
 
-  @media only screen and (max-height: 958px), (max-width: 958px) {
+  @media only screen and (max-width: 958px) {
+    h1 {
+      @apply text-2xl pt-8 pb-2;
+    }
+
+    h2,
+    h3 {
+      @apply pt-4 pb-1;
+    }
+
+    h2 {
+      @apply text-xl;
+    }
+
+    h3 {
+      @apply text-lg;
+    }
+
+    h4 {
+      @apply text-base;
+    }
+
+    h5 {
+      @apply text-sm;
+    }
+
+    h6 {
+      @apply text-sm;
+    }
+
+    ul,
+    li {
+      @apply ml-2 text-sm;
+    }
+
+    p {
+      @apply text-sm;
+    }
+
+    code {
+      @apply text-xxs;
+    }
+
+    pre > code {
+      @apply text-xxs !important;
+    }
+
+    th {
+      @apply py-1;
+    }
+
+    td {
+    }
+
+    td > code,
+    td > a > code {
+      @apply text-xxs;
+    }
   }
 }
 
