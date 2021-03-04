@@ -1,5 +1,4 @@
 import Vuex from 'vuex'
-import { format } from 'date-fns'
 // font awesome
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { config, library } from '@fortawesome/fontawesome-svg-core'
@@ -73,14 +72,6 @@ export default function (Vue, { appOptions, head }) {
           return state.innerWidth < 958
         }
         return false
-      },
-      makeMonthDate: () => (rawDate) => {
-        if (rawDate) return format(new Date(rawDate), 'LLL y')
-        return ''
-      },
-      makeDayDate: () => (rawDate) => {
-        if (rawDate) return format(new Date(rawDate), 'do LLL, y')
-        return ''
       },
     },
   })
