@@ -1,0 +1,200 @@
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+@layer base {
+  /* font-body applies associated theme config to entire site */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-defaults font-normal text-base leading-normal;
+    @apply bg-lightgrey text-darkgrey;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-headings;
+  }
+
+  h1 {
+    @apply text-4xl pt-28 pb-4;
+  }
+
+  h2,
+  h3 {
+    @apply pt-8 pb-2;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
+  }
+
+  ul,
+  li {
+    @apply ml-3;
+
+    list-style-type: disc;
+  }
+
+  p {
+    @apply text-base py-1;
+  }
+
+  code {
+    @apply font-mono text-xs tracking-tight font-medium px-1 py-0.5 bg-gray-200 rounded;
+  }
+
+  pre > code {
+    @apply whitespace-pre-wrap overflow-x-auto !important;
+    @apply font-mono text-xs tracking-tight font-normal !important;
+  }
+
+  a {
+    @apply text-theme;
+  }
+
+  table {
+    @apply table-auto border-t border-r border-midgrey;
+  }
+
+  th {
+    @apply border-l border-b border-midgrey py-2;
+  }
+
+  td {
+    @apply px-1 py-2 text-xs border-l border-b border-midgrey;
+  }
+
+  td > code,
+  td > a > code {
+    @apply text-xs px-0.5 py-0;
+  }
+
+  @media only screen and (max-width: 958px) {
+    h1 {
+      @apply text-2xl pt-8 pb-2;
+    }
+
+    h2,
+    h3 {
+      @apply pt-6 pb-1 font-medium;
+    }
+
+    h2 {
+      @apply text-xl;
+    }
+
+    h3 {
+      @apply text-lg;
+    }
+
+    h4 {
+      @apply text-base;
+    }
+
+    h5 {
+      @apply text-sm;
+    }
+
+    h6 {
+      @apply text-sm;
+    }
+
+    ul,
+    li {
+      @apply ml-2 text-sm;
+    }
+
+    p {
+      @apply text-sm;
+    }
+
+    code {
+      @apply text-xxs;
+    }
+
+    pre > code {
+      @apply text-xxs !important;
+    }
+
+    th {
+      @apply py-1;
+    }
+
+    td {
+    }
+
+    td > code,
+    td > a > code {
+      @apply text-xxs;
+    }
+  }
+}
+
+.fade-enter,
+.fade-leave-to {
+  transform: scaleY(0);
+}
+.fade-enter-to,
+.fade-leave {
+  transform: scaleY(1);
+}
+.fade-enter-active {
+  transition: all 250ms ease-out;
+}
+.fade-leave-active {
+  transition: all 0s linear;
+}
+
+.foreground-pulse {
+  opacity: 1;
+  animation-name: foreground-pulsate;
+  animation-duration: 0.75s;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes foreground-pulsate {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.95;
+  }
+}
+
+/* Markdown Admonitions */
+.admonition {
+  @apply border border-t-3 border-midgrey rounded-b-md my-4 p-3 pb-4;
+}
+.admonition-heading {
+  @apply text-lg font-semibold pb-2;
+}
+.admonition-content {
+}

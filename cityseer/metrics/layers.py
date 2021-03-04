@@ -106,7 +106,7 @@ def encode_categorical(classes: Union[list, tuple, np.ndarray]) -> Tuple[tuple, 
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
 
-    ::: warning Note
+    :::warning Comment
     It is generally not necessary to utilise this function directly. It will be called implicitly if calculating
     land-use metrics.
     :::
@@ -152,14 +152,14 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
-    ::: warning Note
+    :::warning Comment
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-datalayerfromdict)
     :::
 
     Parameters
     ----------
     data_dict
-        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer) to which the data will be assigned.
+        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks/#class-networklayer) to which the data will be assigned.
 
         ```python
         example_data_dict = {
@@ -213,7 +213,7 @@ def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
 class DataLayer:
     """
     Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a
-    [`DataLayer`](/cityseer/metrics/layers#class-datalayer). A `DataLayer` represents the spatial locations of data points, and
+    [`DataLayer`](/metrics/layers/#class-datalayer). A `DataLayer` represents the spatial locations of data points, and
     can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these
     measures are computed directly over the street network and offer distance-weighted variants; the combination of
     which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation
@@ -222,7 +222,7 @@ class DataLayer:
     The coordinates of data points should correspond as precisely as possible to the location of the feature in space;
     or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
-    Note that in many cases, the [`DataLayerFromDict`](#class-#datalayerfromdict) class will provide a more convenient
+    Note that in many cases, the [`DataLayerFromDict`](#class-datalayerfromdict) class will provide a more convenient
     alternative for instantiating this class.
     """
     def __init__(self,
@@ -290,7 +290,7 @@ class DataLayer:
                           Network_Layer: networks.NetworkLayer,
                           max_dist: Union[int, float]):
         """
-        Once created, a [`DataLayer`](#class-datalayer) should be assigned to a [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer). The
+        Once created, a [`DataLayer`](#class-datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#class-networklayer). The
         `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street
         network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
 
@@ -301,14 +301,14 @@ class DataLayer:
         Parameters
         ----------
         Network_Layer
-            A [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer).
+            A [`NetworkLayer`](/metrics/networks/#class-networklayer).
         max_dist
             The maximum distance to consider when assigning respective data points to the nearest adjacent network
             nodes.
 
         Notes
         -----
-        ::: tip Hint
+        :::tip Comment
         The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first,
         identifies the closest street node; the second, sets-out from this node and attempts to wind around the data
         point — akin to circling the block. It will then review the discovered graph edges from which it is able to
@@ -321,16 +321,16 @@ class DataLayer:
         possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
         :::
 
-        ::: warning Note
+        :::warning Comment
         The precision of assignment improves on decomposed networks (see
-        [graphs.nX_decompose](/cityseer/tools/graphs.html#nx-decompose)), which offers the additional benefit of a more granular
+        [graphs.nX_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
         representation of variations in metrics along street-fronts.
         :::
 
-        ![Example assignment of data to a network](../.vitepress/plots/images/assignment.png)
+        ![Example assignment of data to a network](../../src/assets/plots/images/assignment.png)
         _Example assignment on a non-decomposed graph._
 
-        ![Example assignment of data to a network](../.vitepress/plots/images/assignment_decomposed.png)
+        ![Example assignment of data to a network](../../src/assets/plots/images/assignment_decomposed.png)
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
         """
         self._Network = Network_Layer
@@ -515,14 +515,14 @@ class DataLayer:
         on the distances from the point of computation to the nearest example of a particular land-use. It therefore
         gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
         function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see
-        [`distance_from_beta`](/cityseer/metrics/networks#distance-from-beta).)|
+        [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
         | hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
         \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a
         pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
         examples of the pairwise distinct land-use combinations as routed through the point of computation.
         $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay.
         ($-\beta$ is provided by the `Network Layer`, see
-        [`distance_from_beta`](/cityseer/metrics/networks#distance-from-beta).)|
+        [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
         | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
         p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
         p_{j}$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
@@ -541,7 +541,7 @@ class DataLayer:
         `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use
         disparity weighted Hill diversity with `q=2`.|
 
-        ::: tip Hint
+        :::tip Comment
         The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0`
         is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse
         classifications schemas.
@@ -601,9 +601,9 @@ class DataLayer:
         # prints: 71297.82967202332
         ```
 
-        Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/cityseer/metrics/networks#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/cityseer/metrics/networks#networklayer-to-networkx).
+        Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
 
-        ::: danger Caution
+        :::danger Caution
         Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where the same schemas have been applied.
         :::
         """
@@ -879,12 +879,13 @@ class DataLayer:
         
         `NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
 
-        ::: tip Hint
+        :::tip Comment
         Per the above worked example, the following stat types will be available for each `stats_key` for each of the computed distances:
         - `max` and `min`
         - `sum` and `sum_weighted`
         - `mean` and `mean_weighted`
         - `variance` and `variance_weighted`
+        
         :::
         """
         if stats_data_arr.ndim != 1:
@@ -975,7 +976,7 @@ class DataLayerFromDict(DataLayer):
             A dictionary representing distinct data points, where each `key` represents a `uid` and each value
             represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
             coordinate system matching that of the
-            [`NetworkLayer`](/cityseer/metrics/networks#class-networklayer) to which the data will
+            [`NetworkLayer`](/metrics/networks/#class-networklayer) to which the data will
             be assigned.
 
         Returns

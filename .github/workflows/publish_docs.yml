@@ -10,15 +10,17 @@ jobs:
       - uses: actions/checkout@main
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: "3.9"
       - name: prep python
-        run: pip install docspec docspec-python pyyaml
+        run: |
+          pip install docspec docspec-python pyyaml
       - name: build docs
         run: |
+          cd docs
           yarn install
           yarn run build
       - name: deploy docs
         uses: alex-page/blazing-fast-gh-pages-deploy@v1.1.0
         with:
           repo-token: ${{ secrets.GH_PAT }}
-          site-directory: docs/.vitepress/dist
+          site-directory: docs/dist
