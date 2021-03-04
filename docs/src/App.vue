@@ -5,10 +5,7 @@ main.app-container
   aside#nav-column
     // split into two
     section#nav-side-by-side
-      // left narrow bit for title
-      g-link#title(v-show='!isHome' to='/' :class='{ "pointer-events-none": $route.path === "/" }')
-        h1 {{ $static.metadata.siteName }}
-      // navigation
+      // left side for navigation
       nav#nav-tree(ref='navView')
         // logo serves as home button
         g-link#logo-container.foreground-pulse(
@@ -26,7 +23,7 @@ main.app-container
         g-link#go-box(v-show='isHome' to='/intro/')
           #go-button.foreground-pulse(title='Get Started!')
             font-awesome(icon='rocket' :size='smallMode ? "lg" : "2x"')
-          .text-2xl.font-medium.py-2 Get Started!
+          .text-2xl.font-normal.py-2 Get Started!
         // navigation tree
         div(v-show='!isHome' v-for='doc in docNav')
           transition-group#nested-nav-tree
@@ -36,17 +33,24 @@ main.app-container
               :to='doc.path'
               :class='{ "nav-link-active": doc.active }'
             ) {{ doc.title }}
-            // when active, each entry has a nested-tree to H2 headers
-            g-link.nested-link(
-              v-for='h2 in doc.children'
-              :key='h2.ref'
-              :title='h2.value'
-              :to='h2.path'
-              :id='h2.ref'
-            ) {{ h2.value }}
-    // footer
-    footer#footer-container
-      div Copyright © 2018-present Gareth Simons
+            ClientOnly
+              // when active, each entry has a nested-tree to H2 headers
+              g-link.nested-link(
+                v-for='h2 in doc.children'
+                :key='h2.ref'
+                :title='h2.value'
+                :to='h2.path'
+                :id='h2.ref'
+              ) {{ h2.value }}
+          // spacer under nested elements for active tab
+          .pb-2(v-show='doc.active')
+        // footer
+        .flex-grow
+        footer#footer-container
+          div Copyright © 2018-present Gareth Simons
+      // right narrow bit for title
+      g-link#title(to='/' :class='{ "pointer-events-none": $route.path === "/" }')
+        h1 {{ $static.metadata.siteName }}
   // right side of page is content
   #content-column(ref='routerView')
     router-view
@@ -94,7 +98,7 @@ export default {
   name: 'App',
   metaInfo() {
     return {
-      title: 'Hello!',
+      title: 'Welcome',
       titleTemplate: `%s | ${this.$static.metadata.siteName}`,
       meta: [
         // use the key for overriding from child components
@@ -119,8 +123,8 @@ export default {
       laggedElem: null,
       fillerElem: null,
       scrollToTopVisible: false,
-      largeSize: 500,
-      smallSize: 200,
+      largeSize: 450,
+      smallSize: 250,
       navPaths: [
         '/intro/',
         '/guide/cleaning/',
@@ -162,7 +166,7 @@ export default {
         const isActive = thisDoc.path === routerPath
         // and if so, collect the h2 children
         const children = []
-        if (isActive) {
+        if (isActive && process.isClient) {
           thisDoc.headings.forEach((h2) => {
             children.push({
               path: `${routerPath}${h2.anchor}`,
@@ -274,6 +278,10 @@ export default {
       anime({
         targets: '#logo-container',
         width: this.smallSize,
+        'margin-top': 100,
+        'margin-right': 15,
+        'margin-bottom': 20,
+        'margin-left': 15,
         duration: 300,
         easing: 'easeOutExpo',
       })
@@ -282,6 +290,10 @@ export default {
       anime({
         targets: '#logo-container',
         width: this.largeSize,
+        'margin-top': 200,
+        'margin-right': 50,
+        'margin-bottom': 200,
+        'margin-left': 50,
         duration: 500,
         easing: 'easeOutElastic',
       })
@@ -357,7 +369,7 @@ export default {
 }
 
 #go-box {
-  @apply flex-auto w-full flex flex-col items-center justify-center my-12;
+  @apply w-full flex flex-col items-center justify-center;
 }
 
 #go-box:hover {
@@ -365,24 +377,22 @@ export default {
 }
 
 #go-button {
-  @apply w-20 h-20 flex items-center justify-center;
-  @apply border-2 border-lightgrey rounded-full shadow;
-  @apply bg-theme text-lightgrey;
-}
-
-#nav-column {
-  @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
-  @apply bg-red-50 border-r border-midgrey;
-
-  min-width: 350px;
+  @apply w-20 h-20 flex items-center justify-center transition-all;
+  @apply border-2 border-theme bg-lightgrey rounded-full shadow text-theme;
 }
 
 #nav-side-by-side {
   @apply flex flex-grow;
 }
 
+#nav-column {
+  @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
+
+  min-width: 350px;
+}
+
 #nav-tree {
-  @apply flex-grow w-full pr-4 flex flex-col items-end;
+  @apply flex-grow w-full flex flex-col items-end bg-red-50;
 }
 
 #nested-nav-tree {
@@ -390,9 +400,8 @@ export default {
 }
 
 #logo-container {
-  @apply w-full flex items-end pt-20 pb-10 ml-12;
-
-  width: 200px;
+  /* width and margins set from animations */
+  @apply w-full flex items-end;
 }
 
 #logo-img {
@@ -400,18 +409,6 @@ export default {
 }
 
 #logo-img:hover {
-  transform: scale(1.1);
-}
-
-#title {
-  @apply transition-all pr-4 py-8 self-end;
-  @apply text-xl tracking-tight leading-normal font-light !important;
-
-  text-shadow: 0 -0.5px 1px #fff;
-  writing-mode: vertical-lr;
-}
-
-#title:hover {
   transform: scale(1.1);
 }
 
@@ -426,27 +423,39 @@ export default {
 }
 
 .nested-link {
-  @apply text-sm font-normal py-1 pr-4 cursor-pointer;
-  @apply border-r border-theme;
+  @apply text-sm font-light py-0.5 pr-6 cursor-pointer;
+  @apply border-theme;
 }
 
 .nested-link-active,
 .nested-link:hover,
 .nested-link:active {
-  @apply border-r-3 font-medium;
+  @apply border-r-3 pr-5 font-normal;
 }
 
 #footer-container {
-  @apply text-right text-xs px-4 py-1;
+  @apply self-start text-xxs px-3 py-1;
+}
+
+#title {
+  @apply py-4 border-l border-theme transition-all;
+  @apply text-right text-xl leading-snug font-light !important;
+
+  text-shadow: 0 -0.5px 1px #fff;
+  writing-mode: vertical-lr;
+}
+
+#title:hover {
+  transform: scaleY(1.05);
 }
 
 #content-column {
-  @apply flex-1 min-w-0 max-w-3xl px-4 pb-20;
+  @apply flex-1 min-w-0 max-w-3xl px-6 pb-20;
 }
 
 #back-to-top {
-  @apply fixed flex items-center justify-center z-50 bottom-4 right-4;
-  @apply w-12 h-12 rounded-full border-2 border-midgrey shadow;
+  @apply fixed flex items-center justify-center z-50 top-4 right-4;
+  @apply w-12 h-12 rounded-full border-2 border-white shadow;
   @apply bg-theme text-lightgrey;
 }
 
@@ -454,33 +463,36 @@ export default {
   .app-container {
     @apply flex-col items-center;
   }
+  #go-box {
+    @apply py-6;
+  }
   #go-button {
     @apply w-16 h-16;
   }
   #logo-container {
-    @apply pb-4 pl-0 ml-0;
+    @apply self-center;
   }
   #nav-column {
-    @apply w-full relative min-h-0 items-center pl-0;
+    @apply w-full relative min-h-0 items-start pl-0;
     @apply border-r-0 border-b-1 border-theme;
   }
-  #nav-tree {
-    @apply items-start;
+  #nav-side-by-side {
+    @apply w-full;
   }
-  #nested-nav-tree {
-    @apply items-start;
+  #nav-tree {
+    @apply flex-1 items-end pr-0;
   }
   #title {
-    @apply pr-2 py-0;
+    @apply flex-1 py-8 ml-0;
   }
   .nav-link {
-    @apply text-sm text-left pl-2;
+    @apply text-sm text-left;
   }
   .nested-link {
-    @apply text-xs border-r-0 border-l pl-2;
+    @apply text-xs;
   }
   #footer-container {
-    @apply text-xxs self-end text-right px-2;
+    @apply text-xxs w-full self-start text-left px-6;
   }
   #content-column {
     @apply max-w-full;
