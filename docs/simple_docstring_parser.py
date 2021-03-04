@@ -45,7 +45,7 @@ config = {
     'toc_template': None,
     'function_name_template': '\n\n## {function_name}\n\n',
     'class_name_template': '\n\n## **class** {class_name}\n\n',
-    'class_property_template': '\n\n#### **{prop_name}**\n\n',
+    'class_property_template': '\n\n#### {prop_name}\n\n',
     'signature_template': '\n\n```py\n{signature}\n```\n\n',
     'heading_template': '\n\n#### {heading}\n\n',
     'param_template': '\n\n**{name}** _{type}_: {description}\n\n',

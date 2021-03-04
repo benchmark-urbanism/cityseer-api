@@ -4,13 +4,14 @@ main.app-container
   // left-hand side of page is navigation column
   aside#nav-column
     // split into two
-    section.flex-grow.flex
+    section#nav-side-by-side
       // left narrow bit for title
-      h1#title {{ $static.metadata.siteName }}
-      // right bit for navigation
-      nav#nav-container(ref='navView')
+      g-link#title(to='/' :class='{ "pointer-events-none": $route.path === "/" }')
+        h1 {{ $static.metadata.siteName }}
+      // navigation
+      nav#nav-tree(ref='navView')
         // logo serves as home button
-        router-link#logo-route.foreground-pulse(
+        g-link#logo-container.foreground-pulse(
           to='/'
           :class='{ "pointer-events-none": $route.path === "/" }'
           title='home'
@@ -20,27 +21,20 @@ main.app-container
             alt='logo'
           )
         // navigation tree
-        .flex.flex-col.items-end(v-for='doc in docNav' :key='doc.id')
-          // each entry has a button
-          button.nav-link(
-            :title='doc.title'
-            @click.self='toNavPathAnim(doc.path)'
-            :class='{ "nav-link-active": doc.active }'
-          ) {{ doc.title }}
+        g-link#nested-nav-tree(v-for='doc in docNav' :key='doc.id' :to='doc.path')
+          button.nav-link(:title='doc.title' :class='{ "nav-link-active": doc.active }') {{ doc.title }}
           // when active, each entry has a nested-tree to H2 headers
-          router-link.nested-link.pb-2(
-            v-for='h2 in doc.children'
-            :key='h2.ref'
-            :to='h2.anchor'
-            :title='h2.value'
-            :id='h2.ref'
-          ) {{ h2.value }}
+          g-link(v-for='h2 in doc.children' :key='h2.ref' :to='h2.path')
+            button.nested-link(:title='h2.value' :id='h2.ref') {{ h2.value }}
     // footer
     footer#footer-container
       div Copyright © 2018-present Gareth Simons
   // right side of page is content
-  section#content-column.pb-20(ref='routerView')
+  #content-column(ref='routerView')
     router-view
+  // back to top button
+  button#back-to-top.foreground-pulse(v-if='scrollToTopVisible' @click='scrollTop()')
+    font-awesome(icon='angle-double-up' size='lg')
 </template>
 
 <static-query>
@@ -94,7 +88,7 @@ export default {
         {
           name: 'keywords',
           content:
-            'cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning',
+            'cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning, API',
         },
       ],
     }
@@ -106,18 +100,18 @@ export default {
       h2Elems: {},
       laggedElem: null,
       fillerElem: null,
-      logoLarge: true,
-      largeSize: 250,
-      smallSize: 100,
+      scrollToTopVisible: false,
+      largeSize: 400,
+      smallSize: 200,
       navPaths: [
-        '/intro',
-        '/guide/cleaning',
-        '/tools/graphs',
-        '/tools/plot',
-        '/tools/mock',
-        '/metrics/layers',
-        '/metrics/networks',
-        '/attribution',
+        '/intro/',
+        '/guide/cleaning/',
+        '/tools/graphs/',
+        '/tools/plot/',
+        '/tools/mock/',
+        '/metrics/layers/',
+        '/metrics/networks/',
+        '/attribution/',
       ],
     }
   },
@@ -136,8 +130,8 @@ export default {
         // note if a document is active
         // catch URLs with extra trailing slash when checking for active paths
         let routerPath = this.$route.path
-        if (routerPath[routerPath.length - 1] === '/') {
-          routerPath = routerPath.substring(0, routerPath.length - 1)
+        if (routerPath[routerPath.length - 1] !== '/') {
+          routerPath = routerPath + '/'
         }
         const isActive = thisDoc.path === routerPath
         // and if so, collect the h2 children
@@ -145,7 +139,7 @@ export default {
         if (isActive) {
           thisDoc.headings.forEach((h2) => {
             children.push({
-              anchor: h2.anchor,
+              path: `${routerPath}${h2.anchor}`,
               value: h2.value,
               ref: this.makeElemId(h2.anchor),
               fullRef: this.makeElemId(h2.anchor, true),
@@ -160,18 +154,19 @@ export default {
           children,
         }
       })
+      console.log(sortedDocs)
       return sortedDocs
     },
   },
   watch: {
-    smallMode() {
-      if (!process.isClient) return
-      this.updateLogoSize()
-    },
     docNav: {
       immediate: true,
       handler(newDocNav) {
         if (!newDocNav) return
+        // update logo size
+        this.updateLogoSize()
+        // trigger the h2 headings animation
+        this.h2Anim()
         // reset h2 element state for interactive nav
         // find the active route / tab
         const activeNav = Object.values(newDocNav)
@@ -213,6 +208,10 @@ export default {
     window.addEventListener('resize', () => this.domDims())
     // check the logo size is in sync
     this.updateLogoSize()
+    // update scroll position
+    document.addEventListener('scroll', () => {
+      if (window) this.scrollToTopVisible = window.scrollY > window.innerHeight
+    })
   },
   unmounted() {
     if (!process.isClient) return
@@ -226,55 +225,53 @@ export default {
       })
     }, 50),
     scrollTo(targetEl) {
+      console.log(targetEl)
       this.$router.push(targetEl)
     },
-    updateLogoSize() {
-      if (!this.smallMode && !this.logoLarge) {
-        this.animLogoLarge()
-      } else if (this.smallMode && this.logoLarge) {
-        this.animLogoSmall()
-      }
+    scrollTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     },
-    toNavPathAnim(targetPath) {
-      this.$router.push(targetPath, () => {
-        this.$nextTick(() => {
-          anime({
-            targets: '.nested-link',
-            opacity: 0,
-            scale: 0.95,
-            duration: 0,
-            complete() {
-              anime({
-                targets: '.nested-link',
-                opacity: 1,
-                scale: [0.95, 1],
-                duration: 150,
-                delay: anime.stagger(15),
-                easing: 'easeInQuint',
-              })
-            },
-          })
-        })
-      })
+    updateLogoSize() {
+      setTimeout(() => {
+        if (this.$route.path === '/') {
+          this.animLogoLarge()
+        } else if (this.$route.path !== '/') {
+          this.animLogoSmall()
+        }
+      }, 50)
     },
     animLogoSmall() {
       anime({
-        targets: '#logo-route',
+        targets: '#logo-container',
         width: this.smallSize,
         duration: 500,
-        complete: () => {
-          this.logoLarge = false
-        },
       })
     },
     animLogoLarge() {
       anime({
-        targets: '#logo-route',
+        targets: '#logo-container',
         width: this.largeSize,
         duration: 500,
-        complete: () => {
-          this.logoLarge = true
-        },
+      })
+    },
+    h2Anim() {
+      this.$nextTick(() => {
+        anime({
+          targets: '.nested-link',
+          opacity: 0,
+          scale: 0.95,
+          duration: 0,
+          complete() {
+            anime({
+              targets: '.nested-link',
+              opacity: 1,
+              scale: [0.95, 1],
+              duration: 150,
+              delay: anime.stagger(15),
+              easing: 'easeInQuint',
+            })
+          },
+        })
       })
     },
     makeElemId(anchor, asSelector = false) {
@@ -300,6 +297,7 @@ export default {
       entries.forEach((entry) => {
         const elemId = this.makeElemId(entry.target.id, true)
         const elem = this.$refs.navView.querySelector(elemId)
+        if (!elem) return
         // add new
         if (entry.isIntersecting) {
           elem.classList.add(targetClass)
@@ -371,18 +369,28 @@ export default {
 }
 
 #nav-column {
-  @apply sticky top-0 h-screen bg-red-50 overflow-y-auto;
-  @apply flex flex-col items-end text-right border-r border-midgrey;
+  @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
+  @apply bg-red-50 border-r border-midgrey shadow;
+
+  min-width: 350px;
 }
 
-#content-column {
-  @apply max-w-3xl px-6;
+#nav-side-by-side {
+  @apply flex flex-grow;
 }
 
-#logo-route {
+#nav-tree {
+  @apply flex-grow w-full pr-4 flex flex-col items-end;
+}
+
+#nested-nav-tree {
+  @apply flex flex-col items-end;
+}
+
+#logo-container {
   @apply w-full flex items-end py-10;
 
-  width: 250px;
+  width: 200px;
 }
 
 #logo-img {
@@ -393,24 +401,16 @@ export default {
   transform: scale(1.1);
 }
 
-#title-container {
-  @apply flex mx-0.5 bg-blue-500;
-}
-
 #title {
-  @apply pr-4 py-8;
-  @apply text-4xl tracking-tight leading-normal font-extralight;
+  @apply transition-all pr-4 py-8 self-end;
+  @apply text-xl tracking-tight leading-normal font-light !important;
 
   text-shadow: 0 -0.5px 1px #fff;
   writing-mode: vertical-lr;
 }
 
-#footer-container {
-  @apply w-full text-right text-xs px-4 py-1;
-}
-
-#nav-container {
-  @apply w-full pr-4 flex flex-col;
+#title:hover {
+  transform: scale(1.1);
 }
 
 .nav-link {
@@ -424,7 +424,7 @@ export default {
 }
 
 .nested-link {
-  @apply text-sm font-light py-0.5 pr-4 cursor-pointer;
+  @apply text-sm font-light py-1 pr-4 cursor-pointer;
   @apply border-r border-theme;
 }
 
@@ -434,18 +434,48 @@ export default {
   @apply border-r-3 font-medium pr-3;
 }
 
-#app-content {
-  @apply flex-1 w-full pt-5;
+#footer-container {
+  @apply text-right text-xs px-4 py-1;
 }
 
-@media only screen and (max-height: 958px), (max-width: 958px) {
-  #side-bar {
-    @apply w-0;
+#content-column {
+  @apply flex-1 min-w-0 max-w-3xl px-10 pb-20;
+}
+
+#back-to-top {
+  @apply fixed flex items-center justify-center z-50 bottom-4 right-4;
+  @apply w-12 h-12 rounded-full border-2 border-midgrey shadow;
+  @apply bg-theme text-lightgrey;
+}
+
+@media only screen and (max-width: 958px) {
+  .app-container {
+    @apply flex-col items-center;
   }
-  #logo-route {
+  #logo-container {
+    @apply pb-4 pl-2;
+  }
+  #nav-column {
+    @apply w-full relative min-h-0 items-start pl-32;
+    @apply border-r-0 border-b-1 border-theme;
+  }
+  #nav-tree {
+    @apply items-start;
+  }
+  #nested-nav-tree {
+    @apply items-start;
+  }
+  #title {
+    @apply pr-2 py-0;
+  }
+  .nav-link {
+    @apply text-sm text-left pl-2;
+  }
+  .nested-link {
+    @apply text-xs border-r-0 border-l pl-2;
   }
   #footer-container {
-    @apply px-2;
+    @apply text-xxs self-end text-right px-2;
   }
 }
 </style>

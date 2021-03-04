@@ -115,7 +115,7 @@ module.exports = {
     },
   ],
   permalinks: {
-    trailingSlash: false,
+    trailingSlash: true,
   },
   css: {
     loaderOptions: {

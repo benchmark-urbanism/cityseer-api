@@ -8,7 +8,7 @@ div
 #heading-style {
   @apply mt-8 text-xl font-semibold border-b border-darkgrey;
 }
-@media only screen and (max-height: 958px), (max-width: 958px) {
+@media only screen and (max-width: 958px) {
   #heading-style {
     @apply text-lg font-semibold;
   }

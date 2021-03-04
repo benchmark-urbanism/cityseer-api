@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 // font awesome
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { config, library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowRight, faArrowLeft, faHome, faLink } from '@fortawesome/free-solid-svg-icons'
+import { faHome, faLink, faAngleDoubleUp } from '@fortawesome/free-solid-svg-icons'
 import '@fortawesome/fontawesome-svg-core/styles.css'
 // tailwind
 import './assets/css/tailwind.css'
@@ -19,7 +19,7 @@ import FuncSignature from './components/FuncSignature.vue'
 
 // setup fontAwesome
 config.autoAddCss = false
-library.add(faArrowRight, faArrowLeft, faHome, faLink)
+library.add(faHome, faLink, faAngleDoubleUp)
 
 export default function (Vue, { appOptions, head }) {
   // Set default layout as a global component
@@ -69,7 +69,7 @@ export default function (Vue, { appOptions, head }) {
     },
     getters: {
       smallMode: (state) => {
-        if (state.innerWidth && state.innerHeight) {
+        if (state.innerWidth) {
           return state.innerWidth < 958
         }
         return false

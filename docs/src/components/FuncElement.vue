@@ -50,12 +50,19 @@ export default {
 #description > * > * > code {
   @apply text-xs px-0.5 py-0;
 }
-@media only screen and (max-height: 958px), (max-width: 958px) {
+@media only screen and (max-width: 958px) {
   #container {
     @apply py-1;
   }
   #name {
-    @apply text-sm;
+    @apply text-xs;
+  }
+  #description > p {
+    @apply text-xs;
+  }
+  #description > * > code,
+  #description > * > * > code {
+    @apply text-xxs;
   }
 }
 </style>

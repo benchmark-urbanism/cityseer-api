@@ -61,7 +61,7 @@ The strength of the decay is controlled by the $\beta$ parameter, which reflects
 
 ![Example beta decays](../../src/assets/plots/images/betas.png)
 
-[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+[`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
 $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
 
@@ -273,7 +273,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects.
 
@@ -345,35 +345,35 @@ It is possible to represent unlimited $d_{max}$ distance thresholds by setting o
 
 <FuncHeading>Properties</FuncHeading>
 
-#### **NetworkLayer.uids**
+#### NetworkLayer.uids
 
 Unique ids corresponding to each node in the graph's node_map.
 
-#### **NetworkLayer.distances**
+#### NetworkLayer.distances
 
 The distance threshold/s at which the class has been initialised.
 
-#### **NetworkLayer.betas**
+#### NetworkLayer.betas
 
 The distance decay $\beta$ thresholds (spatial impedance) at which the class is initialised.
 
-#### **NetworkLayer.node\_x\_arr**
+#### NetworkLayer.node\_x\_arr
 
-#### **NetworkLayer.node\_y\_arr**
+#### NetworkLayer.node\_y\_arr
 
-#### **NetworkLayer.node\_live\_arr**
+#### NetworkLayer.node\_live\_arr
 
-#### **NetworkLayer.edge\_lengths\_arr**
+#### NetworkLayer.edge\_lengths\_arr
 
-#### **NetworkLayer.edge\_angles\_arr**
+#### NetworkLayer.edge\_angles\_arr
 
-#### **NetworkLayer.edge\_impedance\_factors\_arr**
+#### NetworkLayer.edge\_impedance\_factors\_arr
 
-#### **NetworkLayer.edge\_in\_bearings\_arr**
+#### NetworkLayer.edge\_in\_bearings\_arr
 
-#### **NetworkLayer.edge\_out\_bearings\_arr**
+#### NetworkLayer.edge\_out\_bearings\_arr
 
-#### **NetworkLayer.networkX\_multigraph**
+#### NetworkLayer.networkX\_multigraph
 
 If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived.
 
@@ -426,7 +426,7 @@ NetworkLayer.to_networkX()
 </pre>
 </FuncSignature>
 
-Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs#nx-from-graph-maps) internally.
+Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -587,7 +587,7 @@ NetworkLayerFromNX(networkX_multigraph,
 </pre>
 </FuncSignature>
 
-Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
+Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
 <FuncHeading>Parameters</FuncHeading>
 
