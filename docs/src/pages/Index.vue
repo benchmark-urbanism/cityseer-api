@@ -9,8 +9,6 @@ div
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-
 export default {
   name: 'Home',
   data() {
@@ -34,16 +32,6 @@ export default {
         },
       ],
     }
-  },
-  computed: {
-    ...mapGetters(['smallMode', 'makeMonthDate']),
-    landing() {
-      console.log(this.$page.landing)
-      return this.$page.landing
-    },
-    docs() {
-      return this.$page.docs.edges.map((edge) => edge.node)
-    },
   },
 }
 </script>
