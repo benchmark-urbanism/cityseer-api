@@ -1,6 +1,12 @@
 <template lang="pug">
 // don't use id# because overriden (#app) from elsewhere
 main.app-container
+  // github link
+  a.absolute.top-4.left-4.z-20(
+    href='https://github.com/benchmark-urbanism/cityseer-api'
+    target='_blank'
+  )
+    font-awesome(:icon='["fab", "github"]' size='2x')
   // left-hand side of page is navigation column
   aside#nav-column
     // split into two
@@ -17,7 +23,6 @@ main.app-container
             src='./assets/logos/cityseer_logo_light_red.png'
             alt='logo'
             quality='90'
-            :width='largeSize'
           )
         // go button
         g-link#go-box(v-show='isHome' to='/intro/')
@@ -50,7 +55,7 @@ main.app-container
           div Copyright © 2018-present Gareth Simons
       // right narrow bit for title
       g-link#title(to='/' :class='{ "pointer-events-none": $route.path === "/" }')
-        h1 {{ $static.metadata.siteName }}
+        h2#title-text {{ $static.metadata.siteName }}
   // right side of page is content
   #content-column(ref='routerView')
     router-view
@@ -297,7 +302,7 @@ export default {
       this.$nextTick(() => {
         anime({
           targets: '.nested-link',
-          opacity: [0.5, 1],
+          opacity: [0.75, 1],
           scale: [0.98, 1],
           duration: 100,
           delay: anime.stagger(10),
@@ -368,7 +373,7 @@ export default {
 }
 
 #go-box:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 #go-button {
@@ -399,6 +404,8 @@ export default {
 #logo-container {
   /* width and margins set from animations */
   @apply w-full flex items-end;
+
+  width: 250px;
 }
 
 #logo-img {
@@ -406,7 +413,7 @@ export default {
 }
 
 #logo-img:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .nav-link {
@@ -436,14 +443,12 @@ export default {
 
 #title {
   @apply py-4 border-l border-theme transition-all;
-  @apply text-right text-xl leading-snug font-light !important;
 
-  text-shadow: 0 -0.5px 1px #fff;
   writing-mode: vertical-lr;
 }
 
-#title:hover {
-  transform: scaleY(1.05);
+#title-text {
+  @apply text-right font-light text-3xl;
 }
 
 #content-column {
@@ -461,13 +466,12 @@ export default {
     @apply flex-col items-center;
   }
   #go-box {
-    @apply py-8;
+    @apply py-20;
   }
   #go-button {
     @apply w-16 h-16;
   }
   #logo-container {
-    @apply self-center;
   }
   #nav-column {
     @apply w-full relative items-start pl-0;
@@ -479,10 +483,13 @@ export default {
     @apply w-full;
   }
   #nav-tree {
-    @apply flex-1 items-end pr-0;
+    @apply flex-auto items-end pr-0;
   }
   #title {
-    @apply flex-1 py-8 ml-0;
+    @apply flex-1 py-4 ml-0;
+  }
+  #title-text {
+    @apply text-2xl;
   }
   .nav-link {
     @apply text-sm text-left;
