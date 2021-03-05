@@ -1,12 +1,6 @@
 <template lang="pug">
 // don't use id# because overriden (#app) from elsewhere
 main.app-container
-  // github link
-  a.fixed.top-4.left-4.z-20(
-    href='https://github.com/benchmark-urbanism/cityseer-api'
-    target='_blank'
-  )
-    font-awesome(:icon='["fab", "github"]' size='2x')
   // left-hand side of page is navigation column
   aside#nav-column
     // split into two
@@ -51,6 +45,12 @@ main.app-container
           .pb-2(v-show='doc.active')
         // footer
         .flex-grow
+        // github link
+        a.self-start.px-6.py-1(
+          href='https://github.com/benchmark-urbanism/cityseer-api'
+          target='_blank'
+        )
+          font-awesome(:icon='["fab", "github"]' size='2x')
         footer#footer-container
           div Copyright © 2018-present Gareth Simons
       // right narrow bit for title
@@ -438,7 +438,7 @@ export default {
 }
 
 #footer-container {
-  @apply self-start text-xxs px-3 py-1;
+  @apply self-start text-xxs px-6 py-1;
 }
 
 #title {
@@ -471,11 +471,10 @@ export default {
   #go-button {
     @apply w-16 h-16;
   }
-  #logo-container {
-  }
+
   #nav-column {
-    @apply w-full relative items-start pl-0;
-    @apply border-r-0 border-b-1 border-theme;
+    @apply w-full min-w-0 relative min-h-0 max-h-full overflow-visible items-start;
+    @apply pl-0 border-r-0 border-b border-theme;
 
     min-height: 50vh;
   }
@@ -498,7 +497,7 @@ export default {
     @apply text-xs;
   }
   #footer-container {
-    @apply text-xxs w-full self-start text-left px-6;
+    @apply text-xxs w-full self-start text-left;
   }
   #content-column {
     @apply max-w-full;
