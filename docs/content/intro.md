@@ -85,7 +85,7 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 The `networkX` graph can now be transformed into a [`NetworkLayer`](/metrics/networks/#class-networklayer) by invoking [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayer-node-centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks/#networklayer-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx) method.
+The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayernode_centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks/#networklayersegment_centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx) method.
 
 ```python
 from cityseer.metrics import networks
@@ -119,7 +119,7 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](../src/assets/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayer-compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers/#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayer-compute-stats-multiple).
+Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayercompute_aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity), [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers/#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayercompute_stats_multiple).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
@@ -209,9 +209,3 @@ plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labe
 
 ![Example mixed-use plot](../src/assets/plots/images/intro_mixed_uses.png)
 _400m distance-weighted mixed-uses._
-
-## Issues & Contributions
-
-Please report issues to the [`issues`](https://github.com/cityseer-api/issues) page of the `cityseer` `github` repo.
-
-Feature requests and contributions are welcome, and will be considered if within the remit of the package.

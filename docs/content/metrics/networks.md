@@ -93,7 +93,7 @@ beta_from_distance(distance,
 </pre>
 </FuncSignature>
 
-Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance_from_beta) for additional discussion.
 
 :::warning Comment
 
@@ -150,7 +150,7 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 
 Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a `NetworkX` `MultiGraph` to a `NetworkLayer`.
 
-A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [`distance_from_beta`](#distance-from-beta) for more information. These distances and betas are used for any subsequent centrality and land-use calculations.
+A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from one to the other: see [`distance_from_beta`](#distance_from_beta) for more information. These distances and betas are used for any subsequent centrality and land-use calculations.
 
 ```python
 from cityseer.metrics import networks
@@ -175,8 +175,8 @@ print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
 
 There are two network centrality methods available depending on whether you're using a node-based or segment-based approach:
 
-- [`compute_node_centrality`](#networklayer-node-centrality)
-- [`compute_segment_centrality`](#networklayer-segment-centrality)
+- [`compute_node_centrality`](#networklayernode_centrality)
+- [`compute_segment_centrality`](#networklayersegment_centrality)
 
 These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
 
@@ -239,7 +239,7 @@ print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
 # prints [76.01161, 45.261307, 6.805982, 11.478158, 33.74703]
 ```
 
-The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
+The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#networklayermetrics_to_dict) or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](#networklayerto_networkx).
 
 ## NetworkLayer
 
@@ -324,7 +324,7 @@ A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the ex
 
 <FuncElement name='min_threshold_wt' type='float'>
 
-The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance_from_beta) for more information.
 
 </FuncElement>
 
@@ -482,7 +482,7 @@ NetworkLayer.compute_centrality(**kwargs)
 </pre>
 </FuncSignature>
 
-This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_node_centrality`](#networklayer-node-centrality) or [`compute_segment_centrality`](#networklayer-segment-centrality) instead.
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_node_centrality`](#networklayernode_centrality) or [`compute_segment_centrality`](#networklayersegment_centrality) instead.
 
 <FuncHeading>Raises</FuncHeading>
 
