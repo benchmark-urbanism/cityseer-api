@@ -273,7 +273,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 1 | `y` coordinate |
 | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
 When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects.
 

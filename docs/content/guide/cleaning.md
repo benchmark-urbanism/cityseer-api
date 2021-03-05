@@ -50,7 +50,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 
 Once OSM data has been converted to a `NetworkX` `MultiGraph`, `cityseer.tools` can be used to clean the network.
 
-> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with the [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) convenience method.
+> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with the [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) convenience method.
 
 Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
 
@@ -89,7 +89,7 @@ Things are already looked much better, but we still have areas with large concen
 
 We'll do this in three steps:
 
-Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes`](/tools/graphs/#nx-consolidate-nodes) function. The arguments passed to the parameters allow for several different strategies, and are explained more fully in the documentation.
+Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) function. The arguments passed to the parameters allow for several different strategies, and are explained more fully in the documentation.
 
 ```py
 G1 = graphs.nX_consolidate_nodes(G,
@@ -115,7 +115,7 @@ _After an initial pass of node consolidation._
 
 Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
 
-In Step 2, we'll use [`graphs.nX_split_opposing_geoms`](/tools/graphs/#nx-split-opposing-geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
+In Step 2, we'll use [`graphs.nX_split_opposing_geoms`](/tools/graphs/#nx_split_opposing_geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
 
 ```py
 G2 = graphs.nX_split_opposing_geoms(G1,

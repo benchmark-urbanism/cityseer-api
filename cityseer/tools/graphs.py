@@ -1578,7 +1578,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
     :::warning Comment
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayer.to_networkX](/metrics/networks/#to-networkX)
+    [NetworkLayer.to_networkX](/metrics/networks/#networklayerto_networkx)
     :::
 
     Parameters

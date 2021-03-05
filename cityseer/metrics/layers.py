@@ -323,7 +323,7 @@ class DataLayer:
 
         :::warning Comment
         The precision of assignment improves on decomposed networks (see
-        [graphs.nX_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
+        [graphs.nX_decompose](/tools/graphs/#nx_decompose)), which offers the additional benefit of a more granular
         representation of variations in metrics along street-fronts.
         :::
 
