@@ -45,7 +45,7 @@ There are generally two scenarios when creating a street network graph:
 
 1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node][0]['geom'] = linestring_geom`.
 
-2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs/#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs/#nx-remove-dangling-nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs/#nx-remove-filler-nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs/#nx-consolidate-nodes) assists in cleanin-up the network.
+2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs/#nx_simple_geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs/#nx_remove_dangling_nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs/#nx_remove_filler_nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) assists in cleanin-up the network.
 
 ## Example
 
@@ -61,7 +61,7 @@ _A graph with inferred geometries. In this case the geometries are all exactly s
 
 We have now inferred geometries for each edge, meaning that each edge now has an associated `LineString` geometry. Any further manipulation of the graph using the `cityseer.graph` module will retain and further manipulate these geometries in-place.
 
-Once the geoms are readied, we can use tools such as [`nX_decompose`](/tools/graphs/#nx-decompose) for generating granular graph representations and [`nX_to_dual`](/tools/graphs/#nx-to-dual) for casting a primal graph representation to its dual.
+Once the geoms are readied, we can use tools such as [`nX_decompose`](/tools/graphs/#nx_decompose) for generating granular graph representations and [`nX_to_dual`](/tools/graphs/#nx_to_dual) for casting a primal graph representation to its dual.
 
 ```python
 G_decomp = graphs.nX_decompose(G, 50)
