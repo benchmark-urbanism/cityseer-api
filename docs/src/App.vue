@@ -2,7 +2,7 @@
 // don't use id# because overriden (#app) from elsewhere
 main.app-container
   // github link
-  a.absolute.top-4.left-4.z-20(
+  a.fixed.top-4.left-4.z-20(
     href='https://github.com/benchmark-urbanism/cityseer-api'
     target='_blank'
   )
