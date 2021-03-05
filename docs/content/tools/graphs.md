@@ -492,6 +492,7 @@ A tuple of node `uids` corresponding to the node identifiers in the source `netw
 <FuncElement name='node_data'>
 
 A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
+
 | idx | property |
 |-----|:---------|
 | 0 | `x` coordinate |
@@ -503,6 +504,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 <FuncElement name='edge_data'>
 
 A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of travel. The indices of the second dimension correspond as follows:
+
 | idx | property |
 |-----|:---------|
 | 0 | start node `idx` |
@@ -512,6 +514,7 @@ A 2d `numpy` array representing the graph's edges. Each edge will be described s
 | 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
 | 5 | the edge's entry angular bearing |
 | 6 | the edge's exit angular bearing |
+
 All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
 
 </FuncElement>
@@ -554,6 +557,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
 <FuncElement name='node_data' type='np.ndarray'>
 
 A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
+
 | idx | property |
 | --- | :------- |
 | 0   | `x` coordinate |
@@ -565,6 +569,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 <FuncElement name='edge_data' type='np.ndarray'>
 
 A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should  correspond as follows:
+
 | idx | property |
 | --- | :------- |
 | 0   | start node `idx` |
