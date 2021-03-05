@@ -426,7 +426,7 @@ NetworkLayer.to_networkX()
 </pre>
 </FuncSignature>
 
-Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
+Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs/#nx_from_graph_maps) internally.
 
 <FuncHeading>Returns</FuncHeading>
 
@@ -587,7 +587,7 @@ NetworkLayerFromNX(networkX_multigraph,
 </pre>
 </FuncSignature>
 
-Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
+Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph_maps_from_nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
 <FuncHeading>Parameters</FuncHeading>
 
