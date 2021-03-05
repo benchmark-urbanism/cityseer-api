@@ -45,7 +45,7 @@ There are generally two scenarios when creating a street network graph:
 
 1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node][0]['geom'] = linestring_geom`.
 
-2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs/#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs/#nx-remove-dangling-nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs/#nx-remove-filler-nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs/#nx-consolidate-nodes) assists in cleanin-up the network.
+2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs/#nx_simple_geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs/#nx_remove_dangling_nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs/#nx_remove_filler_nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) assists in cleanin-up the network.
 
 ## Example
 
@@ -61,7 +61,7 @@ _A graph with inferred geometries. In this case the geometries are all exactly s
 
 We have now inferred geometries for each edge, meaning that each edge now has an associated `LineString` geometry. Any further manipulation of the graph using the `cityseer.graph` module will retain and further manipulate these geometries in-place.
 
-Once the geoms are readied, we can use tools such as [`nX_decompose`](/tools/graphs/#nx-decompose) for generating granular graph representations and [`nX_to_dual`](/tools/graphs/#nx-to-dual) for casting a primal graph representation to its dual.
+Once the geoms are readied, we can use tools such as [`nX_decompose`](/tools/graphs/#nx_decompose) for generating granular graph representations and [`nX_to_dual`](/tools/graphs/#nx_to_dual) for casting a primal graph representation to its dual.
 
 ```python
 G_decomp = graphs.nX_decompose(G, 50)
@@ -85,7 +85,7 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 The `networkX` graph can now be transformed into a [`NetworkLayer`](/metrics/networks/#class-networklayer) by invoking [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx). Network layers are used for network centrality computations and also provide the backbone for subsequent landuse and statistical aggregations. They must be initialised with a set of distances $d_{max}$ specifying the maximum network-distance thresholds at which the local centrality methods will terminate.
 
-The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayer-node-centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks/#networklayer-segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx) method.
+The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayernode_centrality) and [`NetworkLayer.segment_centrality`](/metrics/networks/#networklayersegment_centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `NetworkLayer` class, and can be accessed at the `NetworkLayer.metrics` property. It is also possible to extract the data to a `python` dictionary through use of the [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict) method, or to simply convert the network — data and all — back into a `networkX` layer with the [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx) method.
 
 ```python
 from cityseer.metrics import networks
@@ -119,7 +119,7 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](../src/assets/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayer-compute-aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayer-hill-branch-wt-diversity), [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayer-compute-accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers/#datalayer-compute-stats-single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayer-compute-stats-multiple).
+Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayercompute_aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity), [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers/#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayercompute_stats_multiple).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
@@ -209,9 +209,3 @@ plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labe
 
 ![Example mixed-use plot](../src/assets/plots/images/intro_mixed_uses.png)
 _400m distance-weighted mixed-uses._
-
-## Issues & Contributions
-
-Please report issues to the [`issues`](https://github.com/cityseer-api/issues) page of the `cityseer` `github` repo.
-
-Feature requests and contributions are welcome, and will be considered if within the remit of the package.

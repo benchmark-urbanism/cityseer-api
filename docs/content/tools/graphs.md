@@ -540,7 +540,7 @@ Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an exi
 
 :::warning Comment
 
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks/#to-networkX)
+It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks/#networklayerto_networkx)
 :::
 
 <FuncHeading>Parameters</FuncHeading>
