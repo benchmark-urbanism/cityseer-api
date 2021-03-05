@@ -85,7 +85,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     Notes
     -----
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](plot/#plot-nx) method
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](/tools/plot/#plot_nx) method
     instead.
 
     ```py

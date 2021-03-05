@@ -104,7 +104,7 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
 
-    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance_from_beta) for additional discussion.
 
     :::warning Comment
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
@@ -174,7 +174,7 @@ class NetworkLayer:
     A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters
     $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and
     unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from
-    one to the other: see [`distance_from_beta`](#distance-from-beta) for more information. These distances and betas
+    one to the other: see [`distance_from_beta`](#distance_from_beta) for more information. These distances and betas
     are used for any subsequent centrality and land-use calculations.
 
     ```python
@@ -201,8 +201,8 @@ class NetworkLayer:
     There are two network centrality methods available depending on whether you're using a node-based or segment-based
     approach:
 
-    - [`compute_node_centrality`](#networklayer-node-centrality)
-    - [`compute_segment_centrality`](#networklayer-segment-centrality)
+    - [`compute_node_centrality`](#networklayernode_centrality)
+    - [`compute_segment_centrality`](#networklayersegment_centrality)
 
     These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
     all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
@@ -295,8 +295,8 @@ class NetworkLayer:
     ```
 
     The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using
-    [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using
-    [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
+    [`NetworkLayer.metrics_to_dict`](#networklayermetrics_to_dict) or transposed to a `networkX` graph using
+    [`NetworkLayer.to_networkX`](#networklayerto_networkx).
     """
 
     def __init__(self,
@@ -324,7 +324,7 @@ class NetworkLayer:
             | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
             The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
+            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm)
             can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
             UTM `x`, `y` projected coordinate system.
 
@@ -383,7 +383,7 @@ class NetworkLayer:
             `betas` parameter is not provided, then the `distance` parameter must be provided instead.
         min_threshold_wt
             The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-            `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+            `distance` and `beta` parameters. See [`distance_from_beta`](#distance_from_beta) for more information.
 
         Returns
         -------
@@ -590,7 +590,7 @@ class NetworkLayer:
     def to_networkX(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
+        [`nX_from_graph_maps`](/tools/graphs/#nx_from_graph_maps) internally.
 
         Returns
         -------
@@ -649,7 +649,7 @@ class NetworkLayer:
     def compute_centrality(self, **kwargs):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`compute_node_centrality`](#networklayer-node-centrality) or [`compute_segment_centrality`](#networklayer-segment-centrality)
+        [`compute_node_centrality`](#networklayernode_centrality) or [`compute_segment_centrality`](#networklayersegment_centrality)
         instead.
 
         Raises
@@ -711,6 +711,7 @@ class NetworkLayer:
         | node_betweenness_angular | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | The simplest-path
         version of betweenness centrality. This is distinguished from the shortest-path version by use of a
         simplest-path heuristic (shortest angular distance). |
+        
         """
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
@@ -860,7 +861,7 @@ class NetworkLayerFromNX(NetworkLayer):
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally.
+        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph_maps_from_nx) internally.
         Methods and properties are inherited from the parent [`NetworkLayer`](#class-networklayer) class.
 
         Parameters

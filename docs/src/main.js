@@ -3,6 +3,7 @@ import Vuex from 'vuex'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { config, library } from '@fortawesome/fontawesome-svg-core'
 import { faHome, faLink, faAngleDoubleUp, faRocket } from '@fortawesome/free-solid-svg-icons'
+import { faGithub } from '@fortawesome/free-brands-svg-icons'
 import '@fortawesome/fontawesome-svg-core/styles.css'
 // tailwind
 import './assets/css/tailwind.css'
@@ -18,7 +19,7 @@ import FuncSignature from './components/FuncSignature.vue'
 
 // setup fontAwesome
 config.autoAddCss = false
-library.add(faHome, faLink, faAngleDoubleUp, faRocket)
+library.add(faHome, faLink, faAngleDoubleUp, faRocket, faGithub)
 
 export default function (Vue, { appOptions, head }) {
   // Set default layout as a global component

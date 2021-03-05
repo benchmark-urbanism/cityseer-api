@@ -1,10 +1,10 @@
 <template lang="pug">
 div
   #home-container
-    h1.text-4xl.font-normal.leading-tight.pt-32.pb-16 {{ tagline }}
+    h1#heading-text {{ tagline }}
     #feature-content
       div(v-for='feature in features')
-        h2.text-2xl.font-medium.leading-tight {{ feature.title }}
+        h2#feature-text {{ feature.title }}
         p {{ feature.details }}
 </template>
 
@@ -38,18 +38,30 @@ export default {
 
 <style lang="postcss" scoped>
 #home-container {
-  @apply flex flex-col items-start;
+  @apply flex flex-col items-start pt-72;
+}
+#heading-text {
+  @apply text-4xl font-normal leading-tight;
 }
 #feature-content {
   @apply flex flex-col max-w-md;
+}
+#feature-text {
+  @apply text-2xl font-medium leading-tight;
 }
 
 @media only screen and (max-width: 958px) {
   #home-container {
     @apply pt-8;
   }
+  #heading-text {
+    @apply text-3xl;
+  }
   #feature-content {
     @apply max-w-sm;
+  }
+  #feature-text {
+    @apply text-lg font-semibold;
   }
 }
 </style>
