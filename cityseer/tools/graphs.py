@@ -1421,14 +1421,17 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
         A tuple of node `uids` corresponding to the node identifiers in the source `networkX` graph.
     node_data
         A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
+        
         | idx | property |
         |-----|:---------|
         | 0 | `x` coordinate |
         | 1 | `y` coordinate |
         | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
+
     edge_data
         A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of
         travel. The indices of the second dimension correspond as follows:
+
         | idx | property |
         |-----|:---------|
         | 0 | start node `idx` |
@@ -1439,6 +1442,7 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
         shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
         | 5 | the edge's entry angular bearing |
         | 6 | the edge's exit angular bearing |
+
         All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
     node_edge_map
         A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
@@ -1588,14 +1592,17 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
     node_data
         A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as
         follows:
+
         | idx | property |
         | --- | :------- |
         | 0   | `x` coordinate |
         | 1   | `y` coordinate |
         | 2   | `bool` describing whether the node is `live` |
+
     edge_data
         A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should 
         correspond as follows:
+
         | idx | property |
         | --- | :------- |
         | 0   | start node `idx` |
@@ -1605,6 +1612,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         | 4   | 'impedance factor' applied to magnify or reduce the edge impedance. |
         | 5   | the edge's entry angular bearing |
         | 6   | the edge's exit angular bearing |
+
     node_edge_map
         A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
         indices for each node.
