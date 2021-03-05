@@ -3,7 +3,7 @@ cityseer
 
 [![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
 
-[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/deploy-docs.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/deploy-docs.yml)
+[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml)
 
 `cityseer` is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.
 
