@@ -50,7 +50,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 
 Once OSM data has been converted to a `NetworkX` `MultiGraph`, `cityseer.tools` can be used to clean the network.
 
-> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with the [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) convenience method.
+> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm).
 
 Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
 
