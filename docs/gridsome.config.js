@@ -107,7 +107,7 @@ module.exports = {
   css: {
     loaderOptions: {
       postcss: {
-        plugins: [postcssImport, tailwindcss('tailwind.config.js'), autoprefixer],
+        plugins: [postcssImport, tailwindcss('./tailwind.config.js'), autoprefixer],
       },
     },
   },
