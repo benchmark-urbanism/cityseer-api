@@ -78,15 +78,15 @@
   }
 
   table {
-    @apply table-auto border-t border-r border-midgrey;
+    @apply table-auto border-t border-r border-midgrey mx-2 my-3;
   }
 
   th {
-    @apply border-l border-b border-midgrey py-2;
+    @apply border-l border-b border-midgrey p-3;
   }
 
   td {
-    @apply px-1 py-2 text-xs border-l border-b border-midgrey;
+    @apply text-xs border-l border-b border-midgrey p-2;
   }
 
   td > code,
