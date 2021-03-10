@@ -1,5 +1,4 @@
-cityseer
-========
+# cityseer
 
 [![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
 
