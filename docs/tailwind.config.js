@@ -52,6 +52,10 @@ module.exports = {
         3: '4px',
         4: '6px',
       },
+      borderColor: (theme) => ({
+        ...theme('colors'),
+        DEFAULT: theme('colors.darkgrey', 'currentColor'),
+      }),
       colors: {
         theme: '#d32f2f',
         black: '#000',

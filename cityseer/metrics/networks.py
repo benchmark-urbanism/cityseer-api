@@ -201,8 +201,8 @@ class NetworkLayer:
     There are two network centrality methods available depending on whether you're using a node-based or segment-based
     approach:
 
-    - [`compute_node_centrality`](#networklayernode_centrality)
-    - [`compute_segment_centrality`](#networklayersegment_centrality)
+    - [`node_centrality`](#networklayernode_centrality)
+    - [`segment_centrality`](#networklayersegment_centrality)
 
     These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
     all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
@@ -649,7 +649,7 @@ class NetworkLayer:
     def compute_centrality(self, **kwargs):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`compute_node_centrality`](#networklayernode_centrality) or [`compute_segment_centrality`](#networklayersegment_centrality)
+        [`node_centrality`](#networklayernode_centrality) or [`segment_centrality`](#networklayersegment_centrality)
         instead.
 
         Raises
