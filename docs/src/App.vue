@@ -294,16 +294,15 @@ export default {
         'margin-right': 50,
         'margin-bottom': 200,
         'margin-left': 50,
-        duration: 500,
-        easing: 'easeOutElastic',
+        duration: 300,
+        easing: 'easeOutExpo',
       })
     },
     h2Anim() {
       this.$nextTick(() => {
         anime({
           targets: '.nested-link',
-          opacity: [0.75, 1],
-          scale: [0.98, 1],
+          scale: [0.9, 1],
           duration: 100,
           delay: anime.stagger(10),
           easing: 'linear',
