@@ -111,4 +111,7 @@ module.exports = {
       },
     },
   },
+  icon: {
+    favicon: './src/favicon.png',
+  },
 }

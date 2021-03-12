@@ -32,7 +32,6 @@ export default function (Vue, { appOptions, head }) {
   // Font Awesome
   Vue.component('FontAwesome', FontAwesomeIcon)
   // Head
-  head.link.push({ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' })
   head.link.push({ rel: 'preconnect', href: 'https://fonts.gstatic.com' })
   head.link.push({
     rel: 'stylesheet',
