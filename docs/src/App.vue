@@ -380,14 +380,14 @@ export default {
   @apply border-2 border-theme bg-lightgrey rounded-full shadow text-theme;
 }
 
-#nav-side-by-side {
-  @apply flex flex-grow;
-}
-
 #nav-column {
   @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
 
   min-width: 350px;
+}
+
+#nav-side-by-side {
+  @apply flex flex-grow;
 }
 
 #nav-tree {
