@@ -13,10 +13,11 @@ main.app-container
           :class='{ "pointer-events-none": $route.path === "/" }'
           title='home'
         )
-          g-image#logo-img.foreground-pulse(
+          g-image#logo-img(
             src='./assets/logos/cityseer_logo_light_red.png'
             alt='logo'
             quality='90'
+            immediate
           )
         // go button
         g-link#go-box(v-show='isHome' to='/intro/')
@@ -95,7 +96,7 @@ query {
 </static-query>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapState } from 'vuex'
 import { throttle } from 'lodash'
 import anime from 'animejs/lib/anime.es.js'
 
@@ -128,8 +129,6 @@ export default {
       laggedElem: null,
       fillerElem: null,
       scrollToTopVisible: false,
-      largeSize: 450,
-      smallSize: 250,
       navPaths: [
         '/intro/',
         '/guide/cleaning/',
@@ -143,6 +142,7 @@ export default {
     }
   },
   computed: {
+    ...mapState(['innerWidth', 'innerHeight']),
     ...mapGetters(['smallMode']),
     isHome() {
       return this.$route.path === '/'
@@ -237,12 +237,15 @@ export default {
   created() {
     // check that logo is set to small if loading from non-home route
     if (!process.isClient) return
-    // keep store's references to dom refreshed
-    // used for updating page layouts for small screens
+    // refresh state's reference to screen width and height
     this.domDims()
-    window.addEventListener('resize', () => this.domDims())
     // check the logo size is in sync
     this.updateLogoSize()
+    // setup resize event listener to keep this refreshed
+    window.addEventListener('resize', () => {
+      this.domDims()
+      this.updateLogoSize()
+    })
     // update scroll position
     document.addEventListener('scroll', () => {
       if (window) this.scrollToTopVisible = window.scrollY > window.innerHeight
@@ -258,7 +261,7 @@ export default {
         width: window.innerWidth,
         height: window.innerHeight,
       })
-    }, 50),
+    }, 500),
     scrollTo(targetEl) {
       this.$router.push(targetEl)
     },
@@ -266,8 +269,9 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     },
     updateLogoSize() {
+      if (!process.isClient) return
       setTimeout(() => {
-        if (this.isHome && !this.smallMode) {
+        if (this.isHome) {
           this.animLogoLarge()
         } else {
           this.animLogoSmall()
@@ -276,26 +280,60 @@ export default {
     },
     animLogoSmall() {
       anime({
-        targets: '#logo-container',
-        width: this.smallSize,
-        'margin-top': 100,
-        'margin-right': 15,
-        'margin-bottom': 20,
-        'margin-left': 15,
+        targets: '#logo-img',
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
         duration: 300,
         easing: 'easeOutExpo',
       })
+      // reset nav to 350px width if in not in small mode
+      anime({
+        targets: '#nav-column',
+        // keep in sync with styles
+        width: this.smallMode ? '100vw' : '350px',
+        duration: 0,
+        easing: 'linear',
+      })
     },
     animLogoLarge() {
+      // keep in sync with styles
+      const imgWidth = 200
+      const imgHeight = 100
+      const leftMargin = 80
+      const topMargin = 50
+      let scaling =
+        this.innerHeight < 800 ? 1.25 : this.innerWidth < 600 ? 1.25 : this.smallMode ? 1.5 : 2
+      // transX must move image to quarter point
+      // take into account margin, image width, and scaling
+      let transX = (-leftMargin - imgWidth / 2 + this.innerWidth / 4) / scaling
+      // likewise for transY - except move to third
+      let transY = (-topMargin - imgHeight / 2 + this.innerHeight / 3) / scaling
+      // override if in small mode
+      if (this.smallMode) {
+        scaling = 1.5
+        if (this.innerWidth < 580) {
+          scaling = 1.25
+        }
+        // transX must move image to half point
+        // take into account margin, image width, and scaling
+        transX = (-leftMargin - imgWidth / 2 + this.innerWidth / 2) / scaling
+        transY = topMargin / scaling
+      }
       anime({
-        targets: '#logo-container',
-        width: this.largeSize,
-        'margin-top': 200,
-        'margin-right': 50,
-        'margin-bottom': 200,
-        'margin-left': 50,
+        targets: '#logo-img',
+        scale: scaling,
+        translateX: transX,
+        translateY: transY,
         duration: 300,
         easing: 'easeOutExpo',
+      })
+      // nav grows to 100vw if small mode, otherwise grows to 50vw
+      anime({
+        targets: '#nav-column',
+        width: this.smallMode ? '100vw' : '50vw',
+        duration: 0,
+        easing: 'linear',
       })
     },
     h2Anim() {
@@ -305,7 +343,7 @@ export default {
           scale: [0.9, 1],
           duration: 100,
           delay: anime.stagger(10),
-          easing: 'linear',
+          easing: 'easeOutBack',
         })
       })
     },
@@ -368,7 +406,7 @@ export default {
 }
 
 #go-box {
-  @apply w-full flex flex-col items-center justify-center;
+  @apply h-full w-full flex flex-col items-center justify-center;
 }
 
 #go-box:hover {
@@ -402,17 +440,17 @@ export default {
 
 #logo-container {
   /* width and margins set from animations */
-  @apply w-full flex items-end;
-
-  width: 250px;
+  @apply w-full flex items-start justify-start;
 }
 
 #logo-img {
-  @apply transition-all object-contain;
-}
+  @apply w-full object-contain;
 
-#logo-img:hover {
-  transform: scale(1.05);
+  width: 200px;
+  height: 100px;
+  margin-top: 50px;
+  margin-left: 80px;
+  margin-bottom: 50px;
 }
 
 .nav-link {
