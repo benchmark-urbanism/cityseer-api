@@ -227,7 +227,8 @@ def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
     despine
-        The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur. Defaults to None.
+        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
+        Defaults to None.
     remove_disconnected
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
@@ -247,7 +248,7 @@ def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
         g_nodes = sorted(connected_components, key=len, reverse=True)[0]
         # make a copy of the graph using the largest component
         g_multi_copy = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
-    if despine:
+    if despine is not None and despine > 0:
         remove_nodes = []
         for n, d in tqdm(g_multi_copy.nodes(data=True), disable=checks.quiet_mode):
             if nx.degree(g_multi_copy, n) == 1:
