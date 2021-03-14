@@ -58,7 +58,6 @@ export default function (Vue, { appOptions, head }) {
     state: {
       innerWidth: null,
       innerHeight: null,
-      dayId: null,
     },
     mutations: {
       setDomDims(state, { width, height }) {

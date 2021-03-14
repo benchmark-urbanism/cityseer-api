@@ -2,21 +2,23 @@
 // don't use id# because overriden (#app) from elsewhere
 main.app-container
   // left-hand side of page is navigation column
-  aside#nav-column
+  aside#nav-column(:style='navDynamicStyle')
     // split into two
     section#nav-side-by-side
       // left side for navigation
       nav#nav-tree(ref='navView')
         // logo serves as home button
-        g-link#logo-container.foreground-pulse(
+        g-link#logo-link.foreground-pulse(
           to='/'
           :class='{ "pointer-events-none": $route.path === "/" }'
           title='home'
         )
-          g-image#logo-img.foreground-pulse(
+          g-image#logo-img(
             src='./assets/logos/cityseer_logo_light_red.png'
             alt='logo'
             quality='90'
+            immediate
+            :style='logoDynamicStyle'
           )
         // go button
         g-link#go-box(v-show='isHome' to='/intro/')
@@ -95,7 +97,7 @@ query {
 </static-query>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapState } from 'vuex'
 import { throttle } from 'lodash'
 import anime from 'animejs/lib/anime.es.js'
 
@@ -128,8 +130,6 @@ export default {
       laggedElem: null,
       fillerElem: null,
       scrollToTopVisible: false,
-      largeSize: 450,
-      smallSize: 250,
       navPaths: [
         '/intro/',
         '/guide/cleaning/',
@@ -143,6 +143,7 @@ export default {
     }
   },
   computed: {
+    ...mapState(['innerWidth', 'innerHeight']),
     ...mapGetters(['smallMode']),
     isHome() {
       return this.$route.path === '/'
@@ -186,20 +187,49 @@ export default {
       })
       return sortedDocs
     },
+    navDynamicStyle() {
+      return {
+        width: this.smallMode ? '100vw' : this.isHome ? '50vw' : '350px',
+      }
+    },
+    logoDynamicStyle() {
+      if (!this.smallMode && this.isHome) {
+        const margin = this.innerWidth / 8
+        const width = this.innerWidth / 4
+        const height = width * 0.5
+        return {
+          margin: `${margin}px`,
+          width: `${width}px`,
+          height: `${height}px`,
+        }
+      } else if (!this.smallMode && !this.isHome) {
+        return {
+          margin: '10px',
+          width: '250px',
+          height: '150px',
+        }
+      } else {
+        let margin = this.innerWidth / 4
+        let width = this.innerWidth / 2
+        if (this.isHome) {
+          margin / 1.25
+          width * 1.25
+        }
+        const height = width * 0.5
+        return {
+          margin: `${margin}px 0 ${margin / 2}px 0`,
+          width: `${width}px`,
+          height: `${height}px`,
+        }
+      }
+    },
   },
   watch: {
-    smallMode() {
-      if (!process.isClient) return
-      // update logo size
-      this.updateLogoSize()
-    },
     docNav: {
       immediate: true,
       handler(newDocNav) {
         if (!newDocNav) return
         if (!process.isClient) return
-        // update logo size
-        this.updateLogoSize()
         // trigger the h2 headings animation
         this.h2Anim()
         // reset h2 element state for interactive nav
@@ -237,12 +267,12 @@ export default {
   created() {
     // check that logo is set to small if loading from non-home route
     if (!process.isClient) return
-    // keep store's references to dom refreshed
-    // used for updating page layouts for small screens
+    // refresh state's reference to screen width and height
     this.domDims()
-    window.addEventListener('resize', () => this.domDims())
-    // check the logo size is in sync
-    this.updateLogoSize()
+    // setup resize event listener to keep this refreshed
+    window.addEventListener('resize', () => {
+      this.domDims()
+    })
     // update scroll position
     document.addEventListener('scroll', () => {
       if (window) this.scrollToTopVisible = window.scrollY > window.innerHeight
@@ -258,45 +288,12 @@ export default {
         width: window.innerWidth,
         height: window.innerHeight,
       })
-    }, 50),
+    }, 500),
     scrollTo(targetEl) {
       this.$router.push(targetEl)
     },
     scrollTop() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    },
-    updateLogoSize() {
-      setTimeout(() => {
-        if (this.isHome && !this.smallMode) {
-          this.animLogoLarge()
-        } else {
-          this.animLogoSmall()
-        }
-      }, 50)
-    },
-    animLogoSmall() {
-      anime({
-        targets: '#logo-container',
-        width: this.smallSize,
-        'margin-top': 100,
-        'margin-right': 15,
-        'margin-bottom': 20,
-        'margin-left': 15,
-        duration: 300,
-        easing: 'easeOutExpo',
-      })
-    },
-    animLogoLarge() {
-      anime({
-        targets: '#logo-container',
-        width: this.largeSize,
-        'margin-top': 200,
-        'margin-right': 50,
-        'margin-bottom': 200,
-        'margin-left': 50,
-        duration: 300,
-        easing: 'easeOutExpo',
-      })
     },
     h2Anim() {
       this.$nextTick(() => {
@@ -305,7 +302,7 @@ export default {
           scale: [0.9, 1],
           duration: 100,
           delay: anime.stagger(10),
-          easing: 'linear',
+          easing: 'easeOutBack',
         })
       })
     },
@@ -366,94 +363,71 @@ export default {
 .app-container {
   @apply min-h-screen w-screen flex;
 }
-
 #go-box {
-  @apply w-full flex flex-col items-center justify-center;
+  @apply w-full flex flex-col items-center;
 }
-
 #go-box:hover {
   transform: scale(1.05);
 }
-
 #go-button {
   @apply w-20 h-20 flex items-center justify-center transition-all;
   @apply border-2 border-theme bg-lightgrey rounded-full shadow text-theme;
 }
-
 #nav-column {
   @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
-
-  min-width: 350px;
 }
-
 #nav-side-by-side {
   @apply flex flex-grow;
 }
-
 #nav-tree {
   @apply flex-grow w-full flex flex-col items-end;
 
   background-color: rgba(211, 47, 47, 0.075);
 }
-
 #nested-nav-tree {
   @apply flex flex-col items-end;
 }
-
-#logo-container {
+#logo-link {
   /* width and margins set from animations */
-  @apply w-full flex items-end;
-
-  width: 250px;
+  @apply w-full flex items-center justify-center transition-all;
 }
-
-#logo-img {
-  @apply transition-all object-contain;
-}
-
-#logo-img:hover {
+#logo-link:hover {
   transform: scale(1.05);
 }
-
+#logo-img {
+  @apply w-full object-contain transition-all;
+}
 .nav-link {
   @apply text-base text-right text-theme font-medium px-3 py-1 cursor-pointer;
 }
-
 .nav-link-active,
 .nav-link:hover,
 .nav-link:active {
   @apply bg-theme text-white;
 }
-
 .nested-link {
-  @apply text-sm font-light py-0.5 pr-6 cursor-pointer;
+  @apply text-sm py-0.5 pr-6 cursor-pointer;
   @apply border-theme;
 }
-
 .nested-link-active,
 .nested-link:hover,
 .nested-link:active {
-  @apply border-r-3 pr-5 font-normal;
+  @apply border-r-3 pr-5;
 }
-
 #footer-container {
   @apply self-start text-xxs px-6 py-1;
 }
-
 #title {
   @apply py-4 border-l border-theme transition-all;
 
   writing-mode: vertical-lr;
 }
-
 #title-text {
   @apply text-right font-light text-3xl;
 }
-
 #content-column {
   @apply flex-1 min-w-0 max-w-3xl px-6 pb-20;
 }
-
 #back-to-top {
   @apply fixed flex items-center justify-center z-50 top-4 right-4;
   @apply w-12 h-12 rounded-full border-2 border-white shadow;
@@ -463,9 +437,6 @@ export default {
 @media only screen and (max-width: 958px) {
   .app-container {
     @apply flex-col items-center;
-  }
-  #go-box {
-    @apply py-20;
   }
   #go-button {
     @apply w-16 h-16;
