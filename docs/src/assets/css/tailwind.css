@@ -65,7 +65,10 @@
   }
 
   code {
-    @apply font-mono text-xs tracking-tight font-medium px-1 py-0.5 bg-gray-200 rounded;
+    @apply font-mono text-xs tracking-tight font-medium bg-gray-200 rounded-sm;
+
+    padding: 0 4px;
+    margin: 0 1px;
   }
 
   pre > code {
