@@ -2,7 +2,7 @@
 
 A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
-## nX_simple_geoms
+## nX\_simple\_geoms
 
 <FuncSignature>
 <pre>
@@ -29,7 +29,7 @@ A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthed
 
 </FuncElement>
 
-## nX_from_osm
+## nX\_from\_osm
 
 <FuncSignature>
 <pre>
@@ -56,7 +56,7 @@ A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io
 
 </FuncElement>
 
-## nX_wgs_to_utm
+## nX\_wgs\_to\_utm
 
 <FuncSignature>
 <pre>
@@ -90,7 +90,7 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the loca
 
 </FuncElement>
 
-## nX_remove_dangling_nodes
+## nX\_remove\_dangling\_nodes
 
 <FuncSignature>
 <pre>
@@ -131,7 +131,7 @@ A `networkX` `MultiGraph` with disconnected components optionally removed, and d
 
 </FuncElement>
 
-## nX_remove_filler_nodes
+## nX\_remove\_filler\_nodes
 
 <FuncSignature>
 <pre>
@@ -163,7 +163,7 @@ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be
 
 </FuncElement>
 
-## nX_consolidate_nodes
+## nX\_consolidate\_nodes
 
 <FuncSignature>
 <pre>
@@ -293,7 +293,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![Example cleaned graph](../../src/assets/plots/images/graph_cleaning_5.png)
 _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
-## nX_split_opposing_geoms
+## nX\_split\_opposing\_geoms
 
 <FuncSignature>
 <pre>
@@ -348,7 +348,7 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 </FuncElement>
 
-## nX_decompose
+## nX\_decompose
 
 <FuncSignature>
 <pre>
@@ -409,7 +409,7 @@ _Example graph prior to decomposition._
 ![Example decomposed graph](../../src/assets/plots/images/graph_decomposed.png)
 _Example graph after decomposition._
 
-## nX_to_dual
+## nX\_to\_dual
 
 <FuncSignature>
 <pre>
@@ -457,7 +457,7 @@ plot.plot_nX_primal_or_dual(G_simple,
 ![Example dual graph](../../src/assets/plots/images/graph_dual.png)
 _Dual graph (blue) overlaid on the source primal graph (red)._
 
-## graph_maps_from_nX
+## graph\_maps\_from\_nX
 
 <FuncSignature>
 <pre>
@@ -493,11 +493,11 @@ A tuple of node `uids` corresponding to the node identifiers in the source `netw
 
 A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
 
-| idx | property                                                                                  |
-| --- | :---------------------------------------------------------------------------------------- |
-| 0   | `x` coordinate                                                                            |
-| 1   | `y` coordinate                                                                            |
-| 2   | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
+| idx | property |
+|-----|:---------|
+| 0 | `x` coordinate |
+| 1 | `y` coordinate |
+| 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
 </FuncElement>
 
@@ -505,15 +505,15 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 
 A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of travel. The indices of the second dimension correspond as follows:
 
-| idx | property                                                                                                                                                                                             |
-| --- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0   | start node `idx`                                                                                                                                                                                     |
-| 1   | end node `idx`                                                                                                                                                                                       |
-| 2   | the segment length in metres                                                                                                                                                                         |
-| 3   | the sum of segment's angular change                                                                                                                                                                  |
-| 4   | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
-| 5   | the edge's entry angular bearing                                                                                                                                                                     |
-| 6   | the edge's exit angular bearing                                                                                                                                                                      |
+| idx | property |
+|-----|:---------|
+| 0 | start node `idx` |
+| 1 | end node `idx` |
+| 2 | the segment length in metres |
+| 3 | the sum of segment's angular change |
+| 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
+| 5 | the edge's entry angular bearing |
+| 6 | the edge's exit angular bearing |
 
 All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
 
@@ -525,7 +525,7 @@ A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as va
 
 </FuncElement>
 
-## nX_from_graph_maps
+## nX\_from\_graph\_maps
 
 <FuncSignature>
 <pre>
@@ -558,27 +558,27 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
 
 A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
 
-| idx | property                                     |
-| --- | :------------------------------------------- |
-| 0   | `x` coordinate                               |
-| 1   | `y` coordinate                               |
+| idx | property |
+| --- | :------- |
+| 0   | `x` coordinate |
+| 1   | `y` coordinate |
 | 2   | `bool` describing whether the node is `live` |
 
 </FuncElement>
 
 <FuncElement name='edge_data' type='np.ndarray'>
 
-A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should correspond as follows:
+A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should  correspond as follows:
 
-| idx | property                                                            |
-| --- | :------------------------------------------------------------------ |
-| 0   | start node `idx`                                                    |
-| 1   | end node `idx`                                                      |
-| 2   | the segment length in metres                                        |
-| 3   | the sum of segment's angular change                                 |
+| idx | property |
+| --- | :------- |
+| 0   | start node `idx` |
+| 1   | end node `idx` |
+| 2   | the segment length in metres |
+| 3   | the sum of segment's angular change |
 | 4   | 'impedance factor' applied to magnify or reduce the edge impedance. |
-| 5   | the edge's entry angular bearing                                    |
-| 6   | the edge's exit angular bearing                                     |
+| 5   | the edge's entry angular bearing |
+| 6   | the edge's exit angular bearing |
 
 </FuncElement>
 
