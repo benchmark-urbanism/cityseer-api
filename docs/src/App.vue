@@ -194,11 +194,15 @@ export default {
     },
     logoDynamicStyle() {
       if (!this.smallMode && this.isHome) {
-        const margin = this.innerWidth / 8
-        const width = this.innerWidth / 4
+        const xMargin = this.innerWidth * 0.125
+        let yMargin = xMargin * 1.5
+        if (yMargin >= 250) {
+          yMargin = 250
+        }
+        const width = this.innerWidth * 0.35
         const height = width * 0.5
         return {
-          margin: `${margin}px`,
+          margin: `${yMargin}px ${xMargin}px`,
           width: `${width}px`,
           height: `${height}px`,
         }
@@ -209,13 +213,9 @@ export default {
           height: '150px',
         }
       } else {
-        let margin = this.innerWidth / 4
-        let width = this.innerWidth / 2
-        if (this.isHome) {
-          margin / 1.25
-          width * 1.25
-        }
-        const height = width * 0.5
+        let margin = this.innerWidth * 0.2
+        let width = this.innerWidth * 0.6
+        const height = width * 0.6
         return {
           margin: `${margin}px 0 ${margin / 2}px 0`,
           width: `${width}px`,
