@@ -9,7 +9,7 @@ The use of `python` facilitates interaction with popular tools for network, geos
 `cityseer` is a `python` package that can be installed with `pip`:
 
 ```bash
-pip install cityseer
+pip install cityseer==v1.0.0a3
 ```
 
 Code tests are run against `python 3.9`.
