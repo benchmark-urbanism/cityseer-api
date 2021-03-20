@@ -16,12 +16,9 @@ When a high-quality source is available, it may be best not to attempt additiona
 This example will make use of OSM data downloaded from the [OSM API](https://wiki.openstreetmap.org/wiki/API). To keep things interesting, let's pick London Soho, which will be buffered and cleaned for a 1,250m radius.
 
 ```python
-from matplotlib import colors
-import numpy as np
 from shapely import geometry
 import utm
 
-from cityseer.metrics import networks
 from cityseer.tools import graphs, plot, mock
 
 # Let's download data within a 1,250m buffer around London Soho:
