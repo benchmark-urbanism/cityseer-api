@@ -132,6 +132,7 @@ export default {
       scrollToTopVisible: false,
       navPaths: [
         '/intro/',
+        '/guide/motivation/',
         '/guide/cleaning/',
         '/tools/graphs/',
         '/tools/plot/',

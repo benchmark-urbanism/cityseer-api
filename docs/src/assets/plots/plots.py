@@ -3,7 +3,6 @@ import os
 from matplotlib import colors
 import matplotlib.pyplot as plt
 import numpy as np
-from shapely import geometry
 import utm
 
 from cityseer.metrics import networks, layers
