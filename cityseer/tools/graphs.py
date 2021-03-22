@@ -42,24 +42,23 @@ def nX_simple_geoms(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         raise TypeError('This method requires an undirected networkX MultiGraph.')
     logger.info('Generating simple (straight) edge geometries.')
     g_multi_copy = networkX_multigraph.copy()
+
+    def _process_node(n):
+        # x coordinate
+        if 'x' not in g_multi_copy.nodes[n]:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
+        x = g_multi_copy.nodes[n]['x']
+        # y coordinate
+        if 'y' not in g_multi_copy.nodes[n]:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
+        y = g_multi_copy.nodes[n]['y']
+
+        return x, y
+
     # unpack coordinates and build simple edge geoms
     for s, e, k in tqdm(g_multi_copy.edges(keys=True), disable=checks.quiet_mode):
-        # start x coordinate
-        if 'x' not in g_multi_copy.nodes[s]:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {s}.')
-        s_x = g_multi_copy.nodes[s]['x']
-        # start y coordinate
-        if 'y' not in g_multi_copy.nodes[s]:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {s}.')
-        s_y = g_multi_copy.nodes[s]['y']
-        # end x coordinate
-        if 'x' not in g_multi_copy.nodes[e]:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {e}.')
-        e_x = g_multi_copy.nodes[e]['x']
-        # end y coordinate
-        if 'y' not in g_multi_copy.nodes[e]:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {e}.')
-        e_y = g_multi_copy.nodes[e]['y']
+        s_x, s_y = _process_node(s)
+        e_x, e_y = _process_node(e)
         g_multi_copy[s][e][k]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
 
     return g_multi_copy
@@ -145,7 +144,8 @@ def nX_from_osm(osm_json: str) -> nx.MultiGraph:
     return G
 
 
-def nX_wgs_to_utm(networkX_multigraph: nx.MultiGraph, force_zone_number: int=None) -> nx.MultiGraph:
+def nX_wgs_to_utm(networkX_multigraph: nx.MultiGraph,
+                  force_zone_number: int = None) -> nx.MultiGraph:
     """
     Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
     local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
@@ -788,7 +788,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
                          cent_min_degree: int = 3,
                          cent_min_len_factor: float = None,
                          merge_edges_by_midline: bool = True,
-                         multi_edge_len_factor: float = 1.5,
+                         multi_edge_len_factor: float = 1.25,
                          multi_edge_min_len: float = 100) -> nx.MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
@@ -952,8 +952,8 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
 
 def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                             buffer_dist: float = 10,
-                            merge_edges_by_midline: bool = False,
-                            multi_edge_len_factor: float = 1.5,
+                            merge_edges_by_midline: bool = True,
+                            multi_edge_len_factor: float = 1.25,
                             multi_edge_min_len: float = 100) -> nx.MultiGraph:
     """
     Projects nodes to pierce opposing edges within a buffer distance. The pierced nodes facilitate subsequent
@@ -1716,3 +1716,110 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
             g_multi_copy.nodes[uid]['metrics'] = metrics
 
     return g_multi_copy
+
+
+def nX_from_osmnx(networkX_multidigraph: nx.MultiDiGraph,
+                  node_attributes: Union[list, tuple] = None,
+                  edge_attributes: Union[list, tuple] = None,
+                  tolerance: float = checks.tolerance) -> nx.MultiGraph:
+    """
+    Copies an [`osmnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible
+    `MultiGraph`.
+
+    `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge
+    attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end
+    node coordinates.
+
+    Note that `osmnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found,
+    then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
+
+    Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence
+    of subsequent steps of graph manipulation, in case attributes fall out of lock-step with the state of the graph.
+    If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these
+    can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge
+    attribute keys per the `edge_attributes` parameter.
+
+    Parameters
+    ----------
+    networkX_multidigraph
+        A `osmnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge
+        attributes containing `LineString` geoms (for simplified edges).
+    node_attributes
+        Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
+    edge_attributes
+        Optional edge attributes to copy to the new MultiGraph. (In addition to the default `geometry` attribute.)
+    tolerance
+        Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates.
+        Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding
+        end-point nodes. Where these don't align within the given tolerance an exception will be raised. Regardless of
+        the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates
+        so that downstream exceptions are not subsequently raised.
+
+    Returns
+    -------
+    nx.MultiGraph
+        A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
+    """
+    if not isinstance(networkX_multidigraph, nx.MultiDiGraph):
+        raise TypeError('This method requires a directed networkX MultiDiGraph as derived from `osmnx`.')
+    if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):
+        raise TypeError('Node attributes to be copied should be provided as either a list or tuple of attribute keys.')
+    if edge_attributes is not None and not isinstance(edge_attributes, (list, tuple)):
+        raise TypeError('Edge attributes to be copied should be provided as either a list or tuple of attribute keys.')
+    logger.info('Converting osmnx MultiDiGraph to cityseer MultiGraph.')
+    # target MultiGraph
+    g_multi = nx.MultiGraph()
+
+    def _process_node(n):
+        # x
+        if 'x' not in networkX_multidigraph.nodes[n]:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute for node {n}.')
+        x = networkX_multidigraph.nodes[n]['x']
+        # y
+        if 'y' not in networkX_multidigraph.nodes[s]:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute for node {n}.')
+        y = networkX_multidigraph.nodes[n]['y']
+        # add attributes if necessary
+        if n not in g_multi:
+            g_multi.add_node(n, x=x, y=y)
+            if node_attributes is not None:
+                for node_att in node_attributes:
+                    if node_att not in networkX_multidigraph.nodes[n]:
+                        raise ValueError(f'Attribute {node_att} is not available for node {n}.')
+                    g_multi.nodes[n][node_att] = networkX_multidigraph.nodes[n][node_att]
+
+        return x, y
+
+    # copy nodes and edges
+    for s, e, k, d in tqdm(networkX_multidigraph.edges(data=True, keys=True), disable=checks.quiet_mode):
+        s_x, s_y = _process_node(s)
+        e_x, e_y = _process_node(e)
+        # copy edge if present
+        if 'geometry' in d:
+            line_geom = d['geometry']
+        # otherwise create
+        else:
+            line_geom = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        # check for LineString validity
+        if line_geom.type != 'LineString':
+            raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry for edge {s}-{e}.')
+        # orient LineString
+        geom_coords = line_geom.coords
+        if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
+            geom_coords = _align_linestring_coords(geom_coords, (s_x, s_y))
+        # check starting and ending tolerances
+        if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
+            raise ValueError(f"Starting node coordinates don't match LineString geometry starting coordinates.")
+        if not np.allclose((e_x, e_y), geom_coords[-1][:2], atol=tolerance, rtol=0):
+            raise ValueError(f"Ending node coordinates don't match LineString geometry ending coordinates.")
+        # snap starting and ending coords to avoid rounding error issues
+        geom_coords = _snap_linestring_startpoint(geom_coords, (s_x, s_y))
+        geom_coords = _snap_linestring_endpoint(geom_coords, (e_x, e_y))
+        g_multi.add_edge(s, e, key=k, geom=geometry.LineString(geom_coords))
+        if edge_attributes is not None:
+            for edge_att in edge_attributes:
+                if edge_att not in d:
+                    raise ValueError(f'Attribute {edge_att} is not available for edge {s}-{e}.')
+                g_multi[s][e][k][edge_att] = d[edge_att]
+
+    return g_multi

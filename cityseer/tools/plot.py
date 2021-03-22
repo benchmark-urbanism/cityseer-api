@@ -14,8 +14,13 @@ from matplotlib.collections import LineCollection
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+plt.tight_layout()
+
 
 primary = '#0091ea'
 accent = '#64c1ff'
@@ -115,7 +120,13 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         node_size = 70
 
     # setup a function that can be used for either the primal or dual graph
-    def plot_graph(_graph, _is_primal, _node_colour, _node_shape, _edge_colour, _edge_style, _edge_width):
+    def _plot_graph(_graph,
+                   _is_primal,
+                   _node_colour,
+                   _node_shape,
+                   _edge_colour,
+                   _edge_style,
+                   _edge_width):
         if not len(_graph.nodes()):
             raise ValueError('Graph contains no nodes to plot.')
         iterables = (list, tuple, np.ndarray)
@@ -207,9 +218,9 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                 alpha=alpha)
 
     if primal_graph is not None:
-        plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid', primal_edge_width)
+        _plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid', primal_edge_width)
     if dual_graph is not None:
-        plot_graph(dual_graph, False, dual_node_colour, 'd', dual_edge_colour, 'dashed', dual_edge_width)
+        _plot_graph(dual_graph, False, dual_node_colour, 'd', dual_edge_colour, 'dashed', dual_edge_width)
     if x_lim:
         plt.xlim(*x_lim)
     if y_lim:
