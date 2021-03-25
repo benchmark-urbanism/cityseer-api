@@ -17,6 +17,9 @@ __pycache__/
 # C extensions
 *.so
 
+# general cache
+cache/
+
 # node modules and gridsome are nested into the docs directory
 **/logs
 **/*.log
