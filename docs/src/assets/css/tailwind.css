@@ -61,11 +61,11 @@
   }
 
   p {
-    @apply text-base py-1;
+    @apply text-base py-2;
   }
 
   code {
-    @apply font-mono text-xs tracking-tight font-medium bg-gray-200 rounded-sm;
+    @apply font-mono text-sm tracking-tight font-normal bg-gray-200 rounded-sm;
 
     padding: 0 4px;
     margin: 0 1px;
@@ -133,11 +133,11 @@
     }
 
     p {
-      @apply text-sm;
+      @apply text-sm py-1;
     }
 
     code {
-      @apply text-xxs;
+      @apply text-xs;
     }
 
     pre > code {

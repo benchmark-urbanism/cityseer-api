@@ -132,8 +132,7 @@ export default {
       scrollToTopVisible: false,
       navPaths: [
         '/intro/',
-        '/guide/motivation/',
-        '/guide/cleaning/',
+        '/guide/',
         '/tools/graphs/',
         '/tools/plot/',
         '/tools/mock/',
@@ -399,7 +398,7 @@ export default {
   @apply w-full object-contain transition-all;
 }
 .nav-link {
-  @apply text-base text-right text-theme font-medium px-3 py-1 cursor-pointer;
+  @apply text-base text-right text-theme font-medium px-3 py-3 cursor-pointer leading-none;
 }
 .nav-link-active,
 .nav-link:hover,
@@ -407,13 +406,13 @@ export default {
   @apply bg-theme text-white;
 }
 .nested-link {
-  @apply text-sm py-0.5 pr-6 cursor-pointer;
+  @apply text-xs py-1 pr-3 cursor-pointer;
   @apply border-theme;
 }
 .nested-link-active,
 .nested-link:hover,
 .nested-link:active {
-  @apply border-r-3 pr-5;
+  @apply border-r-3 pr-2;
 }
 #footer-container {
   @apply self-start text-xxs px-6 py-1;

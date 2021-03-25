@@ -178,7 +178,7 @@ nX_consolidate_nodes(networkX_multigraph,
                      cent_min_degree=3,
                      cent_min_len_factor=None,
                      merge_edges_by_midline=True,
-                     multi_edge_len_factor=1.5,
+                     multi_edge_len_factor=1.25,
                      multi_edge_min_len=100)
                      -> nx.MultiGraph
 </pre>
@@ -285,7 +285,7 @@ A `networkX` `MultiGraph` with consolidated nodes.
 
 <FuncHeading>Notes</FuncHeading>
 
-See the guide on [graph cleaning](/guide/cleaning) for more information.
+See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
 ![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
@@ -299,8 +299,8 @@ _The consolidated OSM street network for Soho, London. © OpenStreetMap contribu
 <pre>
 nX_split_opposing_geoms(networkX_multigraph,
                         buffer_dist=10,
-                        merge_edges_by_midline=False,
-                        multi_edge_len_factor=1.5,
+                        merge_edges_by_midline=True,
+                        multi_edge_len_factor=1.25,
                         multi_edge_min_len=100)
                         -> nx.MultiGraph
 </pre>
@@ -605,5 +605,59 @@ An optional dictionary with keys corresponding to the identifiers in `node_uids`
 <FuncElement name='nx.MultiGraph'>
 
 A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated. `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data` to the graph edges. If a `metrics_dict` is provided, all data will be copied to the graph nodes based on matching node identifiers.
+
+</FuncElement>
+
+## nX\_from\_osmnx
+
+<FuncSignature>
+<pre>
+nX_from_osmnx(networkX_multidigraph,
+              node_attributes=None,
+              edge_attributes=None,
+              tolerance=checks.tolerance)
+              -> nx.MultiGraph
+</pre>
+</FuncSignature>
+
+Copies an [`osmnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`.
+
+`x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
+
+Note that `osmnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
+
+Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, in case attributes fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name='networkX_multidigraph' type='nx.MultiDiGraph'>
+
+A `osmnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge attributes containing `LineString` geoms (for simplified edges).
+
+</FuncElement>
+
+<FuncElement name='node_attributes' type='Union[list, tuple]'>
+
+Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
+
+</FuncElement>
+
+<FuncElement name='edge_attributes' type='Union[list, tuple]'>
+
+Optional edge attributes to copy to the new MultiGraph. (In addition to the default `geometry` attribute.)
+
+</FuncElement>
+
+<FuncElement name='tolerance' type='float'>
+
+Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Regardless of the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+
+<FuncElement name='nx.MultiGraph'>
+
+A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
 
 </FuncElement>

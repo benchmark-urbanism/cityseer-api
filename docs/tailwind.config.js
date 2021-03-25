@@ -10,11 +10,11 @@ module.exports = {
       },
       fontSize: {
         xxs: '0.7rem',
-        xs: '0.8rem',
-        sm: '0.9rem',
-        base: '1.0rem',
+        xs: '0.75rem',
+        sm: '0.85rem',
+        base: '0.95rem',
         lg: '1.1rem',
-        xl: '1.2rem',
+        xl: '1.25rem',
         '2xl': '1.4rem',
         '3xl': '1.6rem',
         '4xl': '2rem',
@@ -38,11 +38,11 @@ module.exports = {
       // leading
       lineHeight: {
         none: '1',
-        tight: '1.25',
-        snug: '1.5',
-        normal: '1.75',
-        relaxed: '2',
-        loose: '2.25',
+        tight: '1.2',
+        snug: '1.4',
+        normal: '1.6',
+        relaxed: '1.8',
+        loose: '2.2',
       },
       borderWidth: {
         default: '1px',
