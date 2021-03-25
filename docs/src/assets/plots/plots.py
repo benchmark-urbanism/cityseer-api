@@ -206,7 +206,7 @@ plot.plot_assignment(N_decomposed,
 
 #
 #
-# %% PLOT MODULE
+# PLOT MODULE
 from cityseer.tools import mock, graphs, plot
 
 G = mock.mock_graph()
@@ -243,7 +243,7 @@ plot.plot_nX(G_after,
              node_colour=cols,
              dpi=150)
 
-# %% assignment plot
+# assignment plot
 data_dict = mock.mock_data_dict(G, random_seed=25)
 D = layers.DataLayerFromDict(data_dict)
 D.assign_to_network(N, max_dist=400)
@@ -270,7 +270,7 @@ for d_max in [200, 400, 800, 1600]:
         distances_arr.append(d)
     distances_arr = np.array(distances_arr)
     y_falloff = np.exp(beta * distances_arr)
-    ax.plot(distances_arr, y_falloff, label=f'$-\\beta={round(beta, 4)}$')
+    ax.plot(distances_arr, y_falloff, label=f'$\\beta={-round(beta, 4)}$')
 
 # add w_min
 plt.axhline(y=w_min, color='#eeeeee', ls='--', lw=0.5)
@@ -285,7 +285,6 @@ ax.set_ylabel('Weighting')
 ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$')
 plt.savefig('images/betas.png', dpi=150)
 
-# %%
 #
 #
 # OSMnx COMPARISON

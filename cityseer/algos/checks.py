@@ -186,14 +186,14 @@ def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
             raise ValueError('Please provide a positive distance value.')
 
     for b in betas:
-        if b > 0:
-            raise ValueError('Please provide the beta value with the leading negative.')
+        if b < 0:
+            raise ValueError('Please provide the beta value without the leading negative.')
 
-    threshold_min = np.exp(distances[0] * betas[0])
+    threshold_min = np.exp(distances[0] * -betas[0])
     for d, b in zip(distances, betas):
-        if not np.exp(d * b) == threshold_min:
+        if not np.exp(-b * d) == threshold_min:
             # handles edge case for infinity
-            if not (d, b) == (np.inf, -0.0):
+            if not (d, b) == (np.inf, 0.0):
                 raise ValueError(
                     'Inconsistent threshold minimums, indicating that the relationship between the betas and distances '
                     'is not consistent for all distance / beta pairs.')

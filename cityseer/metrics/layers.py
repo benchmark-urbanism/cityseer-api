@@ -318,7 +318,7 @@ class DataLayer:
         exploration prematurely because it can't travel far enough away from the data point to explore the surrounding
         network. If too many data points are not being successfully assigned to the correct street edges, then this
         distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be
-        possible to decrease this threshold. A distance of $\approx 400m$ provides a good starting point.
+        possible to decrease this threshold. A distance of around 400m provides a good starting point.
         :::
 
         :::warning Comment
@@ -369,7 +369,7 @@ class DataLayer:
         for centrality methods, and will be categorised by the respective keys and parameters.
 
         For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a
-        `valuations` stats keys are computed on a `Network Layer` instantiated with $800m$ and $1600m$ distance
+        `valuations` stats keys are computed on a `Network Layer` instantiated with 800m and 1600m distance
         thresholds, then the dictionary would assume the following structure:
 
         ```python
@@ -514,14 +514,14 @@ class DataLayer:
         \scriptstyle\bar{T} = \sum_{i}^{S}d_{i}p_{i}$ | This is a distance-weighted variant of Hill Diversity based
         on the distances from the point of computation to the nearest example of a particular land-use. It therefore
         gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
-        function where $-\beta$ controls the strength of the decay. ($-\beta$ is provided by the `Network Layer`, see
+        function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance_from_beta).)|
         | hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
         \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a
         pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
         examples of the pairwise distinct land-use combinations as routed through the point of computation.
-        $d_{ij}$ represents a negative exponential function where $-\beta$ controls the strength of the decay.
-        ($-\beta$ is provided by the `Network Layer`, see
+        $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay.
+        ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance_from_beta).)|
         | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
         p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}

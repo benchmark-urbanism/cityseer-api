@@ -33,13 +33,13 @@ def test_hill_diversity_branch_distance_wt():
 
         # check for malformed signatures
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts[:-1], non_weights, q=1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts[:-1], non_weights, q=1, beta=0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights[:-1], q=1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights[:-1], q=1, beta=0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=1, beta=0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=1, beta=-0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=-1, beta=-0.005)
+            diversity.hill_diversity_branch_distance_wt(counts, non_weights, q=-1, beta=0.005)
 
 
 def test_hill_diversity_pairwise_distance_wt():
@@ -53,13 +53,13 @@ def test_hill_diversity_pairwise_distance_wt():
 
         # check for malformed signatures
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts[:-1], non_weights, q=1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts[:-1], non_weights, q=1, beta=0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights[:-1], q=1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights[:-1], q=1, beta=0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=1, beta=0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=1, beta=-0.005)
         with pytest.raises(ValueError):
-            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=-1, beta=-0.005)
+            diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q=-1, beta=0.005)
 
 
 def test_hill_diversity_pairwise_matrix_wt():
