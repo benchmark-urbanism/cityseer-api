@@ -116,7 +116,7 @@ def test_Data_Layer_From_Dict(primal_graph):
 
 
 def test_compute_aggregated_A(primal_graph):
-    betas = np.array([-0.01, -0.005])
+    betas = np.array([0.01, 0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
     N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
@@ -285,7 +285,7 @@ def test_compute_aggregated_B(primal_graph):
     '''
     Test stats component
     '''
-    betas = np.array([-0.01, -0.005])
+    betas = np.array([0.01, 0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
     N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
@@ -336,7 +336,7 @@ def test_compute_aggregated_B(primal_graph):
 
 
 def network_generator():
-    for betas in [[-0.008], [-0.008, -0.002]]:
+    for betas in [[0.008], [0.008, 0.002]]:
         distances = networks.distance_from_beta(betas)
         yield distances, betas
 

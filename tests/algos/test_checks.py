@@ -3,7 +3,7 @@ import pytest
 
 from cityseer.algos import data, checks
 from cityseer.metrics import networks, layers
-from cityseer.tools import graphs, mock
+from cityseer.tools import mock
 from cityseer.tools.mock import primal_graph
 
 
@@ -128,7 +128,7 @@ def test_check_network_maps(primal_graph):
 
 
 def test_check_distances_and_betas():
-    betas = np.array([-0.02, -0.01, -0.005, -0.0025, -0.0])
+    betas = np.array([0.02, 0.01, 0.005, 0.0025, 0.0])
     distances = np.array(networks.distance_from_beta(betas))
 
     # zero length arrays
@@ -142,13 +142,13 @@ def test_check_distances_and_betas():
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances, betas[:-1])
     # check that duplicates are caught
-    dup_betas = np.array([-0.02, -0.02])
+    dup_betas = np.array([0.02, 0.02])
     dup_distances = np.array(networks.distance_from_beta(dup_betas))
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(dup_distances, dup_betas)
-    # positive values of beta
+    # negative values of beta
     betas_pos = betas.copy()
-    betas_pos[0] = 4
+    betas_pos[0] = -4
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances, betas_pos)
     # negative values of distance
@@ -157,6 +157,6 @@ def test_check_distances_and_betas():
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances_neg, betas)
     # inconsistent distances <-> betas
-    betas[1] = -0.03
+    betas[1] = 0.03
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(distances, betas)

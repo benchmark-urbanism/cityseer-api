@@ -249,7 +249,7 @@ def test_local_aggregator_signatures(primal_graph):
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
-    betas = np.array([-0.02, -0.01, -0.005, -0.0025])
+    betas = np.array([0.02, 0.01, 0.005, 0.0025])
     distances = networks.distance_from_beta(betas)
     qs = np.array([0, 1, 2])
     mock_categorical = mock.mock_categorical_data(len(data_map))
@@ -348,14 +348,14 @@ def test_local_aggregator_signatures(primal_graph):
 
 
 def test_local_aggregator_categorical_components(primal_graph):
-    node_uids, node_data, edge_data, node_edge_map, = graphs.graph_maps_from_nX(
-        primal_graph)  # generate node and edge maps
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map, = graphs.graph_maps_from_nX(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
-    betas = np.array([-0.02, -0.01, -0.005, -0.0025])
+    betas = np.array([0.02, 0.01, 0.005, 0.0025])
     distances = networks.distance_from_beta(betas)
     qs = np.array([0, 1, 2])
     mock_categorical = mock.mock_categorical_data(len(data_map))
@@ -440,13 +440,13 @@ def test_local_aggregator_categorical_components(primal_graph):
                 # aggregate accessibility codes
                 if cl == 1:
                     a_1_nw += 1
-                    a_1_w += np.exp(beta * data_dist)
+                    a_1_w += np.exp(-beta * data_dist)
                 elif cl == 2:
                     a_2_nw += 1
-                    a_2_w += np.exp(beta * data_dist)
+                    a_2_w += np.exp(-beta * data_dist)
                 elif cl == 5:
                     a_5_nw += 1
-                    a_5_w += np.exp(beta * data_dist)
+                    a_5_w += np.exp(-beta * data_dist)
             # assertions
             assert ac_1_nw[d_idx, src_idx] == a_1_nw
             assert ac_2_nw[d_idx, src_idx] == a_2_nw
@@ -550,7 +550,7 @@ def test_local_aggregator_numerical_components(primal_graph):
     # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map)
 
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
-    betas = np.array([-0.00125])
+    betas = np.array([0.00125])
     distances = networks.distance_from_beta(betas)
     mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
 
@@ -657,7 +657,7 @@ def test_model_singly_constrained():
     pop_uids, pop_map = layers.data_map_from_dict(pop)
     pop_map = data.assign_to_network(pop_map, node_data, edge_data, node_edge_map, 500)
 
-    betas = np.array([-0.00125])
+    betas = np.array([0.00125])
     distances = networks.distance_from_beta(betas)
 
     pop = np.array([3, 3, 3, 3, 3])

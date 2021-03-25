@@ -60,8 +60,8 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
     if len(class_counts) != len(class_distances):
         raise ValueError('Mismatching number of unique class counts and respective class distances.')
 
-    if beta > 0:
-        raise ValueError('Please provide the beta with the leading negative.')
+    if beta < 0:
+        raise ValueError('Please provide the beta without the leading negative.')
 
     if q < 0:
         raise ValueError('Please select a non-zero value for q.')
@@ -76,7 +76,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
     for i in range(len(class_counts)):
         if class_counts[i]:
             a = class_counts[i] / N
-            wt = np.exp(class_distances[i] * beta)
+            wt = np.exp(-beta * class_distances[i])
             T += wt * a
 
     # hill number defined in the limit as the exponential of information entropy
@@ -86,7 +86,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
         for i in range(len(class_counts)):
             if class_counts[i]:
                 a = class_counts[i] / N
-                wt = np.exp(class_distances[i] * beta)
+                wt = np.exp(-beta * class_distances[i])
                 PD_lim += wt * a / T * np.log(a / T)  # sum entropy
         # return exponent of entropy
         PD_lim = np.exp(-PD_lim)
@@ -98,7 +98,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
         for i in range(len(class_counts)):
             if class_counts[i]:
                 a = class_counts[i] / N
-                wt = np.exp(class_distances[i] * beta)
+                wt = np.exp(-beta * class_distances[i])
                 PD += wt * (a / T) ** q  # sum
         # once summed, apply q
         PD = PD ** (1 / (1 - q))
@@ -129,8 +129,8 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
     if len(class_counts) != len(class_distances):
         raise ValueError('Mismatching number of unique class counts and respective class distances.')
 
-    if beta > 0:
-        raise ValueError('Please provide the beta with the leading negative.')
+    if beta < 0:
+        raise ValueError('Please provide the beta without the leading negative.')
 
     if q < 0:
         raise ValueError('Please select a non-zero value for q.')
@@ -151,7 +151,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
                     break
                 if class_counts[j]:
                     a_j = class_counts[j] / N
-                    wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                    wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
                     # pairwise distances
                     Q += wt * a_i * a_j
 
@@ -172,7 +172,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
                     if class_counts[j]:
                         a_j = class_counts[j] / N
                         # pairwise distances
-                        wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                        wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
                         FD_lim += wt * a_i * a_j / Q * np.log(a_i * a_j / Q)  # sum
         # once summed
         FD_lim = np.exp(-FD_lim)
@@ -190,7 +190,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
                     if class_counts[j]:
                         a_j = class_counts[j] / N
                         # pairwise distances
-                        wt = np.exp((class_distances[i] + class_distances[j]) * beta)
+                        wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
                         FD += wt * (a_i * a_j / Q) ** q  # sum
         FD = FD ** (1 / (1 - q))
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)

@@ -152,7 +152,7 @@ def test_local_node_centrality(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
-    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
+    betas = np.array([0.02, 0.01, 0.005, 0.0008, 0.0])
     distances = networks.distance_from_beta(betas)
     # set the keys - add shuffling to be sure various orders work
     measure_keys = [
@@ -256,7 +256,7 @@ def test_local_node_centrality(primal_graph):
                     far_imp[d_idx][src_idx] += to_imp
                     far_dist[d_idx][src_idx] += to_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_imp
-                    grav[d_idx][src_idx] += np.exp(beta * to_dist)
+                    grav[d_idx][src_idx] += np.exp(-beta * to_dist)
                     # cycles
                     cyc[d_idx][src_idx] += cycles
                     # only process betweenness in one direction
@@ -273,7 +273,7 @@ def test_local_node_centrality(primal_graph):
                         if inter_idx == src_idx:
                             break
                         betw[d_idx][inter_idx] += 1
-                        betw_wt[d_idx][inter_idx] += np.exp(beta * to_dist)
+                        betw_wt[d_idx][inter_idx] += np.exp(-beta * to_dist)
                         # follow
                         inter_idx = np.int(tree_preds[inter_idx])
     improved_cl = dens / far_dist / dens
@@ -355,13 +355,13 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [0.02, 0.03, 0.03, 0.02], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [0.025, 0.03, 0.03, 0.025], atol=0.001, rtol=0)
     # node beta
-    # additive exp(beta * dist)
+    # additive exp(-beta * dist)
     m_idx = node_keys.index('node_beta')
-    # beta = -0.0
+    # beta = 0.0
     assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)
-    # beta = -0.02666667
+    # beta = 0.02666667
     assert np.allclose(measures_data[m_idx][1], [0.1389669, 0.20845035, 0.20845035, 0.1389669], atol=0.001, rtol=0)
-    # beta = -0.016
+    # beta = 0.016
     assert np.allclose(measures_data[m_idx][2], [0.44455525, 0.6056895, 0.6056895, 0.44455522], atol=0.001, rtol=0)
     # node betweenness
     # additive 1 per node en route
@@ -371,13 +371,13 @@ def test_local_centrality(diamond_graph):
     # takes first out of multiple equidistant routes
     assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=0.001, rtol=0)
     # node betweenness beta
-    # additive exp(beta * dist) en route
+    # additive exp(-beta * dist) en route
     m_idx = node_keys.index('node_betweenness_beta')
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = -0.08
-    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = -0.02666667
+    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = 0.08
+    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=0.001, rtol=0)  # beta = 0.02666667
     # takes first out of multiple equidistant routes
     # beta evaluated over 200m distance from 3 to 0 via node 1
-    assert np.allclose(measures_data[m_idx][2], [0, 0.0407622, 0, 0])  # beta = -0.016
+    assert np.allclose(measures_data[m_idx][2], [0, 0.0407622, 0, 0])  # beta = 0.016
 
     # NODE SIMPLEST
     node_keys_angular = [
@@ -467,7 +467,7 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][1], [10.832201, 15.437371, 15.437371, 10.832201], atol=0.001, rtol=0)
     assert np.allclose(measures_data[m_idx][2], [11.407564, 15.437371, 15.437371, 11.407565], atol=0.001, rtol=0)
     # segment beta
-    # additive (np.exp(beta * b) - np.exp(beta * a)) / beta + (np.exp(beta * d) - np.exp(beta * c)) / beta
+    # additive (np.exp(-beta * b) - np.exp(-beta * a)) / -beta + (np.exp(-beta * d) - np.exp(-beta * c)) / -beta
     # beta = 0 resolves to b - a and avoids division through zero
     m_idx = segment_keys.index('segment_beta')
     assert np.allclose(measures_data[m_idx][0], [24.542109, 36.813164, 36.813164, 24.542109], atol=0.001, rtol=0)
@@ -518,7 +518,7 @@ def test_local_centrality(diamond_graph):
 
 def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    betas = np.array([-0.02, -0.01, -0.005, -0.0008, -0.0])
+    betas = np.array([0.02, 0.01, 0.005, 0.0008, 0.0])
     distances = networks.distance_from_beta(betas)
     node_measure_keys = ('node_density',
                          'node_farness',

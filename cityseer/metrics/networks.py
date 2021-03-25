@@ -42,7 +42,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     ```python
     from cityseer.metrics import networks
     # a list of betas
-    betas = [-0.01, -0.02]
+    betas = [0.01, 0.02]
     # convert to distance thresholds
     d_max = networks.distance_from_beta(betas)
     print(d_max)
@@ -51,33 +51,33 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
 
     Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
 
-    $$weight = exp(\beta \cdot distance)$$
+    $$weight = exp(-\beta \cdot distance)$$
 
-    The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=-0.005$ were to represent a person's willingness to walk to a bus stop, then a location $100m$ distant would be weighted at $60\%$ and a location $400m$ away would be weighted at $13.5\%$. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+    The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60\% and a location 400m away would be weighted at 13.5\%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
 
     ![Example beta decays](../../src/assets/plots/images/betas.png)
     
     [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
 
-    $$d_{max} = \frac{log\Big(w_{min}\Big)}{\beta}$$
+    $$d_{max} = \frac{log(w_{min})}{-\beta}$$
 
     The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
 
     | $\beta$ | $d_{max}$ |
-    |-----------|---------|
-    | $-0.02$ | $200m$ |
-    | $-0.01$ | $400m$ |
-    | $-0.005$ | $800m$ |
-    | $-0.0025$ | $1600m$ |
+    |:-------:|:---------:|
+    | 0.02 | 200m |
+    | 0.01 | 400m |
+    | 0.005 | 800m |
+    | 0.0025 | 1600m |
 
     Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
 
     | $\beta$ | $w_{min}$ | $d_{max}$ |
-    |----------|----------|----------|
-    | $-0.02$ | $0.01$ | $230m$ |
-    | $-0.01$ | $0.01$ | $461m$ |
-    | $-0.005$ | $0.01$ | $921m$ |
-    | $-0.0025$ | $0.01$ | $1842m$ |
+    |:-------:|:---------:|:---------:|
+    | 0.02 | 0.01 | 230m |
+    | 0.01 | 0.01 | 461m |
+    | 0.005 | 0.01 | 921m |
+    | 0.0025 | 0.01 | 1842m |
 
     """
     # cast to list form
@@ -87,17 +87,20 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
         raise TypeError('Please provide a beta or a list, tuple, or numpy.ndarray of betas.')
     # check that the betas do not have leading negatives
     for b in beta:
-        if b > 0:
-            raise ValueError('Please provide the beta value with the leading negative.')
+        if b < 0:
+            raise ValueError('Please provide the beta value without the leading negative.')
         elif b == 0:
-            # ints have no concept of -0, so catch betas that are positive 0 or -0 (in int form)
-            # i.e. betas of -0.0 will successfully result in np.inf as opposed to -np.inf
-            if np.log(min_threshold_wt) / b == -np.inf:
-                raise ValueError('Please provide zeros in float form with a leading negative.')
+            # dividing through a float of negative zero will return positive infinity
+            # dividing through a float of positive zero will return negative infinity
+            # GOTCHA: ints have no concept of -0
+            # so: dividing through a positive OR negative int will return negative infinity regardless
+            # so: catch all betas that don't give positive infinity (via -\beta)
+            if np.log(min_threshold_wt) / -b != np.inf:
+                raise ValueError('Please provide zeros in float form without a leading negative.')
     # cast to numpy
     beta = np.array(beta)
     # deduce the effective distance thresholds
-    return np.log(min_threshold_wt) / beta
+    return np.log(min_threshold_wt) / -beta
 
 
 def beta_from_distance(distance: Union[float, list, np.ndarray],
@@ -131,21 +134,21 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     distances = [400, 200]
     # convert to betas
     betas = networks.beta_from_distance(distances)
-    print(betas)  # prints: array([-0.01, -0.02])
+    print(betas)  # prints: array([0.01, 0.02])
     ```
 
     [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
 
-    $$\beta = \frac{log\Big(w_{min}\Big)}{d_{max}}$$
+    $$\beta = -\frac{log(w_{min})}{d_{max}}$$
 
     The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
 
     | $d_{max}$ | $\beta$ |
-    |-----------|---------|
-    | $200m$ | $-0.02$ |
-    | $400m$ | $-0.01$ |
-    | $800m$ | $-0.005$ |
-    | $1600m$ | $-0.0025$ |
+    |:---------:|:-------:|
+    | 200m | 0.02 |
+    | 400m | 0.01 |
+    | 800m | 0.005 |
+    | 1600m | 0.0025 |
 
     """
     # cast to list form
@@ -160,7 +163,7 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     # cast to numpy
     distance = np.array(distance)
     # deduce the effective distance thresholds
-    return np.log(min_threshold_wt) / distance
+    return -np.log(min_threshold_wt) / distance
 
 
 # TODO: sub-class network layer for nd; nd-ang; seg; seg-ang
@@ -189,13 +192,13 @@ class NetworkLayer:
     # betas for weighted metrics will be generated implicitly
     N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
     print(N.distances)  # prints: [200, 400, 800, 1600]
-    print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
+    print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
     # if initialised with betas: 
     # distances for non-weighted metrics will be generated implicitly
-    N = networks.NetworkLayerFromNX(G, betas=[-0.02, -0.01, -0.005, -0.0025])
+    N = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
     print(N.distances)  # prints: [200, 400, 800, 1600]
-    print(N.betas)  # prints: [-0.02, -0.01, -0.005, -0.0025]
+    print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
     ```
 
     There are two network centrality methods available depending on whether you're using a node-based or segment-based
@@ -251,7 +254,7 @@ class NetworkLayer:
 
     <small>`NetworkLayer.metrics['centrality'][<<measure key>>][<<distance key>>][<<node idx>>]`</small>
 
-    For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at $800m$ and $1600m$,
+    For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at 800m and 1600m,
     then the dictionary would assume the following structure:
 
     ```python
@@ -690,13 +693,13 @@ class NetworkLayer:
         | node_cycles           | $\scriptstyle\sum_{j\neq{i}j=cycle}^{n}1$ | A summation of network cycles. |
         | node_harmonic         | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an
         appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-        | node_beta             | $\scriptstyle\sum_{j\neq{i}}^{n}\\exp(\beta\cdot d[i,j])$ | Also known as the
+        | node_beta             | $\scriptstyle\sum_{j\neq{i}}^{n}\\exp(-\beta\cdot d[i,j])$ | Also known as the
         '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the
         use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
         increase. |
         | node_betweenness      | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | Betweenness centrality
         summing all shortest-paths traversing each node $i$. |
-        | node_betweenness_beta | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\\exp(\beta\cdot d[j,k])$ | Applies
+        | node_betweenness_beta | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\\exp(-\beta\cdot d[j,k])$ | Applies
         a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to
         $k$ node pair passing through node $i$. |
 
@@ -789,7 +792,7 @@ class NetworkLayer:
         | segment_density     | $\scriptstyle\sum_{(a, b)}^{edges}d_{b} - d_{a}$ | A summation of edge lengths. |
         | segment_harmonic    | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$ | A continuous form of
         harmonic closeness centrality applied to edge lengths. |
-        | segment_beta        | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(\beta\cdot b) -\exp(\beta\cdot a)}{\beta}$ | A
+        | segment_beta        | $\scriptstyle\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$ | A
         continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
         | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
         on shortest paths between all nodes $j$ and $k$ passing through $i$. |

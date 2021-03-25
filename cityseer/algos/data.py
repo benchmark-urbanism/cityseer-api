@@ -560,7 +560,7 @@ def local_aggregator(node_data: np.ndarray,
                         for ac_idx, ac_code in enumerate(accessibility_keys):
                             if ac_code == cl_code:
                                 accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
-                                accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += np.exp(b * data_dist)
+                                accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
                                 # if a match was found, then no need to check others
                                 break
             # mixed uses can be calculated now that the local class counts are aggregated
@@ -623,13 +623,13 @@ def local_aggregator(node_data: np.ndarray,
                             if np.isnan(stats_sum[num_idx, d_idx, netw_src_idx]):
                                 stats_sum[num_idx, d_idx, netw_src_idx] = num
                                 stats_count[num_idx, d_idx, netw_src_idx] = 1
-                                stats_sum_wt[num_idx, d_idx, netw_src_idx] = num * np.exp(data_dist * b)
-                                stats_count_wt[num_idx, d_idx, netw_src_idx] = np.exp(data_dist * b)
+                                stats_sum_wt[num_idx, d_idx, netw_src_idx] = num * np.exp(-b * data_dist)
+                                stats_count_wt[num_idx, d_idx, netw_src_idx] = np.exp(-b * data_dist)
                             else:
                                 stats_sum[num_idx, d_idx, netw_src_idx] += num
                                 stats_count[num_idx, d_idx, netw_src_idx] += 1
-                                stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(data_dist * b)
-                                stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(data_dist * b)
+                                stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(-b * data_dist)
+                                stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
 
                             if np.isnan(stats_max[num_idx, d_idx, netw_src_idx]):
                                 stats_max[num_idx, d_idx, netw_src_idx] = num
@@ -670,12 +670,12 @@ def local_aggregator(node_data: np.ndarray,
                                 stats_variance[num_idx, d_idx, netw_src_idx] = \
                                     np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
                                 stats_variance_wt[num_idx, d_idx, netw_src_idx] = \
-                                    np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(data_dist * b)
+                                    np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
                             else:
                                 stats_variance[num_idx, d_idx, netw_src_idx] += \
                                     np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
                                 stats_variance_wt[num_idx, d_idx, netw_src_idx] += \
-                                    np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(data_dist * b)
+                                    np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
             # finalise variance calculations
             for num_idx in range(n_n):
                 for d_idx in range(d_n):
@@ -792,7 +792,7 @@ def singly_constrained(node_data: np.ndarray,
                 total_dist = j_dist + i_door_dist
                 # increment weighted k aggregations at respective distances if the distance is less than current d
                 if total_dist <= d:
-                    k_agg[d_idx, i_idx] += j_weights[j_idx] * np.exp(total_dist * b)
+                    k_agg[d_idx, i_idx] += j_weights[j_idx] * np.exp(-b * total_dist)
 
     # this is the second step
     # this time, filter all reachable j vertices and aggregate the proportion of flow from i to j
@@ -834,7 +834,7 @@ def singly_constrained(node_data: np.ndarray,
                     if k_agg[d_idx, i_idx] == 0:
                         assigned = 0
                     else:
-                        assigned = i_weights[i_idx] * j_weights[j_idx] * np.exp(total_dist * b) / k_agg[d_idx,
+                        assigned = i_weights[i_idx] * j_weights[j_idx] * np.exp(-b * total_dist) / k_agg[d_idx,
                                                                                                         i_idx]
                     j_assigned[d_idx, j_idx] += assigned
                     # assign trips to network

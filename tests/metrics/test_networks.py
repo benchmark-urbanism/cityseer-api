@@ -8,8 +8,8 @@ from cityseer.tools.mock import primal_graph
 
 
 def test_distance_from_beta():
-    # some basic checks - using float form
-    for b, d in zip([-0.04, -0.0025, -0.0], [100, 1600, np.inf]):
+    # some basic checks using float form
+    for b, d in zip([0.04, 0.0025, 0.0], [100, 1600, np.inf]):
         # simple straight check against corresponding distance
         assert networks.distance_from_beta(b) == np.array([d])
         # circular check
@@ -17,23 +17,24 @@ def test_distance_from_beta():
         # array form check
         assert networks.distance_from_beta(np.array([b])) == np.array([d])
     # check that custom min_threshold_wt works
-    arr = networks.distance_from_beta(-0.04, min_threshold_wt=0.001)
+    arr = networks.distance_from_beta(0.04, min_threshold_wt=0.001)
     assert np.allclose(arr, np.array([172.69388197455342]), atol=0.001, rtol=0)
     # check on array form
-    arr = networks.distance_from_beta([-0.04, -0.0025, -0.0])
+    arr = networks.distance_from_beta([0.04, 0.0025, 0.0])
     assert np.allclose(arr, np.array([100, 1600, np.inf]), atol=0.001, rtol=0)
     # check for type error
     with pytest.raises(TypeError):
         networks.distance_from_beta('boo')
     # check that invalid beta values raise an error
-    for b in [0.04, 0, -0]:
+    # positive integer of zero should raise, but not positive float
+    for b in [-0.04, 0, -0, -0.0]:
         with pytest.raises(ValueError):
             networks.distance_from_beta(b)
 
 
 def test_beta_from_distance():
     # some basic checks
-    for d, b in zip([100, 1600, np.inf], [-0.04, -0.0025, -0.0]):
+    for d, b in zip([100, 1600, np.inf], [0.04, 0.0025, 0.0]):
         # simple straight check against corresponding distance
         assert networks.beta_from_distance(d) == np.array([b])
         # circular check
@@ -42,10 +43,10 @@ def test_beta_from_distance():
         assert networks.beta_from_distance(np.array([d])) == np.array([b])
     # check that custom min_threshold_wt works
     arr = networks.beta_from_distance(172.69388197455342, min_threshold_wt=0.001)
-    assert np.allclose(arr, np.array([-0.04]), atol=0.001, rtol=0)
+    assert np.allclose(arr, np.array([0.04]), atol=0.001, rtol=0)
     # check on array form
     arr = networks.beta_from_distance([100, 1600, np.inf])
-    assert np.allclose(arr, np.array([-0.04, -0.0025, -0.0]), atol=0.001, rtol=0)
+    assert np.allclose(arr, np.array([0.04, 0.0025, 0.0]), atol=0.001, rtol=0)
     # check for type error
     with pytest.raises(TypeError):
         networks.beta_from_distance('boo')
@@ -60,7 +61,7 @@ def test_Network_Layer(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
-    betas = [-0.02, -0.005]
+    betas = [0.02, 0.005]
     distances = networks.distance_from_beta(betas)
 
     # test NetworkLayer's class
@@ -169,7 +170,7 @@ def test_Network_Layer_From_nX(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
-    betas = np.array([-0.04, -0.02])
+    betas = np.array([0.04, 0.02])
     distances = networks.distance_from_beta(betas)
 
     # test Network_Layer_From_NetworkX's class
@@ -326,7 +327,7 @@ def test_compute_centrality(primal_graph):
     '''
     Underlying methods also tested via test_networks.test_network_centralities
     '''
-    betas = np.array([-0.01, -0.005])
+    betas = np.array([0.01, 0.005])
     distances = networks.distance_from_beta(betas)
     # generate data structures
     N = networks.NetworkLayerFromNX(primal_graph, distances=distances)
@@ -453,7 +454,7 @@ def test_compute_centrality(primal_graph):
 
 
 def network_generator(primal_graph):
-    for betas in [[-0.008], [-0.008, -0.002, -0.0]]:
+    for betas in [[0.008], [0.008, 0.002, 0.0]]:
         distances = networks.distance_from_beta(betas)
         for angular in [False, True]:
             yield primal_graph, distances, betas, angular

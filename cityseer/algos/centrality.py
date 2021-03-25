@@ -191,7 +191,7 @@ def node_harmonic(to_dist, to_imp, beta, cycles):
 # node beta weighted
 @njit(cache=True, fastmath=True)
 def node_beta(to_dist, to_imp, beta, cycles):
-    return np.exp(beta * to_dist)
+    return np.exp(-beta * to_dist)
 
 
 # node harmonic angular
@@ -217,7 +217,7 @@ def node_betweenness_beta(to_dist, beta):
     distance is based on distance between from and to vertices
     thus potential spatial impedance via between vertex
     '''
-    return np.exp(beta * to_dist)
+    return np.exp(-beta * to_dist)
 
 
 '''
@@ -408,10 +408,10 @@ def segment_harmonic(n, m, n_imp, m_imp, beta):
 # segment beta
 @njit(cache=True, fastmath=True)
 def segment_beta(n, m, n_imp, m_imp, beta):
-    if beta == -0.0:
+    if beta == 0.0:
         return m_imp - n_imp
     else:
-        return (np.exp(beta * m_imp) - np.exp(beta * n_imp)) / beta
+        return (np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta
 
 
 @njit(cache=False, fastmath=True)
@@ -728,13 +728,13 @@ def local_segment_centrality(node_data: np.ndarray,
                             for m_idx in betw_idxs:
                                 if not angular:
                                     # catch division by zero
-                                    if beta == -0.0:
+                                    if beta == 0.0:
                                         auc = o_2 - o_1 + l_2 - l_1
                                     else:
-                                        auc = (np.exp(beta * o_2) -
-                                               np.exp(beta * o_1)) / beta + \
-                                              (np.exp(beta * l_2) -
-                                               np.exp(beta * l_1)) / beta
+                                        auc = (np.exp(-beta * o_2) -
+                                               np.exp(-beta * o_1)) / -beta + \
+                                              (np.exp(-beta * l_2) -
+                                               np.exp(-beta * l_1)) / -beta
                                     measures_data[m_idx, d_idx, inter_idx] += auc
                                 else:
                                     bt_ang = 1 + tree_imps[to_idx] / 180
