@@ -41,10 +41,10 @@ from cityseer.tools import graphs, plot, mock
 lng, lat = -0.13396079424572427, 51.51371088849723
 G_utm = mock.make_buffered_osm_graph(lng, lat, 1250)
 
-# As an alternative, you can use osmnx to download data. Set simplify to False:
-# e.g.: osmnx_multi_di_graph = ox.graph_from_point((lat, lng), dist=1250, simplify=False)
+# As an alternative, you can use OSMnx to download data. Set simplify to False:
+# e.g.: OSMnx_multi_di_graph = ox.graph_from_point((lat, lng), dist=1250, simplify=False)
 # Then convert to a cityseer compatible MultiGraph:
-# e.g.: G_utm = graphs.nX_from_osmnx(osmnx_multi_di_graph, tolerance=10)
+# e.g.: G_utm = graphs.nX_from_OSMnx(OSMnx_multi_di_graph, tolerance=10)
 
 # select extents for plotting
 easting, northing = utm.from_latlon(lat, lng)[:2]
@@ -166,19 +166,19 @@ The above recipe should be enough to get you started, but manyfold other strateg
 
 ## Comparison to other packages
 
-### _osmnx_
+### _OSMnx_
 
-As per the name, [`osmnx`](https://osmnx.readthedocs.io/) excels at workflows connecting the [Open Street Map](https://www.openstreetmap.org) (`OSM`) API to [`networkX`](https://networkx.github.io/) graphs, which can then be explored using a variety of underlying `networkX` algorithms while connecting to a broader ecosystem of geospatial python tools. `cityseer`, on the other-hand, emerged around the creation of abstract graphs (using [`numpy`](http://www.numpy.org/) arrays and [`numba`](https://numba.pydata.org/) data structures) allowing for the exploration of niche pedestrian-specific local network centrality and land-use measures that can efficiently scale to larger graphs. As such, in the first instance, `cityseer` is not about `networkX`, nor is it about `OSM`; rather, it is about graphs in a general sense and tailored forms of pedestrian-scale network and land-use analysis. Earlier versions of `cityseer` created the associated data structures (graphs) directly from `postGIS` (`postgres`) databases; however, to ease the use of these methods, and to lower the barrier to entry, these workflows were gradually abstracted to `networkX` based approaches to make it simpler to create the graphs and to apply methods such as "decomposition"; casting a graph to its "dual"; and subsequent conversion into `cityseer` data structures with the correct format of attributes for use by downstream `cityseer` algorithms. Later, some graph cleaning methods were added so that "messier" sources of graphs could be ingested to `cityseer` with an emphasis on cleaning the topology of the graph in such a manner as to reduce topological artefacts that might otherwise confound centrality measures e.g. by attempting to remove dual carriageways and by deriving topologies and geometrical forms of consolidation that are as 'neat' as possible so as not to complicate simplest path (angular) methods. (Post-simplification manual cleaning may still be required for these use-cases, though should generally be far easier post-simplification.)
+As per the name, [`OSMnx`](https://osmnx.readthedocs.io/) excels at workflows connecting the [Open Street Map](https://www.openstreetmap.org) (`OSM`) API to [`networkX`](https://networkx.github.io/) graphs, which can then be explored using a variety of underlying `networkX` algorithms while connecting to a broader ecosystem of geospatial python tools. `cityseer`, on the other-hand, emerged around the creation of abstract graphs (using [`numpy`](http://www.numpy.org/) arrays and [`numba`](https://numba.pydata.org/) data structures) allowing for the exploration of niche pedestrian-specific local network centrality and land-use measures that can efficiently scale to larger graphs. As such, in the first instance, `cityseer` is not about `networkX`, nor is it about `OSM`; rather, it is about graphs in a general sense and tailored forms of pedestrian-scale network and land-use analysis. Earlier versions of `cityseer` created the associated data structures (graphs) directly from `postGIS` (`postgres`) databases; however, to ease the use of these methods, and to lower the barrier to entry, these workflows were gradually abstracted to `networkX` based approaches to make it simpler to create the graphs and to apply methods such as "decomposition"; casting a graph to its "dual"; and subsequent conversion into `cityseer` data structures with the correct format of attributes for use by downstream `cityseer` algorithms. Later, some graph cleaning methods were added so that "messier" sources of graphs could be ingested to `cityseer` with an emphasis on cleaning the topology of the graph in such a manner as to reduce topological artefacts that might otherwise confound centrality measures e.g. by attempting to remove dual carriageways and by deriving topologies and geometrical forms of consolidation that are as 'neat' as possible so as not to complicate simplest path (angular) methods. (Post-simplification manual cleaning may still be required for these use-cases, though should generally be far easier post-simplification.)
 
 A high-level overview of differences between the packages can help clarify whether and how the packages can be combined, with some examples provided in the code snippet that follows below:
 
 - `cityseer` is not about connecting to `OSM` APIs or converting `OSM` graphs to `networkX` graphs. Some basic `OSM` ingestion and conversion functions are included in the [`tools.mock`](/tools/mock) module, but these are primarily intended for internal code development. These methods may provide a starting point for pedestrian-specific analysis but assume that the end-user will have some direct knowledge of how these APIs work and how the recipes and conversion functions can be manipulated for specific situations. i.e. these are not designed for general purpose set-and-forget high-level conversion from `OSM` to `networkX`.
-- `osmnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nX_from_osmnx`](/tools/graphs/#nx_from_osmnx) method. In doing so, keep the following in mind:
-  - `osmnx` uses `networkX` `multiDiGraph` graph structures which use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` --- quite intentionally --- has no interest in `vehicular` networks and therefore makes use of `networkX` `MultiGraphs` on the premise that pedestrian routes are not ordinarily directional. When using the [`tools.graphs.nX_from_osmnx`](/tools/graphs/#nx_from_osmnx) method, be cognisant that all directional information will be discarded.
-  - `cityseer` graph simplification will give different results to `osmnx` graph simplification. As such, it is better to use one or the other. If using `osmnx` to ingest networks from `OSM` but then using `cityseer` to simplify the network, set the `osmnx` `simplify` argument to `False` so that the network is not automatically simplified.
+- `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nX_from_OSMnx`](/tools/graphs/#nx_from_osmnx) method. In doing so, keep the following in mind:
+  - `OSMnx` uses `networkX` `multiDiGraph` graph structures which use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` --- quite intentionally --- has no interest in `vehicular` networks and therefore makes use of `networkX` `MultiGraphs` on the premise that pedestrian routes are not ordinarily directional. When using the [`tools.graphs.nX_from_OSMnx`](/tools/graphs/#nx_from_osmnx) method, be cognisant that all directional information will be discarded.
+  - `cityseer` graph simplification will give different results to `OSMnx` graph simplification. As such, it is better to use one or the other. If using `OSMnx` to ingest networks from `OSM` but then using `cityseer` to simplify the network, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
   - `cityseer` uses internal graph validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing any graph manipulation outside of `cityseer` then the conversion function may complain of disconnected geometries. If so, you may need to relax the tolerance parameter which is used for error checking upon conversion to a `cityseer` `MultiGraph`. Geometries that are disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
 - For graph cleaning and simplificaton: `cityseer` is oriented less towards ease-of-use and automation and more towards explicit and intentional use of potentially varied steps of processing. This involves a tradeoff, whereas some recipes are provided as a starting point (see [`Graph Cleaning`](/guide/#graph-cleaning)), you may find yourself doing more up-front experimentation and fine-tuning, but with the benefit of a degree of flexibility in how these methods are combined and fine-tuned for a given network topology: e.g. steps can be included or omitted, used in different sequences, or repeated. Some of these methods, particularly [`tools.graphs.nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes), may have severable tunable parameters which can have markedly different outcomes. This philosophy is by design, and if you want a simplified method you'll need to wrap your own sequence of steps in a simplified utility function.
-- `osmnx` uses `networkX` under the hood for measures such as closeness or betweenness centralities. `cityseer` uses different forms of algorithms that behave differently from those in `networkX`: it uses localised instead of global forms of analysis and employs specific variants of centrality measures to handle cases such as simplest-path heuristics (no side-stepping), segmentised analysis, while extending these workflows to land-use accessibilities and mixed-uses.
+- `OSMnx` uses `networkX` under the hood for measures such as closeness or betweenness centralities. `cityseer` uses different forms of algorithms that behave differently from those in `networkX`: it uses localised instead of global forms of analysis and employs specific variants of centrality measures to handle cases such as simplest-path heuristics (no side-stepping), segmentised analysis, while extending these workflows to land-use accessibilities and mixed-uses.
 
 ```py
 from cityseer import tools
@@ -194,22 +194,22 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 min_x, min_y, max_x, max_y = buff.bounds
 
-# Let's use osmnx to fetch an OSM graph
+# Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
 multi_di_graph_raw = ox.graph_from_point((lat, lng),
                                          dist=1250,
                                          simplify=False)
 
-# Workflow 1: Using osmnx for simplification
+# Workflow 1: Using OSMnx for simplification
 # ==========================================
-# explicit simplification and consolidation via osmnx
+# explicit simplification and consolidation via OSMnx
 multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
                                                    tolerance=50,
                                                    dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = tools.graphs.nX_from_osmnx(multi_di_graph_cons, tolerance=10)
+multi_graph_cons = tools.graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=10)
 tools.plot.plot_nX(multi_graph_cons,
                    labels=False,
                    plot_geoms=True,
@@ -220,8 +220,8 @@ tools.plot.plot_nX(multi_graph_cons,
 
 # WORKFLOW 2: Using cityseer for simplification
 # =============================================
-# let's convert the osmnx graph to a cityseer compatible `multiGraph`
-G_raw = tools.graphs.nX_from_osmnx(multi_di_graph_raw)
+# let's convert the OSMnx graph to a cityseer compatible `multiGraph`
+G_raw = tools.graphs.nX_from_OSMnx(multi_di_graph_raw)
 # convert to UTM
 G = tools.graphs.nX_wgs_to_utm(G_raw)
 # infer geoms
@@ -250,11 +250,11 @@ tools.plot.plot_nX(G3,
                    dpi=200)
 ```
 
-![Example osmnx simplification and consolidation](../src/assets/plots/images/osmnx_simplification.png)
-_An example `osmnx` simplification and consolidation workflow._
+![Example OSMnx simplification and consolidation](../src/assets/plots/images/osmnx_simplification.png)
+_An example `OSMnx` simplification and consolidation workflow._
 
-![Example osmnx to cityseer workflow](../src/assets/plots/images/osmnx_cityseer_simplification.png)
-_An example `osmnx` to `cityseer` conversion followed by simplification and consolidation workflow in `cityseer`._
+![Example OSMnx to cityseer workflow](../src/assets/plots/images/osmnx_cityseer_simplification.png)
+_An example `OSMnx` to `cityseer` conversion followed by simplification and consolidation workflow in `cityseer`._
 
 ### Optimised packages
 
