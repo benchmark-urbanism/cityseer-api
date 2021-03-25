@@ -288,7 +288,7 @@ plt.savefig('images/betas.png', dpi=150)
 # %%
 #
 #
-# OSMNX COMPARISON
+# OSMnx COMPARISON
 # centre-point
 lng, lat = -0.13396079424572427, 51.51371088849723
 
@@ -297,22 +297,22 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 min_x, min_y, max_x, max_y = buff.bounds
 
-# Let's use osmnx to fetch an OSM graph
+# Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
 multi_di_graph_raw = ox.graph_from_point((lat, lng),
                                          dist=1250,
                                          simplify=False)
 
-# Workflow 1: Using osmnx for simplification
+# Workflow 1: Using OSMnx for simplification
 # ==========================================
-# explicit simplification via osmnx
+# explicit simplification via OSMnx
 multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
                                                    tolerance=10,
                                                    dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = graphs.nX_from_osmnx(multi_di_graph_cons, tolerance=50)
+multi_graph_cons = graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=50)
 plot.plot_nX(multi_graph_cons,
              labels=False,
              plot_geoms=True,
@@ -323,8 +323,8 @@ plot.plot_nX(multi_graph_cons,
 
 # WORKFLOW 2: Using cityseer for simplification
 # =============================================
-# let's convert the osmnx graph to cityseer compatible `multiGraph`
-G_raw = graphs.nX_from_osmnx(multi_di_graph_raw)
+# let's convert the OSMnx graph to cityseer compatible `multiGraph`
+G_raw = graphs.nX_from_OSMnx(multi_di_graph_raw)
 # convert to UTM
 G = graphs.nX_wgs_to_utm(G_raw)
 # infer geoms

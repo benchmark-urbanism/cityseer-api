@@ -876,6 +876,6 @@ def test_nX_from_graph_maps(primal_graph):
                                   node_edge_map,
                                   networkX_multigraph=corrupt_primal_graph)
 
-def test_nX_from_osmnx():
+def test_nX_from_OSMnx():
     #TODO: not yet implemented.
     pass

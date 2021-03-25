@@ -608,11 +608,11 @@ A `networkX` graph. If a backbone graph was provided, a copy of the same graph w
 
 </FuncElement>
 
-## nX\_from\_osmnx
+## nX\_from\_OSMnx
 
 <FuncSignature>
 <pre>
-nX_from_osmnx(networkX_multidigraph,
+nX_from_OSMnx(networkX_multidigraph,
               node_attributes=None,
               edge_attributes=None,
               tolerance=checks.tolerance)
@@ -620,11 +620,11 @@ nX_from_osmnx(networkX_multidigraph,
 </pre>
 </FuncSignature>
 
-Copies an [`osmnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`.
+Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`.
 
 `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
-Note that `osmnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
+Note that `OSMnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
 
 Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, in case attributes fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
 
@@ -632,7 +632,7 @@ Other attributes will be ignored to avoid potential downstream misinterpretation
 
 <FuncElement name='networkX_multidigraph' type='nx.MultiDiGraph'>
 
-A `osmnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge attributes containing `LineString` geoms (for simplified edges).
+A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge attributes containing `LineString` geoms (for simplified edges).
 
 </FuncElement>
 

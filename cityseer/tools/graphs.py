@@ -1718,19 +1718,19 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
     return g_multi_copy
 
 
-def nX_from_osmnx(networkX_multidigraph: nx.MultiDiGraph,
+def nX_from_OSMnx(networkX_multidigraph: nx.MultiDiGraph,
                   node_attributes: Union[list, tuple] = None,
                   edge_attributes: Union[list, tuple] = None,
                   tolerance: float = checks.tolerance) -> nx.MultiGraph:
     """
-    Copies an [`osmnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible
+    Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible
     `MultiGraph`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge
     attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end
     node coordinates.
 
-    Note that `osmnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found,
+    Note that `OSMnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found,
     then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
 
     Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence
@@ -1742,7 +1742,7 @@ def nX_from_osmnx(networkX_multidigraph: nx.MultiDiGraph,
     Parameters
     ----------
     networkX_multidigraph
-        A `osmnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge
+        A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge
         attributes containing `LineString` geoms (for simplified edges).
     node_attributes
         Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
@@ -1761,12 +1761,12 @@ def nX_from_osmnx(networkX_multidigraph: nx.MultiDiGraph,
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
     """
     if not isinstance(networkX_multidigraph, nx.MultiDiGraph):
-        raise TypeError('This method requires a directed networkX MultiDiGraph as derived from `osmnx`.')
+        raise TypeError('This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.')
     if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):
         raise TypeError('Node attributes to be copied should be provided as either a list or tuple of attribute keys.')
     if edge_attributes is not None and not isinstance(edge_attributes, (list, tuple)):
         raise TypeError('Edge attributes to be copied should be provided as either a list or tuple of attribute keys.')
-    logger.info('Converting osmnx MultiDiGraph to cityseer MultiGraph.')
+    logger.info('Converting OSMnx MultiDiGraph to cityseer MultiGraph.')
     # target MultiGraph
     g_multi = nx.MultiGraph()
 
