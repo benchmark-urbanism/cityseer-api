@@ -1,9 +1,11 @@
 import os
 
-from matplotlib import colors
 import matplotlib.pyplot as plt
 import numpy as np
+import osmnx as ox
 import utm
+from matplotlib import colors
+from shapely import geometry
 
 from cityseer.metrics import networks, layers
 from cityseer.tools import mock, graphs, plot
@@ -121,15 +123,7 @@ plot.plot_nX(G,
              path='images/graph_cleaning_2.png',
              dpi=200)
 # first pass of consolidation
-G1 = graphs.nX_consolidate_nodes(G,
-                                 buffer_dist=10,
-                                 min_node_group=3,
-                                 min_node_degree=1,
-                                 crawl=True,
-                                 cent_min_degree=3,
-                                 merge_edges_by_midline=True,
-                                 multi_edge_len_factor=1.25,
-                                 multi_edge_min_len=100)
+G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
 plot.plot_nX(G1,
              labels=False,
              plot_geoms=True,
@@ -138,11 +132,7 @@ plot.plot_nX(G1,
              path='images/graph_cleaning_3.png',
              dpi=200)
 # split opposing line geoms to facilitate parallel merging
-G2 = graphs.nX_split_opposing_geoms(G1,
-                                    buffer_dist=15,
-                                    merge_edges_by_midline=True,
-                                    multi_edge_len_factor=1.25,
-                                    multi_edge_min_len=100)
+G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
 plot.plot_nX(G2,
              labels=False,
              plot_geoms=True,
@@ -153,11 +143,9 @@ plot.plot_nX(G2,
 # second pass of consolidation
 G3 = graphs.nX_consolidate_nodes(G2,
                                  buffer_dist=15,
-                                 crawl=True,
-                                 merge_edges_by_midline=True,
-                                 cent_min_degree=4,
-                                 multi_edge_len_factor=1.25,
-                                 multi_edge_min_len=100)
+                                 crawl=False,
+                                 min_node_degree=2,
+                                 cent_min_degree=4)
 plot.plot_nX(G3,
              labels=False,
              plot_geoms=True,
@@ -165,7 +153,6 @@ plot.plot_nX(G3,
              y_lim=(min_y, max_y),
              path='images/graph_cleaning_5.png',
              dpi=200)
-
 #
 #
 # NETWORKS MODULE
@@ -297,3 +284,70 @@ ax.set_ylim([0, 1.0])
 ax.set_ylabel('Weighting')
 ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$')
 plt.savefig('images/betas.png', dpi=150)
+
+# %%
+#
+#
+# OSMNX COMPARISON
+# centre-point
+lng, lat = -0.13396079424572427, 51.51371088849723
+
+# select extents for plotting
+easting, northing = utm.from_latlon(lat, lng)[:2]
+buff = geometry.Point(easting, northing).buffer(1000)
+min_x, min_y, max_x, max_y = buff.bounds
+
+# Let's use osmnx to fetch an OSM graph
+# We'll use the same raw network for both workflows (hence simplify=False)
+multi_di_graph_raw = ox.graph_from_point((lat, lng),
+                                         dist=1250,
+                                         simplify=False)
+
+# Workflow 1: Using osmnx for simplification
+# ==========================================
+# explicit simplification via osmnx
+multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
+multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
+multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
+                                                   tolerance=10,
+                                                   dead_ends=True)
+# let's use the same plotting function for both scenarios to aid visual comparisons
+multi_graph_cons = graphs.nX_from_osmnx(multi_di_graph_cons, tolerance=50)
+plot.plot_nX(multi_graph_cons,
+             labels=False,
+             plot_geoms=True,
+             x_lim=(min_x, max_x),
+             y_lim=(min_y, max_y),
+             dpi=200,
+             path='images/osmnx_simplification.png')
+
+# WORKFLOW 2: Using cityseer for simplification
+# =============================================
+# let's convert the osmnx graph to cityseer compatible `multiGraph`
+G_raw = graphs.nX_from_osmnx(multi_di_graph_raw)
+# convert to UTM
+G = graphs.nX_wgs_to_utm(G_raw)
+# infer geoms
+G = graphs.nX_simple_geoms(G)
+# remove degree=2 nodes
+G = graphs.nX_remove_filler_nodes(G)
+# remove dangling nodes
+G = graphs.nX_remove_dangling_nodes(G, despine=10)
+# repeat degree=2 removal to remove orphaned nodes due to despining
+G = graphs.nX_remove_filler_nodes(G)
+# let's consolidate the nodes
+G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
+# let's also remove as many parallel carriageways as possible
+G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
+G3 = graphs.nX_consolidate_nodes(G2,
+                                 buffer_dist=15,
+                                 crawl=False,
+                                 min_node_degree=2,
+                                 cent_min_degree=4)
+plot.plot_nX(G3,
+             labels=False,
+             plot_geoms=True,
+             x_lim=(min_x, max_x),
+             y_lim=(min_y, max_y),
+             dpi=200,
+             path='images/osmnx_cityseer_simplification.png')

@@ -851,7 +851,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
 
     Notes
     -----
-    See the guide on [graph cleaning](/guide/cleaning) for more information.
+    See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
     ![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
