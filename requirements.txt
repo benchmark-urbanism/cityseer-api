@@ -3,7 +3,7 @@ docspec-python
 osmnx
 matplotlib
 networkx>=2.4
-numba==0.53.0rc1.post1
+numba>=0.53
 numpy
 pdoc
 pytest
