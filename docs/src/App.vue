@@ -63,7 +63,7 @@ main.app-container
     router-view
   // back to top button
   button#back-to-top.foreground-pulse(v-show='scrollToTopVisible' @click='scrollTop()')
-    font-awesome(icon='angle-double-up' size='lg')
+    font-awesome(icon='angle-double-up' size='2x')
 </template>
 
 <static-query>
@@ -194,30 +194,43 @@ export default {
     },
     logoDynamicStyle() {
       if (!this.smallMode && this.isHome) {
-        const xMargin = this.innerWidth * 0.125
-        let yMargin = xMargin * 1.5
+        const xMargin = this.innerWidth * 0.05
+        let yMargin = xMargin * 3
         if (yMargin >= 250) {
           yMargin = 250
         }
         const width = this.innerWidth * 0.35
         const height = width * 0.5
         return {
-          margin: `${yMargin}px ${xMargin}px`,
+          margin: `${yMargin}px ${xMargin}px ${yMargin}px ${xMargin}px`,
           width: `${width}px`,
           height: `${height}px`,
         }
       } else if (!this.smallMode && !this.isHome) {
         return {
-          margin: '10px',
+          margin: '30px 15px 15px 85px',
           width: '250px',
           height: '150px',
         }
+      } else if (this.smallMode && this.isHome) {
+        const xMargin = this.innerWidth * 0.15
+        let yMargin = xMargin * 1.25
+        if (yMargin >= 250) {
+          yMargin = 250
+        }
+        const width = this.innerWidth * 0.6
+        const height = width * 0.5
+        return {
+          margin: `${yMargin}px ${xMargin}px ${yMargin}px ${xMargin}px`,
+          width: `${width}px`,
+          height: `${height}px`,
+        }
       } else {
-        let margin = this.innerWidth * 0.2
+        let margin = this.innerWidth * 0.1
         let width = this.innerWidth * 0.6
         const height = width * 0.6
         return {
-          margin: `${margin}px 0 ${margin / 2}px 0`,
+          margin: `${margin}px  ${margin / 2}px ${margin / 2}px ${margin}px`,
           width: `${width}px`,
           height: `${height}px`,
         }
@@ -389,7 +402,7 @@ export default {
 }
 #logo-link {
   /* width and margins set from animations */
-  @apply w-full flex items-center justify-center transition-all;
+  @apply w-full flex items-center justify-end transition-all;
 }
 #logo-link:hover {
   transform: scale(1.05);
@@ -404,6 +417,9 @@ export default {
 .nav-link:hover,
 .nav-link:active {
   @apply bg-theme text-white;
+}
+.nav-link-active {
+  @apply border-b border-t border-lightgrey;
 }
 .nested-link {
   @apply text-xs py-1 pr-3 cursor-pointer;
@@ -430,7 +446,7 @@ export default {
 }
 #back-to-top {
   @apply fixed flex items-center justify-center z-50 top-4 right-4;
-  @apply w-12 h-12 rounded-full border-2 border-white shadow;
+  @apply w-16 h-16 rounded-full border-2 border-white shadow-xl;
   @apply bg-theme text-lightgrey;
 }
 
