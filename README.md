@@ -1,9 +1,5 @@
 # cityseer
 
-[![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
-
-[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml)
-
 `cityseer` is a collection of computational tools for fine-grained street-network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods.
 
 `cityseer` is underpinned by network-based methods that have been developed from the ground-up for localised urban analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given streetfront location. It can be used to compute a variety of node or segment-based centrality methods, landuse accessibility and mixed-use measures, and statistical aggregations. Aggregations are computed dynamically --- directly over the network while taking into account the direction of approach --- and can incorporate spatial impedances and network decomposition to further accentuate spatial precision.
