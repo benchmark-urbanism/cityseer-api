@@ -18,6 +18,7 @@ plt.style.use('matplotlibrc')
 G = mock.mock_graph()
 plot.plot_nX(G,
              labels=True,
+             node_size=80,
              path='images/graph.png',
              dpi=150)
 
@@ -59,7 +60,8 @@ plot.plot_assignment(N,
                      D,
                      node_colour=mixed_uses_cols,
                      data_labels=landuse_labels,
-                     path='images/intro_mixed_uses.png')
+                     path='images/intro_mixed_uses.png',
+                     dpi=150)
 
 #
 #
@@ -69,6 +71,7 @@ G = graphs.nX_simple_geoms(G)
 plot.plot_nX(G,
              plot_geoms=True,
              labels=True,
+             node_size=80,
              path='images/graph_example.png',
              dpi=150)  # WITH LABELS
 
@@ -103,56 +106,46 @@ min_x = easting - buffer
 max_x = easting + buffer
 min_y = northing - buffer
 max_y = northing + buffer
-#
+
+
+# reusable plot function
+def simple_plot(_G, _path, plot_geoms=True):
+    # plot using the selected extents
+    plot.plot_nX(_G,
+                 labels=False,
+                 plot_geoms=plot_geoms,
+                 node_size=10,
+                 edge_width=1,
+                 x_lim=(min_x, max_x),
+                 y_lim=(min_y, max_y),
+                 dpi=200,
+                 path=_path)
+
+
 G = graphs.nX_simple_geoms(G_utm)
-plot.plot_nX(G,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             path='images/graph_cleaning_1.png',
-             dpi=200)
+simple_plot(G, 'images/graph_cleaning_1.png', plot_geoms=False)
+
 G = graphs.nX_remove_filler_nodes(G)
 G = graphs.nX_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
-plot.plot_nX(G,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             path='images/graph_cleaning_2.png',
-             dpi=200)
+simple_plot(G, 'images/graph_cleaning_2.png')
+
 # first pass of consolidation
 G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
-plot.plot_nX(G1,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             path='images/graph_cleaning_3.png',
-             dpi=200)
+simple_plot(G1, 'images/graph_cleaning_3.png')
+
 # split opposing line geoms to facilitate parallel merging
 G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
-plot.plot_nX(G2,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             path='images/graph_cleaning_4.png',
-             dpi=200)
+simple_plot(G2, 'images/graph_cleaning_4.png')
+
 # second pass of consolidation
 G3 = graphs.nX_consolidate_nodes(G2,
                                  buffer_dist=15,
                                  crawl=False,
                                  min_node_degree=2,
                                  cent_min_degree=4)
-plot.plot_nX(G3,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             path='images/graph_cleaning_5.png',
-             dpi=200)
+simple_plot(G3, 'images/graph_cleaning_5.png')
+
 #
 #
 # NETWORKS MODULE
@@ -163,6 +156,7 @@ G = graphs.nX_simple_geoms(G)
 plot.plot_nX(G,
              plot_geoms=True,
              labels=True,
+             node_size=80,
              path='images/graph_before.png',
              dpi=150)
 
@@ -175,6 +169,7 @@ G_post = N.to_networkX()
 plot.plot_nX(G_post,
              plot_geoms=True,
              labels=True,
+             node_size=80,
              path='images/graph_after.png',
              dpi=150)
 
@@ -202,7 +197,8 @@ L = layers.DataLayerFromDict(data_dict)
 L.assign_to_network(N_decomposed, max_dist=500)
 plot.plot_assignment(N_decomposed,
                      L,
-                     path='images/assignment_decomposed.png')
+                     path='images/assignment_decomposed.png',
+                     dpi=150)
 
 #
 #
@@ -251,7 +247,8 @@ landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 plot.plot_assignment(N,
                      D,
                      path='images/assignment_plot.png',
-                     data_labels=landuse_labels)
+                     data_labels=landuse_labels,
+                     dpi=150)
 
 #
 #
@@ -296,6 +293,21 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 min_x, min_y, max_x, max_y = buff.bounds
 
+
+# reusable plot function
+def simple_plot(_G, _path):
+    # plot using the selected extents
+    plot.plot_nX(_G,
+                 labels=False,
+                 plot_geoms=True,
+                 node_size=10,
+                 edge_width=1,
+                 x_lim=(min_x, max_x),
+                 y_lim=(min_y, max_y),
+                 dpi=200,
+                 path=_path)
+
+
 # Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
 multi_di_graph_raw = ox.graph_from_point((lat, lng),
@@ -312,13 +324,7 @@ multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
                                                    dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
 multi_graph_cons = graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=50)
-plot.plot_nX(multi_graph_cons,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             dpi=200,
-             path='images/osmnx_simplification.png')
+simple_plot(multi_graph_cons, 'images/osmnx_simplification.png')
 
 # WORKFLOW 2: Using cityseer for simplification
 # =============================================
@@ -343,10 +349,4 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  crawl=False,
                                  min_node_degree=2,
                                  cent_min_degree=4)
-plot.plot_nX(G3,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             dpi=200,
-             path='images/osmnx_cityseer_simplification.png')
+simple_plot(G3, 'images/osmnx_cityseer_simplification.png')
