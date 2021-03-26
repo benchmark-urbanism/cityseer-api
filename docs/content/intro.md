@@ -1,12 +1,27 @@
 # Getting Started
 
-`cityseer` is a collection of computational tools for fine-grained street-network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods.
+`cityseer` is a collection of computational tools for fine-grained street-network and land-use analysis, useful for
+assessing the morphological precursors to vibrant neighbourhoods.
 
-`cityseer` is underpinned by network-based methods that have been developed from the ground-up for localised urban analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given streetfront location. It can be used to compute a variety of node or segment-based centrality methods, landuse accessibility and mixed-use measures, and statistical aggregations. Aggregations are computed dynamically --- directly over the network while taking into account the direction of approach --- and can incorporate spatial impedances and network decomposition to further accentuate spatial precision.
+`cityseer` is underpinned by network-based methods that have been developed from the ground-up for localised urban
+analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given
+streetfront location. It can be used to compute a variety of node or segment-based centrality methods, landuse
+accessibility and mixed-use measures, and statistical aggregations. Aggregations are computed dynamically --- directly
+over the network while taking into account the direction of approach --- and can incorporate spatial impedances and
+network decomposition to further accentuate spatial precision.
 
-The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io)), Open Street Map workflows [`OSMnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/) stack of scientific packages. The underlying algorithms are are implemented in [`numba`](https://numba.pydata.org/) JIT compiled code so that the methods can be applied to large decomposed networks. In-out convenience methods are provided for interfacing with [`networkX`](https://networkx.github.io/) and graph cleaning tools aid the incorporation of messier network respresentations such as those derived from [Open Street Map](https://www.openstreetmap.org).
+The use of `python` facilitates interaction with popular computational tools for network manipulation (
+e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (
+e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows
+with [`OSMnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/) stack of
+scientific packages. The underlying algorithms are are implemented in [`numba`](https://numba.pydata.org/) JIT compiled
+code so that the methods can be applied to large decomposed networks. In-out convenience methods are provided for
+interfacing with `networkX` and graph cleaning tools aid the incorporation of messier network representations such as
+those derived from [Open Street Map](https://www.openstreetmap.org).
 
-The documentation is available from [cityseer.benchmarkurbanism.com](https://cityseer.benchmarkurbanism.com) and the github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api).
+The documentation is available from [cityseer.benchmarkurbanism.com](https://cityseer.benchmarkurbanism.com) and the
+github repository is available
+at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api).
 
 ## Installation
 
@@ -16,7 +31,8 @@ The documentation is available from [cityseer.benchmarkurbanism.com](https://cit
 pip install cityseer
 ```
 
-Code tests are run against `python 3.9`, though the code base will generally be compatible with other recent versions of Python 3.
+Code tests are run against `python 3.9`, though the code base will generally be compatible with other recent versions of
+Python 3.
 
 [![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
 
@@ -26,7 +42,10 @@ Code tests are run against `python 3.9`, though the code base will generally be 
 
 ## Quickstart
 
-`cityseer` revolves around networks (graphs). If you're comfortable with `numpy` and abstract data handling, then the underlying data structures can be created and manipulated directly. However, it is generally more convenient to sketch the graph using [`NetworkX`](https://networkx.github.io/) and to let `cityseer` take care of initialising and converting the graph for you.
+`cityseer` revolves around networks (graphs). If you're comfortable with `numpy` and abstract data handling, then the
+underlying data structures can be created and manipulated directly. However, it is generally more convenient to sketch
+the graph using [`NetworkX`](https://networkx.github.io/) and to let `cityseer` take care of initialising and converting
+the graph for you.
 
 ```python
 # any networkX MultiGraph with 'x' and 'y' node attributes will do
@@ -37,7 +56,7 @@ from cityseer.tools import mock, graphs, plot
 G = mock.mock_graph()
 print(nx.info(G), '\n')
 # let's plot the network
-plot.plot_nX(G, labels=True, dpi=100)
+plot.plot_nX(G, labels=True, node_size=80, dpi=100)
 ```
 
 ![An example graph](../src/assets/plots/images/graph.png)
@@ -47,17 +66,17 @@ The [`tools.graphs`](/tools/graphs) module contains a collection of convenience 
 
 There are generally two scenarios when creating a street network graph:
 
-1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. i.e. `G[start_node][end_node][0]['geom'] = linestring_geom`.
+1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. e.g. `G.add_edge(start_node, end_node, geom=a_linestring_geom)`.
 
 2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide/#graph-cleaning) guide; in these cases, the [`graphs.nX_simple_geoms`](/tools/graphs/#nx_simple_geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm) aids coordinate conversions; [`nX_remove_dangling_nodes`](/tools/graphs/#nx_remove_dangling_nodes) removes remove roadway stubs, [`nX_remove_filler_nodes`](/tools/graphs/#nx_remove_filler_nodes) strips-out filler nodes, and [`nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) assists in cleaning-up the network.
 
 ## Example
 
-Here, we'll walk through a high-level overview showing how to use `cityseer`. You can provide your own shapely geometries if you need precise street lengths / angles, else, you can auto-infer simple geometries from the start to end node of each network edge, which works well for graphs where nodes have been used to enscribe roadway geometries.
+Here, we'll walk through a high-level overview showing how to use `cityseer`. You can provide your own shapely geometries if available; else, you can auto-infer simple geometries from the start to end node of each network edge, which works well for graphs where nodes have been used to inscribe roadway geometries.
 
 ```python
 G = graphs.nX_simple_geoms(G)
-plot.plot_nX(G, labels=True, plot_geoms=True, dpi=100)
+plot.plot_nX(G, labels=True, node_size=80, plot_geoms=True, dpi=100)
 ```
 
 ![An example graph](../src/assets/plots/images/graph_example.png)
@@ -93,6 +112,7 @@ The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayernode_central
 
 ```python
 from cityseer.metrics import networks
+
 # create a Network layer from the networkX graph
 N = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
@@ -105,6 +125,7 @@ A [`DataLayer`](/metrics/layers/#class-datalayer) represents data points. A `Dat
 
 ```python
 from cityseer.metrics import layers
+
 # a mock data dictionary representing the 'x', 'y' attributes for data points
 data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
 print(data_dict[0], data_dict[1], 'etc.')
@@ -123,13 +144,14 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](../src/assets/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayercompute_aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity), [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities), [`DataLayer.compute_stats_single`](/metrics/layers/#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayercompute_stats_multiple).
+Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayercompute_aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity) , [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity) , [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities) , [`DataLayer.compute_stats_single`](/metrics/layers/#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayercompute_stats_multiple).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
 ```python
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 print(landuse_labels)
+# prints: ['e' 'g' 'h' 'c' 'i' 'e' 'j' 'e' 'f' 'b' etc.
 # example easy-wrapper method for computing mixed-uses
 D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # example easy-wrapper method for computing accessibilities

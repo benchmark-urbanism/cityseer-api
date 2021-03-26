@@ -55,7 +55,7 @@
 
   ul,
   li {
-    @apply ml-3;
+    @apply ml-3 py-1;
 
     list-style-type: disc;
   }
@@ -129,7 +129,7 @@
 
     ul,
     li {
-      @apply ml-2 text-sm;
+      @apply ml-2 text-sm py-0.5;
     }
 
     p {

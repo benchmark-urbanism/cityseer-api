@@ -54,7 +54,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
-    # plot.plot_nX_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True)
+    # plot.plot_nX_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True, node_size=80)
     p_source_idx = node_uids_p.index(0)
     primal_targets = (15, 20, 37)
     dual_sources = ('0_1', '0_16', '0_31')

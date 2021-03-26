@@ -17,7 +17,9 @@ The broader emphasis on localised methods and the manner in which `cityseer` add
 ## Graph Cleaning
 
 :::tip Comment
+
 A notebook of this guide can be found at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
+
 :::
 
 Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
@@ -52,14 +54,23 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 # extract extents
 min_x, min_y, max_x, max_y = buff.bounds
-# plot using the selected extents
-plot.plot_nX(G_utm,
-             labels=False,
-             plot_geoms=False,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             figsize=(20, 20),
-             dpi=200)
+
+
+# reusable plot function
+def simple_plot(_G, plot_geoms=True):
+    # plot using the selected extents
+    plot.plot_nX(_G,
+                 labels=False,
+                 plot_geoms=plot_geoms,
+                 node_size=15,
+                 edge_width=2,
+                 x_lim=(min_x, max_x),
+                 y_lim=(min_y, max_y),
+                 figsize=(20, 20),
+                 dpi=200)
+
+
+simple_plot(G_utm, plot_geoms=False)
 ```
 
 ![The raw graph from OSM](../src/assets/plots/images/graph_cleaning_1.png)
@@ -90,13 +101,7 @@ G = graphs.nX_remove_filler_nodes(G)
 G = graphs.nX_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 # removing danglers can cause newly orphaned filler nodes, which we'll remove for good measure
 G = graphs.nX_remove_filler_nodes(G)
-plot.plot_nX(G,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             figsize=(20, 20),
-             dpi=200)
+simple_plot(G)
 ```
 
 ![Initial graph cleaning](../src/assets/plots/images/graph_cleaning_2.png)
@@ -106,19 +111,13 @@ _After removal of filler nodes, dangling nodes, and disconnected components._
 
 Things are already looked much better, but we still have areas with large concentrations of nodes at complex intersections and many parallel roadways, which will confound centrality methods. We'll now try to remove as much of this as possible. These steps involve the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
 
-We'll do this in three steps:
+In this case, we're trying to get rid of parallel road segments so we'll do this in three steps, though it should be noted that, depending on your use-case, Step 1 may already be sufficient:
 
-Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) function. The arguments passed to the parameters allow for several different strategies, and are explained more fully in the documentation.
+Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes) function. The arguments passed to the parameters allow for a number of different strategies, such as whether to 'crawl'; minimum and maximum numbers of nodes to consider for consolidation; and to set the policies according to which nodes and edges are consolidated. These are explained more fully in the documentation. In this case, we're accepting the defaults except for explicitly setting the buffer distance and bumping the minimum size of node groups to be considered for consolidation from 2 to 3.
 
 ```py
 G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
-plot.plot_nX(G1,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             figsize=(20, 20),
-             dpi=200)
+simple_plot(G1)
 ```
 
 ![First step of node consolidation](../src/assets/plots/images/graph_cleaning_3.png)
@@ -126,23 +125,17 @@ _After an initial pass of node consolidation._
 
 Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
 
-In Step 2, we'll use [`graphs.nX_split_opposing_geoms`](/tools/graphs/#nx_split_opposing_geoms) to intentionally split longer edges at locations opposite nodes on a parallel roadway. This is going to help with a final pass of consolidation in Step 3.
+In Step 2, we'll use [`graphs.nX_split_opposing_geoms`](/tools/graphs/#nx_split_opposing_geoms) to intentionally split edges in near proximity to nodes located on an adjacent roadway. This is going to help with the final pass of consolidation in Step 3.
 
 ```py
 G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
-plot.plot_nX(G2,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             figsize=(20, 20),
-             dpi=200)
+simple_plot(G2)
 ```
 
 ![Splitting opposing geoms](../src/assets/plots/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
-In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes:
+In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
 
 ```py
 G3 = graphs.nX_consolidate_nodes(G2,
@@ -150,35 +143,38 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  crawl=False,
                                  min_node_degree=2,
                                  cent_min_degree=4)
-plot.plot_nX(G3,
-             labels=False,
-             plot_geoms=True,
-             x_lim=(min_x, max_x),
-             y_lim=(min_y, max_y),
-             figsize=(20, 20),
-             dpi=200)
+simple_plot(G3)
 ```
 
 ![Final step of node consolidation](../src/assets/plots/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
-The above recipe should be enough to get you started, but manyfold other strategies may also work, and may further be necessitated by different network topologies.
+:::tip Manual Cleaning
+
+When using shortest-path methods, automated graph simplification and consolidation can arguably eliminate the need for manual checks; however, it is worth plotting the graph and performing a quick look-through to be sure there aren't any unexpectedly odd situations.
+
+When using simplest-path (angular) centralities, manual checks become more important because automated simplification and consolidation can result in small twists and turns where nodes and edges have been merged. `cityseer` uses particular methods that attempt to keep these issues to a minimum, though there may still be some situations necessitating manual checks. From this perspective, it may be preferable to use a cleaner source of network topology (e.g. OS Open Roads) if working with simplest-path centralities; else, if only OSM data is available, to instead consider the use of shortest-path methods if the graph has too many unresolvable situations to clean-up manually.
+
+:::
+
+The above recipe should be enough to get you started, but there are innumerable other strategies that may also work for any variety of scenarios.
 
 ## Comparison to other packages
 
 ### _OSMnx_
 
-As per the name, [`OSMnx`](https://osmnx.readthedocs.io/) excels at workflows connecting the [Open Street Map](https://www.openstreetmap.org) (`OSM`) API to [`networkX`](https://networkx.github.io/) graphs, which can then be explored using a variety of underlying `networkX` algorithms while connecting to a broader ecosystem of geospatial python tools. `cityseer`, on the other-hand, emerged around the creation of abstract graphs (using [`numpy`](http://www.numpy.org/) arrays and [`numba`](https://numba.pydata.org/) data structures) allowing for the exploration of niche pedestrian-specific local network centrality and land-use measures that can efficiently scale to larger graphs. As such, in the first instance, `cityseer` is not about `networkX`, nor is it about `OSM`; rather, it is about graphs in a general sense and tailored forms of pedestrian-scale network and land-use analysis. Earlier versions of `cityseer` created the associated data structures (graphs) directly from `postGIS` (`postgres`) databases; however, to ease the use of these methods, and to lower the barrier to entry, these workflows were gradually abstracted to `networkX` based approaches to make it simpler to create the graphs and to apply methods such as "decomposition"; casting a graph to its "dual"; and subsequent conversion into `cityseer` data structures with the correct format of attributes for use by downstream `cityseer` algorithms. Later, some graph cleaning methods were added so that "messier" sources of graphs could be ingested to `cityseer` with an emphasis on cleaning the topology of the graph in such a manner as to reduce topological artefacts that might otherwise confound centrality measures e.g. by attempting to remove dual carriageways and by deriving topologies and geometrical forms of consolidation that are as 'neat' as possible so as not to complicate simplest path (angular) methods. (Post-simplification manual cleaning may still be required for these use-cases, though should generally be far easier post-simplification.)
+As per the name, [`OSMnx`](https://osmnx.readthedocs.io/) excels at workflows connecting the [Open Street Map](https://www.openstreetmap.org) (`OSM`) API to [`networkX`](https://networkx.github.io/) graphs, which can then be explored using a variety of underlying `networkX` algorithms while connecting to a broader ecosystem of geospatial python tools. `cityseer`, on the other-hand, emerged around the creation of abstract graphs ( using [`numpy`](http://www.numpy.org/) arrays and [`numba`](https://numba.pydata.org/) data structures) allowing for the exploration of niche pedestrian-specific local network centrality and land-use measures that can scale to larger graphs.
+As such, in the first instance, `cityseer` is not about `networkX`, nor is it about `OSM`; rather, it is about graphs in a general sense coupled to tailored forms of pedestrian-scale network and land-use analysis. Earlier versions of `cityseer` created the associated data structures (graphs) directly from `postGIS` (`postgres`) databases; however, to ease the use of these methods, and to lower the barrier to entry, these workflows were gradually abstracted to `networkX` based approaches to make it simpler to create the graphs and to apply methods such as "decomposition"; casting a graph to its "dual"; and subsequent conversion into `cityseer` data structures with the correct format of attributes for use by downstream `cityseer` algorithms. Later, some graph cleaning methods were added so that "messier" sources of graphs could be ingested to `cityseer` with an emphasis on cleaning the topology of the graph in such a manner as to reduce topological artefacts that might otherwise confound centrality measures e.g. by attempting to remove dual carriageways and by deriving topologies and geometrical forms of edge consolidation that are as 'tidy' as possible so as not to complicate simplest-path (angular) methods.
 
-A high-level overview of differences between the packages can help clarify how the packages can be combined, with some examples provided in the code snippet that follows below:
+The following points are useful to keep in mind when combining `OSMnx` and `cityseer`, and an example is provided in the code snippet that follows below:
 
-- `cityseer` is not about connecting to `OSM` APIs or converting `OSM` graphs to `networkX` graphs. Some basic `OSM` ingestion and conversion functions are included in the [`tools.mock`](/tools/mock) module, but these are primarily intended for internal code development. These methods may provide a starting point for pedestrian-specific analysis but assume that the end-user will have some direct knowledge of how these APIs work and how the recipes and conversion functions can be manipulated for specific situations. i.e. these are not designed for general purpose set-and-forget high-level conversion from `OSM` to `networkX`.
+- `cityseer` is not about connecting to `OSM` APIs or converting `OSM` graphs to `networkX` graphs. Some basic `OSM` ingestion and conversion functions are included in the [`tools.mock`](/tools/mock) module, but these are primarily intended for internal code development. These methods may provide a starting point for pedestrian-specific analysis but assume that the end-user will have some direct knowledge of how these APIs work and how the recipes and conversion functions can be manipulated for specific situations. i.e. these are not necessarily designed for general purpose set-and-forget high-level conversion from `OSM` to `networkX`.
 - `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nX_from_OSMnx`](/tools/graphs/#nx_from_osmnx) method. In doing so, keep the following in mind:
   - `OSMnx` uses `networkX` `multiDiGraph` graph structures which use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` --- quite intentionally --- has no interest in `vehicular` networks and therefore makes use of `networkX` `MultiGraphs` on the premise that pedestrian routes are not ordinarily directional. When using the [`tools.graphs.nX_from_OSMnx`](/tools/graphs/#nx_from_osmnx) method, be cognisant that all directional information will be discarded.
   - `cityseer` graph simplification will give different results to `OSMnx` graph simplification. If using `OSMnx` to ingest networks from `OSM` but then using `cityseer` to simplify the network, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
   - `cityseer` uses internal graph validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing any graph manipulation outside of `cityseer` then the conversion function may complain of disconnected geometries. If so, you may need to relax the tolerance parameter which is used for error checking upon conversion to a `cityseer` `MultiGraph`. Geometries that are disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
 - For graph cleaning and simplificaton: `cityseer` is oriented less towards ease-of-use and automation and more towards explicit and intentional use of potentially varied steps of processing. This involves a tradeoff, whereas some recipes are provided as a starting point (see [`Graph Cleaning`](/guide/#graph-cleaning)), you may find yourself doing more up-front experimentation and fine-tuning, but with the benefit of a degree of flexibility in how these methods are combined and fine-tuned for a given network topology: e.g. steps can be included or omitted, used in different sequences, or repeated. Some of these methods, particularly [`tools.graphs.nX_consolidate_nodes`](/tools/graphs/#nx_consolidate_nodes), may have severable tunable parameters which can have markedly different outcomes. This philosophy is by design, and if you want a simplified method you'll need to wrap your own sequence of steps in a simplified utility function.
-- `OSMnx` uses `networkX` under the hood for measures such as closeness or betweenness centralities. `cityseer` uses different forms of algorithms that behave differently from those in `networkX`: it uses localised instead of global forms of analysis and employs specific variants of centrality measures to handle cases such as simplest-path heuristics (no side-stepping), segmentised analysis, and further extends these workflows to land-use accessibilities and mixed-uses.
+- `OSMnx` uses `networkX` under the hood for measures such as closeness or betweenness centralities. `cityseer` uses particular forms of algorithms that work differently from those in `networkX`: it uses localised instead of global forms of analysis and employs specific variants of centrality measures to handle cases such as simplest-path heuristics and segmentised analysis, and further extends these workflows to handle the derivation of land-use accessibilities and mixed-uses.
 
 ```py
 from cityseer import tools
@@ -194,32 +190,41 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 min_x, min_y, max_x, max_y = buff.bounds
 
+
+# reusable plot function
+def simple_plot(_G):
+    # plot using the selected extents
+    tools.plot.plot_nX(_G,
+                       labels=False,
+                       plot_geoms=True,
+                       node_size=15,
+                       edge_width=2,
+                       x_lim=(min_x, max_x),
+                       y_lim=(min_y, max_y),
+                       figsize=(20, 20),
+                       dpi=200)
+
+
 # Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
 multi_di_graph_raw = ox.graph_from_point((lat, lng),
                                          dist=1250,
                                          simplify=False)
 
-# Workflow 1: Using OSMnx for simplification
-# ==========================================
+# Workflow 1: Using OSMnx to prepare the graph
+# ============================================
 # explicit simplification and consolidation via OSMnx
 multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
-                                                   tolerance=50,
+                                                   tolerance=10,
                                                    dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = tools.graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=10)
-tools.plot.plot_nX(multi_graph_cons,
-                   labels=False,
-                   plot_geoms=True,
-                   x_lim=(min_x, max_x),
-                   y_lim=(min_y, max_y),
-                   figsize=(20, 20),
-                   dpi=200)
+multi_graph_cons = tools.graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=50)
+simple_plot(multi_graph_cons)
 
-# WORKFLOW 2: Using cityseer for simplification
-# =============================================
+# WORKFLOW 2: Using cityseer to prepare the graph
+# ===============================================
 # let's convert the OSMnx graph to a cityseer compatible `multiGraph`
 G_raw = tools.graphs.nX_from_OSMnx(multi_di_graph_raw)
 # convert to UTM
@@ -234,20 +239,14 @@ G = tools.graphs.nX_remove_dangling_nodes(G, despine=10)
 G = tools.graphs.nX_remove_filler_nodes(G)
 # let's consolidate the nodes
 G1 = tools.graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
-# and we'll try to remove as many parallel carriageways as possible
+# and we'll try to remove as many parallel roadways as possible
 G2 = tools.graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
 G3 = tools.graphs.nX_consolidate_nodes(G2,
-                                 buffer_dist=15,
-                                 crawl=False,
-                                 min_node_degree=2,
-                                 cent_min_degree=4)
-tools.plot.plot_nX(G3,
-                   labels=False,
-                   plot_geoms=True,
-                   x_lim=(min_x, max_x),
-                   y_lim=(min_y, max_y),
-                   figsize=(20, 20),
-                   dpi=200)
+                                       buffer_dist=15,
+                                       crawl=False,
+                                       min_node_degree=2,
+                                       cent_min_degree=4)
+simple_plot(G3)
 ```
 
 ![Example OSMnx simplification and consolidation](../src/assets/plots/images/osmnx_simplification.png)
@@ -258,6 +257,8 @@ _An example `OSMnx` to `cityseer` conversion followed by simplification and cons
 
 ### Optimised packages
 
-Computational methods for network-based centrality and land-use analysis make extensive use of shortest-path algorithms: these present substantial computational complexity due to nested-loops. Centrality methods implemented in pure `python`, such as those contained in [`NetworkX`](https://networkx.github.io/), can be particularly slow and may hinder practical application to large urban street networks. Speed improvements are offered by adopting packages such as [`Graph-Tool`](https://graph-tool.skewed.de) or [`igraph`](https://igraph.org/python/#docs) which wrap underlying optimised `C` or `C++` code libraries. This is the approach that was adopted by the author prior to the development of `cityseer`, but whereas these performant packages offer tremendous utility for general-purpose network analysis they can remain cumbersome to piggy-back for more esoteric use-cases, some of which are briefly alluded to in the discussion on [motivation](/guide/#motivation). Doing so can lead to a degree of code complexity presenting a bottleneck to further experimentation and development, and it was this conundrum that kickstarted the development of the current codebase which became formalised as the `cityseer` package. The present approach leverages pure `python` and [`numpy`](http://www.numpy.org/), but with computationally intensive algorithms optimised through use of [`numba`](https://numba.pydata.org/) JIT compilation. The use of python has provided the necessary flexibility to easily experiment with different implementations of underlying methodologies and algorithms, thereby facilitating the development of measures specific to analytics from an urbanist's perspective.
+Computational methods for network-based centrality and land-use analysis make extensive use of shortest-path algorithms: these present substantial computational complexity due to nested-loops. Centrality methods implemented in pure `python`, such as those contained in [`NetworkX`](https://networkx.github.io/), can be particularly slow and may hinder practical application to large urban street networks (though, for the record, `NetworkX` is an exquisitely designed package). Speed improvements are offered by running intensive algorithms against packages such as [`Graph-Tool`](https://graph-tool.skewed.de) or [`igraph`](https://igraph.org/python/#docs) which wrap underlying optimised code libraries implemented in more performant languages such as `C`. This is the approach that was adopted by the author prior to the development of `cityseer`, but whereas these performant packages offer tremendous utility for general-purpose network analysis they can remain cumbersome to piggy-back for more esoteric use-cases, some of which are briefly alluded to in the discussion on [motivation](/guide/#motivation). Doing so can lead to a degree of code complexity presenting a bottleneck to further experimentation and development, and heavily overloading such packages from `python` can cause any speed-advantages to rapidly dissipate. It was this conundrum that kickstarted the development of the current codebase which became formalised as the `cityseer` package.
 
-`cityseer` does not explicitly implement globalised forms of network analysis and currently has no intention of doing so because these are tricky to compare across locations. Therefore, if the aim is conventional forms of global centralities applied to the network as a global entity, then it is better to use a package such as [`Graph-Tool`](https://graph-tool.skewed.de). On the other-hand, if using localised forms of analysis that take into account factors such as localised distance thresholds, shortest vs. simplest-path heuristics, or land-use accessibilities and mixed-uses, then `cityseer` offers methods that are not available through other off-the-shelf network analysis packages.
+Remember that `cityseer` does not explicitly implement globalised forms of network analysis, and currently has no intention of doing so because these make it tricky to compare metrics across locations. Therefore, if the aim is conventional forms of global centralities applied to the network as a global entity, then it is better to stick with a package such as [`Graph-Tool`](https://graph-tool.skewed.de) which wraps heavily optimised code designed for exactly these types of purposes. On the other-hand, if using localised forms of analysis that take into account factors such as localised distance thresholds, specialised centralities, shortest vs. simplest-path heuristics, or land-use accessibilities and mixed-uses, then `cityseer` offers methods that are not available through other off-the-shelf network analysis packages.
+
+The present approach leveraged by `cityseer` consists of pure `python` and [`numpy`](http://www.numpy.org/), but with computationally intensive algorithms implemented in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation. The use of python has provided the necessary flexibility to easily experiment with different implementations of underlying methodologies and algorithms, thereby facilitating the development of measures specific to analytics from an urbanist's perspective. The use of `numba` has made it feasible to scale these methods to large and, optionally, decomposed networks. Further, `numba` permits a style of programming more in-keeping with lower-level languages, i.e. it is possible to use loops explicitly, which can in many cases be easier to reason-with than nested array indices more typical of `numpy`. Note that `cityseer` algorithms, at present, are not necessarily heavily optimised for performance or designed explicitly for a performance-first paradigm: they have instead been implemented from a practical perspective that happens to be 'fast-enough' for day-to-day usage. There may well be opportunities for further efficiencies or scaling to multiple processors, however, these have not been deemed a priority at present and will only be implemented if they do not unnecessarily complicate the package.

@@ -36,8 +36,10 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            dual_graph: nx.MultiGraph = None,
                            path: str = None,
                            labels: bool = False,
+                           primal_node_size: int = 30,
                            primal_node_colour: Union[str, tuple, list] = None,
                            primal_edge_colour: str = None,
+                           dual_node_size: int = 30,
                            dual_node_colour: Union[str, tuple, list] = None,
                            dual_edge_colour: str = None,
                            primal_edge_width: Union[int, float] = None,
@@ -58,12 +60,16 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         None.
     labels
         Whether to display node labels. Defaults to False.
+    primal_node_size
+        The diameter for the primal graph's nodes.
     primal_node_colour
         Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order
         and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     primal_edge_colour
         Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
+    dual_node_size
+        The diameter for the dual graph's nodes.
     dual_node_colour
         Dual node colour or colours. When passing a list of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
@@ -114,14 +120,13 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     fig, ax = plt.subplots(1, 1, **figure_kwargs)
     # setup params
     alpha = 0.75
-    node_size = 30
     if labels:
         alpha = 0.95
-        node_size = 70
 
     # setup a function that can be used for either the primal or dual graph
     def _plot_graph(_graph,
                    _is_primal,
+                   _node_size,
                    _node_colour,
                    _node_shape,
                    _edge_colour,
@@ -130,6 +135,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         if not len(_graph.nodes()):
             raise ValueError('Graph contains no nodes to plot.')
         iterables = (list, tuple, np.ndarray)
+        if not isinstance(_node_size, int) or _node_size < 1:
+            raise ValueError('Node sizes should be a positive integer.')
         if _node_colour is not None:
             if isinstance(_node_colour, iterables) and len(_node_colour) != len(_graph):
                 raise ValueError('A list, tuple, or array of colours should match the number of nodes in the graph.')
@@ -209,7 +216,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                 font_weight='bold',
                 nodelist=node_list,
                 node_color=_node_colour,
-                node_size=node_size,
+                node_size=_node_size,
                 node_shape=_node_shape,
                 edgelist=edge_list,
                 edge_color=_edge_colour,
@@ -218,9 +225,23 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                 alpha=alpha)
 
     if primal_graph is not None:
-        _plot_graph(primal_graph, True, primal_node_colour, 'o', primal_edge_colour, 'solid', primal_edge_width)
+        _plot_graph(primal_graph,
+                    True,
+                    primal_node_size,
+                    primal_node_colour,
+                    'o',
+                    primal_edge_colour,
+                    'solid',
+                    primal_edge_width)
     if dual_graph is not None:
-        _plot_graph(dual_graph, False, dual_node_colour, 'd', dual_edge_colour, 'dashed', dual_edge_width)
+        _plot_graph(dual_graph,
+                    False,
+                    dual_node_size,
+                    dual_node_colour,
+                    'd',
+                    dual_edge_colour,
+                    'dashed',
+                    dual_edge_width)
     if x_lim:
         plt.xlim(*x_lim)
     if y_lim:
@@ -235,6 +256,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
 def plot_nX(networkX_graph: nx.MultiGraph,
             path: str = None,
             labels: bool = False,
+            node_size: int = 20,
             node_colour: Union[str, tuple, list] = None,
             edge_colour: Union[str, tuple, list] = None,
             edge_width: Union[int, float] = None,
@@ -254,6 +276,8 @@ def plot_nX(networkX_graph: nx.MultiGraph,
         None.
     labels
         Whether to display node labels. Defaults to False.
+    node_size
+        The diameter for the graph's nodes.
     node_colour
         Node colour or colours. When passing an iterable of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
@@ -308,6 +332,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     return plot_nX_primal_or_dual(primal_graph=networkX_graph,
                                   path=path,
                                   labels=labels,
+                                  primal_node_size=node_size,
                                   primal_node_colour=node_colour,
                                   primal_edge_colour=edge_colour,
                                   primal_edge_width=edge_width,

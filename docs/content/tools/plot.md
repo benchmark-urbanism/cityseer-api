@@ -10,8 +10,10 @@ plot_nX_primal_or_dual(primal_graph=None,
                        dual_graph=None,
                        path=None,
                        labels=False,
+                       primal_node_size=30,
                        primal_node_colour=None,
                        primal_edge_colour=None,
+                       dual_node_size=30,
                        dual_node_colour=None,
                        dual_edge_colour=None,
                        primal_edge_width=None,
@@ -49,6 +51,12 @@ Whether to display node labels. Defaults to False.
 
 </FuncElement>
 
+<FuncElement name='primal_node_size' type='int'>
+
+The diameter for the primal graph's nodes.
+
+</FuncElement>
+
 <FuncElement name='primal_node_colour' type='Union[str, tuple, list]'>
 
 Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -58,6 +66,12 @@ Primal node colour or colours. When passing an iterable of colours, the number o
 <FuncElement name='primal_edge_colour' type='str'>
 
 Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
+
+</FuncElement>
+
+<FuncElement name='dual_node_size' type='int'>
+
+The diameter for the dual graph's nodes.
 
 </FuncElement>
 
@@ -133,6 +147,7 @@ _A dual graph in blue overlaid on the source primal graph in red._
 plot_nX(networkX_graph,
         path=None,
         labels=False,
+        node_size=20,
         node_colour=None,
         edge_colour=None,
         edge_width=None,
@@ -162,6 +177,12 @@ An optional filepath: if provided, the image will be saved to the path instead o
 <FuncElement name='labels' type='bool'>
 
 Whether to display node labels. Defaults to False.
+
+</FuncElement>
+
+<FuncElement name='node_size' type='int'>
+
+The diameter for the graph's nodes.
 
 </FuncElement>
 
