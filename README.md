@@ -6,7 +6,7 @@
 
 The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows with [`osmnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/) stack of scientific packages. The underlying algorithms are are implemented in [`numba`](https://numba.pydata.org/) JIT compiled code so that the methods can be applied to large decomposed networks. In-out convenience methods are provided for interfacing with [`networkX`](https://networkx.github.io/) and graph cleaning tools aid the incorporation of messier network respresentations such as those derived from [Open Street Map](https://www.openstreetmap.org).
 
-Documentation: https://cityseer.benchmarkurbanism.com/intro/
+Documentation: https://cityseer.benchmarkurbanism.com/
 
 Issues: https://github.com/benchmark-urbanism/cityseer-api/issues
 
