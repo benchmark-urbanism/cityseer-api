@@ -401,7 +401,7 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
     through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings)
     to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus
-    reducing side-effects when computing network centralities, which arise as a function of varied node intensities.
+    reducing side-effects as a function of varied node intensities when computing network centralities.
     :::
 
     Parameters
@@ -1131,11 +1131,6 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     20m, and 50m may already be sufficient for the majority of cases.
     :::
 
-    :::tip Comment
-    This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting
-    into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
-    :::
-
     Parameters
     ----------
     networkX_multigraph
@@ -1254,7 +1249,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     :::tip Comment
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
     e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
-    primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
+    primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
     :::
 
     Parameters
@@ -1595,7 +1590,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         follows:
 
         | idx | property |
-        | --- | :------- |
+        | :-: | :------- |
         | 0   | `x` coordinate |
         | 1   | `y` coordinate |
         | 2   | `bool` describing whether the node is `live` |
@@ -1605,7 +1600,7 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
         correspond as follows:
 
         | idx | property |
-        | --- | :------- |
+        | :-: | :------- |
         | 0   | start node `idx` |
         | 1   | end node `idx` |
         | 2   | the segment length in metres |
@@ -1730,30 +1725,33 @@ def nX_from_OSMnx(networkX_multidigraph: nx.MultiDiGraph,
     attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end
     node coordinates.
 
-    Note that `OSMnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found,
-    then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
+    Note that `OSMnx` `geometry` attributes only exist for simplified edges: if a `geometry` edge attribute is not
+    found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end
+    nodes.
 
     Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence
-    of subsequent steps of graph manipulation, in case attributes fall out of lock-step with the state of the graph.
-    If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these
-    can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge
-    attribute keys per the `edge_attributes` parameter.
+    of subsequent steps of graph manipulation, i.e. to avoid situations where attributes may fall out of lock-step with
+    the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream
+    implications, then these can be manually specified by providing a list of node attributes keys per the
+    `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
 
     Parameters
     ----------
     networkX_multidigraph
-        A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge
-        attributes containing `LineString` geoms (for simplified edges).
+        A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry`
+        edge attributes containing `LineString` geoms (for simplified edges).
     node_attributes
         Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
     edge_attributes
-        Optional edge attributes to copy to the new MultiGraph. (In addition to the default `geometry` attribute.)
+        Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
     tolerance
         Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates.
         Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding
-        end-point nodes. Where these don't align within the given tolerance an exception will be raised. Regardless of
-        the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates
-        so that downstream exceptions are not subsequently raised.
+        end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if
+        within the tolerance, the conversion function will snap the geometry end-points to the corresponding node
+        coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph
+        manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances
+        may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.
 
     Returns
     -------
