@@ -144,7 +144,7 @@ Removes nodes of degree=2: such nodes represent no route-choices other than trav
 
 :::tip Comment
 
-Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects when computing network centralities, which arise as a function of varied node intensities.
+Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects as a function of varied node intensities when computing network centralities.
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -365,11 +365,6 @@ Decomposes a graph so that no edge is longer than a set maximum. Decomposition p
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
 :::
 
-:::tip Comment
-
-This function will automatically orient the `geom` attribute LineStrings in the correct direction before splitting into sub-geometries; i.e. there is no need to order the geometry's coordinates in a particular direction.
-:::
-
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name='networkX_multigraph' type='nx.MultiGraph'>
@@ -422,7 +417,7 @@ Converts a primal graph representation, where intersections are represented as n
 
 :::tip Comment
 
-Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct streets regardless.
+Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
 :::
 
 <FuncHeading>Parameters</FuncHeading>
@@ -559,7 +554,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
 A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
 
 | idx | property |
-| --- | :------- |
+| :-: | :------- |
 | 0   | `x` coordinate |
 | 1   | `y` coordinate |
 | 2   | `bool` describing whether the node is `live` |
@@ -571,7 +566,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should  correspond as follows:
 
 | idx | property |
-| --- | :------- |
+| :-: | :------- |
 | 0   | start node `idx` |
 | 1   | end node `idx` |
 | 2   | the segment length in metres |
@@ -624,15 +619,15 @@ Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an
 
 `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
-Note that `OSMnx` only adds `geometry` attributes for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
+Note that `OSMnx` `geometry` attributes only exist for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
 
-Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, in case attributes fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
+Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, i.e. to avoid situations where attributes may fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
 
 <FuncHeading>Parameters</FuncHeading>
 
 <FuncElement name='networkX_multidigraph' type='nx.MultiDiGraph'>
 
-A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, and `geometry` edge attributes containing `LineString` geoms (for simplified edges).
+A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry` edge attributes containing `LineString` geoms (for simplified edges).
 
 </FuncElement>
 
@@ -644,13 +639,13 @@ Optional node attributes to copy to the new MultiGraph. (In addition to the defa
 
 <FuncElement name='edge_attributes' type='Union[list, tuple]'>
 
-Optional edge attributes to copy to the new MultiGraph. (In addition to the default `geometry` attribute.)
+Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
 
 </FuncElement>
 
 <FuncElement name='tolerance' type='float'>
 
-Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Regardless of the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised.
+Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if within the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.
 
 </FuncElement>
 

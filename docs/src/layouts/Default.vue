@@ -1,5 +1,5 @@
 <template lang="pug">
-.flex
+div
   slot
 </template>
 
