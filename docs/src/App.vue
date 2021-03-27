@@ -214,7 +214,7 @@ export default {
         }
       } else if (this.smallMode && this.isHome) {
         const xMargin = this.innerWidth * 0.15
-        let yMargin = xMargin * 1.25
+        let yMargin = xMargin * 2
         if (yMargin >= 250) {
           yMargin = 250
         }
@@ -486,7 +486,7 @@ export default {
     @apply text-xxs w-full self-start text-left;
   }
   #content-column {
-    @apply max-w-full;
+    @apply max-w-full px-2;
   }
 }
 </style>
