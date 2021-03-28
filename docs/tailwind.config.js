@@ -38,11 +38,11 @@ module.exports = {
       // leading
       lineHeight: {
         none: '1',
-        tight: '1.2',
-        snug: '1.4',
-        normal: '1.6',
-        relaxed: '1.8',
-        loose: '2.2',
+        tight: '1.25',
+        snug: '1.5',
+        normal: '1.75',
+        relaxed: '2',
+        loose: '2.25',
       },
       borderWidth: {
         default: '1px',
