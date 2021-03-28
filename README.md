@@ -1,13 +1,16 @@
 # cityseer
 
-`cityseer` is a collection of computational tools for fine-grained street-network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods.
+The `cityseer` package addresses a range of issues specific to computational workflows addressing urban analytics from an urbanist's point of view. It contributes a range of techniques and computational advancements to further support developments in this field:
 
-`cityseer` is underpinned by network-based methods that have been developed from the ground-up for localised urban analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given streetfront location. It can be used to compute a variety of node or segment-based centrality methods, landuse accessibility and mixed-use measures, and statistical aggregations. Aggregations are computed dynamically --- directly over the network while taking into account the direction of approach --- and can incorporate spatial impedances and network decomposition to further accentuate spatial precision.
+- High-resolution workflows including localised moving-window analysis with strict network-based distance thresholds; spatially precise assignment of landuse or other data-points to adjacent street-fronts for improved contextual sensitivity; dynamic aggregation workflows which can aggregate and compute distances on-the-fly from any selected point on the network to any accessible land-use or data-point within a selected distance threshold; facilitates workflows eschewing intervening steps of aggregation and associated issues such as ecological correlations; and affords the optional use of network decomposition to increase the resolution of analysis.
+- Localised computation of network centralities using either shortest or simplest path heuristics on either primal or dual graphs, and includes tailored methods such as harmonic closeness centrality which behaves more suitably than traditional globalised variants of closeness and segmentised versions of centrality which can be used to explicitly convert centrality methods from a discretised to continuous form.
+- Landuse accessibilities and mixed-use calculations are computed using the aforementioned dynamic and directional aggregation workflows with the optional use of spatial-impedance-weighted forms. These can be applied with either shortest or simplest path heuristics and on either primal or dual graphs.
+- Network centralities can be dovetailed with landuse accessibilities, mixed-uses, and general statistical aggregations to generate multi-scalar and multi-variable datasets facilitating downstream data-science and machine-learning workflows.
+- The inclusion of graph cleaning methods can be used to help reduce topological distortions for higher quality network analysis and aggregation workflows while accommodating workflows bridging to `OSMnx` and to the `numpy` ecosystem of scientific and geospatial packages.
+- `Numba` JIT compilation of underlying loop-intensive algorithms allows for these methods to be scaled to large and, optionally, decomposed graphs.
 
-The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows with [`osmnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/) stack of scientific packages. The underlying algorithms are are implemented in [`numba`](https://numba.pydata.org/) JIT compiled code so that the methods can be applied to large decomposed networks. In-out convenience methods are provided for interfacing with [`networkX`](https://networkx.github.io/) and graph cleaning tools aid the incorporation of messier network respresentations such as those derived from [Open Street Map](https://www.openstreetmap.org).
+Documentation: <https://cityseer.benchmarkurbanism.com/>
 
-Documentation: https://cityseer.benchmarkurbanism.com/
+Issues: <https://github.com/benchmark-urbanism/cityseer-api/issues>
 
-Issues: https://github.com/benchmark-urbanism/cityseer-api/issues
-
-Questions: https://stackoverflow.com
+Questions: <https://stackoverflow.com>
