@@ -284,6 +284,7 @@ The `live` node attribute identifies nodes falling within the areal boundary of 
 <FuncElement name='edge_data' type='np.ndarray'>
 
 A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of travel. The indices of the second dimension correspond as follows:
+
 | idx | property |
 |-----|:---------|
 | 0 | start node `idx` |
