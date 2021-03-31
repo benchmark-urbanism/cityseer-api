@@ -216,7 +216,7 @@ class NetworkLayer:
 
     - Node based centralities compute the measures relative to each reachable node within the threshold distances. For
     this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
-    concentrations of $degree=2$ nodes (e.g. to describe roadway geometry) or needlessly complex representations of
+    concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
     street intersections. In these cases, the network should first be cleaned using methods such as those available in
     the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide/#graph-cleaning) for examples). If a
     network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
@@ -226,7 +226,7 @@ class NetworkLayer:
     - Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
     together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
     distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
-    impedances decrease below $1$.
+    impedances decrease below 1.
     - Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based)
     and dual graphs (node only).
     - Measures should only be directly compared on the same topology because different topologies can otherwise affect
@@ -357,20 +357,20 @@ class NetworkLayer:
 
             The start and end edge `idx` attributes point to the corresponding node indices in the `node_data` array.
 
-            The `length` edge attribute (index $2$) should always correspond to the edge lengths in metres. This is used
+            The `length` edge attribute (index 2) should always correspond to the edge lengths in metres. This is used
             when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$
             maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths
             traversed by the algorithm as opposed to crow-flies distances.
 
-            The `angle_sum` edge bearing (index $3$) should correspond to the total angular change along the length of
+            The `angle_sum` edge bearing (index 3) should correspond to the total angular change along the length of
             the segment. This is used when calculating angular impedances for simplest-path measures. The
-            `start_bearing` (index $5$) and `end_bearing` (index $6$) attributes respectively represent the starting and
+            `start_bearing` (index 5) and `end_bearing` (index 6) attributes respectively represent the starting and
             ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm
             steps from one edge to another.
 
-            The `imp_factor` edge attribute (index $4$) represents an impedance multiplier for increasing or diminishing
-            the impedance of an edge. This is ordinarily set to $1$, therefor not impacting calculations. By setting
-            this to greater or less than $1$, the edge will have a correspondingly higher or lower impedance. This can
+            The `imp_factor` edge attribute (index 4) represents an impedance multiplier for increasing or diminishing
+            the impedance of an edge. This is ordinarily set to 1, therefor not impacting calculations. By setting
+            this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can
             be used to take considerations such as street gradients into account, but should be used with caution.
         node_edge_map
             A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
@@ -711,7 +711,7 @@ class NetworkLayer:
         | ------------------------ | :-----: | ----- |
         | node_harmonic_angular    | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | The simplest-path
         implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are
-        normalised by 180 and added to $1$ to avoid division by zero: $\scriptstyle{Z = 1 + (angularchange/180)}$. |
+        normalised by 180 and added to 1 to avoid division by zero: $\scriptstyle{Z = 1 + (angularchange/180)}$. |
         | node_betweenness_angular | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | The simplest-path
         version of betweenness centrality. This is distinguished from the shortest-path version by use of a
         simplest-path heuristic (shortest angular distance). |
