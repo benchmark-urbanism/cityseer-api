@@ -570,17 +570,21 @@ class DataLayer:
         L = layers.DataLayerFromDict(data_dict)
         # assign to the network
         L.assign_to_network(N, max_dist=500)
-        # compute some metrics
+        # compute some metrics - here we'll use the full interface, see below for simplified interfaces
+        # FULL INTERFACE
+        # ==============
         L.compute_aggregated(landuse_labels=landuses,
                             mixed_use_keys=['hill'],
                             qs=[0, 1],
                             accessibility_keys=['c', 'd', 'e'],
                             stats_keys=['mock_stat'],
                             stats_data_arrs=stats_data)
-        # note that the above measures can be run individually using simplified interfaces, e.g.
-        # L.hill_diversity(landuses, [0])
+        # note that the above measures can optionally be run individually using simplified interfaces, e.g.
+        # SIMPLIFIED INTERFACES
+        # =====================
+        # L.hill_diversity(landuses, qs=[0])
         # L.compute_accessibilities(landuses, ['a', 'b'])
-        L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
+        # L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
 
         # let's prepare some keys for accessing the computational outputs
         # distance idx: any of the distances with which the NetworkLayer was initialised
