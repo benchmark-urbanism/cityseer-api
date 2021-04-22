@@ -1,8 +1,9 @@
 name: publish package
 on:
   create:
-    tags:
-      - v*.*.*
+    tags-ignore:
+      - v*.*.*a*
+      - v*.*.*b*
 jobs:
   publish-package:
     runs-on: ubuntu-latest
@@ -11,12 +12,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.x
-      - name: prepare python
-        run: python -m pip install --upgrade build twine
       - name: build and publish package
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
+          python -m pip install --upgrade build twine
           python -m build
           twine upload dist/*

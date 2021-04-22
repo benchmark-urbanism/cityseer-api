@@ -16,12 +16,13 @@ jobs:
           python-version: "3.9"
       - name: prep python
         run: |
-          pip install docspec docspec-python pyyaml
+          pip install yapper
+          yapper --config ./.yap_config.yaml
       - name: build docs
         run: |
           cd docs
           yarn install
-          yarn run build
+          yarn run ci
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entrypoint: ./docs
