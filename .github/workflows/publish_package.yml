@@ -1,9 +1,8 @@
 name: publish package
 on:
-  create:
+  push:
     tags-ignore:
-      - v*.*.*a*
-      - v*.*.*b*
+      - '*.*.*[ab]*'
 jobs:
   publish-package:
     runs-on: ubuntu-latest
