@@ -1,14 +1,11 @@
-docspec
-docspec-python
 osmnx
 matplotlib
 networkx>=2.4
 numba>=0.53
 numpy
-pdoc
 pytest
 shapely>=1.7.0
 sklearn
 tqdm
 utm
-pyyaml
+yapper
