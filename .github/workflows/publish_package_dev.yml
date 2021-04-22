@@ -2,24 +2,21 @@ name: publish dev package
 on:
   create:
     tags:
-      - 'v*.*.*.*'
+      - v*.*.*.*
 jobs:
   publish-package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-python@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: 3.x
       - name: prepare python
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+        run: python -m pip install --upgrade build twine
       - name: build and publish package
-        if: contains(github.ref, 'dev') == true
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python setup.py sdist bdist_wheel
+          python -m build
           twine upload --repository-url https://test.pypi.org/legacy/ dist/*

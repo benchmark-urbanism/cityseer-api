@@ -615,7 +615,7 @@ nX_from_OSMnx(networkX_multidigraph,
 </pre>
 </FuncSignature>
 
-Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`.
+Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`. See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
 `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
