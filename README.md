@@ -13,4 +13,4 @@ Documentation: <https://cityseer.benchmarkurbanism.com/>
 
 Issues: <https://github.com/benchmark-urbanism/cityseer-api/issues>
 
-Questions: <https://stackoverflow.com>
+Questions: <https://github.com/benchmark-urbanism/cityseer-api/discussions>
