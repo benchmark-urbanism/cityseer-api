@@ -4,10 +4,19 @@
 // Changes here require a server restart.
 // To restart press CTRL + C in terminal and run `gridsome develop`
 const postcssImport = require('postcss-import')
-const tailwindcss = require('tailwindcss')
+const tailwindcss = require('@tailwindcss/postcss7-compat')
 const autoprefixer = require('autoprefixer')
+const remarkBib = require('@benchmark-urbanism/remark-bibtex')
 
 const markdownPlugins = [
+  // bibliography
+  'remark-footnotes',
+  [
+    remarkBib,
+    {
+      bibtexFile: 'src/assets/bib/mendeley.bib',
+    },
+  ],
   // autolink headings - included in transformer remark by default but want clickable link symbol
   [
     'remark-autolink-headings',
@@ -111,7 +120,5 @@ module.exports = {
       },
     },
   },
-  icon: {
-    favicon: './src/favicon.png',
-  },
+  icon: './src/favicon.png',
 }
