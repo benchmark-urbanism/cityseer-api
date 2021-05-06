@@ -1,9 +1,6 @@
 # mac
 .DS_Store
 
-# bibtex
-*.bib
-
 # Dev
 .idea/
 build/
