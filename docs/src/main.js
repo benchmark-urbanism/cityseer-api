@@ -45,12 +45,9 @@ export default function (Vue, { appOptions, head }) {
   })
   head.link.push({
     rel: 'stylesheet',
-    href: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css',
-  })
-  head.link.push({
-    rel: 'stylesheet',
-    href:
-      'https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css',
+    href: 'https://cdn.jsdelivr.net/npm/katex@0.13.6/dist/katex.min.css',
+    integrity: 'sha384-81hI3kRV62VEhJBKVz7JsJzaUcP5Ty/E1FFdkLh6yz8uWthgdssaWCD1j8R1r2iU',
+    crossorigin: 'anonymous',
   })
   // add the store
   Vue.use(Vuex)
