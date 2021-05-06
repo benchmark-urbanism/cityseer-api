@@ -65,9 +65,9 @@
   }
 
   code {
-    @apply font-mono text-xs tracking-tight font-medium bg-gray-200 rounded-sm;
+    @apply font-mono text-xs tracking-tight font-medium rounded-sm bg-gray-200;
 
-    padding: 0 4px;
+    padding: 0 2px;
     margin: 0 1px;
   }
 
@@ -192,9 +192,21 @@
   }
 }
 
+.footnotes {
+  @apply text-xs italic text-darkgrey;
+}
+
+.quote {
+  @apply ml-10;
+}
+
+blockquote {
+  @apply border border-t-3 border-darkgrey rounded-b-md my-4 p-3 pb-4;
+}
+
 /* Markdown Admonitions */
 .admonition {
-  @apply border border-t-3 border-midgrey rounded-b-md my-4 p-3 pb-4;
+  @apply border border-t-3 border-darkgrey rounded-b-md my-4 p-3 pb-4;
 }
 .admonition-heading {
   @apply text-lg font-semibold pb-2;

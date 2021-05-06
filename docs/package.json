@@ -14,6 +14,7 @@
     "vuex": "^3.6.2"
   },
   "devDependencies": {
+    "@benchmark-urbanism/remark-bibtex": "^0.4.0",
     "@fec/remark-a11y-emoji": "^3.1.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.34",
     "@fortawesome/free-brands-svg-icons": "^5.15.2",
@@ -23,12 +24,12 @@
     "@gridsome/remark-prismjs": "^0.5.0",
     "@gridsome/transformer-remark": "^0.6.4",
     "@gridsome/vue-remark": "^0.2.6",
-    "@prettier/plugin-pug": "^1.13.4",
+    "@prettier/plugin-pug": "^1.15.1",
     "@silvenon/remark-smartypants": "^1.0.0",
-    "@tailwindcss/postcss7-compat": "^2.1.0",
+    "@tailwindcss/postcss7-compat": "^2.1.2",
     "autoprefixer": "^9",
-    "eslint": "^7.24.0",
-    "eslint-config-prettier": "^8.2.0",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-gridsome": "^1.6.2",
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-vue": "^7.9.0",
@@ -45,10 +46,10 @@
     "python-shell": "^3.0.0",
     "remark-cli": "^9.0.0",
     "remark-emoji": "^2.2.0",
+    "remark-footnotes": "^3.0.0",
     "remark-validate-links": "^10.0.3",
-    "stylelint": "^13.12.0",
+    "stylelint": "^13.13.1",
     "stylelint-config-prettier": "^8.0.2",
-    "stylelint-config-standard": "^21.0.0",
-    "tailwindcss": "npm:@tailwindcss/postcss7-compat"
+    "stylelint-config-standard": "^22.0.0"
   }
 }
