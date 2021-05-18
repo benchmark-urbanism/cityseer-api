@@ -56,10 +56,18 @@ def nX_simple_geoms(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         return x, y
 
     # unpack coordinates and build simple edge geoms
+    remove_edges = []
     for s, e, k in tqdm(g_multi_copy.edges(keys=True), disable=checks.quiet_mode):
         s_x, s_y = _process_node(s)
         e_x, e_y = _process_node(e)
-        g_multi_copy[s][e][k]['geom'] = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        g = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        if s == e and g.length == 0:
+            remove_edges.append((s, e, k))
+        else:
+            g_multi_copy[s][e][k]['geom'] = g
+    for s, e, k in remove_edges:
+        logger.warning(f'Found zero length looped edge for node {s}, removing from graph.')
+        g_multi_copy.remove_edge(s, e, key=k)
 
     return g_multi_copy
 
