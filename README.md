@@ -1,5 +1,9 @@
 # cityseer
 
+[![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
+
+[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml)
+
 The `cityseer` package addresses a range of issues specific to computational workflows addressing urban analytics from an urbanist's point of view. It contributes a range of techniques and computational advancements to further support developments in this field:
 
 - High-resolution workflows including localised moving-window analysis with strict network-based distance thresholds; spatially precise assignment of landuse or other data-points to adjacent street-fronts for improved contextual sensitivity; dynamic aggregation workflows which can aggregate and compute distances on-the-fly from any selected point on the network to any accessible land-use or data-point within a selected distance threshold; facilitates workflows eschewing intervening steps of aggregation and associated issues such as ecological correlations; and affords the optional use of network decomposition to increase the resolution of analysis.
