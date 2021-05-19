@@ -28,7 +28,9 @@ def progress_bar(current: int, total: int, steps: int = 20):
     Printing carries a performance penalty
     Cache has to be set to false per Numba issue:
     https://github.com/numba/numba/issues/3555
-    TODO: set cache to True once resolved - likely 2020
+    https://github.com/krishnanlab/PecanPy/issues/5
+    https://github.com/krishnanlab/PecanPy/commit/9c6ca6f5c6341e84aa080b2936cd59d9d8a37b24
+    TODO: set cache to True once resolved
     '''
     if steps == 0:
         return
