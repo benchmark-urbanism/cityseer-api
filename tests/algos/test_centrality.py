@@ -594,7 +594,10 @@ def test_decomposed_local_centrality(primal_graph):
 
 def test_local_centrality_time(primal_graph):
     '''
-    NEW - with parallel reductions: 3.48ish vs 6.25ish for 10000 iterations
+    NEW - with parallel reductions: 3.48ish vs 6.25ish for 10000 iterations on "node_data"
+
+    Keep in mind there are several extraneous variables:
+    e.g. may be fairly dramatic differences in timing on larger graphs and larger search distances
 
     originally based on node_harmonic and node_betweenness:
     OLD VERSION with trim maps:
@@ -655,4 +658,5 @@ def test_local_centrality_time(primal_graph):
     # time and report
     func_time = timeit.timeit(wrapper_func, number=iters)
     print(f'Timing: {func_time} for {iters} iterations')
+    # should be under 4s but slower systems or busy CPUs will slow things down...
     assert func_time < 5

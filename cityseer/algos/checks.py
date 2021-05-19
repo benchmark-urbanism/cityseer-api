@@ -22,17 +22,6 @@ if 'CITYSEER_DEBUG_MODE' in os.environ:
         debug_mode = True
 
 
-@njit(cache=True)
-def _print_msg(hash_count, void_count, percentage):
-    msg = '|'
-    for n in range(int(hash_count)):
-        msg += '#'
-    for n in range(int(void_count)):
-        msg += ' '
-    msg += '|'
-    print(msg, percentage, '%')
-
-
 @njit(cache=False)
 def progress_bar(current: int, total: int, steps: int = 20):
     '''
@@ -43,18 +32,12 @@ def progress_bar(current: int, total: int, steps: int = 20):
     '''
     if steps == 0:
         return
-    if current + 1 == total:
-        _print_msg(steps, 0, 100)
+    step_size = int(total / steps)
+    if step_size == 0:
         return
-    if total <= steps:
-        step_size = 1
-    else:
-        step_size = int(total / steps)
     if current % step_size == 0:
-        percentage = np.round(current / total * 100, 2)
-        hash_count = int(percentage / 100 * steps)
-        void_count = steps - hash_count
-        _print_msg(hash_count, void_count, percentage)
+        chunk = round(current / step_size) + 1
+        print('Completed non-sequential bundle', chunk, 'of', steps)
 
 
 @njit(cache=True)
