@@ -7,7 +7,7 @@ from numba.typed import Dict
 from cityseer.algos import centrality, checks, diversity
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float) -> np.ndarray:
     if len(x_arr) != len(y_arr):
         raise ValueError('Mismatching x and y array lengths.')
@@ -30,7 +30,7 @@ def radial_filter(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarr
     return data_filter
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarray, max_dist: float) -> Tuple[
     int, float]:
     if len(x_arr) != len(y_arr):
@@ -50,7 +50,7 @@ def find_nearest(src_x: float, src_y: float, x_arr: np.ndarray, y_arr: np.ndarra
     return min_idx, min_dist
 
 
-@njit(cache=False)
+@njit(cache=False, nogil=True)
 def assign_to_network(data_map: np.ndarray,
                       node_data: np.ndarray,
                       edge_data: np.ndarray,
@@ -286,7 +286,7 @@ def assign_to_network(data_map: np.ndarray,
     return data_map
 
 
-@njit(cache=False)
+@njit(cache=False, nogil=True)
 def aggregate_to_src_idx(netw_src_idx: int,
                          node_data: np.ndarray,
                          edge_data: np.ndarray,
@@ -358,7 +358,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
     return reachable_data, reachable_data_dist, tree_preds
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def local_aggregator(node_data: np.ndarray,
                      edge_data: np.ndarray,
                      node_edge_map: Dict,
@@ -700,7 +700,7 @@ def local_aggregator(node_data: np.ndarray,
            stats_max, stats_min
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def singly_constrained(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
