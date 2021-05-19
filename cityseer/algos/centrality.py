@@ -1,13 +1,13 @@
 from typing import Tuple
 import numpy as np
-from numba import njit, types
+from numba import njit, types, prange
 from numba.typed import List, Dict
 
 from cityseer.algos import checks
 
 
 # don't use 'nnan' fastmath flag
-@njit(cache=True, fastmath={'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'})
+@njit(cache=True, fastmath={'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'}, nogil=True)
 def shortest_path_tree(
         edge_data: np.ndarray,
         node_edge_map: Dict,
@@ -149,7 +149,7 @@ def shortest_path_tree(
     return tree_map, tree_edges
 
 
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def _find_edge_idx(node_edge_map: Dict, edge_data: np.ndarray, start_nd_idx: int, end_nd_idx: int) -> int:
     '''
     Finds an edge from start and end nodes
@@ -165,37 +165,37 @@ node_close_func_proto = types.FunctionType(types.float64(types.float64, types.fl
 
 
 # node density
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_density(to_dist, to_imp, beta, cycles):
     return 1.0  # return float explicitly
 
 
 # node farness
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_farness(to_dist, to_imp, beta, cycles):
     return to_dist
 
 
 # node cycles
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_cycles(to_dist, to_imp, beta, cycles):
     return cycles
 
 
 # node harmonic
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_harmonic(to_dist, to_imp, beta, cycles):
     return 1.0 / to_imp
 
 
 # node beta weighted
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_beta(to_dist, to_imp, beta, cycles):
     return np.exp(-beta * to_dist)
 
 
 # node harmonic angular
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_harmonic_angular(to_dist, to_imp, beta, cycles):
     a = 1 + (to_imp / 180)
     return 1.0 / a
@@ -205,13 +205,13 @@ node_betw_func_proto = types.FunctionType(types.float64(types.float64, types.flo
 
 
 # node betweenness
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_betweenness(to_dist, beta):
     return 1.0  # return float explicitly
 
 
 # node betweenness beta weighted
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def node_betweenness_beta(to_dist, beta):
     '''
     distance is based on distance between from and to vertices
@@ -236,7 +236,7 @@ EDGE MAP:
 '''
 
 
-@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=True, parallel=True, nogil=True)
 def local_node_centrality(node_data: np.ndarray,
                           edge_data: np.ndarray,
                           node_edge_map: Dict,
@@ -307,7 +307,8 @@ def local_node_centrality(node_data: np.ndarray,
     # progress steps
     steps = int(n / 10000)
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in range(n):
+    for src_idx in prange(n):
+        shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if not suppress_progress:
@@ -357,7 +358,7 @@ def local_node_centrality(node_data: np.ndarray,
                     beta = betas[d_idx]
                     if to_dist <= dist_cutoff:
                         for m_idx, close_func in zip(close_idxs, close_funcs):
-                            measures_data[m_idx, d_idx, src_idx] += close_func(to_dist, to_imp, beta, cycles)
+                            shadow_arr[m_idx, d_idx, src_idx] += close_func(to_dist, to_imp, beta, cycles)
             # only process in one direction
             if to_idx < src_idx:
                 continue
@@ -377,9 +378,12 @@ def local_node_centrality(node_data: np.ndarray,
                         if tree_dists[to_idx] <= dist_cutoff:
                             # iterate betweenness functions
                             for m_idx, betw_func in zip(betw_idxs, betw_funcs):
-                                measures_data[m_idx, d_idx, inter_idx] += betw_func(to_dist, beta)
+                                shadow_arr[m_idx, d_idx, inter_idx] += betw_func(to_dist, beta)
                     # follow the chain
                     inter_idx = int(tree_preds[inter_idx])
+        # reduce
+        measures_data += shadow_arr
+
     return measures_data
 
 
@@ -391,13 +395,13 @@ segment_func_proto = types.FunctionType(types.float64(types.float64,
 
 
 # segment density
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def segment_density(n, m, n_imp, m_imp, beta):
     return m - n
 
 
 # segment harmonic
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def segment_harmonic(n, m, n_imp, m_imp, beta):
     if n_imp < 1:
         return np.log(m_imp)
@@ -406,7 +410,7 @@ def segment_harmonic(n, m, n_imp, m_imp, beta):
 
 
 # segment beta
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True, nogil=True)
 def segment_beta(n, m, n_imp, m_imp, beta):
     if beta == 0.0:
         return m_imp - n_imp
@@ -414,7 +418,7 @@ def segment_beta(n, m, n_imp, m_imp, beta):
         return (np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta
 
 
-@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=True, parallel=True, nogil=True)
 def local_segment_centrality(node_data: np.ndarray,
                              edge_data: np.ndarray,
                              node_edge_map: Dict,
@@ -475,7 +479,8 @@ def local_segment_centrality(node_data: np.ndarray,
     # progress steps
     steps = int(n / 10000)
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in range(n):
+    for src_idx in prange(n):
+        shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if not suppress_progress:
@@ -569,7 +574,7 @@ def local_segment_centrality(node_data: np.ndarray,
                                 c = dist_cutoff
                                 c_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
                             for m_idx, close_func in zip(close_idxs, close_funcs):
-                                measures_data[m_idx, d_idx, src_idx] += close_func(a, c, a_imp, c_imp, beta)
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(a, c, a_imp, c_imp, beta)
                         # a to b segment - if on the shortest path then b == d, in which case, continue
                         if b == d:
                             continue
@@ -578,7 +583,7 @@ def local_segment_centrality(node_data: np.ndarray,
                                 d = dist_cutoff
                                 d_imp = b_imp + (dist_cutoff - b) * seg_imp_fact
                             for m_idx, close_func in zip(close_idxs, close_funcs):
-                                measures_data[m_idx, d_idx, src_idx] += close_func(b, d, b_imp, d_imp, beta)
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(b, d, b_imp, d_imp, beta)
                 else:
                     '''
                     there is a different workflow for angular - uses single segment (no segment splitting)
@@ -666,7 +671,7 @@ def local_segment_centrality(node_data: np.ndarray,
                                 # transform - prevents division by zero
                                 agg_ang = 1 + (ang / 180)
                                 # then aggregate - angular uses distances explicitly
-                                measures_data[m_idx, d_idx, src_idx] += (f - e) / agg_ang
+                                shadow_arr[m_idx, d_idx, src_idx] += (f - e) / agg_ang
         if betw_idxs:
             # prepare a list of neighbouring nodes
             nb_nodes = List.empty_list(types.int64)
@@ -693,10 +698,10 @@ def local_segment_centrality(node_data: np.ndarray,
                 segment versions only agg first and last segments
                 the distance decay is based on the distance between the src segment and to segment
                 i.e. willingness of people to walk between src and to segments
-                
+
                 betweenness is aggregated to intervening nodes based on above distances and decays
                 other sections (in between current first and last) are respectively processed from other to nodes
-                
+
                 distance thresholds are computed using the innner as opposed to outer edges of the segments
                 '''
                 o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
@@ -735,12 +740,16 @@ def local_segment_centrality(node_data: np.ndarray,
                                                np.exp(-beta * o_1)) / -beta + \
                                               (np.exp(-beta * l_2) -
                                                np.exp(-beta * l_1)) / -beta
-                                    measures_data[m_idx, d_idx, inter_idx] += auc
+                                    shadow_arr[m_idx, d_idx, inter_idx] += auc
                                 else:
                                     bt_ang = 1 + tree_imps[to_idx] / 180
                                     pt_a = o_2 - o_1
                                     pt_b = l_2 - l_1
-                                    measures_data[m_idx, d_idx, inter_idx] += (pt_a + pt_b) / bt_ang
+                                    shadow_arr[m_idx, d_idx, inter_idx] += (pt_a + pt_b) / bt_ang
                     # follow the chain
                     inter_idx = int(tree_preds[inter_idx])
+
+        # reduction
+        measures_data += shadow_arr
+
     return measures_data

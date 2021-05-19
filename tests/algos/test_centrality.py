@@ -594,6 +594,8 @@ def test_decomposed_local_centrality(primal_graph):
 
 def test_local_centrality_time(primal_graph):
     '''
+    NEW - with parallel reductions: 3.48ish vs 6.25ish for 10000 iterations
+
     originally based on node_harmonic and node_betweenness:
     OLD VERSION with trim maps:
     Timing: 10.490865555 for 10000 iterations
@@ -616,6 +618,8 @@ def test_local_centrality_time(primal_graph):
 
     thoughts of using golang proved too complex re: bindings...
     '''
+    if 'GITHUB_ACTIONS' in os.environ:
+        return
     # load the test graph
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
         primal_graph)  # generate node and edge maps
@@ -651,5 +655,4 @@ def test_local_centrality_time(primal_graph):
     # time and report
     func_time = timeit.timeit(wrapper_func, number=iters)
     print(f'Timing: {func_time} for {iters} iterations')
-    if 'GITHUB_ACTIONS' not in os.environ:
-        assert func_time < 20
+    assert func_time < 5
