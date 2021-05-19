@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.0.5',
+    version='1.0.6b1',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
     description='Computational tools for urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',
