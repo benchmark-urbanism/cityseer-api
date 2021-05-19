@@ -8,7 +8,7 @@ from cityseer.tools.mock import primal_graph
 
 
 def test_progress_bar():
-    for n in [1, 10, 100, 1000]:
+    for n in [1, 10, 20, 100]:
         for i in range(n):
             checks.progress_bar(i, n)
 
