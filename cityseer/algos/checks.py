@@ -39,7 +39,7 @@ def progress_bar(current: int, total: int, steps: int = 20):
         return
     if current % step_size == 0:
         chunk = round(current / step_size) + 1
-        print('Completed non-sequential bundle', chunk, 'of', steps)
+        print('Processed non-sequential iteration', chunk, 'of', steps)
 
 
 @njit(cache=True)
