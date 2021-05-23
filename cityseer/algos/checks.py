@@ -38,7 +38,7 @@ def progress_bar(current: int, total: int, steps: int = 20):
     if step_size == 0:
         return
     if current % step_size == 0:
-        print('Processed non-sequential iteration', round(current / step_size), 'of', steps)
+        print('Processed non-sequential checkpoint', round(current / step_size), 'of', steps)
 
 
 @njit(cache=True)
