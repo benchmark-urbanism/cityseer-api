@@ -32,13 +32,11 @@ def progress_bar(current: int, total: int, steps: int = 20):
     https://github.com/krishnanlab/PecanPy/commit/9c6ca6f5c6341e84aa080b2936cd59d9d8a37b24
     TODO: set cache to True once resolved
     '''
-    if steps == 0:
+    if steps == 0 or current == 0 or total < 2 * steps:
         return
-    step_size = int(total / steps)
-    if step_size == 0:
-        return
+    step_size = int(total / steps)  # round down
     if current % step_size == 0:
-        print('Processed non-sequential checkpoint', round(current / step_size) + 1, 'of', steps + 1)
+        print('Processed non-sequential checkpoint', int(current / step_size), 'of', steps)
 
 
 @njit(cache=True)
