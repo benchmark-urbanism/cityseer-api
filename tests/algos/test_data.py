@@ -30,7 +30,7 @@ def test_radial_filter(primal_graph):
                     assert dist > max_dist
 
 
-def test_nearest_idx(primal_graph):
+def test_find_nearest(primal_graph):
     N = networks.NetworkLayerFromNX(primal_graph, distances=[100])
     # generate some data
     data_dict = mock.mock_data_dict(primal_graph)
@@ -73,7 +73,7 @@ def test_assign_to_network(primal_graph):
                                            edge_data,
                                            node_edge_map,
                                            max_dist=1600)
-    targets = [
+    targets = np.array([
         [0, 164, 163],
         [1, 42, 241],
         [2, 236, 235],
@@ -124,24 +124,33 @@ def test_assign_to_network(primal_graph):
         [47, 138, 19],
         [48, 14, np.nan],
         [49, 106, 105]
-    ]
+    ])
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_graph_maps(node_data, edge_data, data_map)
     # assignment map includes data x, data y, nearest assigned, next nearest assigned
-    for data_idx, (nearest_nd, next_nearest_nd) in enumerate(data_map_1600[:, 2:]):
-        # print(f'[{data_idx}, {nearest_nd}, {next_nearest_nd}],')
-        assert nearest_nd == targets[data_idx][1]
-        assert np.isclose(next_nearest_nd, targets[data_idx][2], equal_nan=True, atol=0, rtol=0)
+    assert np.allclose(data_map_1600[:, 2:],
+                       targets[:, 1:],
+                       equal_nan=True,
+                       atol=0,
+                       rtol=0)
     # max distance of 0 should return all NaN
     data_map_test_0 = data_map.copy()
-    data_map_test_0 = data.assign_to_network(data_map_test_0, node_data, edge_data, node_edge_map, max_dist=0)
+    data_map_test_0 = data.assign_to_network(data_map_test_0,
+                                             node_data,
+                                             edge_data,
+                                             node_edge_map,
+                                             max_dist=0)
     assert np.all(np.isnan(data_map_test_0[:, 2]))
     assert np.all(np.isnan(data_map_test_0[:, 3]))
     # max distance of 2000 should return no NaN for nearest
     # there will be some NaN for next nearest
     data_map_test_2000 = data_map.copy()
-    data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_data, edge_data, node_edge_map, max_dist=2000)
+    data_map_test_2000 = data.assign_to_network(data_map_test_2000,
+                                                node_data,
+                                                edge_data,
+                                                node_edge_map,
+                                                max_dist=2000)
     assert not np.any(np.isnan(data_map_test_2000[:, 2]))
 
 

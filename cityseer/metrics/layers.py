@@ -225,6 +225,7 @@ class DataLayer:
     Note that in many cases, the [`DataLayerFromDict`](#class-datalayerfromdict) class will provide a more convenient
     alternative for instantiating this class.
     """
+
     def __init__(self,
                  data_uids: Union[list, tuple],
                  data_map: np.ndarray):
@@ -341,36 +342,47 @@ class DataLayer:
                                max_dist,
                                suppress_progress=checks.quiet_mode)
 
-    def compute_aggregated(self,
-                           landuse_labels: Union[list, tuple, np.ndarray] = None,
-                           mixed_use_keys: Union[list, tuple] = None,
-                           accessibility_keys: Union[list, tuple] = None,
-                           cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
-                           qs: Union[list, tuple, np.ndarray] = None,
-                           stats_keys: Union[list, tuple] = None,
-                           stats_data_arrs: Union[List[Union[list, tuple, np.ndarray]],
-                                                  Tuple[Union[list, tuple, np.ndarray]],
-                                                  np.ndarray] = None,
-                           angular: bool = False):
+    # deprecated method
+    def compute_aggregated(self, **kwargs):
         """
-        This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use,
-        land-use accessibility, and statistical measures. These are computed simultaneously for any required
-        combinations of measures (and distances), which can have significant speed implications. Situations requiring
-        only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayerhill_diversity),
-        [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity),
-        [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities),
-        [`DataLayer.compute_stats_single`](#datalayercompute_stats_single), and
-        [`DataLayer.compute_stats_multiple`](#datalayercompute_stats_multiple) methods.
+        This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
+        [`compute_landuses`](#datalayercompute_landuses) or [`compute_stats`](#datalayercompute_stats) instead.
+
+        Raises
+        ------
+        DeprecationWarning
+
+        """
+        raise DeprecationWarning('The compute_aggregated method has been deprecated. '
+                                 'It has been split into two: '
+                                 'use "compute_landuses" for landuse aggregations '
+                                 'and "compute_stats" for statistical aggregations.'
+                                 'See the documentation for further information.')
+
+    def compute_landuses(self,
+                         landuse_labels: Union[list, tuple, np.ndarray],
+                         mixed_use_keys: Union[list, tuple] = None,
+                         accessibility_keys: Union[list, tuple] = None,
+                         cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
+                         qs: Union[list, tuple, np.ndarray] = None,
+                         angular: bool = False):
+        """
+        This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
+        land-use accessibility measures. These are computed simultaneously for any required combinations of measures
+        (and distances), which can have significant speed implications. Situations requiring only a single measure can
+        instead make use of the simplified [`DataLayer.hill_diversity`](#datalayerhill_diversity),
+        [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), and
+        [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities) methods.
 
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
-        implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as
+        implication that mixed-use and land-use accessibility aggregations are generated from the same locations as
         for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the
         calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used
         for centrality methods, and will be categorised by the respective keys and parameters.
 
-        For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a
-        `valuations` stats keys are computed on a `Network Layer` instantiated with 800m and 1600m distance
-        thresholds, then the dictionary would assume the following structure:
+        For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on
+        a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the
+        following structure:
 
         ```python
         NetworkLayer.metrics = {
@@ -416,44 +428,6 @@ class DataLayer:
                         1600: [...]
                     }
                 }
-            },
-            'stats': {
-                # stats grouped by each stats key
-                'valuations': {
-                    # each stat will have the following key-value pairs
-                    'max': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'min': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'sum': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'sum_weighted': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'mean': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'mean_weighted': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'variance': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'variance_weighted': {
-                        800: [...],
-                        1600: [...]
-                    }
-                }
             }
         }
         ```
@@ -463,7 +437,7 @@ class DataLayer:
         landuse_labels
             A set of land-use labels corresponding to the length and order of the data points. The labels should
             correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only
-            required if computing mixed-uses or land-use accessibilities, by default None.
+            required if computing mixed-uses or land-use accessibilities.
         mixed_use_keys
             An optional list of strings describing which mixed-use metrics to compute, containing any combination of
             `key` values from the following table, by default None. See **Notes** for additional information.
@@ -479,23 +453,6 @@ class DataLayer:
         qs
             The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
             the Hill diversity mixed-use measures, by default None.
-        stats_keys
-            A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs`
-            parameter. The computed stats will be saved to the `N.metrics` dictionary using these keys. This parameter
-            is only required if computing stats for a `stats_data_arrs` parameter, by default None
-        stats_data_arrs
-            A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number
-            of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the
-            `DataLayer`, by default None. e.g:
-            ```python
-            # for a DataLayer containg 5 data points
-            stats_keys = ['valuations', 'floors', 'occupants']
-            stats_data_arrs = [
-                [50000, 60000, 55000, 42000, 46000],  # valuations
-                [3, 3, 2, 3, 5],  # floors
-                [420, 300, 220, 250, 600]  # occupants
-            ]
-            ```
         angular
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
             and distances, by default False
@@ -563,8 +520,6 @@ class DataLayer:
         data_dict = mock.mock_data_dict(G, random_seed=25)
         # prepare some mock land-use classifications
         landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
-        # let's also prepare some numerical data
-        stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
 
         # generate a data layer
         L = layers.DataLayerFromDict(data_dict)
@@ -573,18 +528,15 @@ class DataLayer:
         # compute some metrics - here we'll use the full interface, see below for simplified interfaces
         # FULL INTERFACE
         # ==============
-        L.compute_aggregated(landuse_labels=landuses,
-                            mixed_use_keys=['hill'],
-                            qs=[0, 1],
-                            accessibility_keys=['c', 'd', 'e'],
-                            stats_keys=['mock_stat'],
-                            stats_data_arrs=stats_data)
+        L.compute_landuses(landuse_labels=landuses,
+                           mixed_use_keys=['hill'],
+                           qs=[0, 1],
+                           accessibility_keys=['c', 'd', 'e'])
         # note that the above measures can optionally be run individually using simplified interfaces, e.g.
         # SIMPLIFIED INTERFACES
         # =====================
         # L.hill_diversity(landuses, qs=[0])
         # L.compute_accessibilities(landuses, ['a', 'b'])
-        # L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
 
         # let's prepare some keys for accessing the computational outputs
         # distance idx: any of the distances with which the NetworkLayer was initialised
@@ -601,8 +553,6 @@ class DataLayer:
         # prints: 0.019168843947614676
         print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
         # prints: 1.0
-        print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-        # prints: 71297.82967202332
         ```
 
         Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
@@ -613,7 +563,6 @@ class DataLayer:
         """
         if self.Network is None:
             raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
-
         mixed_uses_options = ['hill',
                               'hill_branch_wt',
                               'hill_pairwise_wt',
@@ -621,116 +570,69 @@ class DataLayer:
                               'shannon',
                               'gini_simpson',
                               'raos_pairwise_disparity']
-
-        if (stats_keys is not None and stats_data_arrs is None) \
-                or (stats_keys is None and stats_data_arrs is not None) \
-                or (stats_keys is not None and stats_data_arrs is not None and
-                    len(stats_data_arrs) != len(stats_keys)):
-            raise ValueError('An equal number of stats labels and stats data arrays is required.')
-
-        if stats_data_arrs is None:
-            stats_data_arrs = np.full((0, 0), np.nan)
-        elif not isinstance(stats_data_arrs, (list, tuple, np.ndarray)):
-            raise ValueError('Stats data must be in the form of a list, tuple, or numpy array.')
-        else:
-            stats_data_arrs = np.array(stats_data_arrs)
-            if stats_data_arrs.ndim == 1:
-                stats_data_arrs = np.array([stats_data_arrs])
-            if stats_data_arrs.shape[1] != len(self._data):
-                raise ValueError('The length of all data arrays must match the number of data points.')
-
-        if landuse_labels is None:
-            if mixed_use_keys or accessibility_keys:
-                raise ValueError(
-                    'Computation of mixed use or accessibility measures requires the landuse_labels parameter.')
-
-            landuse_classes = ()
-            landuse_encodings = ()
-            qs = ()
-            mu_hill_keys = ()
-            mu_other_keys = ()
-            acc_keys = ()
-            cl_disparity_wt_matrix = [[]]  # (()) causes error because numpy conversion creates single dimension array
-
         # remember, most checks on parameter integrity occur in underlying method
         # so, don't duplicate here
-        else:
-            if len(landuse_labels) != len(self._data):
-                raise ValueError('The number of landuse labels should match the number of data points.')
-
-            # get the landuse encodings
-            landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
-
-            # if necessary, check the disparity matrix
-            if cl_disparity_wt_matrix is None:
-                cl_disparity_wt_matrix = np.full((0, 0), np.nan)
-            elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
-                    cl_disparity_wt_matrix.ndim != 2 or \
-                    cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
-                    len(cl_disparity_wt_matrix) != len(landuse_classes):
-                raise TypeError(
-                    'Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. '
-                    'The number of edge-wise elements should match the number of unique class labels.')
-
-            # warn if no qs provided
-            if qs is None:
-                qs = ()
-            if isinstance(qs, (int, float)):
-                qs = (qs)
-            if not isinstance(qs, (list, tuple, np.ndarray)):
-                raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
-
-            # extrapolate the requested mixed use measures
-            mu_hill_keys = []
-            mu_other_keys = []
-            if mixed_use_keys is not None:
-                for mu in mixed_use_keys:
-                    if mu not in mixed_uses_options:
-                        raise ValueError(
-                            f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
-                    idx = mixed_uses_options.index(mu)
-                    if idx < 4:
-                        mu_hill_keys.append(idx)
-                    else:
-                        mu_other_keys.append(idx - 4)
-                if not checks.quiet_mode:
-                    logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
-
-            acc_keys = []
-            if accessibility_keys is not None:
-                for ac_label in accessibility_keys:
-                    if ac_label not in landuse_classes:
-                        logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
-                    else:
-                        acc_keys.append(landuse_classes.index(ac_label))
-                if not checks.quiet_mode:
-                    logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
-
-        if stats_keys is not None and not checks.quiet_mode:
-            logger.info(f'Computing stats for: {", ".join(stats_keys)}')
-
+        if len(landuse_labels) != len(self._data):
+            raise ValueError('The number of landuse labels should match the number of data points.')
+        # get the landuse encodings
+        landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
+        # if necessary, check the disparity matrix
+        if cl_disparity_wt_matrix is None:
+            cl_disparity_wt_matrix = np.full((0, 0), np.nan)
+        elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
+                cl_disparity_wt_matrix.ndim != 2 or \
+                cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
+                len(cl_disparity_wt_matrix) != len(landuse_classes):
+            raise TypeError(
+                'Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. '
+                'The number of edge-wise elements should match the number of unique class labels.')
+        # warn if no qs provided
+        if qs is None:
+            qs = ()
+        if isinstance(qs, (int, float)):
+            qs = (qs)
+        if not isinstance(qs, (list, tuple, np.ndarray)):
+            raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
+        # extrapolate the requested mixed use measures
+        mu_hill_keys = []
+        mu_other_keys = []
+        if mixed_use_keys is not None:
+            for mu in mixed_use_keys:
+                if mu not in mixed_uses_options:
+                    raise ValueError(
+                        f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
+                idx = mixed_uses_options.index(mu)
+                if idx < 4:
+                    mu_hill_keys.append(idx)
+                else:
+                    mu_other_keys.append(idx - 4)
+            if not checks.quiet_mode:
+                logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
+        acc_keys = []
+        if accessibility_keys is not None:
+            for ac_label in accessibility_keys:
+                if ac_label not in landuse_classes:
+                    logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
+                else:
+                    acc_keys.append(landuse_classes.index(ac_label))
+            if not checks.quiet_mode:
+                logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
         # call the underlying method
-        mixed_use_hill_data, mixed_use_other_data, \
-        accessibility_data, accessibility_data_wt, \
-        stats_sum, stats_sum_wt, \
-        stats_mean, stats_mean_wt, \
-        stats_variance, stats_variance_wt, \
-        stats_max, stats_min = data.local_aggregator(self.Network._node_data,
-                                                     self.Network._edge_data,
-                                                     self.Network._node_edge_map,
-                                                     self._data,
-                                                     distances=np.array(self.Network.distances),
-                                                     betas=np.array(self.Network.betas),
-                                                     landuse_encodings=np.array(landuse_encodings),
-                                                     qs=np.array(qs),
-                                                     mixed_use_hill_keys=np.array(mu_hill_keys),
-                                                     mixed_use_other_keys=np.array(mu_other_keys),
-                                                     accessibility_keys=np.array(acc_keys),
-                                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
-                                                     numerical_arrays=stats_data_arrs,
-                                                     angular=angular,
-                                                     suppress_progress=checks.quiet_mode)
-
+        mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
+            data.aggregate_landuses(self.Network._node_data,
+                                    self.Network._edge_data,
+                                    self.Network._node_edge_map,
+                                    self._data,
+                                    distances=np.array(self.Network.distances),
+                                    betas=np.array(self.Network.betas),
+                                    landuse_encodings=np.array(landuse_encodings),
+                                    qs=np.array(qs),
+                                    mixed_use_hill_keys=np.array(mu_hill_keys),
+                                    mixed_use_other_keys=np.array(mu_other_keys),
+                                    accessibility_keys=np.array(acc_keys),
+                                    cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
+                                    angular=angular,
+                                    suppress_progress=checks.quiet_mode)
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite
         # unpack mixed use hill
@@ -743,7 +645,6 @@ class DataLayer:
                 for d_idx, d_key in enumerate(self.Network.distances):
                     self.Network.metrics['mixed_uses'][mu_h_label][q_key][d_key] = \
                         mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
-
         # unpack mixed use other
         for mu_o_idx, mu_o_key in enumerate(mu_other_keys):
             mu_o_label = mixed_uses_options[mu_o_key + 4]
@@ -752,7 +653,6 @@ class DataLayer:
             # no qs
             for d_idx, d_key in enumerate(self.Network.distances):
                 self.Network.metrics['mixed_uses'][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
-
         # unpack accessibility data
         for ac_idx, ac_code in enumerate(acc_keys):
             ac_label = landuse_classes[ac_code]  # ac_code is index of ac_label
@@ -762,31 +662,190 @@ class DataLayer:
                 for d_idx, d_key in enumerate(self.Network.distances):
                     self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
 
+    def compute_stats(self,
+                      stats_keys: Union[list, tuple],
+                      stats_data_arrs: Union[List[Union[list, tuple, np.ndarray]],
+                                             Tuple[Union[list, tuple, np.ndarray]],
+                                             np.ndarray],
+                      angular: bool = False):
+        """
+        This method wraps the underlying `numba` optimised functions for computing statistical measures. Situations
+        requiring only a single measure can instead make use of the simplified
+        [`DataLayer.compute_stats_single`](#datalayercompute_stats_single), and
+        [`DataLayer.compute_stats_multiple`](#datalayercompute_stats_multiple) methods.
+
+        The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
+        implication that statistical aggregations are generated from the same locations as for centrality computations,
+        which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the
+        corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will
+        be categorised by the respective keys and parameters.
+
+        For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m
+        distance thresholds, then the dictionary would assume the following structure:
+
+        ```python
+        NetworkLayer.metrics = {
+            'stats': {
+                # stats grouped by each stats key
+                'valuations': {
+                    # each stat will have the following key-value pairs
+                    'max': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'min': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'sum': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'sum_weighted': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'mean': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'mean_weighted': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'variance': {
+                        800: [...],
+                        1600: [...]
+                    },
+                    'variance_weighted': {
+                        800: [...],
+                        1600: [...]
+                    }
+                }
+            }
+        }
+        ```
+
+        Parameters
+        ----------
+        stats_keys
+            A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs`
+            parameter. The computed stats will be saved to the `N.metrics` dictionary using these keys. This parameter
+            is only required if computing stats for a `stats_data_arrs` parameter.
+        stats_data_arrs
+            A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number
+            of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the
+            `DataLayer`. e.g:
+            ```python
+            # for a DataLayer containg 5 data points
+            stats_keys = ['valuations', 'floors', 'occupants']
+            stats_data_arrs = [
+                [50000, 60000, 55000, 42000, 46000],  # valuations
+                [3, 3, 2, 3, 5],  # floors
+                [420, 300, 220, 250, 600]  # occupants
+            ]
+            ```
+        angular
+            Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+            and distances, by default False
+
+        Notes
+        -----
+
+        A worked example:
+        ```python
+        from cityseer.metrics import networks, layers
+        from cityseer.tools import mock, graphs
+
+        # prepare a mock graph
+        G = mock.mock_graph()
+        G = graphs.nX_simple_geoms(G)
+
+        # generate the network layer
+        N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+
+        # prepare a mock data dictionary
+        data_dict = mock.mock_data_dict(G, random_seed=25)
+        # let's prepare some numerical data
+        stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
+
+        # generate a data layer
+        L = layers.DataLayerFromDict(data_dict)
+        # assign to the network
+        L.assign_to_network(N, max_dist=500)
+        # compute some metrics - here we'll use the full interface, see below for simplified interfaces
+        # FULL INTERFACE
+        # ==============
+        L.compute_stats(stats_keys=['mock_stat'],
+                        stats_data_arrs=stats_data)
+        # note that the above measures can optionally be run individually using simplified interfaces, e.g.
+        # SIMPLIFIED INTERFACES
+        # =====================
+        # L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
+
+        # let's prepare some keys for accessing the computational outputs
+        # distance idx: any of the distances with which the NetworkLayer was initialised
+        distance_idx = 200
+        # a node idx
+        node_idx = 0
+
+        # the data is available at N.metrics
+        print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
+        # prints: 71297.82967202332
+        ```
+
+        Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
+
+        """
+        if self.Network is None:
+            raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
+        elif len(stats_data_arrs) != len(stats_keys):
+            raise ValueError('An equal number of stats labels and stats data arrays is required.')
+        elif not isinstance(stats_data_arrs, (list, tuple, np.ndarray)):
+            raise ValueError('Stats data must be in the form of a list, tuple, or numpy array.')
+        else:
+            stats_data_arrs = np.array(stats_data_arrs)
+            if stats_data_arrs.ndim == 1:
+                stats_data_arrs = np.array([stats_data_arrs])
+            if stats_data_arrs.shape[1] != len(self._data):
+                raise ValueError('The length of all data arrays must match the number of data points.')
+        if not checks.quiet_mode:
+            logger.info(f'Computing stats for: {", ".join(stats_keys)}')
+        # call the underlying method
+        stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
+            data.aggregate_stats(self.Network._node_data,
+                                 self.Network._edge_data,
+                                 self.Network._node_edge_map,
+                                 self._data,
+                                 distances=np.array(self.Network.distances),
+                                 betas=np.array(self.Network.betas),
+                                 numerical_arrays=stats_data_arrs,
+                                 angular=angular,
+                                 suppress_progress=checks.quiet_mode)
         # unpack the numerical arrays
-        if stats_keys:
-            for num_idx, stats_key in enumerate(stats_keys):
-                if stats_key not in self.Network.metrics['stats']:
-                    self.Network.metrics['stats'][stats_key] = {}
-                for k, stats_data in zip(['max',
-                                          'min',
-                                          'sum',
-                                          'sum_weighted',
-                                          'mean',
-                                          'mean_weighted',
-                                          'variance',
-                                          'variance_weighted'],
-                                         [stats_max,
-                                          stats_min,
-                                          stats_sum,
-                                          stats_sum_wt,
-                                          stats_mean,
-                                          stats_mean_wt,
-                                          stats_variance,
-                                          stats_variance_wt]):
-                    if k not in self.Network.metrics['stats'][stats_key]:
-                        self.Network.metrics['stats'][stats_key][k] = {}
-                    for d_idx, d_key in enumerate(self.Network.distances):
-                        self.Network.metrics['stats'][stats_key][k][d_key] = stats_data[num_idx][d_idx]
+        for num_idx, stats_key in enumerate(stats_keys):
+            if stats_key not in self.Network.metrics['stats']:
+                self.Network.metrics['stats'][stats_key] = {}
+            for k, stats_data in zip(['max',
+                                      'min',
+                                      'sum',
+                                      'sum_weighted',
+                                      'mean',
+                                      'mean_weighted',
+                                      'variance',
+                                      'variance_weighted'],
+                                     [stats_max,
+                                      stats_min,
+                                      stats_sum,
+                                      stats_sum_wt,
+                                      stats_mean,
+                                      stats_mean_wt,
+                                      stats_variance,
+                                      stats_variance_wt]):
+                if k not in self.Network.metrics['stats'][stats_key]:
+                    self.Network.metrics['stats'][stats_key][k] = {}
+                for d_idx, d_key in enumerate(self.Network.distances):
+                    self.Network.metrics['stats'][stats_key][k][d_key] = stats_data[num_idx][d_idx]
 
     def hill_diversity(self,
                        landuse_labels: Union[list, tuple, np.ndarray],
@@ -809,7 +868,7 @@ class DataLayer:
 
         `NetworkLayer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`
         """
-        return self.compute_aggregated(landuse_labels, mixed_use_keys=['hill'], qs=qs)
+        return self.compute_landuses(landuse_labels, mixed_use_keys=['hill'], qs=qs)
 
     def hill_branch_wt_diversity(self,
                                  landuse_labels: Union[list, tuple, np.ndarray],
@@ -832,7 +891,7 @@ class DataLayer:
 
         `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`
         """
-        return self.compute_aggregated(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
+        return self.compute_landuses(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
 
     def compute_accessibilities(self,
                                 landuse_labels: Union[list, tuple, np.ndarray],
@@ -859,7 +918,7 @@ class DataLayer:
         `NetworkLayer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`<br>
         `NetworkLayer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
         """
-        return self.compute_aggregated(landuse_labels, accessibility_keys=accessibility_keys)
+        return self.compute_landuses(landuse_labels, accessibility_keys=accessibility_keys)
 
     def compute_stats_single(self,
                              stats_key: str,
@@ -895,7 +954,7 @@ class DataLayer:
         if stats_data_arr.ndim != 1:
             raise ValueError(
                 'The stats_data_arr must be a single dimensional array with a length corresponding to the number of data points in the DataLayer.')
-        return self.compute_aggregated(stats_keys=[stats_key], stats_data_arrs=[stats_data_arr])
+        return self.compute_stats(stats_keys=[stats_key], stats_data_arrs=[stats_data_arr])
 
     def compute_stats_multiple(self,
                                stats_keys: Union[list, tuple],
@@ -931,7 +990,7 @@ class DataLayer:
         `NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
         """
 
-        return self.compute_aggregated(stats_keys=stats_keys, stats_data_arrs=stats_data_arrs)
+        return self.compute_stats(stats_keys=stats_keys, stats_data_arrs=stats_data_arrs)
 
     def model_singly_constrained(self,
                                  key: str,
@@ -972,6 +1031,7 @@ class DataLayerFromDict(DataLayer):
     [`data_map_from_dict`](#data_map_from_dict) internally. Methods and properties are inherited from the parent
     [`DataLayer`](#class-datalayer) class, which can be referenced for more information.
     """
+
     def __init__(self, data_dict: dict) -> DataLayer:
         """
         Parameters
