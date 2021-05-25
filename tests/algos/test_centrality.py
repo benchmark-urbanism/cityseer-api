@@ -623,9 +623,9 @@ def test_local_centrality_time(primal_graph):
     '''
     if 'GITHUB_ACTIONS' in os.environ:
         return
+    os.environ['CITYSEER_QUIET_MODE'] = '1'
     # load the test graph
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(
-        primal_graph)  # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
