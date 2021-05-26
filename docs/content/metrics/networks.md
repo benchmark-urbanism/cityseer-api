@@ -485,8 +485,6 @@ NetworkLayer.compute_centrality(**kwargs)
 
 This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`node_centrality`](#networklayernode_centrality) or [`segment_centrality`](#networklayersegment_centrality) instead.
 
-<FuncHeading>Raises</FuncHeading>
-
 ## NetworkLayer.node\_centrality
 
 <FuncSignature>

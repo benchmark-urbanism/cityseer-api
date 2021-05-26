@@ -1,10 +1,10 @@
 {
   "scripts": {
-    "generate": "node generateDocs.js",
+    "NOTE": "echo NOTE: Run yapper from terminal in project root directory to build files.",
     "lint": "markdownlint 'content/**/*.md' --fix",
     "validateLinks": "remark -u validate-links .",
-    "dev": "yarn run generate && yarn run lint && gridsome develop",
-    "build": "yarn run generate && yarn run lint && gridsome build",
+    "dev": "yarn run NOTE && yarn run lint && gridsome develop",
+    "build": "yarn run NOTE && yarn run lint && gridsome build",
     "ci": "yarn run lint && gridsome build",
     "explore": "yarn run generate && yarn run lint && gridsome explore"
   },
@@ -28,7 +28,7 @@
     "@silvenon/remark-smartypants": "^1.0.0",
     "@tailwindcss/postcss7-compat": "^2.1.2",
     "autoprefixer": "^9",
-    "eslint": "^7.26.0",
+    "eslint": "^7.27.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-gridsome": "^1.6.2",
     "eslint-plugin-prettier": "^3.4.0",

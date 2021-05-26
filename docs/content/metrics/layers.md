@@ -290,22 +290,30 @@ _Assignment of data to network nodes becomes more contextually precise on decomp
 
 <FuncSignature>
 <pre>
-DataLayer.compute_aggregated(landuse_labels=None,
-                             mixed_use_keys=None,
-                             accessibility_keys=None,
-                             cl_disparity_wt_matrix=None,
-                             qs=None,
-                             stats_keys=None,
-                             stats_data_arrs=None,
-                             angular=False)
+DataLayer.compute_aggregated(**kwargs)
 </pre>
 </FuncSignature>
 
-This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use, land-use accessibility, and statistical measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities), [`DataLayer.compute_stats_single`](#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](#datalayercompute_stats_multiple) methods.
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_landuses`](#datalayercompute_landuses) or [`compute_stats`](#datalayercompute_stats) instead.
 
-The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use, accessibility, and statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+## DataLayer.compute\_landuses
 
-For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys; and a `valuations` stats keys are computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
+<FuncSignature>
+<pre>
+DataLayer.compute_landuses(landuse_labels,
+                           mixed_use_keys=None,
+                           accessibility_keys=None,
+                           cl_disparity_wt_matrix=None,
+                           qs=None,
+                           angular=False)
+</pre>
+</FuncSignature>
+
+This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), and [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities) methods.
+
+The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+
+For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
 
 ```python
 NetworkLayer.metrics = {
@@ -351,44 +359,6 @@ NetworkLayer.metrics = {
                 1600: [...]
             }
         }
-    },
-    'stats': {
-        # stats grouped by each stats key
-        'valuations': {
-            # each stat will have the following key-value pairs
-            'max': {
-                800: [...],
-                1600: [...]
-            },
-            'min': {
-                800: [...],
-                1600: [...]
-            },
-            'sum': {
-                800: [...],
-                1600: [...]
-            },
-            'sum_weighted': {
-                800: [...],
-                1600: [...]
-            },
-            'mean': {
-                800: [...],
-                1600: [...]
-            },
-            'mean_weighted': {
-                800: [...],
-                1600: [...]
-            },
-            'variance': {
-                800: [...],
-                1600: [...]
-            },
-            'variance_weighted': {
-                800: [...],
-                1600: [...]
-            }
-        }
     }
 }
 ```
@@ -397,7 +367,7 @@ NetworkLayer.metrics = {
 
 <FuncElement name='landuse_labels' type='Union[list, tuple, np.ndarray]'>
 
-A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if computing mixed-uses or land-use accessibilities, by default None.
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if computing mixed-uses or land-use accessibilities.
 
 </FuncElement>
 
@@ -422,30 +392,6 @@ A pairwise `NxN` disparity matrix numerically describing the degree of disparity
 <FuncElement name='qs' type='Union[list, tuple, np.ndarray]'>
 
 The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures, by default None.
-
-</FuncElement>
-
-<FuncElement name='stats_keys' type='Union[list, tuple]'>
-
-A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary using these keys. This parameter is only required if computing stats for a `stats_data_arrs` parameter, by default None
-
-</FuncElement>
-
-<FuncElement name='stats_data_arrs' type='Union[List[Union[list, tuple, np.ndarray]],
-                                                  Tuple[Union[list, tuple, np.ndarray]],
-                                                  np.ndarray]'>
-
-A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`, by default None. e.g:
-
-```python
-# for a DataLayer containg 5 data points
-stats_keys = ['valuations', 'floors', 'occupants']
-stats_data_arrs = [
-    [50000, 60000, 55000, 42000, 46000],  # valuations
-    [3, 3, 2, 3, 5],  # floors
-    [420, 300, 220, 250, 600]  # occupants
-]
-```
 
 </FuncElement>
 
@@ -489,8 +435,6 @@ N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 data_dict = mock.mock_data_dict(G, random_seed=25)
 # prepare some mock land-use classifications
 landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
-# let's also prepare some numerical data
-stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
 
 # generate a data layer
 L = layers.DataLayerFromDict(data_dict)
@@ -499,18 +443,15 @@ L.assign_to_network(N, max_dist=500)
 # compute some metrics - here we'll use the full interface, see below for simplified interfaces
 # FULL INTERFACE
 # ==============
-L.compute_aggregated(landuse_labels=landuses,
-                    mixed_use_keys=['hill'],
-                    qs=[0, 1],
-                    accessibility_keys=['c', 'd', 'e'],
-                    stats_keys=['mock_stat'],
-                    stats_data_arrs=stats_data)
+L.compute_landuses(landuse_labels=landuses,
+                   mixed_use_keys=['hill'],
+                   qs=[0, 1],
+                   accessibility_keys=['c', 'd', 'e'])
 # note that the above measures can optionally be run individually using simplified interfaces, e.g.
 # SIMPLIFIED INTERFACES
 # =====================
 # L.hill_diversity(landuses, qs=[0])
 # L.compute_accessibilities(landuses, ['a', 'b'])
-# L.compute_stats_single('mock_stat', stats_data[0])  # this method requires a 1d array
 
 # let's prepare some keys for accessing the computational outputs
 # distance idx: any of the distances with which the NetworkLayer was initialised
@@ -527,8 +468,6 @@ print(N.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
 # prints: 0.019168843947614676
 print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
 # prints: 1.0
-print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-# prints: 71297.82967202332
 ```
 
 Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
@@ -547,7 +486,7 @@ DataLayer.hill_diversity(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_aggregated`](#datalayercompute_aggregated) for additional information.
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -578,7 +517,7 @@ DataLayer.hill_branch_wt_diversity(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_aggregated`](#datalayercompute_aggregated) for additional information.
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -609,7 +548,7 @@ DataLayer.compute_accessibilities(landuse_labels,
 </pre>
 </FuncSignature>
 
-Compute land-use accessibilities for the specified land-use classification keys. See [`DataLayer.compute_aggregated`](#datalayercompute_aggregated) for additional information.
+Compute land-use accessibilities for the specified land-use classification keys. See [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
 
 <FuncHeading>Parameters</FuncHeading>
 
@@ -632,36 +571,143 @@ The data keys will correspond to the `accessibility_keys` specified, e.g. where 
 `NetworkLayer.metrics['accessibility']['weighted']['retail'][<<distance key>>][<<node idx>>]`<br>
 `NetworkLayer.metrics['accessibility']['non_weighted']['retail'][<<distance key>>][<<node idx>>]`
 
-## DataLayer.compute\_stats\_single
+## DataLayer.compute\_stats
 
 <FuncSignature>
 <pre>
-DataLayer.compute_stats_single(stats_key,
-                               stats_data_arr)
+DataLayer.compute_stats(stats_keys,
+                        stats_data_arrs,
+                        angular=False)
 </pre>
 </FuncSignature>
 
-Compute stats for a single `stats_key` parameter. As with the landuse and mixed-use measures: stats will be computed for each distance that was specified when initialising the `NetworkLayer`.
+This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+
+For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
+
+```python
+NetworkLayer.metrics = {
+    'stats': {
+        # stats grouped by each stats key
+        'valuations': {
+            # each stat will have the following key-value pairs
+            'max': {
+                800: [...],
+                1600: [...]
+            },
+            'min': {
+                800: [...],
+                1600: [...]
+            },
+            'sum': {
+                800: [...],
+                1600: [...]
+            },
+            'sum_weighted': {
+                800: [...],
+                1600: [...]
+            },
+            'mean': {
+                800: [...],
+                1600: [...]
+            },
+            'mean_weighted': {
+                800: [...],
+                1600: [...]
+            },
+            'variance': {
+                800: [...],
+                1600: [...]
+            },
+            'variance_weighted': {
+                800: [...],
+                1600: [...]
+            }
+        }
+    }
+}
+```
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='stats_key' type='str'>
+<FuncElement name='stats_keys' type='Union[str, list, tuple]'>
 
-A `str` key describing the stats computed for the `stats_data_arr` parameter. The computed stats will be saved to the `N.metrics` dictionary under this key.
+If computing a single stat: a `str` key describing the stats computed for the `stats_data_arr` parameter. If computing multiple stats: a `list` or `tuple` of keys. Computed stats will be saved under the supplied key to the `N.metrics` dictionary.
 
 </FuncElement>
 
-<FuncElement name='stats_data_arr' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='stats_data_arrs' type='Union[
+                          List[Union[list, tuple, np.ndarray]],
+                          Tuple[Union[list, tuple, np.ndarray]],
+                          list,
+                          tuple,
+                          np.ndarray]'>
 
-A 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `DataLayer`.
+If computing a single stat: a 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `DataLayer`. If computing multiple stats keys: a 2d `list`, `tuple`, or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`. e.g:
+
+```python
+# if computing three keys for a DataLayer containg 5 data points
+stats_keys = ['valuations', 'floors', 'occupants']
+stats_data_arrs = [
+    [50000, 60000, 55000, 42000, 46000],  # valuations
+    [3, 3, 2, 3, 5],  # floors
+    [420, 300, 220, 250, 600]  # occupants
+]
+```
+
+</FuncElement>
+
+<FuncElement name='angular' type='bool'>
+
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances, by default False
 
 </FuncElement>
 
 <FuncHeading>Notes</FuncHeading>
 
-The data key will correspond to the `stats_key` parameter, e.g. where using `occupants` as the key:
+The data keys will correspond to the `stats_keys` parameter, e.g.:
 
+`NetworkLayer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
+`NetworkLayer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
 `NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+
+A worked example:
+
+```python
+from cityseer.metrics import networks, layers
+from cityseer.tools import mock, graphs
+
+# prepare a mock graph
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+
+# generate the network layer
+N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+
+# prepare a mock data dictionary
+data_dict = mock.mock_data_dict(G, random_seed=25)
+# let's prepare some numerical data
+stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
+
+# generate a data layer
+L = layers.DataLayerFromDict(data_dict)
+# assign to the network
+L.assign_to_network(N, max_dist=500)
+# compute some metrics
+L.compute_stats(stats_keys='mock_stat',
+                stats_data_arrs=stats_data)
+# let's prepare some keys for accessing the computational outputs
+# distance idx: any of the distances with which the NetworkLayer was initialised
+distance_idx = 200
+# a node idx
+node_idx = 0
+
+# the data is available at N.metrics
+print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
+# prints: 71297.82967202332
+```
+
+Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
 
 :::tip Comment
 
@@ -671,49 +717,27 @@ Per the above worked example, the following stat types will be available for eac
 - `sum` and `sum_weighted`
 - `mean` and `mean_weighted`
 - `variance` and `variance_weighted`
-
 :::
+
+## DataLayer.compute\_stats\_single
+
+<FuncSignature>
+<pre>
+DataLayer.compute_stats_single(**kwargs)
+</pre>
+</FuncSignature>
+
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayercompute_stats) instead.
 
 ## DataLayer.compute\_stats\_multiple
 
 <FuncSignature>
 <pre>
-DataLayer.compute_stats_multiple(stats_keys,
-                                 stats_data_arrs)
+DataLayer.compute_stats_multiple(**kwargs)
 </pre>
 </FuncSignature>
 
-<FuncHeading>Parameters</FuncHeading>
-
-<FuncElement name='stats_keys' type='Union[list, tuple]'>
-
-A `list` or `tuple` of keys corresponding to the number of nested arrays passed to the `stats_data_arrs` parameter. The computed stats will be saved to the `N.metrics` dictionary under these keys.
-
-</FuncElement>
-
-<FuncElement name='stats_data_arrs' type='Union[list, tuple, np.ndarray]'>
-
-A 2d `list`, `tuple` or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`. See the below example.
-
-</FuncElement>
-
-<FuncHeading>Notes</FuncHeading>
-
-```python
-# for a DataLayer containg 5 data points
-stats_keys = ['valuations', 'floors', 'occupants']
-stats_data_arrs = [
-    [50000, 60000, 55000, 42000, 46000],  # valuations
-    [3, 3, 2, 3, 5],  # floors
-    [420, 300, 220, 250, 600]  # occupants
-]
-```
-
- The data keys will correspond to the `stats_keys` parameter:
-
-`NetworkLayer.metrics['stats']['valuations'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
-`NetworkLayer.metrics['stats']['floors'][<<stat type>>][<<distance key>>][<<node idx>>]`<br>
-`NetworkLayer.metrics['stats']['occupants'][<<stat type>>][<<distance key>>][<<node idx>>]`
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayercompute_stats) instead.
 
 ## DataLayer.model\_singly\_constrained
 
@@ -739,7 +763,6 @@ Directly transposes an appropriately prepared data dictionary into a `DataLayer`
 <FuncSignature>
 <pre>
 DataLayerFromDict(data_dict)
-                  -> DataLayer
 </pre>
 </FuncSignature>
 
