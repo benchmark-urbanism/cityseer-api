@@ -655,11 +655,6 @@ class NetworkLayer:
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
         [`node_centrality`](#networklayernode_centrality) or [`segment_centrality`](#networklayersegment_centrality)
         instead.
-
-        Raises
-        ------
-        DeprecationWarning
-            
         """
         raise DeprecationWarning('The compute_centrality method has been deprecated. '
                                  'It has been split into two: '

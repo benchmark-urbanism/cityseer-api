@@ -93,7 +93,6 @@ The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayernode_central
 
 ```python
 from cityseer.metrics import networks
-
 # create a Network layer from the networkX graph
 N = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
@@ -106,7 +105,6 @@ A [`DataLayer`](/metrics/layers/#class-datalayer) represents data points. A `Dat
 
 ```python
 from cityseer.metrics import layers
-
 # a mock data dictionary representing the 'x', 'y' attributes for data points
 data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
 print(data_dict[0], data_dict[1], 'etc.')
@@ -125,14 +123,13 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](../src/assets/plots/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_aggregated`](/metrics/layers/#datalayercompute_aggregated) method is used for the calculation of mixed-use, accessibility, and statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including: [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity) , [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity) , [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities) , [`DataLayer.compute_stats_single`](/metrics/layers/#datalayercompute_stats_single), and [`DataLayer.compute_stats_multiple`](/metrics/layers/#datalayercompute_stats_multiple).
+Once the data has been assigned, the [`DataLayer.compute_landuses`](/metrics/layers/#datalayercompute_landuses) method is used for the calculation of mixed-use and land-use accessibility measures whereas [`DataLayer.compute_stats`](/metrics/layers/#datalayercompute_stats) can likewise be used for statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including [`DataLayer.hill_diversity`](/metrics/layers/#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayerhill_branch_wt_diversity), and [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayercompute_accessibilities).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
 ```python
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 print(landuse_labels)
-# prints: ['e' 'g' 'h' 'c' 'i' 'e' 'j' 'e' 'f' 'b' etc.
 # example easy-wrapper method for computing mixed-uses
 D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # example easy-wrapper method for computing accessibilities
@@ -140,7 +137,7 @@ D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # for which accessibilities will be computed
 D.compute_accessibilities(landuse_labels, accessibility_keys=['a', 'c'])
 # or compute multiple measures at once, e.g.:
-D.compute_aggregated(landuse_labels,
+D.compute_landuses(landuse_labels,
                      mixed_use_keys=['hill', 'hill_branch_wt', 'shannon'],
                      accessibility_keys=['a', 'c'],
                      qs=[0, 1, 2])
@@ -152,7 +149,7 @@ We can do the same thing with numerical data. Let's generate some mock numerical
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
 print(mock_valuations_data)
 # compute max, min, mean, mean-weighted, variance, and variance-weighted
-D.compute_stats_single(stats_key='valuations', stats_data_arr=mock_valuations_data[0])
+D.compute_stats('valuations', mock_valuations_data)
 ```
 
 The data is aggregated and computed over the street network relative to the `NetworkLayer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
@@ -188,7 +185,6 @@ The data can then be passed to data analysis or plotting methods. For example, t
 ```python
 # plot centrality
 from matplotlib import colors
-
 segment_harmonic_vals = []
 mixed_uses_vals = []
 for node, data in G_metrics.nodes(data=True):

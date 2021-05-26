@@ -420,18 +420,15 @@ def aggregate_landuses(node_data: np.ndarray,
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
     # check landuse encodings
-    compute_landuses = False
     if len(landuse_encodings) == 0:
-        if len(mixed_use_hill_keys) != 0 or len(mixed_use_other_keys) != 0 or len(accessibility_keys) != 0:
-            raise ValueError('Mixed use metrics or land-use accessibilities require an array of landuse labels.')
+        raise ValueError('Mixed use metrics or land-use accessibilities require an array of landuse labels.')
     elif len(landuse_encodings) != len(data_map):
         raise ValueError('The number of landuse encodings does not match the number of data points.')
     else:
         checks.check_categorical_data(landuse_encodings)
     # catch completely missing metrics
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
-        raise ValueError(
-            'No metrics specified, please specify at least one metric to compute.')
+        raise ValueError('No metrics specified, please specify at least one metric to compute.')
     # catch missing qs
     if len(mixed_use_hill_keys) != 0 and len(qs) == 0:
         raise ValueError('Hill diversity measures require that at least one value of q is specified.')
@@ -491,18 +488,16 @@ def aggregate_landuses(node_data: np.ndarray,
     netw_nodes_live = node_data[:, 2]
     # setup data structures
     # hill mixed uses are structured separately to take values of q into account
-    mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), np.nan)  # 4 dim
-    mixed_use_other_data = np.full((3, d_n, netw_n), np.nan)  # 3 dim
+    mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), 0.0)  # 4 dim
+    mixed_use_other_data = np.full((3, d_n, netw_n), 0.0)  # 3 dim
     accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
     accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
     # iterate through each vert and aggregate
+    # parallelise over n nodes:
+    # each distance or stat array index is therefore only touched by one thread at a time
+    # i.e. no need to use inner array deductions as with centralities
     steps = int(netw_n / 10000)
     for netw_src_idx in prange(netw_n):
-        # shadowed arrays for non-race reductions
-        _mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), np.nan)  # 4 dim
-        _mixed_use_other_data = np.full((3, d_n, netw_n), np.nan)  # 3 dim
-        _accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
-        _accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
         if not suppress_progress:
             checks.progress_bar(netw_src_idx, netw_n, steps)
         # only compute for live nodes
@@ -543,8 +538,8 @@ def aggregate_landuses(node_data: np.ndarray,
                     # if within distance, and if in accessibility keys, then aggregate accessibility too
                     for ac_idx, ac_code in enumerate(accessibility_keys):
                         if ac_code == cl_code:
-                            _accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
-                            _accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
+                            accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
+                            accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
                             # if a match was found, then no need to check others
                             break
         # mixed uses can be calculated now that the local class counts are aggregated
@@ -558,37 +553,32 @@ def aggregate_landuses(node_data: np.ndarray,
             for mu_hill_key in mixed_use_hill_keys:
                 for q_idx, q_key in enumerate(qs):
                     if mu_hill_key == 0:
-                        _mixed_use_hill_data[0, q_idx, d_idx, netw_src_idx] = \
+                        mixed_use_hill_data[0, q_idx, d_idx, netw_src_idx] = \
                             diversity.hill_diversity(cl_counts, q_key)
                     elif mu_hill_key == 1:
-                        _mixed_use_hill_data[1, q_idx, d_idx, netw_src_idx] = \
+                        mixed_use_hill_data[1, q_idx, d_idx, netw_src_idx] = \
                             diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
                     elif mu_hill_key == 2:
-                        _mixed_use_hill_data[2, q_idx, d_idx, netw_src_idx] = \
+                        mixed_use_hill_data[2, q_idx, d_idx, netw_src_idx] = \
                             diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
                     # land-use classification disparity hill diversity
                     # the wt matrix can be used without mapping because cl_counts is based on all classes
                     # regardless of whether they are reachable
                     elif mu_hill_key == 3:
-                        _mixed_use_hill_data[3, q_idx, d_idx, netw_src_idx] = \
+                        mixed_use_hill_data[3, q_idx, d_idx, netw_src_idx] = \
                             diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
                                                                         wt_matrix=cl_disparity_wt_matrix,
                                                                         q=q_key)
             for mu_other_key in mixed_use_other_keys:
                 if mu_other_key == 0:
-                    _mixed_use_other_data[0, d_idx, netw_src_idx] = \
+                    mixed_use_other_data[0, d_idx, netw_src_idx] = \
                         diversity.shannon_diversity(cl_counts)
                 elif mu_other_key == 1:
-                    _mixed_use_other_data[1, d_idx, netw_src_idx] = \
+                    mixed_use_other_data[1, d_idx, netw_src_idx] = \
                         diversity.gini_simpson_diversity(cl_counts)
                 elif mu_other_key == 2:
-                    _mixed_use_other_data[2, d_idx, netw_src_idx] = \
+                    mixed_use_other_data[2, d_idx, netw_src_idx] = \
                         diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
-        # reduce
-        mixed_use_hill_data += _mixed_use_hill_data
-        mixed_use_other_data += _mixed_use_other_data
-        accessibility_data += _accessibility_data
-        accessibility_data_wt += _accessibility_data_wt
     # send the data back in the same types and same order as the original keys - convert to int for indexing
     mu_hill_k_int = np.full(len(mixed_use_hill_keys), 0)
     for i, k in enumerate(mixed_use_hill_keys):
@@ -597,9 +587,9 @@ def aggregate_landuses(node_data: np.ndarray,
     for i, k in enumerate(mixed_use_other_keys):
         mu_other_k_int[i] = k
 
-    return mixed_use_hill_data[mu_hill_k_int], \
+    return mixed_use_hill_data[mu_hill_k_int],\
            mixed_use_other_data[mu_other_k_int], \
-           accessibility_data, \
+           accessibility_data,\
            accessibility_data_wt
 
 
@@ -636,46 +626,33 @@ def aggregate_stats(node_data: np.ndarray,
     checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
-
     # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan))
     if numerical_arrays.shape[1] != len(data_map):
         raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
     checks.check_numerical_data(numerical_arrays)
-
     # establish variables
     netw_n = len(node_data)
     d_n = len(distances)
     n_n = len(numerical_arrays)
     global_max_dist = float(np.nanmax(distances))
     netw_nodes_live = node_data[:, 2]
-
     # setup data structures
-    stats_sum = np.full((n_n, d_n, netw_n), np.nan)
-    stats_sum_wt = np.full((n_n, d_n, netw_n), np.nan)
+    stats_sum = np.full((n_n, d_n, netw_n), 0.0)
+    stats_sum_wt = np.full((n_n, d_n, netw_n), 0.0)
     stats_mean = np.full((n_n, d_n, netw_n), np.nan)
     stats_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
-    stats_count = np.full((n_n, d_n, netw_n), np.nan)  # use np.nan instead of 0 to avoid division by zero issues
-    stats_count_wt = np.full((n_n, d_n, netw_n), np.nan)
+    stats_count = np.full((n_n, d_n, netw_n), 0.0)
+    stats_count_wt = np.full((n_n, d_n, netw_n), 0.0)
     stats_variance = np.full((n_n, d_n, netw_n), np.nan)
     stats_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
     stats_max = np.full((n_n, d_n, netw_n), np.nan)
     stats_min = np.full((n_n, d_n, netw_n), np.nan)
-
     # iterate through each vert and aggregate
     steps = int(netw_n / 10000)
+    # parallelise over n nodes:
+    # each distance or stat array index is therefore only touched by one thread at a time
+    # i.e. no need to use inner array deductions as with centralities
     for netw_src_idx in prange(netw_n):
-        # setup shadow arrays for reductions
-        _stats_sum = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_sum_wt = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_mean = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_count = np.full((n_n, d_n, netw_n), np.nan)  # use np.nan instead of 0 to avoid division by zero issues
-        _stats_count_wt = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_variance = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_max = np.full((n_n, d_n, netw_n), np.nan)
-        _stats_min = np.full((n_n, d_n, netw_n), np.nan)
-
         if not suppress_progress:
             checks.progress_bar(netw_src_idx, netw_n, steps)
         # only compute for live nodes
@@ -711,33 +688,28 @@ def aggregate_stats(node_data: np.ndarray,
                     # increment mean aggregations at respective distances if the distance is less than current d
                     if data_dist <= d:
                         # aggregate
-                        if np.isnan(_stats_sum[num_idx, d_idx, netw_src_idx]):
-                            _stats_sum[num_idx, d_idx, netw_src_idx] = num
-                            _stats_count[num_idx, d_idx, netw_src_idx] = 1
-                            _stats_sum_wt[num_idx, d_idx, netw_src_idx] = num * np.exp(-b * data_dist)
-                            _stats_count_wt[num_idx, d_idx, netw_src_idx] = np.exp(-b * data_dist)
-                        else:
-                            _stats_sum[num_idx, d_idx, netw_src_idx] += num
-                            _stats_count[num_idx, d_idx, netw_src_idx] += 1
-                            _stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(-b * data_dist)
-                            _stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
-
-                        if np.isnan(_stats_max[num_idx, d_idx, netw_src_idx]):
-                            _stats_max[num_idx, d_idx, netw_src_idx] = num
-                        elif num > _stats_max[num_idx, d_idx, netw_src_idx]:
-                            _stats_max[num_idx, d_idx, netw_src_idx] = num
-
-                        if np.isnan(_stats_min[num_idx, d_idx, netw_src_idx]):
-                            _stats_min[num_idx, d_idx, netw_src_idx] = num
-                        elif num < _stats_min[num_idx, d_idx, netw_src_idx]:
-                            _stats_min[num_idx, d_idx, netw_src_idx] = num
+                        stats_sum[num_idx, d_idx, netw_src_idx] += num
+                        stats_count[num_idx, d_idx, netw_src_idx] += 1
+                        stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(-b * data_dist)
+                        stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
+                        # max
+                        if np.isnan(stats_max[num_idx, d_idx, netw_src_idx]):
+                            stats_max[num_idx, d_idx, netw_src_idx] = num
+                        elif num > stats_max[num_idx, d_idx, netw_src_idx]:
+                            stats_max[num_idx, d_idx, netw_src_idx] = num
+                        # min
+                        if np.isnan(stats_min[num_idx, d_idx, netw_src_idx]):
+                            stats_min[num_idx, d_idx, netw_src_idx] = num
+                        elif num < stats_min[num_idx, d_idx, netw_src_idx]:
+                            stats_min[num_idx, d_idx, netw_src_idx] = num
         # finalise mean calculations - this is happening for a single netw_src_idx, so fairly fast
         for num_idx in range(n_n):
             for d_idx in range(d_n):
-                _stats_mean[num_idx, d_idx, netw_src_idx] = \
-                    _stats_sum[num_idx, d_idx, netw_src_idx] / _stats_count[num_idx, d_idx, netw_src_idx]
-                _stats_mean_wt[num_idx, d_idx, netw_src_idx] = \
-                    _stats_sum_wt[num_idx, d_idx, netw_src_idx] / _stats_count_wt[num_idx, d_idx, netw_src_idx]
+                # use divide so that division through zero doesn't trigger
+                stats_mean[num_idx, d_idx, netw_src_idx] = np.divide(stats_sum[num_idx, d_idx, netw_src_idx],
+                                                                     stats_count[num_idx, d_idx, netw_src_idx])
+                stats_mean_wt[num_idx, d_idx, netw_src_idx] = np.divide(stats_sum_wt[num_idx, d_idx, netw_src_idx],
+                                                                        stats_count_wt[num_idx, d_idx, netw_src_idx])
         # calculate variances - counts are already computed per above
         # weighted version is IDW by division through equivalently weighted counts above
         # iterate the reachable indices and related distances
@@ -757,41 +729,31 @@ def aggregate_stats(node_data: np.ndarray,
                     # increment variance aggregations at respective distances if the distance is less than current d
                     if data_dist <= d:
                         # aggregate
-                        if np.isnan(_stats_variance[num_idx, d_idx, netw_src_idx]):
-                            _stats_variance[num_idx, d_idx, netw_src_idx] = \
-                                np.square(num - _stats_mean[num_idx, d_idx, netw_src_idx])
-                            _stats_variance_wt[num_idx, d_idx, netw_src_idx] = \
-                                np.square(num - _stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(
-                                    -b * data_dist)
+                        if np.isnan(stats_variance[num_idx, d_idx, netw_src_idx]):
+                            stats_variance[num_idx, d_idx, netw_src_idx] = \
+                                np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
+                            stats_variance_wt[num_idx, d_idx, netw_src_idx] = \
+                                np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
                         else:
-                            _stats_variance[num_idx, d_idx, netw_src_idx] += \
-                                np.square(num - _stats_mean[num_idx, d_idx, netw_src_idx])
-                            _stats_variance_wt[num_idx, d_idx, netw_src_idx] += \
-                                np.square(num - _stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(
-                                    -b * data_dist)
+                            stats_variance[num_idx, d_idx, netw_src_idx] += \
+                                np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
+                            stats_variance_wt[num_idx, d_idx, netw_src_idx] += \
+                                np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
         # finalise variance calculations
         for num_idx in range(n_n):
             for d_idx in range(d_n):
-                _stats_variance[num_idx, d_idx, netw_src_idx] = \
-                    _stats_variance[num_idx, d_idx, netw_src_idx] / _stats_count[num_idx, d_idx, netw_src_idx]
-                _stats_variance_wt[num_idx, d_idx, netw_src_idx] = \
-                    _stats_variance_wt[num_idx, d_idx, netw_src_idx] / _stats_count_wt[num_idx, d_idx, netw_src_idx]
-        # reductions
-        stats_sum += _stats_sum
-        stats_sum_wt += _stats_sum_wt
-        stats_mean += _stats_mean
-        stats_mean_wt += _stats_mean_wt
-        stats_count += _stats_count
-        stats_count_wt += _stats_count_wt
-        stats_variance += _stats_variance
-        stats_variance_wt += _stats_variance_wt
-        stats_max += _stats_max
-        stats_min += _stats_min
+                # use divide so that division through zero doesn't trigger
+                stats_variance[num_idx, d_idx, netw_src_idx] = np.divide(
+                    stats_variance[num_idx, d_idx, netw_src_idx],
+                    stats_count[num_idx, d_idx, netw_src_idx])
+                stats_variance_wt[num_idx, d_idx, netw_src_idx] = np.divide(
+                    stats_variance_wt[num_idx, d_idx, netw_src_idx],
+                    stats_count_wt[num_idx, d_idx, netw_src_idx])
 
     return stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, nogil=True, parallel=True)
 def singly_constrained(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
@@ -835,28 +797,22 @@ def singly_constrained(node_data: np.ndarray,
 
     if len(i_weights) != len(i_data_map):
         raise ValueError('The i_weights array must be the same length as the i_data_map.')
-
     if len(j_weights) != len(j_data_map):
         raise ValueError('The j_weights array must be the same length as the j_data_map.')
-
     # establish variables
     netw_n = len(node_data)
     d_n = len(distances)
     global_max_dist = np.max(distances)
-    netw_flows = np.full((d_n, netw_n), 0.0)
-
     i_n = len(i_data_map)
     k_agg = np.full((d_n, i_n), 0.0)
-
-    j_n = len(j_data_map)
-    j_assigned = np.full((d_n, j_n), 0.0)
-
     # iterate all i nodes
     # filter all reachable nodes k and aggregate k attractiveness * negative exponential of distance
     steps = int(i_n / 10000)
-    for i_idx in range(i_n):
+    for i_idx in prange(i_n):
         if not suppress_progress:
             checks.progress_bar(i_idx, i_n, steps)
+        # setup shadowed array for reductions
+        _k_agg = np.full((d_n, i_n), 0.0)
         # get the nearest node
         i_assigned_netw_idx = int(i_data_map[i_idx, 2])
         # calculate the base distance from the data point to the nearest assigned node
@@ -872,7 +828,6 @@ def singly_constrained(node_data: np.ndarray,
                                                                          j_data_map,
                                                                          global_max_dist,
                                                                          angular)
-
         # aggregate the weighted j (all k) nodes
         # iterate the reachable indices and related distances
         for j_idx, (j_reachable, j_dist) in enumerate(zip(reachable_j, reachable_j_dist)):
@@ -883,23 +838,28 @@ def singly_constrained(node_data: np.ndarray,
                 total_dist = j_dist + i_door_dist
                 # increment weighted k aggregations at respective distances if the distance is less than current d
                 if total_dist <= d:
-                    k_agg[d_idx, i_idx] += j_weights[j_idx] * np.exp(-b * total_dist)
-
+                    _k_agg[d_idx, i_idx] += j_weights[j_idx] * np.exp(-b * total_dist)
+        # array reductions (non-race)
+        k_agg += _k_agg
     # this is the second step
     # this time, filter all reachable j vertices and aggregate the proportion of flow from i to j
     # this is done by dividing i-j flow through i-k_agg flow from previous step
+    netw_flows = np.full((d_n, netw_n), 0.0)
+    j_n = len(j_data_map)
+    j_assigned = np.full((d_n, j_n), 0.0)
     steps = int(i_n / 10000)
-    for i_idx in range(i_n):
+    for i_idx in prange(i_n):
         if not suppress_progress:
             checks.progress_bar(i_idx, i_n, steps)
-
+        # setup shadowed arrays for reductions
+        _netw_flows = np.full((d_n, netw_n), 0.0)
+        _j_assigned = np.full((d_n, j_n), 0.0)
         # get the nearest node
         i_assigned_netw_idx = int(i_data_map[i_idx, 2])
         # calculate the base distance from the data point to the nearest assigned node
         i_x, i_y = i_data_map[i_idx, :2]
         n_x, n_y = node_data[i_assigned_netw_idx, :2]
         i_door_dist = np.hypot(i_x - n_x, i_y - n_y)
-
         # find the reachable j data points and their respective points from the closest node
         reachable_j, reachable_j_dist, tree_preds = aggregate_to_src_idx(i_assigned_netw_idx,
                                                                          node_data,
@@ -908,10 +868,10 @@ def singly_constrained(node_data: np.ndarray,
                                                                          j_data_map,
                                                                          global_max_dist,
                                                                          angular)
-
         # aggregate j divided through all k nodes
         # iterate the reachable indices and related distances
         for j_idx, (j_reachable, j_dist) in enumerate(zip(reachable_j, reachable_j_dist)):
+            #
             if not j_reachable:
                 continue
             # iterate the distance dimensions
@@ -925,15 +885,15 @@ def singly_constrained(node_data: np.ndarray,
                     if k_agg[d_idx, i_idx] == 0:
                         assigned = 0
                     else:
-                        assigned = i_weights[i_idx] * j_weights[j_idx] * np.exp(-b * total_dist) / k_agg[d_idx,
-                                                                                                         i_idx]
-                    j_assigned[d_idx, j_idx] += assigned
+                        assigned = np.divide(i_weights[i_idx] * j_weights[j_idx] * np.exp(-b * total_dist),
+                                             k_agg[d_idx, i_idx])
+                    _j_assigned[d_idx, j_idx] += assigned
                     # assign trips to network
                     if assigned != 0:
                         # get the j assigned node
                         j_assigned_netw_idx = int(j_data_map[j_idx, 2])
                         # in this case start and end nodes are counted...!
-                        netw_flows[d_idx, j_assigned_netw_idx] += assigned
+                        _netw_flows[d_idx, j_assigned_netw_idx] += assigned
                         # skip if same start / end node
                         if j_assigned_netw_idx == i_assigned_netw_idx:
                             continue
@@ -941,11 +901,14 @@ def singly_constrained(node_data: np.ndarray,
                         inter_idx = np.int(tree_preds[j_assigned_netw_idx])
                         while True:
                             # end nodes counted, so place above break
-                            netw_flows[d_idx, inter_idx] += assigned
+                            _netw_flows[d_idx, inter_idx] += assigned
                             # break out of while loop if the intermediary has reached the source node
                             if inter_idx == i_assigned_netw_idx:
                                 break
                             # follow the chain
                             inter_idx = np.int(tree_preds[inter_idx])
+        # array reductions (non-race)
+        netw_flows += _netw_flows
+        j_assigned += _j_assigned
 
     return j_assigned, netw_flows

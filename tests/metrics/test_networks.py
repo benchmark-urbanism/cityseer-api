@@ -264,17 +264,6 @@ def test_metrics_to_dict(primal_graph):
     data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     numerical_data = mock.mock_numerical_data(len(data_dict))
-    # TODO:
-    '''
-    D = layers.DataLayerFromDict(data_dict)
-    D.assign_to_network(N, max_dist=400)
-    D.compute_aggregated(landuse_labels,
-                         mixed_use_keys=['hill', 'shannon'],
-                         accessibility_keys=['a', 'c'],
-                         qs=[0, 1],
-                         stats_keys=['boo'],
-                         stats_data_arrs=numerical_data)
-    '''
     metrics_dict = N.metrics_to_dict()
     dict_check(metrics_dict, N)
 

@@ -39,7 +39,6 @@ def test_nX_simple_geoms():
 
 
 def test_add_node(diamond_graph):
-
     new_name = graphs._add_node(diamond_graph, [0, 1], 50, 50)
     assert new_name == '0±1'
     assert list(diamond_graph.nodes) == [0, 1, 2, 3, '0±1']
@@ -289,7 +288,6 @@ def test_nX_remove_filler_nodes(primal_graph):
         assert 'x' in d
         assert 'y' in d
 
-
     # lollipop test - where a looping component (all nodes == degree 2) suspends off a node with degree > 2
     G_lollipop = nx.MultiGraph()
     nodes = [
@@ -381,7 +379,7 @@ def test_nX_remove_filler_nodes(primal_graph):
         after_len += d['geom'].length
     assert before_len == after_len
     assert G_stairway_simpl['1-down']['1-up'][0]['geom'].wkt == \
-       'LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)'
+           'LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)'
 
     # check that missing geoms throw an error
     G_k = G_messy.copy()
@@ -818,10 +816,10 @@ def test_nX_from_graph_maps(primal_graph):
     landuse_labels = mock.mock_categorical_data(len(data_dict))
     D = layers.DataLayerFromDict(data_dict)
     D.assign_to_network(N, max_dist=400)
-    D.compute_aggregated(landuse_labels,
-                         mixed_use_keys=['hill', 'shannon'],
-                         accessibility_keys=['a', 'c'],
-                         qs=[0, 1])
+    D.compute_landuses(landuse_labels,
+                       mixed_use_keys=['hill', 'shannon'],
+                       accessibility_keys=['a', 'c'],
+                       qs=[0, 1])
     metrics_dict = N.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.nX_from_graph_maps(node_uids,
@@ -886,6 +884,7 @@ def test_nX_from_graph_maps(primal_graph):
                                   node_edge_map,
                                   networkX_multigraph=corrupt_primal_graph)
 
+
 def test_nX_from_OSMnx():
-    #TODO: not yet implemented.
+    # TODO: not yet implemented.
     pass

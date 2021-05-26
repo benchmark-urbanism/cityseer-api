@@ -1,3 +1,4 @@
+// this script stopped working and no idea why or how to debug.
 const path = require('path')
 const { PythonShell } = require('python-shell')
 
@@ -9,6 +10,7 @@ const options = {
   args: ['--config', '../.yap_config.yaml'],
 }
 
-PythonShell.run('__init__.py', options, function (err) {
+PythonShell.run('__init__.py', options, function (err, results) {
   if (err) throw err
+  console.log(results)
 })
