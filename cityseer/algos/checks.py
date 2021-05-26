@@ -7,6 +7,8 @@ from numba.typed import Dict
 def_min_thresh_wt = 0.01831563888873418
 # for checking linestring geometries
 tolerance = 0.001
+# fastmath flags
+fastmath = {'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'}
 
 quiet_mode = False
 if 'GCP_PROJECT' in os.environ:
@@ -22,16 +24,16 @@ if 'CITYSEER_DEBUG_MODE' in os.environ:
         debug_mode = True
 
 
-@njit(cache=False)
+@njit(cache=False, fastmath=fastmath)
 def progress_bar(current: int, total: int, steps: int = 20):
-    '''
+    """
     Printing carries a performance penalty
     Cache has to be set to false per Numba issue:
     https://github.com/numba/numba/issues/3555
     https://github.com/krishnanlab/PecanPy/issues/5
     https://github.com/krishnanlab/PecanPy/commit/9c6ca6f5c6341e84aa080b2936cd59d9d8a37b24
     TODO: set cache to True once resolved
-    '''
+    """
     if steps == 0 or current == 0 or total < 2 * steps:
         return
     step_size = int(total / steps)  # round down
@@ -39,7 +41,7 @@ def progress_bar(current: int, total: int, steps: int = 20):
         print('Processed non-sequential checkpoint', int(current / step_size), 'of', steps)
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=fastmath)
 def check_numerical_data(data_arr: np.ndarray):
     if not data_arr.ndim == 2:
         raise ValueError('The numeric data array must have a dimensionality 2, '
@@ -49,7 +51,7 @@ def check_numerical_data(data_arr: np.ndarray):
             raise ValueError('The numeric data values must consist of either floats or NaNs.')
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=fastmath)
 def check_categorical_data(data_arr: np.ndarray):
     for cl in data_arr:
         if not np.isfinite(np.float(cl)) or not cl >= 0:
@@ -58,15 +60,15 @@ def check_categorical_data(data_arr: np.ndarray):
             raise ValueError('Data map contains non-integer class-codes.')
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=fastmath)
 def check_data_map(data_map: np.ndarray, check_assigned=True):
-    '''
+    """
     DATA MAP:
     0 - x
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     # catch zero length data maps
     if len(data_map) == 0:
         raise ValueError('Zero length data map')
@@ -83,11 +85,11 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
             raise ValueError('Data map has not been assigned to a network.')
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=fastmath)
 def check_network_maps(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict):
-    '''
+    """
     NODE MAP:
     0 - x
     1 - y
@@ -100,7 +102,7 @@ def check_network_maps(node_data: np.ndarray,
     4 - impedance factor
     5 - entry bearing
     6 - exit bearing
-    '''
+    """
     # catch zero length node or edge maps
     if len(node_data) == 0:
         raise ValueError('Zero length node map')
@@ -146,7 +148,7 @@ def check_network_maps(node_data: np.ndarray,
             'Invalid impedance factor encountered. Should be finite number greater than or equal to zero.')
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=fastmath)
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) == 0:
         raise ValueError('No distances provided.')

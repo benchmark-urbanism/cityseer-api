@@ -1,3 +1,6 @@
+import os
+import timeit
+
 import numpy as np
 import pytest
 
@@ -676,3 +679,74 @@ def test_model_singly_constrained():
     assert np.sum(j_assigned) == np.sum(pop)
     assert np.allclose(j_assigned, [[0, 0, 0, 0, 15]], atol=0.001, rtol=0)
     assert np.allclose(netw_flows, [[3, 6, 9, 12, 15]], atol=0.001, rtol=0)
+
+
+def test_local_agg_time(primal_graph):
+    """
+    Timing tests for landuse and stats aggregations
+    """
+    if 'GITHUB_ACTIONS' in os.environ:
+        return
+    os.environ['CITYSEER_QUIET_MODE'] = '1'
+
+    # generate node and edge maps
+    node_uids, node_data, edge_data, node_edge_map, = graphs.graph_maps_from_nX(primal_graph)
+    # setup data
+    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
+    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
+    # needs a large enough beta so that distance thresholds aren't encountered
+    distances = np.array([np.inf])
+    betas = networks.beta_from_distance(distances)
+    qs = np.array([0, 1, 2])
+    mock_categorical = mock.mock_categorical_data(len(data_map))
+    landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
+    mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
+
+    def assign_wrapper():
+        data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
+
+    # prime the function
+    assign_wrapper()
+    iters = 20000
+    # time and report - roughly 5.675
+    func_time = timeit.timeit(assign_wrapper, number=iters)
+    print(f'node_cent_wrapper: {func_time} for {iters} iterations')
+    assert func_time < 10
+
+    def landuse_agg_wrapper():
+        mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(node_data,
+                                                                                   edge_data,
+                                                                                   node_edge_map,
+                                                                                   data_map,
+                                                                                   distances,
+                                                                                   betas,
+                                                                                   mixed_use_hill_keys=np.array([0, 1]),
+                                                                                   landuse_encodings=landuse_encodings,
+                                                                                   qs=qs,
+                                                                                   angular=False)
+    # prime the function
+    landuse_agg_wrapper()
+    iters = 20000
+    # time and report - roughly 10.10
+    func_time = timeit.timeit(landuse_agg_wrapper, number=iters)
+    print(f'node_cent_wrapper: {func_time} for {iters} iterations')
+    assert func_time < 15
+
+    def stats_agg_wrapper():
+        # compute
+        data.aggregate_stats(node_data,
+                             edge_data,
+                             node_edge_map,
+                             data_map,
+                             distances,
+                             betas,
+                             numerical_arrays=mock_numerical,
+                             angular=False)
+    # prime the function
+    stats_agg_wrapper()
+    iters = 20000
+    # time and report - roughly 4.96
+    func_time = timeit.timeit(stats_agg_wrapper, number=iters)
+    print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
+    assert func_time < 10

@@ -83,27 +83,27 @@ def test_hill_diversity_pairwise_matrix_wt():
 
 
 def test_gini_simpson_diversity():
-    '''
+    """
     USED FOR RESEARCH PURPOSES ONLY
-    '''
+    """
     # just run for now to check against unexpectedly thrown errors
     for counts, probs in mock.mock_species_data():
         diversity.gini_simpson_diversity(counts)
 
 
 def test_shannon_diversity():
-    '''
+    """
     USED FOR RESEARCH PURPOSES ONLY
-    '''
+    """
     # test against scipy entropy
     for counts, probs in mock.mock_species_data():
         assert abs(entropy(probs) - diversity.shannon_diversity(probs)) < 0.0000000001
 
 
 def test_raos_quadratic_diversity():
-    '''
+    """
     USED FOR RESEARCH PURPOSES ONLY
-    '''
+    """
     # just run for now to check against unexpectedly thrown errors
     for counts, probs in mock.mock_species_data():
         mock_matrix = np.full((len(counts), len(counts)), 1)

@@ -1300,9 +1300,9 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     g_dual = nx.MultiGraph()
 
     def get_half_geoms(g, a_node, b_node, edge_k):
-        '''
+        """
         For splitting and orienting half geoms
-        '''
+        """
         # get edge data
         edge_data = g[a_node][b_node][edge_k]
         # test for x coordinates
