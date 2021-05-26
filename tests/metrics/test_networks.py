@@ -313,9 +313,9 @@ def test_to_networkX(primal_graph):
 
 
 def test_compute_centrality(primal_graph):
-    '''
+    """
     Underlying methods also tested via test_networks.test_network_centralities
-    '''
+    """
     betas = np.array([0.01, 0.005])
     distances = networks.distance_from_beta(betas)
     # generate data structures

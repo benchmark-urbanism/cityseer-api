@@ -1,10 +1,12 @@
 import numpy as np
 from numba import njit
 
+from cityseer.algos import checks
 
-@njit(cache=True)
+
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def hill_diversity(class_counts: np.ndarray, q: float) -> float:
-    '''
+    """
     Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
 
     exponent at 1 results in undefined because of 1/0 - but limit exists as exp(entropy)
@@ -13,7 +15,7 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
     Exponent at 0 = variety - i.e. count of unique species
     Exponent at 1 = unity
     Exponent at 2 = diversity form of simpson index
-    '''
+    """
 
     if q < 0:
         raise ValueError('Please select a non-zero value for q.')
@@ -40,12 +42,12 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
         return D ** (1 / (1 - q))  # return as equivalent species
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
                                       class_distances: np.array,
                                       q: float,
                                       beta: float) -> float:
-    '''
+    """
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
     See table on page 308 and surrounding text
 
@@ -55,7 +57,7 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
 
     The weighting is based on the nearest of each landuse
     This is debatably most relevant to q=0
-    '''
+    """
 
     if len(class_counts) != len(class_distances):
         raise ValueError('Mismatching number of unique class counts and respective class distances.')
@@ -105,12 +107,12 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
         return PD  # / T
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
                                         class_distances: np.ndarray,
                                         q: float,
                                         beta: float) -> float:
-    '''
+    """
     This is the distances version - see below for disparity matrix version
 
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
@@ -124,7 +126,7 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
     Remember these are already distilled species counts - so it is OK to use closest distance to each species
 
     This is different to the non-pairwise form of the phylogenetic version which simply takes singular distance k to i
-    '''
+    """
 
     if len(class_counts) != len(class_distances):
         raise ValueError('Mismatching number of unique class counts and respective class distances.')
@@ -196,13 +198,13 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
-    '''
+    """
     This is the matrix version - requires a precomputed (e.g. disparity) matrix for all classes.
 
     See above for distance version.
-    '''
+    """
 
     if len(class_counts) != len(wt_matrix):
         raise ValueError('Mismatching number of unique class counts and dimensionality of class weights matrix.')
@@ -274,9 +276,9 @@ def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.nd
         return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def gini_simpson_diversity(class_counts: np.ndarray) -> float:
-    '''
+    """
     Gini-Simpson
     Gini transformed to 1 − λ
     Probability that two individuals picked at random do not represent the same species (Tuomisto)
@@ -286,7 +288,7 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
 
     Bias corrected:
     D = 1 - sum(Xi/N * (Xi-1/N-1))
-    '''
+    """
     N = class_counts.sum()
     G = 0
     # catch potential division by zero situations
@@ -299,14 +301,14 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
     return 1 - G
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def shannon_diversity(class_counts: np.ndarray) -> float:
-    '''
+    """
     Entropy
     p = Xi/N
     S = -sum(p * log(p))
     Uncertainty of the species identity of an individual picked at random (Tuomisto)
-    '''
+    """
     N = class_counts.sum()
     H = 0
     # catch potential division by zero situations
@@ -320,12 +322,12 @@ def shannon_diversity(class_counts: np.ndarray) -> float:
     return -H  # remember negative
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def raos_quadratic_diversity(class_counts: np.ndarray,
                              wt_matrix: np.array,
                              alpha: float = 1,
                              beta: float = 1) -> float:
-    '''
+    """
     Rao's quadratic - bias corrected and based on disparity
 
     Sum of weighted pairwise products
@@ -340,7 +342,7 @@ def raos_quadratic_diversity(class_counts: np.ndarray,
     0 and 1 reduces to balance (half-gini - pure balance, no weights)
     1 and 0 reduces to disparity (effectively a weighted count)
     1 and 1 is base stirling diversity / raos quadratic
-    '''
+    """
 
     if len(class_counts) != len(wt_matrix):
         raise ValueError('Mismatching number of unique class counts and respective class taxonomy tiers.')

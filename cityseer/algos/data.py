@@ -7,7 +7,7 @@ from numba.typed import Dict
 from cityseer.algos import centrality, checks, diversity
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def radial_filter(src_x: float,
                   src_y: float,
                   x_arr: np.ndarray,
@@ -31,7 +31,7 @@ def radial_filter(src_x: float,
     return data_filter
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def find_nearest(src_x: float,
                  src_y: float,
                  x_arr: np.ndarray,
@@ -52,7 +52,7 @@ def find_nearest(src_x: float,
     return min_idx, min_dist
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def _calculate_rotation(point_a, point_b):
     # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
     # these two points / angles are relative to the origin - so pass in difference between the points and origin as vectors
@@ -61,7 +61,7 @@ def _calculate_rotation(point_a, point_b):
     return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def _calculate_rotation_smallest(point_a, point_b):
     # smallest difference angle
     ang_a = np.rad2deg(np.arctan2(point_a[1], point_a[0]))
@@ -69,7 +69,7 @@ def _calculate_rotation_smallest(point_a, point_b):
     return np.abs((ang_b - ang_a + 180) % 360 - 180)
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def _road_distance(node_data, d_coords, netw_idx_a, netw_idx_b):
     a_coords = node_data[netw_idx_a, :2]
     b_coords = node_data[netw_idx_b, :2]
@@ -105,7 +105,7 @@ def _road_distance(node_data, d_coords, netw_idx_a, netw_idx_b):
         return h, netw_idx_b, netw_idx_a
 
 
-@njit(cache=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def _closest_intersections(node_data, d_coords, pr_map, end_node):
     if len(pr_map) == 1:
         return np.inf, end_node, np.nan
@@ -133,14 +133,14 @@ def _closest_intersections(node_data, d_coords, pr_map, end_node):
     return min_d, nearest_idx, next_nearest_idx
 
 
-@njit(cache=False, nogil=True, parallel=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def assign_to_network(data_map: np.ndarray,
                       node_data: np.ndarray,
                       edge_data: np.ndarray,
                       node_edge_map: Dict,
                       max_dist: float,
                       suppress_progress: bool = False) -> np.ndarray:
-    '''
+    """
     To save unnecessary computation - this is done once and written to the data map.
 
     1 - find the closest network node from each data point
@@ -166,7 +166,7 @@ def assign_to_network(data_map: np.ndarray,
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     checks.check_network_maps(node_data, edge_data, node_edge_map)
 
     netw_coords = node_data[:, :2]
@@ -310,7 +310,7 @@ def assign_to_network(data_map: np.ndarray,
     return data_map
 
 
-@njit(cache=False, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def aggregate_to_src_idx(netw_src_idx: int,
                          node_data: np.ndarray,
                          edge_data: np.ndarray,
@@ -382,7 +382,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
     return reachable_data, reachable_data_dist, tree_preds
 
 
-@njit(cache=True, nogil=True, parallel=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def aggregate_landuses(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
@@ -397,7 +397,7 @@ def aggregate_landuses(node_data: np.ndarray,
                        cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
                        angular: bool = False,
                        suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    '''
+    """
     NODE MAP:
     0 - x
     1 - y
@@ -415,7 +415,7 @@ def aggregate_landuses(node_data: np.ndarray,
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
@@ -593,7 +593,7 @@ def aggregate_landuses(node_data: np.ndarray,
            accessibility_data_wt
 
 
-@njit(cache=True, nogil=True, parallel=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def aggregate_stats(node_data: np.ndarray,
                     edge_data: np.ndarray,
                     node_edge_map: Dict,
@@ -604,7 +604,7 @@ def aggregate_stats(node_data: np.ndarray,
                     angular: bool = False,
                     suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    '''
+    """
     NODE MAP:
     0 - x
     1 - y
@@ -622,7 +622,7 @@ def aggregate_stats(node_data: np.ndarray,
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
     checks.check_distances_and_betas(distances, betas)
@@ -753,7 +753,7 @@ def aggregate_stats(node_data: np.ndarray,
     return stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min
 
 
-@njit(cache=True, nogil=True, parallel=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def singly_constrained(node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
@@ -765,7 +765,7 @@ def singly_constrained(node_data: np.ndarray,
                        j_weights: np.ndarray,
                        angular: bool = False,
                        suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-    '''
+    """
     - Calculates trips from i to j and returns the assigned trips and network assigned flows for j nodes
     #TODO: consider enhanced numerical checks for single vs. multi dimensional numerical data
 
@@ -789,7 +789,7 @@ def singly_constrained(node_data: np.ndarray,
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     checks.check_network_maps(node_data, edge_data, node_edge_map)
     checks.check_distances_and_betas(distances, betas)
     checks.check_data_map(i_data_map, check_assigned=True)

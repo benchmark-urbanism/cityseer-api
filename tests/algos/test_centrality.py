@@ -1,8 +1,9 @@
 import os
+import timeit
+
 import networkx as nx
 import numpy as np
 import pytest
-import timeit
 
 from cityseer.algos import centrality
 from cityseer.metrics import networks
@@ -11,9 +12,9 @@ from cityseer.tools.mock import primal_graph, dual_graph, diamond_graph
 
 
 def find_path(start_idx, target_idx, tree_preds):
-    '''
+    """
     for extracting paths from predecessor map
-    '''
+    """
     s_path = []
     pred = start_idx
     while True:
@@ -141,13 +142,13 @@ def test_shortest_path_tree(primal_graph, dual_graph):
 
 
 def test_local_node_centrality(primal_graph):
-    '''
+    """
     Also tested indirectly via test_networks.test_compute_centrality
 
     Test centrality methods where possible against NetworkX - i.e. harmonic closeness and betweenness
     Note that NetworkX improved closeness is not the same as derivation used in this package
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
-    '''
+    """
     # generate node and edge maps
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(primal_graph)
     G_round_trip = graphs.nX_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
@@ -298,10 +299,10 @@ def test_local_node_centrality(primal_graph):
 
 
 def test_local_centrality(diamond_graph):
-    '''
+    """
     manual checks for all methods against diamond graph
     measures_data is multidimensional in the form of measure_keys x distances x nodes
-    '''
+    """
     # generate node and edge maps
     node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(diamond_graph)
     # generate dual
@@ -593,34 +594,32 @@ def test_decomposed_local_centrality(primal_graph):
 
 
 def test_local_centrality_time(primal_graph):
-    '''
-    NEW - with parallel reductions: 3.48ish vs 6.25ish for 10000 iterations on "node_data"
-
+    """
     Keep in mind there are several extraneous variables:
     e.g. may be fairly dramatic differences in timing on larger graphs and larger search distances
 
     originally based on node_harmonic and node_betweenness:
     OLD VERSION with trim maps:
     Timing: 10.490865555 for 10000 iterations
-    NEW VERSION with numba typed list - faster and removes arcane full vs. trim maps workflow
+    version with numba typed list - faster and removes arcane full vs. trim maps workflow
     8.24 for 10000 iterations
-    VERSION with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
+    version with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
     8.88 for 10000 iterations
-    VERSION with shortest path tree algo simplified to nodes and non-angular only
+    version with shortest path tree algo simplified to nodes and non-angular only
     8.19 for 10000 iterations
 
+    if reducing floating precision
     float64 - 17.881911942000002
     float32 - 13.612861239
-    segments of unreachable code used to add to timing regardless...
-    this seems to have been fixed in more recent versions of numba
 
-    separating the logic into functions results in ever so slightly slower times...
-    though this may be due to function setup at invocation (x10000) which wouldn't be incurred in real scenarios...?
+    notes:
+    - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
+    - Separating the logic into functions results in ever so slightly slower times...
+      though this may be due to function setup at invocation (x10000) which wouldn't be incurred in real scenarios...?
+    - Tests on using a List(Dict('x', 'y', etc.) structure proved almost four times slower, so sticking with arrays
+    - Experiments with golang proved too complex re: bindings...
+    """
 
-    tests on using a List(Dict('x', 'y', etc.) structure proved almost four times slower, so sticking with arrays
-
-    thoughts of using golang proved too complex re: bindings...
-    '''
     if 'GITHUB_ACTIONS' in os.environ:
         return
     os.environ['CITYSEER_QUIET_MODE'] = '1'
@@ -630,33 +629,36 @@ def test_local_centrality_time(primal_graph):
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
 
-    # setup timing wrapper
-    def wrapper_func():
-        '''
-        node density invokes aggregative workflow
-        betweenness node invokes betweenness workflow
-        segment density invokes segments workflow
-        '''
-        return centrality.local_node_centrality(node_data,
-                                                edge_data,
-                                                node_edge_map,
-                                                distances,
-                                                betas,
-                                                (
-                                                    'node_density',
-                                                    # 8.73 / strip out everything except node density = 8.5s
-                                                    # 'node_betweenness',  # 9.34 / 9.56 stacked w. above
-                                                    # 'segment_density',  # 11.19 / 12.14 stacked w. above
-                                                    # 'segment_betweenness',  # 9.96 / 13.44 stacked w. above
-                                                ),
-                                                angular=False,
-                                                suppress_progress=True)
-
+    def node_cent_wrapper():
+        centrality.local_node_centrality(node_data,
+                                         edge_data,
+                                         node_edge_map,
+                                         distances,
+                                         betas,
+                                         ('node_harmonic', 'node_betweenness'),
+                                         angular=False,
+                                         suppress_progress=True)
     # prime the function
-    wrapper_func()
-    iters = 10000
-    # time and report
-    func_time = timeit.timeit(wrapper_func, number=iters)
-    print(f'Timing: {func_time} for {iters} iterations')
-    # should be under 4s but slower systems or busy CPUs will slow things down...
-    assert func_time < 5
+    node_cent_wrapper()
+    iters = 20000
+    # time and report - roughly 6.37
+    func_time = timeit.timeit(node_cent_wrapper, number=iters)
+    print(f'node_cent_wrapper: {func_time} for {iters} iterations')
+    assert func_time < 10
+
+    def segment_cent_wrapper():
+        centrality.local_segment_centrality(node_data,
+                                            edge_data,
+                                            node_edge_map,
+                                            distances,
+                                            betas,
+                                            ('segment_harmonic', 'segment_betweenness'),
+                                            angular=False,
+                                            suppress_progress=True)
+    # prime the function
+    segment_cent_wrapper()
+    iters = 20000
+    # time and report - roughly 9.36
+    func_time = timeit.timeit(segment_cent_wrapper, number=iters)
+    print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
+    assert func_time < 10

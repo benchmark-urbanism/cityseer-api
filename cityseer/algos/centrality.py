@@ -6,15 +6,14 @@ from numba.typed import List, Dict
 from cityseer.algos import checks
 
 
-# don't use 'nnan' fastmath flag
-@njit(cache=True, fastmath={'ninf', 'nsz', 'arcp', 'contract', 'afn', 'reassoc'}, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def shortest_path_tree(
         edge_data: np.ndarray,
         node_edge_map: Dict,
         src_idx: int,
         max_dist: float = np.inf,
         angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-    '''
+    """
     All shortest paths to max network distance from source node
     Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance
     Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns)
@@ -41,7 +40,7 @@ def shortest_path_tree(
     4 - cycles
     5 - origin segments - for any to_idx, the origin segment of the shortest path
     6 - last segments - for any to_idx, the last segment of the shortest path
-    '''
+    """
     # prepare the arrays
     n = len(node_edge_map)
     tree_map = np.full((n, 7), np.nan, dtype=np.float32)
@@ -149,11 +148,11 @@ def shortest_path_tree(
     return tree_map, tree_edges
 
 
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def _find_edge_idx(node_edge_map: Dict, edge_data: np.ndarray, start_nd_idx: int, end_nd_idx: int) -> int:
-    '''
+    """
     Finds an edge from start and end nodes
-    '''
+    """
     # iterate the start node's edges
     for edge_idx in node_edge_map[start_nd_idx]:
         # check whether the edge's out node matches the target node
@@ -165,37 +164,37 @@ node_close_func_proto = types.FunctionType(types.float64(types.float64, types.fl
 
 
 # node density
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_density(to_dist, to_imp, beta, cycles):
     return 1.0  # return float explicitly
 
 
 # node farness
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_farness(to_dist, to_imp, beta, cycles):
     return to_dist
 
 
 # node cycles
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_cycles(to_dist, to_imp, beta, cycles):
     return cycles
 
 
 # node harmonic
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_harmonic(to_dist, to_imp, beta, cycles):
     return 1.0 / to_imp
 
 
 # node beta weighted
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_beta(to_dist, to_imp, beta, cycles):
     return np.exp(-beta * to_dist)
 
 
 # node harmonic angular
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_harmonic_angular(to_dist, to_imp, beta, cycles):
     a = 1 + (to_imp / 180)
     return 1.0 / a
@@ -205,18 +204,18 @@ node_betw_func_proto = types.FunctionType(types.float64(types.float64, types.flo
 
 
 # node betweenness
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_betweenness(to_dist, beta):
     return 1.0  # return float explicitly
 
 
 # node betweenness beta weighted
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def node_betweenness_beta(to_dist, beta):
-    '''
+    """
     distance is based on distance between from and to vertices
     thus potential spatial impedance via between vertex
-    '''
+    """
     return np.exp(-beta * to_dist)
 
 
@@ -236,7 +235,7 @@ EDGE MAP:
 '''
 
 
-@njit(cache=False, fastmath=True, parallel=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def local_node_centrality(node_data: np.ndarray,
                           edge_data: np.ndarray,
                           node_edge_map: Dict,
@@ -395,13 +394,13 @@ segment_func_proto = types.FunctionType(types.float64(types.float64,
 
 
 # segment density
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def segment_density(n, m, n_imp, m_imp, beta):
     return m - n
 
 
 # segment harmonic
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def segment_harmonic(n, m, n_imp, m_imp, beta):
     if n_imp < 1:
         return np.log(m_imp)
@@ -410,7 +409,7 @@ def segment_harmonic(n, m, n_imp, m_imp, beta):
 
 
 # segment beta
-@njit(cache=True, fastmath=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def segment_beta(n, m, n_imp, m_imp, beta):
     if beta == 0.0:
         return m_imp - n_imp
@@ -418,7 +417,7 @@ def segment_beta(n, m, n_imp, m_imp, beta):
         return (np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta
 
 
-@njit(cache=False, fastmath=True, parallel=True, nogil=True)
+@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
 def local_segment_centrality(node_data: np.ndarray,
                              edge_data: np.ndarray,
                              node_edge_map: Dict,

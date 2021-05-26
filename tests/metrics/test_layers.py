@@ -323,9 +323,9 @@ def test_compute_accessibilities(primal_graph):
 
 
 def test_compute_stats(primal_graph):
-    '''
+    """
     Test stats component
-    '''
+    """
     betas = np.array([0.01, 0.005])
     distances = networks.distance_from_beta(betas)
     # network layer
