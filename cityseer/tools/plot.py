@@ -47,6 +47,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            plot_geoms: bool = True,
                            x_lim: Union[tuple, list] = None,
                            y_lim: Union[tuple, list] = None,
+                           ax: plt.axes = None,
                            **figure_kwargs):
     """
     Parameters
@@ -89,6 +90,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     y_lim
         A tuple or list with the minimum and maxium `y` extents to be plotted.
         Defaults to None.
+    ax
+        An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     figure_kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If
         provided, these will override the default figure size or dpi parameters.
@@ -112,12 +115,13 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     _A dual graph in blue overlaid on the source primal graph in red._
     """
     # cleanup old plots
-    plt.ioff()
-    plt.close('all')
-    plt.cla()
-    plt.clf()
-    # create new plot
-    fig, ax = plt.subplots(1, 1, **figure_kwargs)
+    if ax is None:
+        plt.ioff()
+        plt.close('all')
+        plt.cla()
+        plt.clf()
+        # create new plot
+        fig, target_ax = plt.subplots(1, 1, **figure_kwargs)
     # setup params
     alpha = 0.75
     if labels:
@@ -205,11 +209,11 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         # plot geoms manually if required
         if plot_geoms:
             lines = LineCollection(edge_geoms, colors=_edge_colour, linewidths=_edge_width, linestyles=_edge_style)
-            ax.add_collection(lines)
+            target_ax.add_collection(lines)
         # go ahead and plot: note that edge_list will be empty if plotting geoms
         nx.draw(_graph,
                 pos=pos,
-                ax=ax,
+                ax=target_ax,
                 with_labels=labels,
                 font_size=5,
                 font_color='w',
@@ -246,11 +250,12 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         plt.xlim(*x_lim)
     if y_lim:
         plt.ylim(*y_lim)
-    if path:
-        plt.savefig(path, facecolor=background)
-    else:
-        plt.gcf().set_facecolor(background)
-        plt.show()
+    if ax is not None:
+        if path:
+            plt.savefig(path, facecolor=background)
+        else:
+            plt.gcf().set_facecolor(background)
+            plt.show()
 
 
 def plot_nX(networkX_graph: nx.MultiGraph,
@@ -263,6 +268,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
             plot_geoms: bool = False,
             x_lim: Union[tuple, list] = None,
             y_lim: Union[tuple, list] = None,
+            ax: plt.axes = None,
             **figure_kwargs):
     """
     Plot a `networkX` MultiGraph.
@@ -293,6 +299,8 @@ def plot_nX(networkX_graph: nx.MultiGraph,
         A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
     y_lim
         A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
+    ax
+        An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     figure_kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
@@ -339,6 +347,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
                                   plot_geoms=plot_geoms,
                                   x_lim=x_lim,
                                   y_lim=y_lim,
+                                  ax=ax,
                                   **figure_kwargs)
 
 
