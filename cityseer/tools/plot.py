@@ -252,7 +252,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         plt.xlim(*x_lim)
     if y_lim:
         plt.ylim(*y_lim)
-    if ax is not None:
+    if ax is None:
         if path:
             plt.savefig(path, facecolor=background)
         else:
