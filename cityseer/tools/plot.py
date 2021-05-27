@@ -122,6 +122,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         plt.clf()
         # create new plot
         fig, target_ax = plt.subplots(1, 1, **figure_kwargs)
+    else:
+        target_ax = ax
     # setup params
     alpha = 0.75
     if labels:
