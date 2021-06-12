@@ -603,6 +603,8 @@ class DataLayer:
                     mu_other_keys.append(idx - 4)
             if not checks.quiet_mode:
                 logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
+        # figure out the corresponding indices for the landuse classes that are present in the dataset
+        # these indices are passed as keys which will be matched against the integer landuse encodings
         acc_keys = []
         if accessibility_keys is not None:
             for ac_label in accessibility_keys:
