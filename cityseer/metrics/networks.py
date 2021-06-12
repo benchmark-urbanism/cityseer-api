@@ -21,7 +21,8 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
     :::warning Comment
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
+    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
+    invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
 
     Parameters
@@ -29,7 +30,8 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     beta
         $\beta$ value/s to convert to distance thresholds $d_{max}$.
     min_threshold_wt
-        An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$, default of 0.01831563888873418.
+        An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$, default of
+        0.01831563888873418.
 
     Returns
     -------
@@ -49,19 +51,29 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     # prints: array([400., 200.])
     ```
 
-    Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+    Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are
+    computed using a negative exponential decay function in the form of:
 
     $$weight = exp(-\beta \cdot distance)$$
 
-    The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60\% and a location 400m away would be weighted at 13.5\%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+    The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk
+    correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to
+    a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at
+    13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a
+    sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther
+    away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum
+    distance threshold by $d_{max}$.
 
     ![Example beta decays](../../src/assets/plots/images/betas.png)
     
-    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#class-networklayerfromnx) can be
+    invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this
+    function will be called in order to extrapolate the distance thresholds implicitly, using:
 
     $$d_{max} = \frac{log(w_{min})}{-\beta}$$
 
-    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
+    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking
+    thresholds, for example:
 
     | $\beta$ | $d_{max}$ |
     |:-------:|:---------:|
@@ -107,10 +119,12 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
 
-    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance_from_beta) for additional discussion.
+    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
+    See [`distance_from_beta`](#distance_from_beta) for additional discussion.
 
     :::warning Comment
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
+    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
+    invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
 
     Parameters
@@ -137,11 +151,14 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     print(betas)  # prints: array([0.01, 0.02])
     ```
 
-    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](#class-networklayerfromnx) can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+    [`NetworkLayer`](#class-networklayer) and [`NetworkLayerFromNX`](#class-networklayerfromnx) can be invoked with
+    either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will
+    be called in order to extrapolate the decay parameters implicitly, using:
 
     $$\beta = -\frac{log(w_{min})}{d_{max}}$$
 
-    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
+    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for
+    example:
 
     | $d_{max}$ | $\beta$ |
     |:---------:|:-------:|
@@ -166,13 +183,50 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     return -np.log(min_threshold_wt) / distance
 
 
+#%%
+def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
+                          min_threshold_wt: float = checks.def_min_thresh_wt) -> float:
+    """
+    WIP
+    """
+    # looking for the mean trip distance from 0 to d_max based on the impedance curve
+    d = distance_from_beta(beta, min_threshold_wt=min_threshold_wt)
+    # area under the curve from 0 to d_max
+    a = ((np.exp(-beta * d) - 1) / -beta)
+    # divide by base (distance) for height, i.e. average weight
+    w = a / d
+    # then solve for the corresponding distance
+    avg_d = -np.log(w) / beta
+    # pop float from array if a single value was passed into the function
+    if isinstance(beta, float):
+        return avg_d[0]
+    # otherwise return the array
+    return avg_d
+
+
+'''
+distances = np.array([100, 200, 400, 800, 1600])
+print('distances', distances)
+# distances [ 100  200  400  800 1600]
+
+betas = beta_from_distance(distances)
+print('betas', betas)
+# betas [0.04   0.02   0.01   0.005  0.0025]
+
+print('avg', avg_distance_for_beta(betas))
+# avg [ 35.1194952   70.2389904  140.47798079 280.95596159 561.91192318]
+'''
+
+
+#%%
 # TODO: sub-class network layer for nd; nd-ang; seg; seg-ang
 # do all setup logic here in class and keep backend lean and modular
 
 class NetworkLayer:
     """
-    Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a `NetworkX`
-    `MultiGraph` to a `NetworkLayer`.
+    Network layers are used for network centrality computations and provide the backbone for landuse and statistical
+    aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a
+    `NetworkX` `MultiGraph` to a `NetworkLayer`.
 
     A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters
     $\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and
@@ -680,7 +734,8 @@ class NetworkLayer:
         Notes
         -----
 
-        The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
+        The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the
+        default value of `False`:
 
         | key                   | formula | notes |
         | ----------------------| :------:| ----- |
