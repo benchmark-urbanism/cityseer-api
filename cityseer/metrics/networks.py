@@ -187,7 +187,37 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
 def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
                           min_threshold_wt: float = checks.def_min_thresh_wt) -> float:
     """
-    WIP
+    Parameters
+    ----------
+    beta
+        $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
+    min_threshold_wt
+        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
+
+    Returns
+    -------
+    np.ndarray
+        The average walking distance for a given $\beta$.
+
+    Notes
+    -----
+
+    ```python
+    from cityseer.metrics import networks
+    import numpy as np
+
+    distances = np.array([100, 200, 400, 800, 1600])
+    print('distances', distances)
+    # distances [ 100  200  400  800 1600]
+
+    betas = networks.beta_from_distance(distances)
+    print('betas', betas)
+    # betas [0.04   0.02   0.01   0.005  0.0025]
+
+    print('avg', networks.avg_distance_for_beta(betas))
+    # avg [ 35.1194952   70.2389904  140.47798079 280.95596159 561.91192318]
+    ```
+
     """
     # looking for the mean trip distance from 0 to d_max based on the impedance curve
     d = distance_from_beta(beta, min_threshold_wt=min_threshold_wt)
@@ -197,30 +227,9 @@ def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
     w = a / d
     # then solve for the corresponding distance
     avg_d = -np.log(w) / beta
-    # pop float from array if a single value was passed into the function
-    if isinstance(beta, float):
-        return avg_d[0]
-    # otherwise return the array
+
     return avg_d
 
-
-'''
-distances = np.array([100, 200, 400, 800, 1600])
-print('distances', distances)
-# distances [ 100  200  400  800 1600]
-
-betas = beta_from_distance(distances)
-print('betas', betas)
-# betas [0.04   0.02   0.01   0.005  0.0025]
-
-print('avg', avg_distance_for_beta(betas))
-# avg [ 35.1194952   70.2389904  140.47798079 280.95596159 561.91192318]
-'''
-
-
-#%%
-# TODO: sub-class network layer for nd; nd-ang; seg; seg-ang
-# do all setup logic here in class and keep backend lean and modular
 
 class NetworkLayer:
     """
@@ -264,6 +273,12 @@ class NetworkLayer:
     These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
     all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
     computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+
+    See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
+
+    import ArXivLink from '../../src/components/ArXivLink.vue'
+
+    <ArXivLink arXivLink='https://arxiv.org/abs/2106.14040'/>
 
     :::tip Comment
     The reasons for picking one approach over another are varied:

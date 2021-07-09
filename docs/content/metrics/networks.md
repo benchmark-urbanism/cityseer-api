@@ -57,7 +57,7 @@ Weighted measures such as the gravity index, weighted betweenness, and weighted 
 
 $$weight = exp(-\beta \cdot distance)$$
 
-The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60\% and a location 400m away would be weighted at 13.5\%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
 
 ![Example beta decays](../../src/assets/plots/images/betas.png)
 
@@ -146,6 +146,56 @@ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields convenien
 | 800m | 0.005 |
 | 1600m | 0.0025 |
 
+## avg\_distance\_for\_beta
+
+<FuncSignature>
+<pre>
+avg_distance_for_beta(beta,
+                      min_threshold_wt=checks.def_min_thresh_wt)
+                      -> float
+</pre>
+</FuncSignature>
+
+<FuncHeading>Parameters</FuncHeading>
+
+<FuncElement name='beta' type='Union[float, list, np.ndarray]'>
+
+$\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
+
+</FuncElement>
+
+<FuncElement name='min_threshold_wt' type='float'>
+
+The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
+
+</FuncElement>
+
+<FuncHeading>Returns</FuncHeading>
+
+<FuncElement name='np.ndarray'>
+
+The average walking distance for a given $\beta$.
+
+</FuncElement>
+
+<FuncHeading>Notes</FuncHeading>
+
+```python
+from cityseer.metrics import networks
+import numpy as np
+
+distances = np.array([100, 200, 400, 800, 1600])
+print('distances', distances)
+# distances [ 100  200  400  800 1600]
+
+betas = networks.beta_from_distance(distances)
+print('betas', betas)
+# betas [0.04   0.02   0.01   0.005  0.0025]
+
+print('avg', networks.avg_distance_for_beta(betas))
+# avg [ 35.1194952   70.2389904  140.47798079 280.95596159 561.91192318]
+```
+
 ## **class** NetworkLayer
 
 Network layers are used for network centrality computations and provide the backbone for landuse and statistical aggregations. [`NetworkLayerFromNX`](#class-networklayerfromnx) should be used instead if converting from a `NetworkX` `MultiGraph` to a `NetworkLayer`.
@@ -179,6 +229,12 @@ There are two network centrality methods available depending on whether you're u
 - [`segment_centrality`](#networklayersegment_centrality)
 
 These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+
+See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
+
+import ArXivLink from '../../src/components/ArXivLink.vue'
+
+<ArXivLink arXivLink='https://arxiv.org/abs/2106.14040'/>
 
 :::tip Comment
 

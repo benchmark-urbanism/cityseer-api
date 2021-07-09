@@ -311,6 +311,12 @@ DataLayer.compute_landuses(landuse_labels,
 
 This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayerhill_diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), and [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities) methods.
 
+See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
+
+import ArXivLink from '../../src/components/ArXivLink.vue'
+
+<ArXivLink arXivLink='https://arxiv.org/abs/2106.14048'/>
+
 The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
 For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:

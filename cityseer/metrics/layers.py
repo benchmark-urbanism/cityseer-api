@@ -369,6 +369,13 @@ class DataLayer:
         [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), and
         [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities) methods.
 
+        See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
+        at the pedestrian scale.
+
+        import ArXivLink from '../../src/components/ArXivLink.vue'
+
+        <ArXivLink arXivLink='https://arxiv.org/abs/2106.14048'/>
+
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
         implication that mixed-use and land-use accessibility aggregations are generated from the same locations as
         for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the
