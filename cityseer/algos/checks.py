@@ -72,17 +72,16 @@ def check_data_map(data_map: np.ndarray, check_assigned=True):
     # catch zero length data maps
     if len(data_map) == 0:
         raise ValueError('Zero length data map')
-
     # other checks - e.g. checking for single dimensional arrays, are tricky with numba
     if not data_map.ndim == 2 or not data_map.shape[1] == 4:
         raise ValueError(
             'The data map must have a dimensionality of Nx4, with the first two indices consisting of x, y coordinates. '
             'Indices 2 and 3, if populated, correspond to the nearest and next-nearest network nodes.')
-
     if check_assigned:
         # check that data map has been assigned
         if np.all(np.isnan(data_map[:, 2])):
-            raise ValueError('Data map has not been assigned to a network.')
+            raise ValueError('Data map has not been assigned to a network. (Else data-points were not assignable '
+                             'for the given max_dist parameter passed to assign_to_network.')
 
 
 @njit(cache=True, fastmath=fastmath)
@@ -152,27 +151,21 @@ def check_network_maps(node_data: np.ndarray,
 def check_distances_and_betas(distances: np.ndarray, betas: np.ndarray):
     if len(distances) == 0:
         raise ValueError('No distances provided.')
-
     if len(betas) == 0:
         raise ValueError('No betas provided.')
-
     if not len(distances) == len(betas):
         raise ValueError('The number of distances and betas should be equal.')
-
     for i in range(len(distances)):
         for j in range(len(distances)):
             if i > j:
                 if distances[i] == distances[j]:
                     raise ValueError('Duplicate distances provided. Please provide only one of each.')
-
     for d in distances:
         if d <= 0:
             raise ValueError('Please provide a positive distance value.')
-
     for b in betas:
         if b < 0:
             raise ValueError('Please provide the beta value without the leading negative.')
-
     threshold_min = np.exp(distances[0] * -betas[0])
     for d, b in zip(distances, betas):
         if not np.exp(-b * d) == threshold_min:

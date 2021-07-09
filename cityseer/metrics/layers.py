@@ -369,6 +369,13 @@ class DataLayer:
         [`DataLayer.hill_branch_wt_diversity`](#datalayerhill_branch_wt_diversity), and
         [`DataLayer.compute_accessibilities`](#datalayercompute_accessibilities) methods.
 
+        See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
+        at the pedestrian scale.
+
+        import ArXivLink from '../../src/components/ArXivLink.vue'
+
+        <ArXivLink arXivLink='https://arxiv.org/abs/2106.14048'/>
+
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
         implication that mixed-use and land-use accessibility aggregations are generated from the same locations as
         for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the
@@ -603,6 +610,8 @@ class DataLayer:
                     mu_other_keys.append(idx - 4)
             if not checks.quiet_mode:
                 logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
+        # figure out the corresponding indices for the landuse classes that are present in the dataset
+        # these indices are passed as keys which will be matched against the integer landuse encodings
         acc_keys = []
         if accessibility_keys is not None:
             for ac_label in accessibility_keys:
