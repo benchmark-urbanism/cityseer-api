@@ -21,6 +21,7 @@ plot_nX_primal_or_dual(primal_graph=None,
                        plot_geoms=True,
                        x_lim=None,
                        y_lim=None,
+                       ax=None,
                        **figure_kwargs)
 </pre>
 </FuncSignature>
@@ -117,6 +118,12 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
 
 </FuncElement>
 
+<FuncElement name='ax' type='plt.axes'>
+
+An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
+
+</FuncElement>
+
 <FuncElement name='figure_kwargs' type='None'>
 
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -154,6 +161,7 @@ plot_nX(networkX_graph,
         plot_geoms=False,
         x_lim=None,
         y_lim=None,
+        ax=None,
         **figure_kwargs)
 </pre>
 </FuncSignature>
@@ -219,6 +227,12 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
 <FuncElement name='y_lim' type='Union[tuple, list]'>
 
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
+
+</FuncElement>
+
+<FuncElement name='ax' type='plt.axes'>
+
+An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
 
 </FuncElement>
 
