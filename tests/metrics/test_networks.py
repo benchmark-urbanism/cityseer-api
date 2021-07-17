@@ -440,10 +440,3 @@ def test_compute_centrality(primal_graph):
     # check that the deprecated method raises:
     with pytest.raises(DeprecationWarning):
         N.compute_centrality()
-
-
-def network_generator(primal_graph):
-    for betas in [[0.008], [0.008, 0.002, 0.0]]:
-        distances = networks.distance_from_beta(betas)
-        for angular in [False, True]:
-            yield primal_graph, distances, betas, angular
