@@ -4,6 +4,7 @@ graphs to and from `cityseer` data structures. Note that the `cityseer` network 
 manipulated directly, if so desired.
 """
 
+from collections import namedtuple
 import json
 import logging
 from typing import Union, Tuple, Optional
@@ -13,7 +14,7 @@ import numpy as np
 import utm
 from numba import types
 from numba.typed import Dict
-from shapely import geometry, ops, strtree, coords
+from shapely import geometry, ops, strtree, coords, wkb
 from tqdm.auto import tqdm
 
 from cityseer.algos import checks
@@ -22,204 +23,268 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def nX_simple_geoms(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
-    """
-    Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes.
-    The edge geometry will be stored to the edge `geom` attribute.
+class CityseerNode:
 
-    Parameters
-    ----------
-    networkX_multigraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes.
-
-    Returns
-    -------
-    nx.MultiGraph
-        A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings)
-        geometries assigned to the edge `geom` attributes.
-    """
-    if not isinstance(networkX_multigraph, nx.MultiGraph):
-        raise TypeError('This method requires an undirected networkX MultiGraph.')
-    logger.info('Generating simple (straight) edge geometries.')
-    g_multi_copy = networkX_multigraph.copy()
-
-    def _process_node(n):
-        # x coordinate
-        if 'x' not in g_multi_copy.nodes[n]:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        x = g_multi_copy.nodes[n]['x']
-        # y coordinate
-        if 'y' not in g_multi_copy.nodes[n]:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        y = g_multi_copy.nodes[n]['y']
-
-        return x, y
-
-    # unpack coordinates and build simple edge geoms
-    remove_edges = []
-    for s, e, k in tqdm(g_multi_copy.edges(keys=True), disable=checks.quiet_mode):
-        s_x, s_y = _process_node(s)
-        e_x, e_y = _process_node(e)
-        g = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        if s == e and g.length == 0:
-            remove_edges.append((s, e, k))
+    def __init__(self,
+                 uid: Union[str, tuple[str, ...]],
+                 geom: geometry.Point,
+                 live: bool = None):
+        if isinstance(uid, str):
+            self._uid = uid
+        elif isinstance(uid, tuple) and len(uid) == 1:
+            self._uid = uid[0]
+        elif isinstance(uid, tuple) and all(map(lambda i: isinstance(i, str), uid)):
+            uids = []
+            for u in uid:
+                u = str(u)
+                if len(u) > 10:
+                    u = f'{u[:5]}|{u[-5:]}'
+                uids.append(u)
+            self._uid = '±'.join(uids)
         else:
-            g_multi_copy[s][e][k]['geom'] = g
-    for s, e, k in remove_edges:
-        logger.warning(f'Found zero length looped edge for node {s}, removing from graph.')
-        g_multi_copy.remove_edge(s, e, key=k)
+            raise TypeError('A "str" or tuple of "str" is required for the "uid" parameter.')
+        self.geom = geom
+        self.live = live
 
-    return g_multi_copy
+    @property
+    def uid(self):
+        return self._uid
 
+    @uid.setter
+    def uid(self, new_uid: str):
+        if not isinstance(new_uid, str):
+            raise TypeError('A "str" or tuple of "str" is required for the "uid" parameter.')
+        self._uid = new_uid
 
-def _add_node(networkX_multigraph: nx.MultiGraph,
-              node_names: Union[list, tuple],
-              x: float,
-              y: float,
-              live: Optional[bool] = None) -> Optional[str]:
-    """
-    Adds a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
-    """
-    # suggest a name based on the given names
-    if len(node_names) == 1:
-        new_nd_name = str(node_names[0])
-    # if concatenating existing nodes, suggest a name based on a combination of existing names
-    else:
-        names = []
-        for name in node_names:
-            name = str(name)
-            if len(name) > 10:
-                name = f'{name[:5]}|{name[-5:]}'
-            names.append(name)
-        new_nd_name = '±'.join(names)
-    # first check whether the node already exists
-    append = 2
-    target_name = new_nd_name
-    dupe = False
-    while True:
-        if f'{new_nd_name}' in networkX_multigraph:
-            dupe = True
-            # if the coordinates also match, then it is probable that the same node is being re-added...
-            nd = networkX_multigraph.nodes[f'{new_nd_name}']
-            if nd['x'] == x and nd['y'] == y:
-                logger.debug(f'Proposed new node {new_nd_name} would overlay a node that already exists '
-                             f'at the same coordinates. Skipping.')
-                return None
-            # otherwise, warn and bump the appended node number
-            new_nd_name = f'{target_name}§v{append}'
+    @property
+    def geom(self):
+        return wkb.loads(self._geom_wkb)
+
+    @geom.setter
+    def geom(self, new_geom: geometry.Point):
+        if not isinstance(new_geom, geometry.Point):
+            raise TypeError('A shapely Point type is required for the "geom" parameter.')
+        self._geom_wkb = new_geom.wkb
+
+    @property
+    def x(self):
+        return self.geom.x
+
+    @property
+    def y(self):
+        return self.geom.y
+
+    def __repr__(self):
+        return self.uid
+
+    def __eq__(self, other):
+        if isinstance(other, CityseerNode):
+            return self.uid == other.uid
+        return False
+
+    def __hash__(self):
+        return hash(self.__repr__)
+
+    def bump_node_id(self, network: nx.MultiGraph):
+        origin_uid = self.uid
+        append = 2
+        while True:
+            if self.uid not in network:
+                return
+            self.uid = f'{origin_uid}§v{append}'
             append += 1
+
+
+class CityseerEdge:
+
+    def __init__(self,
+                 start_uid: str,
+                 end_uid: str,
+                 key_idx: int,
+                 geom: geometry.LineString = None):
+        if not isinstance(start_uid, float):
+            raise ValueError('A "str" type is required for the "start_uid" parameter.')
+        self._start_uid = start_uid
+        if not isinstance(end_uid, float):
+            raise ValueError('A "str" type is required for the "end_uid" parameter.')
+        self._end_uid = end_uid
+        if not isinstance(key_idx, int):
+            raise ValueError('A "int" type is required for the "key_idx" parameter.')
+        self._key_idx = key_idx
+        if not isinstance(geom, geometry.LineString):
+            raise ValueError('A shapely LineString type is required for the "line_geom" parameter.')
+        self._geom_wkb = geom.wkb
+
+    @property
+    def geom(self):
+        return wkb.loads(self._geom_wkb)
+
+    @property
+    def start_uid(self):
+        if self._start_uid is None:
+            return logger.warning('The "start_uid" property has not been set.')
+        return self._start_uid
+
+    @property
+    def end_uid(self):
+        if self._end_uid is None:
+            return logger.warning('The "end_uid" property has not been set.')
+        return self._end_uid
+
+    @property
+    def key_idx(self):
+        if self._key_idx is None:
+            return logger.warning('The "key_idx" property has not been set.')
+        return self._key_idx
+
+    def __repr__(self):
+        return f'Cityseer Edge spanning Nodes {self.start_uid} to {self.end_uid} ' \
+               f'at edge index {self.key_idx}' \
+               f'and as defined by geom {self._geom_wkb}.'
+
+    def __eq__(self, other):
+        if isinstance(other, CityseerEdge):
+            return (self.start_uid == other.start_uid
+                    and self.end_uid == other.end_uid
+                    and self.key_idx == other.key_idx) and self._geom_wkb == other._geom_wkb
+        return False
+
+    def __hash__(self):
+        return hash(self.__repr__)
+
+
+class CityseerGraph(nx.MultiGraph):
+
+    def add_node(self, node_for_adding, **attr):
+        if not isinstance(node_for_adding, (str, tuple)):
+            raise ValueError('Node "uids" must be of type "str".')
+        if 'geom' not in attr:
+            raise ValueError('A "geom" parameter is required.')
+        elif not isinstance(attr['geom'], geometry.Point):
+            raise TypeError('A shapely "Point" geometry is required for the "geom" parameter.')
+        geom = attr['geom']
+        del attr['geom']
+        node = CityseerNode(uid=node_for_adding,
+                            geom=geom,
+                            live=attr['live'] if 'live' in attr else None)
+        # check for duplicates
+        if node in self:
+            if node.geom == self.nodes[node.uid].geom:
+                logger.debug(f'Proposed new node {node.uid} would overlay a node that already exists '
+                             f'for the same location. Skipping.')
+                return None
+            node.bump_node_id(self)
+            logger.debug(f'A node of the same name already exists in the graph, '
+                         f'adding this node as {node.uid} instead.')
+        super().add_node(node, **attr)
+
+    def add_nodes_from(self, nodes_for_adding, **attr):
+        raise NotImplementedError('Not implemented. Please add nodes individually.')
+
+    def add_edge(self, u_for_edge, v_for_edge, key=None, **attr):
+        if not isinstance(u_for_edge, str) or not isinstance(v_for_edge, str):
+            raise TypeError('Start and end indices must be of type "str".')
+        if 'geom' in attr:
+            if not isinstance(attr['geom'], geometry.LineString):
+                raise ValueError('A shapely "LineString" type is required for explicitly defined "geoms".')
+            geom = attr['geom']
+            del attr['geom']
         else:
-            if dupe:
-                logger.debug(f'A node of the same name already exists in the graph, '
-                             f'adding this node as {new_nd_name} instead.')
-            break
-    # add
-    attributes = {'x': x, 'y': y}
-    if live is not None:
-        attributes['live'] = live
-    networkX_multigraph.add_node(new_nd_name, **attributes)
-    return new_nd_name
+            start_xy = self.nodes[u_for_edge].geom.xy
+            end_xy = self.nodes[v_for_edge].geom.xy
+            geom = geometry.LineString([start_xy, end_xy])
+        if geom.length == 0:
+            return logger.warning(f'Unable to add edge of length 0m from node {u_for_edge} to {v_for_edge}.')
+        key_idx = self.number_of_edges(u_for_edge, v_for_edge)
+        edge = CityseerEdge(start_uid=u_for_edge,
+                            end_uid=v_for_edge,
+                            key_idx=key_idx,
+                            geom=geom)
+        super().add_edge(u_for_edge, v_for_edge, key=key, payload=edge)
+
+    def load_from_osm(self, osm_json: str):
+        """
+        Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+
+        Parameters
+        -----------
+        osm_json
+            A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
+            consisting of `nodes` and `ways`.
+
+        Returns
+        -------
+        nx.MultiGraph
+            A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
+            coordinates.
+
+        """
+        osm_network_data = json.loads(osm_json)
+        for e in osm_network_data['elements']:
+            if e['type'] == 'node':
+                self.add_node(
+                    CityseerNode(
+                        uid=e['id'],
+                        geom=geometry.Point(e['lon'], e['lat'])
+                    ))
+        for e in osm_network_data['elements']:
+            if e['type'] == 'way':
+                count = len(e['nodes'])
+                for idx in range(count - 1):
+                    self.add_edge(u_for_edge=e['nodes'][idx],
+                               v_for_edge=e['nodes'][idx + 1])
 
 
-def nX_from_osm(osm_json: str) -> nx.MultiGraph:
-    """
-    Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+    def convert_WGS_to_UTM(self, force_zone_number: int = None):
+        """
+        Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
+        local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
+        will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
+        other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
+        a UTM boundary.
 
-    Parameters
-    -----------
-    osm_json
-        A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
-        consisting of `nodes` and `ways`.
+        Parameters
+        ----------
+        networkX_multigraph
+            A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
+            attributes containing `LineString` geoms to be converted.
+        force_zone_number
+            An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
+            UTM zones may introduce substantial distortions in the results. Defaults to None.
 
-    Returns
-    -------
-    nx.MultiGraph
-        A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
-        coordinates.
-
-    """
-    osm_network_data = json.loads(osm_json)
-    G = nx.MultiGraph()
-    for e in osm_network_data['elements']:
-        if e['type'] == 'node':
-            G.add_node(e['id'], x=e['lon'], y=e['lat'])
-    for e in osm_network_data['elements']:
-        if e['type'] == 'way':
-            count = len(e['nodes'])
-            for idx in range(count - 1):
-                G.add_edge(e['nodes'][idx], e['nodes'][idx + 1])
-
-    return G
-
-
-def nX_wgs_to_utm(networkX_multigraph: nx.MultiGraph,
-                  force_zone_number: int = None) -> nx.MultiGraph:
-    """
-    Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
-    local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
-    will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
-    other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
-    a UTM boundary.
-
-    Parameters
-    ----------
-    networkX_multigraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
-        attributes containing `LineString` geoms to be converted.
-    force_zone_number
-        An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-        UTM zones may introduce substantial distortions in the results. Defaults to None.
-
-    Returns
-    -------
-    nx.MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
-         `geom` attributes are present, these will also be converted.
-    """
-    if not isinstance(networkX_multigraph, nx.MultiGraph):
-        raise TypeError('This method requires an undirected networkX MultiGraph.')
-    logger.info('Converting networkX graph from WGS to UTM.')
-    g_multi_copy = networkX_multigraph.copy()
-    zone_number = None
-    if force_zone_number is not None:
-        zone_number = force_zone_number
-    logger.info('Processing node x, y coordinates.')
-    for n, d in tqdm(g_multi_copy.nodes(data=True), disable=checks.quiet_mode):
-        # x coordinate
-        if 'x' not in d:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {n}.')
-        lng = d['x']
-        # y coordinate
-        if 'y' not in d:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
-        lat = d['y']
-        # check for unintentional use of conversion
-        if abs(lng) > 180 or abs(lat) > 90:
-            raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
-        # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
-        if zone_number is None:
-            zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
-        # be cognisant of parameter and return order
-        # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2]
-        # write back to graph
-        g_multi_copy.nodes[n]['x'] = easting
-        g_multi_copy.nodes[n]['y'] = northing
-    # if line geom property provided, then convert as well
-    logger.info('Processing edge geom coordinates, if present.')
-    for s, e, k, d in tqdm(g_multi_copy.edges(data=True, keys=True), disable=checks.quiet_mode):
-        # check if geom present - optional step
-        if 'geom' in d:
-            line_geom = d['geom']
-            if line_geom.type != 'LineString':
-                raise TypeError(f'Expecting LineString geometry but found {line_geom.type} geometry.')
+        Returns
+        -------
+        nx.MultiGraph
+            A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
+             `geom` attributes are present, these will also be converted.
+        """
+        logger.info('Converting CityseerGraph from WGS to UTM.')
+        if force_zone_number is not None:
+            self.zone_number = force_zone_number
+        else:
+            self.zone_number = None
+        logger.info('Processing node x, y coordinates.')
+        for n, d in tqdm(self.nodes(data=True), disable=checks.quiet_mode):
+            lng, lat = n.geom.xy
+            # check for unintentional use of conversion
+            if abs(lng) > 180 or abs(lat) > 90:
+                raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
+            if self.zone_number is None:
+                self.zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
             # be cognisant of parameter and return order
             # returns in easting, northing order
-            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2] for lng, lat in line_geom.coords]
+            easting, northing = utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
+            # write back to graph
+            self.nodes[n].geom = geometry.Point(easting, northing)
+        # if line geom property provided, then convert as well
+        logger.info('Processing edge geom coordinates, if present.')
+        for s, e, k, payload in tqdm(self.edges(data=True, keys=True), disable=checks.quiet_mode):
+            # be cognisant of parameter and return order - returns in easting, northing order
+            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
+                          for lng, lat in payload.geom.coords]
             # write back to edge
-            g_multi_copy[s][e][k]['geom'] = geometry.LineString(utm_coords)
-
-    return g_multi_copy
+            self[s][e][k].geom = geometry.LineString(utm_coords)
 
 
 def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
@@ -752,7 +817,9 @@ def _create_nodes_strtree(networkX_multigraph: nx.MultiGraph) -> strtree.STRtree
     """
     Creates a nodes-based STRtree spatial index.
     """
-    points = []
+    PointItem = namedtuple('Point', ['uid', 'degree', 'pointWKB'])
+    geoms = []
+    items = []
     for n, d in networkX_multigraph.nodes(data=True):
         # x coordinate
         if 'x' not in d:
@@ -762,27 +829,27 @@ def _create_nodes_strtree(networkX_multigraph: nx.MultiGraph) -> strtree.STRtree
         if 'y' not in d:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {n}.')
         y = d['y']
-        p = geometry.Point(x, y)
-        p.uid = n
-        p.degree = nx.degree(networkX_multigraph, n)
-        points.append(p)
-    return strtree.STRtree(points)
+        point_geom = geometry.Point(x, y)
+        geoms.append(point_geom)
+        PointItem(uid=n, degree=nx.degree(networkX_multigraph, n), pointWKB=point_geom.wkb)
+    return strtree.STRtree(geoms, items)
 
 
 def _create_edges_strtree(networkX_multigraph: nx.MultiGraph) -> strtree.STRtree:
     """
     Creates an edges-based STRtree spatial index.
     """
-    lines = []
+    EdgeItem = namedtuple('Line', ['start_uid', 'end_uid', 'idx_key', 'lineWKB'])
+    geoms = []
+    items = []
     for s, e, k, d in networkX_multigraph.edges(keys=True, data=True):
         if 'geom' not in d:
             raise KeyError(f'Encountered edge missing "geom" attribute.')
-        linestring = d['geom']
-        linestring.start_uid = s
-        linestring.end_uid = e
-        linestring.k = k
-        lines.append(linestring)
-    return strtree.STRtree(lines)
+        line_geom = d['geom']
+        geoms.append(line_geom)
+        geoms.append(line_geom)
+        items.append(EdgeItem(start_uid=s, end_uid=e, idx_key=k, lineWKB=line_geom.wkb))
+    return strtree.STRtree(geoms, items)
 
 
 def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
@@ -891,7 +958,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
         # keep track of which nodes have been processed as part of recursion
         processed_nodes.append(nd_uid)
         # get all other nodes within buffer distance - the self-node and previously processed nodes are also returned
-        js = nodes_tree.query(geometry.Point(x, y).buffer(buffer_dist))
+        js = nodes_tree.query_items(geometry.Point(x, y).buffer(buffer_dist))
         # review each node within the buffer
         for j in js:
             j_uid = j.uid
@@ -994,22 +1061,21 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
         return '-'.join(sorted([str(s), str(e)])) + f'-k{k}'
 
     # where edges are deleted, keep track of new children edges
-    edge_children = {}
+    edge_children_map = {}
 
     # recursive function for retrieving nested layers of successively replaced edges
-    def recurse_child_keys(s, e, k, geom, current_edges):
+    def recurse_edge_children(edge, current_edges):
         """
         Checks if an edge has been replaced by children, if so, use children instead.
         Children may also have children, so recurse downwards.
         """
-        edge_key = make_edge_key(s, e, k)
-        # if an edge does not have children, add to current_edges and return
-        if edge_key not in edge_children:
-            current_edges.append((s, e, k, geom))
-        # otherwise recursively drill-down until newest edges are found
+        # if an edge does not have active children, add to current_edges and return
+        if edge not in edge_children_map:
+            current_edges.append(edge)
+        # otherwise recursively drill-down until newest (unprocessed) edges are found
         else:
-            for child_s, child_e, child_k, child_geom in edge_children[edge_key]:
-                recurse_child_keys(child_s, child_e, child_k, child_geom, current_edges)
+            for child_edge in edge_children_map[edge]:
+                recurse_edge_children(child_edge, current_edges)
 
     if not isinstance(networkX_multigraph, nx.MultiGraph):
         raise TypeError('This method requires an undirected networkX MultiGraph.')
@@ -1027,13 +1093,11 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
         # furthermore, successive iterations may remove old edges, so keep track of removed parent vs new child edges
         n_point = geometry.Point(n_d['x'], n_d['y'])
         # spatial query from point returns all buffers with buffer_dist
-        edges = edges_tree.query(n_point.buffer(buffer_dist))
-        # extract the start node, end node, geom
-        edges = [(edge.start_uid, edge.end_uid, edge.k, edge) for edge in edges]
+        edges = edges_tree.query_items(n_point.buffer(buffer_dist))
         # check against removed edges
         current_edges = []
-        for s, e, k, edge_geom in edges:
-            recurse_child_keys(s, e, k, edge_geom, current_edges)
+        for edge in edges:
+            recurse_edge_children(edge, current_edges)
         # get neighbouring nodes from new graph
         neighbours = list(_multi_graph.neighbors(n))
         # abort if only direct neighbours
@@ -1041,34 +1105,36 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
             continue
         # filter current_edges
         gapped_edges = []
-        for s, e, k, edge_geom in current_edges:
+        for edge in current_edges:
             # skip direct neighbours
-            if s == n or e == n:
+            if edge.start_uid == n or edge.end_uid == n:
                 continue
             # check whether the geom is truly within the buffer distance
+            edge_geom = wkb.loads(edge.lineWKB)
             if edge_geom.distance(n_point) > buffer_dist:
                 continue
-            gapped_edges.append((s, e, k, edge_geom))
+            gapped_edges.append(edge)
         # abort if no gapped edges
         if not gapped_edges:
             continue
         # prepare the root node's point geom
         n_geom = geometry.Point(n_d['x'], n_d['y'])
         # iter gapped edges
-        for s, e, k, edge_geom in gapped_edges:
+        for edge in gapped_edges:
             # see if start node is within buffer distance already
-            s_nd_data = _multi_graph.nodes[s]
+            s_nd_data = _multi_graph.nodes[edge.start_uid]
             s_nd_geom = geometry.Point(s_nd_data['x'], s_nd_data['y'])
             if s_nd_geom.distance(n_geom) <= buffer_dist:
                 continue
             # likewise for end node
-            e_nd_data = _multi_graph.nodes[e]
+            e_nd_data = _multi_graph.nodes[edge.end_uid]
             e_nd_geom = geometry.Point(e_nd_data['x'], e_nd_data['y'])
             if e_nd_geom.distance(n_geom) <= buffer_dist:
                 continue
             # otherwise, project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
+            edge_geom = wkb.loads(edge.lineWKB)
             nearest_point = ops.nearest_points(n_geom, edge_geom)[-1]
             # if a valid nearest point has been found, go ahead and split the geom
             # use a snap because rounding precision errors will otherwise cause issues
@@ -1079,12 +1145,15 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                 continue
             new_edge_geom_a, new_edge_geom_b = split_geoms
             # add the new node and edges to _multi_graph (don't modify networkX_multigraph because of iter in place)
-            new_nd_name = _add_node(_multi_graph, [s, n, e], x=nearest_point.x, y=nearest_point.y)
+            new_nd_name = _add_node(_multi_graph,
+                                    node_names=[edge.start_uid, n, edge.end_uid],
+                                    x=nearest_point.x,
+                                    y=nearest_point.y)
             # if a node already exists at this location, add_node will return None
             if new_nd_name is None:
                 continue
-            _multi_graph.add_edge(s, new_nd_name)
-            _multi_graph.add_edge(e, new_nd_name)
+            _multi_graph.add_edge(edge.start_uid, new_nd_name)
+            _multi_graph.add_edge(edge.end_uid, new_nd_name)
             if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=checks.tolerance, rtol=0) or \
                     np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[-1][:2], atol=checks.tolerance, rtol=0):
                 s_new_geom = new_edge_geom_a
@@ -1099,24 +1168,24 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
                 e_new_geom = new_edge_geom_a
             # if splitting a looped component, then both new edges will have the same starting and ending nodes
             # in these cases, there will be multiple edges
-            if s == e:
-                assert _multi_graph.number_of_edges(s, new_nd_name) == 2
+            if edge.start_uid == edge.end_uid:
+                assert _multi_graph.number_of_edges(edge.start_uid, new_nd_name) == 2
                 s_k = 0
                 e_k = 1
             else:
-                assert _multi_graph.number_of_edges(s, new_nd_name) == 1
-                assert _multi_graph.number_of_edges(e, new_nd_name) == 1
+                assert _multi_graph.number_of_edges(edge.start_uid, new_nd_name) == 1
+                assert _multi_graph.number_of_edges(edge.end_uid, new_nd_name) == 1
                 s_k = e_k = 0
             # write the new edges
-            _multi_graph[s][new_nd_name][s_k]['geom'] = s_new_geom
-            _multi_graph[e][new_nd_name][e_k]['geom'] = e_new_geom
-            # add the new edges to the edge_children dictionary
-            edge_key = make_edge_key(s, e, k)
-            edge_children[edge_key] = [(s, new_nd_name, s_k, s_new_geom),
-                                       (e, new_nd_name, e_k, e_new_geom)]
+            _multi_graph[edge.start_uid][new_nd_name][s_k]['geom'] = s_new_geom
+            _multi_graph[edge.end_uid][new_nd_name][e_k]['geom'] = e_new_geom
+            # add the new edges to the edge_children_map dictionary
+            edge_key = make_edge_key(edge.start_uid, edge.end_uid, edge.idx_key)
+            edge_children_map[edge_key] = [(edge.start_uid, new_nd_name, s_k, s_new_geom),
+                                       (edge.end_uid, new_nd_name, e_k, e_new_geom)]
             # drop the old edge from _multi_graph
-            if _multi_graph.has_edge(s, e, k):
-                _multi_graph.remove_edge(s, e, k)
+            if _multi_graph.has_edge(edge.start_uid, edge.end_uid, edge.idx_key):
+                _multi_graph.remove_edge(edge.start_uid, edge.end_uid, edge.idx_key)
     # squashing nodes can result in edge duplicates
     deduped_graph = _merge_parallel_edges(_multi_graph,
                                           merge_edges_by_midline,

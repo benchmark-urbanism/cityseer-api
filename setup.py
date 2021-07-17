@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.1.4',
+    version='1.1.5',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
     description='Computational tools for urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',
@@ -23,7 +23,7 @@ setup(
         'networkx>=2.4',
         'numba>=0.53',
         'numpy',
-        'shapely >= 1.7.0',
+        'shapely>=1.8.a2',
         'sklearn',
         'tqdm',
         'utm'
