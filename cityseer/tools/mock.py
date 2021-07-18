@@ -117,7 +117,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     for node in nodes:
         uid = str(node[0])
         geom = geometry.Point(node[1]['x'], node[1]['y'])
-        multi_graph.add_node(uid, geom=geom)
+        multi_graph.add_cityseer_node(uid, geom=geom)
     edges = [
         (0, 1),
         (0, 16),
@@ -203,8 +203,8 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (45, 56),
         (30, 56)
     ]
-    edges = [(str(e[0]), str(e[1])) for e in edges]
-    multi_graph.add_edges_from(edges)
+    for edge in edges:
+        multi_graph.add_cityseer_edge(str(edge[0]), str(edge[1]))
 
     if wgs84_coords:
         multi_graph.convert_WGS_to_UTM()

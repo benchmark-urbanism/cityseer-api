@@ -4,9 +4,9 @@ graphs to and from `cityseer` data structures. Note that the `cityseer` network 
 manipulated directly, if so desired.
 """
 
-from collections import namedtuple
 import json
 import logging
+from collections import namedtuple
 from typing import Union, Tuple, Optional
 
 import networkx as nx
@@ -23,317 +23,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class CityseerNode:
-
-    def __init__(self,
-                 uid: Union[str, tuple[str, ...]],
-                 geom: geometry.Point,
-                 live: bool = None):
-        if isinstance(uid, str):
-            self._uid = uid
-        elif isinstance(uid, tuple) and len(uid) == 1:
-            self._uid = uid[0]
-        elif isinstance(uid, tuple) and all(map(lambda i: isinstance(i, str), uid)):
-            uids = []
-            for u in uid:
-                u = str(u)
-                if len(u) > 10:
-                    u = f'{u[:5]}|{u[-5:]}'
-                uids.append(u)
-            self._uid = '±'.join(uids)
-        else:
-            raise TypeError('A "str" or tuple of "str" is required for the "uid" parameter.')
-        self.geom = geom
-        self.live = live
-
-    @property
-    def uid(self):
-        return self._uid
-
-    @uid.setter
-    def uid(self, new_uid: str):
-        if not isinstance(new_uid, str):
-            raise TypeError('A "str" or tuple of "str" is required for the "uid" parameter.')
-        self._uid = new_uid
-
-    @property
-    def geom(self):
-        return wkb.loads(self._geom_wkb)
-
-    @geom.setter
-    def geom(self, new_geom: geometry.Point):
-        if not isinstance(new_geom, geometry.Point):
-            raise TypeError('A shapely Point type is required for the "geom" parameter.')
-        self._geom_wkb = new_geom.wkb
-
-    @property
-    def x(self):
-        return self.geom.x
-
-    @property
-    def y(self):
-        return self.geom.y
-
-    def __repr__(self):
-        return self.uid
-
-    def __eq__(self, other):
-        if isinstance(other, CityseerNode):
-            return self.uid == other.uid
-        return False
-
-    def __hash__(self):
-        return hash(self.__repr__)
-
-    def bump_node_id(self, network: nx.MultiGraph):
-        origin_uid = self.uid
-        append = 2
-        while True:
-            if self.uid not in network:
-                return
-            self.uid = f'{origin_uid}§v{append}'
-            append += 1
-
-
-class CityseerEdge:
-
-    def __init__(self,
-                 start_uid: str,
-                 end_uid: str,
-                 key_idx: int,
-                 geom: geometry.LineString = None):
-        if not isinstance(start_uid, float):
-            raise ValueError('A "str" type is required for the "start_uid" parameter.')
-        self._start_uid = start_uid
-        if not isinstance(end_uid, float):
-            raise ValueError('A "str" type is required for the "end_uid" parameter.')
-        self._end_uid = end_uid
-        if not isinstance(key_idx, int):
-            raise ValueError('A "int" type is required for the "key_idx" parameter.')
-        self._key_idx = key_idx
-        if not isinstance(geom, geometry.LineString):
-            raise ValueError('A shapely LineString type is required for the "line_geom" parameter.')
-        self._geom_wkb = geom.wkb
-
-    @property
-    def geom(self):
-        return wkb.loads(self._geom_wkb)
-
-    @property
-    def start_uid(self):
-        if self._start_uid is None:
-            return logger.warning('The "start_uid" property has not been set.')
-        return self._start_uid
-
-    @property
-    def end_uid(self):
-        if self._end_uid is None:
-            return logger.warning('The "end_uid" property has not been set.')
-        return self._end_uid
-
-    @property
-    def key_idx(self):
-        if self._key_idx is None:
-            return logger.warning('The "key_idx" property has not been set.')
-        return self._key_idx
-
-    def __repr__(self):
-        return f'Cityseer Edge spanning Nodes {self.start_uid} to {self.end_uid} ' \
-               f'at edge index {self.key_idx}' \
-               f'and as defined by geom {self._geom_wkb}.'
-
-    def __eq__(self, other):
-        if isinstance(other, CityseerEdge):
-            return (self.start_uid == other.start_uid
-                    and self.end_uid == other.end_uid
-                    and self.key_idx == other.key_idx) and self._geom_wkb == other._geom_wkb
-        return False
-
-    def __hash__(self):
-        return hash(self.__repr__)
-
-
-class CityseerGraph(nx.MultiGraph):
-
-    def add_node(self, node_for_adding, **attr):
-        if not isinstance(node_for_adding, (str, tuple)):
-            raise ValueError('Node "uids" must be of type "str".')
-        if 'geom' not in attr:
-            raise ValueError('A "geom" parameter is required.')
-        elif not isinstance(attr['geom'], geometry.Point):
-            raise TypeError('A shapely "Point" geometry is required for the "geom" parameter.')
-        geom = attr['geom']
-        del attr['geom']
-        node = CityseerNode(uid=node_for_adding,
-                            geom=geom,
-                            live=attr['live'] if 'live' in attr else None)
-        # check for duplicates
-        if node in self:
-            if node.geom == self.nodes[node.uid].geom:
-                logger.debug(f'Proposed new node {node.uid} would overlay a node that already exists '
-                             f'for the same location. Skipping.')
-                return None
-            node.bump_node_id(self)
-            logger.debug(f'A node of the same name already exists in the graph, '
-                         f'adding this node as {node.uid} instead.')
-        super().add_node(node, **attr)
-
-    def add_nodes_from(self, nodes_for_adding, **attr):
-        raise NotImplementedError('Not implemented. Please add nodes individually.')
-
-    def add_edge(self, u_for_edge, v_for_edge, key=None, **attr):
-        if not isinstance(u_for_edge, str) or not isinstance(v_for_edge, str):
-            raise TypeError('Start and end indices must be of type "str".')
-        if 'geom' in attr:
-            if not isinstance(attr['geom'], geometry.LineString):
-                raise ValueError('A shapely "LineString" type is required for explicitly defined "geoms".')
-            geom = attr['geom']
-            del attr['geom']
-        else:
-            start_xy = self.nodes[u_for_edge].geom.xy
-            end_xy = self.nodes[v_for_edge].geom.xy
-            geom = geometry.LineString([start_xy, end_xy])
-        if geom.length == 0:
-            return logger.warning(f'Unable to add edge of length 0m from node {u_for_edge} to {v_for_edge}.')
-        key_idx = self.number_of_edges(u_for_edge, v_for_edge)
-        edge = CityseerEdge(start_uid=u_for_edge,
-                            end_uid=v_for_edge,
-                            key_idx=key_idx,
-                            geom=geom)
-        super().add_edge(u_for_edge, v_for_edge, key=key, payload=edge)
-
-    def load_from_osm(self, osm_json: str):
-        """
-        Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
-
-        Parameters
-        -----------
-        osm_json
-            A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
-            consisting of `nodes` and `ways`.
-
-        Returns
-        -------
-        nx.MultiGraph
-            A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
-            coordinates.
-
-        """
-        osm_network_data = json.loads(osm_json)
-        for e in osm_network_data['elements']:
-            if e['type'] == 'node':
-                self.add_node(
-                    CityseerNode(
-                        uid=e['id'],
-                        geom=geometry.Point(e['lon'], e['lat'])
-                    ))
-        for e in osm_network_data['elements']:
-            if e['type'] == 'way':
-                count = len(e['nodes'])
-                for idx in range(count - 1):
-                    self.add_edge(u_for_edge=e['nodes'][idx],
-                               v_for_edge=e['nodes'][idx + 1])
-
-
-    def convert_WGS_to_UTM(self, force_zone_number: int = None):
-        """
-        Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
-        local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
-        will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
-        other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
-        a UTM boundary.
-
-        Parameters
-        ----------
-        networkX_multigraph
-            A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
-            attributes containing `LineString` geoms to be converted.
-        force_zone_number
-            An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-            UTM zones may introduce substantial distortions in the results. Defaults to None.
-
-        Returns
-        -------
-        nx.MultiGraph
-            A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
-             `geom` attributes are present, these will also be converted.
-        """
-        logger.info('Converting CityseerGraph from WGS to UTM.')
-        if force_zone_number is not None:
-            self.zone_number = force_zone_number
-        else:
-            self.zone_number = None
-        logger.info('Processing node x, y coordinates.')
-        for n, d in tqdm(self.nodes(data=True), disable=checks.quiet_mode):
-            lng, lat = n.geom.xy
-            # check for unintentional use of conversion
-            if abs(lng) > 180 or abs(lat) > 90:
-                raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
-            # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
-            if self.zone_number is None:
-                self.zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
-            # be cognisant of parameter and return order
-            # returns in easting, northing order
-            easting, northing = utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
-            # write back to graph
-            self.nodes[n].geom = geometry.Point(easting, northing)
-        # if line geom property provided, then convert as well
-        logger.info('Processing edge geom coordinates, if present.')
-        for s, e, k, payload in tqdm(self.edges(data=True, keys=True), disable=checks.quiet_mode):
-            # be cognisant of parameter and return order - returns in easting, northing order
-            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
-                          for lng, lat in payload.geom.coords]
-            # write back to edge
-            self[s][e][k].geom = geometry.LineString(utm_coords)
-
-
-def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
-                             despine: float = None,
-                             remove_disconnected: bool = True) -> nx.MultiGraph:
-    """
-    Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network
-    datasets.
-
-    Parameters
-    ----------
-    networkX_multigraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    despine
-        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
-        Defaults to None.
-    remove_disconnected
-        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
-        returned. Defaults to True.
-
-    Returns
-    -------
-    nx.MultiGraph
-        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
-         the `despine` parameter distance.
-    """
-    logger.info(f'Removing dangling nodes.')
-    g_multi_copy = networkX_multigraph.copy()
-    if remove_disconnected:
-        # finds connected components - this behaviour changed with networkx v2.4
-        connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))
-        # sort by largest component
-        g_nodes = sorted(connected_components, key=len, reverse=True)[0]
-        # make a copy of the graph using the largest component
-        g_multi_copy = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
-    if despine is not None and despine > 0:
-        remove_nodes = []
-        for n, d in tqdm(g_multi_copy.nodes(data=True), disable=checks.quiet_mode):
-            if nx.degree(g_multi_copy, n) == 1:
-                # only a single neighbour, so index-in directly and update at key = 0
-                nb = list(nx.neighbors(g_multi_copy, n))[0]
-                if g_multi_copy[n][nb][0]['geom'].length <= despine:
-                    remove_nodes.append(n)
-        g_multi_copy.remove_nodes_from(remove_nodes)
-
-    return g_multi_copy
-
-
 def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
                          idx: int,
                          xy: Tuple[float, float]) -> list:
@@ -344,7 +33,7 @@ def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coord
     if not isinstance(linestring_coords, (list, tuple, np.ndarray, coords.CoordinateSequence)):
         raise ValueError('Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.')
     linestring_coords = list(linestring_coords)
-    # check that the index is either 0 or 1
+    # check that the index is either 0 or -1
     if idx not in [0, -1]:
         raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
     # handle 3D
@@ -463,6 +152,364 @@ def _weld_linestring_coords(linestring_coords_a: Union[list, tuple, np.ndarray, 
         raise ValueError(f'Unable to weld LineString geometries with the given tolerance of {tolerance}.')
     # drop the duplicate interleaving coordinate
     return coords_a[:-1] + coords_b
+
+
+class NodeWrapper:
+
+    def __init__(self,
+                 uid: Union[str, tuple[str, ...]],
+                 geom: geometry.Point,
+                 live: bool):
+        if isinstance(uid, str):
+            self._uid = uid
+        elif isinstance(uid, tuple) and len(uid) == 1:
+            self._uid = uid[0]
+        elif isinstance(uid, tuple) and all(map(lambda i: isinstance(i, str), uid)):
+            uids = []
+            for u in uid:
+                u = str(u)
+                if len(u) > 10:
+                    u = f'{u[:5]}|{u[-5:]}'
+                uids.append(u)
+            self._uid = '±'.join(uids)
+        else:
+            raise TypeError('Requires a "uid" parameter consisting of a "str" type or tuple of "str".')
+        self.geom = geom
+        if not isinstance(live, bool):
+            raise TypeError('Requires a "live" parameter of type "bool".')
+        self.live = live
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @uid.setter
+    def uid(self, new_uid: str):
+        if not isinstance(new_uid, str):
+            raise TypeError('Requires a "uid" parameter consisting of a "str" type or tuple of "str".')
+        self._uid = new_uid
+
+    @property
+    def geom(self):
+        return wkb.loads(self._geom_wkb)
+
+    @geom.setter
+    def geom(self, new_geom: geometry.Point):
+        if not isinstance(new_geom, geometry.Point):
+            raise TypeError('Requires a "geom" parameter of shapely Point type.')
+        self._geom_wkb = new_geom.wkb
+
+    @property
+    def x(self):
+        return self.geom.x
+
+    @property
+    def y(self):
+        return self.geom.y
+
+    @property
+    def xy(self):
+        g = self.geom
+        return g.x, g.y
+
+    def __repr__(self):
+        return self.uid
+
+    def __eq__(self, other):
+        if isinstance(other, NodeWrapper):
+            return self.uid == other.uid
+        return False
+
+    def __hash__(self):
+        return hash(self.__repr__)
+
+    def bump_node_uid(self, network: nx.MultiGraph):
+        origin_uid = self.uid
+        append = 2
+        while True:
+            if self.uid not in network:
+                return
+            self.uid = f'{origin_uid}§v{append}'
+            append += 1
+
+    def persist_node_data(self, network):
+
+def wrap_node(graph: nx.MultiGraph, uid: str):
+    return NodeWrapper(uid=uid, **graph.nodes[uid])
+
+
+class EdgeWrapper:
+
+    def __init__(self,
+                 start_uid: str,
+                 end_uid: str,
+                 key_idx: int,
+                 geom: geometry.LineString):
+        if not isinstance(start_uid, str):
+            raise TypeError('Requires a "start_uid" parameter of type "str".')
+        self.start_uid = start_uid
+        if not isinstance(end_uid, str):
+            raise TypeError('Requires a "end_uid" parameter of type "str".')
+        self.end_uid = end_uid
+        if not isinstance(key_idx, int):
+            raise TypeError('Requires a "key_idx" parameter of type "int".')
+        self.key_idx = key_idx
+        self.geom = geom
+
+    @property
+    def geom(self):
+        return wkb.loads(self._geom_wkb)
+
+    @geom.setter
+    def geom(self, new_geom: geometry.LineString):
+        if not isinstance(new_geom, geometry.LineString):
+            raise TypeError('Requires a "geom" parameter of type shapely LineString.')
+        self._geom_wkb = new_geom.wkb
+
+    def __repr__(self):
+        return f'{self.start_uid} - {self.end_uid} - {self.key_idx}.'
+
+    def __eq__(self, other):
+        if isinstance(other, EdgeWrapper):
+            return self.start_uid == other.start_uid \
+                   and self.end_uid == other.end_uid \
+                   and self.key_idx == other.key_idx
+        return False
+
+    def __hash__(self):
+        return hash(self.__repr__)
+
+    def snap_edge(self,
+                  graph: nx.MultiGraph,
+                  tolerance: int):
+        start_node = wrap_node(graph=graph, uid=self.start_uid)
+        end_node = wrap_node(graph=graph, uid=self.end_uid)
+        line_coords = _align_linestring_coords(self.geom.coords,
+                                               xy=start_node.xy,
+                                               reverse=False,
+                                               tolerance=tolerance)
+        line_coords = _snap_linestring_startpoint(line_coords, start_node.xy)
+        line_coords = _snap_linestring_endpoint(line_coords, end_node.xy)
+        self.geom = geometry.LineString(line_coords)
+
+
+class CityseerGraph(nx.MultiGraph):
+
+    def add_node(self, node_for_adding: str, **attr):
+        """Overrides add_node with steps enforcing node semantics"""
+        try:
+            node = NodeWrapper(uid=node_for_adding, **attr)
+            nx.MultiGraph.add_node(self,
+                                   node.uid,
+                                   geom=node.geom,
+                                   live=node.live,
+                                   **attr)
+        except Exception as e:
+            logger.error('Unable to generate node from provided parameters.'
+                         'You may wish to use "add_cityseer_node" instead.')
+            raise e
+
+    def add_cityseer_node(self,
+                          uid: Union[str, tuple],
+                          geom: geometry.Point,
+                          live: bool = True,
+                          **attr):
+        if not isinstance(uid, (str, tuple)):
+            raise TypeError('Node "uids" must be of type "str" or a tuple of "str".')
+        if not isinstance(geom, geometry.Point):
+            raise TypeError('A shapely "Point" geometry is required for the "geom" parameter.')
+        node = NodeWrapper(uid=uid,
+                           geom=geom,
+                           live=live)
+        if node in self:
+            if node.geom == self.nodes[node.uid]['payload'].geom:
+                logger.debug(f'Proposed new node {node.uid} would overlay a node that already exists '
+                             f'for the same location. Skipping.')
+                return None
+            node.bump_node_uid(self)
+            logger.debug(f'A node of the same name already exists in the graph, '
+                         f'adding this node as {node.uid} instead.')
+        nx.MultiGraph.add_node(self,
+                               node.uid,
+                               geom_wkb=node.,
+                               live=node.live,
+                               **attr)
+
+    def add_edge(self, u_for_edge, v_for_edge, key=None, **attr):
+        """Overrides add_edge with steps enforcing node semantics"""
+        try:
+            edge = EdgeWrapper(start_uid=u_for_edge,
+                               end_uid=v_for_edge,
+                               key_idx=key,
+                               **attr)
+            nx.MultiGraph.add_edge(self,
+                                   u_for_edge=edge.start_uid,
+                                   v_of_edge=edge.end_uid,
+                                   key=edge.key_idx,
+                                   **attr)
+        except Exception as e:
+            logger.error('Unable to generate edge from provided parameters.'
+                         'You may wish to use "add_cityseer_edge" instead.')
+            raise e
+
+    def add_cityseer_edge(self,
+                          start_uid: str,
+                          end_uid: str,
+                          geom: geometry.LineString = None,
+                          snap_tolerance: int = checks.tolerance,
+                          **attr: dict):
+        if not isinstance(start_uid, str) or not isinstance(end_uid, str):
+            raise TypeError('Requires "start_uid" and "end_uid" parameters of type "str".')
+        if geom is None:
+            start_node = wrap_node(graph=self, uid=start_uid)
+            end_node = wrap_node(graph=self, uid=end_uid)
+            geom = geometry.LineString((start_node.xy, end_node.xy))
+        elif not isinstance(geom, geometry.LineString):
+            raise TypeError('Requires "geom" parameter of type shapely "LineString".')
+        if geom.length == 0:
+            return logger.warning(f'Unable to add edge of length 0m from node {start_uid} to {end_uid}.')
+        key_idx = self.number_of_edges(start_uid, end_uid)
+        edge = EdgeWrapper(start_uid=start_uid,
+                           end_uid=end_uid,
+                           key_idx=key_idx,
+                           geom=geom)
+        edge.snap_edge(self, tolerance=snap_tolerance)
+        nx.MultiGraph.add_edge(self,
+                               u_for_edge=edge.start_uid,
+                               v_for_edge=edge.end_uid,
+                               key=edge.key_idx,
+                               **attr)
+
+    def load_from_osm(self, osm_json: str):
+        """
+        Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+
+        Parameters
+        -----------
+        osm_json
+            A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
+            consisting of `nodes` and `ways`.
+
+        Returns
+        -------
+        nx.MultiGraph
+            A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
+            coordinates.
+
+        """
+        osm_network_data = json.loads(osm_json)
+        for e in osm_network_data['elements']:
+            if e['type'] == 'node':
+                self.add_cityseer_node(
+                    uid=e['id'],
+                    geom=geometry.Point(e['lon'], e['lat']),
+                    live=True)
+        for e in osm_network_data['elements']:
+            if e['type'] == 'way':
+                count = len(e['nodes'])
+                for idx in range(count - 1):
+                    self.add_cityseer_edge(start_uid=e['nodes'][idx],
+                                           end_uid=e['nodes'][idx + 1],
+                                           geom=None)
+
+    def convert_WGS_to_UTM(self, force_zone_number: int = None):
+        """
+        Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
+        local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
+        will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
+        other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
+        a UTM boundary.
+
+        Parameters
+        ----------
+        networkX_multigraph
+            A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
+            attributes containing `LineString` geoms to be converted.
+        force_zone_number
+            An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
+            UTM zones may introduce substantial distortions in the results. Defaults to None.
+
+        Returns
+        -------
+        nx.MultiGraph
+            A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
+             `geom` attributes are present, these will also be converted.
+        """
+        logger.info('Converting CityseerGraph from WGS to UTM.')
+        if force_zone_number is not None:
+            self.zone_number = force_zone_number
+        else:
+            self.zone_number = None
+        logger.info('Processing node x, y coordinates.')
+        for n in tqdm(self.nodes(), disable=checks.quiet_mode):
+            node = wrap_node(graph=self, uid=n)
+            lng, lat = node.xy
+            # check for unintentional use of conversion
+            if abs(lng) > 180 or abs(lat) > 90:
+                raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
+            if self.zone_number is None:
+                self.zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
+            # be cognisant of parameter and return order
+            # returns in easting, northing order
+            easting, northing = utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
+            # write back to graph
+            self.nodes[n].geom = geometry.Point(easting, northing)
+        # if line geom property provided, then convert as well
+        logger.info('Processing edge geom coordinates, if present.')
+        for s, e, k, payload in tqdm(self.edges(data=True, keys=True), disable=checks.quiet_mode):
+            # be cognisant of parameter and return order - returns in easting, northing order
+            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=self.zone_number)[:2]
+                          for lng, lat in payload.geom.coords]
+            # write back to edge
+            self[s][e][k].geom = geometry.LineString(utm_coords)
+
+
+def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
+                             despine: float = None,
+                             remove_disconnected: bool = True) -> nx.MultiGraph:
+    """
+    Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network
+    datasets.
+
+    Parameters
+    ----------
+    networkX_multigraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    despine
+        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
+        Defaults to None.
+    remove_disconnected
+        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
+        returned. Defaults to True.
+
+    Returns
+    -------
+    nx.MultiGraph
+        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
+         the `despine` parameter distance.
+    """
+    logger.info(f'Removing dangling nodes.')
+    g_multi_copy = networkX_multigraph.copy()
+    if remove_disconnected:
+        # finds connected components - this behaviour changed with networkx v2.4
+        connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))
+        # sort by largest component
+        g_nodes = sorted(connected_components, key=len, reverse=True)[0]
+        # make a copy of the graph using the largest component
+        g_multi_copy = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
+    if despine is not None and despine > 0:
+        remove_nodes = []
+        for n, d in tqdm(g_multi_copy.nodes(data=True), disable=checks.quiet_mode):
+            if nx.degree(g_multi_copy, n) == 1:
+                # only a single neighbour, so index-in directly and update at key = 0
+                nb = list(nx.neighbors(g_multi_copy, n))[0]
+                if g_multi_copy[n][nb][0]['geom'].length <= despine:
+                    remove_nodes.append(n)
+        g_multi_copy.remove_nodes_from(remove_nodes)
+
+    return g_multi_copy
 
 
 def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
@@ -1182,7 +1229,7 @@ def nX_split_opposing_geoms(networkX_multigraph: nx.MultiGraph,
             # add the new edges to the edge_children_map dictionary
             edge_key = make_edge_key(edge.start_uid, edge.end_uid, edge.idx_key)
             edge_children_map[edge_key] = [(edge.start_uid, new_nd_name, s_k, s_new_geom),
-                                       (edge.end_uid, new_nd_name, e_k, e_new_geom)]
+                                           (edge.end_uid, new_nd_name, e_k, e_new_geom)]
             # drop the old edge from _multi_graph
             if _multi_graph.has_edge(edge.start_uid, edge.end_uid, edge.idx_key):
                 _multi_graph.remove_edge(edge.start_uid, edge.end_uid, edge.idx_key)
