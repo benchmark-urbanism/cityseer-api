@@ -641,7 +641,7 @@ def test_local_centrality_time(primal_graph):
     # prime the function
     node_cent_wrapper()
     iters = 20000
-    # time and report - roughly 6.37
+    # time and report - roughly 6.37s on 4.2GHz i7
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f'node_cent_wrapper: {func_time} for {iters} iterations')
     assert func_time < 10
@@ -658,7 +658,7 @@ def test_local_centrality_time(primal_graph):
     # prime the function
     segment_cent_wrapper()
     iters = 20000
-    # time and report - roughly 9.36
+    # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
-    assert func_time < 10
+    assert func_time < 12

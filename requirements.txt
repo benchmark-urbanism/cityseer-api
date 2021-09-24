@@ -4,7 +4,7 @@ networkx>=2.4
 numba>=0.53
 numpy
 pytest
-shapely>=1.7.0
+shapely>=1.7
 sklearn
 tqdm
 utm

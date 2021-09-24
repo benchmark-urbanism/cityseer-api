@@ -279,7 +279,7 @@ def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coord
     if not isinstance(linestring_coords, (list, tuple, np.ndarray, coords.CoordinateSequence)):
         raise ValueError('Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.')
     linestring_coords = list(linestring_coords)
-    # check that the index is either 0 or 1
+    # check that the index is either 0 or -1
     if idx not in [0, -1]:
         raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
     # handle 3D
