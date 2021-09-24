@@ -2,8 +2,6 @@
 A collection of functions for the generation of mock data. This module is predominately used for writing code tests,
 but can otherwise be useful for demonstration and utility purposes.
 """
-from __future__ import annotations
-
 import logging
 import string
 from typing import Tuple
@@ -41,14 +39,17 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
 
     ```python
     from cityseer.tools import mock, plot
-    multi_graph = mock.mock_graph()
-    plot.plot_nX(multi_graph)
+    networkX_multigraph = mock.mock_graph()
+    plot.plot_nX(networkX_multigraph)
     ```
 
     ![Example graph](../../src/assets/plots/images/graph_example.png)
     _Mock graph._
 
     """
+
+    networkX_multigraph = nx.MultiGraph()
+
     nodes = [
         (0, {'x': 700700, 'y': 5719700}),
         (1, {'x': 700610, 'y': 5719780}),
@@ -113,11 +114,9 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         # add a parallel edge
         (56, {'x': 701300, 'y': 5719110})
     ]
-    multi_graph = graphs.CityseerGraph()
-    for node in nodes:
-        uid = str(node[0])
-        geom = geometry.Point(node[1]['x'], node[1]['y'])
-        multi_graph.add_cityseer_node(uid, geom=geom)
+
+    networkX_multigraph.add_nodes_from(nodes)
+
     edges = [
         (0, 1),
         (0, 16),
@@ -203,13 +202,20 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
         (45, 56),
         (30, 56)
     ]
-    for edge in edges:
-        multi_graph.add_cityseer_edge(str(edge[0]), str(edge[1]))
+
+    networkX_multigraph.add_edges_from(edges)
 
     if wgs84_coords:
-        multi_graph.convert_WGS_to_UTM()
+        for n, d in networkX_multigraph.nodes(data=True):
+            easting = d['x']
+            northing = d['y']
+            # be cognisant of parameter and return order
+            # returns in lat, lng order
+            lat, lng = utm.to_latlon(easting, northing, 30, 'U')
+            networkX_multigraph.nodes[n]['x'] = lng
+            networkX_multigraph.nodes[n]['y'] = lat
 
-    return multi_graph
+    return networkX_multigraph
 
 
 @pytest.fixture
