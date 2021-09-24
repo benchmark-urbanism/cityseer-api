@@ -23,7 +23,8 @@ setup(
         'networkx>=2.4',
         'numba>=0.53',
         'numpy',
-        'shapely>=1.8.a2',
+        'pytest',
+        'shapely>=1.7',
         'sklearn',
         'tqdm',
         'utm'
