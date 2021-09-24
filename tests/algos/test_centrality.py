@@ -644,7 +644,7 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 6.37s on 4.2GHz i7
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f'node_cent_wrapper: {func_time} for {iters} iterations')
-    assert func_time < 8
+    assert func_time < 10
 
     def segment_cent_wrapper():
         centrality.local_segment_centrality(node_data,

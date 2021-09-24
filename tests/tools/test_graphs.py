@@ -11,16 +11,17 @@ from cityseer.tools.mock import mock_graph, primal_graph, diamond_graph
 
 def test_nX_simple_geoms():
     # generate a mock graph
-    g = mock_graph()
+    g_raw = mock_graph()
+    g_copy = graphs.nX_simple_geoms(g_raw)
     # test that geoms have been inferred correctly
-    for s, e, k in g.edges(keys=True):
+    for s, e, k in g_copy.edges(keys=True):
         line_geom = geometry.LineString([
-            [g.nodes[s]['x'], g.nodes[s]['y']],
-            [g.nodes[e]['x'], g.nodes[e]['y']]
+            [g_raw.nodes[s]['x'], g_raw.nodes[s]['y']],
+            [g_raw.nodes[e]['x'], g_raw.nodes[e]['y']]
         ])
-        assert line_geom == g[s][e][k]['geom']
+        assert line_geom == g_copy[s][e][k]['geom']
     # check that missing node keys throw an error
-    g_copy = g.copy()
+    g_copy = g_raw.copy()
     for k in ['x', 'y']:
         for n in g_copy.nodes():
             # delete key from first node and break
@@ -29,9 +30,8 @@ def test_nX_simple_geoms():
         # check that missing key throws an error
         with pytest.raises(KeyError):
             graphs.nX_simple_geoms(g_copy)
-
     # check that zero length self-loops are caught and removed
-    g_copy = g.copy()
+    g_copy = g_raw.copy()
     g_copy.add_edge(0, 0)  # simple geom from self edge = length of zero
     g_simple = graphs.nX_simple_geoms(g_copy)
     assert not g_simple.has_edge(0, 0)
