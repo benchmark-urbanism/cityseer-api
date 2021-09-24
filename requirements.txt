@@ -4,6 +4,7 @@ networkx>=2.4
 numba>=0.53
 numpy
 pytest
+requests
 shapely>=1.7
 sklearn
 tqdm
