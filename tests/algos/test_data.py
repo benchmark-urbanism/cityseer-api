@@ -623,64 +623,6 @@ def test_local_aggregator_numerical_components(primal_graph):
                                mock_numerical[stats_idx, connected_data_idx].var(), atol=0.001, rtol=0)
 
 
-# TODO: add more extensive tests if / when publishing this function
-def test_model_singly_constrained():
-    import networkx as nx
-
-    G = nx.MultiGraph()
-    G.add_node(0, x=0, y=0)
-    G.add_node(1, x=100, y=0)
-    G.add_node(2, x=200, y=0)
-    G.add_node(3, x=300, y=0)
-    G.add_node(4, x=400, y=0)
-    G.add_edge(0, 1)
-    G.add_edge(1, 2)
-    G.add_edge(2, 3)
-    G.add_edge(3, 4)
-    G = graphs.nX_simple_geoms(G)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(G)  # generate node and edge maps
-
-    landuses = {}
-    pop = {}
-    counter = 0
-    for n, d in G.nodes(data=True):
-        landuses[counter] = {
-            'x': d['x'],
-            'y': d['y']
-        }
-        pop[counter] = {
-            'x': d['x'],
-            'y': d['y']
-        }
-        counter += 1
-
-    landuse_uids, landuse_map = layers.data_map_from_dict(landuses)
-    landuse_map = data.assign_to_network(landuse_map, node_data, edge_data, node_edge_map, 500)
-
-    pop_uids, pop_map = layers.data_map_from_dict(pop)
-    pop_map = data.assign_to_network(pop_map, node_data, edge_data, node_edge_map, 500)
-
-    betas = np.array([0.00125])
-    distances = networks.distance_from_beta(betas)
-
-    pop = np.array([3, 3, 3, 3, 3])
-    lu = np.array([0, 0, 0, 0, 1])
-
-    j_assigned, netw_flows = data.singly_constrained(node_data,
-                                                     edge_data,
-                                                     node_edge_map,
-                                                     distances,
-                                                     betas,
-                                                     pop_map,
-                                                     landuse_map,
-                                                     pop,
-                                                     lu)
-
-    assert np.sum(j_assigned) == np.sum(pop)
-    assert np.allclose(j_assigned, [[0, 0, 0, 0, 15]], atol=0.001, rtol=0)
-    assert np.allclose(netw_flows, [[3, 6, 9, 12, 15]], atol=0.001, rtol=0)
-
-
 def test_local_agg_time(primal_graph):
     """
     Timing tests for landuse and stats aggregations
@@ -725,6 +667,7 @@ def test_local_agg_time(primal_graph):
                                                                                    landuse_encodings=landuse_encodings,
                                                                                    qs=qs,
                                                                                    angular=False)
+
     # prime the function
     landuse_agg_wrapper()
     iters = 20000
@@ -743,6 +686,7 @@ def test_local_agg_time(primal_graph):
                              betas,
                              numerical_arrays=mock_numerical,
                              angular=False)
+
     # prime the function
     stats_agg_wrapper()
     iters = 20000
