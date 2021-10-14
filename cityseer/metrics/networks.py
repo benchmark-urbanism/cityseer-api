@@ -183,7 +183,7 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     return -np.log(min_threshold_wt) / distance
 
 
-#%%
+# %%
 def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
                           min_threshold_wt: float = checks.def_min_thresh_wt) -> float:
     """
@@ -734,15 +734,17 @@ class NetworkLayer:
     # provides access to the underlying centrality.local_centrality method
     def node_centrality(self,
                         measures: Union[list, tuple] = None,
+                        jitter_sdev: float = 1.0,
                         angular: bool = False):
         """
-
-
         Parameters
         ----------
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
+        jitter_sdev
+            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
+            situations with highly rectilinear grids. Set to zero to remove all jitter.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -814,15 +816,15 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        measures_data = centrality.local_node_centrality(
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances),
-            np.array(self._betas),
-            measure_keys,
-            angular,
-            suppress_progress=checks.quiet_mode)
+        measures_data = centrality.local_node_centrality(self._node_data,
+                                                         self._edge_data,
+                                                         self._node_edge_map,
+                                                         np.array(self._distances),
+                                                         np.array(self._betas),
+                                                         measure_keys,
+                                                         jitter_sdev=jitter_sdev,
+                                                         angular=angular,
+                                                         suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
@@ -835,6 +837,7 @@ class NetworkLayer:
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(self,
                            measures: Union[list, tuple] = None,
+                           jitter_sdev: float = 1.0,
                            angular: bool = False):
         """
         A list or tuple of strings, containing any combination of the following `key` values, computed within the
@@ -845,6 +848,9 @@ class NetworkLayer:
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
+        jitter_sdev
+            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
+            situations with highly rectilinear grids. Set to zero to remove all jitter.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -903,15 +909,15 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        measures_data = centrality.local_segment_centrality(
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances),
-            np.array(self._betas),
-            measure_keys,
-            angular,
-            suppress_progress=checks.quiet_mode)
+        measures_data = centrality.local_segment_centrality(self._node_data,
+                                                            self._edge_data,
+                                                            self._node_edge_map,
+                                                            np.array(self._distances),
+                                                            np.array(self._betas),
+                                                            measure_keys,
+                                                            jitter_sdev=jitter_sdev,
+                                                            angular=angular,
+                                                            suppress_progress=checks.quiet_mode)
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior

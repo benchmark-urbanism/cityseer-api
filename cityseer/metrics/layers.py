@@ -635,6 +635,7 @@ class DataLayer:
                                     mixed_use_other_keys=np.array(mu_other_keys),
                                     accessibility_keys=np.array(acc_keys),
                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
+                                    jitter_sdev=0,
                                     angular=angular,
                                     suppress_progress=checks.quiet_mode)
         # write the results to the Network's metrics dict
@@ -915,6 +916,7 @@ class DataLayer:
                                  distances=np.array(self.Network.distances),
                                  betas=np.array(self.Network.betas),
                                  numerical_arrays=stats_data_arrs,
+                                 jitter_sdev=0,
                                  angular=angular,
                                  suppress_progress=checks.quiet_mode)
         # unpack the numerical arrays
