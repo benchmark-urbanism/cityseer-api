@@ -317,6 +317,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
                          node_edge_map: Dict,
                          data_map: np.ndarray,
                          max_dist: float,
+                         jitter_sdev: float = 1.0,
                          angular: bool = False):
     # this function is typically called iteratively, so do type checks from parent methods
     netw_x_arr = node_data[:, 0]
@@ -336,6 +337,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
                                                          node_edge_map,
                                                          netw_src_idx,
                                                          max_dist=max_dist,
+                                                         jitter_sdev=jitter_sdev,
                                                          angular=angular)  # turn off checks! This is called iteratively...
     tree_preds = tree_map[:, 1]
     tree_dists = tree_map[:, 2]
@@ -395,6 +397,7 @@ def aggregate_landuses(node_data: np.ndarray,
                        mixed_use_other_keys: np.ndarray = np.array([]),
                        accessibility_keys: np.ndarray = np.array([]),
                        cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
+                       jitter_sdev: float = 1.0,
                        angular: bool = False,
                        suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -513,7 +516,8 @@ def aggregate_landuses(node_data: np.ndarray,
                                                                                node_edge_map,
                                                                                data_map,
                                                                                global_max_dist,
-                                                                               angular)
+                                                                               jitter_sdev=jitter_sdev,
+                                                                               angular=angular)
         # LANDUSES
         mu_max_unique_cl = int(landuse_encodings.max() + 1)
         # counts of each class type (array length per max unique classes - not just those within max distance)
@@ -601,6 +605,7 @@ def aggregate_stats(node_data: np.ndarray,
                     distances: np.ndarray,
                     betas: np.ndarray,
                     numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
+                    jitter_sdev: float = 1.0,
                     angular: bool = False,
                     suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -668,7 +673,8 @@ def aggregate_stats(node_data: np.ndarray,
                                                                                node_edge_map,
                                                                                data_map,
                                                                                global_max_dist,
-                                                                               angular)
+                                                                               jitter_sdev=jitter_sdev,
+                                                                               angular=angular)
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array
         # iterate the reachable indices and related distances

@@ -40,6 +40,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                                  node_edge_map_p,
                                                                  src_idx,
                                                                  max_dist=max_dist,
+                                                                 jitter_sdev=0,
                                                                  angular=False)
             tree_preds_p = tree_map[:, 1]
             tree_dists_p = tree_map[:, 2]
@@ -68,12 +69,14 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                                  node_edge_map_p,
                                                                  p_source_idx,
                                                                  max_dist=max_dist,
+                                                                 jitter_sdev=0,
                                                                  angular=True)
         tree_imps_p = tree_map_p[:, 3]
         tree_map_d, tree_edges_d = centrality.shortest_path_tree(edge_data_d,
                                                                  node_edge_map_d,
                                                                  d_source_idx,
                                                                  max_dist=max_dist,
+                                                                 jitter_sdev=0,
                                                                  angular=True)
         tree_imps_d = tree_map_d[:, 3]
         assert np.allclose(tree_imps_p[p_target_idx], tree_imps_d[d_target_idx], atol=0.001, rtol=0)
@@ -86,6 +89,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
+                                                         jitter_sdev=0,
                                                          angular=True)  # ANGULAR = TRUE
     # find path
     tree_preds = tree_map[:, 1]
@@ -100,6 +104,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
+                                                         jitter_sdev=0,
                                                          angular=False)  # ANGULAR = FALSE
     # find path
     tree_preds = tree_map[:, 1]
@@ -116,6 +121,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
+                                                         jitter_sdev=0,
                                                          angular=True)
     # find path
     tree_preds = tree_map[:, 1]
@@ -133,6 +139,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                          node_edge_map_d,
                                                          src_idx,
                                                          max_dist=np.inf,
+                                                         jitter_sdev=0,
                                                          angular=False)
     # find path
     tree_preds = tree_map[:, 1]
@@ -173,7 +180,8 @@ def test_local_node_centrality(primal_graph):
                                                      node_edge_map,
                                                      distances,
                                                      betas,
-                                                     measure_keys)
+                                                     measure_keys,
+                                                     jitter_sdev=0)
     node_density = measures_data[measure_keys.index('node_density')]
     node_farness = measures_data[measure_keys.index('node_farness')]
     node_cycles = measures_data[measure_keys.index('node_cycles')]
@@ -229,6 +237,7 @@ def test_local_node_centrality(primal_graph):
                                                              node_edge_map,
                                                              src_idx,
                                                              max(distances),
+                                                             jitter_sdev=0,
                                                              angular=False)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
@@ -295,7 +304,8 @@ def test_local_node_centrality(primal_graph):
                                          node_edge_map,
                                          distances,
                                          betas,
-                                         ('typo_key',))
+                                         ('typo_key',),
+                                         jitter_sdev=0)
 
 
 def test_local_centrality(diamond_graph):
@@ -330,7 +340,8 @@ def test_local_centrality(diamond_graph):
                                                      node_edge_map,
                                                      distances,
                                                      betas,
-                                                     measure_keys)
+                                                     measure_keys,
+                                                     jitter_sdev=0)
     # node density
     # additive nodes
     m_idx = node_keys.index('node_density')
@@ -393,6 +404,7 @@ def test_local_centrality(diamond_graph):
                                                      distances,
                                                      betas,
                                                      measure_keys,
+                                                     jitter_sdev=0,
                                                      angular=True)
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
@@ -420,6 +432,7 @@ def test_local_centrality(diamond_graph):
                                                      distances,
                                                      betas,
                                                      measure_keys,
+                                                     jitter_sdev=0,
                                                      angular=True)
     # node_uids_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
@@ -450,6 +463,7 @@ def test_local_centrality(diamond_graph):
                                                         distances,
                                                         betas,
                                                         measure_keys,
+                                                        jitter_sdev=0,
                                                         angular=False)
     # segment density
     # additive segment lengths
@@ -496,6 +510,7 @@ def test_local_centrality(diamond_graph):
                                                         distances,
                                                         betas,
                                                         measure_keys,
+                                                        jitter_sdev=0,
                                                         angular=True)
     # segment density
     # additive segment lengths divided through angular impedance
@@ -546,6 +561,7 @@ def test_decomposed_local_centrality(primal_graph):
                                                           distances,
                                                           betas,
                                                           node_measure_keys,
+                                                          jitter_sdev=0,
                                                           angular=False)
     # decomposed case
     node_measures_data_decomposed = centrality.local_node_centrality(node_data_decomp,
@@ -554,6 +570,7 @@ def test_decomposed_local_centrality(primal_graph):
                                                                      distances,
                                                                      betas,
                                                                      node_measure_keys,
+                                                                     jitter_sdev=0,
                                                                      angular=False)
     # node
     d_range = len(distances)
@@ -571,6 +588,7 @@ def test_decomposed_local_centrality(primal_graph):
                                                                 distances,
                                                                 betas,
                                                                 segment_measure_keys,
+                                                                jitter_sdev=0,
                                                                 angular=False)
     segment_measures_data_decomposed = centrality.local_segment_centrality(node_data_decomp,
                                                                            edge_data_decomp,
@@ -578,6 +596,7 @@ def test_decomposed_local_centrality(primal_graph):
                                                                            distances,
                                                                            betas,
                                                                            segment_measure_keys,
+                                                                           jitter_sdev=0,
                                                                            angular=False)
     m_range = len(segment_measure_keys)
     assert segment_measures_data.shape == (m_range, d_range, len(primal_graph))
@@ -636,6 +655,7 @@ def test_local_centrality_time(primal_graph):
                                          distances,
                                          betas,
                                          ('node_harmonic', 'node_betweenness'),
+                                         jitter_sdev=0,
                                          angular=False,
                                          suppress_progress=True)
     # prime the function
@@ -653,6 +673,7 @@ def test_local_centrality_time(primal_graph):
                                             distances,
                                             betas,
                                             ('segment_harmonic', 'segment_betweenness'),
+                                            jitter_sdev=0,
                                             angular=False,
                                             suppress_progress=True)
     # prime the function
@@ -661,4 +682,4 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
-    assert func_time < 12
+    assert func_time < 13

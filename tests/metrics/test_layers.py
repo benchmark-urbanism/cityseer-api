@@ -131,7 +131,8 @@ def test_compute_landuses(primal_graph):
                                                                                betas,
                                                                                landuse_encodings,
                                                                                qs=qs,
-                                                                               mixed_use_hill_keys=np.array([1]))
+                                                                               mixed_use_hill_keys=np.array([1]),
+                                                                               jitter_sdev=0)
     for q_idx, q_key in enumerate(qs):
         for d_idx, d_key in enumerate(distances):
             assert np.allclose(N.metrics['mixed_uses']['hill_branch_wt'][q_key][d_key],
@@ -147,7 +148,8 @@ def test_compute_landuses(primal_graph):
                                                                                distances,
                                                                                betas,
                                                                                landuse_encodings,
-                                                                               mixed_use_other_keys=np.array([1]))
+                                                                               mixed_use_other_keys=np.array([1]),
+                                                                               jitter_sdev=0)
     for d_idx, d_key in enumerate(distances):
         assert np.allclose(N.metrics['mixed_uses']['gini_simpson'][d_key], mu_data_other[0][d_idx], atol=0.001, rtol=0)
     # accessibilities
@@ -162,7 +164,8 @@ def test_compute_landuses(primal_graph):
                                                                                betas,
                                                                                landuse_encodings,
                                                                                accessibility_keys=np.array(
-                                                                                   [landuse_classes.index('c')]))
+                                                                                   [landuse_classes.index('c')]),
+                                                                               jitter_sdev=0)
     for d_idx, d_key in enumerate(distances):
         assert np.allclose(N.metrics['accessibility']['non_weighted']['c'][d_key], ac_data[0][d_idx], atol=0.001,
                            rtol=0)
@@ -222,7 +225,8 @@ def test_compute_landuses(primal_graph):
                                                                                            mixed_use_hill_keys=mu_h_keys,
                                                                                            mixed_use_other_keys=mu_o_keys,
                                                                                            accessibility_keys=ac_keys,
-                                                                                           cl_disparity_wt_matrix=mock_disparity_wt_matrix)
+                                                                                           cl_disparity_wt_matrix=mock_disparity_wt_matrix,
+                                                                                           jitter_sdev=0)
                 for mu_h_idx, mu_h_met in enumerate(mu_h_metrics):
                     for q_idx, q_key in enumerate(qs):
                         for d_idx, d_key in enumerate(distances):
@@ -356,7 +360,8 @@ def test_compute_stats(primal_graph):
                              data_map,
                              distances,
                              betas,
-                             numerical_arrays=mock_numeric)
+                             numerical_arrays=mock_numeric,
+                             jitter_sdev=0)
     stats_keys = ['max', 'min', 'sum', 'sum_weighted', 'mean', 'mean_weighted', 'variance', 'variance_weighted']
     stats_data = [stats_max, stats_min,
                   stats_sum, stats_sum_wt,
