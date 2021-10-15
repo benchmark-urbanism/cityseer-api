@@ -360,6 +360,7 @@ class DataLayer:
                          accessibility_keys: Union[list, tuple] = None,
                          cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
                          qs: Union[list, tuple, np.ndarray] = None,
+                         jitter_sdev: float = 1.0,
                          angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
@@ -635,7 +636,7 @@ class DataLayer:
                                     mixed_use_other_keys=np.array(mu_other_keys),
                                     accessibility_keys=np.array(acc_keys),
                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
-                                    jitter_sdev=0,
+                                    jitter_sdev=jitter_sdev,
                                     angular=angular,
                                     suppress_progress=checks.quiet_mode)
         # write the results to the Network's metrics dict
@@ -748,6 +749,7 @@ class DataLayer:
                           list,
                           tuple,
                           np.ndarray],
+                      jitter_sdev: float = 1.0,
                       angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
@@ -916,7 +918,7 @@ class DataLayer:
                                  distances=np.array(self.Network.distances),
                                  betas=np.array(self.Network.betas),
                                  numerical_arrays=stats_data_arrs,
-                                 jitter_sdev=0,
+                                 jitter_sdev=jitter_sdev,
                                  angular=angular,
                                  suppress_progress=checks.quiet_mode)
         # unpack the numerical arrays
@@ -961,37 +963,6 @@ class DataLayer:
         """
         raise DeprecationWarning('The compute_stats_multiple method has been deprecated. '
                                  'Please use the compute_stats method instead.')
-
-    def model_singly_constrained(self,
-                                 key: str,
-                                 i_data_map: np.ndarray,
-                                 j_data_map: np.ndarray,
-                                 i_weights: Union[list, tuple, np.ndarray],
-                                 j_weights: Union[list, tuple, np.ndarray],
-                                 angular: bool = False):
-        """
-        Undocumented method for computing singly-constrained interactions.
-        """
-        j_assigned, netw_flows = data.singly_constrained(self.Network._node_data,
-                                                         self.Network._edge_data,
-                                                         self.Network._node_edge_map,
-                                                         distances=np.array(self.Network.distances),
-                                                         betas=np.array(self.Network.betas),
-                                                         i_data_map=i_data_map,
-                                                         j_data_map=j_data_map,
-                                                         i_weights=np.array(i_weights),
-                                                         j_weights=np.array(j_weights),
-                                                         angular=angular,
-                                                         suppress_progress=checks.quiet_mode)
-
-        # write the results to the Network's metrics dict
-        if key not in self.Network.metrics['models']:
-            self.Network.metrics['models'][key] = {}
-        for d_idx, d_key in enumerate(self.Network.distances):
-            if d_key not in self.Network.metrics['models'][key]:
-                self.Network.metrics['models'][key][d_key] = {}
-            self.Network.metrics['models'][key][d_key]['assigned_trips'] = j_assigned[d_idx]
-            self.Network.metrics['models'][key][d_key]['network_flows'] = netw_flows[d_idx]
 
 
 class DataLayerFromDict(DataLayer):
