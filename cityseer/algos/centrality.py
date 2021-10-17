@@ -7,6 +7,9 @@ from numba.typed import List, Dict
 from cityseer.algos import checks
 
 
+# Note: Tempting to wrap these into a numba jitclass, but parallel and fastmath njit flags are not yet supported.
+
+
 @njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def shortest_path_tree(edge_data: np.ndarray,
                        node_edge_map: Dict,
