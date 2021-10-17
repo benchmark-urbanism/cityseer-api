@@ -1,5 +1,5 @@
 """
-DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.7b2
+DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.7b3
 """
 
 from setuptools import setup
