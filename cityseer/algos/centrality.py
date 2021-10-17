@@ -1,4 +1,5 @@
 from typing import Tuple
+
 import numpy as np
 from numba import njit, types, prange
 from numba.typed import List, Dict
@@ -7,13 +8,12 @@ from cityseer.algos import checks
 
 
 @njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def shortest_path_tree(
-        edge_data: np.ndarray,
-        node_edge_map: Dict,
-        src_idx: int,
-        max_dist: float = np.inf,
-        jitter_sdev: float = 1.0,
-        angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def shortest_path_tree(edge_data: np.ndarray,
+                       node_edge_map: Dict,
+                       src_idx: int,
+                       max_dist: float = np.inf,
+                       jitter_sdev: float = 1.0,
+                       angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
     """
     All shortest paths to max network distance from source node
     Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance
@@ -152,7 +152,10 @@ def shortest_path_tree(
 
 
 @njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _find_edge_idx(node_edge_map: Dict, edge_data: np.ndarray, start_nd_idx: int, end_nd_idx: int) -> int:
+def _find_edge_idx(node_edge_map: Dict,
+                   edge_data: np.ndarray,
+                   start_nd_idx: int,
+                   end_nd_idx: int) -> int:
     """
     Finds an edge from start and end nodes
     """

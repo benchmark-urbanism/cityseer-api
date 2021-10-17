@@ -348,9 +348,15 @@ def test_compute_stats(primal_graph):
     # generate some mock landuse data
     mock_numeric = mock.mock_numerical_data(len(data_dict), num_arrs=2)
     # generate stats
-    D_single.compute_stats(stats_keys='boo', stats_data_arrs=mock_numeric[0])
-    D_single.compute_stats(stats_keys='baa', stats_data_arrs=mock_numeric[1])
-    D_multi.compute_stats(stats_keys=['boo', 'baa'], stats_data_arrs=mock_numeric)
+    D_single.compute_stats(stats_keys='boo',
+                           stats_data_arrs=mock_numeric[0],
+                           jitter_sdev=0)
+    D_single.compute_stats(stats_keys='baa',
+                           stats_data_arrs=mock_numeric[1],
+                           jitter_sdev=0)
+    D_multi.compute_stats(stats_keys=['boo', 'baa'],
+                          stats_data_arrs=mock_numeric,
+                          jitter_sdev=0)
     # test against underlying method
     data_map = D_single._data
     stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
