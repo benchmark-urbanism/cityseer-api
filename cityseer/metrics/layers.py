@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Tuple, List, Union
 
 import numpy as np
 import utm
@@ -101,7 +102,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     return data_dict_copy
 
 
-def encode_categorical(classes: Union[list, tuple, np.ndarray]) -> Tuple[tuple, np.ndarray]:
+def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.ndarray]:
     """
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
@@ -148,7 +149,7 @@ def encode_categorical(classes: Union[list, tuple, np.ndarray]) -> Tuple[tuple, 
     return tuple(le.classes_), classes_int
 
 
-def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
+def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
@@ -227,7 +228,7 @@ class DataLayer:
     """
 
     def __init__(self,
-                 data_uids: Union[list, tuple],
+                 data_uids: list | tuple,
                  data_map: np.ndarray):
         """
 
@@ -289,7 +290,7 @@ class DataLayer:
 
     def assign_to_network(self,
                           Network_Layer: networks.NetworkLayer,
-                          max_dist: Union[int, float]):
+                          max_dist: int | float):
         """
         Once created, a [`DataLayer`](#class-datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#class-networklayer). The
         `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street
@@ -355,11 +356,11 @@ class DataLayer:
                                  'See the documentation for further information.')
 
     def compute_landuses(self,
-                         landuse_labels: Union[list, tuple, np.ndarray],
-                         mixed_use_keys: Union[list, tuple] = None,
-                         accessibility_keys: Union[list, tuple] = None,
-                         cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
-                         qs: Union[list, tuple, np.ndarray] = None,
+                         landuse_labels: list | tuple | np.ndarray,
+                         mixed_use_keys: list | tuple = None,
+                         accessibility_keys: list | tuple = None,
+                         cl_disparity_wt_matrix: list | tuple | np.ndarray = None,
+                         qs: list | tuple | np.ndarray = None,
                          jitter_sdev: float = 1.0,
                          angular: bool = False):
         """
@@ -669,8 +670,8 @@ class DataLayer:
                     self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
 
     def hill_diversity(self,
-                       landuse_labels: Union[list, tuple, np.ndarray],
-                       qs: Union[list, tuple, np.ndarray] = None):
+                       landuse_labels: list | tuple | np.ndarray,
+                       qs: list | tuple | np.ndarray = None):
         """
         Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -692,8 +693,8 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, mixed_use_keys=['hill'], qs=qs)
 
     def hill_branch_wt_diversity(self,
-                                 landuse_labels: Union[list, tuple, np.ndarray],
-                                 qs: Union[list, tuple, np.ndarray] = None):
+                                 landuse_labels: list | tuple | np.ndarray,
+                                 qs: list | tuple | np.ndarray = None):
         """
         Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -715,8 +716,8 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
 
     def compute_accessibilities(self,
-                                landuse_labels: Union[list, tuple, np.ndarray],
-                                accessibility_keys: Union[list, tuple]):
+                                landuse_labels: list | tuple | np.ndarray,
+                                accessibility_keys: list | tuple):
         """
         Compute land-use accessibilities for the specified land-use classification keys. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -742,13 +743,10 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, accessibility_keys=accessibility_keys)
 
     def compute_stats(self,
-                      stats_keys: Union[str, list, tuple],
-                      stats_data_arrs: Union[
-                          List[Union[list, tuple, np.ndarray]],
-                          Tuple[Union[list, tuple, np.ndarray]],
-                          list,
-                          tuple,
-                          np.ndarray],
+                      stats_keys: str | list | tuple,
+                      stats_data_arrs: list | tuple | np.ndarray |
+                                       list[list | tuple | np.ndarray] |
+                                       tuple[list | tuple | np.ndarray],
                       jitter_sdev: float = 1.0,
                       angular: bool = False):
         """

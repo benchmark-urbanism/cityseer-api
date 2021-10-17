@@ -1,8 +1,9 @@
 """
 Centrality methods
 """
+from __future__ import annotations
+
 import logging
-from typing import Union
 
 import networkx as nx
 import numpy as np
@@ -15,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def distance_from_beta(beta: Union[float, list, np.ndarray],
+def distance_from_beta(beta: float | list | np.ndarray,
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
@@ -115,7 +116,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     return np.log(min_threshold_wt) / -beta
 
 
-def beta_from_distance(distance: Union[float, list, np.ndarray],
+def beta_from_distance(distance: float | list | np.ndarray,
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
 
@@ -184,7 +185,7 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
 
 
 # %%
-def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
+def avg_distance_for_beta(beta: float | list | np.ndarray,
                           min_threshold_wt: float = checks.def_min_thresh_wt) -> float:
     """
     Parameters
@@ -372,12 +373,12 @@ class NetworkLayer:
     """
 
     def __init__(self,
-                 node_uids: Union[list, tuple],
+                 node_uids: list | tuple,
                  node_data: np.ndarray,
                  edge_data: np.ndarray,
                  node_edge_map: Dict,
-                 distances: Union[list, tuple, np.ndarray] = None,
-                 betas: Union[list, tuple, np.ndarray] = None,
+                 distances: list | tuple | np.ndarray = None,
+                 betas: list | tuple | np.ndarray = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
         """
         Parameters
@@ -733,7 +734,7 @@ class NetworkLayer:
 
     # provides access to the underlying centrality.local_centrality method
     def node_centrality(self,
-                        measures: Union[list, tuple] = None,
+                        measures: list | tuple = None,
                         jitter_sdev: float = 1.0,
                         angular: bool = False):
         """
@@ -836,7 +837,7 @@ class NetworkLayer:
 
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(self,
-                           measures: Union[list, tuple] = None,
+                           measures: list | tuple = None,
                            jitter_sdev: float = 1.0,
                            angular: bool = False):
         """
@@ -931,8 +932,8 @@ class NetworkLayer:
 class NetworkLayerFromNX(NetworkLayer):
     def __init__(self,
                  networkX_multigraph: nx.MultiGraph,
-                 distances: Union[list, tuple, np.ndarray] = None,
-                 betas: Union[list, tuple, np.ndarray] = None,
+                 distances: list | tuple | np.ndarray = None,
+                 betas: list | tuple | np.ndarray = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of

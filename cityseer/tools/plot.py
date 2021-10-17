@@ -3,8 +3,9 @@ Convenience methods for plotting graphs within the cityseer API context. This mo
 plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the
 underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
 """
+from __future__ import annotations
+
 import logging
-from typing import Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -36,17 +37,17 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            dual_graph: nx.MultiGraph = None,
                            path: str = None,
                            labels: bool = False,
-                           primal_node_size: int = 30,
-                           primal_node_colour: Union[str, tuple, list] = None,
+                           primal_node_size: str | tuple | list | np.ndarray = 30,
+                           primal_node_colour: str | tuple | list | np.ndarray = None,
                            primal_edge_colour: str = None,
                            dual_node_size: int = 30,
-                           dual_node_colour: Union[str, tuple, list] = None,
+                           dual_node_colour: str | tuple | list | np.ndarray = None,
                            dual_edge_colour: str = None,
-                           primal_edge_width: Union[int, float] = None,
-                           dual_edge_width: Union[int, float] = None,
+                           primal_edge_width: int | float = None,
+                           dual_edge_width: int | float = None,
                            plot_geoms: bool = True,
-                           x_lim: Union[tuple, list] = None,
-                           y_lim: Union[tuple, list] = None,
+                           x_lim: tuple | list = None,
+                           y_lim: tuple | list = None,
                            ax: plt.axes = None,
                            **figure_kwargs):
     """
@@ -264,12 +265,12 @@ def plot_nX(networkX_graph: nx.MultiGraph,
             path: str = None,
             labels: bool = False,
             node_size: int = 20,
-            node_colour: Union[str, tuple, list] = None,
-            edge_colour: Union[str, tuple, list] = None,
-            edge_width: Union[int, float] = None,
+            node_colour: str | tuple | list = None,
+            edge_colour: str | tuple | list = None,
+            edge_width: int | float = None,
             plot_geoms: bool = False,
-            x_lim: Union[tuple, list] = None,
-            y_lim: Union[tuple, list] = None,
+            x_lim: tuple | list = None,
+            y_lim: tuple | list = None,
             ax: plt.axes = None,
             **figure_kwargs):
     """
@@ -356,9 +357,9 @@ def plot_nX(networkX_graph: nx.MultiGraph,
 def plot_assignment(Network_Layer,
                     Data_Layer,
                     path: str = None,
-                    node_colour: Union[list, tuple, np.ndarray] = None,
+                    node_colour: list | tuple | np.ndarray = None,
                     node_labels: bool = False,
-                    data_labels: Union[list, tuple, np.ndarray] = None,
+                    data_labels: list | tuple | np.ndarray = None,
                     **figure_kwargs):
     """
     Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
