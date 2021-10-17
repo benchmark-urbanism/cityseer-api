@@ -43,16 +43,14 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                                  jitter_sdev=0,
                                                                  angular=False)
             tree_preds_p = tree_map[:, 1]
-            tree_dists_p = tree_map[:, 2]
-            tree_imps_p = tree_map[:, 3]
+            tree_short_dists_p = tree_map[:, 2]
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G_round_trip, src_idx, weight='length', cutoff=max_dist)
             for j in range(len(primal_graph)):
                 if j in nx_path:
                     assert find_path(j, src_idx, tree_preds_p) == nx_path[j]
-                    assert np.allclose(tree_imps_p[j], tree_dists_p[j], atol=0.001, rtol=0)
-                    assert np.allclose(tree_imps_p[j], nx_dist[j], atol=0.001, rtol=0)
-    # compare angular impedances and paths for a selection of targets on primal vs. dual
+                    assert np.allclose(tree_short_dists_p[j], nx_dist[j], atol=0.001, rtol=0)
+    # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
@@ -71,15 +69,15 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                                                                  max_dist=max_dist,
                                                                  jitter_sdev=0,
                                                                  angular=True)
-        tree_imps_p = tree_map_p[:, 3]
+        tree_simpl_dists_p = tree_map_p[:, 3]
         tree_map_d, tree_edges_d = centrality.shortest_path_tree(edge_data_d,
                                                                  node_edge_map_d,
                                                                  d_source_idx,
                                                                  max_dist=max_dist,
                                                                  jitter_sdev=0,
                                                                  angular=True)
-        tree_imps_d = tree_map_d[:, 3]
-        assert np.allclose(tree_imps_p[p_target_idx], tree_imps_d[d_target_idx], atol=0.001, rtol=0)
+        tree_simpl_dists_d = tree_map_d[:, 3]
+        assert np.allclose(tree_simpl_dists_p[p_target_idx], tree_simpl_dists_d[d_target_idx], atol=0.001, rtol=0)
     # angular impedance should take a simpler but longer path - test basic case on dual
     # source and target are the same for either
     src_idx = node_uids_d.index('11_6')
@@ -225,8 +223,8 @@ def test_local_node_centrality(primal_graph):
     betw = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
     betw_wt = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
     dens = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
-    far_imp = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
-    far_dist = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    far_short_dist = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
+    far_simpl_dist = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
     harmonic_cl = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
     grav = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
     cyc = np.full((d_n, primal_graph.number_of_nodes()), 0.0)
@@ -241,32 +239,32 @@ def test_local_node_centrality(primal_graph):
                                                              angular=False)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
-        tree_dists = tree_map[:, 2]
-        tree_imps = tree_map[:, 3]
+        tree_short_dist = tree_map[:, 2]
+        tree_simpl_dist = tree_map[:, 3]
         tree_cycles = tree_map[:, 4]
         for to_idx in tree_nodes:
             # skip self nodes
             if to_idx == src_idx:
                 continue
-            # get distance and impedance
-            to_imp = tree_imps[to_idx]
-            to_dist = tree_dists[to_idx]
+            # get shortest / simplest distances
+            to_short_dist = tree_short_dist[to_idx]
+            to_simpl_dist = tree_simpl_dist[to_idx]
             cycles = tree_cycles[to_idx]
             # continue if exceeds max
-            if np.isinf(to_dist):
+            if np.isinf(to_short_dist):
                 continue
             for d_idx in range(len(distances)):
                 dist_cutoff = distances[d_idx]
                 beta = betas[d_idx]
-                if to_dist <= dist_cutoff:
+                if to_short_dist <= dist_cutoff:
                     # don't exceed threshold
                     # if to_dist <= dist_cutoff:
                     # aggregate values
                     dens[d_idx][src_idx] += 1
-                    far_imp[d_idx][src_idx] += to_imp
-                    far_dist[d_idx][src_idx] += to_dist
-                    harmonic_cl[d_idx][src_idx] += 1 / to_imp
-                    grav[d_idx][src_idx] += np.exp(-beta * to_dist)
+                    far_short_dist[d_idx][src_idx] += to_short_dist
+                    far_simpl_dist[d_idx][src_idx] += to_simpl_dist
+                    harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
+                    grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
                     # cycles
                     cyc[d_idx][src_idx] += cycles
                     # only process betweenness in one direction
@@ -283,13 +281,13 @@ def test_local_node_centrality(primal_graph):
                         if inter_idx == src_idx:
                             break
                         betw[d_idx][inter_idx] += 1
-                        betw_wt[d_idx][inter_idx] += np.exp(-beta * to_dist)
+                        betw_wt[d_idx][inter_idx] += np.exp(-beta * to_short_dist)
                         # follow
                         inter_idx = np.int(tree_preds[inter_idx])
-    improved_cl = dens / far_dist / dens
+    improved_cl = dens / far_short_dist / dens
 
     assert np.allclose(node_density, dens, atol=0.001, rtol=0)
-    assert np.allclose(node_farness, far_dist, atol=0.01, rtol=0)  # relax precision
+    assert np.allclose(node_farness, far_short_dist, atol=0.01, rtol=0)  # relax precision
     assert np.allclose(node_cycles, cyc, atol=0.001, rtol=0)
     assert np.allclose(node_harmonic, harmonic_cl, atol=0.001, rtol=0)
     assert np.allclose(node_beta, grav, atol=0.001, rtol=0)
