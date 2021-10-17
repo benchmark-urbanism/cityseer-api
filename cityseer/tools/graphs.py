@@ -1448,7 +1448,8 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> tuple[tuple, np.nd
         | 5 | the edge's entry angular bearing |
         | 6 | the edge's exit angular bearing |
 
-        All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
+        All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden
+        by supplying a `imp_factor` attribute on the input graph's edges.
     node_edge_map
         A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
         indices for each node.

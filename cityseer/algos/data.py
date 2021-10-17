@@ -338,9 +338,22 @@ def aggregate_to_src_idx(netw_src_idx: int,
                                                          netw_src_idx,
                                                          max_dist=max_dist,
                                                          jitter_sdev=jitter_sdev,
-                                                         angular=angular)  # turn off checks! This is called iteratively...
+                                                         angular=angular)
+    '''
+    Shortest tree dijkstra        
+    Predecessor map is based on impedance heuristic - i.e. angular vs not
+    Shortest path distances in metres used for defining max distances regardless
+    RETURNS A SHORTEST PATH TREE MAP:
+    0 - processed nodes
+    1 - predecessors
+    2 - shortest path distance
+    3 - simplest path angular distance
+    4 - cycles
+    5 - origin segments
+    6 - last segments
+    '''
     tree_preds = tree_map[:, 1]
-    tree_dists = tree_map[:, 2]
+    tree_short_dists = tree_map[:, 2]
     # filter the data by distance
     # in this case, the source x, y is the same as for the networks
     filtered_data = radial_filter(netw_src_x, netw_src_y, d_x_arr, d_y_arr, max_dist)
@@ -354,12 +367,12 @@ def aggregate_to_src_idx(netw_src_idx: int,
         if np.isfinite(d_assign_nearest[data_idx]):
             netw_idx = int(d_assign_nearest[data_idx])
             # if the assigned network node is within the threshold
-            if tree_dists[netw_idx] < max_dist:
+            if tree_short_dists[netw_idx] < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_idx],
                                d_y_arr[data_idx] - netw_y_arr[netw_idx])
                 # add to the distance assigned for the network node
-                dist = tree_dists[netw_idx] + d_d
+                dist = tree_short_dists[netw_idx] + d_d
                 # only assign distance if within max distance
                 if dist <= max_dist:
                     reachable_data[data_idx] = True
@@ -368,12 +381,12 @@ def aggregate_to_src_idx(netw_src_idx: int,
         if np.isfinite(d_assign_next_nearest[data_idx]):
             netw_idx = int(d_assign_next_nearest[data_idx])
             # if the assigned network node is within the threshold
-            if tree_dists[netw_idx] < max_dist:
+            if tree_short_dists[netw_idx] < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_idx],
                                d_y_arr[data_idx] - netw_y_arr[netw_idx])
                 # add to the distance assigned for the network node
-                dist = tree_dists[netw_idx] + d_d
+                dist = tree_short_dists[netw_idx] + d_d
                 # only assign distance if within max distance
                 # AND only if closer than other direction
                 if dist <= max_dist and dist < reachable_data_dist[data_idx]:

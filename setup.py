@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.1.7b4',
+    version='1.1.7b5',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
     description='Computational tools for urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',
@@ -17,7 +17,7 @@ setup(
     },
     author='Gareth Simons',
     author_email='info@benchmarkurbanism.com',
-    license='GNU GPLv3',
+    license='GNU AGPLv3',
     install_requires=[
         'matplotlib',
         'networkx>=2.4',
