@@ -457,7 +457,7 @@ _Dual graph (blue) overlaid on the source primal graph (red)._
 <FuncSignature>
 <pre>
 graph_maps_from_nX(networkX_multigraph)
-                   -> Tuple[tuple, np.ndarray, np.ndarray, Dict]
+                   -> tuple[tuple, np.ndarray, np.ndarray, Dict]
 </pre>
 </FuncSignature>
 
@@ -543,7 +543,7 @@ It is generally not necessary to use this function directly. This function will 
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='node_uids' type='Union[tuple, list]'>
+<FuncElement name='node_uids' type='tuple | list'>
 
 A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
 
@@ -631,13 +631,13 @@ A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attribut
 
 </FuncElement>
 
-<FuncElement name='node_attributes' type='Union[list, tuple]'>
+<FuncElement name='node_attributes' type='list | tuple'>
 
 Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
 
 </FuncElement>
 
-<FuncElement name='edge_attributes' type='Union[list, tuple]'>
+<FuncElement name='edge_attributes' type='list | tuple'>
 
 Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
 
