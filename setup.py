@@ -1,12 +1,12 @@
 """
-DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.7b3
+DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.7b6
 """
 
 from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.1.7b5',
+    version='1.1.7b6',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
     description='Computational tools for urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',

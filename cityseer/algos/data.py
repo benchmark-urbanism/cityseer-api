@@ -8,30 +8,6 @@ from cityseer.algos import centrality, checks, diversity
 
 
 @njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def radial_filter(src_x: float,
-                  src_y: float,
-                  x_arr: np.ndarray,
-                  y_arr: np.ndarray,
-                  max_dist: float) -> np.ndarray:
-    if len(x_arr) != len(y_arr):
-        raise ValueError('Mismatching x and y array lengths.')
-    # filter by distance
-    total_count = len(x_arr)
-    data_filter = np.full(total_count, False)
-    # if infinite max, then no need to check distances
-    if max_dist == np.inf:
-        data_filter[:] = True
-        return data_filter
-    else:
-        for i in range(total_count):
-            dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
-            if dist <= max_dist:
-                data_filter[i] = True
-
-    return data_filter
-
-
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
 def find_nearest(src_x: float,
                  src_y: float,
                  x_arr: np.ndarray,
@@ -354,15 +330,11 @@ def aggregate_to_src_idx(netw_src_idx: int,
     '''
     tree_preds = tree_map[:, 1]
     tree_short_dists = tree_map[:, 2]
-    # filter the data by distance
-    # in this case, the source x, y is the same as for the networks
-    filtered_data = radial_filter(netw_src_x, netw_src_y, d_x_arr, d_y_arr, max_dist)
     # arrays for writing the reachable data points and their distances
     reachable_data = np.full(len(data_map), False)
     reachable_data_dist = np.full(len(data_map), np.inf)
-    # iterate the distance trimmed data points
-    reachable_idx = np.where(filtered_data)[0]
-    for data_idx in reachable_idx:
+    # iterate the data points
+    for data_idx in range(len(data_map)):
         # find the primary assigned network index for the data point
         if np.isfinite(d_assign_nearest[data_idx]):
             netw_idx = int(d_assign_nearest[data_idx])
