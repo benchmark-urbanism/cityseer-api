@@ -22,7 +22,7 @@ plot_nX_primal_or_dual(primal_graph=None,
                        x_lim=None,
                        y_lim=None,
                        ax=None,
-                       **figure_kwargs)
+                       figure_kwargs)
 </pre>
 </FuncSignature>
 
@@ -58,7 +58,7 @@ The diameter for the primal graph's nodes.
 
 </FuncElement>
 
-<FuncElement name='primal_node_colour' type='Union[str, tuple, list]'>
+<FuncElement name='primal_node_colour' type='str | tuple | list | np.ndarray'>
 
 Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
@@ -76,7 +76,7 @@ The diameter for the dual graph's nodes.
 
 </FuncElement>
 
-<FuncElement name='dual_node_colour' type='Union[str, tuple, list]'>
+<FuncElement name='dual_node_colour' type='str | tuple | list | np.ndarray'>
 
 Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
@@ -88,13 +88,13 @@ Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='primal_edge_width' type='Union[int, float]'>
+<FuncElement name='primal_edge_width' type='int | float'>
 
 Linewidths for the primal edge. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='dual_edge_width' type='Union[int, float]'>
+<FuncElement name='dual_edge_width' type='int | float'>
 
 Linewidths for the dual edge. Defaults to None.
 
@@ -106,13 +106,13 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
 
 </FuncElement>
 
-<FuncElement name='x_lim' type='Union[tuple, list]'>
+<FuncElement name='x_lim' type='tuple | list'>
 
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='y_lim' type='Union[tuple, list]'>
+<FuncElement name='y_lim' type='tuple | list'>
 
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
 
@@ -162,7 +162,7 @@ plot_nX(networkX_graph,
         x_lim=None,
         y_lim=None,
         ax=None,
-        **figure_kwargs)
+        figure_kwargs)
 </pre>
 </FuncSignature>
 
@@ -194,19 +194,19 @@ The diameter for the graph's nodes.
 
 </FuncElement>
 
-<FuncElement name='node_colour' type='Union[str, tuple, list]'>
+<FuncElement name='node_colour' type='str | tuple | list'>
 
 Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='edge_colour' type='Union[str, tuple, list]'>
+<FuncElement name='edge_colour' type='str | tuple | list'>
 
 Edges colour as a `matplotlib` compatible colour string. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='edge_width' type='Union[int, float]'>
+<FuncElement name='edge_width' type='int | float'>
 
 Linewidths for edges. Defaults to None.
 
@@ -218,13 +218,13 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
 
 </FuncElement>
 
-<FuncElement name='x_lim' type='Union[tuple, list]'>
+<FuncElement name='x_lim' type='tuple | list'>
 
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
 
 </FuncElement>
 
-<FuncElement name='y_lim' type='Union[tuple, list]'>
+<FuncElement name='y_lim' type='tuple | list'>
 
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
 
@@ -284,7 +284,7 @@ plot_assignment(Network_Layer,
                 node_colour=None,
                 node_labels=False,
                 data_labels=None,
-                **figure_kwargs)
+                figure_kwargs)
 </pre>
 </FuncSignature>
 
@@ -310,7 +310,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
 
 </FuncElement>
 
-<FuncElement name='node_colour' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='node_colour' type='list | tuple | np.ndarray'>
 
 Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
 
@@ -322,7 +322,7 @@ Whether to plot the node labels. Defaults to False.
 
 </FuncElement>
 
-<FuncElement name='data_labels' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='data_labels' type='list | tuple | np.ndarray'>
 
 An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `DataLayer`. Defaults to None.
 
