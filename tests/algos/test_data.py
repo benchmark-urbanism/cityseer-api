@@ -10,29 +10,6 @@ from cityseer.tools import graphs, mock
 from cityseer.tools.mock import primal_graph
 
 
-def test_radial_filter(primal_graph):
-    # generate some data
-    data_dict = mock.mock_data_dict(primal_graph)
-    D = layers.DataLayerFromDict(data_dict)
-    # generate some random source nodes
-    rd_src_idxs = np.random.randint(0, len(data_dict), 10)
-    for src_idx in rd_src_idxs:
-        # test the filter
-        src_x = primal_graph.nodes[src_idx]['x']
-        src_y = primal_graph.nodes[src_idx]['y']
-        for max_dist in [0, 200, 500, 750, np.inf]:
-            data_filter = data.radial_filter(src_x, src_y, D.data_x_arr, D.data_y_arr, max_dist)
-            # check that the full_to_trim map is the correct number of elements
-            assert len(data_filter) == len(D._data)
-            # test that all reachable indices are, in fact, within the max distance
-            for i, reachable in enumerate(data_filter):
-                dist = np.sqrt((D.data_x_arr[i] - src_x) ** 2 + (D.data_y_arr[i] - src_y) ** 2)
-                if reachable:
-                    assert dist <= max_dist
-                else:
-                    assert dist > max_dist
-
-
 def test_find_nearest(primal_graph):
     N = networks.NetworkLayerFromNX(primal_graph, distances=[100])
     # generate some data
@@ -198,18 +175,8 @@ def test_aggregate_to_src_idx(primal_graph):
                                                                      max_dist=max_dist,
                                                                      angular=angular)
                 tree_dists = tree_map[:, 2]
-                # generate a data filter
-                data_filter = data.radial_filter(netw_src_x, netw_src_y, data_x_arr, data_y_arr, max_dist)
                 # verify distances vs. the max
                 for d_idx in range(len(data_map_temp)):
-                    # check that all filtered items are beyond the radial cutoff distance
-                    if not data_filter[d_idx]:
-                        r_dist = np.hypot(netw_src_x - data_x_arr[d_idx], netw_src_y - data_y_arr[d_idx])
-                        assert r_dist > max_dist
-                    # otherwise they should be within the cutoff distance
-                    else:
-                        r_dist = np.hypot(netw_src_x - data_x_arr[d_idx], netw_src_y - data_y_arr[d_idx])
-                        assert r_dist <= max_dist
                     # check the integrity of the distances and classes
                     reachable = reachable_data[d_idx]
                     reachable_dist = reachable_data_dist[d_idx]
