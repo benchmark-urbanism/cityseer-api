@@ -1,6 +1,8 @@
-import logging
-from typing import Tuple, List, Union
+from __future__ import annotations
 
+import logging
+
+from numba_progress import ProgressBar
 import numpy as np
 import utm
 from sklearn.preprocessing import LabelEncoder
@@ -101,7 +103,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     return data_dict_copy
 
 
-def encode_categorical(classes: Union[list, tuple, np.ndarray]) -> Tuple[tuple, np.ndarray]:
+def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.ndarray]:
     """
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
@@ -148,7 +150,7 @@ def encode_categorical(classes: Union[list, tuple, np.ndarray]) -> Tuple[tuple, 
     return tuple(le.classes_), classes_int
 
 
-def data_map_from_dict(data_dict: dict) -> Tuple[tuple, np.ndarray]:
+def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
@@ -227,7 +229,7 @@ class DataLayer:
     """
 
     def __init__(self,
-                 data_uids: Union[list, tuple],
+                 data_uids: list | tuple,
                  data_map: np.ndarray):
         """
 
@@ -289,7 +291,7 @@ class DataLayer:
 
     def assign_to_network(self,
                           Network_Layer: networks.NetworkLayer,
-                          max_dist: Union[int, float]):
+                          max_dist: int | float):
         """
         Once created, a [`DataLayer`](#class-datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#class-networklayer). The
         `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street
@@ -335,12 +337,18 @@ class DataLayer:
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
         """
         self._Network = Network_Layer
+        if not checks.quiet_mode:
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         data.assign_to_network(self._data,
                                self.Network._node_data,
                                self.Network._edge_data,
                                self.Network._node_edge_map,
                                max_dist,
-                               suppress_progress=checks.quiet_mode)
+                               progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
 
     # deprecated method
     def compute_aggregated(self, **kwargs):
@@ -355,11 +363,12 @@ class DataLayer:
                                  'See the documentation for further information.')
 
     def compute_landuses(self,
-                         landuse_labels: Union[list, tuple, np.ndarray],
-                         mixed_use_keys: Union[list, tuple] = None,
-                         accessibility_keys: Union[list, tuple] = None,
-                         cl_disparity_wt_matrix: Union[list, tuple, np.ndarray] = None,
-                         qs: Union[list, tuple, np.ndarray] = None,
+                         landuse_labels: list | tuple | np.ndarray,
+                         mixed_use_keys: list | tuple = None,
+                         accessibility_keys: list | tuple = None,
+                         cl_disparity_wt_matrix: list | tuple | np.ndarray = None,
+                         qs: list | tuple | np.ndarray = None,
+                         jitter_sdev: float = 1.0,
                          angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
@@ -621,6 +630,10 @@ class DataLayer:
                     acc_keys.append(landuse_classes.index(ac_label))
             if not checks.quiet_mode:
                 logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+        if not checks.quiet_mode:
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         # call the underlying method
         mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
             data.aggregate_landuses(self.Network._node_data,
@@ -635,8 +648,11 @@ class DataLayer:
                                     mixed_use_other_keys=np.array(mu_other_keys),
                                     accessibility_keys=np.array(acc_keys),
                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
+                                    jitter_sdev=jitter_sdev,
                                     angular=angular,
-                                    suppress_progress=checks.quiet_mode)
+                                    progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite
         # unpack mixed use hill
@@ -667,8 +683,8 @@ class DataLayer:
                     self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
 
     def hill_diversity(self,
-                       landuse_labels: Union[list, tuple, np.ndarray],
-                       qs: Union[list, tuple, np.ndarray] = None):
+                       landuse_labels: list | tuple | np.ndarray,
+                       qs: list | tuple | np.ndarray = None):
         """
         Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -690,8 +706,8 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, mixed_use_keys=['hill'], qs=qs)
 
     def hill_branch_wt_diversity(self,
-                                 landuse_labels: Union[list, tuple, np.ndarray],
-                                 qs: Union[list, tuple, np.ndarray] = None):
+                                 landuse_labels: list | tuple | np.ndarray,
+                                 qs: list | tuple | np.ndarray = None):
         """
         Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -713,8 +729,8 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
 
     def compute_accessibilities(self,
-                                landuse_labels: Union[list, tuple, np.ndarray],
-                                accessibility_keys: Union[list, tuple]):
+                                landuse_labels: list | tuple | np.ndarray,
+                                accessibility_keys: list | tuple):
         """
         Compute land-use accessibilities for the specified land-use classification keys. See
         [`DataLayer.compute_landuses`](#datalayercompute_landuses) for additional information.
@@ -740,13 +756,11 @@ class DataLayer:
         return self.compute_landuses(landuse_labels, accessibility_keys=accessibility_keys)
 
     def compute_stats(self,
-                      stats_keys: Union[str, list, tuple],
-                      stats_data_arrs: Union[
-                          List[Union[list, tuple, np.ndarray]],
-                          Tuple[Union[list, tuple, np.ndarray]],
-                          list,
-                          tuple,
-                          np.ndarray],
+                      stats_keys: str | list | tuple,
+                      stats_data_arrs: list | tuple | np.ndarray |
+                                       list[list | tuple | np.ndarray] |
+                                       tuple[list | tuple | np.ndarray],
+                      jitter_sdev: float = 1.0,
                       angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
@@ -906,6 +920,9 @@ class DataLayer:
             raise ValueError('The length of data arrays must match the number of data points.')
         if not checks.quiet_mode:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         # call the underlying method
         stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
             data.aggregate_stats(self.Network._node_data,
@@ -915,8 +932,11 @@ class DataLayer:
                                  distances=np.array(self.Network.distances),
                                  betas=np.array(self.Network.betas),
                                  numerical_arrays=stats_data_arrs,
+                                 jitter_sdev=jitter_sdev,
                                  angular=angular,
-                                 suppress_progress=checks.quiet_mode)
+                                 progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # unpack the numerical arrays
         for num_idx, stats_key in enumerate(stats_keys):
             if stats_key not in self.Network.metrics['stats']:
@@ -959,37 +979,6 @@ class DataLayer:
         """
         raise DeprecationWarning('The compute_stats_multiple method has been deprecated. '
                                  'Please use the compute_stats method instead.')
-
-    def model_singly_constrained(self,
-                                 key: str,
-                                 i_data_map: np.ndarray,
-                                 j_data_map: np.ndarray,
-                                 i_weights: Union[list, tuple, np.ndarray],
-                                 j_weights: Union[list, tuple, np.ndarray],
-                                 angular: bool = False):
-        """
-        Undocumented method for computing singly-constrained interactions.
-        """
-        j_assigned, netw_flows = data.singly_constrained(self.Network._node_data,
-                                                         self.Network._edge_data,
-                                                         self.Network._node_edge_map,
-                                                         distances=np.array(self.Network.distances),
-                                                         betas=np.array(self.Network.betas),
-                                                         i_data_map=i_data_map,
-                                                         j_data_map=j_data_map,
-                                                         i_weights=np.array(i_weights),
-                                                         j_weights=np.array(j_weights),
-                                                         angular=angular,
-                                                         suppress_progress=checks.quiet_mode)
-
-        # write the results to the Network's metrics dict
-        if key not in self.Network.metrics['models']:
-            self.Network.metrics['models'][key] = {}
-        for d_idx, d_key in enumerate(self.Network.distances):
-            if d_key not in self.Network.metrics['models'][key]:
-                self.Network.metrics['models'][key][d_key] = {}
-            self.Network.metrics['models'][key][d_key]['assigned_trips'] = j_assigned[d_idx]
-            self.Network.metrics['models'][key][d_key]['network_flows'] = netw_flows[d_idx]
 
 
 class DataLayerFromDict(DataLayer):

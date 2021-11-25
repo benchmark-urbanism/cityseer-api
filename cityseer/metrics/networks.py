@@ -1,10 +1,12 @@
 """
 Centrality methods
 """
+from __future__ import annotations
+
 import logging
-from typing import Union
 
 import networkx as nx
+from numba_progress import ProgressBar
 import numpy as np
 from numba.typed import Dict
 
@@ -15,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def distance_from_beta(beta: Union[float, list, np.ndarray],
+def distance_from_beta(beta: float | list | np.ndarray,
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
@@ -115,7 +117,7 @@ def distance_from_beta(beta: Union[float, list, np.ndarray],
     return np.log(min_threshold_wt) / -beta
 
 
-def beta_from_distance(distance: Union[float, list, np.ndarray],
+def beta_from_distance(distance: float | list | np.ndarray,
                        min_threshold_wt: float = checks.def_min_thresh_wt) -> np.ndarray:
     """
 
@@ -183,8 +185,8 @@ def beta_from_distance(distance: Union[float, list, np.ndarray],
     return -np.log(min_threshold_wt) / distance
 
 
-#%%
-def avg_distance_for_beta(beta: Union[float, list, np.ndarray],
+# %%
+def avg_distance_for_beta(beta: float | list | np.ndarray,
                           min_threshold_wt: float = checks.def_min_thresh_wt) -> float:
     """
     Parameters
@@ -372,12 +374,12 @@ class NetworkLayer:
     """
 
     def __init__(self,
-                 node_uids: Union[list, tuple],
+                 node_uids: list | tuple,
                  node_data: np.ndarray,
                  edge_data: np.ndarray,
                  node_edge_map: Dict,
-                 distances: Union[list, tuple, np.ndarray] = None,
-                 betas: Union[list, tuple, np.ndarray] = None,
+                 distances: list | tuple | np.ndarray = None,
+                 betas: list | tuple | np.ndarray = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt):
         """
         Parameters
@@ -733,16 +735,18 @@ class NetworkLayer:
 
     # provides access to the underlying centrality.local_centrality method
     def node_centrality(self,
-                        measures: Union[list, tuple] = None,
+                        measures: list | tuple = None,
+                        jitter_sdev: float = 1.0,
                         angular: bool = False):
         """
-
-
         Parameters
         ----------
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
+        jitter_sdev
+            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
+            situations with highly rectilinear grids. Set to zero to remove all jitter.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -814,15 +818,20 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        measures_data = centrality.local_node_centrality(
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances),
-            np.array(self._betas),
-            measure_keys,
-            angular,
-            suppress_progress=checks.quiet_mode)
+            progress_proxy = ProgressBar(total=len(self._node_data))
+        else:
+            progress_proxy = None
+        measures_data = centrality.local_node_centrality(self._node_data,
+                                                         self._edge_data,
+                                                         self._node_edge_map,
+                                                         np.array(self._distances),
+                                                         np.array(self._betas),
+                                                         measure_keys,
+                                                         jitter_sdev=jitter_sdev,
+                                                         angular=angular,
+                                                         progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
@@ -834,7 +843,8 @@ class NetworkLayer:
 
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(self,
-                           measures: Union[list, tuple] = None,
+                           measures: list | tuple = None,
+                           jitter_sdev: float = 1.0,
                            angular: bool = False):
         """
         A list or tuple of strings, containing any combination of the following `key` values, computed within the
@@ -845,6 +855,9 @@ class NetworkLayer:
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
+        jitter_sdev
+            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
+            situations with highly rectilinear grids. Set to zero to remove all jitter.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -903,15 +916,20 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        measures_data = centrality.local_segment_centrality(
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances),
-            np.array(self._betas),
-            measure_keys,
-            angular,
-            suppress_progress=checks.quiet_mode)
+            progress_proxy = ProgressBar(total=len(self._node_data))
+        else:
+            progress_proxy = None
+        measures_data = centrality.local_segment_centrality(self._node_data,
+                                                            self._edge_data,
+                                                            self._node_edge_map,
+                                                            np.array(self._distances),
+                                                            np.array(self._betas),
+                                                            measure_keys,
+                                                            jitter_sdev=jitter_sdev,
+                                                            angular=angular,
+                                                            progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
@@ -925,8 +943,8 @@ class NetworkLayer:
 class NetworkLayerFromNX(NetworkLayer):
     def __init__(self,
                  networkX_multigraph: nx.MultiGraph,
-                 distances: Union[list, tuple, np.ndarray] = None,
-                 betas: Union[list, tuple, np.ndarray] = None,
+                 distances: list | tuple | np.ndarray = None,
+                 betas: list | tuple | np.ndarray = None,
                  min_threshold_wt: float = checks.def_min_thresh_wt) -> NetworkLayer:
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of

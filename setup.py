@@ -1,12 +1,12 @@
 """
-DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.4b3
+DOWNLOADING FROM TEST REPO: pip install --extra-index-url https://test.pypi.org/simple/ cityseer==1.1.7b9
 """
 
 from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.1.6',
+    version='1.1.7',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
     description='Computational tools for urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',
@@ -17,11 +17,12 @@ setup(
     },
     author='Gareth Simons',
     author_email='info@benchmarkurbanism.com',
-    license='GNU GPLv3',
+    license='GNU AGPLv3',
     install_requires=[
         'matplotlib',
         'networkx>=2.4',
         'numba>=0.53',
+        'numba-progress',
         'numpy',
         'pytest',
         'requests',
