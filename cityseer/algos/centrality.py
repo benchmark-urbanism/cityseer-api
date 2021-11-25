@@ -257,7 +257,7 @@ def local_node_centrality(node_data: np.ndarray,
                           measure_keys: tuple,
                           jitter_sdev: float = 1.0,
                           angular: bool = False,
-                          suppress_progress: bool = False) -> np.ndarray:
+                          progress_proxy=None) -> np.ndarray:
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
     checks.check_network_maps(node_data, edge_data, node_edge_map)
@@ -317,15 +317,13 @@ def local_node_centrality(node_data: np.ndarray,
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
     global_max_dist = float(np.nanmax(distances))
     nodes_live = node_data[:, 2]
-    # progress steps
-    steps = int(n / 10000)
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(n):
         shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
-        if not suppress_progress:
-            checks.progress_bar(src_idx, n, steps)
+        if progress_proxy is not None:
+            progress_proxy.update(1)
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
@@ -441,7 +439,7 @@ def local_segment_centrality(node_data: np.ndarray,
                              measure_keys: tuple,
                              jitter_sdev: float = 1.0,
                              angular: bool = False,
-                             suppress_progress: bool = False) -> np.ndarray:
+                             progress_proxy=None) -> np.ndarray:
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
     checks.check_network_maps(node_data, edge_data, node_edge_map)
@@ -491,15 +489,13 @@ def local_segment_centrality(node_data: np.ndarray,
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
     global_max_dist = float(np.nanmax(distances))
     nodes_live = node_data[:, 2]
-    # progress steps
-    steps = int(n / 10000)
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(n):
         shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
-        if not suppress_progress:
-            checks.progress_bar(src_idx, n, steps)
+        if progress_proxy is not None:
+            progress_proxy.update(1)
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue

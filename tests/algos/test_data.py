@@ -164,8 +164,6 @@ def test_aggregate_to_src_idx(primal_graph):
                 # compare to manual checks on distances:
                 netw_x_arr = node_data[:, 0]
                 netw_y_arr = node_data[:, 1]
-                netw_src_x = netw_x_arr[netw_src_idx]
-                netw_src_y = netw_y_arr[netw_src_idx]
                 data_x_arr = data_map_temp[:, 0]
                 data_y_arr = data_map_temp[:, 1]
                 # get the network distances
@@ -173,6 +171,7 @@ def test_aggregate_to_src_idx(primal_graph):
                                                                      node_edge_map,
                                                                      netw_src_idx,
                                                                      max_dist=max_dist,
+                                                                     jitter_sdev=0,
                                                                      angular=angular)
                 tree_dists = tree_map[:, 2]
                 # verify distances vs. the max

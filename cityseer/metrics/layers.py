@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from numba_progress import ProgressBar
 import numpy as np
 import utm
 from sklearn.preprocessing import LabelEncoder
@@ -336,12 +337,18 @@ class DataLayer:
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
         """
         self._Network = Network_Layer
+        if not checks.quiet_mode:
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         data.assign_to_network(self._data,
                                self.Network._node_data,
                                self.Network._edge_data,
                                self.Network._node_edge_map,
                                max_dist,
-                               suppress_progress=checks.quiet_mode)
+                               progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
 
     # deprecated method
     def compute_aggregated(self, **kwargs):
@@ -623,6 +630,10 @@ class DataLayer:
                     acc_keys.append(landuse_classes.index(ac_label))
             if not checks.quiet_mode:
                 logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+        if not checks.quiet_mode:
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         # call the underlying method
         mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
             data.aggregate_landuses(self.Network._node_data,
@@ -639,7 +650,9 @@ class DataLayer:
                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
                                     jitter_sdev=jitter_sdev,
                                     angular=angular,
-                                    suppress_progress=checks.quiet_mode)
+                                    progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results to the Network's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite
         # unpack mixed use hill
@@ -907,6 +920,9 @@ class DataLayer:
             raise ValueError('The length of data arrays must match the number of data points.')
         if not checks.quiet_mode:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
+            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        else:
+            progress_proxy = None
         # call the underlying method
         stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
             data.aggregate_stats(self.Network._node_data,
@@ -918,7 +934,9 @@ class DataLayer:
                                  numerical_arrays=stats_data_arrs,
                                  jitter_sdev=jitter_sdev,
                                  angular=angular,
-                                 suppress_progress=checks.quiet_mode)
+                                 progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # unpack the numerical arrays
         for num_idx, stats_key in enumerate(stats_keys):
             if stats_key not in self.Network.metrics['stats']:
