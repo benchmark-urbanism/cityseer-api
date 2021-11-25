@@ -196,7 +196,7 @@ def nX_wgs_to_utm(networkX_multigraph: nx.MultiGraph,
         lat = d['y']
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
-            raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            raise ValueError(f'x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.')
         # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
         if zone_number is None:
             zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
