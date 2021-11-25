@@ -115,7 +115,7 @@ def assign_to_network(data_map: np.ndarray,
                       edge_data: np.ndarray,
                       node_edge_map: Dict,
                       max_dist: float,
-                      suppress_progress: bool = False) -> np.ndarray:
+                      progress_proxy=None) -> np.ndarray:
     """
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -152,11 +152,9 @@ def assign_to_network(data_map: np.ndarray,
     data_x_arr = data_map[:, 0]
     data_y_arr = data_map[:, 1]
     total_count = len(data_map)
-    # setup progress bar params
-    steps = int(total_count / 10000)
     for data_idx in prange(total_count):
-        if not suppress_progress:
-            checks.progress_bar(data_idx, total_count, steps)
+        if progress_proxy is not None:
+            progress_proxy.update(1)
         # find the nearest network node
         min_idx, min_dist = find_nearest(data_x_arr[data_idx],
                                          data_y_arr[data_idx],
@@ -384,7 +382,7 @@ def aggregate_landuses(node_data: np.ndarray,
                        cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
                        jitter_sdev: float = 1.0,
                        angular: bool = False,
-                       suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                       progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     NODE MAP:
     0 - x
@@ -484,10 +482,9 @@ def aggregate_landuses(node_data: np.ndarray,
     # parallelise over n nodes:
     # each distance or stat array index is therefore only touched by one thread at a time
     # i.e. no need to use inner array deductions as with centralities
-    steps = int(netw_n / 10000)
     for netw_src_idx in prange(netw_n):
-        if not suppress_progress:
-            checks.progress_bar(netw_src_idx, netw_n, steps)
+        if progress_proxy is not None:
+            progress_proxy.update(1)
         # only compute for live nodes
         if not netw_nodes_live[netw_src_idx]:
             continue
@@ -592,7 +589,7 @@ def aggregate_stats(node_data: np.ndarray,
                     numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
                     jitter_sdev: float = 1.0,
                     angular: bool = False,
-                    suppress_progress: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                    progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     NODE MAP:
@@ -643,8 +640,8 @@ def aggregate_stats(node_data: np.ndarray,
     # each distance or stat array index is therefore only touched by one thread at a time
     # i.e. no need to use inner array deductions as with centralities
     for netw_src_idx in prange(netw_n):
-        if not suppress_progress:
-            checks.progress_bar(netw_src_idx, netw_n, steps)
+        if progress_proxy is not None:
+            progress_proxy.update(1)
         # only compute for live nodes
         if not netw_nodes_live[netw_src_idx]:
             continue

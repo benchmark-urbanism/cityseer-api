@@ -655,7 +655,7 @@ def test_local_centrality_time(primal_graph):
                                          ('node_harmonic', 'node_betweenness'),
                                          jitter_sdev=0,
                                          angular=False,
-                                         suppress_progress=True)
+                                         progress_proxy=None)
     # prime the function
     node_cent_wrapper()
     iters = 20000
@@ -673,7 +673,7 @@ def test_local_centrality_time(primal_graph):
                                             ('segment_harmonic', 'segment_betweenness'),
                                             jitter_sdev=0,
                                             angular=False,
-                                            suppress_progress=True)
+                                            progress_proxy=None)
     # prime the function
     segment_cent_wrapper()
     iters = 20000

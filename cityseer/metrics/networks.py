@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 
 import networkx as nx
+from numba_progress import ProgressBar
 import numpy as np
 from numba.typed import Dict
 
@@ -817,6 +818,9 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
+            progress_proxy = ProgressBar(total=len(self._node_data))
+        else:
+            progress_proxy = None
         measures_data = centrality.local_node_centrality(self._node_data,
                                                          self._edge_data,
                                                          self._node_edge_map,
@@ -825,7 +829,9 @@ class NetworkLayer:
                                                          measure_keys,
                                                          jitter_sdev=jitter_sdev,
                                                          angular=angular,
-                                                         suppress_progress=checks.quiet_mode)
+                                                         progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
@@ -910,6 +916,9 @@ class NetworkLayer:
         measure_keys = tuple(measure_keys)
         if not checks.quiet_mode:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
+            progress_proxy = ProgressBar(total=len(self._node_data))
+        else:
+            progress_proxy = None
         measures_data = centrality.local_segment_centrality(self._node_data,
                                                             self._edge_data,
                                                             self._node_edge_map,
@@ -918,7 +927,9 @@ class NetworkLayer:
                                                             measure_keys,
                                                             jitter_sdev=jitter_sdev,
                                                             angular=angular,
-                                                            suppress_progress=checks.quiet_mode)
+                                                            progress_proxy=progress_proxy)
+        if progress_proxy is not None:
+            progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
