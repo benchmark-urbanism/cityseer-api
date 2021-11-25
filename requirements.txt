@@ -2,6 +2,7 @@ osmnx
 matplotlib
 networkx>=2.4
 numba>=0.53
+numba-progress
 numpy
 pytest
 requests

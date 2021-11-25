@@ -3,10 +3,11 @@ A collection of convenience functions for the preparation and conversion of [`Ne
 graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and
 manipulated directly, if so desired.
 """
+from __future__ import annotations
 
 import json
 import logging
-from typing import Union, Tuple, Optional
+from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -73,7 +74,7 @@ def nX_simple_geoms(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 
 def _add_node(networkX_multigraph: nx.MultiGraph,
-              node_names: Union[list, tuple],
+              node_names: list | tuple,
               x: float,
               y: float,
               live: Optional[bool] = None) -> Optional[str]:
@@ -195,7 +196,7 @@ def nX_wgs_to_utm(networkX_multigraph: nx.MultiGraph,
         lat = d['y']
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
-            raise ValueError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            raise ValueError(f'x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.')
         # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
         if zone_number is None:
             zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
@@ -269,9 +270,9 @@ def nX_remove_dangling_nodes(networkX_multigraph: nx.MultiGraph,
     return g_multi_copy
 
 
-def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
+def _snap_linestring_idx(linestring_coords: list | tuple | np.ndarray | coords.CoordinateSequence,
                          idx: int,
-                         xy: Tuple[float, float]) -> list:
+                         xy: tuple[float, float]) -> list:
     """
     Snaps a LineString's coordinate at the specified index to the provided xy coordinate.
     """
@@ -290,24 +291,24 @@ def _snap_linestring_idx(linestring_coords: Union[list, tuple, np.ndarray, coord
     return linestring_coords
 
 
-def _snap_linestring_startpoint(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
-                                xy: Tuple[float, float]) -> list:
+def _snap_linestring_startpoint(linestring_coords: list | tuple | np.ndarray | coords.CoordinateSequence,
+                                xy: tuple[float, float]) -> list:
     """
     Snaps a LineString's start-point coordinate to a specified xy coordinate.
     """
     return _snap_linestring_idx(linestring_coords, 0, xy)
 
 
-def _snap_linestring_endpoint(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
-                              xy: Tuple[float, float]) -> list:
+def _snap_linestring_endpoint(linestring_coords: list | tuple | np.ndarray | coords.CoordinateSequence,
+                              xy: tuple[float, float]) -> list:
     """
     Snaps a LineString's end-point coordinate to a specified xy coordinate.
     """
     return _snap_linestring_idx(linestring_coords, -1, xy)
 
 
-def _align_linestring_coords(linestring_coords: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
-                             xy: Tuple[float, float],
+def _align_linestring_coords(linestring_coords: list | tuple | np.ndarray | coords.CoordinateSequence,
+                             xy: tuple[float, float],
                              reverse: bool = False,
                              tolerance=checks.tolerance) -> list:
     """
@@ -337,9 +338,9 @@ def _align_linestring_coords(linestring_coords: Union[list, tuple, np.ndarray, c
         return linestring_coords
 
 
-def _weld_linestring_coords(linestring_coords_a: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
-                            linestring_coords_b: Union[list, tuple, np.ndarray, coords.CoordinateSequence],
-                            force_xy: Tuple[float, float] = None,
+def _weld_linestring_coords(linestring_coords_a: list | tuple | np.ndarray | coords.CoordinateSequence,
+                            linestring_coords_b: list | tuple | np.ndarray | coords.CoordinateSequence,
+                            force_xy: tuple[float, float] = None,
                             tolerance=checks.tolerance) -> list:
     """
     Takes two geometries, finds a matching start / end point combination and merges the coordinates accordingly.
@@ -546,7 +547,7 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 
 def _squash_adjacent(networkX_multigraph: nx.MultiGraph,
-                     node_group: Union[set, list, tuple],
+                     node_group: set | list | tuple,
                      cent_min_degree: Optional[int] = None,
                      cent_min_len_factor: Optional[float] = None) -> nx.MultiGraph:
     """
@@ -882,7 +883,7 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     # keep track of removed nodes
     removed_nodes = set()
 
-    def recursive_squash(nd_uid: Union[int, str],
+    def recursive_squash(nd_uid: int | str,
                          x: float,
                          y: float,
                          node_group: list,
@@ -1403,7 +1404,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     return g_dual
 
 
-def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.ndarray, np.ndarray, Dict]:
+def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> tuple[tuple, np.ndarray, np.ndarray, Dict]:
     """
     Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and
     angle attributes, as well as in and out bearings and stores these in the returned data maps.
@@ -1447,7 +1448,8 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
         | 5 | the edge's entry angular bearing |
         | 6 | the edge's exit angular bearing |
 
-        All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
+        All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden
+        by supplying a `imp_factor` attribute on the input graph's edges.
     node_edge_map
         A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
         indices for each node.
@@ -1574,7 +1576,7 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> Tuple[tuple, np.nd
     return tuple(node_uids), node_data, edge_data, node_edge_map
 
 
-def nX_from_graph_maps(node_uids: Union[tuple, list],
+def nX_from_graph_maps(node_uids: tuple | list,
                        node_data: np.ndarray,
                        edge_data: np.ndarray,
                        node_edge_map: Dict,
@@ -1722,8 +1724,8 @@ def nX_from_graph_maps(node_uids: Union[tuple, list],
 
 
 def nX_from_OSMnx(networkX_multidigraph: nx.MultiDiGraph,
-                  node_attributes: Union[list, tuple] = None,
-                  edge_attributes: Union[list, tuple] = None,
+                  node_attributes: list | tuple = None,
+                  edge_attributes: list | tuple = None,
                   tolerance: float = checks.tolerance) -> nx.MultiGraph:
     """
     Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible

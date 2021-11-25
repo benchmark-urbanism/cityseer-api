@@ -357,9 +357,8 @@ def raos_quadratic_diversity(class_counts: np.ndarray,
 
     R = 0  # variable for additive calculations of distance * p1 * p2
     for i in range(len(class_counts)):
-        # parallelise only inner loop
         for j in range(len(class_counts)):
-            # only need to examine the pair if j <= i, otherwise double-counting
+            # only need to examine the pair if j > i, otherwise double-counting
             if j > i:
                 break
             if class_counts[i] and class_counts[j]:
