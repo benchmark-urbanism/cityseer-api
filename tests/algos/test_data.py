@@ -156,7 +156,6 @@ def test_aggregate_to_src_idx(primal_graph):
                                                                                             node_edge_map,
                                                                                             data_map_temp,
                                                                                             max_dist,
-                                                                                            jitter_sdev=0,
                                                                                             angular=angular)
                 # for debugging
                 # from cityseer.tools import plot
@@ -171,7 +170,6 @@ def test_aggregate_to_src_idx(primal_graph):
                                                                      node_edge_map,
                                                                      netw_src_idx,
                                                                      max_dist=max_dist,
-                                                                     jitter_sdev=0,
                                                                      angular=angular)
                 tree_dists = tree_map[:, 2]
                 # verify distances vs. the max
@@ -241,8 +239,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                 data_map,
                                 distances,
                                 betas,
-                                mixed_use_hill_keys=np.array([0]),
-                                jitter_sdev=0)
+                                mixed_use_hill_keys=np.array([0]))
     # check that unequal land_use encodings vs data map lengths are caught
     with pytest.raises(ValueError):
         data.aggregate_landuses(node_data,
@@ -252,8 +249,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                 distances,
                                 betas,
                                 landuse_encodings=landuse_encodings[:-1],
-                                mixed_use_other_keys=np.array([0]),
-                                jitter_sdev=0)
+                                mixed_use_other_keys=np.array([0]))
     # check that no provided metrics flags
     with pytest.raises(ValueError):
         data.aggregate_landuses(node_data,
@@ -262,8 +258,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                 data_map,
                                 distances,
                                 betas,
-                                landuse_encodings=landuse_encodings,
-                                jitter_sdev=0)
+                                landuse_encodings=landuse_encodings)
     # check that missing qs flags
     with pytest.raises(ValueError):
         data.aggregate_landuses(node_data,
@@ -273,8 +268,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                 distances,
                                 betas,
                                 mixed_use_hill_keys=np.array([0]),
-                                landuse_encodings=landuse_encodings,
-                                jitter_sdev=0)
+                                landuse_encodings=landuse_encodings)
     # check that problematic mixed use and accessibility keys are caught
     for mu_h_key, mu_o_key, ac_key in [
         # negatives
@@ -300,8 +294,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                     qs=qs,
                                     mixed_use_hill_keys=np.array(mu_h_key),
                                     mixed_use_other_keys=np.array(mu_o_key),
-                                    accessibility_keys=np.array(ac_key),
-                                    jitter_sdev=0)
+                                    accessibility_keys=np.array(ac_key))
     for h_key, o_key in (([3], []), ([], [2])):
         # check that missing matrix is caught for disparity weighted indices
         with pytest.raises(ValueError):
@@ -314,8 +307,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                     landuse_encodings=landuse_encodings,
                                     qs=qs,
                                     mixed_use_hill_keys=np.array(h_key),
-                                    mixed_use_other_keys=np.array(o_key),
-                                    jitter_sdev=0)
+                                    mixed_use_other_keys=np.array(o_key))
         # check that non-square disparity matrix is caught
         mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
         with pytest.raises(ValueError):
@@ -329,8 +321,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                                     qs=qs,
                                     mixed_use_hill_keys=np.array(h_key),
                                     mixed_use_other_keys=np.array(o_key),
-                                    cl_disparity_wt_matrix=mock_matrix[:-1],
-                                    jitter_sdev=0)
+                                    cl_disparity_wt_matrix=mock_matrix[:-1])
 
 
 def test_aggregate_landuses_categorical_components(primal_graph):
@@ -367,7 +358,6 @@ def test_aggregate_landuses_categorical_components(primal_graph):
                                                                                mixed_use_other_keys=non_hill_keys,
                                                                                accessibility_keys=ac_keys,
                                                                                cl_disparity_wt_matrix=mock_matrix,
-                                                                               jitter_sdev=0,
                                                                                angular=False)
     # hill
     hill = mu_data_hill[np.where(hill_keys == 0)][0]
@@ -398,8 +388,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
                                                                                         edge_data,
                                                                                         node_edge_map,
                                                                                         data_map,
-                                                                                        dist_cutoff,
-                                                                                        jitter_sdev=0)
+                                                                                        dist_cutoff)
             # counts of each class type (array length per max unique classes - not just those within max distance)
             cl_counts = np.full(mu_max_unique, 0)
             # nearest of each class type (likewise)
@@ -497,7 +486,6 @@ def test_aggregate_landuses_categorical_components(primal_graph):
                                                                                mixed_use_other_keys=non_hill_keys,
                                                                                accessibility_keys=ac_keys,
                                                                                cl_disparity_wt_matrix=mock_matrix,
-                                                                               jitter_sdev=0,
                                                                                angular=True)
 
     mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep = \
@@ -513,7 +501,6 @@ def test_aggregate_landuses_categorical_components(primal_graph):
                                 mixed_use_other_keys=non_hill_keys,
                                 accessibility_keys=ac_keys,
                                 cl_disparity_wt_matrix=mock_matrix,
-                                jitter_sdev=0,
                                 angular=False)
 
     assert not np.allclose(mu_hill_dual, mu_hill_dual_sidestep, atol=0.001, rtol=0)
@@ -545,7 +532,6 @@ def test_local_aggregator_numerical_components(primal_graph):
                              distances,
                              betas,
                              numerical_arrays=mock_numerical,
-                             jitter_sdev=0,
                              angular=False)
     # non connected portions of the graph will have different stats
     # used manual data plots from test_assign_to_network() to see which nodes the data points are assigned to
@@ -645,7 +631,6 @@ def test_local_agg_time(primal_graph):
                                                                                    mixed_use_hill_keys=np.array([0, 1]),
                                                                                    landuse_encodings=landuse_encodings,
                                                                                    qs=qs,
-                                                                                   jitter_sdev=0,
                                                                                    angular=False)
 
     # prime the function
@@ -665,7 +650,6 @@ def test_local_agg_time(primal_graph):
                              distances,
                              betas,
                              numerical_arrays=mock_numerical,
-                             jitter_sdev=0,
                              angular=False)
 
     # prime the function

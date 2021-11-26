@@ -15,7 +15,7 @@ def shortest_path_tree(edge_data: np.ndarray,
                        node_edge_map: Dict,
                        src_idx: int,
                        max_dist: float = np.inf,
-                       jitter_sdev: float = 1.0,
+                       jitter_scale: float = 0.0,
                        angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
     """
     All shortest paths to max network distance from source node
@@ -139,7 +139,7 @@ def shortest_path_tree(edge_data: np.ndarray,
             # this will also happen for the first nodes that overshoot the boundary
             # they will not be explored further because they have not been added to active
             # jitter injects a small amount of stochasticity for rectlinear grids
-            jitter = np.random.normal(loc=0, scale=jitter_sdev)
+            jitter = np.random.normal(loc=0, scale=jitter_scale)
             # shortest path heuristic differs for angular vs. not
             if (angular and simpl_dist + jitter < tree_simpl_dist[nb_nd_idx]) or \
                     (not angular and short_dist + jitter < tree_short_dist[nb_nd_idx]):
@@ -255,7 +255,7 @@ def local_node_centrality(node_data: np.ndarray,
                           distances: np.ndarray,
                           betas: np.ndarray,
                           measure_keys: tuple,
-                          jitter_sdev: float = 1.0,
+                          jitter_scale: float = 0.0,
                           angular: bool = False,
                           progress_proxy=None) -> np.ndarray:
     # integrity checks
@@ -344,7 +344,7 @@ def local_node_centrality(node_data: np.ndarray,
                                                   node_edge_map,
                                                   src_idx,
                                                   max_dist=global_max_dist,
-                                                  jitter_sdev=jitter_sdev,
+                                                  jitter_scale=jitter_scale,
                                                   angular=angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
@@ -437,7 +437,7 @@ def local_segment_centrality(node_data: np.ndarray,
                              distances: np.ndarray,
                              betas: np.ndarray,
                              measure_keys: tuple,
-                             jitter_sdev: float = 1.0,
+                             jitter_scale: float = 0.0,
                              angular: bool = False,
                              progress_proxy=None) -> np.ndarray:
     # integrity checks
@@ -516,7 +516,7 @@ def local_segment_centrality(node_data: np.ndarray,
                                                   node_edge_map,
                                                   src_idx,
                                                   max_dist=global_max_dist,
-                                                  jitter_sdev=jitter_sdev,
+                                                  jitter_scale=jitter_scale,
                                                   angular=angular)
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
