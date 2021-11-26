@@ -368,7 +368,7 @@ class DataLayer:
                          accessibility_keys: list | tuple = None,
                          cl_disparity_wt_matrix: list | tuple | np.ndarray = None,
                          qs: list | tuple | np.ndarray = None,
-                         jitter_sdev: float = 1.0,
+                         jitter_scale: float = 0.0,
                          angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
@@ -464,6 +464,9 @@ class DataLayer:
         qs
             The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
             the Hill diversity mixed-use measures, by default None.
+        jitter_scale
+            The scale of random jitter to add to shortest path calculations, useful for situations with highly
+            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
         angular
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
             and distances, by default False
@@ -648,7 +651,7 @@ class DataLayer:
                                     mixed_use_other_keys=np.array(mu_other_keys),
                                     accessibility_keys=np.array(acc_keys),
                                     cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
-                                    jitter_sdev=jitter_sdev,
+                                    jitter_scale=jitter_scale,
                                     angular=angular,
                                     progress_proxy=progress_proxy)
         if progress_proxy is not None:
@@ -760,7 +763,7 @@ class DataLayer:
                       stats_data_arrs: list | tuple | np.ndarray |
                                        list[list | tuple | np.ndarray] |
                                        tuple[list | tuple | np.ndarray],
-                      jitter_sdev: float = 1.0,
+                      jitter_scale: float = 0.0,
                       angular: bool = False):
         """
         This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
@@ -837,6 +840,9 @@ class DataLayer:
                 [420, 300, 220, 250, 600]  # occupants
             ]
             ```
+        jitter_scale
+            The scale of random jitter to add to shortest path calculations, useful for situations with highly
+            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
         angular
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
             and distances, by default False
@@ -932,7 +938,7 @@ class DataLayer:
                                  distances=np.array(self.Network.distances),
                                  betas=np.array(self.Network.betas),
                                  numerical_arrays=stats_data_arrs,
-                                 jitter_sdev=jitter_sdev,
+                                 jitter_scale=jitter_scale,
                                  angular=angular,
                                  progress_proxy=progress_proxy)
         if progress_proxy is not None:
