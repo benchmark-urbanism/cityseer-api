@@ -736,7 +736,7 @@ class NetworkLayer:
     # provides access to the underlying centrality.local_centrality method
     def node_centrality(self,
                         measures: list | tuple = None,
-                        jitter_sdev: float = 1.0,
+                        jitter_scale: float = 0.0,
                         angular: bool = False):
         """
         Parameters
@@ -744,9 +744,9 @@ class NetworkLayer:
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
-        jitter_sdev
-            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
-            situations with highly rectilinear grids. Set to zero to remove all jitter.
+        jitter_scale
+            The scale of random jitter to add to shortest path calculations, useful for situations with highly
+            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -827,7 +827,7 @@ class NetworkLayer:
                                                          np.array(self._distances),
                                                          np.array(self._betas),
                                                          measure_keys,
-                                                         jitter_sdev=jitter_sdev,
+                                                         jitter_scale=jitter_scale,
                                                          angular=angular,
                                                          progress_proxy=progress_proxy)
         if progress_proxy is not None:
@@ -844,7 +844,7 @@ class NetworkLayer:
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(self,
                            measures: list | tuple = None,
-                           jitter_sdev: float = 1.0,
+                           jitter_scale: float = 0.0,
                            angular: bool = False):
         """
         A list or tuple of strings, containing any combination of the following `key` values, computed within the
@@ -855,9 +855,9 @@ class NetworkLayer:
         measures
             A list or tuple of strings, containing any combination of the following `key` values, computed within the
             respective distance thresholds of $d_{max}$.
-        jitter_sdev
-            The standard deviation for the amount of random jitter to add to shortest path calculations, useful for
-            situations with highly rectilinear grids. Set to zero to remove all jitter.
+        jitter_scale
+            The scale of random jitter to add to shortest path calculations, useful for situations with highly
+            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
@@ -925,7 +925,7 @@ class NetworkLayer:
                                                             np.array(self._distances),
                                                             np.array(self._betas),
                                                             measure_keys,
-                                                            jitter_sdev=jitter_sdev,
+                                                            jitter_scale=jitter_scale,
                                                             angular=angular,
                                                             progress_proxy=progress_proxy)
         if progress_proxy is not None:
