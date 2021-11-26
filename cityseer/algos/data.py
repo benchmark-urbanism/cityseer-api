@@ -291,7 +291,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
                          node_edge_map: Dict,
                          data_map: np.ndarray,
                          max_dist: float,
-                         jitter_sdev: float = 1.0,
+                         jitter_scale: float = 0.0,
                          angular: bool = False):
     # this function is typically called iteratively, so do type checks from parent methods
     netw_x_arr = node_data[:, 0]
@@ -311,7 +311,7 @@ def aggregate_to_src_idx(netw_src_idx: int,
                                                          node_edge_map,
                                                          netw_src_idx,
                                                          max_dist=max_dist,
-                                                         jitter_sdev=jitter_sdev,
+                                                         jitter_scale=jitter_scale,
                                                          angular=angular)
     '''
     Shortest tree dijkstra        
@@ -380,7 +380,7 @@ def aggregate_landuses(node_data: np.ndarray,
                        mixed_use_other_keys: np.ndarray = np.array([]),
                        accessibility_keys: np.ndarray = np.array([]),
                        cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                       jitter_sdev: float = 1.0,
+                       jitter_scale: float = 0.0,
                        angular: bool = False,
                        progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -498,7 +498,7 @@ def aggregate_landuses(node_data: np.ndarray,
                                                                                node_edge_map,
                                                                                data_map,
                                                                                global_max_dist,
-                                                                               jitter_sdev=jitter_sdev,
+                                                                               jitter_scale=jitter_scale,
                                                                                angular=angular)
         # LANDUSES
         mu_max_unique_cl = int(landuse_encodings.max() + 1)
@@ -587,7 +587,7 @@ def aggregate_stats(node_data: np.ndarray,
                     distances: np.ndarray,
                     betas: np.ndarray,
                     numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                    jitter_sdev: float = 1.0,
+                    jitter_scale: float = 0.0,
                     angular: bool = False,
                     progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                               np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -655,7 +655,7 @@ def aggregate_stats(node_data: np.ndarray,
                                                                                node_edge_map,
                                                                                data_map,
                                                                                global_max_dist,
-                                                                               jitter_sdev=jitter_sdev,
+                                                                               jitter_scale=jitter_scale,
                                                                                angular=angular)
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array

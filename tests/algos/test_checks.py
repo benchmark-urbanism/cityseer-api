@@ -7,12 +7,6 @@ from cityseer.tools import mock
 from cityseer.tools.mock import primal_graph
 
 
-def test_progress_bar():
-    for n in [1, 11, 27, 101, 271, 5521]:
-        for i in range(n + 1):
-            checks.progress_bar(i, n)
-
-
 def test_check_numerical_data():
     mock_numerical = mock.mock_numerical_data(50)
 
