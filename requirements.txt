@@ -5,6 +5,7 @@ numba==0.55.1
 numba-progress==0.0.2
 numpy==1.21.5
 pytest
+pyproj
 requests
 shapely==1.8.1.post1
 sklearn
