@@ -133,6 +133,7 @@ export default {
       navPaths: [
         '/intro/',
         '/guide/',
+        '/examples/',
         '/tools/graphs/',
         '/tools/plot/',
         '/tools/mock/',
