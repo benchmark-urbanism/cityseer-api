@@ -21,9 +21,7 @@ Python 3.
 
 ## Notebooks
 
-- A notebook of this [getting started](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/getting_started.ipynb) guide.
-- A notebook of the [graph cleaning](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb) guide.
-- A larger area and higher resolution example example computing [centralities for inner London](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/london_centrality.ipynb).
+[`Example Notebooks`](/examples)
 
 ## Quickstart
 
