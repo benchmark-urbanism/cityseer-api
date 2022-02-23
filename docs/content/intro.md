@@ -19,7 +19,11 @@ pip install cityseer
 Code tests are run against `python 3.9`, though the code base will generally be compatible with other recent versions of
 Python 3.
 
-> A notebook of this guide can be found at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/getting_started.ipynb).
+## Notebooks
+
+- A notebook of this [getting started](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/getting_started.ipynb) guide.
+- A notebook of the [graph cleaning](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb) guide.
+- A larger area and higher resolution example example computing [centralities for inner London](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/london_centrality.ipynb).
 
 ## Quickstart
 

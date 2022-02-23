@@ -21,7 +21,7 @@ It is generally not necessary to utilise this function directly. It will be call
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='beta' type='Union[float, list, np.ndarray]'>
+<FuncElement name='beta' type='float | list | np.ndarray'>
 
 $\beta$ value/s to convert to distance thresholds $d_{max}$.
 
@@ -102,7 +102,7 @@ It is generally not necessary to utilise this function directly. It will be call
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='distance' type='Union[float, list, np.ndarray]'>
+<FuncElement name='distance' type='float | list | np.ndarray'>
 
 $d_{max}$ value/s to convert to decay parameters $\beta$.
 
@@ -158,7 +158,7 @@ avg_distance_for_beta(beta,
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='beta' type='Union[float, list, np.ndarray]'>
+<FuncElement name='beta' type='float | list | np.ndarray'>
 
 $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
 
@@ -313,7 +313,7 @@ NetworkLayer(node_uids,
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='node_uids' type='Union[list, tuple]'>
+<FuncElement name='node_uids' type='list | tuple'>
 
 A `list` or `tuple` of node identifiers corresponding to each node. This list must be in the same order and of the same length as the `node_data`.
 
@@ -367,13 +367,13 @@ A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as va
 
 </FuncElement>
 
-<FuncElement name='distances' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='distances' type='list | tuple | np.ndarray'>
 
 A distance, or `list`, `tuple`, or `numpy` array of distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use) calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should be enforced.
 
 </FuncElement>
 
-<FuncElement name='betas' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='betas' type='list | tuple | np.ndarray'>
 
 A $\beta$, or `list`, `tuple`, or `numpy` array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 
@@ -535,7 +535,7 @@ _A graph after conversion back to `networkX`._
 
 <FuncSignature>
 <pre>
-NetworkLayer.compute_centrality(**kwargs)
+NetworkLayer.compute_centrality(kwargs)
 </pre>
 </FuncSignature>
 
@@ -546,15 +546,22 @@ This method is deprecated and, if invoked, will raise a DeprecationWarning. Plea
 <FuncSignature>
 <pre>
 NetworkLayer.node_centrality(measures=None,
+                             jitter_scale=0.0,
                              angular=False)
 </pre>
 </FuncSignature>
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='measures' type='Union[list, tuple]'>
+<FuncElement name='measures' type='list | tuple'>
 
 A list or tuple of strings, containing any combination of the following `key` values, computed within the respective distance thresholds of $d_{max}$.
+
+</FuncElement>
+
+<FuncElement name='jitter_scale' type='float'>
+
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
 
 </FuncElement>
 
@@ -590,6 +597,7 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 <FuncSignature>
 <pre>
 NetworkLayer.segment_centrality(measures=None,
+                                jitter_scale=0.0,
                                 angular=False)
 </pre>
 </FuncSignature>
@@ -598,9 +606,15 @@ A list or tuple of strings, containing any combination of the following `key` va
 
 <FuncHeading>Parameters</FuncHeading>
 
-<FuncElement name='measures' type='Union[list, tuple]'>
+<FuncElement name='measures' type='list | tuple'>
 
 A list or tuple of strings, containing any combination of the following `key` values, computed within the respective distance thresholds of $d_{max}$.
+
+</FuncElement>
+
+<FuncElement name='jitter_scale' type='float'>
+
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
 
 </FuncElement>
 
@@ -654,13 +668,13 @@ A `networkX` `MultiGraph`.
 
 </FuncElement>
 
-<FuncElement name='distances' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='distances' type='list | tuple | np.ndarray'>
 
 See [`NetworkLayer`](#networklayer).
 
 </FuncElement>
 
-<FuncElement name='betas' type='Union[list, tuple, np.ndarray]'>
+<FuncElement name='betas' type='list | tuple | np.ndarray'>
 
 See [`NetworkLayer`](#networklayer).
 
