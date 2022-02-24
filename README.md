@@ -8,6 +8,8 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 Documentation: <https://cityseer.benchmarkurbanism.com/>
 
+Demo Notebooks: <https://github.com/benchmark-urbanism/cityseer-api/tree/master/demo_notebooks>
+
 Issues: <https://github.com/benchmark-urbanism/cityseer-api/issues>
 
 Questions: <https://github.com/benchmark-urbanism/cityseer-api/discussions>
