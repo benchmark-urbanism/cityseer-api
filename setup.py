@@ -27,7 +27,7 @@ setup(
         'pytest',
         'requests',
         'shapely>=1.7',
-        'sklearn',
+        'scikit-learn',
         'tqdm',
         'utm'
     ]
