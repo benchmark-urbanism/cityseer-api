@@ -6,7 +6,7 @@ div
 
 <style lang="postcss" scoped>
 #heading-style {
-  @apply mt-8 text-xl font-semibold border-b border-darkgrey;
+  @apply mt-8 text-xl font-semibold border-b border-dark-grey;
 }
 @media only screen and (max-width: 958px) {
   #heading-style {

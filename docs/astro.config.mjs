@@ -1,14 +1,22 @@
+import { defineConfig } from 'astro/config'
 import { s } from 'hastscript'
+import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
 
-export default {
+// https://astro.build/config
+export default defineConfig({
   // all options are optional; these values are the defaults
   projectRoot: './',
   public: './public',
   dist: './dist',
   src: './src',
   pages: './src/pages',
-  integrations: [vue()],
+  integrations: [
+    vue(),
+    tailwind({
+      config: { path: 'tailwind.config.cjs', applyAstroPreset: false },
+    }),
+  ],
   buildOptions: {
     site: 'https://cityseer.benchmarkurbanism.com/',
     sitemap: true,
@@ -87,4 +95,4 @@ export default {
       },
     ],
   },
-}
+})

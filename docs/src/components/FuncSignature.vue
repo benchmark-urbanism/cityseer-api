@@ -8,7 +8,7 @@ div
 <style lang="postcss" scoped>
 #sig-style {
   @apply mb-4 py-3 px-4 overflow-x-auto whitespace-pre-wrap;
-  @apply border border-midgrey bg-gray-200 rounded-br-md rounded-bl-md;
+  @apply border border-mid-grey bg-gray-200 rounded-br-md rounded-bl-md;
   @apply text-sm font-mono font-semibold leading-normal;
 }
 

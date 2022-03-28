@@ -29,7 +29,7 @@ export default {
 
 <style lang="postcss" scoped>
 #container {
-  @apply flex py-3 items-start p-1 border-b border-midgrey;
+  @apply flex py-3 items-start p-1 border-b border-mid-grey;
 }
 #column {
   @apply flex-col py-1;

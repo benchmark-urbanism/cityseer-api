@@ -12,7 +12,7 @@
 
   body {
     @apply font-defaults font-normal text-base leading-normal;
-    @apply bg-lightgrey text-darkgrey;
+    @apply bg-light-grey text-dark-grey;
   }
 
   h1,
@@ -81,15 +81,15 @@
   }
 
   table {
-    @apply table-auto border-t border-r border-midgrey mx-2 my-3;
+    @apply table-auto border-t border-r border-mid-grey mx-2 my-3;
   }
 
   th {
-    @apply border-l border-b border-midgrey p-3;
+    @apply border-l border-b border-mid-grey p-3;
   }
 
   td {
-    @apply text-xs border-l border-b border-midgrey p-2;
+    @apply text-xs border-l border-b border-mid-grey p-2;
   }
 
   td > code,
@@ -193,7 +193,7 @@
 }
 
 .footnotes {
-  @apply text-xs italic text-darkgrey;
+  @apply text-xs italic text-dark-grey;
 }
 
 .quote {
@@ -201,12 +201,12 @@
 }
 
 blockquote {
-  @apply border border-t-3 border-darkgrey rounded-b-md my-4 p-3 pb-4;
+  @apply border border-t-3 border-dark-grey rounded-b-md my-4 p-3 pb-4;
 }
 
 /* Markdown Admonitions */
 .admonition {
-  @apply border border-t-3 border-darkgrey rounded-b-md my-4 p-3 pb-4;
+  @apply border border-t-3 border-dark-grey rounded-b-md my-4 p-3 pb-4;
 }
 .admonition-heading {
   @apply text-lg font-semibold pb-2;

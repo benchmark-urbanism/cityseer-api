@@ -35,7 +35,7 @@ export default {
 
 /* Modal Content/Box */
 .modal-content {
-  @apply relative bg-darkgrey p-4;
+  @apply relative bg-dark-grey p-4;
 
   margin: 15% auto;
   width: 80%;
