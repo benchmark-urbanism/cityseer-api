@@ -1,0 +1,56 @@
+---
+import '../assets/css/tailwind.css'
+---
+
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <!-- favicons -->
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicons/favicon.ico" />
+    <link rel="icon" href="/favicons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      defer
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"
+    />
+    <link
+      defer
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.js"
+      integrity="sha384-VQ8d8WVFw0yHhCk5E8I86oOhv48xLpnDZx5T9GogA/Y84DcCKWXDmSDfn13bzFZY"
+      crossorigin="anonymous"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css" rel="stylesheet">
+    <slot name="metaContent" />
+  </head>
+  <body>
+    <main id='app-container'>
+      <section id='nav-column'></section>
+      <section id='content-column'>
+        <slot></slot>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style>
+.app-container {
+  @apply min-h-screen w-screen flex;
+}
+#nav-column {
+  @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
+}
+#content-column {
+  @apply flex-1 min-w-0 max-w-3xl px-6 pb-20;
+}
+</style>
