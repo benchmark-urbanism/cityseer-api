@@ -6,9 +6,9 @@ from setuptools import setup
 
 setup(
     name='cityseer',
-    version='1.2.1',
+    version='1.2.2',
     packages=['cityseer', 'cityseer.algos', 'cityseer.metrics', 'cityseer.tools'],
-    description='Computational tools for urban analysis',
+    description='Computational tools for network-based pedestrian-scale urban analysis',
     url='https://github.com/benchmark-urbanism/cityseer-api',
     project_urls={
         "Bug Tracker": "https://github.com/benchmark-urbanism/cityseer-api/issues",
@@ -20,13 +20,13 @@ setup(
     license='GNU AGPLv3',
     install_requires=[
         'matplotlib',
-        'networkx>=2.4',
-        'numba>=0.53',
-        'numba-progress',
-        'numpy',
-        'pytest',
+        'networkx==2.6.3',
+        'numba==0.55.1',
+        'numba-progress==0.0.2',
+        'numpy==1.21.5',
+        'pyproj',
         'requests',
-        'shapely>=1.7',
+        'shapely==1.8.1.post1',
         'scikit-learn',
         'tqdm',
         'utm'
