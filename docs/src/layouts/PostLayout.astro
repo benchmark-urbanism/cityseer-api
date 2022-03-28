@@ -1,0 +1,39 @@
+---
+import CommonLayout from '../layouts/CommonLayout.astro'
+---
+
+<CommonLayout>
+  <Fragment slot="metaContent">
+    <title>{content.title}</title>
+    <meta set:html name="description" content={postExcerpt} />
+    <meta set:html name="keywords" content={postTags} />
+  </Fragment>
+  <Tags slot="tags" {tagData} />
+  <NavTree client:load slot="navTree" {currentPath} {posts} />
+  <div class="post-info">
+    <span class="date">{format(new Date(content.date), 'do LLL, y')}</span>
+    <span class="name">{content.author}</span>
+  </div>
+  <slot />
+  <div class="flex flex-col">
+    <Footer class="text-center" />
+    <SocialLinks class="flex justify-center items-center" />
+  </div>
+</CommonLayout>
+
+<style lang='postcss'>
+  .post-info {
+    @apply flex w-full flex-col justify-center py-4 text-center;
+  }
+  .name {
+    @apply text-sm;
+  }
+  .date {
+    @apply text-sm font-medium;
+  }
+  @media only screen and (max-width: 750px) {
+    .post-info {
+      @apply py-1;
+    }
+  }
+</style>
