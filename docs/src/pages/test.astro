@@ -2,6 +2,7 @@
 import { Markdown } from 'astro/components';
 import PostLayout from '../layouts/PostLayout.astro'
 ---
+
 <PostLayout>
 <div class="yap module">
   <h1 class="yap module-title" id="tests-mock-file">tests.mock_file</h1>
@@ -24,51 +25,75 @@ import PostLayout from '../layouts/PostLayout.astro'
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">param_a</div>
           <div class="yap doc-str-elem-type">int</div>
-        </div><Markdown>A _test_ _param_.</Markdown>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown>
+A *test* _param_.
+</Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">param_b</div>
           <div class="yap doc-str-elem-type">int | float</div>
-        </div><Markdown>Another _test_ _param_.
-        | col A |: col B |
-        |=======|========|
-        | boo   | baa    |
-        </Markdown>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown>
+Another *test* _param_.
+
+| col A |: col B |
+|-------|--------|
+| boo   | baa    |
+</Markdown></div>
       </div>
       <h2 class="yap doc-str-heading">Returns</h2>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">summed_number</div>
           <div class="yap doc-str-elem-type">int | float</div>
-        </div><p>The sum of <em>param_a</em> and <em>param_b</em>.</p>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown>
+The sum of _param_a_ and _param_b_.
+</Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
           <div class="yap doc-str-elem-type">None</div>
-        </div><p>None returned if values are negative.</p>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown>
+None returned if values are negative.
+</Markdown></div>
       </div>
       <h2 class="yap doc-str-heading">Raises</h2>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
           <div class="yap doc-str-elem-type">ValueError</div>
-        </div><p>Raises value error if params are not numbers.</p>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown>
+Raises value error if params are not numbers.
+</Markdown></div>
       </div>
       <div class="yap doc-str-meta">
-        <h2 class="yap doc-str-heading">Notes</h2>
-        <Markdown>
-        ```py
-        print(mock_function(1, 2))
-        # prints 3
-        ```
-        </Markdown>
+        <h2 class="yap doc-str-heading">Notes</h2><Markdown>
+```python
+print(mock_function(1, 2))
+# prints 3
+```
+
+Random text
+
+_Random table_
+
+| col A |: col B |
+|-------|--------|
+| boo   | baa    |
+</Markdown>
       </div>
     </div>
   </section>
   <section class="yap class">
-    <h2 class="yap class-title" id="parentclass">ParentClass</h2><p>A parent class</p>
+    <h2 class="yap class-title" id="parentclass">ParentClass</h2><Markdown>
+A parent class
+</Markdown>
     <div class="yap class-prop-def">
       <div class="yap class-prop-def-name">parent_prop</div>
       <div class="yap class-prop-def-type">str</div>
@@ -90,13 +115,18 @@ import PostLayout from '../layouts/PostLayout.astro'
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">**kwargs</div>
             <div class="yap doc-str-elem-type"></div>
-          </div><p>Keyword args.</p>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown>
+Keyword args.
+</Markdown></div>
         </div>
       </div>
     </section>
   </section>
   <section class="yap class">
-    <h2 class="yap class-title" id="childclass">ChildClass</h2><p>A child class</p>
+    <h2 class="yap class-title" id="childclass">ChildClass</h2><Markdown>
+A child class
+</Markdown>
     <section class="yap func">
       <h2 class="yap func-title" id="childclass">ChildClass</h2>
       <div class="yap func-sig-content">
@@ -116,19 +146,28 @@ import PostLayout from '../layouts/PostLayout.astro'
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">param_c</div>
             <div class="yap doc-str-elem-type">float</div>
-          </div><p>Yet another test param.</p>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown>
+Yet another test param.
+</Markdown></div>
         </div>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">param_d</div>
             <div class="yap doc-str-elem-type">float</div>
-          </div><p>And another.</p>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown>
+And another.
+</Markdown></div>
         </div>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">**kwargs</div>
             <div class="yap doc-str-elem-type"></div>
-          </div><p>Keyword args.</p>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown>
+Keyword args.
+</Markdown></div>
         </div>
       </div>
     </section>
@@ -151,10 +190,14 @@ import PostLayout from '../layouts/PostLayout.astro'
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">str</div>
             <div class="yap doc-str-elem-type">saying_hello</div>
-          </div><p>A string saying &ldquo;hello&rdquo;</p>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown>
+A string saying "hello"
+</Markdown></div>
         </div>
       </div>
     </section>
   </section>
 </div>
 </PostLayout>
+

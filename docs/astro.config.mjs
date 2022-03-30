@@ -14,7 +14,7 @@ export default defineConfig({
   integrations: [
     vue(),
     tailwind({
-      config: { path: 'tailwind.config.cjs', applyAstroPreset: false },
+      config: { path: './tailwind.config.cjs', applyAstroPreset: false },
     }),
   ],
   buildOptions: {
@@ -35,6 +35,8 @@ export default defineConfig({
           wrap: false,
         },
         remarkPlugins: [
+          'remark-gfm',
+          'remark-smartypants',
           'remark-emoji',
           '@fec/remark-a11y-emoji',
           [

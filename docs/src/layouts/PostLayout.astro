@@ -11,6 +11,57 @@ import CommonLayout from '../layouts/CommonLayout.astro'
   <slot />
 </CommonLayout>
 
-<style>
+<style global>
+.module {
+  @apply p-2 m-2;
+}
+.module-title {
+  @apply font-mono text-xl font-semibold;
+}
+.func-title {
+  @apply font-mono text-xl font-semibold border-b-2 border-theme;
+}
+.func-sig-content {
+  @apply border border-mid-grey flex border-b bg-dark-grey rounded-bl-md rounded-br-md p-3 font-mono items-start;
+}
+.func-sig-title {
+  @apply flex;
+}
+.func-sig-start,
+.func-sig-end,
+.func-sig-param {
+  @apply text-lg;
+}
+.func-sig-params {
+  @apply flex;
+}
+.doc-str-content {
+  @apply px-2 py-1;
+}
+.doc-str-text {
+  @apply text-base;
+}
+.doc-str-heading {
+  @apply text-2xl border-b border-mid-grey leading-none;
+}
+.doc-str-elem-container {
+  @apply p-2 bg-dark-grey rounded-bl-md rounded-br-md flex;
+}
+.doc-str-elem-def {
+  @apply flex flex-col w-36;
+}
+.doc-str-elem-name {
+  @apply font-bold;
+}
+.doc-str-elem-type {
+  @apply font-medium;
+}
+.doc-str-elem-desc {
 
+}
+@media only screen and (max-width: 958px) {
+  .func-sig-title {
+    @apply text-lg font-semibold;
+  }
+}
 </style>
