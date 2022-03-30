@@ -11,8 +11,8 @@
   }
 
   body {
-    @apply font-defaults font-normal text-base leading-normal;
-    @apply bg-light-grey text-dark-grey;
+    @apply font-mono text-base leading-normal;
+    @apply bg-darker-grey text-lighter-grey;
   }
 
   h1,
@@ -21,20 +21,16 @@
   h4,
   h5,
   h6 {
-    @apply font-headings;
+    /* flex is for links inserted before headings */
+    @apply flex items-center font-headings text-light-grey;
   }
 
   h1 {
-    @apply text-4xl pt-28 pb-4;
-  }
-
-  h2,
-  h3 {
-    @apply pt-8 pb-2;
+    @apply p-2 pt-12 text-4xl font-extralight leading-snug tracking-tight;
   }
 
   h2 {
-    @apply text-3xl;
+    @apply pt-8 pb-2 text-2xl font-medium;
   }
 
   h3 {
@@ -53,53 +49,52 @@
     @apply text-base;
   }
 
-  ul,
-  li {
-    @apply ml-3 py-1;
+  ul > li {
+    @apply ml-3 text-sm;
 
     list-style-type: disc;
   }
 
   p {
-    @apply text-base py-2;
+    @apply py-1 text-sm font-light;
   }
 
-  code {
-    @apply font-mono text-xs tracking-tight font-medium rounded-sm bg-gray-200;
-
-    padding: 0 2px;
-    margin: 0 1px;
+  :not(pre) > code {
+    @apply rounded-sm bg-dark-grey px-1 font-mono text-sm font-medium text-lighter-grey;
   }
 
-  pre > code {
-    @apply whitespace-pre-wrap overflow-x-auto !important;
-    @apply font-mono text-xs tracking-tight font-normal !important;
+  pre {
+    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded py-1 px-2 text-xs font-normal tracking-tight;
   }
 
   a {
     @apply text-theme;
   }
 
+  p > a {
+    @apply font-medium;
+  }
+
   table {
-    @apply table-auto border-t border-r border-mid-grey mx-2 my-3;
+    @apply table-auto border-t border-r border-dark-grey;
   }
 
   th {
-    @apply border-l border-b border-mid-grey p-3;
+    @apply border-l border-b border-dark-grey py-2;
   }
 
   td {
-    @apply text-xs border-l border-b border-mid-grey p-2;
+    @apply border-l border-b border-dark-grey px-1 py-2 text-xs;
   }
 
   td > code,
   td > a > code {
-    @apply text-xs px-0.5 py-0;
+    @apply px-0.5 py-0 text-xs;
   }
 
-  @media only screen and (max-width: 958px) {
+  @media only screen and (max-width: 1200px) {
     h1 {
-      @apply text-2xl pt-8 pb-2;
+      @apply pt-8 pb-2 text-2xl font-light;
     }
 
     h2,
@@ -129,19 +124,19 @@
 
     ul,
     li {
-      @apply ml-2 text-sm py-0.5;
+      @apply ml-2 text-sm;
     }
 
     p {
-      @apply text-sm py-1;
+      @apply text-sm;
     }
 
     code {
       @apply text-xxs;
     }
 
-    pre > code {
-      @apply text-xxs !important;
+    pre {
+      @apply text-xxs;
     }
 
     th {
@@ -157,59 +152,25 @@
     }
   }
 }
+.heading-icon {
+  @apply mr-2;
 
-.fade-enter,
-.fade-leave-to {
-  transform: scaleY(0);
-}
-.fade-enter-to,
-.fade-leave {
-  transform: scaleY(1);
-}
-.fade-enter-active {
-  transition: all 250ms ease-out;
-}
-.fade-leave-active {
-  transition: all 0s linear;
-}
-
-.foreground-pulse {
-  opacity: 1;
-  animation-name: foreground-pulsate;
-  animation-duration: 0.75s;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
-}
-
-@keyframes foreground-pulsate {
-  0% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.95;
+  & path {
+    fill: #d33130;
   }
 }
-
-.footnotes {
-  @apply text-xs italic text-dark-grey;
+.references {
+  @apply my-4 border-t border-mid-grey py-2;
 }
-
+.csl-entry {
+  @apply text-xs font-light text-light-grey;
+}
 .quote {
   @apply ml-10;
 }
-
 blockquote {
-  @apply border border-t-3 border-dark-grey rounded-b-md my-4 p-3 pb-4;
-}
-
-/* Markdown Admonitions */
-.admonition {
-  @apply border border-t-3 border-dark-grey rounded-b-md my-4 p-3 pb-4;
-}
-.admonition-heading {
-  @apply text-lg font-semibold pb-2;
-}
-.admonition-content {
+  @apply my-4 rounded-b-md border border-t-2 border-mid-grey bg-dark-grey p-3 pb-2 shadow;
+  & p {
+    @apply text-xs;
+  }
 }
