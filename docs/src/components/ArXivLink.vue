@@ -1,46 +1,35 @@
 <template lang="pug">
-div
-  #arXiv-container
-    a#arXiv-link(:href='arXivLink' :title='title' target='_blank')
-      img#arXiv-logo(src='../assets/logos/arXiv-logo.png' alt='arXiv logo' width=75)
-      #arXiv-text paper identifier: {{ arXivIdentifier }}
+.flex.justify-center
+  a#arXiv-container(:href='arXivLink' :title='title' target='_blank')
+    span#arXiv-logo arXiv.org
+    .text-sm.font-medium.leading-none arXiv id: {{ arXivIdentifier }}
 </template>
 
-<script>
-export default {
-  name: 'ArXivLink',
-  props: {
-    arXivLink: {
-      required: true,
-      type: String,
-    },
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  arXivLink: {
+    required: true,
+    type: String,
   },
-  computed: {
-    title() {
-      return `Link to arXiv pre-print for ${this.arXivLink}`
-    },
-    arXivIdentifier() {
-      const parts = this.arXivLink.split('/')
-      return parts[parts.length - 1]
-    },
-  },
-}
+})
+const title = computed(() => `Link to arXiv pre-print for ${props.arXivLink}`)
+const arXivIdentifier = computed(() => {
+  const parts = props.arXivLink.split('/')
+  return parts[parts.length - 1]
+})
 </script>
 
-<style lang="postcss">
+<style lang="postcss" scoped>
 #arXiv-container {
-  @apply flex items-center justify-center my-4;
-}
-#arXiv-link {
-  @apply flex flex-col items-center text-theme relative p-2;
+  @apply flex flex-col items-center justify-center;
+  @apply m-2 rounded-sm border-0.5 border-mid-grey bg-dark-grey p-2 shadow;
 }
 #arXiv-logo {
-  @apply m-2 object-contain;
+  @apply m-2 bg-theme px-1 font-mono text-white transition-all;
 }
-#arXiv-text {
-  @apply text-sm font-medium leading-none;
-}
-#arXiv-link:hover > #arXiv-text {
-  transform: font-bold;
+#arXiv-container:hover > #arXiv-logo {
+  @apply scale-105;
 }
 </style>

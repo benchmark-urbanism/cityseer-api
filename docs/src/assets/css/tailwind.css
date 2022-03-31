@@ -5,10 +5,12 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-darker-grey text-lighter-grey;
   }
-
   h1,
   h2,
   h3,
@@ -58,7 +60,7 @@
   }
 
   pre {
-    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded py-1 px-2 text-xs font-normal tracking-tight;
+    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded text-xs font-normal tracking-tight !important;
   }
 
   a {

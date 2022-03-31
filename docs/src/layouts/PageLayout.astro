@@ -1,21 +1,73 @@
 ---
 import CommonLayout from '../layouts/CommonLayout.astro'
----
+import Footer from '../components/Footer.astro'
+import NavColumn from '../components/NavColumn.vue'
+import RepoLink from '../components/RepoLink.astro'
+import StripeTitle from '../components/StripeTitle.astro'
 
+import logoURL from '../assets/logos/cityseer_logo_light_red.png'
+
+const { content } = Astro.props;
+const pageHeaders = content.astro.headers
+const currentPath = Astro.request.url.pathname
+const navPaths = [
+  '/intro',
+  '/guide',
+  '/examples',
+  '/tools/graphs',
+  '/tools/plot',
+  '/tools/mock',
+  '/metrics/layers',
+  '/metrics/networks',
+  '/attribution',
+]
+---
 <CommonLayout>
   <Fragment slot="metaContent">
     <title></title>
     <meta set:html name="description" content='' />
     <meta set:html name="keywords" content='' />
   </Fragment>
-  <div class='w-full flex flex-col p-8 py-20 max-w-3xl'>
-    <slot />
+  <div id='cols'>
+    <div id='nav-col'>
+      <a href='/'
+        title='home' >
+        <img src={logoURL}
+          alt='logo'
+          class='max-w-sm hover:scale-105 transition-all p-8' />
+      </a>
+      <NavColumn client:only {navPaths} {currentPath} {pageHeaders} />
+      <div class='flex-grow'></div>
+      <RepoLink />
+    </div>
+    <StripeTitle />
+    <div id='content-col'>
+      <slot />
+      <Footer />
+    </div>
   </div>
 </CommonLayout>
 
 <style>
+#cols {
+  @apply flex justify-center;
+}
+#nav-col {
+  @apply flex-1 flex flex-col sticky min-h-screen max-h-screen overflow-y-auto top-0;
+}
+#content-col {
+  @apply flex-1 flex flex-col max-w-2xl p-8;
+}
 
 @media only screen and (max-width: 958px) {
-
+  #cols {
+    @apply flex flex-col;
+  }
+  #nav-col {
+    @apply w-full;
+  }
+  #content-col {
+    @apply w-full;
+  }
 }
 </style>

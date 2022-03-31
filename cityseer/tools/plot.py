@@ -30,7 +30,7 @@ secondary = '#d32f2f'
 warning = '#9a0007'
 error = '#ffffff'
 success = '#2e7d32'
-background = '#2e2e2e'
+background = '#19181B'
 
 
 def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
