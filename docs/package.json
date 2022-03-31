@@ -57,6 +57,7 @@
     "remark-rehype": "10.1.0",
     "remark-smartypants": "2.0.0",
     "serialize-javascript": "^6.0.0",
+    "shiki": "^0.10.1",
     "shorthash": "^0.0.2",
     "stylelint": "14.6.1",
     "stylelint-config-prettier": "9.0.3",

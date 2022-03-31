@@ -5,13 +5,7 @@
 @tailwind utilities;
 
 @layer base {
-  /* font-body applies associated theme config to entire site */
-  html {
-    scroll-behavior: smooth;
-  }
-
   body {
-    @apply font-mono text-base leading-normal;
     @apply bg-darker-grey text-lighter-grey;
   }
 
@@ -22,19 +16,19 @@
   h5,
   h6 {
     /* flex is for links inserted before headings */
-    @apply flex items-center font-headings text-light-grey;
+    @apply flex items-center py-1 font-headings text-light-grey !important;
   }
 
   h1 {
-    @apply p-2 pt-12 text-4xl font-extralight leading-snug tracking-tight;
+    @apply pt-12 text-4xl font-extralight pt-8 pb-4 !important;
   }
 
   h2 {
-    @apply pt-8 pb-2 text-2xl font-medium;
+    @apply text-3xl font-normal pt-6 pb-2 !important;
   }
 
   h3 {
-    @apply text-2xl;
+    @apply text-2xl font-medium pt-4 !important;
   }
 
   h4 {
