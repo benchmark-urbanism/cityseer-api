@@ -1,5 +1,7 @@
 ---
 import CommonLayout from '../layouts/CommonLayout.astro'
+
+import { Rocket } from '@vicons/fa'
 ---
 <CommonLayout>
   <Fragment slot="metaContent">
@@ -7,18 +9,26 @@ import CommonLayout from '../layouts/CommonLayout.astro'
     <meta set:html name="description" content='Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.'/>
     <meta set:html name="keywords" content='' />
   </Fragment>
-  <div>
-    <div id='home-container'>
+  <div id='home-container'>
+    <aside id='nav-column'>
+      <img id='logo-img'
+        src='../../assets/logos/cityseer_logo_light_red.png'
+        alt='logo'
+      />
+      <a id='go-box' href='/intro/'>
+        <button id='go-button' class='foreground-pulse' title='Get Started!'></button>
+          <Rocket />
+        <h1 class='text-2xl font-normal py-2'>Get Started!</h1>
+      </a>
+    </aside>
+    <div id='feature-content'>
       <h1 id='heading-text'>Computational tools for urban analysis</h1>
-      <div id='feature-content'></div>
-      <div>
-        <h2 class='feature-text'>Urban morphological analysis</h2>
-        <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
-        <h2 class='feature-text'>Pedestrian scale</h2>
-        <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
-        <h2 class='feature-text'>Friendly & performant</h2>
-        <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
-      </div>
+      <h2 class='feature-text'>Urban morphological analysis</h2>
+      <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
+      <h2 class='feature-text'>Pedestrian scale</h2>
+      <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
+      <h2 class='feature-text'>Friendly & performant</h2>
+      <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
     </div>
   </div>
 </CommonLayout>

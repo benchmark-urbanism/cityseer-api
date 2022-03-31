@@ -17,7 +17,7 @@
     "@vicons/ionicons5": "0.12.0",
     "@vicons/material": "0.12.0",
     "@vicons/tabler": "0.12.0",
-    "@vueuse/core": "8.2.1",
+    "@vueuse/core": "8.2.2",
     "animejs": "3.2.1",
     "date-fns": "2.28.0",
     "url-slug": "3.0.3"
@@ -45,7 +45,7 @@
     "pug": "3.0.2",
     "pug-plain-loader": "1.1.0",
     "rehype-autolink-headings": "6.1.1",
-    "rehype-citation": "0.2.5",
+    "rehype-citation": "0.3.0",
     "rehype-katex": "6.0.2",
     "rehype-sanitize": "5.0.1",
     "rehype-slug": "5.0.1",
