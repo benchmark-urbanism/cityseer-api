@@ -1,7 +1,10 @@
 ---
-import { Github, Rocket } from '@vicons/fa'
+import { Rocket } from '@vicons/fa'
 
 import CommonLayout from '../layouts/CommonLayout.astro'
+import Footer from '../components/Footer.astro'
+import RepoLink from '../components/RepoLink.astro'
+import StripeTitle from '../components/StripeTitle.astro'
 import logoURL from '../assets/logos/cityseer_logo_light_red.png'
 ---
 <CommonLayout>
@@ -12,64 +15,52 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
   </Fragment>
   <div id='home-container' class='w-full justify-center'>
     <aside id='left-container'>
-      <div class='flex flex-col items-center justify-center p-8 w-full'>
-        <div class='max-w-md object-contain'>
-          <img class='px-2 py-10'
-            src={logoURL}
-            alt='logo'
-          />
-        </div>
-        <a id='go-button' 
-          type='button'
-          href='/intro'
-          title='Get Started!'
-          class='flex flex-col items-center justify-center py-20'>
-          <button
-            id='go-button' 
-            class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
-            <Rocket class='w-6'/>
-          </button>
-          <h2 class='text-2xl font-normal py-2'>Get Started!</h2>
-        </a>
+      <div class='flex-grow'></div>
+      <div class='max-w-sm object-contain'>
+        <img class='px-2 py-10'
+          src={logoURL}
+          alt='logo'
+        />
       </div>
-      <div id='stripe'><h2 class='py-0'>Cityseer API Docs</h2></div>
+      <a id='go-button' 
+        type='button'
+        href='/intro'
+        title='Get Started!'
+        class='flex flex-col items-center justify-center py-4'>
+        <button
+          id='go-button' 
+          class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
+          <Rocket class='w-6'/>
+        </button>
+        <h2>Get Started!</h2>
+      </a>
+      <div class='flex-grow'></div>
     </aside>
+    <StripeTitle />
     <div id='right-container'>
-      <div class='flex flex-col'>
-        <h1>Computational tools for urban analysis</h1>
-        <h2>Urban morphological analysis</h2>
-        <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
-        <h2>Pedestrian scale</h2>
-        <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
-        <h2>Friendly & performant</h2>
-        <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
-      </div>
-      <div class='pt-16 w-full flex justify-center'>
-        <div class='flex flex-col items-center'>
-          <a class='px-6 py-3 hover:scale-110 transition-all text-light-grey hover:text-theme'
-            href='https://github.com/benchmark-urbanism/cityseer-api'
-            target='_blank'>
-            <Github class='w-8'/>
-          </a>
-          <footer class='text-xxs font-light text-light-grey'>Copyright © 2018-present Gareth Simons</footer>
-        </div>
-      </div>
+      <RepoLink />
+      <div class='flex-grow'></div>
+      <h1>Computational tools for urban analysis</h1>
+      <h2>Urban morphological analysis</h2>
+      <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
+      <h2>Pedestrian scale</h2>
+      <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
+      <h2>Friendly & performant</h2>
+      <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
+      <Footer />
     </div>
   </div>
 </CommonLayout>
 
 <style>
 #home-container {
-  @apply flex;
+  @apply flex justify-center items-center;
 }
 #left-container {
-  @apply flex-1 flex justify-end max-w-2xl border-r border-mid-grey;
-}
-#stripe {
-  writing-mode: vertical-lr;
+  @apply flex-1 flex flex-col max-w-xl p-8;
 }
 #right-container {
-  @apply flex-1 flex flex-col justify-end max-w-2xl px-6 py-4;
+  @apply flex-1 flex flex-col max-w-xl p-8;
 }
 
 @media only screen and (max-width: 958px) {

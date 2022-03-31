@@ -1,4 +1,6 @@
 ---
+setup: |
+  import ArXivLink from '../components/ArXivLink.vue'
 layout: '../layouts/PageLayout.astro'
 ---
 

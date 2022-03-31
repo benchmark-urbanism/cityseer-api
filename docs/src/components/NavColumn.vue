@@ -1,61 +1,67 @@
 <template lang="pug">
-// split into two
-section#nav-side-by-side
-  // left side for navigation
-  nav#nav-tree(ref='navView')
-    // logo serves as home button
-    a#logo-link.foreground-pulse(
-      href='/'
-      title='home'
-    )
-      a#logo-img(
-        src='./assets/logos/cityseer_logo_light_red.png'
-        alt='logo'
-        :style='logoDynamicStyle'
-      )
-    // go button
-    a#go-box(v-show='isHome' href='/intro/')
-      #go-button.foreground-pulse(title='Get Started!')
-        font-awesome(icon='rocket' :size='smallMode ? "lg" : "2x"')
-      .text-2xl.font-normal.py-2 Get Started!
-    // navigation tree
-    div(v-show='!isHome' v-for='doc in docNav')
-      transition-group#nested-nav-tree
-        a.nav-link(
-          :key='doc.id'
-          :title='doc.title'
-          :href='doc.path'
-          :class='{ "nav-link-active": doc.active }'
-        ) {{ doc.title }}
-        ClientOnly
-          // when active, each entry has a nested-tree to H2 headers
-          a.nested-link(
-            v-for='h2 in doc.children'
-            :key='h2.ref'
-            :title='h2.value'
-            :href='h2.path'
-            :id='h2.ref'
-          ) {{ h2.value }}
-      // spacer under nested elements for active tab
-      .pb-2(v-show='doc.active')
-    // footer
-    .flex-grow
-    // github link
-    a.self-start.px-6.py-1(
-      href='https://github.com/benchmark-urbanism/cityseer-api'
-      target='_blank'
-    )
-      font-awesome(:icon='["fab", "github"]' size='2x')
-    footer#footer-container
-      div Copyright © 2018-present Gareth Simons
-  // right narrow bit for title
-  a#title(href='/' :class='{ "pointer-events-none": $route.path === "/" }')
-    h2#title-text {{ $static.metadata.siteName }}
+// left side for navigation
+nav#nav-tree
+  // navigation tree
+  div(v-for='nav in navTree').nested-nav-tree
+    a.nav-link(
+      :key='nav.path'
+      :title='nav.path'
+      :href='nav.path'
+      :class='{ "nav-link-active": nav.active }'
+    ) {{ nav.path }}
+    // when active, each entry has a nested-tree to H2 headers
+    a.nested-link(
+      v-for='header in nav.headers'
+      :key='header.path'
+      :title='header.title'
+      :href='header.path'
+    ) {{ header.title }}
+    // spacer under nested elements for active tab
+    .pb-2(v-show='nav.active')
 </template>
 
 <script setup>
 import { useIntersectionObserver, useThrottleFn, useMediaQuery } from '@vueuse/core'
 import { computed, ref } from 'vue'
+import { Rocket, Github } from '@vicons/fa'
+
+const props = defineProps({
+  navPaths: {
+    type: Array,
+    required: true,
+  },
+  currentPath: {
+    type: String,
+    required: true,
+  },
+  pageHeaders: {
+    type: Object,
+    required: true,
+  },
+})
+const navTree = computed(() => {
+  const tree = []
+  if (!props.navPaths) return tree
+  props.navPaths.forEach((path) => {
+    const isActive = path === props.currentPath
+    const headers = []
+    if (isActive) {
+      props.pageHeaders.forEach((header) => {
+        console.log(header)
+        headers.push({
+          title: header.slug.replace('-', ' '),
+          path: `#${header.slug}`,
+        })
+      })
+    }
+    tree.push({
+      active: isActive,
+      path,
+      headers,
+    })
+  })
+  return tree
+})
 
 const isWide = useMediaQuery('(min-width: 750px)')
 const isTall = useMediaQuery('(min-height: 620px)')
@@ -67,24 +73,10 @@ const h2Elems = {}
 const laggedElem = null
 const fillerElem = null
 const scrollToTopVisible = false
-const navPaths = [
-  '/intro/',
-  '/guide/',
-  '/examples/',
-  '/tools/graphs/',
-  '/tools/plot/',
-  '/tools/mock/',
-  '/metrics/layers/',
-  '/metrics/networks/',
-  '/attribution/',
-]
+
 const scrollTo = computed((targetEl) => {
   window.scroll(targetEl)
 })
-const observer = new IntersectionObserver(this.onElementObserved)
-// this.$refs.routerView.querySelectorAll('h2').forEach((el) => {
-//   this.observer.observe(el)
-// })
 const onElementObserved = (entries) => {
   if (!this.observerReady) return
   if (!('navView' in this.$refs) || !this.$refs.navView) return
@@ -125,6 +117,51 @@ const onElementObserved = (entries) => {
     this.fillerElem.classList.add(targetClass)
   }
 }
+const observer = new IntersectionObserver(onElementObserved)
+// this.$refs.routerView.querySelectorAll('h2').forEach((el) => {
+//   this.observer.observe(el)
+// })
 </script>
 
-<style lang="postcss" scoped></style>
+<style lang="postcss" scoped>
+.nested-nav-tree {
+  @apply flex flex-col items-end;
+}
+#logo-img {
+  @apply w-full object-contain transition-all;
+}
+.nav-link {
+  @apply text-base text-right text-theme font-medium px-3 py-3 cursor-pointer leading-none;
+  & :hover,
+  & :active {
+    @apply bg-theme text-white;
+  }
+}
+#logo-link {
+  /* width and margins set from animations */
+  @apply w-full flex items-center justify-end transition-all;
+
+  & :hover {
+    transform: scale(1.05);
+  }
+}
+.nav-link-active {
+  @apply border-b border-t border-light-grey border-r-3 pr-2;
+}
+.nested-link {
+  @apply text-xs font-light py-1 pr-3 cursor-pointer;
+  @apply border-theme;
+  &:hover,
+  &:active {
+    @apply border-r-3 pr-2;
+  }
+}
+@media only screen and (max-width: 958px) {
+  .nav-link {
+    @apply text-sm text-left;
+  }
+  .nested-link {
+    @apply text-xs;
+  }
+}
+</style>

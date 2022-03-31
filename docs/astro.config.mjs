@@ -31,8 +31,8 @@ export default defineConfig({
         syntaxHighlight: 'shiki',
         shikiConfig: {
           theme: 'material-darker',
-          langs: [],
-          wrap: false,
+          langs: ['astro'],
+          wrap: true,
         },
         remarkPlugins: [
           'remark-gfm',
