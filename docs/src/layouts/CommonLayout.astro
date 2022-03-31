@@ -35,10 +35,7 @@ import '../assets/css/tailwind.css'
   </head>
   <body>
     <main id='app-container'>
-      <section id='nav-column'></section>
-      <section id='content-column'>
-        <slot />
-      </section>
+      <slot />
     </main>
   </body>
 </html>
@@ -47,10 +44,8 @@ import '../assets/css/tailwind.css'
 #app-container {
   @apply min-h-screen w-screen flex;
 }
-#nav-column {
-  @apply flex flex-col sticky top-0 min-h-screen max-h-screen overflow-y-auto;
-}
-#content-column {
-  @apply flex-1 min-w-0 max-w-3xl px-6 pb-20;
+
+@media only screen and (max-width: 958px) {
+
 }
 </style>

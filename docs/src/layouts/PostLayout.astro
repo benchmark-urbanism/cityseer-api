@@ -8,6 +8,20 @@ import CommonLayout from '../layouts/CommonLayout.astro'
     <meta set:html name="description" content='' />
     <meta set:html name="keywords" content='' />
   </Fragment>
+  <aside id='nav-column'>
+  <!-- split into two -->
+  <section id='nav-side-by-side'>
+    <!-- left side for navigation -->
+    <nav id='nav-tree'>
+      <!-- logo serves as home button -->
+      <a id='logo-link' class='foreground-pulse' href='/' title='home'></a>
+        <img id='logo-img'
+          src='./assets/logos/cityseer_logo_light_red.png'
+          alt='logo'
+        />
+    </nav>
+  </section>
+</aside>
   <slot />
 </CommonLayout>
 
