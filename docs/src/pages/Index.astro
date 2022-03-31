@@ -1,64 +1,86 @@
 ---
-import CommonLayout from '../layouts/CommonLayout.astro'
+import { Github, Rocket } from '@vicons/fa'
 
-import { Rocket } from '@vicons/fa'
+import CommonLayout from '../layouts/CommonLayout.astro'
+import logoURL from '../assets/logos/cityseer_logo_light_red.png'
 ---
 <CommonLayout>
   <Fragment slot="metaContent">
     <title>Cityseer API Docs</title>
     <meta set:html name="description" content='Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.'/>
-    <meta set:html name="keywords" content='' />
+    <meta set:html name="keywords" content='cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning, API'/>
   </Fragment>
-  <div id='home-container'>
-    <aside id='nav-column'>
-      <img id='logo-img'
-        src='../../assets/logos/cityseer_logo_light_red.png'
-        alt='logo'
-      />
-      <a id='go-box' href='/intro/'>
-        <button id='go-button' class='foreground-pulse' title='Get Started!'></button>
-          <Rocket />
-        <h1 class='text-2xl font-normal py-2'>Get Started!</h1>
-      </a>
+  <div id='home-container' class='w-full justify-center'>
+    <aside id='left-container'>
+      <div class='flex flex-col items-center justify-center p-8 w-full'>
+        <div class='max-w-md object-contain'>
+          <img class='px-2 py-10'
+            src={logoURL}
+            alt='logo'
+          />
+        </div>
+        <a id='go-button' 
+          type='button'
+          href='/intro'
+          title='Get Started!'
+          class='flex flex-col items-center justify-center py-20'>
+          <button
+            id='go-button' 
+            class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
+            <Rocket class='w-6'/>
+          </button>
+          <h2 class='text-2xl font-normal py-2'>Get Started!</h2>
+        </a>
+      </div>
+      <div id='stripe'><h2 class='py-0'>Cityseer API Docs</h2></div>
     </aside>
-    <div id='feature-content'>
-      <h1 id='heading-text'>Computational tools for urban analysis</h1>
-      <h2 class='feature-text'>Urban morphological analysis</h2>
-      <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
-      <h2 class='feature-text'>Pedestrian scale</h2>
-      <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
-      <h2 class='feature-text'>Friendly & performant</h2>
-      <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
+    <div id='right-container'>
+      <div class='flex flex-col'>
+        <h1>Computational tools for urban analysis</h1>
+        <h2>Urban morphological analysis</h2>
+        <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
+        <h2>Pedestrian scale</h2>
+        <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
+        <h2>Friendly & performant</h2>
+        <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
+      </div>
+      <div class='pt-16 w-full flex justify-center'>
+        <div class='flex flex-col items-center'>
+          <a class='px-6 py-3 hover:scale-110 transition-all text-light-grey hover:text-theme'
+            href='https://github.com/benchmark-urbanism/cityseer-api'
+            target='_blank'>
+            <Github class='w-8'/>
+          </a>
+          <footer class='text-xxs font-light text-light-grey'>Copyright © 2018-present Gareth Simons</footer>
+        </div>
+      </div>
     </div>
   </div>
 </CommonLayout>
 
 <style>
 #home-container {
-  @apply flex flex-col items-start pt-72;
+  @apply flex;
 }
-#heading-text {
-  @apply text-4xl font-normal leading-tight;
+#left-container {
+  @apply flex-1 flex justify-end max-w-2xl border-r border-mid-grey;
 }
-#feature-content {
-  @apply flex flex-col max-w-md;
+#stripe {
+  writing-mode: vertical-lr;
 }
-.feature-text {
-  @apply text-2xl font-medium leading-tight;
+#right-container {
+  @apply flex-1 flex flex-col justify-end max-w-2xl px-6 py-4;
 }
 
 @media only screen and (max-width: 958px) {
   #home-container {
-    @apply pt-8;
+    @apply flex-col w-full items-center;
   }
-  #heading-text {
-    @apply text-3xl;
+  #left-container {
+    @apply border-r-0 max-w-none w-full;
   }
-  #feature-content {
-    @apply max-w-sm;
-  }
-  #feature-text {
-    @apply text-lg font-semibold;
+  #right-container {
+    @apply max-w-none justify-start;
   }
 }
 </style>
