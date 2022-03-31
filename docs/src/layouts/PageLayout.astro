@@ -1,0 +1,21 @@
+---
+import CommonLayout from '../layouts/CommonLayout.astro'
+---
+
+<CommonLayout>
+  <Fragment slot="metaContent">
+    <title></title>
+    <meta set:html name="description" content='' />
+    <meta set:html name="keywords" content='' />
+  </Fragment>
+  <div class='w-full flex flex-col p-8 py-20 max-w-3xl'>
+    <slot />
+  </div>
+</CommonLayout>
+
+<style>
+
+@media only screen and (max-width: 958px) {
+
+}
+</style>
