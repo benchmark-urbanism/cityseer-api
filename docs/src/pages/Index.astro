@@ -15,30 +15,33 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
   </Fragment>
   <div id='home-container' class='w-full justify-center'>
     <aside id='left-container'>
-      <div class='flex-grow'></div>
-      <div class='max-w-sm object-contain'>
-        <img class='px-2 py-10'
-          src={logoURL}
-          alt='logo'
-        />
+      <div class='flex-auto flex flex-col items-center justify-center'>
+        <div class='flex-grow'></div>
+        <a id='go-button' 
+          type='button'
+          href='/intro'
+          title='Get Started!'
+          class='flex flex-col items-center justify-center'>
+          <div class='max-w-sm object-contain'>
+            <img class='w-full h-full py-16 px-4'
+              src={logoURL}
+              alt='logo'
+            />
+          </div>
+          <button
+            id='go-button' 
+            class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
+            <Rocket class='w-6'/>
+          </button>
+          <h2>Get Started!</h2>
+        </a>
+        <div class='py-8'>
+          <RepoLink />
+        </div>
       </div>
-      <a id='go-button' 
-        type='button'
-        href='/intro'
-        title='Get Started!'
-        class='flex flex-col items-center justify-center py-4'>
-        <button
-          id='go-button' 
-          class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
-          <Rocket class='w-6'/>
-        </button>
-        <h2>Get Started!</h2>
-      </a>
-      <div class='flex-grow'></div>
+      <StripeTitle />
     </aside>
-    <StripeTitle />
     <div id='right-container'>
-      <RepoLink />
       <div class='flex-grow'></div>
       <h1>Computational tools for urban analysis</h1>
       <h2>Urban morphological analysis</h2>
@@ -57,10 +60,10 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
   @apply flex justify-center items-center;
 }
 #left-container {
-  @apply flex-1 flex flex-col max-w-xl p-8;
+  @apply flex-1 flex max-w-xl py-8 px-6;
 }
 #right-container {
-  @apply flex-1 flex flex-col max-w-xl p-8;
+  @apply flex-1 flex flex-col max-w-xl py-8 px-6;
 }
 
 @media only screen and (max-width: 958px) {
@@ -68,7 +71,7 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
     @apply flex-col w-full items-center;
   }
   #left-container {
-    @apply border-r-0 max-w-none w-full;
+    @apply border-r-0 w-full;
   }
   #right-container {
     @apply max-w-none justify-start;

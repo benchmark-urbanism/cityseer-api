@@ -56,7 +56,7 @@
   }
 
   :not(pre) > code {
-    @apply rounded-sm bg-dark-grey px-1 font-mono text-sm font-medium text-lighter-grey;
+    @apply rounded-sm bg-dark-grey px-1 font-mono text-sm font-normal text-lighter-grey;
   }
 
   pre {
@@ -81,11 +81,6 @@
 
   td {
     @apply border-l border-b border-dark-grey px-1 py-2 text-xs;
-  }
-
-  td > code,
-  td > a > code {
-    @apply px-0.5 py-0 text-xs;
   }
 
   @media only screen and (max-width: 1200px) {
@@ -140,11 +135,6 @@
     }
 
     td {
-    }
-
-    td > code,
-    td > a > code {
-      @apply text-xxs;
     }
   }
 }
