@@ -35,7 +35,7 @@ export default defineConfig({
   integrations: [
     vue(),
     tailwind({
-      config: { path: './tailwind.config.js', applyAstroPreset: false },
+      config: { path: './tailwind.config.js', applyAstroPreset: false, applyBaseStyles: false },
     }),
   ],
   buildOptions: {
