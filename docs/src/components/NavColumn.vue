@@ -2,7 +2,7 @@
 // left side for navigation
 nav#nav-tree
   // navigation tree
-  div(v-for='nav in navTree').nested-nav-tree
+  div(v-for='nav in navTree').flex.flex-col.items-end
     a.nav-link(
       :key='nav.path'
       :title='nav.path'
@@ -10,14 +10,13 @@ nav#nav-tree
       :class='{ "nav-link-active": nav.active }'
     ) {{ nav.path }}
     // when active, each entry has a nested-tree to H2 headers
-    a.nested-link(
-      v-for='header in nav.headers'
-      :key='header.path'
-      :title='header.title'
-      :href='header.path'
-    ) {{ header.title }}
-    // spacer under nested elements for active tab
-    .pb-2(v-show='nav.active')
+    div(v-show='nav.headerInfo.length').flex.flex-col.items-end.py-2
+      a.nested-link(
+        v-for='header in nav.headerInfo'
+        :key='header.path'
+        :title='header.title'
+        :href='header.path'
+      ) {{ header.title }}
 </template>
 
 <script setup>
@@ -34,30 +33,29 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  pageHeaders: {
-    type: Object,
-    required: true,
-  },
 })
+const contentCol = document.getElementById('content-col')
+const headers = contentCol.querySelectorAll('h1, h2')
 const navTree = computed(() => {
   const tree = []
-  if (!props.navPaths) return tree
   props.navPaths.forEach((path) => {
     const isActive = path === props.currentPath
-    const headers = []
+    console.log(isActive)
+    const headerInfo = []
     if (isActive) {
-      props.pageHeaders.forEach((header) => {
-        console.log(header)
-        headers.push({
-          title: header.slug.replace('-', ' '),
-          path: `#${header.slug}`,
+      headers.forEach((header) => {
+        headerInfo.push({
+          title: header.outerText,
+          level: header.localName,
+          id: header.id,
+          path: `#${header.id}`,
         })
       })
     }
     tree.push({
       active: isActive,
       path,
-      headers,
+      headerInfo,
     })
   })
   return tree
@@ -66,17 +64,12 @@ const navTree = computed(() => {
 const isWide = useMediaQuery('(min-width: 750px)')
 const isTall = useMediaQuery('(min-height: 620px)')
 
-const target = ref(null)
-
-const observerReady = false
-const h2Elems = {}
 const laggedElem = null
 const fillerElem = null
 const scrollToTopVisible = false
-
-const scrollTo = computed((targetEl) => {
+const scrollTo = (targetEl) => {
   window.scroll(targetEl)
-})
+}
 const onElementObserved = (entries) => {
   if (!this.observerReady) return
   if (!('navView' in this.$refs) || !this.$refs.navView) return
@@ -124,36 +117,20 @@ const observer = new IntersectionObserver(onElementObserved)
 </script>
 
 <style lang="postcss" scoped>
-.nested-nav-tree {
-  @apply flex flex-col items-end;
-}
-#logo-img {
-  @apply w-full object-contain transition-all;
-}
 .nav-link {
-  @apply text-base text-right text-theme font-medium px-3 py-3 cursor-pointer leading-none;
-  & :hover,
-  & :active {
-    @apply bg-theme text-white;
-  }
-}
-#logo-link {
-  /* width and margins set from animations */
-  @apply w-full flex items-center justify-end transition-all;
-
-  & :hover {
-    transform: scale(1.05);
+  @apply text-base text-right text-theme font-medium p-2 leading-none transition-all border-b;
+  &:hover {
+    @apply bg-dark-grey -translate-x-1 border-light-grey;
   }
 }
 .nav-link-active {
-  @apply border-b border-t border-light-grey border-r-3 pr-2;
+  @apply bg-dark-grey -translate-x-1 border-b border-light-grey;
 }
 .nested-link {
-  @apply text-xs font-light py-1 pr-3 cursor-pointer;
-  @apply border-theme;
+  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all;
   &:hover,
   &:active {
-    @apply border-r-3 pr-2;
+    @apply border-r-2;
   }
 }
 @media only screen and (max-width: 958px) {

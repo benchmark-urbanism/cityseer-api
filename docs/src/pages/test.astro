@@ -1,9 +1,9 @@
 ---
 import { Markdown } from 'astro/components';
-import PostLayout from '../layouts/PostLayout.astro'
+import PageLayout from '../layouts/PageLayout.astro'
 ---
 
-<PostLayout>
+<PageLayout>
 <div class="yap module">
   <h1 class="yap module-title" id="tests-mock-file">tests.mock_file</h1>
   <div class="yap doc-str">module docstring content more content</div>
@@ -20,7 +20,7 @@ import PostLayout from '../layouts/PostLayout.astro'
       </div>
     </div>
     <div class="yap doc-str-content">A mock function returning a sum of param_a and param_b if positive numbers, else None
-      <h2 class="yap doc-str-heading">Parameters</h2>
+      <h3 class="yap doc-str-heading">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">param_a</div>
@@ -43,7 +43,7 @@ Another *test* _param_.
 | boo   | baa    |
 </Markdown></div>
       </div>
-      <h2 class="yap doc-str-heading">Returns</h2>
+      <h3 class="yap doc-str-heading">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">summed_number</div>
@@ -62,7 +62,7 @@ The sum of _param_a_ and _param_b_.
 None returned if values are negative.
 </Markdown></div>
       </div>
-      <h2 class="yap doc-str-heading">Raises</h2>
+      <h3 class="yap doc-str-heading">Raises</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
@@ -73,7 +73,7 @@ Raises value error if params are not numbers.
 </Markdown></div>
       </div>
       <div class="yap doc-str-meta">
-        <h2 class="yap doc-str-heading">Notes</h2><Markdown>
+        <h3 class="yap doc-str-heading">Notes</h3><Markdown>
 ```python
 print(mock_function(1, 2))
 # prints 3
@@ -110,7 +110,7 @@ A parent class
         </div>
       </div>
       <div class="yap doc-str-content">Parent initialisation.
-        <h2 class="yap doc-str-heading">Parameters</h2>
+        <h3 class="yap doc-str-heading">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">**kwargs</div>
@@ -141,7 +141,7 @@ A child class
         </div>
       </div>
       <div class="yap doc-str-content">Child initialisation.
-        <h2 class="yap doc-str-heading">Parameters</h2>
+        <h3 class="yap doc-str-heading">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">param_c</div>
@@ -185,7 +185,7 @@ Keyword args.
         </div>
       </div>
       <div class="yap doc-str-content">A random class method returning &quot;hello&quot;
-        <h2 class="yap doc-str-heading">Returns</h2>
+        <h3 class="yap doc-str-heading">Returns</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">str</div>
@@ -199,5 +199,5 @@ A string saying "hello"
     </section>
   </section>
 </div>
-</PostLayout>
+</PageLayout>
 
