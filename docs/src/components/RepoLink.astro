@@ -1,11 +1,20 @@
 ---
-import { Github, Rocket } from '@vicons/fa'
+import { Github } from '@vicons/fa'
 ---
 
-<div class="flex justify-center py-6">
-  <a class='px-6 py-2 hover:scale-110 transition-all text-light-grey hover:text-theme'
-    href='https://github.com/benchmark-urbanism/cityseer-api'
-    target='_blank'>
-    <Github class='w-12'/>
-  </a>
-</div>
+<a id='repo-link'
+  href='https://github.com/benchmark-urbanism/cityseer-api'
+  target='_blank'>
+  <Github class='w-12'/>
+  <h2 class='leading-none'>Github</h2>
+</a>
+
+<style>
+#repo-link {
+  @apply w-full flex flex-col items-center transition-all text-light-grey;
+
+  &:hover {
+    @apply scale-105 text-theme;
+  }
+}
+</style>

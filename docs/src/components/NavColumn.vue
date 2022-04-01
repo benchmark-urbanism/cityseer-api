@@ -102,7 +102,7 @@ onMounted(() => {
   @apply bg-dark-grey -translate-x-1 border-b border-light-grey;
 }
 .nested-link {
-  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all;
+  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey !important;
   &:hover,
   &:active {
     @apply border-r-2;

@@ -18,11 +18,11 @@
   h5,
   h6 {
     /* flex is for links inserted before headings */
-    @apply flex items-center py-1 font-headings text-light-grey !important;
+    @apply flex items-center py-1 font-headings text-light-grey;
   }
 
   h1 {
-    @apply pt-12 text-4xl font-extralight pt-8 pb-4 !important;
+    @apply pt-12 text-4xl font-extralight pt-8 pb-4;
   }
 
   h2 {
@@ -45,10 +45,14 @@
     @apply text-base;
   }
 
-  ul > li {
-    @apply ml-3 text-sm;
+  ul {
+    @apply font-light;
 
-    list-style-type: disc;
+    & > li {
+      @apply font-light ml-3 text-sm py-1;
+
+      list-style-type: disc;
+    }
   }
 
   p {
@@ -64,7 +68,11 @@
   }
 
   a {
-    @apply text-theme;
+    @apply text-theme !important;
+
+    & code {
+      @apply text-theme;
+    }
   }
 
   p > a {
@@ -150,7 +158,7 @@
   @apply my-4 border-t border-mid-grey py-2;
 }
 .csl-entry {
-  @apply text-xs font-light text-light-grey;
+  @apply text-xs font-light text-light-grey py-1;
 }
 .quote {
   @apply ml-10;
@@ -170,4 +178,8 @@ blockquote {
   &.warning {
     @apply border-theme;
   }
+}
+
+h1 {
+  @apply pt-12 text-4xl font-extralight pt-8 pb-4;
 }
