@@ -1,7 +1,28 @@
-import { defineConfig } from 'astro/config'
-import { s } from 'hastscript'
 import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
+import { defineConfig } from 'astro/config'
+import { h, s } from 'hastscript'
+import { visit } from 'unist-util-visit'
+
+function admonitionRemarkPlugin() {
+  return (tree) => {
+    visit(tree, (node) => {
+      if (
+        node.type === 'textDirective' ||
+        node.type === 'leafDirective' ||
+        node.type === 'containerDirective'
+      ) {
+        if (node.name !== 'box') return
+
+        const data = node.data || (node.data = {})
+        const tagName = node.type === 'textDirective' ? 'span' : 'div'
+
+        data.hName = tagName
+        data.hProperties = h(tagName, node.attributes).properties
+      }
+    })
+  }
+}
 
 // https://astro.build/config
 export default defineConfig({
@@ -36,7 +57,6 @@ export default defineConfig({
         },
         remarkPlugins: [
           'remark-gfm',
-          'remark-smartypants',
           'remark-emoji',
           '@fec/remark-a11y-emoji',
           [
@@ -46,6 +66,8 @@ export default defineConfig({
             },
           ],
           'remark-math',
+          'remark-directive',
+          admonitionRemarkPlugin,
         ],
         rehypePlugins: [
           'rehype-slug',

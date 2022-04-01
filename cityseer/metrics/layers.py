@@ -108,7 +108,7 @@ def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.nd
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
 
-    :::warning Comment
+    :::box{.box .comment}
     It is generally not necessary to utilise this function directly. It will be called implicitly if calculating
     land-use metrics.
     :::
@@ -154,7 +154,7 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
-    :::warning Comment
+    :::box{.box .comment}
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-datalayerfromdict)
     :::
 
@@ -311,7 +311,7 @@ class DataLayer:
 
         Notes
         -----
-        :::tip Comment
+        :::box{.box .comment}
         The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first,
         identifies the closest street node; the second, sets-out from this node and attempts to wind around the data
         point — akin to circling the block. It will then review the discovered graph edges from which it is able to
@@ -324,7 +324,7 @@ class DataLayer:
         possible to decrease this threshold. A distance of around 400m provides a good starting point.
         :::
 
-        :::warning Comment
+        :::box{.box .comment}
         The precision of assignment improves on decomposed networks (see
         [graphs.nX_decompose](/tools/graphs/#nx_decompose)), which offers the additional benefit of a more granular
         representation of variations in metrics along street-fronts.
@@ -512,7 +512,7 @@ class DataLayer:
         `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use
         disparity weighted Hill diversity with `q=2`.|
 
-        :::tip Comment
+        :::box{.box .comment}
         The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0`
         is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse
         classifications schemas.
@@ -571,7 +571,7 @@ class DataLayer:
 
         Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
 
-        :::danger Caution
+        :::box{.box .warning}
         Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where the same schemas have been applied.
         :::
         """
@@ -895,7 +895,7 @@ class DataLayer:
         [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX`
         graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
 
-        :::tip Comment
+        :::box{.box .comment}
         Per the above worked example, the following stat types will be available for each `stats_key` for each of the
         computed distances:
         - `max` and `min`

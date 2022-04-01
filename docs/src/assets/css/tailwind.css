@@ -145,6 +145,7 @@
     fill: #d33130;
   }
 }
+/* for citations */
 .references {
   @apply my-4 border-t border-mid-grey py-2;
 }
@@ -154,9 +155,19 @@
 .quote {
   @apply ml-10;
 }
+/* for markdown admonitions / boxes */
+
+.box,
 blockquote {
-  @apply my-4 rounded-b-md border border-t-2 border-mid-grey bg-dark-grey p-3 pb-2 shadow;
+  @apply bg-dark-grey border rounded p-2 my-2;
   & p {
     @apply text-xs;
+  }
+  &.comment {
+    @apply border-mid-grey;
+  }
+
+  &.warning {
+    @apply border-theme;
   }
 }
