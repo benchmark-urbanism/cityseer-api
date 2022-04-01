@@ -10,8 +10,6 @@ The development and maintenance of the `cityseer` package takes substantial time
 
 When using this package, please cite the associated paper:
 
-import ArXivLink from '../src/components/ArXivLink.vue'
-
 <ArXivLink arXivLink='https://arxiv.org/abs/2106.15314'/>
 
 `cityseer` is licensed as AGPLv3. If you wish to use the package as part of commercial workflows free from the copy-left AGPLv3 requirements, then please <a href="mailto:info@benchmarkurbanism.com">get in touch</a> to arrange for a commercial license with an optional provision for technical support.

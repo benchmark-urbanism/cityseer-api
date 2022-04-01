@@ -406,7 +406,7 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge.
     The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
 
-    :::tip Comment
+    :::box{.box .comment}
     Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
     through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings)
     to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus
@@ -1134,7 +1134,7 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     representation of potential variations along street lengths, while reducing network centrality side-effects that
     arise as a consequence of varied node densities.
 
-    :::warning Comment
+    :::box{.box .comment}
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
     unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller
     20m, and 50m may already be sufficient for the majority of cases.
@@ -1255,7 +1255,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom`
     attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
-    :::tip Comment
+    :::box{.box .comment}
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
     e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
     primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
@@ -1409,7 +1409,7 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> tuple[tuple, np.nd
     Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and
     angle attributes, as well as in and out bearings and stores these in the returned data maps.
 
-    :::warning Comment
+    :::box{.box .warning}
     It is generally not necessary to use this function directly. This function will be called internally when invoking
     [NetworkLayerFromNX](/metrics/networks/#class-networklayerfromnx)
     :::
@@ -1586,7 +1586,7 @@ def nX_from_graph_maps(node_uids: tuple | list,
     Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing
     graph is provided as an argument to the `networkX_multigraph` parameter.
 
-    :::warning Comment
+    :::box{.box .warning}
     It is generally not necessary to use this function directly. This function will be called internally when invoking
     [NetworkLayer.to_networkX](/metrics/networks/#networklayerto_networkx)
     :::

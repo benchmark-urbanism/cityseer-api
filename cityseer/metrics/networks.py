@@ -22,7 +22,7 @@ def distance_from_beta(beta: float | list | np.ndarray,
     """
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
-    :::warning Comment
+    :::box{.box .comment}
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
     invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
@@ -124,7 +124,7 @@ def beta_from_distance(distance: float | list | np.ndarray,
     Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
     See [`distance_from_beta`](#distance_from_beta) for additional discussion.
 
-    :::warning Comment
+    :::box{.box .comment}
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
     invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
@@ -282,7 +282,7 @@ class NetworkLayer:
 
     <ArXivLink arXivLink='https://arxiv.org/abs/2106.14040'/>
 
-    :::tip Comment
+    :::box{.box .comment}
     The reasons for picking one approach over another are varied:
 
     - Node based centralities compute the measures relative to each reachable node within the threshold distances. For
@@ -467,7 +467,7 @@ class NetworkLayer:
 
         Notes
         -----
-        :::tip Comment
+        :::box{.box .comment}
         It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance`
         parameter values to `np.inf`. Note that this may substantially increase the computational time required for the
         completion of the algorithms on large networks.

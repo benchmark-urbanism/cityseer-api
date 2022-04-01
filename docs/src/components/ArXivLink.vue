@@ -1,5 +1,5 @@
 <template lang="pug">
-.flex.justify-center
+.flex.justify-center.py-4
   a#arXiv-container(:href='arXivLink' :title='title' target='_blank')
     span#arXiv-logo arXiv.org
     .text-sm.font-medium.leading-none arXiv id: {{ arXivIdentifier }}

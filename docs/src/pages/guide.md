@@ -20,10 +20,8 @@ The broader emphasis on localised methods and how `cityseer` addresses these is 
 
 ## Graph Cleaning
 
-:::tip Comment
-
+:::box{.box .warning}
 You can find a notebook of this guide at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
-
 :::
 
 Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
@@ -86,7 +84,9 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 
 Once OSM data has been converted to a `NetworkX` `MultiGraph`, the `tools.graphs` module can be used to clean the network.
 
-> The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm).
+:::box{.box .comment}
+The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`graphs.nX_wgs_to_utm`](/tools/graphs/#nx_wgs_to_utm).
+:::
 
 Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
 
@@ -155,12 +155,13 @@ simple_plot(G3)
 ![Final step of node consolidation](../src/assets/plots/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
-:::tip Manual Cleaning
+:::box{.box .comment}
+
+#### Manual Cleaning
 
 When using shortest-path methods, automated graph simplification and consolidation can arguably eliminate the need for manual checks; however, it is worth plotting the graph and performing a quick look-through to be sure there aren't any unexpectedly odd situations.
 
 When using simplest-path (angular) centralities, manual checks become more important because automated simplification and consolidation can result in small twists and turns where nodes and edges have been merged. `cityseer` uses particular methods that attempt to keep these issues to a minimum, though there may still be some situations necessitating manual checks. From this perspective, it may be preferable to use a cleaner source of network topology (e.g. OS Open Roads) if working with simplest-path centralities; else, if only OSM data is available, to instead consider the use of shortest-path methods if the graph has too many unresolvable situations to clean-up manually.
-
 :::
 
 The above recipe should be enough to get you started, but there are innumerable other strategies that may also work for any variety of scenarios.
