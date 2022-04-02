@@ -6,19 +6,19 @@ import RepoLink from '../components/RepoLink.astro'
 import StripeTitle from '../components/StripeTitle.astro'
 
 import logoURL from '../assets/logos/cityseer_logo_light_red.png'
-import '../assets/css/yapper.css'
+import '../styles/yapper.css'
 
-const currentPath = Astro.request.url.pathname
+const currentPath = Astro.canonicalURL.pathname
 const navPaths = [
-  '/intro',
-  '/guide',
-  '/examples',
-  '/tools/graphs',
-  '/tools/plot',
-  '/tools/mock',
-  '/metrics/layers',
-  '/metrics/networks',
-  '/attribution',
+  '/intro/',
+  '/guide/',
+  '/examples/',
+  '/tools/graphs/',
+  '/tools/plot/',
+  '/tools/mock/',
+  '/metrics/layers/',
+  '/metrics/networks/',
+  '/attribution/',
 ]
 ---
 <CommonLayout>

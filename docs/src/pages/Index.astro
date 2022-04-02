@@ -1,11 +1,13 @@
 ---
-import { Rocket } from '@vicons/fa'
+import { BookOpen } from '@vicons/fa'
 
 import CommonLayout from '../layouts/CommonLayout.astro'
 import Footer from '../components/Footer.astro'
 import RepoLink from '../components/RepoLink.astro'
 import StripeTitle from '../components/StripeTitle.astro'
 import logoURL from '../assets/logos/cityseer_logo_light_red.png'
+
+import '../styles/tailwind.css'
 ---
 <CommonLayout>
   <Fragment slot="metaContent">
@@ -17,25 +19,24 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
     <aside id='left-container'>
       <div class='flex-auto flex flex-col items-center justify-center'>
         <div class='flex-grow'></div>
+        <div class='max-w-sm object-contain'>
+          <img class='w-full h-full py-16 px-4'
+            src={logoURL}
+            alt='logo'
+          />
+        </div>
         <a id='go-button' 
           type='button'
-          href='/intro'
-          title='Get Started!'
-          class='flex flex-col items-center justify-center'>
-          <div class='max-w-sm object-contain'>
-            <img class='w-full h-full py-16 px-4'
-              src={logoURL}
-              alt='logo'
-            />
-          </div>
+          href='/intro/'
+          title='Get Started!'>
           <button
             id='go-button' 
-            class='foreground-pulse border border-mid-grey hover:border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:shadow-md shadow-black '>
-            <Rocket class='w-6'/>
+            class='border border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center shadow-sm shadow-black'>
+            <BookOpen class='w-8'/>
           </button>
-          <h2>Get Started!</h2>
+          <h2 class='leading-none py-4'>Documentation</h2>
         </a>
-        <div class='py-8'>
+        <div class='py-8 flex flex-col items-center py-10'>
           <RepoLink />
         </div>
       </div>
@@ -64,6 +65,13 @@ import logoURL from '../assets/logos/cityseer_logo_light_red.png'
 }
 #right-container {
   @apply flex-1 flex flex-col max-w-xl py-8 px-6;
+}
+#go-button {
+  @apply flex flex-col items-center justify-center transition-all;
+
+  &:hover {
+    @apply scale-105;
+  }
 }
 
 @media only screen and (max-width: 958px) {
