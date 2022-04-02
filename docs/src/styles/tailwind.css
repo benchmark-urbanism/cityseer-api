@@ -26,11 +26,11 @@
   }
 
   h2 {
-    @apply text-3xl font-normal pt-6 pb-2 !important;
+    @apply text-3xl font-normal pt-6 pb-2;
   }
 
   h3 {
-    @apply text-2xl font-medium pt-4 !important;
+    @apply text-2xl font-medium pt-4;
   }
 
   h4 {
@@ -64,11 +64,11 @@
   }
 
   pre {
-    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded text-xs font-normal tracking-tight !important;
+    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded text-xs font-normal tracking-tight;
   }
 
   a {
-    @apply text-theme !important;
+    @apply text-theme;
 
     & code {
       @apply text-theme;
@@ -80,15 +80,22 @@
   }
 
   table {
-    @apply table-auto border-t border-r border-dark-grey;
-  }
+    @apply table-auto border-collapse text-xs;
 
-  th {
-    @apply border-l border-b border-dark-grey py-2;
-  }
-
-  td {
-    @apply border-l border-b border-dark-grey px-1 py-2 text-xs;
+    & th {
+      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-2 py-3 font-semibold;
+    }
+    & td {
+      @apply border-t-1 border-l-1 border-r-1 border-mid-grey px-2 py-2 font-normal;
+    }
+    & tr td:first-child,
+    & tr th:first-child {
+      @apply border-l-0;
+    }
+    & tr td:last-child,
+    & tr th:last-child {
+      @apply border-r-0;
+    }
   }
 
   @media only screen and (max-width: 1200px) {

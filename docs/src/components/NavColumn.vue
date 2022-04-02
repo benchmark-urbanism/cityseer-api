@@ -10,7 +10,9 @@ nav#nav-tree
       :class='{ "nav-link-active": nav.active }'
     ) {{ nav.path }}
     // when active, each entry has a nested-tree to H2 headers
-    div(v-show='nav.headerInfo.length').flex.flex-col.items-end.py-2
+    div(
+      v-show='nav.headerInfo.length'
+      @click='headingTargetsAnim()').flex.flex-col.items-end.py-2
       a.nested-link(
         v-for='header in nav.headerInfo'
         :title='header.title'
@@ -20,8 +22,9 @@ nav#nav-tree
 </template>
 
 <script setup>
-import { useIntersectionObserver } from '@vueuse/core'
-import { onMounted, reactive, ref } from 'vue'
+import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
+import { onMounted, nextTick, reactive } from 'vue'
+import anime from 'animejs/lib/anime.es'
 
 const props = defineProps({
   navPaths: {
@@ -88,7 +91,20 @@ onMounted(() => {
       headerInfo,
     })
   })
+  useTimeoutFn(() => {
+    headingTargetsAnim()
+  }, 100)
 })
+const headingTargetsAnim = () => {
+  nextTick(() => {
+    anime({
+      targets: '.nested-link',
+      scale: [0.9, 1],
+      duration: 100,
+      delay: anime.stagger(10),
+    })
+  })
+}
 </script>
 
 <style lang="postcss" scoped>
@@ -102,7 +118,7 @@ onMounted(() => {
   @apply bg-dark-grey -translate-x-1 border-b border-light-grey;
 }
 .nested-link {
-  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey !important;
+  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey;
   &:hover,
   &:active {
     @apply border-r-2;
