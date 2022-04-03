@@ -1,27 +1,38 @@
-[tool.poetry]
+[project]
 name = "cityseer-api"
-version = "1.2.2"
-description = "Computational tools for network-based pedestrian-scale urban analysis"
-authors = ["Gareth Simons <garethsimons@me.com>"]
-license = "GNU AGPLv3"
+version = "1.2.3"
+description = ""
+authors = [
+    {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
+]
+license-expression = "AGPL-3.0-or-later"
+dependencies = [
+    "matplotlib>=3.5.1",
+    "networkx>=2.7.1",
+    "numba>=0.55.1",
+    "numpy>=1.21.5",
+    "pyproj>=3.3.0",
+    "requests>=2.27.1",
+    "scikit-learn>=1.0.2",
+    "tqdm>=4.63.1",
+    "numba-progress>=0.0.2",
+    "utm>=0.7.0",
+    "shapely>=1.8.1.post1"]
+requires-python = ">=3.9, <3.10"
 
-[tool.poetry.dependencies]
-python = "3.9.*"
-matplotlib = "^3.5.1"
-networkx = "^2.7.1"
-numba = "^0.55.1"
-numba-progress = "^0.0.2"
-numpy = "^1.21.5"
-pyproj = "^3.3.0"
-requests = "^2.27.1"
-scikit-learn = "^1.0.2"
-tqdm = "^4.63.1"
-utm = "^0.7.0"
+[project.urls]
+Homepage = ""
 
-[tool.poetry.dev-dependencies]
-pytest = "^7.1.1"
-osmnx = "^1.1.2"
+[project.optional-dependencies]
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=7.1.1",
+    "osmnx>=1.1.2",
+    "momepy>=0.5.2",
+    "yapper==0.2.0b7",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["pdm-pep517>=0.12.0"]
+build-backend = "pdm.pep517.api"
