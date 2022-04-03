@@ -1,7 +1,0 @@
-package_root_relative_path: "."
-module_map:
-  cityseer.tools.plot: docs/content/tools/plot.md
-  cityseer.tools.graphs: docs/content/tools/graphs.md
-  cityseer.tools.mock: docs/content/tools/mock.md
-  cityseer.metrics.networks: docs/content/metrics/networks.md
-  cityseer.metrics.layers: docs/content/metrics/layers.md

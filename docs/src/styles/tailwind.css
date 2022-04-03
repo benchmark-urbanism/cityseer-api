@@ -178,7 +178,7 @@ blockquote {
   & p {
     @apply text-xs;
   }
-  &.comment {
+  &.note {
     @apply border-mid-grey;
   }
 

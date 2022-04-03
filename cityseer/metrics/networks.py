@@ -22,7 +22,7 @@ def distance_from_beta(beta: float | list | np.ndarray,
     """
     Maps decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
-    :::box{.box .comment}
+    :::note
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
     invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
@@ -40,8 +40,8 @@ def distance_from_beta(beta: float | list | np.ndarray,
     np.ndarray
         A numpy array of distance thresholds $d_{max}$.
 
-    Notes
-    -----
+    Examples
+    --------
 
     ```python
     from cityseer.metrics import networks
@@ -124,7 +124,7 @@ def beta_from_distance(distance: float | list | np.ndarray,
     Maps distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
     See [`distance_from_beta`](#distance_from_beta) for additional discussion.
 
-    :::box{.box .comment}
+    :::note
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
     invoking [`NetworkLayer`](#class-networklayer) or [`NetworkLayerFromNX`](#class-networklayerfromnx).
     :::
@@ -141,8 +141,8 @@ def beta_from_distance(distance: float | list | np.ndarray,
     np.ndarray
         A numpy array of decay parameters $\beta$.
 
-    Notes
-    -----
+    Examples
+    --------
     
     ```python
     from cityseer.metrics import networks
@@ -201,8 +201,8 @@ def avg_distance_for_beta(beta: float | list | np.ndarray,
     np.ndarray
         The average walking distance for a given $\beta$.
 
-    Notes
-    -----
+    Examples
+    --------
 
     ```python
     from cityseer.metrics import networks
@@ -282,7 +282,7 @@ class NetworkLayer:
 
     <ArXivLink arXivLink='https://arxiv.org/abs/2106.14040'/>
 
-    :::box{.box .comment}
+    :::note
     The reasons for picking one approach over another are varied:
 
     - Node based centralities compute the measures relative to each reachable node within the threshold distances. For
@@ -465,9 +465,9 @@ class NetworkLayer:
         NetworkLayer
             A `NetworkLayer`.
 
-        Notes
-        -----
-        :::box{.box .comment}
+        Examples
+        --------
+        :::note
         It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance`
         parameter values to `np.inf`. Note that this may substantially increase the computational time required for the
         completion of the algorithms on large networks.
@@ -588,8 +588,8 @@ class NetworkLayer:
         Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary. The
         dictionary `keys` will correspond to the node `uids`.
 
-        Notes
-        -----
+        Examples
+        --------
         ```python
         from cityseer.metrics import networks
         from cityseer.tools import mock, graphs
@@ -679,8 +679,8 @@ class NetworkLayer:
             If a `metrics_dict` is provided, all derived data will be copied to the `MultiGraph` nodes based on matching
             node identifiers.
 
-        Notes
-        -----
+        Examples
+        --------
         ```python
         from cityseer.metrics import networks
         from cityseer.tools import mock, graphs
@@ -750,26 +750,26 @@ class NetworkLayer:
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
-        Notes
-        -----
+        Examples
+        --------
 
         The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the
         default value of `False`:
 
         | key                   | formula | notes |
         | ----------------------| :------:| ----- |
-        | node_density          | $\scriptstyle\sum_{j\neq{i}}^{n}1$ | A summation of nodes. |
-        | node_farness          | $\scriptstyle\sum_{j\neq{i}}^{n}d_{(i,j)}$ | A summation of distances in metres. |
-        | node_cycles           | $\scriptstyle\sum_{j\neq{i}j=cycle}^{n}1$ | A summation of network cycles. |
-        | node_harmonic         | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an
+        | node_density          | $\scriptstyle\sum_{j\\neq{i}}^{n}1$ | A summation of nodes. |
+        | node_farness          | $\scriptstyle\sum_{j\\neq{i}}^{n}d_{(i,j)}$ | A summation of distances in metres. |
+        | node_cycles           | $\scriptstyle\sum_{j\\neq{i}j=cycle}^{n}1$ | A summation of network cycles. |
+        | node_harmonic         | $\scriptstyle\sum_{j\\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | Harmonic closeness is an
         appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-        | node_beta             | $\scriptstyle\sum_{j\neq{i}}^{n}\\exp(-\beta\cdot d[i,j])$ | Also known as the
+        | node_beta             | $\scriptstyle\sum_{j\\neq{i}}^{n}\\exp(-\beta\cdot d[i,j])$ | Also known as the
         '_gravity index_'. This is a spatial impedance metric differentiated from other closeness centralities by the
         use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
         increase. |
-        | node_betweenness      | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | Betweenness centrality
+        | node_betweenness      | $\scriptstyle\sum_{j\\neq{i}}^{n}\sum_{k\\neq{j}\\neq{i}}^{n}1$ | Betweenness centrality
         summing all shortest-paths traversing each node $i$. |
-        | node_betweenness_beta | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\\exp(-\beta\cdot d[j,k])$ | Applies
+        | node_betweenness_beta | $\scriptstyle\sum_{j\\neq{i}}^{n}\sum_{k\\neq{j}\\neq{i}}^{n}\\exp(-\beta\cdot d[j,k])$ | Applies
         a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to
         $k$ node pair passing through node $i$. |
 
@@ -778,10 +778,10 @@ class NetworkLayer:
 
         | key                      | formula | notes |
         | ------------------------ | :-----: | ----- |
-        | node_harmonic_angular    | $\scriptstyle\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | The simplest-path
+        | node_harmonic_angular    | $\scriptstyle\sum_{j\\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$ | The simplest-path
         implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are
         normalised by 180 and added to 1 to avoid division by zero: $\scriptstyle{Z = 1 + (angularchange/180)}$. |
-        | node_betweenness_angular | $\scriptstyle\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$ | The simplest-path
+        | node_betweenness_angular | $\scriptstyle\sum_{j\\neq{i}}^{n}\sum_{k\\neq{j}\\neq{i}}^{n}1$ | The simplest-path
         version of betweenness centrality. This is distinguished from the shortest-path version by use of a
         simplest-path heuristic (shortest angular distance). |
         
@@ -861,8 +861,8 @@ class NetworkLayer:
         angular
             A boolean indicating whether to use shortest or simplest path heuristics, by default False
 
-        Notes
-        -----
+        Examples
+        --------
         The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the
         default value of `False`:
 
