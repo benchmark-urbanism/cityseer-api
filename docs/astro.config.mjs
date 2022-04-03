@@ -13,11 +13,19 @@ function admonitionRemarkPlugin() {
         node.type === 'leafDirective' ||
         node.type === 'containerDirective'
       ) {
-        if (node.name !== 'box') return
-        const data = node.data || (node.data = {})
-        const tagName = node.type === 'textDirective' ? 'span' : 'div'
-        data.hName = tagName
-        data.hProperties = h(tagName, node.attributes).properties
+        if (node.name === 'note') {
+          const data = node.data || (node.data = {})
+          const tagName = node.type === 'textDirective' ? 'span' : 'div'
+          data.hName = tagName
+          data.hProperties = h(tagName, { class: 'box note' }).properties
+        } else if (node.name === 'warning') {
+          const data = node.data || (node.data = {})
+          const tagName = node.type === 'textDirective' ? 'span' : 'div'
+          data.hName = tagName
+          data.hProperties = h(tagName, { class: 'box warning' }).properties
+        } else {
+          return
+        }
       }
     })
   }

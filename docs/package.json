@@ -4,9 +4,7 @@
     "dev": "astro dev",
     "build": "astro build --verbose",
     "preview": "astro preview",
-    "check": "astro check",
-    "validateLinks": "remark -u validate-links .",
-    "ci": "yarn run lint && gridsome build"
+    "check": "astro check"
   },
   "dependencies": {
     "@vicons/antd": "0.12.0",

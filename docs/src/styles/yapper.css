@@ -1,0 +1,58 @@
+.yap {
+  & p {
+    @apply text-sm;
+  }
+  & .module {
+    @apply p-2 m-2;
+  }
+  & .module-title,
+  .func-title,
+  .module-title {
+    @apply font-mono text-xl font-semibold pl-2;
+  }
+  & .class {
+    @apply border-l-3 border-mid-grey pl-1 my-4;
+  }
+  & .func {
+    @apply border-l border-mid-grey p-1 border-theme my-4;
+  }
+  & .func-sig-content {
+    @apply border-mid-grey flex border-t bg-dark-grey p-3 font-mono items-start;
+  }
+  & .func-sig {
+    @apply flex text-sm;
+  }
+  & .func-sig-params {
+    @apply flex;
+  }
+  & .func-sig-param {
+  }
+  & .doc-str-content {
+    @apply p-2;
+  }
+  & .doc-str-meta {
+  }
+  & .doc-str-heading {
+    @apply pl-1 mt-4 text-2xl border-mid-grey;
+  }
+  & .doc-str-elem-container,
+  .class-prop-elem-container {
+    @apply p-2 bg-dark-grey border-mid-grey border-t flex shadow-sm shadow-darker-grey;
+  }
+  & .doc-str-elem-def,
+  .class-prop-def {
+    @apply flex flex-col w-36;
+  }
+  & .doc-str-elem-name,
+  .class-prop-def-name {
+    @apply text-sm font-semibold;
+  }
+  & .doc-str-elem-type,
+  .class-prop-def-type {
+    @apply text-xs font-light;
+  }
+  & .doc-str-elem-desc,
+  .class-prop-def-desc {
+    @apply text-sm;
+  }
+}

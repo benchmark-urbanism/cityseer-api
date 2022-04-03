@@ -43,8 +43,8 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
         Returns a copy of the source dictionary with the `x` and `y` values converted to the local UTM coordinate
         system.
 
-    Notes
-    ------
+    Examples
+    --------
     ```python
     from cityseer.tools import mock
     from cityseer.metrics import layers
@@ -108,7 +108,7 @@ def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.nd
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
 
-    :::box{.box .comment}
+    :::note
     It is generally not necessary to utilise this function directly. It will be called implicitly if calculating
     land-use metrics.
     :::
@@ -126,8 +126,8 @@ def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.nd
         A `numpy` array of the encoded classes. The value of the `int` encoding will correspond to the order of the
         `class_descriptors`.
 
-    Notes
-    -----
+    Examples
+    --------
     ```python
     from cityseer.metrics import layers
 
@@ -154,7 +154,7 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
-    :::box{.box .comment}
+    :::note
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#class-datalayerfromdict)
     :::
 
@@ -232,8 +232,6 @@ class DataLayer:
                  data_uids: list | tuple,
                  data_map: np.ndarray):
         """
-
-
         Parameters
         ----------
         data_uids
@@ -309,9 +307,9 @@ class DataLayer:
             The maximum distance to consider when assigning respective data points to the nearest adjacent network
             nodes.
 
-        Notes
-        -----
-        :::box{.box .comment}
+        Examples
+        --------
+        :::note
         The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first,
         identifies the closest street node; the second, sets-out from this node and attempts to wind around the data
         point — akin to circling the block. It will then review the discovered graph edges from which it is able to
@@ -324,7 +322,7 @@ class DataLayer:
         possible to decrease this threshold. A distance of around 400m provides a good starting point.
         :::
 
-        :::box{.box .comment}
+        :::note
         The precision of assignment improves on decomposed networks (see
         [graphs.nX_decompose](/tools/graphs/#nx_decompose)), which offers the additional benefit of a more granular
         representation of variations in metrics along street-fronts.
@@ -351,7 +349,7 @@ class DataLayer:
             progress_proxy.close()
 
     # deprecated method
-    def compute_aggregated(self, **kwargs):
+    def compute_aggregated(self):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
         [`compute_landuses`](#datalayercompute_landuses) or [`compute_stats`](#datalayercompute_stats) instead.
@@ -471,11 +469,11 @@ class DataLayer:
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
             and distances, by default False
 
-        Notes
-        -----
+        Examples
+        --------
         | key | formula | notes |
         |-----|:-------:|-------|
-        | hill | $\scriptstyle\big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)}\ q\geq0,\ q\neq1 \\ \scriptstyle lim_{q\to1}\
+        | hill | $\scriptstyle\big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)}\ q\geq0,\ q\\neq1 \\ \scriptstyle lim_{q\to1}\
         exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$ | Hill diversity: this is the preferred form of diversity
         metric because it adheres to the replication principle and uses units of effective species instead of measures
         of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as
@@ -487,15 +485,15 @@ class DataLayer:
         gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
         function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance_from_beta).)|
-        | hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
-        \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a
+        | hill_pairwise_wt | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
+        \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | This is a
         pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
         examples of the pairwise distinct land-use combinations as routed through the point of computation.
         $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay.
         ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance_from_beta).)|
-        | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
-        p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
+        | hill_pairwise_disparity | $\scriptstyle\big[ \sum_{i}^{S} \sum_{j\\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
+        p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ \scriptstyle Q = \sum_{i}^{S} \sum_{j\\neq{i}}^{S} w_{ij} p_{i}
         p_{j}$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
         land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix`
         parameter.|
@@ -507,12 +505,12 @@ class DataLayer:
         balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an
         emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a
         transformation of Gini-Simpson diversity into units of effective species.|
-        | raos_pairwise_disparity | $\scriptstyle \sum_{i}^{S} \sum_{j \neq{i}}^{S} d_{ij} p_{i} p_{j}$ | Rao diversity
+        | raos_pairwise_disparity | $\scriptstyle \sum_{i}^{S} \sum_{j \\neq{i}}^{S} d_{ij} p_{i} p_{j}$ | Rao diversity
         is a pairwise disparity measure and requires the use of a disparity matrix provided through the
         `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use
         disparity weighted Hill diversity with `q=2`.|
 
-        :::box{.box .comment}
+        :::note
         The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0`
         is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse
         classifications schemas.
@@ -571,7 +569,7 @@ class DataLayer:
 
         Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
 
-        :::box{.box .warning}
+        :::warning
         Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where the same schemas have been applied.
         :::
         """
@@ -700,8 +698,8 @@ class DataLayer:
         qs
             The values of `q` for which to compute Hill diversity, by default None
 
-        Notes
-        -----
+        Examples
+        --------
         The data key is `hill`, e.g.:
 
         `NetworkLayer.metrics['mixed_uses']['hill'][<<q key>>][<<distance key>>][<<node idx>>]`
@@ -723,8 +721,8 @@ class DataLayer:
         qs
             The values of `q` for which to compute Hill diversity, by default None
 
-        Notes
-        -----
+        Examples
+        --------
         The data key is `hill_branch_wt`, e.g.:
 
         `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][<<q key>>][<<distance key>>][<<node idx>>]`
@@ -748,8 +746,8 @@ class DataLayer:
             schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
             `weighted` and `non_weighted` variants.
 
-        Notes
-        -----
+        Examples
+        --------
         The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail`
         accessibility:
 
@@ -847,8 +845,8 @@ class DataLayer:
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
             and distances, by default False
 
-        Notes
-        -----
+        Examples
+        --------
 
         The data keys will correspond to the `stats_keys` parameter, e.g.:
 
@@ -895,7 +893,7 @@ class DataLayer:
         [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayermetrics_to_dict), or transposed to a `networkX`
         graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayerto_networkx).
 
-        :::box{.box .comment}
+        :::note
         Per the above worked example, the following stat types will be available for each `stats_key` for each of the
         computed distances:
         - `max` and `min`
@@ -969,7 +967,7 @@ class DataLayer:
                     self.Network.metrics['stats'][stats_key][k][d_key] = stats_data[num_idx][d_idx]
 
     # deprecated method
-    def compute_stats_single(self, **kwargs):
+    def compute_stats_single(self):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
         [`compute_stats`](#datalayercompute_stats) instead.
@@ -978,7 +976,7 @@ class DataLayer:
                                  'Please use the compute_stats method instead.')
 
     # deprecated method
-    def compute_stats_multiple(self, **kwargs):
+    def compute_stats_multiple(self):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
         [`compute_stats`](#datalayercompute_stats) instead.
@@ -1010,8 +1008,8 @@ class DataLayerFromDict(DataLayer):
         DataLayer
             Returns a [`DataLayer`](#class-datalayer).
 
-        Notes
-        -----
+        Examples
+        --------
         Example dictionary:
         ```python
         example_data_dict = {

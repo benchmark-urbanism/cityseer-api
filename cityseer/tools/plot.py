@@ -49,7 +49,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                            x_lim: tuple | list = None,
                            y_lim: tuple | list = None,
                            ax: plt.axes = None,
-                           **figure_kwargs):
+                           **kwargs):
     """
     Parameters
     ----------
@@ -93,7 +93,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         Defaults to None.
     ax
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
-    figure_kwargs
+    kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If
         provided, these will override the default figure size or dpi parameters.
 
@@ -122,7 +122,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         plt.cla()
         plt.clf()
         # create new plot
-        fig, target_ax = plt.subplots(1, 1, **figure_kwargs)
+        fig, target_ax = plt.subplots(1, 1, **kwargs)
     else:
         target_ax = ax
     # setup params
@@ -272,7 +272,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
             x_lim: tuple | list = None,
             y_lim: tuple | list = None,
             ax: plt.axes = None,
-            **figure_kwargs):
+            **kwargs):
     """
     Plot a `networkX` MultiGraph.
 
@@ -304,7 +304,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
         A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
     ax
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
-    figure_kwargs
+    kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
 
@@ -351,7 +351,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
                                   x_lim=x_lim,
                                   y_lim=y_lim,
                                   ax=ax,
-                                  **figure_kwargs)
+                                  **kwargs)
 
 
 def plot_assignment(Network_Layer,
@@ -360,7 +360,7 @@ def plot_assignment(Network_Layer,
                     node_colour: list | tuple | np.ndarray = None,
                     node_labels: bool = False,
                     data_labels: list | tuple | np.ndarray = None,
-                    **figure_kwargs):
+                    **kwargs):
     """
     Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
 
@@ -382,7 +382,7 @@ def plot_assignment(Network_Layer,
     data_labels
         An optional iterable of categorical data labels which will be mapped to colours. The number of labels should
         match the number of data points in `DataLayer`. Defaults to None.
-    figure_kwargs
+    kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
 
@@ -391,7 +391,7 @@ def plot_assignment(Network_Layer,
     ![Example assignment plot.](../../src/assets/plots/images/assignment_plot.png)
     _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
     """
-    plt.figure(**figure_kwargs)
+    plt.figure(**kwargs)
 
     # extract NetworkX
     Graph = Network_Layer.to_networkX()

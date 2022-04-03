@@ -7,7 +7,6 @@ import StripeTitle from '../components/StripeTitle.astro'
 
 import logoURL from '../assets/logos/cityseer_logo_light_red.png'
 import '../styles/yapper.css'
-
 const currentPath = Astro.canonicalURL.pathname
 const navPaths = [
   '/intro/',
@@ -23,9 +22,7 @@ const navPaths = [
 ---
 <CommonLayout>
   <Fragment slot="metaContent">
-    <title></title>
-    <meta set:html name="description" content='' />
-    <meta set:html name="keywords" content='' />
+    <title>{currentPath}</title>
   </Fragment>
   <div id='cols'>
     <div id='nav-col'>
