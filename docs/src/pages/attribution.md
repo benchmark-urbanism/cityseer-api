@@ -1,7 +1,7 @@
 ---
 setup: |
-  import ArXivLink from '../components/ArXivLink.vue'
-layout: '../layouts/PageLayout.astro'
+  import ArXivLink from '@src/components/ArXivLink.vue'
+layout: '@src/layouts/PageLayout.astro'
 ---
 
 # Support and Attribution
