@@ -1,4 +1,4 @@
-package_root_relative_path: '..'
+package_root_relative_path: '.'
 intro_template: "
   ---\n
   import { Markdown } from 'astro/components';\n

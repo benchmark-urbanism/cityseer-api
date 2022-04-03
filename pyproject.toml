@@ -1,11 +1,20 @@
 [project]
-name = "cityseer-api"
+name = "cityseer"
 version = "1.2.3"
-description = ""
+description = "Computational tools for network-based pedestrian-scale urban analysis"
+readme = 'README.md'
+requires-python = ">=3.9, <3.10"
+license = {file = "LICENSE.txt"}
+keywords = ['network-topology', 'numpy', 'architecture', 'openstreetmap', 'urban-planning', 'python3', 'networkx', 'networks', 'spatial-analysis', 'geographical-information-system', 'spatial-data', 'morphometrics', 'network-analysis', 'momepy', 'numba', 'spatial-data-analysis', 'centrality', 'shapely', 'landuse', 'osmnx', 'network-centralities']
 authors = [
     {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
 ]
-license-expression = "AGPL-3.0-or-later"
+maintainers = [
+    {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
+]
+classifiers = [
+  "Programming Language :: Python"
+]
 dependencies = [
     "matplotlib>=3.5.1",
     "networkx>=2.7.1",
@@ -18,13 +27,9 @@ dependencies = [
     "numba-progress>=0.0.2",
     "utm>=0.7.0",
     "shapely>=1.8.1.post1"]
-requires-python = ">=3.9, <3.10"
-
-[project.urls]
-Homepage = ""
-
-[project.optional-dependencies]
 [tool.pdm]
+allow_prereleases = true
+[project.optional-dependencies]
 [tool.pdm.dev-dependencies]
 dev = [
     "pytest>=7.1.1",
@@ -33,6 +38,17 @@ dev = [
     "yapper==0.2.0b7",
 ]
 
+[project.urls]
+homepage = "https://cityseer.benchmarkurbanism.com/"
+documentation = "https://cityseer.benchmarkurbanism.com/"
+repository = "https://github.com/benchmark-urbanism/cityseer-api"
+
 [build-system]
-requires = ["pdm-pep517>=0.12.0"]
+requires = ["pdm-pep517>=0.12.0", "tomli>=1.1.0"]
 build-backend = "pdm.pep517.api"
+
+[tool.pdm.scripts]
+build_docs = 'pdm run yapper --config=./docs/.yap_config.yaml'
+docs_dev = {shell= 'pdm run build_docs && pnpm --prefix ./docs dev'}
+docs_build = {shell= 'pdm run build_docs && pnpm --prefix ./docs build'}
+docs_preview = {shell= 'pdm run build_docs && pnpm --prefix ./docs preview'}
