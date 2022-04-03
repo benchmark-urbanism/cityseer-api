@@ -37,7 +37,9 @@ const navPaths = [
         </a>
         <NavColumn client:only {navPaths} {currentPath} />
         <div class='flex-grow'></div>
-        <RepoLink />
+        <div class='self-start px-8 py-2'>
+          <RepoLink />
+        </div>
       </div>
       <StripeTitle />
     </div>
