@@ -721,7 +721,7 @@ class NetworkLayer:
                                          metrics_dict)
 
     # deprecated method
-    def compute_centrality(self, **kwargs):
+    def compute_centrality(self):
         """
         This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
         [`node_centrality`](#networklayernode_centrality) or [`segment_centrality`](#networklayersegment_centrality)

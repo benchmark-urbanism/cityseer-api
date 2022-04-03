@@ -97,8 +97,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         `kwargs` which will be passed to the `matplotlib` figure parameters. If
         provided, these will override the default figure size or dpi parameters.
 
-    Notes
-    -----
+    Examples
+    --------
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
     explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](/tools/plot/#plot_nx) method
     instead.
@@ -308,8 +308,8 @@ def plot_nX(networkX_graph: nx.MultiGraph,
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
 
-    Notes
-    -----
+    Examples
+    --------
     ```py
     from cityseer.tools import mock, graphs, plot
     from cityseer.metrics import networks
@@ -386,8 +386,8 @@ def plot_assignment(Network_Layer,
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
         default figure size or dpi parameters.
 
-    Notes
-    -----
+    Examples
+    --------
     ![Example assignment plot.](../../src/assets/plots/images/assignment_plot.png)
     _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
     """

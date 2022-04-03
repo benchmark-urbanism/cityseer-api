@@ -33,8 +33,8 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     nx.MultiGraph
         A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
     
-    Notes
-    -----
+    Examples
+    --------
 
     ```python
     from cityseer.tools import mock, plot
@@ -373,14 +373,14 @@ def mock_species_data(random_seed: int = None) -> Tuple[np.ndarray, np.ndarray]:
         An optional random seed, by default None
 
     Yields
-    -------
+    ------
     counts
         The number of members for each species class.
     probs
         The probability of encountering the respective species classes.
 
-    Notes
-    -----
+    Examples
+    --------
 
     ```python
     from cityseer.tools import mock

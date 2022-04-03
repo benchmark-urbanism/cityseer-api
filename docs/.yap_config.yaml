@@ -2,7 +2,8 @@ package_root_relative_path: '.'
 intro_template: "
   ---\n
   import { Markdown } from 'astro/components';\n
-  import PageLayout from '../layouts/PageLayout.astro'\n
+  import ArXivLink from '@src/components/ArXivLink.vue'\n
+  import PageLayout from '@src/layouts/PageLayout.astro'\n
   ---\n
   \n
   <PageLayout>
