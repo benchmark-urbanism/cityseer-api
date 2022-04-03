@@ -4,7 +4,7 @@ version = "1.2.3"
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = 'README.md'
 requires-python = ">=3.9, <3.10"
-license = {file = "LICENSE.txt"}
+license-expression = 'AGPL-3.0-only'
 keywords = ['network-topology', 'numpy', 'architecture', 'openstreetmap', 'urban-planning', 'python3', 'networkx', 'networks', 'spatial-analysis', 'geographical-information-system', 'spatial-data', 'morphometrics', 'network-analysis', 'momepy', 'numba', 'spatial-data-analysis', 'centrality', 'shapely', 'landuse', 'osmnx', 'network-centralities']
 authors = [
     {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
@@ -28,7 +28,6 @@ dependencies = [
     "utm>=0.7.0",
     "shapely>=1.8.1.post1"]
 [tool.pdm]
-allow_prereleases = true
 [project.optional-dependencies]
 [tool.pdm.dev-dependencies]
 dev = [

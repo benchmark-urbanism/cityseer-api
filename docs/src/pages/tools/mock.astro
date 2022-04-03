@@ -1,0 +1,540 @@
+---
+import { Markdown } from 'astro/components';
+import ArXivLink from '@src/components/ArXivLink.vue'
+import PageLayout from '@src/layouts/PageLayout.astro'
+---
+
+<PageLayout>
+<div class="yap module">
+  <h1 class="yap module-title" id="cityseer-tools-mock">
+    <a aria-hidden="true" href="#cityseer-tools-mock" tab_index="-1">
+      <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+        <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+      </svg>
+    </a>cityseer.tools.mock
+  </h1>
+  <div class="yap doc-str-content">A collection of functions for the generation of mock data. This module is predominately used for writing code tests, but can otherwise be useful for demonstration and utility purposes.</div>
+  <section class="yap func">
+    <h2 class="yap func-title" id="mock-graph">
+      <a aria-hidden="true" href="#mock-graph" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>mock_graph
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>mock_graph(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">wgs84_coords=False</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Generates a `NetworkX` `MultiGraph` for testing or experimentation purposes.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">wgs84_coords</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/4326) geographic coordinates
+instead of a projected cartesion coordinate system. By default False</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A `NetworkX` `MultiGraph` with `x` and `y` node attributes.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-meta">
+        <h3 class="yap doc-str-heading">Notes</h3>
+        <Markdown class="doc-str-content">```python
+from cityseer.tools import mock, plot
+networkX_multigraph = mock.mock_graph()
+plot.plot_nX(networkX_multigraph)
+```
+
+![Example graph](../../src/assets/plots/images/graph_example.png)
+_Mock graph._</Markdown>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="get-graph-extents">
+      <a aria-hidden="true" href="#get-graph-extents" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>get_graph_extents
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>get_graph_extents(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">networkX_multigraph</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">networkX_multigraph</div>
+          <div class="yap doc-str-elem-type"></div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A `NetworkX` `MultiGraph` with `x` and `y` node parameters.</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">Tuple</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A tuple of `min_x`, `min_y`, `max_x`, `max_y` values.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="mock-data-dict">
+      <a aria-hidden="true" href="#mock-data-dict" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>mock_data_dict
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>mock_data_dict(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">length=50, </div>
+          <div class="yap func-sig-param">random_seed</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Generates a dictionary containing mock data for testing or experimentation purposes.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">networkX_multigraph</div>
+          <div class="yap doc-str-elem-type"></div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
+network. The returned data will be within these extents.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">length</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of data elements to return in the dictionary, by default 50.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">random_seed</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An optional random seed, by default None.</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">dict</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A dictionary where each entry consists of a `key` representing a distinct data point `uid`, and corresponding
+`x`, `y` and `live` values.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="mock-categorical-data">
+      <a aria-hidden="true" href="#mock-categorical-data" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>mock_categorical_data
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>mock_categorical_data(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">length, </div>
+          <div class="yap func-sig-param">num_classes=10, </div>
+          <div class="yap func-sig-param">random_seed</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Generates a `numpy` array containing mock categorical data for testing or experimentation purposes.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">length</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of categorical elements to return in the array.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">num_classes</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The maximum number of unique classes to return in the randomly assigned categorical data. The classes are
+randomly generated from a pool of unique class labels of length `num_classes`. The number of returned unique
+classes will be less than or equal to `num_classes`. By default 10</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">random_seed</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An optional random seed, by default None</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A `numpy` array containing categorical data elements. The number of elements will match the `length` parameter.
+The categorical data will consist of randomly selected letters.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="mock-numerical-data">
+      <a aria-hidden="true" href="#mock-numerical-data" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>mock_numerical_data
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>mock_numerical_data(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">length, </div>
+          <div class="yap func-sig-param">min=0, </div>
+          <div class="yap func-sig-param">max=100000, </div>
+          <div class="yap func-sig-param">num_arrs=1, </div>
+          <div class="yap func-sig-param">random_seed</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Generates a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">length</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of numerical elements to return in the array.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The (inclusive) minimum value in the `min`, `max` range of randomly generated integers.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The (exclusive) maximum value in the `min`, `max` range of randomly generated integers.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">num_arrs</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of arrays to nest in the returned 2d array.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">random_seed</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An optional random seed, by default None</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data
+arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number
+of data elements and will match the `length` parameter. The numerical data will consist of randomly selected
+integers.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="mock-species-data">
+      <a aria-hidden="true" href="#mock-species-data" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>mock_species_data
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>mock_species_data(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">random_seed</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">A generator function returning a series of randomly generated counts and corresponding probabilities for testingdiversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10.
+Matching integers are then collapsed into species &quot;classes&quot; with probabilities computed accordingly.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">random_seed</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An optional random seed, by default None</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">counts</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of members for each species class.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">probs</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The probability of encountering the respective species classes.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-meta">
+        <h3 class="yap doc-str-heading">Notes</h3>
+        <Markdown class="doc-str-content">```python
+from cityseer.tools import mock
+
+for counts, probs in mock.mock_species_data():
+    cs = [c for c in counts]
+    print(f'c = {cs}')
+    ps = [round(p, 3) for p in probs]
+    print(f'p = {ps}')
+
+# c = [1]
+# p = [1.0]
+
+# c = [1, 1, 2, 2]
+# p = [0.167, 0.167, 0.333, 0.333]
+
+# c = [3, 2, 1, 1, 1, 3]
+# p = [0.273, 0.182, 0.091, 0.091, 0.091, 0.273]
+
+# c = [3, 3, 2, 2, 1, 1, 1, 2, 1]
+# p = [0.188, 0.188, 0.125, 0.125, 0.062, 0.062, 0.062, 0.125, 0.062]
+
+# etc.
+```</Markdown>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="fetch-osm-response">
+      <a aria-hidden="true" href="#fetch-osm-response" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>fetch_osm_response
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>fetch_osm_response(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">geom_osm, </div>
+          <div class="yap func-sig-param">timeout=30, </div>
+          <div class="yap func-sig-param">max_tries=3</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Fetches an OSM response.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">geom_osm</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A string representing a polygon for the request extents, formatting according to OSM conventions.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">timeout</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An optional timeout, by default 30s</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_tries</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The number of attempts to fetch a response before raising, by default 3</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">requests.Response</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">An OSM API response.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="make-buffered-osm-graph">
+      <a aria-hidden="true" href="#make-buffered-osm-graph" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>make_buffered_osm_graph
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>make_buffered_osm_graph(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">lng, </div>
+          <div class="yap func-sig-param">lat, </div>
+          <div class="yap func-sig-param">buffer</div>
+        </div>
+        <span>)</span>
+      </div>
+    </div>
+    <div class="yap doc-str-content">
+      <Markdown class="doc-str-content">Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`parameter.</Markdown>
+      <h3 class="yap doc-str-heading">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">lng</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The longitude argument for the request.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">lat</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The latitude argument for the request.</Markdown>
+        </div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">buffer</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">The buffer distance.</Markdown>
+        </div>
+      </div>
+      <h3 class="yap doc-str-heading">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc">
+          <Markdown class="doc-str-content">A `networkX` `MultiGraph` with `x` and `y` node attributes that have been converted to UTM.</Markdown>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</PageLayout>
+

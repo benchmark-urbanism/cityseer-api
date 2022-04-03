@@ -127,7 +127,7 @@ def nX_from_osm(osm_json: str) -> nx.MultiGraph:
     Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
 
     Parameters
-    -----------
+    ----------
     osm_json
         A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
         consisting of `nodes` and `ways`.
@@ -858,8 +858,8 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     nx.MultiGraph
         A `networkX` `MultiGraph` with consolidated nodes.
 
-    Notes
-    -----
+    Examples
+    --------
     See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
     ![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
@@ -1157,8 +1157,8 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
         were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will
         be set to match the lengths of the new edges.
 
-    Notes
-    -----
+    Examples
+    --------
     ```python
     from cityseer.tools import mock, graphs, plot
 
@@ -1277,8 +1277,8 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be
         added, corresponding to the node identifier of the primal graph.
 
-    Notes
-    -----
+    Examples
+    --------
     ```python
     from cityseer.tools import graphs, mock, plot
 
