@@ -37,7 +37,7 @@ const props = defineProps({
   },
 })
 const contentCol = document.getElementById('content-col')
-const headers = contentCol.querySelectorAll('h1, h2, h3')
+const headers = contentCol.querySelectorAll('h1, h2')
 const navTree = reactive([])
 let activeNavElems = []
 onMounted(() => {
