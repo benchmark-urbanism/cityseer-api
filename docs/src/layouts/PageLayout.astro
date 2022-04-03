@@ -1,12 +1,13 @@
 ---
-import CommonLayout from '../layouts/CommonLayout.astro'
-import Footer from '../components/Footer.astro'
-import NavColumn from '../components/NavColumn.vue'
-import RepoLink from '../components/RepoLink.astro'
-import StripeTitle from '../components/StripeTitle.astro'
+import CommonLayout from '@src/layouts/CommonLayout.astro'
+import Footer from '@src/components/Footer.astro'
+import NavColumn from '@src/components/NavColumn.vue'
+import RepoLink from '@src/components/RepoLink.astro'
+import StripeTitle from '@src/components/StripeTitle.astro'
 
-import logoURL from '../assets/logos/cityseer_logo_light_red.png'
-import '../styles/yapper.css'
+import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
+import '@src/styles/yapper.css'
+
 const currentPath = Astro.canonicalURL.pathname
 const navPaths = [
   '/intro/',

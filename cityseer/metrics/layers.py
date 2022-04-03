@@ -379,8 +379,6 @@ class DataLayer:
         See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
         at the pedestrian scale.
 
-        import ArXivLink from '../../src/components/ArXivLink.vue'
-
         <ArXivLink arXivLink='https://arxiv.org/abs/2106.14048'/>
 
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
