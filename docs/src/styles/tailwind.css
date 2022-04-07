@@ -56,15 +56,23 @@
   }
 
   p {
-    @apply py-1 text-sm font-light;
+    @apply py-2 text-sm font-light;
+  }
+
+  img {
+    @apply pt-6 pb-3;
   }
 
   :not(pre) > code {
-    @apply rounded-sm bg-dark-grey px-1 font-mono text-sm font-normal text-lighter-grey;
+    @apply rounded-sm bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
   }
 
   pre {
-    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded text-xs font-normal tracking-tight;
+    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey;
+
+    & code {
+      @apply text-xs font-normal tracking-tight;
+    }
   }
 
   a {
@@ -80,13 +88,16 @@
   }
 
   table {
-    @apply table-auto border-collapse text-xs;
+    @apply table-auto text-xs m-1 justify-self-center;
 
     & th {
-      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-2 py-3 font-semibold;
+      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-semibold;
     }
     & td {
-      @apply border-t-1 border-l-1 border-r-1 border-mid-grey px-2 py-2 font-normal;
+      @apply border-t-1 border-l-1 border-r-1 border-mid-grey px-2 py-1 font-normal;
+    }
+    & tr {
+      @apply p-0.5;
     }
     & tr td:first-child,
     & tr th:first-child {
@@ -187,6 +198,9 @@ blockquote {
   }
 }
 
-h1 {
-  @apply pt-12 text-4xl font-extralight pt-8 pb-4;
+.katex {
+  @apply text-sm;
+  & .newline {
+    @apply py-1;
+  }
 }

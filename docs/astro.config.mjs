@@ -31,9 +31,7 @@ function admonitionRemarkPlugin() {
   }
 }
 
-// https://astro.build/config
 export default defineConfig({
-  // all options are optional; these values are the defaults
   root: '.',
   srcDir: './src',
   publicDir: './public',
@@ -71,7 +69,7 @@ export default defineConfig({
       [
         'rehype-katex',
         {
-          output: 'html',
+          output: 'htmlAndMathml',
         },
       ],
       [
@@ -109,8 +107,8 @@ export default defineConfig({
         'rehype-citation',
         {
           bibliography: './src/assets/bib/mendeley.bib',
-          csl: 'harvard',
-          lang: 'en-GB',
+          csl: 'harvard1',
+          lang: 'en-US',
         },
       ],
     ],
