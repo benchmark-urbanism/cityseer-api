@@ -77,7 +77,7 @@
 # information on line properties.
 lines.linewidth   : 0.75     # line width in points
 lines.linestyle   : -        # solid line
-lines.color       : eeeeee      # has no affect on plot(); see axes.prop_cycle
+lines.color       : F1F1F1      # has no affect on plot(); see axes.prop_cycle
 #lines.marker      : None    # the default marker
 #lines.markeredgewidth  : 1.0     # the line width around the marker symbol
 lines.markersize  : 4            # markersize, in points
@@ -212,7 +212,7 @@ font.sans-serif     : DejaVu Sans, Bitstream Vera Sans, Lucida Grande, Verdana, 
 # http://matplotlib.org/api/artist_api.html#module-matplotlib.text for more
 # information on text properties
 
-text.color          : eeeeee
+text.color          : F1F1F1
 
 ### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
 #text.usetex         : True  # use latex for all text handling. The following fonts
@@ -281,8 +281,8 @@ text.color          : eeeeee
 # default face and edge color, default tick sizes,
 # default fontsizes for ticklabels, and so on.  See
 # http://matplotlib.org/api/axes_api.html#module-matplotlib.axes
-axes.facecolor      : 2e2e2e   # axes background color
-axes.edgecolor      : eeeeee   # axes edge color
+axes.facecolor      : 19181B   # axes background color
+axes.edgecolor      : F1F1F1   # axes edge color
 axes.linewidth      : 0.5     # edge linewidth
 axes.grid           : True   # display grid or not
 axes.titlesize      : large   # fontsize of the axes title
@@ -290,7 +290,7 @@ axes.titlepad       : 6.0     # pad between axes and title in points
 axes.labelsize      : medium  # fontsize of the x any y labels
 axes.labelpad       : 4.0     # space between label and axis
 axes.labelweight    : 600  # weight of the x and y labels
-axes.labelcolor     : eeeeee
+axes.labelcolor     : F1F1F1
 #axes.axisbelow      : 'line'  # draw axis gridlines and ticks below
                                # patches (True); above patches but below
                                # lines ('line'); or above all (False)
@@ -363,7 +363,7 @@ xtick.major.width    : 0.5    # major tick width in points
 xtick.minor.width    : 0.3    # minor tick width in points
 xtick.major.pad      : 1.5      # distance to major tick label in points
 xtick.minor.pad      : 1.25      # distance to the minor tick label in points
-xtick.color          : eeeeee      # color of the tick labels
+xtick.color          : F1F1F1      # color of the tick labels
 xtick.labelsize      : x-small # fontsize of the tick labels
 xtick.direction      : out    # direction: in, out, or inout
 xtick.minor.visible  : True  # visibility of minor ticks on x-axis
@@ -380,7 +380,7 @@ ytick.major.width    : 0.5    # major tick width in points
 ytick.minor.width    : 0.3    # minor tick width in points
 ytick.major.pad      : 1.5      # distance to major tick label in points
 ytick.minor.pad      : 1.25      # distance to the minor tick label in points
-ytick.color          : eeeeee      # color of the tick labels
+ytick.color          : F1F1F1      # color of the tick labels
 ytick.labelsize      : x-small # fontsize of the tick labels
 ytick.direction      : out    # direction: in, out, or inout
 ytick.minor.visible  : True  # visibility of minor ticks on y-axis
@@ -391,7 +391,7 @@ ytick.minor.right    : False   # draw y axis right minor ticks
 
 
 ### GRIDS
-grid.color       :   eeeeee    # grid color
+grid.color       :   F1F1F1    # grid color
 grid.linestyle   :   -         # solid
 grid.linewidth   :   0.5       # in points
 grid.alpha       :   0.15       # transparency, between 0.0 and 1.0
@@ -399,11 +399,11 @@ grid.alpha       :   0.15       # transparency, between 0.0 and 1.0
 ### Legend
 legend.loc           : best
 legend.frameon       : True     # if True, draw the legend on a background patch
-legend.framealpha    : 0.9      # legend patch transparency
-legend.facecolor     : inherit  # inherit from axes.facecolor; or color spec
-legend.edgecolor     : white      # background patch boundary color
+legend.framealpha    : 0.1      # legend patch transparency
+legend.facecolor     : 19181B   # inherit from axes.facecolor; or color spec
+legend.edgecolor     : white    # background patch boundary color
 legend.fancybox      : True     # if True, use a rounded box for the
-                                 # legend background, else a rectangle
+                                # legend background, else a rectangle
 legend.shadow        : False    # if True, give background a shadow effect
 legend.numpoints     : 1        # the number of marker points in the legend line
 legend.scatterpoints : 1        # number of scatter points
@@ -424,8 +424,8 @@ figure.titlesize : small      # size of the figure title (Figure.suptitle())
 figure.titleweight : 600   # weight of the figure title
 figure.figsize   : 6, 6   # figure size in inches
 figure.dpi       : 300      # figure dots per inch
-figure.facecolor : 2e2e2e   # figure facecolor; 0.75 is scalar gray
-figure.edgecolor : eeeeee   # figure edgecolor
+figure.facecolor : 19181B   # figure facecolor; 0.75 is scalar gray
+figure.edgecolor : F1F1F1   # figure edgecolor
 figure.autolayout : True  # When True, automatically adjust subplot
                             # parameters to make the plot fit the figure
                             # using `tight_layout`
@@ -506,8 +506,8 @@ image.cmap   : viridis           # A colormap name, gray etc...
 # e.g., you may want a higher resolution, or to make the figure
 # background white
 #savefig.dpi         : figure   # figure dots per inch or 'figure'
-savefig.facecolor   : 2e2e2e    # figure facecolor when saving
-savefig.edgecolor   : eeeeee    # figure edgecolor when saving
+savefig.facecolor   : 19181B    # figure facecolor when saving
+savefig.edgecolor   : F1F1F1    # figure edgecolor when saving
 #savefig.format      : png      # png, ps, pdf, svg
 #savefig.bbox        : standard # 'tight' or 'standard'.
                                 # 'tight' is incompatible with pipe-based animation

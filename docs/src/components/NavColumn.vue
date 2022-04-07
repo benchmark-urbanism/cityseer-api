@@ -109,7 +109,7 @@ const headingTargetsAnim = () => {
 
 <style lang="postcss" scoped>
 .nav-link {
-  @apply text-base text-right text-theme font-medium p-2 leading-none transition-all border-b;
+  @apply text-sm text-right text-theme font-medium px-2 py-2 leading-none transition-all border-b;
   &:hover {
     @apply bg-dark-grey -translate-x-1 border-light-grey;
   }
@@ -118,7 +118,7 @@ const headingTargetsAnim = () => {
   @apply bg-dark-grey -translate-x-1 border-b border-light-grey;
 }
 .nested-link {
-  @apply text-sm text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey;
+  @apply text-xs text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey;
   &:hover,
   &:active {
     @apply border-r-2;

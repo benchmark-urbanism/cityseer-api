@@ -270,8 +270,8 @@ for d_max in [200, 400, 800, 1600]:
     ax.plot(distances_arr, y_falloff, label=f'$\\beta={-round(beta, 4)}$')
 
 # add w_min
-plt.axhline(y=w_min, color='#eeeeee', ls='--', lw=0.5)
-ax.text(10, 0.035, '$w_{min}$', color='#eeeeee')
+plt.axhline(y=w_min, ls='--', lw=0.5)
+ax.text(10, 0.035, '$w_{min}$')
 
 ax.set_xticks([200, 400, 800, 1600])
 ax.set_xticklabels(['$d_{max}=200$', '$d_{max}=400$', '$d_{max}=800$', '$d_{max}=1600$'])
@@ -279,8 +279,10 @@ ax.set_xlim([0, 1600])
 ax.set_xlabel('Distance in Metres')
 ax.set_ylim([0, 1.0])
 ax.set_ylabel('Weighting')
-ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$')
-plt.savefig('images/betas.png', dpi=150)
+ax.set_facecolor('#19181B')
+leg = ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$', fancybox=True, facecolor='#19181B')
+leg.get_frame().set_linewidth(0.1)
+plt.savefig('images/betas.png', dpi=300, facecolor='#19181B')
 
 #
 #
