@@ -26,9 +26,6 @@
   }
   & .doc-str-meta {
   }
-  & .doc-str-heading {
-    @apply pl-1 mt-3 border-mid-grey;
-  }
   & .doc-str-elem-container,
   .class-prop-elem-container {
     @apply px-2 py-1 bg-darker-grey border-mid-grey border-t flex items-start;

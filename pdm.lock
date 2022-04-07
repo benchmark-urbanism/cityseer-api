@@ -494,7 +494,7 @@ summary = "Bidirectional UTM-WGS84 converter for python"
 
 [[package]]
 name = "yapper"
-version = "0.2.0b17"
+version = "0.2.0b18"
 requires_python = ">=3.9,<4.0"
 summary = "Parser for converting python docstrings to .astro files for the Astro static site generator."
 dependencies = [
@@ -513,7 +513,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:c62287d406b0856aa5313284102f4f994218ccd3e574dad3e69177a797b7c5fd"
+content_hash = "sha256:05ad41e5de3c67ad4145e3904bc18f5811b79c8898dc6140c594c8b09b9d42fd"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -1192,9 +1192,9 @@ content_hash = "sha256:c62287d406b0856aa5313284102f4f994218ccd3e574dad3e69177a79
 "utm 0.7.0" = [
     {file = "utm-0.7.0.tar.gz", hash = "sha256:3c9a3650e98bb6eecec535418d0dfd4db8f88c8ceaca112a0ff0787e116566e2"},
 ]
-"yapper 0.2.0b17" = [
-    {file = "yapper-0.2.0b17-py3-none-any.whl", hash = "sha256:39b3891084962f0a05368f869d914a1d6c6fdd0a1b1868081a3a345807eb6b13"},
-    {file = "yapper-0.2.0b17.tar.gz", hash = "sha256:9eeec8bc4135ff7ead50af43f063b0244b73bb6f31e83e72413e6add390f7792"},
+"yapper 0.2.0b18" = [
+    {file = "yapper-0.2.0b18-py3-none-any.whl", hash = "sha256:0c6ff6954ee081f323e4140545bb6814ec97f854fa52f772c34d5268f04f4194"},
+    {file = "yapper-0.2.0b18.tar.gz", hash = "sha256:0f51a986e4e7a9830d9e80141173af7b7955b6cfed502ec0e898207ed268107a"},
 ]
 "zipp 3.8.0" = [
     {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},
