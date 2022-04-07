@@ -36,7 +36,7 @@ dev = [
     "pytest>=7.1.1",
     "osmnx>=1.1.2",
     "momepy>=0.5.2",
-    "yapper==0.2.0b17",
+    "yapper==0.2.0b18",
 ]
 
 [project.urls]
