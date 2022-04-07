@@ -667,7 +667,7 @@ class NetworkLayer:
     def to_networkX(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [`nX_from_graph_maps`](/tools/graphs/#nx_from_graph_maps) internally.
+        [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
 
         Returns
         -------
@@ -950,7 +950,7 @@ class NetworkLayerFromNX(NetworkLayer):
                  min_threshold_wt: float = min_thresh_wt):
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph_maps_from_nx) internally.
+        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally.
         Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
 
         Parameters

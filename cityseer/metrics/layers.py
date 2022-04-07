@@ -249,7 +249,7 @@ class DataLayer:
             | 3 | assigned network index - next-nearest |
 
             The arrays at indices `2` and `3` will be populated when the
-            [DataLayer.assign_to_network](#datalayerassign_to_network) method is invoked.
+            [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
 
         Returns
         -------
@@ -987,7 +987,7 @@ class DataLayer:
 class DataLayerFromDict(DataLayer):
     """
     Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls
-    [`data_map_from_dict`](#data_map_from_dict) internally. Methods and properties are inherited from the parent
+    [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent
     [`DataLayer`](#datalayer) class, which can be referenced for more information.
     """
 
