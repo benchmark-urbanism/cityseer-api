@@ -19,7 +19,7 @@ G = mock.mock_graph()
 plot.plot_nX(G,
              labels=True,
              node_size=80,
-             path='images/graph.png',
+             path='../public/images/graph.png',
              dpi=150)
 
 # INTRO EXAMPLE PLOTS
@@ -49,7 +49,7 @@ segment_harmonic_cols = cmap(segment_harmonic_vals)
 plot.plot_nX(G_metrics,
              plot_geoms=True,
              node_colour=segment_harmonic_cols,
-             path='images/intro_segment_harmonic.png',
+             path='../public/images/intro_segment_harmonic.png',
              dpi=150)
 
 # plot hill mixed uses
@@ -60,7 +60,7 @@ plot.plot_assignment(N,
                      D,
                      node_colour=mixed_uses_cols,
                      data_labels=landuse_labels,
-                     path='images/intro_mixed_uses.png',
+                     path='../public/images/intro_mixed_uses.png',
                      dpi=150)
 
 #
@@ -72,7 +72,7 @@ plot.plot_nX(G,
              plot_geoms=True,
              labels=True,
              node_size=80,
-             path='images/graph_example.png',
+             path='../public/images/graph_example.png',
              dpi=150)  # WITH LABELS
 
 #
@@ -80,21 +80,21 @@ plot.plot_nX(G,
 # GRAPH MODULE
 plot.plot_nX(G,
              plot_geoms=True,
-             path='images/graph_simple.png',
+             path='../public/images/graph_simple.png',
              dpi=150)  # NO LABELS
 
 G_simple = graphs.nX_simple_geoms(G)
 G_decomposed = graphs.nX_decompose(G_simple, 100)
 plot.plot_nX(G_decomposed,
              plot_geoms=True,
-             path='images/graph_decomposed.png',
+             path='../public/images/graph_decomposed.png',
              dpi=150)
 
 G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=True,
-                            path='images/graph_dual.png',
+                            path='../public/images/graph_dual.png',
                             dpi=150)
 
 # graph cleanup examples
@@ -123,20 +123,20 @@ def simple_plot(_G, _path, plot_geoms=True):
 
 
 G = graphs.nX_simple_geoms(G_utm)
-simple_plot(G, 'images/graph_cleaning_1.png', plot_geoms=False)
+simple_plot(G, '../public/images/graph_cleaning_1.png', plot_geoms=False)
 
 G = graphs.nX_remove_filler_nodes(G)
 G = graphs.nX_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nX_remove_filler_nodes(G)
-simple_plot(G, 'images/graph_cleaning_2.png')
+simple_plot(G, '../public/images/graph_cleaning_2.png')
 
 # first pass of consolidation
 G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
-simple_plot(G1, 'images/graph_cleaning_3.png')
+simple_plot(G1, '../public/images/graph_cleaning_3.png')
 
 # split opposing line geoms to facilitate parallel merging
 G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
-simple_plot(G2, 'images/graph_cleaning_4.png')
+simple_plot(G2, '../public/images/graph_cleaning_4.png')
 
 # second pass of consolidation
 G3 = graphs.nX_consolidate_nodes(G2,
@@ -144,7 +144,7 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  crawl=False,
                                  min_node_degree=2,
                                  cent_min_degree=4)
-simple_plot(G3, 'images/graph_cleaning_5.png')
+simple_plot(G3, '../public/images/graph_cleaning_5.png')
 
 #
 #
@@ -157,7 +157,7 @@ plot.plot_nX(G,
              plot_geoms=True,
              labels=True,
              node_size=80,
-             path='images/graph_before.png',
+             path='../public/images/graph_before.png',
              dpi=150)
 
 # generate the network layer and compute some metrics
@@ -170,7 +170,7 @@ plot.plot_nX(G_post,
              plot_geoms=True,
              labels=True,
              node_size=80,
-             path='images/graph_after.png',
+             path='../public/images/graph_after.png',
              dpi=150)
 
 #
@@ -187,7 +187,7 @@ L = layers.DataLayerFromDict(data_dict)
 L.assign_to_network(N, max_dist=500)
 plot.plot_assignment(N,
                      L,
-                     path='images/assignment.png',
+                     path='../public/images/assignment.png',
                      dpi=150)
 
 G_decomposed = graphs.nX_decompose(G, 50)
@@ -197,7 +197,7 @@ L = layers.DataLayerFromDict(data_dict)
 L.assign_to_network(N_decomposed, max_dist=500)
 plot.plot_assignment(N_decomposed,
                      L,
-                     path='images/assignment_decomposed.png',
+                     path='../public/images/assignment_decomposed.png',
                      dpi=150)
 
 #
@@ -211,7 +211,7 @@ G_dual = graphs.nX_to_dual(G_simple)
 plot.plot_nX_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=False,
-                            path='images/graph_dual.png',
+                            path='../public/images/graph_dual.png',
                             dpi=150)
 
 # generate a MultiGraph and compute gravity
@@ -235,7 +235,7 @@ vals = colors.Normalize()(vals)
 cols = cmap(vals)
 plot.plot_nX(G_after,
              plot_geoms=True,
-             path='images/graph_colour.png',
+             path='../public/images/graph_colour.png',
              node_colour=cols,
              dpi=150)
 
@@ -246,7 +246,7 @@ D.assign_to_network(N, max_dist=400)
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 plot.plot_assignment(N,
                      D,
-                     path='images/assignment_plot.png',
+                     path='../public/images/assignment_plot.png',
                      data_labels=landuse_labels,
                      dpi=150)
 
@@ -282,7 +282,7 @@ ax.set_ylabel('Weighting')
 ax.set_facecolor('#19181B')
 leg = ax.legend(loc='upper right', title='$exp(-\\beta \\cdot d[i,j])$', fancybox=True, facecolor='#19181B')
 leg.get_frame().set_linewidth(0.1)
-plt.savefig('images/betas.png', dpi=300, facecolor='#19181B')
+plt.savefig('../public/images/betas.png', dpi=300, facecolor='#19181B')
 
 #
 #
@@ -326,7 +326,7 @@ multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
                                                    dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
 multi_graph_cons = graphs.nX_from_OSMnx(multi_di_graph_cons, tolerance=50)
-simple_plot(multi_graph_cons, 'images/osmnx_simplification.png')
+simple_plot(multi_graph_cons, '../public/images/osmnx_simplification.png')
 
 # WORKFLOW 2: Using cityseer for simplification
 # =============================================
@@ -351,4 +351,4 @@ G3 = graphs.nX_consolidate_nodes(G2,
                                  crawl=False,
                                  min_node_degree=2,
                                  cent_min_degree=4)
-simple_plot(G3, 'images/osmnx_cityseer_simplification.png')
+simple_plot(G3, '../public/images/osmnx_cityseer_simplification.png')

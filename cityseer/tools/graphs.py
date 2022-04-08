@@ -862,10 +862,10 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     --------
     See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
-    ![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
+    ![Example raw graph from OSM](/images/graph_cleaning_1.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
-    ![Example cleaned graph](../../src/assets/plots/images/graph_cleaning_5.png)
+    ![Example cleaned graph](/images/graph_cleaning_5.png)
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
     """
     if not isinstance(networkX_multigraph, nx.MultiGraph):
@@ -1168,10 +1168,10 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     plot.plot_nX(G_decomposed)
     ```
 
-    ![Example graph](../../src/assets/plots/images/graph_simple.png)
+    ![Example graph](/images/graph_simple.png)
     _Example graph prior to decomposition._
 
-    ![Example decomposed graph](../../src/assets/plots/images/graph_decomposed.png)
+    ![Example decomposed graph](/images/graph_decomposed.png)
     _Example graph after decomposition._
 
     """
@@ -1290,7 +1290,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                                 plot_geoms=False)
     ```
 
-    ![Example dual graph](../../src/assets/plots/images/graph_dual.png)
+    ![Example dual graph](/images/graph_dual.png)
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """

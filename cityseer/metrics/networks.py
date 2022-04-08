@@ -70,7 +70,7 @@ def distance_from_beta(beta: float | list | np.ndarray,
     away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum
     distance threshold by $d_{max}$.
 
-    ![Example beta decays](../../src/assets/plots/images/betas.png)
+    ![Example beta decays](/images/betas.png)
     
     [`NetworkLayer`](#networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#networklayerfromnx) can be
     invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this
@@ -709,9 +709,9 @@ class NetworkLayer:
         print(G_post.nodes[random_uid]['metrics']['centrality']['node_harmonic'][200])
         # prints: 0.023120252
         ```
-        ![Graph before conversion](../../src/assets/plots/images/graph_before.png)
+        ![Graph before conversion](/images/graph_before.png)
         _A `networkX` graph before conversion to a `NetworkLayer`._
-        ![Graph after conversion back to networkX](../../src/assets/plots/images/graph_after.png)
+        ![Graph after conversion back to networkX](/images/graph_after.png)
         _A graph after conversion back to `networkX`._
         """
         metrics_dict = self.metrics_to_dict()

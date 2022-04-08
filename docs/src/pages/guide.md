@@ -77,7 +77,7 @@ def simple_plot(_G, plot_geoms=True):
 simple_plot(G_utm, plot_geoms=False)
 ```
 
-![The raw graph from OSM](../src/assets/plots/images/graph_cleaning_1.png)
+![The raw graph from OSM](/images/graph_cleaning_1.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
 ### Deducing the network topology
@@ -110,7 +110,7 @@ G = graphs.nX_remove_filler_nodes(G)
 simple_plot(G)
 ```
 
-![Initial graph cleaning](../src/assets/plots/images/graph_cleaning_2.png)
+![Initial graph cleaning](/images/graph_cleaning_2.png)
 _After removal of filler nodes, dangling nodes, and disconnected components._
 
 ### Refining the network
@@ -126,7 +126,7 @@ G1 = graphs.nX_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
 simple_plot(G1)
 ```
 
-![First step of node consolidation](../src/assets/plots/images/graph_cleaning_3.png)
+![First step of node consolidation](/images/graph_cleaning_3.png)
 _After an initial pass of node consolidation._
 
 Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
@@ -138,7 +138,7 @@ G2 = graphs.nX_split_opposing_geoms(G1, buffer_dist=15)
 simple_plot(G2)
 ```
 
-![Splitting opposing geoms](../src/assets/plots/images/graph_cleaning_4.png)
+![Splitting opposing geoms](/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
 In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
@@ -152,7 +152,7 @@ G3 = graphs.nX_consolidate_nodes(G2,
 simple_plot(G3)
 ```
 
-![Final step of node consolidation](../src/assets/plots/images/graph_cleaning_5.png)
+![Final step of node consolidation](/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
 :::note
@@ -260,10 +260,10 @@ G3 = tools.graphs.nX_consolidate_nodes(G2,
 simple_plot(G3)
 ```
 
-![Example OSMnx simplification and consolidation](../src/assets/plots/images/osmnx_simplification.png)
+![Example OSMnx simplification and consolidation](/images/osmnx_simplification.png)
 _An example `OSMnx` simplification and consolidation workflow._
 
-![Example OSMnx to cityseer workflow](../src/assets/plots/images/osmnx_cityseer_simplification.png)
+![Example OSMnx to cityseer workflow](/images/osmnx_cityseer_simplification.png)
 _An example `OSMnx` to `cityseer` conversion followed by simplification and consolidation workflow in `cityseer`._
 
 ### Optimised packages

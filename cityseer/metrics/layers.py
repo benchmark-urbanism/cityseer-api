@@ -326,10 +326,10 @@ class DataLayer:
         representation of variations in metrics along street-fronts.
         :::
 
-        ![Example assignment of data to a network](../../src/assets/plots/images/assignment.png)
+        ![Example assignment of data to a network](/images/assignment.png)
         _Example assignment on a non-decomposed graph._
 
-        ![Example assignment of data to a network](../../src/assets/plots/images/assignment_decomposed.png)
+        ![Example assignment of data to a network](/images/assignment_decomposed.png)
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
         """
         self._Network = Network_Layer
