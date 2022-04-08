@@ -14,14 +14,18 @@ jobs:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-
+      - run: cd docs
       - uses: pnpm/action-setup@v2.1.0
         with:
           version: latest
-        - run: cd docs && pnpm run pnpm install && pnpm run build && cd ..
-        - run: ls docs/dist
+          run_install: |
+            - recursive: true
+              args: [--frozen-lockfile, --strict-peer-dependencies]
+      - run: pnpm run build
+      - run: ls dist
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          entrypoint: ./docs
+          entrypoint: ./
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CITYSEER_API_DOCS }}"
           projectId: cityseer-api-docs
