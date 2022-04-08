@@ -35,7 +35,7 @@ const navPaths = [
             alt='logo'
             class='w-full h-full max-w-xs py-10 px-4' />
         </a>
-        <NavColumn client:only {navPaths} {currentPath} />
+        <NavColumn client:load {navPaths} {currentPath} />
         <div class='flex-grow'></div>
         <div class='self-start px-8 py-2'>
           <RepoLink />
