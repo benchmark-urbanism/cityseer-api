@@ -31,7 +31,8 @@ jobs:
             - recursive: true
               cwd: ./docs
               args: [--frozen-lockfile, --strict-peer-dependencies]
-      - run: pnpm run build --prefix=./docs/ && ls docs/dist
+      - run: pnpm run build --prefix=docs/ && ls docs/dist
+      - run: mv docs/dist/Index docs/dist/index.html
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entrypoint: ./docs
