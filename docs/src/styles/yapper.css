@@ -40,7 +40,7 @@
   }
   & .doc-str-elem-type,
   .class-prop-def-type {
-    @apply text-xs font-light;
+    @apply text-xs font-light px-1;
   }
   & .doc-str-elem-desc,
   .class-prop-def-desc {
