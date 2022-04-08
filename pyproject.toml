@@ -36,7 +36,7 @@ dev = [
     "pytest>=7.1.1",
     "osmnx>=1.1.2",
     "momepy>=0.5.2",
-    "yapper==0.2.0b18",
+    "yapper>=0.2.1",
 ]
 
 [project.urls]
@@ -53,3 +53,5 @@ build_docs = 'pdm run yapper --config=./docs/.yap_config.yaml'
 docs_dev = {shell= 'pdm run build_docs && pnpm --prefix ./docs dev'}
 docs_build = {shell= 'pdm run build_docs && pnpm --prefix ./docs build'}
 docs_preview = {shell= 'pdm run build_docs && pnpm --prefix ./docs preview'}
+tests = 'pytest ./tests'
+publish = { shell= 'pdm run tests && pdm run build_docs && pdm publish -u shongololo -v' }

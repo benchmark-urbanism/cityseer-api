@@ -17,8 +17,8 @@ summary = "Classes Without Boilerplate"
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.10.0"
-requires_python = ">3.0.0"
+version = "4.11.0"
+requires_python = ">=3.6.0"
 summary = "Screen-scraping library"
 dependencies = [
     "soupsieve>1.2",
@@ -451,7 +451,7 @@ summary = "Python 2 and 3 compatibility utilities"
 
 [[package]]
 name = "soupsieve"
-version = "2.3.1"
+version = "2.3.2"
 requires_python = ">=3.6"
 summary = "A modern CSS selector implementation for Beautiful Soup."
 
@@ -494,7 +494,7 @@ summary = "Bidirectional UTM-WGS84 converter for python"
 
 [[package]]
 name = "yapper"
-version = "0.2.0b18"
+version = "0.2.1"
 requires_python = ">=3.9,<4.0"
 summary = "Parser for converting python docstrings to .astro files for the Astro static site generator."
 dependencies = [
@@ -513,7 +513,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:05ad41e5de3c67ad4145e3904bc18f5811b79c8898dc6140c594c8b09b9d42fd"
+content_hash = "sha256:c0d95decf154bcc0b272a1811239ea41410a61cdc0c80a1068c66ceaf339427a"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -528,9 +528,9 @@ content_hash = "sha256:05ad41e5de3c67ad4145e3904bc18f5811b79c8898dc6140c594c8b09
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
     {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
 ]
-"beautifulsoup4 4.10.0" = [
-    {file = "beautifulsoup4-4.10.0-py3-none-any.whl", hash = "sha256:9a315ce70049920ea4572a4055bc4bd700c940521d36fc858205ad4fcde149bf"},
-    {file = "beautifulsoup4-4.10.0.tar.gz", hash = "sha256:c23ad23c521d818955a4151a67d81580319d4bf548d3d49f4223ae041ff98891"},
+"beautifulsoup4 4.11.0" = [
+    {file = "beautifulsoup4-4.11.0-py3-none-any.whl", hash = "sha256:577b9e1c36d2ada780d807c5622e889d43172466658c2eb239e97296965cdddb"},
+    {file = "beautifulsoup4-4.11.0.tar.gz", hash = "sha256:ac98f868e1cb8eb9932a61be75b4f7018a118a490e7fdb424a74a982430cfcbd"},
 ]
 "certifi 2021.10.8" = [
     {file = "certifi-2021.10.8-py2.py3-none-any.whl", hash = "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"},
@@ -1165,9 +1165,9 @@ content_hash = "sha256:05ad41e5de3c67ad4145e3904bc18f5811b79c8898dc6140c594c8b09
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
 ]
-"soupsieve 2.3.1" = [
-    {file = "soupsieve-2.3.1-py3-none-any.whl", hash = "sha256:1a3cca2617c6b38c0343ed661b1fa5de5637f257d4fe22bd9f1338010a1efefb"},
-    {file = "soupsieve-2.3.1.tar.gz", hash = "sha256:b8d49b1cd4f037c7082a9683dfa1801aa2597fb11c3a1155b7a5b94829b4f1f9"},
+"soupsieve 2.3.2" = [
+    {file = "soupsieve-2.3.2-py3-none-any.whl", hash = "sha256:a714129d3021ec17ce5be346b1007300558b378332c289a1a20e7d4de6ff18a5"},
+    {file = "soupsieve-2.3.2.tar.gz", hash = "sha256:0bcc6d7432153063e3df09c3ac9442af3eba488715bfcad6a4c38ccb2a523124"},
 ]
 "text-unidecode 1.3" = [
     {file = "text_unidecode-1.3-py2.py3-none-any.whl", hash = "sha256:1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8"},
@@ -1192,9 +1192,9 @@ content_hash = "sha256:05ad41e5de3c67ad4145e3904bc18f5811b79c8898dc6140c594c8b09
 "utm 0.7.0" = [
     {file = "utm-0.7.0.tar.gz", hash = "sha256:3c9a3650e98bb6eecec535418d0dfd4db8f88c8ceaca112a0ff0787e116566e2"},
 ]
-"yapper 0.2.0b18" = [
-    {file = "yapper-0.2.0b18-py3-none-any.whl", hash = "sha256:0c6ff6954ee081f323e4140545bb6814ec97f854fa52f772c34d5268f04f4194"},
-    {file = "yapper-0.2.0b18.tar.gz", hash = "sha256:0f51a986e4e7a9830d9e80141173af7b7955b6cfed502ec0e898207ed268107a"},
+"yapper 0.2.1" = [
+    {file = "yapper-0.2.1-py3-none-any.whl", hash = "sha256:6332a7a02cf92ab95e895414b090140730edf1f886435f3c5d0ad8d4570db429"},
+    {file = "yapper-0.2.1.tar.gz", hash = "sha256:a7fc981291a699cfc889d58baf6f13ad3c0373beeba5a0df8627934a7cb56219"},
 ]
 "zipp 3.8.0" = [
     {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},

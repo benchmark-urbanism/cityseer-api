@@ -4,7 +4,7 @@ import pytest
 from cityseer.algos import data, checks
 from cityseer.metrics import networks, layers
 from cityseer.tools import mock
-from cityseer.tools.mock import primal_graph
+from tests.tools import primal_graph
 
 
 def test_check_numerical_data():
@@ -39,7 +39,7 @@ def test_check_categorical_data():
     # floats
     with pytest.raises(ValueError):
         data_encoding_float = np.full(len(data_encoding), np.nan)
-        data_encoding_float[:] = data_encoding[:].astype(np.float)
+        data_encoding_float[:] = data_encoding[:].astype(float)
         data_encoding_float[0] = 1.2345
         checks.check_categorical_data(data_encoding_float)
 

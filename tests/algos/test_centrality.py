@@ -8,7 +8,7 @@ import pytest
 from cityseer.algos import centrality
 from cityseer.metrics import networks
 from cityseer.tools import graphs, plot
-from cityseer.tools.mock import primal_graph, dual_graph, diamond_graph
+from tests.tools import primal_graph, dual_graph, diamond_graph
 
 
 def find_path(start_idx, target_idx, tree_preds):
@@ -266,7 +266,7 @@ def test_local_node_centrality(primal_graph):
                     # isolated nodes will have no predecessors
                     if np.isnan(inter_idx):
                         continue
-                    inter_idx = np.int(inter_idx)
+                    inter_idx = int(inter_idx)
                     while True:
                         # break out of while loop if the intermediary has reached the source node
                         if inter_idx == src_idx:
@@ -274,7 +274,7 @@ def test_local_node_centrality(primal_graph):
                         betw[d_idx][inter_idx] += 1
                         betw_wt[d_idx][inter_idx] += np.exp(-beta * to_short_dist)
                         # follow
-                        inter_idx = np.int(tree_preds[inter_idx])
+                        inter_idx = int(tree_preds[inter_idx])
     improved_cl = dens / far_short_dist / dens
 
     assert np.allclose(node_density, dens, atol=0.001, rtol=0)
@@ -642,7 +642,7 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 6.37s on 4.2GHz i7
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f'node_cent_wrapper: {func_time} for {iters} iterations')
-    assert func_time < 10
+    assert func_time < 15
 
     def segment_cent_wrapper():
         centrality.local_segment_centrality(node_data,
@@ -659,4 +659,4 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
-    assert func_time < 13
+    assert func_time < 20

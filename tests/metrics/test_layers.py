@@ -7,7 +7,7 @@ import utm
 from cityseer.algos import data
 from cityseer.metrics import layers, networks
 from cityseer.tools import mock
-from cityseer.tools.mock import primal_graph
+from tests.tools import primal_graph
 
 
 def test_dict_wgs_to_utm(primal_graph):
