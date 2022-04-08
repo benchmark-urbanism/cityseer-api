@@ -18,10 +18,11 @@ jobs:
         with:
           version: latest
           run_install: |
-            - recursive: true
+            - recursive: false
+              cwd: ./docs
               args: [--frozen-lockfile, --strict-peer-dependencies]
-      - run: cd docs && pnpm run build
-      - run: ls dist
+      - run: cd docs && pnpm run build && cd docs
+      - run: ls docs/dist
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entrypoint: ./
