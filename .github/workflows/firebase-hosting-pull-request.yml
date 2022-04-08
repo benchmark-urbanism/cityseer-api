@@ -8,6 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: pdm-project/setup-pdm@main
+        name: Setup PDM
+        with:
+          python-version: 3.9
+          prerelease: true
+          enable-pep582: true
+      - name: Install dependencies
+        run: pdm install --dev
+      - name: Build docs
+        run: pdm run build_docs
       - name: Cache pnpm modules
         uses: actions/cache@v2
         with:
@@ -21,8 +31,7 @@ jobs:
             - recursive: false
               cwd: ./docs
               args: [--frozen-lockfile, --strict-peer-dependencies]
-      - run: cd docs && pnpm run build && cd docs
-      - run: ls docs/dist
+      - run: ls && cd docs && pnpm run build && cd .. && ls docs/dist
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entrypoint: ./
