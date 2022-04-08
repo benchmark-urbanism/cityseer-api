@@ -36,11 +36,11 @@ const props = defineProps({
     required: true,
   },
 })
-const contentCol = document.getElementById('content-col')
-const headers = contentCol.querySelectorAll('h1, h2')
 const navTree = reactive([])
 let activeNavElems = []
 onMounted(() => {
+  const contentCol = document.getElementById('content-col')
+  const headers = contentCol.querySelectorAll('h1, h2')
   props.navPaths.forEach((path) => {
     const isActive = path === props.currentPath
     const headerInfo = []
