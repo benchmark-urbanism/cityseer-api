@@ -32,11 +32,10 @@ jobs:
               cwd: ./docs
               args: [--frozen-lockfile, --strict-peer-dependencies]
       - run: pnpm run build --prefix=./docs
-      - run: |
-          - ls
-          - cd docs
-          - ls
-          - cd ..
+      - run: ls
+      - run: cd docs
+      - run: ls
+      - run: cd ..
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entrypoint: ./docs
