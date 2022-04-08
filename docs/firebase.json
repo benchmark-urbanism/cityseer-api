@@ -7,7 +7,7 @@
         "destination": "/index.html"
       }
     ],
-    "trailingSlash": true,
+    "trailingSlash": false,
     "cleanUrls": true,
     "headers": [
       {
