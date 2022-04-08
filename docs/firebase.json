@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "./docs/dist",
+    "public": "./dist",
     "headers": [
       {
         "source": "/**",
