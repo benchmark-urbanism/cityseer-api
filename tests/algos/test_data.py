@@ -7,7 +7,7 @@ import pytest
 from cityseer.algos import data, centrality, diversity
 from cityseer.metrics import networks, layers
 from cityseer.tools import graphs, mock
-from cityseer.tools.mock import primal_graph
+from tests.tools import primal_graph
 
 
 def test_find_nearest(primal_graph):
@@ -618,7 +618,7 @@ def test_local_agg_time(primal_graph):
     iters = 20000
     # time and report - roughly 5.675
     func_time = timeit.timeit(assign_wrapper, number=iters)
-    print(f'node_cent_wrapper: {func_time} for {iters} iterations')
+    print(f'assign_wrapper: {func_time} for {iters} iterations')
     assert func_time < 10
 
     def landuse_agg_wrapper():
@@ -657,5 +657,5 @@ def test_local_agg_time(primal_graph):
     iters = 20000
     # time and report - roughly 4.96
     func_time = timeit.timeit(stats_agg_wrapper, number=iters)
-    print(f'segment_cent_wrapper: {func_time} for {iters} iterations')
+    print(f'landuse_agg_wrapper: {func_time} for {iters} iterations')
     assert func_time < 10
