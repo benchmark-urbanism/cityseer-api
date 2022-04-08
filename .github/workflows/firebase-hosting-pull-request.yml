@@ -14,14 +14,13 @@ jobs:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-
-      - run: cd docs
       - uses: pnpm/action-setup@v2.1.0
         with:
           version: latest
           run_install: |
             - recursive: true
               args: [--frozen-lockfile, --strict-peer-dependencies]
-      - run: pnpm run build
+      - run: cd docs && pnpm run build
       - run: ls dist
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
