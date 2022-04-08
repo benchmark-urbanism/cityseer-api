@@ -1,0 +1,75 @@
+---
+import CommonLayout from '@src/layouts/CommonLayout.astro'
+import Footer from '@src/components/Footer.astro'
+import NavColumn from '@src/components/NavColumn.vue'
+import RepoLink from '@src/components/RepoLink.astro'
+import StripeTitle from '@src/components/StripeTitle.astro'
+
+import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
+import '@src/styles/yapper.css'
+
+const currentPath = Astro.canonicalURL.pathname
+const navPaths = [
+  '/intro/',
+  '/guide/',
+  '/examples/',
+  '/tools/graphs/',
+  '/tools/plot/',
+  '/tools/mock/',
+  '/metrics/layers/',
+  '/metrics/networks/',
+  '/attribution/',
+]
+---
+<CommonLayout>
+  <Fragment slot="metaContent">
+    <title>{currentPath}</title>
+  </Fragment>
+  <div id='cols'>
+    <div id='nav-col'>
+      <div class='flex flex-col items-end object-contain'>
+        <a href='/'
+          title='home' 
+          class='hover:scale-105 transition-all object-contain'>
+          <img src={logoURL}
+            alt='logo'
+            class='w-full h-full max-w-xs py-10 px-4' />
+        </a>
+        <NavColumn client:load {navPaths} {currentPath} />
+        <div class='flex-grow'></div>
+        <div class='self-start px-8 py-2'>
+          <RepoLink />
+        </div>
+      </div>
+      <StripeTitle />
+    </div>
+    <div id='content-col'>
+      <slot />
+      <Footer />
+    </div>
+  </div>
+</CommonLayout>
+
+<style>
+#cols {
+  @apply flex h-full min-w-full max-w-full;
+}
+#nav-col {
+  @apply flex sticky min-h-screen max-h-screen overflow-y-auto top-0 w-1/4;
+}
+#content-col {
+  @apply flex flex-col max-w-3xl p-8;
+}
+
+@media only screen and (max-width: 958px) {
+  #cols {
+    @apply flex-col;
+  }
+  #nav-col {
+    @apply static w-full min-h-0 max-h-full overflow-y-visible justify-center;
+  }
+  #content-col {
+    @apply w-full p-3;
+  }
+}
+</style>

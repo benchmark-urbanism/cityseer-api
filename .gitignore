@@ -1,6 +1,10 @@
 # mac
 .DS_Store
 
+# pdm
+.pdm.toml
+__pypackages__/
+
 # Dev
 .idea/
 build/

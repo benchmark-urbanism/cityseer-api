@@ -127,7 +127,7 @@ def nX_from_osm(osm_json: str) -> nx.MultiGraph:
     Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
 
     Parameters
-    -----------
+    ----------
     osm_json
         A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
         consisting of `nodes` and `ways`.
@@ -406,7 +406,7 @@ def nX_remove_filler_nodes(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge.
     The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
 
-    :::tip Comment
+    :::note
     Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
     through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings)
     to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus
@@ -858,14 +858,14 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     nx.MultiGraph
         A `networkX` `MultiGraph` with consolidated nodes.
 
-    Notes
-    -----
+    Examples
+    --------
     See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
-    ![Example raw graph from OSM](../../src/assets/plots/images/graph_cleaning_1.png)
+    ![Example raw graph from OSM](/images/graph_cleaning_1.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
-    ![Example cleaned graph](../../src/assets/plots/images/graph_cleaning_5.png)
+    ![Example cleaned graph](/images/graph_cleaning_5.png)
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
     """
     if not isinstance(networkX_multigraph, nx.MultiGraph):
@@ -1134,7 +1134,7 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     representation of potential variations along street lengths, while reducing network centrality side-effects that
     arise as a consequence of varied node densities.
 
-    :::warning Comment
+    :::note
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
     unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller
     20m, and 50m may already be sufficient for the majority of cases.
@@ -1157,8 +1157,8 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
         were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will
         be set to match the lengths of the new edges.
 
-    Notes
-    -----
+    Examples
+    --------
     ```python
     from cityseer.tools import mock, graphs, plot
 
@@ -1168,10 +1168,10 @@ def nX_decompose(networkX_multigraph: nx.MultiGraph,
     plot.plot_nX(G_decomposed)
     ```
 
-    ![Example graph](../../src/assets/plots/images/graph_simple.png)
+    ![Example graph](/images/graph_simple.png)
     _Example graph prior to decomposition._
 
-    ![Example decomposed graph](../../src/assets/plots/images/graph_decomposed.png)
+    ![Example decomposed graph](/images/graph_decomposed.png)
     _Example graph after decomposition._
 
     """
@@ -1255,7 +1255,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom`
     attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
-    :::tip Comment
+    :::note
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
     e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
     primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
@@ -1277,8 +1277,8 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be
         added, corresponding to the node identifier of the primal graph.
 
-    Notes
-    -----
+    Examples
+    --------
     ```python
     from cityseer.tools import graphs, mock, plot
 
@@ -1290,7 +1290,7 @@ def nX_to_dual(networkX_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                                 plot_geoms=False)
     ```
 
-    ![Example dual graph](../../src/assets/plots/images/graph_dual.png)
+    ![Example dual graph](/images/graph_dual.png)
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
@@ -1409,9 +1409,9 @@ def graph_maps_from_nX(networkX_multigraph: nx.MultiGraph) -> tuple[tuple, np.nd
     Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and
     angle attributes, as well as in and out bearings and stores these in the returned data maps.
 
-    :::warning Comment
+    :::warning
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayerFromNX](/metrics/networks/#class-networklayerfromnx)
+    [NetworkLayerFromNX](/metrics/networks/#networklayerfromnx)
     :::
 
     Parameters
@@ -1586,9 +1586,9 @@ def nX_from_graph_maps(node_uids: tuple | list,
     Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing
     graph is provided as an argument to the `networkX_multigraph` parameter.
 
-    :::warning Comment
+    :::warning
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayer.to_networkX](/metrics/networks/#networklayerto_networkx)
+    [NetworkLayer.to_networkX](/metrics/networks/#networklayer-to-networkx)
     :::
 
     Parameters
