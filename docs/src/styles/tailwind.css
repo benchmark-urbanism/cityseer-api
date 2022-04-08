@@ -1,0 +1,206 @@
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-darker-grey text-lighter-grey;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    /* flex is for links inserted before headings */
+    @apply flex items-center py-1 font-headings text-light-grey;
+  }
+
+  h1 {
+    @apply pt-12 text-4xl font-extralight pt-8 pb-4;
+  }
+
+  h2 {
+    @apply text-3xl font-normal pt-6 pb-2;
+  }
+
+  h3 {
+    @apply text-2xl font-medium pt-4;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
+  }
+
+  ul {
+    @apply font-light;
+
+    & > li {
+      @apply font-light ml-3 text-sm py-1;
+
+      list-style-type: disc;
+    }
+  }
+
+  p {
+    @apply py-2 text-sm font-light;
+  }
+
+  img {
+    @apply pt-6 pb-3;
+  }
+
+  :not(pre) > code {
+    @apply rounded-sm bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
+  }
+
+  pre {
+    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey;
+
+    & code {
+      @apply text-xs font-normal tracking-tight;
+    }
+  }
+
+  a {
+    @apply text-theme;
+
+    & code {
+      @apply text-theme;
+    }
+  }
+
+  p > a {
+    @apply font-medium;
+  }
+
+  table {
+    @apply table-auto text-xs m-1 justify-self-center;
+
+    & th {
+      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-semibold;
+    }
+    & td {
+      @apply border-t-1 border-l-1 border-r-1 border-mid-grey px-2 py-1 font-normal;
+    }
+    & tr {
+      @apply p-0.5;
+    }
+    & tr td:first-child,
+    & tr th:first-child {
+      @apply border-l-0;
+    }
+    & tr td:last-child,
+    & tr th:last-child {
+      @apply border-r-0;
+    }
+  }
+
+  @media only screen and (max-width: 1200px) {
+    h1 {
+      @apply pt-8 pb-2 text-2xl font-light;
+    }
+
+    h2,
+    h3 {
+      @apply pt-6 pb-1 font-medium;
+    }
+
+    h2 {
+      @apply text-xl;
+    }
+
+    h3 {
+      @apply text-lg;
+    }
+
+    h4 {
+      @apply text-base;
+    }
+
+    h5 {
+      @apply text-sm;
+    }
+
+    h6 {
+      @apply text-sm;
+    }
+
+    ul,
+    li {
+      @apply ml-2 text-sm;
+    }
+
+    p {
+      @apply text-sm;
+    }
+
+    code {
+      @apply text-xxs;
+    }
+
+    pre {
+      @apply text-xxs;
+    }
+
+    th {
+      @apply py-1;
+    }
+
+    td {
+    }
+  }
+}
+.heading-icon {
+  @apply mr-2;
+
+  & path {
+    fill: #d33130;
+  }
+}
+/* for citations */
+.references {
+  @apply my-4 border-t border-mid-grey py-2;
+}
+.csl-entry {
+  @apply text-xs font-light text-light-grey py-1;
+}
+.quote {
+  @apply ml-10;
+}
+/* for markdown admonitions / boxes */
+
+.box,
+blockquote {
+  @apply bg-dark-grey border rounded p-2 my-2;
+  & p {
+    @apply text-xs;
+  }
+  &.note {
+    @apply border-mid-grey;
+  }
+
+  &.warning {
+    @apply border-theme;
+  }
+}
+
+.katex {
+  @apply text-sm;
+  & .newline {
+    @apply py-1;
+  }
+}

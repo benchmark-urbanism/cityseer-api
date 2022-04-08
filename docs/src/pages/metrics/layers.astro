@@ -1,0 +1,1131 @@
+---
+import { Markdown } from 'astro/components';
+import ArXivLink from '@src/components/ArXivLink.vue'
+import PageLayout from '@src/layouts/PageLayout.astro'
+---
+
+<PageLayout>
+<div class="yap module">
+  <h1 class="yap module-title" id="cityseer-metrics-layers">
+    <a aria-hidden="true" href="#cityseer-metrics-layers" tab_index="-1">
+      <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+        <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+      </svg>
+    </a>cityseer.metrics.layers
+  </h1>
+  <section class="yap func">
+    <h2 class="yap func-title" id="dict-wgs-to-utm">
+      <a aria-hidden="true" href="#dict-wgs-to-utm" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>dict_wgs_to_utm
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>dict_wgs_to_utm(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">data_dict)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Converts data dictionary `x` and `y` values from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_dict</div>
+          <div class="yap doc-str-elem-type">dict</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs.
+```python
+example_data_dict = {
+    'uid_01': {
+        'x': 6000956.463188213,
+        'y': 600693.4059810264
+    },
+    'uid_02': {
+        'x': 6000753.336609659,
+        'y': 600758.7916663144
+    }
+}
+```
+
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">dict</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Returns a copy of the source dictionary with the `x` and `y` values converted to the local UTM coordinate system.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-meta">
+        <h3 class="yap">Notes</h3><Markdown is:raw>
+```python
+from cityseer.tools import mock
+from cityseer.metrics import layers
+
+# let's generate a mock data dictionary
+G_wgs = mock.mock_graph(wgs84_coords=True)
+# mock_data_dict takes on the same extents on the graph parameter
+data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=25)
+# the dictionary now contains wgs coordinates
+for i, (key, value) in enumerate(data_dict_WGS.items()):
+    print(key, value)
+    # prints:
+    # 0 {'x': -0.09600470559254023, 'y': 51.592916036617794}
+    # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964}
+    if i == 1:
+        break
+        
+# any data dictionary that follows this template can be passed to dict_wgs_to_utm()
+data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
+# the coordinates have now been converted to UTM
+for i, (key, value) in enumerate(data_dict_UTM.items()):
+    print(key, value)
+    # prints:
+    # 0 {'x': 701144.5207785056, 'y': 5719758.706109629}
+    # 1 {'x': 700455.0000341447, 'y': 5719282.703221394}
+    if i == 1:
+        break
+```
+
+</Markdown>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="encode-categorical">
+      <a aria-hidden="true" href="#encode-categorical" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>encode_categorical
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>encode_categorical(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">classes)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique elements.
+
+
+:::note
+It is generally not necessary to utilise this function directly. It will be called implicitly if calculating land-use metrics.
+:::
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">classes</div>
+          <div class="yap doc-str-elem-type">list | tuple</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `list`, `tuple` or `numpy` array of classes to be encoded.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">tuple</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `tuple` of unique class descriptors extracted from the input classes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `numpy` array of the encoded classes. The value of the `int` encoding will correspond to the order of the `class_descriptors`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-meta">
+        <h3 class="yap">Notes</h3><Markdown is:raw>
+```python
+from cityseer.metrics import layers
+
+classes = ['cat', 'dog', 'cat', 'owl', 'dog']
+
+class_descriptors, class_encodings = layers.encode_categorical(classes)
+print(class_descriptors)  # prints: ('cat', 'dog', 'owl')
+print(list(class_encodings))  # prints: [0, 1, 0, 2, 1]
+```
+
+</Markdown>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="data-map-from-dict">
+      <a aria-hidden="true" href="#data-map-from-dict" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>data_map_from_dict
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>data_map_from_dict(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">data_dict)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
+:::note
+It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#datalayerfromdict)
+:::
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_dict</div>
+          <div class="yap doc-str-elem-type">dict</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
+
+
+```python
+example_data_dict = {
+    'uid_01': {
+        'x': 6000956.463188213,
+        'y': 600693.4059810264
+    },
+    'uid_02': {
+        'x': 6000753.336609659,
+        'y': 600758.7916663144
+    }
+}
+```
+
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">tuple</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of data `uids` corresponding to the data point identifiers in the source `data_dict`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
+
+
+| idx | property |
+|-----|:----------|
+| 0   | `x` coordinate |
+| 1   | `y` coordinate |
+| 2   | assigned network index - nearest |
+| 3   | assigned network index - next-nearest |
+
+
+The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="datalayer">
+      <a aria-hidden="true" href="#datalayer" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>DataLayer
+    </h2><Markdown is:raw>
+Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
+
+ The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
+
+ Note that in many cases, the [`DataLayerFromDict`](#datalayerfromdict) class will provide a more convenient alternative for instantiating this class.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">uids</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">data_x_arr</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">data_y_arr</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">Network</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-init">
+        <a aria-hidden="true" href="#datalayer-init" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.__init__(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">data_uids, </div>
+            <div class="yap func-sig-param">data_map)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap">
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_uids</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `list` or `tuple` of data identifiers corresponding to each data point. This list must be in the same order and of the same length as the `data_map`.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_map</div>
+            <div class="yap doc-str-elem-type"></div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A 2d `numpy` array representing the data points. The length of the first dimension should match that of the `data_uids`. The indices of the second dimension correspond as follows:
+
+
+| idx | property |
+|-----|:----------|
+| 0 | `x` coordinate |
+| 1 | `y` coordinate |
+| 2 | assigned network index - nearest |
+| 3 | assigned network index - next-nearest |
+
+
+The arrays at indices `2` and `3` will be populated when the [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
+</Markdown></div>
+        </div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name"></div>
+            <div class="yap doc-str-elem-type">DataLayer</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Returns a `DataLayer`.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-assign-to-network">
+        <a aria-hidden="true" href="#datalayer-assign-to-network" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.assign_to_network
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.assign_to_network(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">Network_Layer, </div>
+            <div class="yap func-sig-param">max_dist)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Once created, a [`DataLayer`](#datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
+
+ The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">Network_Layer</div>
+            <div class="yap doc-str-elem-type"></div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A [`NetworkLayer`](/metrics/networks/#networklayer).
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">max_dist</div>
+            <div class="yap doc-str-elem-type">int | float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+:::note
+The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first, identifies the closest street node; the second, sets-out from this node and attempts to wind around the data point — akin to circling the block. It will then review the discovered graph edges from which it is able to identify the closest adjacent street-front. The `max_dist` parameter sets a crow-flies distance limit on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate exploration prematurely because it can't travel far enough away from the data point to explore the surrounding network. If too many data points are not being successfully assigned to the correct street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be possible to decrease this threshold. A distance of around 400m provides a good starting point.
+:::
+
+
+:::note
+The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
+:::
+
+
+![Example assignment of data to a network](/images/assignment.png) _Example assignment on a non-decomposed graph._
+
+
+![Example assignment of data to a network](/images/assignment_decomposed.png) _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-aggregated">
+        <a aria-hidden="true" href="#datalayer-compute-aggregated" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_aggregated
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_aggregated(</span>
+          <div class="yap func-sig-params"></div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_landuses`](#datalayer-compute-landuses) or [`compute_stats`](#datalayer-compute-stats) instead.
+</Markdown></div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-landuses">
+        <a aria-hidden="true" href="#datalayer-compute-landuses" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_landuses
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_landuses(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">landuse_labels, </div>
+            <div class="yap func-sig-param">mixed_use_keys, </div>
+            <div class="yap func-sig-param">accessibility_keys, </div>
+            <div class="yap func-sig-param">cl_disparity_wt_matrix, </div>
+            <div class="yap func-sig-param">qs, </div>
+            <div class="yap func-sig-param">jitter_scale=0.0, </div>
+            <div class="yap func-sig-param">angular=False)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayer-hill-branch-wt-diversity), and [`DataLayer.compute_accessibilities`](#datalayer-compute-accessibilities) methods.
+
+ See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
+
+ The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+
+ For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
+
+
+```python
+NetworkLayer.metrics = {
+    'mixed_uses': {
+        # note that hill measures have q keys
+        'hill': {
+            # here, q=0
+            0: {
+                800: [...],
+                1600: [...]
+            },
+            # here, q=1
+            1: {
+                800: [...],
+                1600: [...]
+            }
+        },
+        # non-hill measures do not have q keys
+        'shannon': {
+            800: [...],
+            1600: [...]
+        }
+    },
+    'accessibility': {
+        # accessibility keys are computed in both weighted and unweighted forms
+        'weighted': {
+            'shops': {
+                800: [...],
+                1600: [...]
+            },
+            'factories': {
+                800: [...],
+                1600: [...]
+            }
+        },
+        'non_weighted': {
+            'shops': {
+                800: [...],
+                1600: [...]
+            },
+            'factories': {
+                800: [...],
+                1600: [...]
+            }
+        }
+    }
+}
+```
+
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">landuse_labels</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;. This parameter is only required if computing mixed-uses or land-use accessibilities.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">mixed_use_keys</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional list of strings describing which mixed-use metrics to compute, containing any combination of `key` values from the following table, by default None. See **Notes** for additional information.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">accessibility_keys</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional `list` or `tuple` of land-use classifications for which to calculate accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;retail&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants, by default None.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">cl_disparity_wt_matrix</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by [`encode_categorical`](#encode_categorical), by default None.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">qs</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures, by default None.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">jitter_scale</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">angular</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances, by default False
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+| key | formula | notes |
+|-----|:-------:|-------|
+| hill | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
+| hill_branch_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+| hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+| hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.|
+| shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
+| gini_simpson | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
+| raos_pairwise_disparity | $$ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.|
+
+
+:::note
+The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse classifications schemas.
+:::
+
+
+A worked example:
+```python
+from cityseer.metrics import networks, layers
+from cityseer.tools import mock, graphs
+
+# prepare a mock graph
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+
+# generate the network layer
+N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+
+# prepare a mock data dictionary
+data_dict = mock.mock_data_dict(G, random_seed=25)
+# prepare some mock land-use classifications
+landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
+
+# generate a data layer
+L = layers.DataLayerFromDict(data_dict)
+# assign to the network
+L.assign_to_network(N, max_dist=500)
+# compute some metrics - here we'll use the full interface, see below for simplified interfaces
+# FULL INTERFACE
+# ==============
+L.compute_landuses(landuse_labels=landuses,
+                   mixed_use_keys=['hill'],
+                   qs=[0, 1],
+                   accessibility_keys=['c', 'd', 'e'])
+# note that the above measures can optionally be run individually using simplified interfaces, e.g.
+# SIMPLIFIED INTERFACES
+# =====================
+# L.hill_diversity(landuses, qs=[0])
+# L.compute_accessibilities(landuses, ['a', 'b'])
+
+# let's prepare some keys for accessing the computational outputs
+# distance idx: any of the distances with which the NetworkLayer was initialised
+distance_idx = 200
+# q index: any of the invoked q parameters
+q_idx = 0
+# a node idx
+node_idx = 0
+
+# the data is available at N.metrics
+print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
+# prints: 4.0
+print(N.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
+# prints: 0.019168843947614676
+print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
+# prints: 1.0
+```
+
+
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+
+
+:::warning
+Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where the same schemas have been applied.
+:::
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-hill-diversity">
+        <a aria-hidden="true" href="#datalayer-hill-diversity" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.hill_diversity
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.hill_diversity(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">landuse_labels, </div>
+            <div class="yap func-sig-param">qs)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">landuse_labels</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">qs</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The values of `q` for which to compute Hill diversity, by default None
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+The data key is `hill`, e.g.:
+
+ `NetworkLayer.metrics['mixed_uses']['hill'][q_key][distance_key][node_idx]`
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-hill-branch-wt-diversity">
+        <a aria-hidden="true" href="#datalayer-hill-branch-wt-diversity" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.hill_branch_wt_diversity
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.hill_branch_wt_diversity(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">landuse_labels, </div>
+            <div class="yap func-sig-param">qs)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">landuse_labels</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">qs</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The values of `q` for which to compute Hill diversity, by default None
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+The data key is `hill_branch_wt`, e.g.:
+
+ `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][q_key][distance_key][node_idx]`
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-accessibilities">
+        <a aria-hidden="true" href="#datalayer-compute-accessibilities" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_accessibilities
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_accessibilities(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">landuse_labels, </div>
+            <div class="yap func-sig-param">accessibility_keys)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Compute land-use accessibilities for the specified land-use classification keys. See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">landuse_labels</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">accessibility_keys</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The land-use keys for which to compute accessibilies. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;retail&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail` accessibility:
+
+
+```python
+NetworkLayer.metrics['accessibility']['weighted']['retail'][distance_key][node_idx]
+NetworkLayer.metrics['accessibility']['non_weighted']['retail'][distance_key][node_idx]
+```
+
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-stats">
+        <a aria-hidden="true" href="#datalayer-compute-stats" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_stats
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_stats(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">stats_keys, </div>
+            <div class="yap func-sig-param">stats_data_arrs, </div>
+            <div class="yap func-sig-param">jitter_scale=0.0, </div>
+            <div class="yap func-sig-param">angular=False)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+
+ For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
+
+
+```python
+NetworkLayer.metrics = {
+    'stats': {
+        # stats grouped by each stats key
+        'valuations': {
+            # each stat will have the following key-value pairs
+            'max': {
+                800: [...],
+                1600: [...]
+            },
+            'min': {
+                800: [...],
+                1600: [...]
+            },
+            'sum': {
+                800: [...],
+                1600: [...]
+            },
+            'sum_weighted': {
+                800: [...],
+                1600: [...]
+            },
+            'mean': {
+                800: [...],
+                1600: [...]
+            },
+            'mean_weighted': {
+                800: [...],
+                1600: [...]
+            },
+            'variance': {
+                800: [...],
+                1600: [...]
+            },
+            'variance_weighted': {
+                800: [...],
+                1600: [...]
+            }
+        }
+    }
+}
+```
+
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">stats_keys</div>
+            <div class="yap doc-str-elem-type">str | list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+If computing a single stat: a `str` key describing the stats computed for the `stats_data_arr` parameter. If computing multiple stats: a `list` or `tuple` of keys. Computed stats will be saved under the supplied key to the `N.metrics` dictionary.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">stats_data_arrs</div>
+            <div class="yap doc-str-elem-type">list | tuple</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+If computing a single stat: a 1d `list`, `tuple` or `numpy` array of numerical data, where the length corresponds to the number of data points in the `DataLayer`. If computing multiple stats keys: a 2d `list`, `tuple`, or `numpy` array of numerical data, where the first dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension corresponds to number of data points in the `DataLayer`. e.g:
+```python
+# if computing three keys for a DataLayer containg 5 data points
+stats_keys = ['valuations', 'floors', 'occupants']
+stats_data_arrs = [
+    [50000, 60000, 55000, 42000, 46000],  # valuations
+    [3, 3, 2, 3, 5],  # floors
+    [420, 300, 220, 250, 600]  # occupants
+]
+```
+
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">jitter_scale</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">angular</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances, by default False
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+The data keys will correspond to the `stats_keys` parameter, e.g.:
+
+
+```python
+NetworkLayer.metrics['stats']['valuations'][stat_type][distance_key][node_idx]
+NetworkLayer.metrics['stats']['floors'][stat_type][distance_key][node_idx]
+NetworkLayer.metrics['stats']['occupants'][stat_type][distance_key][node_idx]
+```
+
+
+ A worked example:
+```python
+from cityseer.metrics import networks, layers
+from cityseer.tools import mock, graphs
+
+# prepare a mock graph
+G = mock.mock_graph()
+G = graphs.nX_simple_geoms(G)
+
+# generate the network layer
+N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+
+# prepare a mock data dictionary
+data_dict = mock.mock_data_dict(G, random_seed=25)
+# let's prepare some numerical data
+stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
+
+# generate a data layer
+L = layers.DataLayerFromDict(data_dict)
+# assign to the network
+L.assign_to_network(N, max_dist=500)
+# compute some metrics
+L.compute_stats(stats_keys='mock_stat',
+                stats_data_arrs=stats_data)
+# let's prepare some keys for accessing the computational outputs
+# distance idx: any of the distances with which the NetworkLayer was initialised
+distance_idx = 200
+# a node idx
+node_idx = 0
+
+# the data is available at N.metrics
+print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
+# prints: 71297.82967202332
+```
+
+
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+
+
+:::note
+Per the above worked example, the following stat types will be available for each `stats_key` for each of the computed distances:
+- `max` and `min`
+- `sum` and `sum_weighted`
+- `mean` and `mean_weighted`
+- `variance` and `variance_weighted`
+:::
+</Markdown>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-stats-single">
+        <a aria-hidden="true" href="#datalayer-compute-stats-single" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_stats_single
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_stats_single(</span>
+          <div class="yap func-sig-params"></div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayer-compute-stats) instead.
+</Markdown></div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-compute-stats-multiple">
+        <a aria-hidden="true" href="#datalayer-compute-stats-multiple" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.compute_stats_multiple
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.compute_stats_multiple(</span>
+          <div class="yap func-sig-params"></div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayer-compute-stats) instead.
+</Markdown></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="datalayerfromdict">
+      <a aria-hidden="true" href="#datalayerfromdict" tab_index="-1">
+        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>DataLayerFromDict
+    </h2>
+    <p class="yap class-base">Inherits from
+      <a href="#datalayer">DataLayer</a>.
+    </p><Markdown is:raw>
+Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#datalayer) class, which can be referenced for more information.
+</Markdown>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datalayerfromdict-init">
+        <a aria-hidden="true" href="#datalayerfromdict-init" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayerFromDict.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayerFromDict.__init__(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">data_dict)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap">
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_dict</div>
+            <div class="yap doc-str-elem-type">dict</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
+</Markdown></div>
+        </div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name"></div>
+            <div class="yap doc-str-elem-type">DataLayer</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Returns a [`DataLayer`](#datalayer).
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3><Markdown is:raw>
+Example dictionary:
+```python
+example_data_dict = {
+    'uid_01': {
+        'x': 6000956.463188213,
+        'y': 600693.4059810264
+    },
+    'uid_02': {
+        'x': 6000753.336609659,
+        'y': 600758.7916663144
+    }
+}
+```
+
+</Markdown>
+        </div>
+      </div>
+    </section>
+  </section>
+</div>
+</PageLayout>
+

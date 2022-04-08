@@ -1,0 +1,85 @@
+---
+import { BookOpen } from '@vicons/fa'
+
+import CommonLayout from '@src/layouts/CommonLayout.astro'
+import Footer from '@src/components/Footer.astro'
+import RepoLink from '@src/components/RepoLink.astro'
+import StripeTitle from '@src/components/StripeTitle.astro'
+import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
+
+import '@src/styles/tailwind.css'
+---
+<CommonLayout>
+  <Fragment slot="metaContent">
+    <title>Cityseer API Docs</title>
+  </Fragment>
+  <div id='home-container' class='w-full justify-center'>
+    <aside id='left-container'>
+      <div class='flex-auto flex flex-col items-center justify-center'>
+        <div class='flex-grow'></div>
+        <div class='max-w-sm object-contain'>
+          <img class='w-full h-full py-16 px-4'
+            src={logoURL}
+            alt='logo'
+          />
+        </div>
+        <a id='go-button' 
+          href='/intro/'
+          title='Get Started!'>
+          <button
+            id='go-button' 
+            class='border border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center shadow-sm shadow-black'>
+            <BookOpen class='w-8'/>
+          </button>
+          <h2 class='leading-none py-4'>Documentation</h2>
+        </a>
+        <div class='py-8 flex flex-col items-center py-10'>
+          <RepoLink />
+        </div>
+      </div>
+      <StripeTitle />
+    </aside>
+    <div id='right-container'>
+      <div class='flex-grow'></div>
+      <h1>Computational tools for urban analysis</h1>
+      <h2>Urban morphological analysis</h2>
+      <p>Tools for fine-grained network and land-use analysis. Assess the morphological precursors to vibrant neighbourhoods.</p>
+      <h2>Pedestrian scale</h2>
+      <p>Rigorous network-based methods developed specifically from the ground-up for high-resolution localised analysis at the pedestrian scale.</p>
+      <h2>Friendly & performant</h2>
+      <p>Python package with heavier algorithms optimised in fast JIT compiled code. In-out convenience methods for NetworkX.</p>
+      <Footer />
+    </div>
+  </div>
+</CommonLayout>
+
+<style>
+#home-container {
+  @apply flex justify-center items-center;
+}
+#left-container {
+  @apply flex-1 flex max-w-xl py-8 px-6;
+}
+#right-container {
+  @apply flex-1 flex flex-col max-w-xl py-8 px-6;
+}
+#go-button {
+  @apply flex flex-col items-center justify-center transition-all;
+
+  &:hover {
+    @apply scale-105;
+  }
+}
+
+@media only screen and (max-width: 958px) {
+  #home-container {
+    @apply flex-col w-full items-center;
+  }
+  #left-container {
+    @apply border-r-0 w-full;
+  }
+  #right-container {
+    @apply max-w-none justify-start;
+  }
+}
+</style>

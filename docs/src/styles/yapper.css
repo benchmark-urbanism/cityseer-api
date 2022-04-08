@@ -1,0 +1,53 @@
+.yap {
+  & .module {
+    @apply py-3 m-3;
+  }
+  & .module-title,
+  .func-title,
+  .module-title {
+    @apply font-mono text-xl font-semibold pl-2;
+  }
+  & .class {
+    @apply border-l-2 border-theme p-2 my-4;
+  }
+  & .func {
+    @apply border-l border-mid-grey p-1 my-4 bg-dark-grey;
+  }
+  & .func-sig-content {
+    @apply border-theme flex border-t bg-darker-grey p-3 font-mono items-start mb-2;
+  }
+  & .func-sig {
+    @apply flex text-sm items-start;
+  }
+  & .func-sig-params {
+    @apply flex flex-col;
+  }
+  & .func-sig-param {
+  }
+  & .doc-str-meta {
+  }
+  & .doc-str-elem-container,
+  .class-prop-elem-container {
+    @apply py-1 bg-darker-grey border-mid-grey border-t flex items-start;
+  }
+  & .doc-str-elem-def,
+  .class-prop-def {
+    @apply flex flex-col min-w-[170px] max-w-[230px] py-1;
+  }
+  & .doc-str-elem-name,
+  .class-prop-def-name {
+    @apply text-xs font-semibold px-1;
+  }
+  & .doc-str-elem-type,
+  .class-prop-def-type {
+    @apply text-xs font-light px-1;
+  }
+  & .doc-str-elem-desc,
+  .class-prop-def-desc {
+    @apply w-full flex flex-col;
+
+    & p {
+      @apply text-xs;
+    }
+  }
+}

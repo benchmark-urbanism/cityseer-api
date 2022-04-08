@@ -6,7 +6,7 @@ from shapely import geometry, ops
 from cityseer.algos import checks
 from cityseer.metrics import networks, layers
 from cityseer.tools import mock, graphs
-from cityseer.tools.mock import mock_graph, primal_graph, diamond_graph
+from tests.tools import mock_graph, primal_graph, diamond_graph
 
 
 def test_nX_simple_geoms():

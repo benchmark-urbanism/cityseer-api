@@ -4,7 +4,7 @@ import pytest
 import string
 
 from cityseer.tools import mock
-from cityseer.tools.mock import primal_graph
+from tests.tools import primal_graph
 
 
 def test_mock_graph(primal_graph):
