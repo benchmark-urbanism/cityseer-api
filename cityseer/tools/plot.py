@@ -112,7 +112,7 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
                                 G_dual,
                                 plot_geoms=False)
     ```
-    ![Example primal and dual graph plot.](../../src/assets/plots/images/graph_dual.png)
+    ![Example primal and dual graph plot.](/images/graph_dual.png)
     _A dual graph in blue overlaid on the source primal graph in red._
     """
     # cleanup old plots
@@ -337,7 +337,7 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     plot.plot_nX(G_after, node_colour=cols)
     ```
 
-    ![Example Colour Plot.](../../src/assets/plots/images/graph_colour.png)
+    ![Example Colour Plot.](/images/graph_colour.png)
     _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
     """
     return plot_nX_primal_or_dual(primal_graph=networkX_graph,
@@ -388,7 +388,7 @@ def plot_assignment(Network_Layer,
 
     Examples
     --------
-    ![Example assignment plot.](../../src/assets/plots/images/assignment_plot.png)
+    ![Example assignment plot.](/images/assignment_plot.png)
     _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
     """
     plt.figure(**kwargs)

@@ -42,7 +42,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     plot.plot_nX(networkX_multigraph)
     ```
 
-    ![Example graph](../../src/assets/plots/images/graph_example.png)
+    ![Example graph](/images/graph_example.png)
     _Mock graph._
 
     """
