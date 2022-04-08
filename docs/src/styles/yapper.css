@@ -8,7 +8,7 @@
     @apply font-mono text-xl font-semibold pl-2;
   }
   & .class {
-    @apply border-l-2 border-theme p-1 my-4;
+    @apply border-l-2 border-theme p-2 my-4;
   }
   & .func {
     @apply border-l border-mid-grey p-1 my-4 bg-dark-grey;
