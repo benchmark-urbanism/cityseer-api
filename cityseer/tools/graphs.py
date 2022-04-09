@@ -802,18 +802,20 @@ def nX_consolidate_nodes(networkX_multigraph: nx.MultiGraph,
     """
     Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
     the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
-    - Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
-        edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
-        - The centroid of the node group;
-        - Else, all nodes of degree greater or equal to `cent_min_degree`;
-        - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
-        with the greatest aggregate length for adjacent edges.
-    - The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
-        are replaced by a single new edge, with the new geometry selected from either:
-        - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-        - Else, the shortest edge, with longer edges discarded;
-        - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed
-          `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+    
+    Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
+    edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
+    - The centroid of the node group;
+    - Else, all nodes of degree greater or equal to `cent_min_degree`;
+    - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
+      with the greatest aggregate length for adjacent edges.
+    
+    The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
+    are replaced by a single new edge, with the new geometry selected from either:
+    - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+    - Else, the shortest edge, with longer edges discarded;
+    - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed 
+      `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
 
     Parameters
     ----------
