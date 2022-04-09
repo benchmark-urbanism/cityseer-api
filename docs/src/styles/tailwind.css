@@ -46,17 +46,17 @@
   }
 
   ul {
-    @apply font-light;
+    @apply font-light pl-2;
 
-    & > li {
-      @apply font-light ml-3 text-sm py-1;
+    & li {
+      @apply font-light ml-2 my-2 text-sm;
 
       list-style-type: disc;
     }
   }
 
   p {
-    @apply py-2 text-sm font-light;
+    @apply my-2 text-sm font-light;
   }
 
   img {

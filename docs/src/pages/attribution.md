@@ -18,8 +18,8 @@ Please report bugs to the [github issues tracker](https://github.com/benchmark-u
 
 If using the package to produce visual plots and outputs, please display the cityseer logo and a link to the documentation website.
 
-![Cityseer white logo](../src/assets/logos/cityseer_logo_white.png)
+![Cityseer white logo](/logos/cityseer_logo_white.png)
 _Cityseer white logo._
 
-![Cityseer light red logo](../src/assets/logos/cityseer_logo_light_red.png)
+![Cityseer light red logo](/logos/cityseer_logo_light_red.png)
 _Cityseer light red logo._
