@@ -1,6 +1,9 @@
 # mac
 .DS_Store
 
+#notes
+temp/
+
 # pdm
 .pdm.toml
 __pypackages__/
