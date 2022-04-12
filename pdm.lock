@@ -17,7 +17,7 @@ summary = "Classes Without Boilerplate"
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.11.0"
+version = "4.11.1"
 requires_python = ">=3.6.0"
 summary = "Screen-scraping library"
 dependencies = [
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "fonttools"
-version = "4.31.2"
+version = "4.32.0"
 requires_python = ">=3.7"
 summary = "Tools to manipulate font files"
 
@@ -214,12 +214,13 @@ dependencies = [
 
 [[package]]
 name = "momepy"
-version = "0.5.2"
+version = "0.5.3"
 summary = "Urban Morphology Measuring Toolkit"
 dependencies = [
     "geopandas>=0.8.0",
     "libpysal>=4.2.0",
     "networkx>=2.3",
+    "packaging",
     "pygeos",
     "tqdm>=4.27.0",
 ]
@@ -234,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "networkx"
-version = "2.8rc1"
+version = "2.8"
 requires_python = ">=3.8"
 summary = "Python package for creating and manipulating graphs and networks"
 
@@ -334,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "pyparsing"
-version = "3.0.7"
-requires_python = ">=3.6"
-summary = "Python parsing module"
+version = "3.0.8"
+requires_python = ">=3.6.8"
+summary = "pyparsing module - Classes and methods to define and execute parsing grammars"
 
 [[package]]
 name = "pyproj"
@@ -528,9 +529,9 @@ content_hash = "sha256:c0d95decf154bcc0b272a1811239ea41410a61cdc0c80a1068c66ceaf
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
     {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
 ]
-"beautifulsoup4 4.11.0" = [
-    {file = "beautifulsoup4-4.11.0-py3-none-any.whl", hash = "sha256:577b9e1c36d2ada780d807c5622e889d43172466658c2eb239e97296965cdddb"},
-    {file = "beautifulsoup4-4.11.0.tar.gz", hash = "sha256:ac98f868e1cb8eb9932a61be75b4f7018a118a490e7fdb424a74a982430cfcbd"},
+"beautifulsoup4 4.11.1" = [
+    {file = "beautifulsoup4-4.11.1-py3-none-any.whl", hash = "sha256:58d5c3d29f5a36ffeb94f02f0d786cd53014cf9b3b3951d42e0080d8a9498d30"},
+    {file = "beautifulsoup4-4.11.1.tar.gz", hash = "sha256:ad9aa55b65ef2808eb405f46cf74df7fcb7044d5cbc26487f96eb2ef2e436693"},
 ]
 "certifi 2021.10.8" = [
     {file = "certifi-2021.10.8-py2.py3-none-any.whl", hash = "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"},
@@ -580,9 +581,9 @@ content_hash = "sha256:c0d95decf154bcc0b272a1811239ea41410a61cdc0c80a1068c66ceaf
     {file = "Fiona-1.8.21-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:40b4eaf5b88407421d6c9e707520abd2ff16d7cd43efb59cd398aa41d2de332c"},
     {file = "Fiona-1.8.21.tar.gz", hash = "sha256:3a0edca2a7a070db405d71187214a43d2333a57b4097544a3fcc282066a58bfc"},
 ]
-"fonttools 4.31.2" = [
-    {file = "fonttools-4.31.2-py3-none-any.whl", hash = "sha256:2df636a3f402ef14593c6811dac0609563b8c374bd7850e76919eb51ea205426"},
-    {file = "fonttools-4.31.2.zip", hash = "sha256:236b29aee6b113e8f7bee28779c1230a86ad2aac9a74a31b0aedf57e7dfb62a4"},
+"fonttools 4.32.0" = [
+    {file = "fonttools-4.32.0-py3-none-any.whl", hash = "sha256:b038d1a0dee0079de7ade57071e2e2aced6e35bd697de244ac62938b2b1628c1"},
+    {file = "fonttools-4.32.0.zip", hash = "sha256:59a90de72149893167e3d552ae2402c6874e006b9adc3feaf5f6d706fe20d392"},
 ]
 "geopandas 0.10.2" = [
     {file = "geopandas-0.10.2-py2.py3-none-any.whl", hash = "sha256:1722853464441b603d9be3d35baf8bde43831424a891e82a8545eb8997b65d6c"},
@@ -767,17 +768,17 @@ content_hash = "sha256:c0d95decf154bcc0b272a1811239ea41410a61cdc0c80a1068c66ceaf
     {file = "matplotlib-3.5.1-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:14334b9902ec776461c4b8c6516e26b450f7ebe0b3ef8703bf5cdfbbaecf774a"},
     {file = "matplotlib-3.5.1.tar.gz", hash = "sha256:b2e9810e09c3a47b73ce9cab5a72243a1258f61e7900969097a817232246ce1c"},
 ]
-"momepy 0.5.2" = [
-    {file = "momepy-0.5.2-py3-none-any.whl", hash = "sha256:28b806767debfc982b92e5a585cc2c25d635de6d5837c40cfdb4900efd9b9a66"},
-    {file = "momepy-0.5.2.tar.gz", hash = "sha256:44a67b00ca7cd61895162eb017470058494b98eb0ebff8970146790ed6ff0fcc"},
+"momepy 0.5.3" = [
+    {file = "momepy-0.5.3-py3-none-any.whl", hash = "sha256:456db63a66c47b7f0f1d7a1aea82db96fd387815c1f9eac1fc1f1800ad8e3014"},
+    {file = "momepy-0.5.3.tar.gz", hash = "sha256:7d4f8c544c076f7117e911e3fa47bdad92c0f6e887338f9d8abbc491129aaa5f"},
 ]
 "munch 2.5.1.dev12" = [
     {file = "munch-2.5.1.dev12-py2.py3-none-any.whl", hash = "sha256:8fdb6c5cb8ea62611424ed71b4aa896851c6c53952872cbb7d6767dc34119e89"},
     {file = "munch-2.5.1.dev12.tar.gz", hash = "sha256:b15f80b3ca99b9af0048215f9c81e718fdc6b2accecbcff573d12cddc90fd8c3"},
 ]
-"networkx 2.8rc1" = [
-    {file = "networkx-2.8rc1-py3-none-any.whl", hash = "sha256:7a123f7e3593eafb66a0badcb7b4aa158f18ab13f1049d7ecb8fd82972f84b87"},
-    {file = "networkx-2.8rc1.tar.gz", hash = "sha256:4e5153f1c21033d705d541172b0679594c617eaa6e0599fbfa78b91416e6b4f3"},
+"networkx 2.8" = [
+    {file = "networkx-2.8-py3-none-any.whl", hash = "sha256:1a1e8fe052cc1b4e0339b998f6795099562a264a13a5af7a32cad45ab9d4e126"},
+    {file = "networkx-2.8.tar.gz", hash = "sha256:4a52cf66aed221955420e11b3e2e05ca44196b4829aab9576d4d439212b0a14f"},
 ]
 "numba 0.55.1" = [
     {file = "numba-0.55.1-1-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:be56fb78303973e6c19c7c2759996a5863bac69ca87570543d9f18f2f287a441"},
@@ -957,9 +958,9 @@ content_hash = "sha256:c0d95decf154bcc0b272a1811239ea41410a61cdc0c80a1068c66ceaf
     {file = "pygeos-0.12.0-cp39-cp39-win_amd64.whl", hash = "sha256:25b94e8bc755a8d3e50661995556b2c27d253bfdd55aa719ea3c202de44a9569"},
     {file = "pygeos-0.12.0.tar.gz", hash = "sha256:3c41542ef67c66015f443ae3e6e683503a8a221f9c24fb2380f6ae42aed1600a"},
 ]
-"pyparsing 3.0.7" = [
-    {file = "pyparsing-3.0.7-py3-none-any.whl", hash = "sha256:a6c06a88f252e6c322f65faf8f418b16213b51bdfaece0524c1c1bc30c63c484"},
-    {file = "pyparsing-3.0.7.tar.gz", hash = "sha256:18ee9022775d270c55187733956460083db60b37d0d0fb357445f3094eed3eea"},
+"pyparsing 3.0.8" = [
+    {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
+    {file = "pyparsing-3.0.8.tar.gz", hash = "sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954"},
 ]
 "pyproj 3.3.0" = [
     {file = "pyproj-3.3.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:2c41c9b7b5e1a1b0acc2b7b2f5de65b226f7b96c870888e4f679ff96322b1ed0"},
