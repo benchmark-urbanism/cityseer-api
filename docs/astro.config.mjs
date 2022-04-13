@@ -117,7 +117,7 @@ export default defineConfig({
     vue(),
     tailwind({
       config: {
-        path: './tailwind.config.js',
+        path: './tailwind.config.cjs',
         applyAstroPreset: false,
         applyBaseStyles: false,
       },
