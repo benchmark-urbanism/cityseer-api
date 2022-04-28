@@ -21,7 +21,7 @@ The broader emphasis on localised methods and how `cityseer` addresses these is 
 ## Graph Cleaning
 
 :::warning
-You can find a notebook of this guide at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demo_notebooks/graph_cleaning.ipynb).
+You can find a notebook of this guide at [google colaboratory](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demos/graph_cleaning.ipynb).
 :::
 
 Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
