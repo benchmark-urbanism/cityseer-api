@@ -1,8 +1,8 @@
 # mac
 .DS_Store
 
-#notes
-temp/
+# temporary working directories
+**/temp
 
 # pdm
 .pdm.toml
