@@ -1,6 +1,9 @@
 # mac
 .DS_Store
 
+#setuptools_scm
+cityseer/_version.py
+
 # temporary working directories
 **/temp
 
