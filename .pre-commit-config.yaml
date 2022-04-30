@@ -12,7 +12,8 @@ repos:
     hooks:
       - id: prospector
         args:
-          - "--profile-path ./prospector_profile.yaml"
+          - "--profile-path ."
+          - "--profile prospector_profile.yaml"
         additional_dependencies:
           - ".[with_vulture,with_mypy,with_bandit]"
   - repo: https://github.com/pycqa/isort
