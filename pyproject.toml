@@ -1,20 +1,36 @@
 [project]
 name = "cityseer"
-version = "1.2.3"
+dynamic = ["version"]
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = 'README.md'
-requires-python = ">=3.9, <3.10"
-license = {text = "AGPL-3.0"}
-keywords = ['network-topology', 'numpy', 'architecture', 'openstreetmap', 'urban-planning', 'python3', 'networkx', 'networks', 'spatial-analysis', 'geographical-information-system', 'spatial-data', 'morphometrics', 'network-analysis', 'momepy', 'numba', 'spatial-data-analysis', 'centrality', 'shapely', 'landuse', 'osmnx', 'network-centralities']
-authors = [
-    {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
+requires-python = ">=3.9, <3.11"
+license = { text = "AGPL-3.0" }
+keywords = [
+    'network-topology',
+    'numpy',
+    'architecture',
+    'openstreetmap',
+    'urban-planning',
+    'python3',
+    'networkx',
+    'networks',
+    'spatial-analysis',
+    'geographical-information-system',
+    'spatial-data',
+    'morphometrics',
+    'network-analysis',
+    'momepy',
+    'numba',
+    'spatial-data-analysis',
+    'centrality',
+    'shapely',
+    'landuse',
+    'osmnx',
+    'network-centralities',
 ]
-maintainers = [
-    {name = "Gareth Simons", email = "info@benchmarkurbanism.com"},
-]
-classifiers = [
-    "Programming Language :: Python :: 3",
-]
+authors = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
+maintainers = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
+classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "matplotlib>=3.5.1",
     "networkx>=2.7.1",
@@ -26,7 +42,8 @@ dependencies = [
     "tqdm>=4.63.1",
     "numba-progress>=0.0.2",
     "utm>=0.7.0",
-    "shapely>=1.8.1.post1"]
+    "shapely>=1.8.1.post1",
+]
 
 [project.optional-dependencies]
 [tool.pdm.dev-dependencies]
@@ -35,7 +52,15 @@ dev = [
     "osmnx>=1.1.2",
     "momepy>=0.5.2",
     "yapper>=0.2.1",
-]
+    "black>=22.3.0",
+    "isort>=5.10.1",
+    "setuptools-scm>=6.4.2",
+    "mypy>=0.950",
+    "pre-commit>=2.18.1",
+    "jupyter>=1.0.0",
+    "bandit>=1.7.4",
+    "prospector>=1.7.7",
+    "pydocstyle>=6.1.1"]
 
 [project.urls]
 homepage = "https://cityseer.benchmarkurbanism.com/"
@@ -49,11 +74,51 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["cityseer"]
 
+[tool.setuptools_scm]
+write_to = "cityseer/_version.py"
+
 [tool.pdm.scripts]
 build_docs = 'pdm run yapper --config=./docs/.yap_config.yaml'
-docs_dev = {shell= 'pdm run build_docs && pnpm --prefix ./docs dev'}
-docs_build = {shell= 'pdm run build_docs && pnpm --prefix ./docs build'}
-docs_preview = {shell= 'pdm run build_docs && pnpm --prefix ./docs preview'}
+docs_dev = { shell = 'pdm run build_docs && pnpm --prefix ./docs dev' }
+docs_build = { shell = 'pdm run build_docs && pnpm --prefix ./docs build' }
+docs_preview = { shell = 'pdm run build_docs && pnpm --prefix ./docs preview' }
 tests = 'pytest ./tests'
-build = 'python3 -m build'
-publish = { shell= 'pdm run tests && pdm run build_docs && pdm run build && pdm publish -u shongololo -v' }
+build = 'pdm run lint && python -m build'
+publish = { shell = 'pdm run tests && pdm run build_docs && pdm run build && pdm publish -u shongololo -v' }
+
+[tool.black]
+line-length = 120
+
+[tool.pylint.FORMAT]
+max-line-length = 120
+
+[tool.pylint.Logging]
+logging-format-style = 'new'
+
+[tool.mypy]
+strict_optional = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_return_any = true
+warn_unreachable = true
+show_error_context = true
+show_column_numbers = true
+show_error_codes = true
+pretty = true
+color_output = true
+error_summary = true
+show_absolute_path = false
+verbosity = 0
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+line_length = 120
+known_third_party = []
+known_first_party = ['cityseer']
+skip_glob = []
+atomic = true
+filter_files = true
+src_paths = ["cityseer", "demos", "test"]
