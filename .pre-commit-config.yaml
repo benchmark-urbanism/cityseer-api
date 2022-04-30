@@ -11,8 +11,10 @@ repos:
     rev: 1.7.7
     hooks:
       - id: prospector
+        args:
+          - --profile ./prospector_profile.yaml"
         additional_dependencies:
-          - ".[with_mypy,with_bandit]"
+          - ".[with_vulture,with_mypy,with_bandit]"
   - repo: https://github.com/pycqa/isort
     rev: 5.10.1
     hooks:
@@ -22,7 +24,3 @@ repos:
     hooks:
       - id: black
         language_version: python3.10
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
-    hooks:
-      - id: pydocstyle
