@@ -60,7 +60,8 @@ dev = [
     "jupyter>=1.0.0",
     "bandit>=1.7.4",
     "prospector>=1.7.7",
-    "pydocstyle>=6.1.1"]
+    "vulture>=2.3",
+]
 
 [project.urls]
 homepage = "https://cityseer.benchmarkurbanism.com/"
@@ -82,35 +83,16 @@ build_docs = 'pdm run yapper --config=./docs/.yap_config.yaml'
 docs_dev = { shell = 'pdm run build_docs && pnpm --prefix ./docs dev' }
 docs_build = { shell = 'pdm run build_docs && pnpm --prefix ./docs build' }
 docs_preview = { shell = 'pdm run build_docs && pnpm --prefix ./docs preview' }
+lint = 'prospector --profile=prospector_profile.yaml'
 tests = 'pytest ./tests'
-build = 'pdm run lint && python -m build'
-publish = { shell = 'pdm run tests && pdm run build_docs && pdm run build && pdm publish -u shongololo -v' }
+build = { shell = 'pdm run lint && pdm run tests && python -m build' }
+publish = { shell = 'pdm run build && pdm run build_docs && pdm publish -u shongololo -v' }
 
 [tool.black]
 line-length = 120
 
-[tool.pylint.FORMAT]
-max-line-length = 120
-
-[tool.pylint.Logging]
-logging-format-style = 'new'
-
 [tool.mypy]
-strict_optional = false
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_return_any = true
-warn_unreachable = true
-show_error_context = true
-show_column_numbers = true
-show_error_codes = true
-pretty = true
-color_output = true
-error_summary = true
-show_absolute_path = false
-verbosity = 0
+plugins = ['numpy.typing.mypy_plugin']
 
 [tool.isort]
 profile = "black"
@@ -122,3 +104,7 @@ skip_glob = []
 atomic = true
 filter_files = true
 src_paths = ["cityseer", "demos", "test"]
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = 'INFO'
