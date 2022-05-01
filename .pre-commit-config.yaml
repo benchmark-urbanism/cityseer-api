@@ -18,27 +18,28 @@ repos:
         entry: pylint
         language: system
         types: [python]
-        args: [
-            "--rcfile=pyproject.toml",
-            "--load-plugins=pylint.extensions.docparams", # Load an extension
-          ]
+        args: ["--rcfile=pyproject.toml"]
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
       - id: black
         language_version: python3.10
+        args: ["--config pyproject.toml"]
   - repo: https://github.com/pycqa/isort
     rev: 5.10.1
     hooks:
       - id: isort
+        args: ["--settings-file pyproject.toml"]
   - repo: https://github.com/pycqa/pydocstyle
     rev: 6.1.1
     hooks:
       - id: pydocstyle
+        args: ["--config=pyproject.toml"]
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.4
     hooks:
       - id: bandit
+        args: ["-c pyproject.toml"]
   - repo: https://github.com/jendrikseipp/vulture
     rev: "v2.3"
     hooks:
