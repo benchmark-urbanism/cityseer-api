@@ -1,5 +1,7 @@
 # https://pre-commit.com/hooks.html
 
+default_language_version:
+  python: python3.10
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.2.0
@@ -7,6 +9,7 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: detect-private-key
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v0.950"
     hooks:
