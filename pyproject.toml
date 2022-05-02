@@ -60,8 +60,7 @@ dev = [
     "black>=22.3.0",
     "isort>=5.10.1",
     "pydocstyle>=6.1.1",
-    "bandit>=1.7.4",
-    "vulture>=2.3",
+    "types-requests>=2.27.25",
 ]
 
 [project.urls]
@@ -124,11 +123,25 @@ max-line-length = 120
 [tool.mypy]
 plugins = ['numpy.typing.mypy_plugin']
 files = ['cityseer', 'demos', 'tests']
-# https://mypy.readthedocs.io/en/stable/config_file.html?highlight=plugins#confval-exclude
-exclude = []
-namespace_packages = true
-explicit_package_bases = true
 python_version = "3.10"
+strict_optional = false
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_return_any = true
+warn_unreachable = true
+
+[mypy-matplotlib]
+ignore_missing_imports = true
+
+[mypy-networkx]
+ignore_missing_imports = true
+
+[mypy-shapely]
+ignore_missing_imports = true
+
+[mypy-sklearn]
+ignore_missing_imports = true
 
 [tool.pydocstyle]
 # http://www.pydocstyle.org/en/stable/error_codes.html
@@ -147,13 +160,6 @@ known_first_party = ['cityseer']
 atomic = true
 filter_files = true
 src_paths = ["cityseer", "demos", "test"]
-
-[tool.bandit]
-exclude_dirs = ["**/tests/**"]
-
-[tool.vulture]
-sort_by_size = true
-verbose = false
 
 [tool.pytest.ini_options]
 log_cli = true
