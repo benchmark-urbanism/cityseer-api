@@ -1,7 +1,7 @@
 # https://pre-commit.com/hooks.html
 
 default_language_version:
-  python: python3.10
+  python: "python3.10"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.2.0
@@ -17,7 +17,7 @@ repos:
         entry: mypy
         language: system
         types: [python]
-        args: ["--config-fil pyproject.toml"]
+        args: ["--config-file=pyproject.toml"]
       - id: pylint
         name: pylint
         entry: pylint
@@ -29,13 +29,13 @@ repos:
         entry: black
         language: system
         types: [python]
-        args: ["--config pyproject.toml"]
+        args: ["--config=pyproject.toml"]
       - id: isort
         name: isort
         entry: isort
         language: system
         types: [python]
-        args: ["--settings-file pyproject.toml"]
+        args: ["--settings-file=pyproject.toml"]
       - id: pydocstyle
         name: pydocstyle
         entry: pydocstyle
