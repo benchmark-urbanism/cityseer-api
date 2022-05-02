@@ -42,14 +42,3 @@ repos:
         language: system
         types: [python]
         args: ["--config=pyproject.toml"]
-      - id: bandit
-        name: bandit
-        entry: bandit
-        language: system
-        types: [python]
-        args: ["-c pyproject.toml"]
-      - id: vulture
-        name: vulture
-        entry: vulture
-        language: system
-        types: [python]
