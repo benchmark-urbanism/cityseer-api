@@ -131,16 +131,13 @@ warn_no_return = true
 warn_return_any = true
 warn_unreachable = true
 
-[mypy-matplotlib]
-ignore_missing_imports = true
-
-[mypy-networkx]
-ignore_missing_imports = true
-
-[mypy-shapely]
-ignore_missing_imports = true
-
-[mypy-sklearn]
+[[tool.mypy.overrides]]
+module = [
+    "matplotlib",
+    "networkx",
+    'shapely',
+    'sklearn'
+]
 ignore_missing_imports = true
 
 [tool.pydocstyle]
