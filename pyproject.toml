@@ -61,7 +61,8 @@ dev = [
     "isort>=5.10.1",
     "pydocstyle>=6.1.1",
     "bandit>=1.7.4",
-    "vulture>=2.3"]
+    "vulture>=2.3",
+]
 
 [project.urls]
 homepage = "https://cityseer.benchmarkurbanism.com/"
@@ -127,7 +128,7 @@ files = ['cityseer', 'demos', 'tests']
 exclude = []
 namespace_packages = true
 explicit_package_bases = true
-python_version = 3.10
+python_version = "3.10"
 
 [tool.pydocstyle]
 # http://www.pydocstyle.org/en/stable/error_codes.html
@@ -149,6 +150,10 @@ src_paths = ["cityseer", "demos", "test"]
 
 [tool.bandit]
 exclude_dirs = ["**/tests/**"]
+
+[tool.vulture]
+sort_by_size = true
+verbose = false
 
 [tool.pytest.ini_options]
 log_cli = true
