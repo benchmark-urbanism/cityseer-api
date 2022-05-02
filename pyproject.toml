@@ -2,31 +2,31 @@
 name = "cityseer"
 dynamic = ["version"]
 description = "Computational tools for network-based pedestrian-scale urban analysis"
-readme = 'README.md'
+readme = "README.md"
 requires-python = ">=3.9, <3.11"
 license = { text = "AGPL-3.0" }
 keywords = [
-    'network-topology',
-    'numpy',
-    'architecture',
-    'openstreetmap',
-    'urban-planning',
-    'python3',
-    'networkx',
-    'networks',
-    'spatial-analysis',
-    'geographical-information-system',
-    'spatial-data',
-    'morphometrics',
-    'network-analysis',
-    'momepy',
-    'numba',
-    'spatial-data-analysis',
-    'centrality',
-    'shapely',
-    'landuse',
-    'osmnx',
-    'network-centralities',
+    "network-topology",
+    "numpy",
+    "architecture",
+    "openstreetmap",
+    "urban-planning",
+    "python3",
+    "networkx",
+    "networks",
+    "spatial-analysis",
+    "geographical-information-system",
+    "spatial-data",
+    "morphometrics",
+    "network-analysis",
+    "momepy",
+    "numba",
+    "spatial-data-analysis",
+    "centrality",
+    "shapely",
+    "landuse",
+    "osmnx",
+    "network-centralities",
 ]
 authors = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
 maintainers = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
@@ -79,14 +79,14 @@ packages = ["cityseer"]
 write_to = "cityseer/_version.py"
 
 [tool.pdm.scripts]
-build_docs = 'pdm run yapper --config=./docs/.yap_config.yaml'
-docs_dev = { shell = 'pdm run build_docs && pnpm --prefix ./docs dev' }
-docs_build = { shell = 'pdm run build_docs && pnpm --prefix ./docs build' }
-docs_preview = { shell = 'pdm run build_docs && pnpm --prefix ./docs preview' }
-lint = 'prospector --profile=prospector_profile.yaml'
-tests = 'pytest ./tests'
-build = { shell = 'pdm run lint && pdm run tests && python -m build' }
-publish = { shell = 'pdm run build && pdm run build_docs && pdm publish -u shongololo -v' }
+build_docs = "pdm run yapper --config=./docs/.yap_config.yaml"
+docs_dev = { shell = "pdm run build_docs && pnpm --prefix ./docs dev" }
+docs_build = { shell = "pdm run build_docs && pnpm --prefix ./docs build" }
+docs_preview = { shell = "pdm run build_docs && pnpm --prefix ./docs preview" }
+lint = "prospector --profile=prospector_profile.yaml"
+tests = "pytest ./tests"
+build = { shell = "pdm run lint && pdm run tests && python -m build" }
+publish = { shell = "pdm run build && pdm run build_docs && pdm publish -u shongololo -v" }
 
 [tool.black]
 line-length = 120
@@ -98,20 +98,20 @@ output-format = "colorized"
 
 [tool.pylint.basic]
 good-names = [
-    'i',
-    'j',
-    'k',
-    'ex',
-    'Run',
-    '_',
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'n',
-    'm',
+    "i",
+    "j",
+    "k",
+    "ex",
+    "Run",
+    "_",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "n",
+    "m",
 ]
 
 [tool.pylint.design]
@@ -121,8 +121,8 @@ max-args = 10
 max-line-length = 120
 
 [tool.mypy]
-plugins = ['numpy.typing.mypy_plugin']
-files = ['cityseer', 'demos', 'tests']
+plugins = ["numpy.typing.mypy_plugin"]
+files = ["cityseer", "demos", "tests"]
 python_version = "3.10"
 strict_optional = false
 warn_redundant_casts = true
@@ -134,30 +134,37 @@ warn_unreachable = true
 [[tool.mypy.overrides]]
 module = [
     "matplotlib",
+    "matplotlib.pyplot",
+    "matplotlib.collections",
     "networkx",
-    'shapely',
-    'sklearn'
+    "numba",
+    "numba.typed",
+    "numba_progress",
+    "shapely",
+    "sklearn.preprocessing",
+    "tqdm.auto",
+    "utm",
 ]
 ignore_missing_imports = true
 
 [tool.pydocstyle]
 # http://www.pydocstyle.org/en/stable/error_codes.html
 ignore = [
-    'D100', # Missing docstring in public module
-    'D104', # Missing docstring in public package
-    'D200', # One-line docstring should fit on one line with quotes
-    'D212', # Multi-line docstring summary should start at the first line
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D200", # One-line docstring should fit on one line with quotes
+    "D212", # Multi-line docstring summary should start at the first line
 ]
 
 [tool.isort]
 profile = "black"
 skip_gitignore = true
 line_length = 120
-known_first_party = ['cityseer']
+known_first_party = ["cityseer"]
 atomic = true
 filter_files = true
 src_paths = ["cityseer", "demos", "test"]
 
 [tool.pytest.ini_options]
 log_cli = true
-log_cli_level = 'INFO'
+log_cli_level = "INFO"
