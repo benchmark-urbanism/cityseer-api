@@ -120,9 +120,14 @@ max-args = 10
 [tool.pylint.format]
 max-line-length = 120
 
+[tool.pyling.logging]
+logging_format_style = "new"
+
 [tool.mypy]
 plugins = ["numpy.typing.mypy_plugin"]
-files = ["cityseer", "demos", "tests"]
+exclude = ["__pypackages__", "build"]
+namespace_packages = true
+explicit_package_bases = true
 python_version = "3.10"
 strict_optional = false
 warn_redundant_casts = true
@@ -136,10 +141,17 @@ module = [
     "matplotlib",
     "matplotlib.pyplot",
     "matplotlib.collections",
+    "matplotlib.colors",
     "networkx",
     "numba",
+    "numba.core",
     "numba.typed",
     "numba_progress",
+    "osmnx",
+    "pandas",
+    "pytest",
+    "requests",
+    "scipy.stats",
     "shapely",
     "sklearn.preprocessing",
     "tqdm.auto",
