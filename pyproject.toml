@@ -125,6 +125,7 @@ logging_format_style = "new"
 
 [tool.mypy]
 plugins = ["numpy.typing.mypy_plugin"]
+files = ["cityseer", "demos", "tests"]
 exclude = ["__pypackages__", "build"]
 namespace_packages = true
 explicit_package_bases = true
@@ -179,7 +180,7 @@ line_length = 120
 known_first_party = ["cityseer"]
 atomic = true
 filter_files = true
-src_paths = ["cityseer", "demos", "test"]
+src_paths = ["cityseer", "demos", "tests"]
 
 [tool.pytest.ini_options]
 log_cli = true
