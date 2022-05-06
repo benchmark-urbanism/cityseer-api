@@ -151,9 +151,13 @@ module = [
     "pandas",
     "pytest",
     "requests",
+    "scipy",
     "scipy.stats",
     "shapely",
+    "sklearn",
     "sklearn.preprocessing",
+    "tensorflow",
+    "tensorflow.keras",
     "tqdm.auto",
     "utm",
 ]
