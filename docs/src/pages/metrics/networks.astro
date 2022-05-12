@@ -298,7 +298,7 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # if initialised with distances: 
 # betas for weighted metrics will be generated implicitly
@@ -376,7 +376,7 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # generate the network layer and compute some metrics
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -393,7 +393,7 @@ print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
 ```
 
 
- The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
+ The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](#networklayer-to-networkx).
 </Markdown>
     <h3 class="yap">Properties</h3>
     <div class="yap class-prop-elem-container">
@@ -475,7 +475,7 @@ print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
-        <div class="yap class-prop-def-name">networkX_multigraph</div>
+        <div class="yap class-prop-def-name">nx_multigraph</div>
         <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
@@ -532,7 +532,7 @@ A 2d `numpy` array representing the graph's nodes. The indices of the second dim
 | 2   | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
 
-The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
+The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm) can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local UTM `x`, `y` projected coordinate system.
 
  When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the network by a distance equal to the maximum distance threshold to be considered. This prevents problematic results arising due to boundary roll-off effects.
 
@@ -635,13 +635,13 @@ Properties
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
           </svg>
-        </a>NetworkLayer.networkX_multigraph
+        </a>NetworkLayer.nx_multigraph
       </h2>
       <div class="yap func-sig-content">
         <div class="yap func-sig">
-          <span>NetworkLayer.networkX_multigraph(</span>
+          <span>NetworkLayer.nx_multigraph(</span>
           <div class="yap func-sig-params">
-            <div class="yap func-sig-param">networkX_multigraph)</div>
+            <div class="yap func-sig-param">nx_multigraph)</div>
           </div>
         </div>
       </div>
@@ -674,7 +674,7 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # generate the network layer and compute some metrics
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -708,16 +708,16 @@ print(data_dict[random_uid]['centrality']['node_harmonic'][200])
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
           </svg>
-        </a>NetworkLayer.to_networkX
+        </a>NetworkLayer.to_nx_multigraph
       </h2>
       <div class="yap func-sig-content">
         <div class="yap func-sig">
-          <span>NetworkLayer.to_networkX(</span>
+          <span>NetworkLayer.to_nx_multigraph(</span>
           <div class="yap func-sig-params"></div>
         </div>
       </div>
       <div class="yap"><Markdown is:raw>
-Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
+Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls [`nx_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
 </Markdown>
         <h3 class="yap">Returns</h3>
         <div class="yap doc-str-elem-container">
@@ -741,14 +741,14 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # generate the network layer and compute some metrics
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 # compute some-or-other metrics
 N.node_centrality(measures=['node_harmonic'])
 # convert back to networkX
-G_post = N.to_networkX()
+G_post = N.to_nx_multigraph()
 
 # let's select a random node id
 random_idx = 6
@@ -968,7 +968,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig">
           <span>NetworkLayerFromNX.__init__(</span>
           <div class="yap func-sig-params">
-            <div class="yap func-sig-param">networkX_multigraph, </div>
+            <div class="yap func-sig-param">nx_multigraph, </div>
             <div class="yap func-sig-param">distances, </div>
             <div class="yap func-sig-param">betas, </div>
             <div class="yap func-sig-param">min_threshold_wt=(*))</div>
@@ -976,12 +976,12 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         </div>
       </div>
       <div class="yap"><Markdown is:raw>
-Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
+Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nx`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
 </Markdown>
         <h3 class="yap">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
-            <div class="yap doc-str-elem-name">networkX_multigraph</div>
+            <div class="yap doc-str-elem-name">nx_multigraph</div>
             <div class="yap doc-str-elem-type"></div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>

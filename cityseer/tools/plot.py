@@ -1,7 +1,10 @@
 """
-Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic
-plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the
-underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
+Convenience methods for plotting graphs within the cityseer API context.
+
+Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and
+[`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification
+of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
+See the demos section for examples.
 """
 from __future__ import annotations
 
@@ -10,11 +13,13 @@ import logging
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
 from matplotlib import colors
 from matplotlib.collections import LineCollection
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
+from cityseer.metrics import layers, networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,34 +28,40 @@ logger = logging.getLogger(__name__)
 plt.tight_layout()
 
 
-primary = '#0091ea'
-accent = '#64c1ff'
-info = '#0064b7'
-secondary = '#d32f2f'
-warning = '#9a0007'
-error = '#ffffff'
-success = '#2e7d32'
-background = '#19181B'
+class ColourMap:  # pylint: disable=too-few-public-methods
+    """global colour presets"""
+
+    primary: str = "#0091ea"
+    accent: str = "#64c1ff"
+    info: str = "#0064b7"
+    secondary: str = "#d32f2f"
+    warning: str = "#9a0007"
+    error: str = "#ffffff"
+    background: str = "#19181B"
 
 
-def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
-                           dual_graph: nx.MultiGraph = None,
-                           path: str = None,
-                           labels: bool = False,
-                           primal_node_size: int = 30,
-                           primal_node_colour: str | tuple | list | np.ndarray = None,
-                           primal_edge_colour: str = None,
-                           dual_node_size: int = 30,
-                           dual_node_colour: str | tuple | list | np.ndarray = None,
-                           dual_edge_colour: str = None,
-                           primal_edge_width: int | float = None,
-                           dual_edge_width: int | float = None,
-                           plot_geoms: bool = True,
-                           x_lim: tuple | list = None,
-                           y_lim: tuple | list = None,
-                           ax: plt.axes = None,
-                           **kwargs):
+def plot_nx_primal_or_dual(  # noqa
+    primal_graph: nx.MultiGraph | None = None,
+    dual_graph: nx.MultiGraph | None = None,
+    path: str | None = None,
+    labels: bool = False,
+    primal_node_size: int = 30,
+    primal_node_colour: str | npt.NDArray | None = None,
+    primal_edge_colour: str | None = None,
+    dual_node_size: int = 30,
+    dual_node_colour: str | npt.NDArray | None = None,
+    dual_edge_colour: str | None = None,
+    primal_edge_width: int | float | None = None,
+    dual_edge_width: int | float | None = None,
+    plot_geoms: bool = True,
+    x_lim: tuple | list | None = None,
+    y_lim: tuple | list | None = None,
+    ax: plt.axes | None = None,
+    **kwargs,
+):
     """
+    Plot a primal or dual cityseer graph.
+
     Parameters
     ----------
     primal_graph
@@ -66,7 +77,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         The diameter for the primal graph's nodes.
     primal_node_colour
         Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order
-        and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
+        and number of nodes in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     primal_edge_colour
         Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -74,7 +86,8 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         The diameter for the dual graph's nodes.
     dual_node_colour
         Dual node colour or colours. When passing a list of colours, the number of colours should match the order and
-        number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
+        number of nodes in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     dual_edge_colour
         Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -100,29 +113,30 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
     Examples
     --------
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](/tools/plot/#plot-nx) method
-    instead.
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot/#plot-nx)
+    method instead.
 
     ```py
     from cityseer.tools import mock, graphs, plot
     G = mock.mock_graph()
-    G_simple = graphs.nX_simple_geoms(G)
-    G_dual = graphs.nX_to_dual(G_simple)
-    plot.plot_nX_primal_or_dual(G_simple,
+    G_simple = graphs.nx_simple_geoms(G)
+    G_dual = graphs.nx_to_dual(G_simple)
+    plot.plot_nx_primal_or_dual(G_simple,
                                 G_dual,
                                 plot_geoms=False)
     ```
     ![Example primal and dual graph plot.](/images/graph_dual.png)
     _A dual graph in blue overlaid on the source primal graph in red._
+
     """
     # cleanup old plots
     if ax is None:
         plt.ioff()
-        plt.close('all')
+        plt.close("all")
         plt.cla()
         plt.clf()
         # create new plot
-        fig, target_ax = plt.subplots(1, 1, **kwargs)
+        _fig, target_ax = plt.subplots(1, 1, **kwargs)
     else:
         target_ax = ax
     # setup params
@@ -131,39 +145,40 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         alpha = 0.95
 
     # setup a function that can be used for either the primal or dual graph
-    def _plot_graph(_graph,
-                   _is_primal,
-                   _node_size,
-                   _node_colour,
-                   _node_shape,
-                   _edge_colour,
-                   _edge_style,
-                   _edge_width):
-        if not len(_graph.nodes()):
-            raise ValueError('Graph contains no nodes to plot.')
-        iterables = (list, tuple, np.ndarray)
+    def _plot_graph(
+        _graph,
+        _is_primal,
+        _node_size,
+        _node_colour,
+        _node_shape,
+        _edge_colour,
+        _edge_style,
+        _edge_width,
+    ):
+        if not len(_graph.nodes()):  # pylint: disable=use-implicit-booleaness-not-len
+            raise ValueError("Graph contains no nodes to plot.")
         if not isinstance(_node_size, int) or _node_size < 1:
-            raise ValueError('Node sizes should be a positive integer.')
+            raise ValueError("Node sizes should be a positive integer.")
         if _node_colour is not None:
-            if isinstance(_node_colour, iterables) and len(_node_colour) != len(_graph):
-                raise ValueError('A list, tuple, or array of colours should match the number of nodes in the graph.')
+            if isinstance(_node_colour, np.ndarray) and len(_node_colour) != len(_graph):
+                raise ValueError("A list, tuple, or array of colours should match the number of nodes in the graph.")
         else:
             if _is_primal:
-                _node_colour = secondary
+                _node_colour = ColourMap.secondary
             else:
-                _node_colour = info
+                _node_colour = ColourMap.info
         if _edge_colour is not None:
             if not isinstance(_edge_colour, str):
-                raise ValueError('Edge colours should be a string representing a single colour.')
+                raise ValueError("Edge colours should be a string representing a single colour.")
         else:
             if _is_primal:
-                _edge_colour = 'w'
+                _edge_colour = "w"
             else:
-                _edge_colour = accent
+                _edge_colour = ColourMap.accent
         # edge width
         if _edge_width is not None:
             if not isinstance(_edge_width, (int, float)):
-                raise ValueError('Edge widths should be an int or float.')
+                raise ValueError("Edge widths should be an int or float.")
         else:
             if _is_primal:
                 _edge_width = 1.5
@@ -174,10 +189,10 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
         # setup a node colour list if nodes are individually coloured, this is for filtering by extents
         colour_list = []
         for n_idx, (n, d) in enumerate(_graph.nodes(data=True)):
-            x = d['x']
-            y = d['y']
+            x = d["x"]
+            y = d["y"]
             # add to the pos dictionary regardless (otherwise nx.draw throws an error)
-            pos[n] = (d['x'], d['y'])
+            pos[n] = (d["x"], d["y"])
             # filter out nodes not within the extnets
             if x_lim and (x < x_lim[0] or x > x_lim[1]):
                 continue
@@ -186,99 +201,114 @@ def plot_nX_primal_or_dual(primal_graph: nx.MultiGraph = None,
             # add to the node list
             node_list.append(n)
             # and add to the node colour list if node colours are a list or tuple
-            if isinstance(_node_colour, iterables):
+            if isinstance(_node_colour, np.ndarray):
                 colour_list.append(_node_colour[n_idx])
-        if not len(node_list):
-            raise ValueError('All nodes have been filtered out by the x_lim / y_lim parameter: check your extents')
+        if not node_list:
+            raise ValueError("All nodes have been filtered out by the x_lim / y_lim parameter: check your extents")
         # update the node colours to the filtered list of colours if necessary
-        if isinstance(_node_colour, iterables):
+        if isinstance(_node_colour, np.ndarray):
             _node_colour = colour_list
         # plot edges manually for geoms
         edge_list = []
         edge_geoms = []
-        for s, e, data in _graph.edges(data=True):
+        for start_idx, end_idx, data in _graph.edges(data=True):
             # filter out if start and end nodes are not in the active node list
-            if s not in node_list and e not in node_list:
+            if start_idx not in node_list and end_idx not in node_list:
                 continue
             if plot_geoms:
                 try:
-                    x_arr, y_arr = data['geom'].coords.xy
-                except KeyError:
-                    raise KeyError(f"Can't plot geoms because a 'geom' key can't be found for edge {s} to {e}. "
-                                   f"Use the nX_simple_geoms() method if you need to create geoms for a graph.")
+                    x_arr, y_arr = data["geom"].coords.xy
+                except KeyError as err:
+                    raise KeyError(
+                        f"Can't plot geoms because a 'geom' key can't be found for edge {start_idx} to {end_idx}. "
+                        f"Use the nx_simple_geoms() method if you need to create geoms for a graph."
+                    ) from err
                 edge_geoms.append(tuple(zip(x_arr, y_arr)))
             else:
-                edge_list.append((s, e))
+                edge_list.append((start_idx, end_idx))
         # plot geoms manually if required
         if plot_geoms:
-            lines = LineCollection(edge_geoms, colors=_edge_colour, linewidths=_edge_width, linestyles=_edge_style)
+            lines = LineCollection(
+                edge_geoms,
+                colors=_edge_colour,
+                linewidths=_edge_width,
+                linestyles=_edge_style,
+            )
             target_ax.add_collection(lines)
         # go ahead and plot: note that edge_list will be empty if plotting geoms
-        nx.draw(_graph,
-                pos=pos,
-                ax=target_ax,
-                with_labels=labels,
-                font_size=5,
-                font_color='w',
-                font_weight='bold',
-                nodelist=node_list,
-                node_color=_node_colour,
-                node_size=_node_size,
-                node_shape=_node_shape,
-                edgelist=edge_list,
-                edge_color=_edge_colour,
-                style=_edge_style,
-                width=_edge_width,
-                alpha=alpha)
+        nx.draw(
+            _graph,
+            pos=pos,
+            ax=target_ax,
+            with_labels=labels,
+            font_size=5,
+            font_color="w",
+            font_weight="bold",
+            nodelist=node_list,
+            node_color=_node_colour,
+            node_size=_node_size,
+            node_shape=_node_shape,
+            edgelist=edge_list,
+            edge_color=_edge_colour,
+            style=_edge_style,
+            width=_edge_width,
+            alpha=alpha,
+        )
 
     if primal_graph is not None:
-        _plot_graph(primal_graph,
-                    True,
-                    primal_node_size,
-                    primal_node_colour,
-                    'o',
-                    primal_edge_colour,
-                    'solid',
-                    primal_edge_width)
+        _plot_graph(
+            primal_graph,
+            True,
+            primal_node_size,
+            primal_node_colour,
+            "o",
+            primal_edge_colour,
+            "solid",
+            primal_edge_width,
+        )
     if dual_graph is not None:
-        _plot_graph(dual_graph,
-                    False,
-                    dual_node_size,
-                    dual_node_colour,
-                    'd',
-                    dual_edge_colour,
-                    'dashed',
-                    dual_edge_width)
+        _plot_graph(
+            dual_graph,
+            False,
+            dual_node_size,
+            dual_node_colour,
+            "d",
+            dual_edge_colour,
+            "dashed",
+            dual_edge_width,
+        )
     if x_lim:
         plt.xlim(*x_lim)
     if y_lim:
         plt.ylim(*y_lim)
     if ax is None:
         if path is not None:
-            plt.savefig(path, facecolor=background)
+            plt.savefig(path, facecolor=ColourMap.background)
         else:
-            plt.gcf().set_facecolor(background)
+            plt.gcf().set_facecolor(ColourMap.background)
             plt.show()
 
 
-def plot_nX(networkX_graph: nx.MultiGraph,
-            path: str = None,
-            labels: bool = False,
-            node_size: int = 20,
-            node_colour: str | tuple | list = None,
-            edge_colour: str | tuple | list = None,
-            edge_width: int | float = None,
-            plot_geoms: bool = False,
-            x_lim: tuple | list = None,
-            y_lim: tuple | list = None,
-            ax: plt.axes = None,
-            **kwargs):
+def plot_nx(
+    nx_multigraph: nx.MultiGraph,
+    path: str | None = None,
+    labels: bool = False,
+    node_size: int = 20,
+    node_colour: str | npt.NDArray | None = None,
+    edge_colour: str | None = None,
+    edge_width: int | float | None = None,
+    plot_geoms: bool = False,
+    x_lim: tuple | list | None = None,
+    y_lim: tuple | list | None = None,
+    ax: plt.axes | None = None,
+    **kwargs,
+):  # noqa
     """
     Plot a `networkX` MultiGraph.
 
     Parameters
     ----------
-    networkX_graph
+    nx_multigraph
         A `NetworkX` MultiGraph.
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
@@ -289,7 +319,8 @@ def plot_nX(networkX_graph: nx.MultiGraph,
         The diameter for the graph's nodes.
     node_colour
         Node colour or colours. When passing an iterable of colours, the number of colours should match the order and
-        number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
+        number of nodes in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     edge_colour
         Edges colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -316,11 +347,11 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     from matplotlib import colors
     # generate a MultiGraph and compute gravity
     G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
-    G = graphs.nX_decompose(G, 50)
+    G = graphs.nx_simple_geoms(G)
+    G = graphs.nx_decompose(G, 50)
     N = networks.NetworkLayerFromNX(G, distances=[800])
     N.node_centrality(measures=['node_beta'])
-    G_after = N.to_networkX()
+    G_after = N.to_nx_multigraph()
     # let's extract and normalise the values
     vals = []
     for node, data in G_after.nodes(data=True):
@@ -334,48 +365,53 @@ def plot_nX(networkX_graph: nx.MultiGraph,
     # cast against the colour map
     cols = cmap(vals)
     # plot
-    plot.plot_nX(G_after, node_colour=cols)
+    plot.plot_nx(G_after, node_colour=cols)
     ```
 
     ![Example Colour Plot.](/images/graph_colour.png)
     _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
     """
-    return plot_nX_primal_or_dual(primal_graph=networkX_graph,
-                                  path=path,
-                                  labels=labels,
-                                  primal_node_size=node_size,
-                                  primal_node_colour=node_colour,
-                                  primal_edge_colour=edge_colour,
-                                  primal_edge_width=edge_width,
-                                  plot_geoms=plot_geoms,
-                                  x_lim=x_lim,
-                                  y_lim=y_lim,
-                                  ax=ax,
-                                  **kwargs)
+    return plot_nx_primal_or_dual(
+        primal_graph=nx_multigraph,
+        path=path,
+        labels=labels,
+        primal_node_size=node_size,
+        primal_node_colour=node_colour,
+        primal_edge_colour=edge_colour,
+        primal_edge_width=edge_width,
+        plot_geoms=plot_geoms,
+        x_lim=x_lim,
+        y_lim=y_lim,
+        ax=ax,
+        **kwargs,
+    )
 
 
-def plot_assignment(Network_Layer,
-                    Data_Layer,
-                    path: str = None,
-                    node_colour: list | tuple | np.ndarray = None,
-                    node_labels: bool = False,
-                    data_labels: list | tuple | np.ndarray = None,
-                    **kwargs):
+def plot_assignment(  # noqa
+    network_layer: networks.NetworkLayer,  # pylint: disable=invalid-name
+    DataLayer: layers.DataLayer,  # pylint: disable=invalid-name
+    path: str | None = None,
+    node_colour: str | list | tuple | npt.NDArray | None = None,
+    node_labels: bool = False,
+    data_labels: npt.NDArray | None = None,
+    **kwargs,
+):
     """
     Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
 
     Parameters
     ----------
-    Network_Layer
+    network_layer
         A [`NetworkLayer`](/metrics/networks/#networklayer).
-    Data_Layer
+    DataLayer
         A [`DataLayer`](/metrics/layers/#datalayer).
     path
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
     node_colour
         Node colour or colours. When passing a list of colours, the number of colours should match the order and number
-        of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
+        of nodes in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     node_labels
         Whether to plot the node labels. Defaults to False.
@@ -390,89 +426,99 @@ def plot_assignment(Network_Layer,
     --------
     ![Example assignment plot.](/images/assignment_plot.png)
     _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
+
     """
     plt.figure(**kwargs)
 
     # extract NetworkX
-    Graph = Network_Layer.to_networkX()
+    nx_multigraph = network_layer.to_nx_multigraph()
 
-    if node_colour is not None:
-        if not (len(node_colour) == 1 or len(node_colour) == len(Graph)):
-            raise ValueError('Node colours should either be a single colour or a list or tuple of colours matching '
-                             'the number of nodes in the graph.')
-        node_colour = node_colour
-    else:
-        node_colour = secondary
+    if isinstance(node_colour, (list, tuple, np.ndarray)):
+        if not (len(node_colour) == 1 or len(node_colour) == len(nx_multigraph)):
+            raise ValueError(
+                "Node colours should either be a single colour or a list or tuple of colours matching "
+                "the number of nodes in the graph."
+            )
+    elif node_colour is None:
+        node_colour = ColourMap.secondary
 
     # do a simple plot - don't provide path
     pos = {}
-    for n, d in Graph.nodes(data=True):
-        pos[n] = (d['x'], d['y'])
-    nx.draw(Graph, pos,
-            with_labels=node_labels,
-            font_size=5,
-            font_color='w',
-            font_weight='bold',
-            node_color=node_colour,
-            node_size=30,
-            node_shape='o',
-            edge_color='w',
-            width=1,
-            alpha=0.75)
+    for n, d in nx_multigraph.nodes(data=True):
+        pos[n] = (d["x"], d["y"])
+    nx.draw(
+        nx_multigraph,
+        pos,
+        with_labels=node_labels,
+        font_size=5,
+        font_color="w",
+        font_weight="bold",
+        node_color=node_colour,
+        node_size=30,
+        node_shape="o",
+        edge_color="w",
+        width=1,
+        alpha=0.75,
+    )
 
     if data_labels is None:
-        data_colour = info
+        data_colour = ColourMap.info
         data_cmap = None
     else:
         # generate categorical colormap
         # use sklearn's label encoder
-        le = LabelEncoder()
-        le.fit(data_labels)
+        lab_enc = LabelEncoder()
+        lab_enc.fit(data_labels)
         # map the int encodings to the respective classes
-        classes_int = le.transform(data_labels)
+        classes_int = lab_enc.transform(data_labels)
         data_colour = colors.Normalize()(classes_int)
-        data_cmap = 'Dark2'  # Set1
+        data_cmap = "Dark2"  # Set1
 
     # overlay data map
-    plt.scatter(x=Data_Layer._data[:, 0],
-                y=Data_Layer._data[:, 1],
-                c=data_colour,
-                cmap=data_cmap,
-                s=30,
-                edgecolors='white',
-                lw=0.5,
-                alpha=0.95)
+    plt.scatter(
+        x=DataLayer.data_x_arr[:, 0],
+        y=DataLayer.data_y_arr[:, 1],
+        c=data_colour,
+        cmap=data_cmap,
+        s=30,
+        edgecolors="white",
+        lw=0.5,
+        alpha=0.95,
+    )
 
     # draw assignment
-    for i, (x, y, nearest_netw_idx, next_n_netw_idx) in \
-            enumerate(zip(Data_Layer._data[:, 0],
-                          Data_Layer._data[:, 1],
-                          Data_Layer._data[:, 2],
-                          Data_Layer._data[:, 3])):
+    for x, y, nearest_netw_idx, next_n_netw_idx in zip(
+        DataLayer.data_x_arr[:, 0],
+        DataLayer.data_y_arr[:, 1],
+        DataLayer._data[:, 2],  # pylint: disable=protected-access
+        DataLayer._data[:, 3],  # pylint: disable=protected-access
+    ):
 
         # if the data points have been assigned network indices
         if not np.isnan(nearest_netw_idx):
             # plot lines to parents for easier viz
-            p_x = Network_Layer._node_data[int(nearest_netw_idx)][0]
-            p_y = Network_Layer._node_data[int(nearest_netw_idx)][1]
-            plt.plot([p_x, x], [p_y, y], c='#64c1ff', lw=0.5, ls='--')
+            p_x = network_layer.node_x_arr[int(nearest_netw_idx)][0]
+            p_y = network_layer.node_y_arr[int(nearest_netw_idx)][1]
+            plt.plot([p_x, x], [p_y, y], c="#64c1ff", lw=0.5, ls="--")
 
         if not np.isnan(next_n_netw_idx):
-            p_x = Network_Layer._node_data[int(next_n_netw_idx)][0]
-            p_y = Network_Layer._node_data[int(next_n_netw_idx)][1]
-            plt.plot([p_x, x], [p_y, y], c='#888888', lw=0.5, ls='--')
+            p_x = network_layer.node_x_arr[int(next_n_netw_idx)][0]
+            p_y = network_layer.node_y_arr[int(next_n_netw_idx)][1]
+            plt.plot([p_x, x], [p_y, y], c="#888888", lw=0.5, ls="--")
 
     if path:
-        plt.savefig(path, facecolor=background, dpi=150)
+        plt.savefig(path, facecolor=ColourMap.background, dpi=150)
     else:
-        plt.gcf().set_facecolor(background)
+        plt.gcf().set_facecolor(ColourMap.background)
         plt.show()
 
 
-def plot_graph_maps(node_data: np.ndarray,
-                    edge_data: np.ndarray,
-                    data_map: np.ndarray = None,
-                    poly: geometry.Polygon = None):
+def plot_graph_maps(  # noqa
+    node_data: npt.NDArray[np.float32],
+    edge_data: npt.NDArray[np.float32],
+    data_map: npt.NDArray[np.float32] | None = None,
+    poly: geometry.Polygon | None = None,
+):
     """
     Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending
     short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular
@@ -491,75 +537,78 @@ def plot_graph_maps(node_data: np.ndarray,
     """
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))  # pylint: disable=unused-variable
     # set extents
     for ax in (ax1, ax2):
         ax.set_xlim(node_data[:, 0].min() - 100, node_data[:, 0].max() + 100)
         ax.set_ylim(node_data[:, 1].min() - 100, node_data[:, 1].max() + 100)
     if poly:
-        x = [x for x in poly.exterior.coords.xy[0]]
-        y = [y for y in poly.exterior.coords.xy[1]]
+        x = list(poly.exterior.coords.xy[0])
+        y = list(poly.exterior.coords.xy[1])
         ax1.plot(x, y)
         ax2.plot(x, y)
     # plot nodes
     cols = []
     for n in node_data[:, 2]:
         if bool(n):
-            cols.append(secondary)
+            cols.append(ColourMap.secondary)
         else:
-            cols.append(accent)
-    ax1.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
-    ax2.scatter(node_data[:, 0], node_data[:, 1], s=30, c=primary, edgecolor=cols, lw=0.5)
+            cols.append(ColourMap.accent)
+    ax1.scatter(node_data[:, 0], node_data[:, 1], s=30, c=ColourMap.primary, edgecolor=cols, lw=0.5)
+    ax2.scatter(node_data[:, 0], node_data[:, 1], s=30, c=ColourMap.primary, edgecolor=cols, lw=0.5)
     # plot edges
     processed_edges = set()
-    for edge_idx, edge_data in enumerate(edge_data):
-        s, e = edge_data[:2]
-        se_key = '-'.join(sorted([str(s), str(e)]))
+    for start_idx, end_idx, _, _, _, _, _ in edge_data:
+        se_key = "-".join(sorted([str(start_idx), str(end_idx)]))
         # bool indicating whether second copy in opposite direction
         dupe = se_key in processed_edges
         processed_edges.add(se_key)
         # get the start and end coords - this is to check that still within src edge - neighbour range
-        s_x, s_y = node_data[int(s), :2]
-        e_x, e_y = node_data[int(e), :2]
+        s_x, s_y = node_data[int(start_idx), :2]
+        e_x, e_y = node_data[int(end_idx), :2]
         if not dupe:
-            ax1.plot([s_x, e_x], [s_y, e_y], c=accent, linewidth=1)
+            ax1.plot([s_x, e_x], [s_y, e_y], c=ColourMap.accent, linewidth=1)
         else:
-            ax2.plot([s_x, e_x], [s_y, e_y], c=accent, linewidth=1)
+            ax2.plot([s_x, e_x], [s_y, e_y], c=ColourMap.accent, linewidth=1)
     for node_idx, n_data in enumerate(node_data):
         ax2.annotate(node_idx, xy=n_data[:2], size=5)
-    '''
+    """
     DATA MAP:
     0 - x
     1 - y
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
-    '''
+    """
     if data_map is not None:
         # plot parents on ax1
-        ax1.scatter(x=data_map[:, 0],
-                    y=data_map[:, 1],
-                    color=secondary,
-                    edgecolor=warning,
-                    alpha=0.9,
-                    lw=0.5)
-        ax2.scatter(x=data_map[:, 0],
-                    y=data_map[:, 1],
-                    color=secondary,
-                    edgecolor=warning,
-                    alpha=0.9,
-                    lw=0.5)
+        ax1.scatter(
+            x=data_map[:, 0],
+            y=data_map[:, 1],
+            color=ColourMap.secondary,
+            edgecolor=ColourMap.warning,
+            alpha=0.9,
+            lw=0.5,
+        )
+        ax2.scatter(
+            x=data_map[:, 0],
+            y=data_map[:, 1],
+            color=ColourMap.secondary,
+            edgecolor=ColourMap.warning,
+            alpha=0.9,
+            lw=0.5,
+        )
         for i, assignment_data in enumerate(data_map):
             x, y, nearest_netw_idx, next_n_netw_idx = assignment_data
-            ax2.annotate(str(int(i)), xy=(x, y), size=8, color='red')
+            ax2.annotate(str(int(i)), xy=(x, y), size=8, color="red")
             # if the data points have been assigned network indices
             if not np.isnan(nearest_netw_idx):
                 # plot lines to parents for easier viz
                 p_x = node_data[int(nearest_netw_idx)][0]
                 p_y = node_data[int(nearest_netw_idx)][1]
-                ax1.plot([p_x, x], [p_y, y], c=warning, lw=0.75, ls='-')
+                ax1.plot([p_x, x], [p_y, y], c=ColourMap.warning, lw=0.75, ls="-")
             if not np.isnan(next_n_netw_idx):
                 p_x = node_data[int(next_n_netw_idx)][0]
                 p_y = node_data[int(next_n_netw_idx)][1]
-                ax1.plot([p_x, x], [p_y, y], c=info, lw=0.75, ls='--')
-    plt.gcf().set_facecolor(background)
+                ax1.plot([p_x, x], [p_y, y], c=ColourMap.info, lw=0.75, ls="--")
+    plt.gcf().set_facecolor(ColourMap.background)
     plt.show()

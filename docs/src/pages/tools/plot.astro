@@ -25,11 +25,11 @@ Convenience methods for plotting graphs within the cityseer API context. This mo
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>plot_nX_primal_or_dual
+      </a>plot_nx_primal_or_dual
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>plot_nX_primal_or_dual(</span>
+        <span>plot_nx_primal_or_dual(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">primal_graph, </div>
           <div class="yap func-sig-param">dual_graph, </div>
@@ -208,15 +208,15 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       </div>
       <div class="yap doc-str-meta">
         <h3 class="yap">Notes</h3><Markdown is:raw>
-Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](/tools/plot/#plot-nx) method instead.
+Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot/#plot-nx) method instead.
 
 
 ```py
 from cityseer.tools import mock, graphs, plot
 G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple,
+G_simple = graphs.nx_simple_geoms(G)
+G_dual = graphs.nx_to_dual(G_simple)
+plot.plot_nx_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=False)
 ```
@@ -234,13 +234,13 @@ plot.plot_nX_primal_or_dual(G_simple,
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>plot_nX
+      </a>plot_nx
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>plot_nX(</span>
+        <span>plot_nx(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_graph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">path, </div>
           <div class="yap func-sig-param">labels=False, </div>
           <div class="yap func-sig-param">node_size=20, </div>
@@ -261,7 +261,7 @@ Plot a `networkX` MultiGraph.
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_graph</div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
           <div class="yap doc-str-elem-type"></div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
@@ -375,11 +375,11 @@ from cityseer.metrics import networks
 from matplotlib import colors
 # generate a MultiGraph and compute gravity
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
-G = graphs.nX_decompose(G, 50)
+G = graphs.nx_simple_geoms(G)
+G = graphs.nx_decompose(G, 50)
 N = networks.NetworkLayerFromNX(G, distances=[800])
 N.node_centrality(measures=['node_beta'])
-G_after = N.to_networkX()
+G_after = N.to_nx_multigraph()
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
@@ -393,7 +393,7 @@ vals = colors.Normalize()(vals)
 # cast against the colour map
 cols = cmap(vals)
 # plot
-plot.plot_nX(G_after, node_colour=cols)
+plot.plot_nx(G_after, node_colour=cols)
 ```
 
 
