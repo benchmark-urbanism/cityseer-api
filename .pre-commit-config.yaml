@@ -36,3 +36,9 @@ repos:
         language: system
         types: [python]
         args: ["--settings-file=pyproject.toml"]
+      - id: pydocstyle
+        name: pydocstyle
+        entry: pydocstyle
+        language: system
+        types: [python]
+        args: ["--config=pyproject.toml"]
