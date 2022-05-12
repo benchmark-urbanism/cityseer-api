@@ -91,6 +91,9 @@ disable = [
     "too-many-statements",
     "too-many-locals",
     "too-many-nested-blocks",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-lines",
     "missing-module-docstring",
     "pointless-string-statement",
     "logging-fstring-interpolation",
@@ -99,7 +102,26 @@ jobs = 0
 output-format = "colorized"
 
 [tool.pylint.basic]
-good-names = ["i", "j", "a", "b", "c", "d", "e", "f", "n", "m", "q", 'wt']
+good-names = [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "i",
+    "j",
+    "m",
+    "n",
+    "q",
+    "x",
+    "y",
+    "ax",
+    "js",
+    "mu",
+    "qs",
+    "wt",
+]
 
 [tool.pylint.design]
 max-args = 10
