@@ -3,7 +3,7 @@ name = "cityseer"
 dynamic = ["version"]
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.9, <3.11"
+requires-python = ">=3.9, <3.10"
 license = { text = "AGPL-3.0" }
 keywords = [
     "network-topology",
@@ -138,7 +138,7 @@ files = ["cityseer", "demos", "tests"]
 exclude = ["__pypackages__", "build", "docs"]
 namespace_packages = true
 explicit_package_bases = true
-python_version = "3.10"
+python_version = "3.9"
 strict_optional = false
 warn_redundant_casts = true
 warn_unused_ignores = true
