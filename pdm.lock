@@ -679,7 +679,7 @@ dependencies = [
 [[package]]
 name = "numpy"
 version = "1.21.6"
-requires_python = ">=3.8"
+requires_python = ">=3.7,<3.11"
 summary = "NumPy is the fundamental package for array computing with Python."
 
 [[package]]
@@ -717,7 +717,6 @@ dependencies = [
     "numpy>=1.18.5; platform_machine != \"aarch64\" and platform_machine != \"arm64\" and python_version < \"3.10\"",
     "numpy>=1.19.2; platform_machine == \"aarch64\" and python_version < \"3.10\"",
     "numpy>=1.20.0; platform_machine == \"arm64\" and python_version < \"3.10\"",
-    "numpy>=1.21.0; python_version >= \"3.10\"",
     "python-dateutil>=2.8.1",
     "pytz>=2020.1",
 ]
@@ -1216,7 +1215,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:380e9de31a6983d9238a713b98d92957e0d05c8932b73bb762ede94a2d7c63c9"
+content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a664746b2472"
 
 [metadata.files]
 "appdirs 1.4.4" = [

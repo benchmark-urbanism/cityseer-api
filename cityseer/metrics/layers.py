@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import logging
 
-from numba_progress import ProgressBar
 import numpy as np
+import numpy.typing as npt
 import utm
+from numba_progress import ProgressBar
 from sklearn.preprocessing import LabelEncoder
 from tqdm.auto import tqdm
 
-from cityseer.algos import data, checks
+from cityseer import config
+from cityseer.algos import checks, data
 from cityseer.metrics import networks
 
 logging.basicConfig(level=logging.INFO)
@@ -17,13 +19,20 @@ logger = logging.getLogger(__name__)
 
 def dict_wgs_to_utm(data_dict: dict) -> dict:
     """
-    Converts data dictionary `x` and `y` values from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates
-    to the local UTM projected coordinate system.
+    Converts a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
+
+    This method converts [WGS84](https://epsg.io/4326) geographic coordinates to the associated projected UTM coordinate
+    system. This means that `lng`, `lat` style coordinates will be converted to `easting`, `northing` style coordinates.
+
+    ::: note
+    All coordinates have to be converted to a project coordinate system prior to network or other analysis in Cityseer.
+    :::
 
     Parameters
     ----------
     data_dict
-        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs.
+        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a
+        nested dictionary with `x` and `y` key-value pairs.
         ```python
         example_data_dict = {
             'uid_01': {
@@ -61,7 +70,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
         # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964}
         if i == 1:
             break
-            
+
     # any data dictionary that follows this template can be passed to dict_wgs_to_utm()
     data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
     # the coordinates have now been converted to UTM
@@ -75,35 +84,33 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     ```
     """
     if not isinstance(data_dict, dict):
-        raise TypeError('This method requires dictionary object.')
-
-    logger.info('Converting data dictionary from WGS to UTM.')
+        raise TypeError("This method requires dictionary object.")
+    logger.info("Converting data dictionary from WGS to UTM.")
     data_dict_copy = data_dict.copy()
-
-    logger.info('Processing node x, y coordinates.')
-    for k, v in tqdm(data_dict_copy.items(), disable=checks.quiet_mode):
+    logger.info("Processing node x, y coordinates.")
+    for key, val in tqdm(data_dict_copy.items(), disable=config.QUIET_MODE):
         # x coordinate
-        if 'x' not in v:
-            raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {k}.')
-        lng = v['x']
+        if "x" not in val:
+            raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {key}.')
+        lng = val["x"]
         # y coordinate
-        if 'y' not in v:
-            raise AttributeError(f'Encountered node missing "y" coordinate attribute at data dictionary key {k}.')
-        lat = v['y']
+        if "y" not in val:
+            raise AttributeError(f'Encountered node missing "y" coordinate attribute at data dictionary key {key}.')
+        lat = val["y"]
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
-            raise AttributeError('x, y coordinates exceed WGS bounds. Please check your coordinate system.')
+            raise AttributeError("x, y coordinates exceed WGS bounds. Please check your coordinate system.")
         # be cognisant of parameter and return order
         # returns in easting, northing order
         easting, northing = utm.from_latlon(lat, lng)[:2]
         # write back to graph
-        data_dict_copy[k]['x'] = easting
-        data_dict_copy[k]['y'] = northing
+        data_dict_copy[key]["x"] = easting
+        data_dict_copy[key]["y"] = northing
 
     return data_dict_copy
 
 
-def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.ndarray]:
+def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.NDArray[np.int64]]:
     """
     Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
     elements.
@@ -122,7 +129,7 @@ def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.nd
     -------
     tuple
         A `tuple` of unique class descriptors extracted from the input classes.
-    np.ndarray
+    np.array
         A `numpy` array of the encoded classes. The value of the `int` encoding will correspond to the order of the
         `class_descriptors`.
 
@@ -139,29 +146,31 @@ def encode_categorical(classes: list | tuple | np.ndarray) -> tuple[tuple, np.nd
     ```
     """
     if not isinstance(classes, (list, tuple, np.ndarray)):
-        raise TypeError('This method requires an iterable object.')
-
+        raise TypeError("This method requires an iterable object.")
     # use sklearn's label encoder
-    le = LabelEncoder()
-    le.fit(classes)
+    lab_enc = LabelEncoder()
+    lab_enc.fit(classes)
     # map the int encodings to the respective classes
-    classes_int = le.transform(classes)
+    classes_int = lab_enc.transform(classes)
 
-    return tuple(le.classes_), classes_int
+    return tuple(lab_enc.classes_), classes_int
 
 
-def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
+def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]:
     """
     Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
     :::note
-    It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#datalayerfromdict)
+    It is generally not necessary to use this function directly. This function will be called implicitly when invoking
+    [DataLayerFromDict](#datalayerfromdict)
     :::
 
     Parameters
     ----------
     data_dict
-        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
+        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a
+        nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system
+        matching that of the [`network_layer`](/metrics/networks/#networklayer) to which the data will be assigned.
 
         ```python
         example_data_dict = {
@@ -180,7 +189,7 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
     -------
     tuple
         A tuple of data `uids` corresponding to the data point identifiers in the source `data_dict`.
-    np.ndarray
+    np.array
         A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
 
         | idx | property |
@@ -190,24 +199,25 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, np.ndarray]:
         | 2   | assigned network index - nearest |
         | 3   | assigned network index - next-nearest |
 
-        The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
+        The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the
+        [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
     """
     if not isinstance(data_dict, dict):
-        raise TypeError('This method requires dictionary object.')
+        raise TypeError("This method requires dictionary object.")
 
     data_uids = []
     data_map = np.full((len(data_dict), 4), np.nan)
-    for i, (k, v) in enumerate(data_dict.items()):
+    for i, (key, val) in enumerate(data_dict.items()):
         # set key to data labels
-        data_uids.append(k)
+        data_uids.append(key)
         # DATA MAP INDEX POSITION 0 = x coordinate
-        if 'x' not in v:
+        if "x" not in val:
             raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
-        data_map[i][0] = v['x']
+        data_map[i][0] = val["x"]
         # DATA MAP INDEX POSITION 1 = y coordinate
-        if 'y' not in v:
+        if "y" not in val:
             raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
-        data_map[i][1] = v['y']
+        data_map[i][1] = val["y"]
 
     return tuple(data_uids), data_map
 
@@ -228,9 +238,7 @@ class DataLayer:
     alternative for instantiating this class.
     """
 
-    def __init__(self,
-                 data_uids: list | tuple,
-                 data_map: np.ndarray):
+    def __init__(self, data_uids: list | tuple, data_map: npt.NDArray[np.float32]):
         """
         Parameters
         ----------
@@ -257,41 +265,46 @@ class DataLayer:
             Returns a `DataLayer`.
 
         """
-
-        self._uids = data_uids  # original labels / indices for each data point
-        self._data = data_map  # data map per above
-        self._Network = None
+        self._uids: tuple = tuple(data_uids)  # original labels / indices for each data point
+        self._data: npt.NDArray = data_map  # data map per above
+        self._network_layer: networks.NetworkLayer | None = None  # pylint: disable=invalid-name
 
         # checks
         checks.check_data_map(self._data, check_assigned=False)
 
         if len(self._uids) != len(self._data):
-            raise ValueError('The number of data labels does not match the number of data points.')
+            raise ValueError("The number of data labels does not match the number of data points.")
 
     @property
     def uids(self):
-        """Unique ids corresponding to each location in the data_map."""
+        """Tuple of labels corresponding to each entry in the data map."""
         return self._uids
 
     @property
     def data_x_arr(self):
+        """Array of x values corresponding to each entry in the data map."""
         return self._data[:, 0]
 
     @property
     def data_y_arr(self):
+        """Array of y values corresponding to each entry in the data map."""
         return self._data[:, 1]
 
     @property
-    def Network(self):
-        return self._Network
+    def network_layer(self):  # pylint: disable=invalid-name
+        """The cityseer NetworkLayer to which this DataLayer is assigned."""
+        return self._network_layer
 
-    def assign_to_network(self,
-                          Network_Layer: networks.NetworkLayer,
-                          max_dist: int | float):
+    @network_layer.setter
+    def network_layer(self, network_layer):  # pylint: disable=invalid-name
+        self._network_layer = network_layer
+
+    def assign_to_network(self, network_layer: networks.NetworkLayer, max_dist: int | float):
         """
-        Once created, a [`DataLayer`](#datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#networklayer). The
-        `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street
-        network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
+        Once created, a [`DataLayer`](#datalayer) should be assigned to a
+        [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised
+        spatial aggregation of data points over the street network. The measures will be computed over the same distance
+        thresholds as used for the `NetworkLayer`.
 
         The data points will be assigned to the two closest network nodes — one in either direction — based on the
         closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes
@@ -299,7 +312,7 @@ class DataLayer:
 
         Parameters
         ----------
-        Network_Layer
+        network_layer
             A [`NetworkLayer`](/metrics/networks/#networklayer).
         max_dist
             The maximum distance to consider when assigning respective data points to the nearest adjacent network
@@ -322,7 +335,7 @@ class DataLayer:
 
         :::note
         The precision of assignment improves on decomposed networks (see
-        [graphs.nX_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
+        [graphs.nx_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
         representation of variations in metrics along street-fronts.
         :::
 
@@ -332,40 +345,32 @@ class DataLayer:
         ![Example assignment of data to a network](/images/assignment_decomposed.png)
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
         """
-        self._Network = Network_Layer
-        if not checks.quiet_mode:
-            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        self._network_layer = network_layer
+        if not config.QUIET_MODE:
+            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
         else:
             progress_proxy = None
-        data.assign_to_network(self._data,
-                               self.Network._node_data,
-                               self.Network._edge_data,
-                               self.Network._node_edge_map,
-                               max_dist,
-                               progress_proxy=progress_proxy)
+        data.assign_to_network(
+            self._data,
+            self.network_layer.node_data,
+            self.network_layer.edge_data,
+            self.network_layer.node_edge_map,
+            max_dist,
+            progress_proxy=progress_proxy,
+        )
         if progress_proxy is not None:
             progress_proxy.close()
 
-    # deprecated method
-    def compute_aggregated(self):
-        """
-        This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`compute_landuses`](#datalayer-compute-landuses) or [`compute_stats`](#datalayer-compute-stats) instead.
-        """
-        raise DeprecationWarning('The compute_aggregated method has been deprecated. '
-                                 'It has been split into two: '
-                                 'use "compute_landuses" for landuse aggregations '
-                                 'and "compute_stats" for statistical aggregations.'
-                                 'See the documentation for further information.')
-
-    def compute_landuses(self,
-                         landuse_labels: list | tuple | np.ndarray,
-                         mixed_use_keys: list | tuple = None,
-                         accessibility_keys: list | tuple = None,
-                         cl_disparity_wt_matrix: list | tuple | np.ndarray = None,
-                         qs: list | tuple | np.ndarray = None,
-                         jitter_scale: float = 0.0,
-                         angular: bool = False):
+    def compute_landuses(
+        self,
+        landuse_labels: list | tuple | npt.NDArray,
+        mixed_use_keys: list | tuple | None = None,
+        accessibility_keys: list | tuple | None = None,
+        cl_disparity_wt_matrix: npt.NDArray[np.float32] | None = None,
+        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+        jitter_scale: float = 0.0,
+        angular: bool = False,
+    ):
         """
         This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
         land-use accessibility measures. These are computed simultaneously for any required combinations of measures
@@ -438,7 +443,7 @@ class DataLayer:
         Parameters
         ----------
         landuse_labels
-            A set of land-use labels corresponding to the length and order of the data points. The labels should
+            A tuple of land-use labels corresponding to the length and order of the data points. The labels should
             correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only
             required if computing mixed-uses or land-use accessibilities.
         mixed_use_keys
@@ -518,7 +523,7 @@ class DataLayer:
 
         # prepare a mock graph
         G = mock.mock_graph()
-        G = graphs.nX_simple_geoms(G)
+        G = graphs.nx_simple_geoms(G)
 
         # generate the network layer
         N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -562,58 +567,66 @@ class DataLayer:
         # prints: 1.0
         ```
 
-        Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+        Note that the data can also be unpacked to a dictionary using
+        [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
+        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
 
         :::warning
-        Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that has been used. Meaningful comparisons from one location to another are only possible where the same schemas have been applied.
+        Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
+        has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
+        been applied.
         :::
         """
-        if self.Network is None:
-            raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
-        mixed_uses_options = ['hill',
-                              'hill_branch_wt',
-                              'hill_pairwise_wt',
-                              'hill_pairwise_disparity',
-                              'shannon',
-                              'gini_simpson',
-                              'raos_pairwise_disparity']
+        if self.network_layer is None:
+            raise ValueError("Assign this data layer to a network prior to computing mixed-uses or accessibilities.")
+        mixed_uses_options = [
+            "hill",
+            "hill_branch_wt",
+            "hill_pairwise_wt",
+            "hill_pairwise_disparity",
+            "shannon",
+            "gini_simpson",
+            "raos_pairwise_disparity",
+        ]
         # remember, most checks on parameter integrity occur in underlying method
         # so, don't duplicate here
         if len(landuse_labels) != len(self._data):
-            raise ValueError('The number of landuse labels should match the number of data points.')
+            raise ValueError("The number of landuse labels should match the number of data points.")
         # get the landuse encodings
         landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
         # if necessary, check the disparity matrix
         if cl_disparity_wt_matrix is None:
             cl_disparity_wt_matrix = np.full((0, 0), np.nan)
-        elif not isinstance(cl_disparity_wt_matrix, (list, tuple, np.ndarray)) or \
-                cl_disparity_wt_matrix.ndim != 2 or \
-                cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1] or \
-                len(cl_disparity_wt_matrix) != len(landuse_classes):
+        elif (
+            not isinstance(cl_disparity_wt_matrix, np.ndarray)
+            or cl_disparity_wt_matrix.ndim != 2
+            or cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1]
+            or len(cl_disparity_wt_matrix) != len(landuse_classes)
+        ):
             raise TypeError(
-                'Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. '
-                'The number of edge-wise elements should match the number of unique class labels.')
+                "Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. "
+                "The number of edge-wise elements should match the number of unique class labels."
+            )
         # warn if no qs provided
         if qs is None:
             qs = ()
         if isinstance(qs, (int, float)):
-            qs = (qs)
+            qs = [qs]
         if not isinstance(qs, (list, tuple, np.ndarray)):
-            raise TypeError('Please provide a float, list, tuple, or numpy.ndarray of q values.')
+            raise TypeError("Please provide a float, list, tuple, or numpy.ndarray of q values.")
         # extrapolate the requested mixed use measures
         mu_hill_keys = []
         mu_other_keys = []
         if mixed_use_keys is not None:
             for mu in mixed_use_keys:
                 if mu not in mixed_uses_options:
-                    raise ValueError(
-                        f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
+                    raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
                 idx = mixed_uses_options.index(mu)
                 if idx < 4:
                     mu_hill_keys.append(idx)
                 else:
                     mu_other_keys.append(idx - 4)
-            if not checks.quiet_mode:
+            if not config.QUIET_MODE:
                 logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
         # figure out the corresponding indices for the landuse classes that are present in the dataset
         # these indices are passed as keys which will be matched against the integer landuse encodings
@@ -621,66 +634,79 @@ class DataLayer:
         if accessibility_keys is not None:
             for ac_label in accessibility_keys:
                 if ac_label not in landuse_classes:
-                    logger.warning(f'No instances of accessibility label: {ac_label} present in the data.')
+                    logger.warning(f"No instances of accessibility label: {ac_label} present in the data.")
                 else:
                     acc_keys.append(landuse_classes.index(ac_label))
-            if not checks.quiet_mode:
+            if not config.QUIET_MODE:
                 logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
-        if not checks.quiet_mode:
-            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+        if not config.QUIET_MODE:
+            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
         else:
             progress_proxy = None
         # call the underlying method
-        mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt = \
-            data.aggregate_landuses(self.Network._node_data,
-                                    self.Network._edge_data,
-                                    self.Network._node_edge_map,
-                                    self._data,
-                                    distances=np.array(self.Network.distances),
-                                    betas=np.array(self.Network.betas),
-                                    landuse_encodings=np.array(landuse_encodings),
-                                    qs=np.array(qs),
-                                    mixed_use_hill_keys=np.array(mu_hill_keys),
-                                    mixed_use_other_keys=np.array(mu_other_keys),
-                                    accessibility_keys=np.array(acc_keys),
-                                    cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix),
-                                    jitter_scale=jitter_scale,
-                                    angular=angular,
-                                    progress_proxy=progress_proxy)
+        # pylint: disable=duplicate-code
+        (
+            mixed_use_hill_data,
+            mixed_use_other_data,
+            accessibility_data,
+            accessibility_data_wt,
+        ) = data.aggregate_landuses(
+            self.network_layer.node_data,
+            self.network_layer.edge_data,
+            self.network_layer.node_edge_map,
+            self._data,
+            distances=np.array(self.network_layer.distances, dtype=np.float32),
+            betas=np.array(self.network_layer.betas, dtype=np.float32),
+            landuse_encodings=np.array(landuse_encodings, dtype=np.float32),
+            qs=np.array(qs, dtype=np.float32),
+            mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.float32),
+            mixed_use_other_keys=np.array(mu_other_keys, dtype=np.float32),
+            accessibility_keys=np.array(acc_keys, dtype=np.float32),
+            cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
+            jitter_scale=jitter_scale,
+            angular=angular,
+            progress_proxy=progress_proxy,
+        )
         if progress_proxy is not None:
             progress_proxy.close()
-        # write the results to the Network's metrics dict
+        # write the results to the NetworkLayer's metrics dict
         # keys will check for pre-existing, whereas qs and distance keys will overwrite
         # unpack mixed use hill
         for mu_h_idx, mu_h_key in enumerate(mu_hill_keys):
             mu_h_label = mixed_uses_options[mu_h_key]
-            if mu_h_label not in self.Network.metrics['mixed_uses']:
-                self.Network.metrics['mixed_uses'][mu_h_label] = {}
+            if mu_h_label not in self.network_layer.metrics["mixed_uses"]:
+                self.network_layer.metrics["mixed_uses"][mu_h_label] = {}
             for q_idx, q_key in enumerate(qs):
-                self.Network.metrics['mixed_uses'][mu_h_label][q_key] = {}
-                for d_idx, d_key in enumerate(self.Network.distances):
-                    self.Network.metrics['mixed_uses'][mu_h_label][q_key][d_key] = \
-                        mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
+                self.network_layer.metrics["mixed_uses"][mu_h_label][q_key] = {}
+                for d_idx, d_key in enumerate(self.network_layer.distances):
+                    self.network_layer.metrics["mixed_uses"][mu_h_label][q_key][d_key] = mixed_use_hill_data[mu_h_idx][
+                        q_idx
+                    ][d_idx]
         # unpack mixed use other
         for mu_o_idx, mu_o_key in enumerate(mu_other_keys):
             mu_o_label = mixed_uses_options[mu_o_key + 4]
-            if mu_o_label not in self.Network.metrics['mixed_uses']:
-                self.Network.metrics['mixed_uses'][mu_o_label] = {}
+            if mu_o_label not in self.network_layer.metrics["mixed_uses"]:
+                self.network_layer.metrics["mixed_uses"][mu_o_label] = {}
             # no qs
-            for d_idx, d_key in enumerate(self.Network.distances):
-                self.Network.metrics['mixed_uses'][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
+            for d_idx, d_key in enumerate(self.network_layer.distances):
+                self.network_layer.metrics["mixed_uses"][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
         # unpack accessibility data
         for ac_idx, ac_code in enumerate(acc_keys):
             ac_label = landuse_classes[ac_code]  # ac_code is index of ac_label
-            for k, ac_data in zip(['non_weighted', 'weighted'], [accessibility_data, accessibility_data_wt]):
-                if ac_label not in self.Network.metrics['accessibility'][k]:
-                    self.Network.metrics['accessibility'][k][ac_label] = {}
-                for d_idx, d_key in enumerate(self.Network.distances):
-                    self.Network.metrics['accessibility'][k][ac_label][d_key] = ac_data[ac_idx][d_idx]
+            for key, ac_data in zip(
+                ["non_weighted", "weighted"],
+                [accessibility_data, accessibility_data_wt],
+            ):
+                if ac_label not in self.network_layer.metrics["accessibility"][key]:
+                    self.network_layer.metrics["accessibility"][key][ac_label] = {}
+                for d_idx, d_key in enumerate(self.network_layer.distances):
+                    self.network_layer.metrics["accessibility"][key][ac_label][d_key] = ac_data[ac_idx][d_idx]
 
-    def hill_diversity(self,
-                       landuse_labels: list | tuple | np.ndarray,
-                       qs: list | tuple | np.ndarray = None):
+    def hill_diversity(
+        self,
+        landuse_labels: list | tuple | npt.NDArray,
+        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+    ):
         """
         Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
@@ -699,11 +725,13 @@ class DataLayer:
 
         `NetworkLayer.metrics['mixed_uses']['hill'][q_key][distance_key][node_idx]`
         """
-        return self.compute_landuses(landuse_labels, mixed_use_keys=['hill'], qs=qs)
+        return self.compute_landuses(landuse_labels, mixed_use_keys=["hill"], qs=qs)
 
-    def hill_branch_wt_diversity(self,
-                                 landuse_labels: list | tuple | np.ndarray,
-                                 qs: list | tuple | np.ndarray = None):
+    def hill_branch_wt_diversity(
+        self,
+        landuse_labels: list | tuple | npt.NDArray,
+        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+    ):
         """
         Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See
         [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
@@ -722,11 +750,13 @@ class DataLayer:
 
         `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][q_key][distance_key][node_idx]`
         """
-        return self.compute_landuses(landuse_labels, mixed_use_keys=['hill_branch_wt'], qs=qs)
+        return self.compute_landuses(landuse_labels, mixed_use_keys=["hill_branch_wt"], qs=qs)
 
-    def compute_accessibilities(self,
-                                landuse_labels: list | tuple | np.ndarray,
-                                accessibility_keys: list | tuple):
+    def compute_accessibilities(
+        self,
+        landuse_labels: list | tuple | npt.NDArray,
+        accessibility_keys: list | tuple,
+    ):
         """
         Compute land-use accessibilities for the specified land-use classification keys. See
         [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
@@ -753,13 +783,13 @@ class DataLayer:
         """
         return self.compute_landuses(landuse_labels, accessibility_keys=accessibility_keys)
 
-    def compute_stats(self,
-                      stats_keys: str | list | tuple,
-                      stats_data_arrs: list | tuple | np.ndarray |
-                                       list[list | tuple | np.ndarray] |
-                                       tuple[list | tuple | np.ndarray],
-                      jitter_scale: float = 0.0,
-                      angular: bool = False):
+    def compute_stats(
+        self,
+        stats_keys: str | list | tuple,
+        stats_data_arrs: list | tuple | npt.NDArray | list[npt.NDArray] | tuple[npt.NDArray],
+        jitter_scale: float = 0.0,
+        angular: bool = False,
+    ):
         """
         This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
         aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication
@@ -860,7 +890,7 @@ class DataLayer:
 
         # prepare a mock graph
         G = mock.mock_graph()
-        G = graphs.nX_simple_geoms(G)
+        G = graphs.nx_simple_geoms(G)
 
         # generate the network layer
         N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -890,7 +920,7 @@ class DataLayer:
 
         Note that the data can also be unpacked to a dictionary using
         [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
-        graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
 
         :::note
         Per the above worked example, the following stat types will be available for each `stats_key` for each of the
@@ -901,87 +931,86 @@ class DataLayer:
         - `variance` and `variance_weighted`
         :::
         """
-        if self.Network is None:
-            raise ValueError('Assign this data layer to a network prior to computing mixed-uses or accessibilities.')
+        if self.network_layer is None:
+            raise ValueError("Assign this data layer to a network prior to computing mixed-uses or accessibilities.")
         # check keys
         if not isinstance(stats_keys, (str, list, tuple)):
-            raise TypeError('Stats keys should be a string else a list or tuple of strings.')
+            raise TypeError("Stats keys should be a string else a list or tuple of strings.")
         # wrap single keys
         if isinstance(stats_keys, str):
             stats_keys = [stats_keys]
         # check data arrays
         if not isinstance(stats_data_arrs, (list, tuple, np.ndarray)):
-            raise TypeError('Stats data must be in the form of a list, tuple, or numpy array.')
-        stats_data_arrs = np.array(stats_data_arrs)
+            raise TypeError("Stats data must be in the form of a list, tuple, or numpy array.")
+        stats_data_arrs = np.array(stats_data_arrs, dtype=np.float32)
         # check for single dimensional arrays and change to 2d if necessary
         if stats_data_arrs.ndim == 1:
             stats_data_arrs = np.expand_dims(stats_data_arrs, axis=0)
         # lengths of keys and array dims should match
         if len(stats_data_arrs) != len(stats_keys):
-            raise ValueError('An equal number of stats labels and stats data arrays is required.')
+            raise ValueError("An equal number of stats labels and stats data arrays is required.")
         if stats_data_arrs.shape[1] != len(self._data):
-            raise ValueError('The length of data arrays must match the number of data points.')
-        if not checks.quiet_mode:
+            raise ValueError("The length of data arrays must match the number of data points.")
+        if not config.QUIET_MODE:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
-            progress_proxy = ProgressBar(total=len(self.Network._node_data))
+            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
         else:
             progress_proxy = None
         # call the underlying method
-        stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min = \
-            data.aggregate_stats(self.Network._node_data,
-                                 self.Network._edge_data,
-                                 self.Network._node_edge_map,
-                                 self._data,
-                                 distances=np.array(self.Network.distances),
-                                 betas=np.array(self.Network.betas),
-                                 numerical_arrays=stats_data_arrs,
-                                 jitter_scale=jitter_scale,
-                                 angular=angular,
-                                 progress_proxy=progress_proxy)
+        # pylint: disable=duplicate-code
+        (
+            stats_sum,
+            stats_sum_wt,
+            stats_mean,
+            stats_mean_wt,
+            stats_variance,
+            stats_variance_wt,
+            stats_max,
+            stats_min,
+        ) = data.aggregate_stats(
+            self.network_layer.node_data,
+            self.network_layer.edge_data,
+            self.network_layer.node_edge_map,
+            self._data,
+            distances=np.array(self.network_layer.distances, dtype=np.float32),
+            betas=np.array(self.network_layer.betas, dtype=np.float32),
+            numerical_arrays=stats_data_arrs,
+            jitter_scale=jitter_scale,
+            angular=angular,
+            progress_proxy=progress_proxy,
+        )
         if progress_proxy is not None:
             progress_proxy.close()
         # unpack the numerical arrays
         for num_idx, stats_key in enumerate(stats_keys):
-            if stats_key not in self.Network.metrics['stats']:
-                self.Network.metrics['stats'][stats_key] = {}
-            for k, stats_data in zip(['max',
-                                      'min',
-                                      'sum',
-                                      'sum_weighted',
-                                      'mean',
-                                      'mean_weighted',
-                                      'variance',
-                                      'variance_weighted'],
-                                     [stats_max,
-                                      stats_min,
-                                      stats_sum,
-                                      stats_sum_wt,
-                                      stats_mean,
-                                      stats_mean_wt,
-                                      stats_variance,
-                                      stats_variance_wt]):
-                if k not in self.Network.metrics['stats'][stats_key]:
-                    self.Network.metrics['stats'][stats_key][k] = {}
-                for d_idx, d_key in enumerate(self.Network.distances):
-                    self.Network.metrics['stats'][stats_key][k][d_key] = stats_data[num_idx][d_idx]
-
-    # deprecated method
-    def compute_stats_single(self):
-        """
-        This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`compute_stats`](#datalayer-compute-stats) instead.
-        """
-        raise DeprecationWarning('The compute_stats_single method has been deprecated. '
-                                 'Please use the compute_stats method instead.')
-
-    # deprecated method
-    def compute_stats_multiple(self):
-        """
-        This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`compute_stats`](#datalayer-compute-stats) instead.
-        """
-        raise DeprecationWarning('The compute_stats_multiple method has been deprecated. '
-                                 'Please use the compute_stats method instead.')
+            if stats_key not in self.network_layer.metrics["stats"]:
+                self.network_layer.metrics["stats"][stats_key] = {}
+            for key, stats_data in zip(
+                [
+                    "max",
+                    "min",
+                    "sum",
+                    "sum_weighted",
+                    "mean",
+                    "mean_weighted",
+                    "variance",
+                    "variance_weighted",
+                ],
+                [
+                    stats_max,
+                    stats_min,
+                    stats_sum,
+                    stats_sum_wt,
+                    stats_mean,
+                    stats_mean_wt,
+                    stats_variance,
+                    stats_variance_wt,
+                ],
+            ):
+                if key not in self.network_layer.metrics["stats"][stats_key]:
+                    self.network_layer.metrics["stats"][stats_key][key] = {}
+                for d_idx, d_key in enumerate(self.network_layer.distances):
+                    self.network_layer.metrics["stats"][stats_key][key][d_key] = stats_data[num_idx][d_idx]
 
 
 class DataLayerFromDict(DataLayer):
@@ -999,8 +1028,7 @@ class DataLayerFromDict(DataLayer):
             A dictionary representing distinct data points, where each `key` represents a `uid` and each value
             represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
             coordinate system matching that of the
-            [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will
-            be assigned.
+            [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
 
         Returns
         -------

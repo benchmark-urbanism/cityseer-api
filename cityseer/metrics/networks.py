@@ -1,15 +1,18 @@
+# pylint: disable=too-many-lines
 """
-Centrality methods
+Cityseer network module for creating networks and calculating network centralities.
 """
 from __future__ import annotations
 
 import logging
 
 import networkx as nx
-from numba_progress import ProgressBar
 import numpy as np
-from numba.typed import Dict
+import numpy.typing as npt
+from numba.typed import Dict  # pylint: disable=no-name-in-module
+from numba_progress import ProgressBar
 
+from cityseer import config
 from cityseer.algos import centrality, checks
 from cityseer.tools import graphs
 
@@ -18,13 +21,40 @@ logger = logging.getLogger(__name__)
 
 
 # separate out so that ast parser can parse function def
-min_thresh_wt = checks.def_min_thresh_wt
+MIN_THRESHOLD_WEIGHT = config.MIN_THRESH_WT
 
 
-def distance_from_beta(beta: float | list | np.ndarray,
-                       min_threshold_wt: float = min_thresh_wt) -> np.ndarray:
-    """
-    Maps decay parameters $\\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
+def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    """Type checks and casts beta parameter to a numpy array of beta."""
+    if beta is None:
+        raise TypeError("Expected beta but encountered None value.")
+    if isinstance(beta, (int, float)):
+        beta = [beta]
+    if not isinstance(beta, (list, tuple, np.ndarray)):
+        raise TypeError("Please provide a beta or a list, tuple, or numpy.ndarray of betas.")
+    if len(beta) == 0:
+        raise ValueError("Encountered empty iterable of beta.")
+    # check that the betas do not have leading negatives
+    for b in beta:
+        if b < 0:
+            raise ValueError("Please provide the beta value without the leading negative.")
+        if b == 0:
+            # dividing through a float of negative zero will return positive infinity
+            # dividing through a float of positive zero will return negative infinity
+            # GOTCHA: ints have no concept of -0
+            # so: dividing through a positive OR negative int will return negative infinity regardless
+            # so: catch all betas that don't give positive infinity (via -\\beta)
+            if np.log(MIN_THRESHOLD_WEIGHT) / -b != np.inf:
+                raise ValueError("Please provide zeros in float form without a leading negative.")
+    # cast to numpy
+    return np.array(beta, dtype=np.float32)
+
+
+def distance_from_beta(
+    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESHOLD_WEIGHT
+) -> npt.NDArray[np.float32]:
+    r"""
+    Map decay parameters $\\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
     :::note
     It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
@@ -41,12 +71,11 @@ def distance_from_beta(beta: float | list | np.ndarray,
 
     Returns
     -------
-    np.ndarray
+    np.array
         A numpy array of distance thresholds $d_{max}$.
 
     Examples
     --------
-
     ```python
     from cityseer.metrics import networks
     # a list of betas
@@ -63,15 +92,15 @@ def distance_from_beta(beta: float | list | np.ndarray,
     $$weight = exp(-\\beta \\cdot distance)$$
 
     The strength of the decay is controlled by the $\\beta$ parameter, which reflects a decreasing willingness to walk
-    correspondingly farther distances. For example, if $\\beta=0.005$ were to represent a person's willingness to walk to
-    a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at
+    correspondingly farther distances. For example, if $\\beta=0.005$ were to represent a person's willingness to walk
+    to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at
     13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a
     sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther
     away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum
     distance threshold by $d_{max}$.
 
     ![Example beta decays](/images/betas.png)
-    
+
     [`NetworkLayer`](#networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#networklayerfromnx) can be
     invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this
     function will be called in order to extrapolate the distance thresholds implicitly, using:
@@ -98,34 +127,41 @@ def distance_from_beta(beta: float | list | np.ndarray,
     | 0.0025 | 0.01 | 1842m |
 
     """
-    # cast to list form
-    if isinstance(beta, (int, float)):
-        beta = [beta]
-    if not isinstance(beta, (list, tuple, np.ndarray)):
-        raise TypeError('Please provide a beta or a list, tuple, or numpy.ndarray of betas.')
-    # check that the betas do not have leading negatives
-    for b in beta:
-        if b < 0:
-            raise ValueError('Please provide the beta value without the leading negative.')
-        elif b == 0:
-            # dividing through a float of negative zero will return positive infinity
-            # dividing through a float of positive zero will return negative infinity
-            # GOTCHA: ints have no concept of -0
-            # so: dividing through a positive OR negative int will return negative infinity regardless
-            # so: catch all betas that don't give positive infinity (via -\\beta)
-            if np.log(min_threshold_wt) / -b != np.inf:
-                raise ValueError('Please provide zeros in float form without a leading negative.')
-    # cast to numpy
-    beta = np.array(beta)
+    # cast
+    betas_arr = _cast_beta(beta)
     # deduce the effective distance thresholds
-    return np.log(min_threshold_wt) / -beta
+    distances: npt.NDArray[np.float32] = np.log(min_threshold_wt) / -betas_arr
+    return distances
 
 
-def beta_from_distance(distance: float | list | np.ndarray,
-                       min_threshold_wt: float = min_thresh_wt) -> np.ndarray:
-    """
+def _cast_distance(
+    distance: int | float | list[int | float] | tuple[int | float] | npt.NDArray[np.int_ | np.float32],
+) -> npt.NDArray[np.float32]:
+    """Type checks and casts distance parameter to a numpy array of distance."""
+    if distance is None:
+        raise TypeError("Expected distance but encountered None value.")
+    # cast to list form
+    if isinstance(distance, (int, float)):
+        distance = [distance]
+    if not isinstance(distance, (list, tuple, np.ndarray)):
+        raise TypeError("Please provide a distance or a list, tuple, or numpy.ndarray of distances.")
+    if len(distance) == 0:
+        raise ValueError("Encountered empty iterable of distances.")
+    # check that the betas do not have leading negatives
+    for dist in distance:
+        if dist <= 0:
+            raise ValueError("Please provide only positive distance values.")
+    # cast to numpy
+    return np.array(distance, dtype=np.float32)
 
-    Maps distance thresholds $d_{max}$ to equivalent decay parameters $\\beta$ at the specified cutoff weight $w_{min}$.
+
+def beta_from_distance(
+    distance: int | float | list[int | float] | tuple[int | float] | npt.NDArray[np.int_ | np.float32],
+    min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+) -> npt.NDArray[np.float32]:
+    r"""
+    Map distance thresholds $d_{max}$ to equivalent decay parameters $\\beta$ at the specified cutoff weight $w_{min}$.
+
     See [`distance_from_beta`](#distance-from-beta) for additional discussion.
 
     :::note
@@ -142,12 +178,11 @@ def beta_from_distance(distance: float | list | np.ndarray,
 
     Returns
     -------
-    np.ndarray
+    np.array
         A numpy array of decay parameters $\\beta$.
 
     Examples
     --------
-    
     ```python
     from cityseer.metrics import networks
     # a list of betas
@@ -174,25 +209,20 @@ def beta_from_distance(distance: float | list | np.ndarray,
     | 1600m | 0.0025 |
 
     """
-    # cast to list form
-    if isinstance(distance, (int, float)):
-        distance = [distance]
-    if not isinstance(distance, (list, tuple, np.ndarray)):
-        raise TypeError('Please provide a distance or a list, tuple, or numpy.ndarray of distances.')
-    # check that the betas do not have leading negatives
-    for d in distance:
-        if d <= 0:
-            raise ValueError('Please provide a positive distance value.')
-    # cast to numpy
-    distance = np.array(distance)
+    # cast
+    distances_arr = _cast_distance(distance)
     # deduce the effective distance thresholds
-    return -np.log(min_threshold_wt) / distance
+    betas: npt.NDArray[np.float32] = -np.log(min_threshold_wt) / distances_arr
+
+    return betas
 
 
-# %%
-def avg_distance_for_beta(beta: float | list | np.ndarray,
-                          min_threshold_wt: float = min_thresh_wt) -> float:
-    """
+def avg_distance_for_beta(
+    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESHOLD_WEIGHT
+) -> npt.NDArray[np.float32]:
+    r"""
+    Calculate the mean distance for a given $\\beta$ parameter.
+
     Parameters
     ----------
     beta
@@ -202,12 +232,11 @@ def avg_distance_for_beta(beta: float | list | np.ndarray,
 
     Returns
     -------
-    np.ndarray
+    np.array
         The average walking distance for a given $\\beta$.
 
     Examples
     --------
-
     ```python
     from cityseer.metrics import networks
     import numpy as np
@@ -225,21 +254,24 @@ def avg_distance_for_beta(beta: float | list | np.ndarray,
     ```
 
     """
+    beta = _cast_beta(beta)
     # looking for the mean trip distance from 0 to d_max based on the impedance curve
-    d = distance_from_beta(beta, min_threshold_wt=min_threshold_wt)
+    dist = distance_from_beta(beta, min_threshold_wt=min_threshold_wt)
     # area under the curve from 0 to d_max
-    a = ((np.exp(-beta * d) - 1) / -beta)
+    auc = (np.exp(-beta * dist) - 1) / -beta
     # divide by base (distance) for height, i.e. average weight
-    w = a / d
+    wt = auc / dist
     # then solve for the corresponding distance
-    avg_d = -np.log(w) / beta
+    avg_d = -np.log(wt) / beta
 
     return avg_d
 
 
 class NetworkLayer:
-    """
-    Network layers are used for network centrality computations and provide the backbone for landuse and statistical
+    r"""
+    Network layers wrap street network information and exposed associated methods.
+
+    Network layers can be used for network centrality computations and provide the backbone for landuse and statistical
     aggregations. [`NetworkLayerFromNX`](#networklayerfromnx) should be used instead if converting from a
     `NetworkX` `MultiGraph` to a `NetworkLayer`.
 
@@ -255,15 +287,15 @@ class NetworkLayer:
 
     # prepare a mock graph
     G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+    G = graphs.nx_simple_geoms(G)
 
-    # if initialised with distances: 
+    # if initialised with distances:
     # betas for weighted metrics will be generated implicitly
     N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
     print(N.distances)  # prints: [200, 400, 800, 1600]
     print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
-    # if initialised with betas: 
+    # if initialised with betas:
     # distances for non-weighted metrics will be generated implicitly
     N = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
     print(N.distances)  # prints: [200, 400, 800, 1600]
@@ -335,12 +367,12 @@ class NetworkLayer:
     NetworkLayer.metrics = {
         'centrality': {
             'node_density': {
-                800: [np.ndarray],
-                1600: [np.ndarray]
+                800: [np.array],
+                1600: [np.array]
             },
             'node_betweenness_beta': {
-                800: [np.ndarray],
-                1600: [np.ndarray]
+                800: [np.array],
+                1600: [np.array]
             }
         }
     }
@@ -354,7 +386,7 @@ class NetworkLayer:
 
     # prepare a mock graph
     G = mock.mock_graph()
-    G = graphs.nX_simple_geoms(G)
+    G = graphs.nx_simple_geoms(G)
 
     # generate the network layer and compute some metrics
     N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -372,18 +404,36 @@ class NetworkLayer:
 
     The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using
     [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using
-    [`NetworkLayer.to_networkX`](#networklayer-to-networkx).
+    [`NetworkLayer.to_nx_multigraph`](#networklayer-to-networkx).
     """
 
-    def __init__(self,
-                 node_uids: list | tuple,
-                 node_data: np.ndarray,
-                 edge_data: np.ndarray,
-                 node_edge_map: Dict,
-                 distances: list | tuple | np.ndarray = None,
-                 betas: list | tuple | np.ndarray = None,
-                 min_threshold_wt: float = min_thresh_wt):
-        """
+    _uids: list | tuple
+    _node_data: npt.NDArray[np.float32]
+    _edge_data: npt.NDArray[np.float32]
+    _node_edge_map: Dict
+    _distances: npt.NDArray[np.float32]
+    _betas: npt.NDArray[np.float32]
+    _min_threshold_wt: float
+    metrics: dict
+
+    def __init__(
+        self,
+        node_uids: list | tuple,
+        node_data: npt.NDArray[np.float32],
+        edge_data: npt.NDArray[np.float32],
+        node_edge_map: Dict,
+        distances: int
+        | float
+        | list[int | float]
+        | tuple[int | float]
+        | npt.NDArray[np.int_ | np.float32]
+        | None = None,
+        betas: float | list[float] | tuple[float] | npt.NDArray[np.float32] | None = None,
+        min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+    ):
+        r"""
+        Instantiate a NetworkLayer class.
+
         Parameters
         ----------
         node_uids
@@ -400,14 +450,14 @@ class NetworkLayer:
             | 2   | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
 
             The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-            projected (flat) coordinate reference system in metres. [`nX_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
+            projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
             can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
             UTM `x`, `y` projected coordinate system.
 
             When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the
             network by a distance equal to the maximum distance threshold to be considered. This prevents problematic
             results arising due to boundary roll-off effects.
-            
+
             The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
             that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus
             reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area.
@@ -423,8 +473,8 @@ class NetworkLayer:
             | 1   | end node `idx` |
             | 2   | the segment length in metres |
             | 3   | the sum of segment's angular change |
-            | 4   | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on
-            shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
+            | 4   | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance
+            on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
             | 5   | the edge's entry angular bearing |
             | 6   | the edge's exit angular bearing |
 
@@ -455,8 +505,8 @@ class NetworkLayer:
             the `beta` parameter must be provided instead. Use a distance of `np.inf` where no distance threshold should
             be enforced.
         betas
-            A $\\beta$, or `list`, `tuple`, or `numpy` array of $\\beta$ to be used for the exponential decay function for
-            weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the
+            A $\\beta$, or `list`, `tuple`, or `numpy` array of $\\beta$ to be used for the exponential decay function
+            for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the
             `betas` parameter is not provided, then the `distance` parameter must be provided instead.
         min_threshold_wt
             The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
@@ -475,120 +525,129 @@ class NetworkLayer:
         completion of the algorithms on large networks.
         :::
 
-        Properties
-        ----------
         """
         self._uids = node_uids
         self._node_data = node_data
         self._edge_data = edge_data
         self._node_edge_map = node_edge_map
-        self._distances = distances
-        self._betas = betas
         self._min_threshold_wt = min_threshold_wt
         self.metrics = {
-            'centrality': {},
-            'mixed_uses': {},
-            'accessibility': {
-                'non_weighted': {},
-                'weighted': {}
-            },
-            'stats': {},
-            'models': {}
+            "centrality": {},
+            "mixed_uses": {},
+            "accessibility": {"non_weighted": {}, "weighted": {}},
+            "stats": {},
+            "models": {},
         }
         # for storing originating networkX graph
-        self._networkX_multigraph = None
+        self._nx_multigraph = None
         # check the data structures
         if len(self._uids) != len(self._node_data):
-            raise ValueError('The number of indices does not match the number of nodes.')
+            raise ValueError("The number of indices does not match the number of nodes.")
         # check network maps
         checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)
         # if distances, check the types and generate the betas
-        if self._distances is not None and self._betas is None:
-            if isinstance(self._distances, (int, float)):
-                self._distances = [self._distances]
-            if isinstance(self._distances, (list, tuple, np.ndarray)):
-                if len(self._distances) == 0:
-                    raise ValueError('Please provide at least one distance.')
-            else:
-                raise TypeError('Please provide a distance, or a list, tuple, or numpy.ndarray of distances.')
-            # generate the betas
-            self._betas = beta_from_distance(self._distances,
-                                             min_threshold_wt=self._min_threshold_wt)
-        # if betas, generate the distances
-        elif self._betas is not None and self._distances is None:
-            if isinstance(self._betas, (float)):
-                self._betas = [self._betas]
-            if isinstance(self._betas, (list, tuple, np.ndarray)):
-                if len(self._betas) == 0:
-                    raise ValueError('Please provide at least one beta.')
-            else:
-                raise TypeError('Please provide a beta, or a list, tuple, or numpy.ndarray of betas.')
-            self._distances = distance_from_beta(self._betas,
-                                                 min_threshold_wt=self._min_threshold_wt)
+        if distances is not None and betas is None:
+            self._distances = _cast_distance(distances)
+            self._betas = beta_from_distance(self._distances, min_threshold_wt=self._min_threshold_wt)
+        elif betas is not None and distances is None:
+            self._betas = _cast_beta(betas)
+            self._distances = distance_from_beta(self._betas, min_threshold_wt=self._min_threshold_wt)
         else:
-            raise ValueError('Please provide either distances or betas, but not both.')
+            raise ValueError("Please provide either a distance/s or beta/s, but not both.")
 
     @property
     def uids(self):
-        """Unique ids corresponding to each node in the graph's node_map."""
+        """Uids corresponding to each node in the graph's node_map."""
         return self._uids
 
     @property
     def distances(self):
-        """The distance threshold/s at which the class has been initialised."""
+        """Distance threshold/s at which the class has been initialised."""
         return self._distances
 
     @property
     def betas(self):
-        """The distance decay $\\beta$ thresholds (spatial impedance) at which the class is initialised."""
+        r"""Distance decay $\\beta$ thresholds (spatial impedance) at which the class is initialised."""
         return self._betas
 
     @property
+    def node_data(self):
+        """Node data for this network."""
+        return self._node_data
+
+    @property
+    def edge_data(self):
+        """Edge data for this network."""
+        return self._edge_data
+
+    @property
+    def node_edge_map(self):
+        """Node to Edges mapping for this network."""
+        return self._node_edge_map
+
+    @property
     def node_x_arr(self):
+        """Network node 'x' coordinates."""
         return self._node_data[:, 0]
 
     @property
     def node_y_arr(self):
+        """Network node 'y' coordinates."""
         return self._node_data[:, 1]
 
     @property
     def node_live_arr(self):
+        """
+        Network node 'live' state, corresponding to whether a node is 'live' or 'dead'.
+
+        Networks should be buffered according to the largest distance threshold that will be used for analysis. This
+        protects nodes near network boundaries from edge falloffs. Nodes within these buffered extents should be set to
+        'dead' so that centralities or other forms of measures are not calculated. Whereas metrics are not calculated
+        for 'dead' nodes, they can still be traversed by network analysis algorithms when calculating shortest paths and
+        landuse accessibilities.
+        """
         return self._node_data[:, 2]
 
     @property
     def edge_lengths_arr(self):
+        """Edge lengths."""
         return self._edge_data[:, 2]
 
     @property
     def edge_angles_arr(self):
+        """Edge angular change."""
         return self._edge_data[:, 3]
 
     @property
     def edge_impedance_factors_arr(self):
+        """Edge impedance factor."""
         return self._edge_data[:, 4]
 
     @property
     def edge_in_bearings_arr(self):
+        """Edge in-bearing angle."""
         return self._edge_data[:, 5]
 
     @property
     def edge_out_bearings_arr(self):
+        """Edge out-bearing angle."""
         return self._edge_data[:, 6]
 
     @property
-    def networkX_multigraph(self):
+    def nx_multigraph(self):
         """If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived."""
-        return self._networkX_multigraph
+        return self._nx_multigraph
 
-    @networkX_multigraph.setter
-    def networkX_multigraph(self, networkX_multigraph):
-        self._networkX_multigraph = networkX_multigraph
+    @nx_multigraph.setter
+    def nx_multigraph(self, nx_multigraph):
+        self._nx_multigraph = nx_multigraph
 
     # for retrieving metrics to a dictionary
     def metrics_to_dict(self):
         """
-        Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary. The
-        dictionary `keys` will correspond to the node `uids`.
+        Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary.
+
+        The dictionary `keys` will correspond to the node `uids`.
 
         Examples
         --------
@@ -598,7 +657,7 @@ class NetworkLayer:
 
         # prepare a mock graph
         G = mock.mock_graph()
-        G = graphs.nX_simple_geoms(G)
+        G = graphs.nx_simple_geoms(G)
 
         # generate the network layer and compute some metrics
         N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -619,65 +678,64 @@ class NetworkLayer:
         print(data_dict[random_uid]['centrality']['node_harmonic'][200])
         # prints: 0.023120252
         ```
+
         """
         m = {}
         for i, uid in enumerate(self._uids):
             m[uid] = {
-                'x': self.node_x_arr[i],
-                'y': self.node_y_arr[i],
-                'live': self.node_live_arr[i] == 1
+                "x": self.node_x_arr[i],
+                "y": self.node_y_arr[i],
+                "live": self.node_live_arr[i] == 1,
             }
             # unpack centralities
-            m[uid]['centrality'] = {}
-            for m_key, m_val in self.metrics['centrality'].items():
-                m[uid]['centrality'][m_key] = {}
+            m[uid]["centrality"] = {}
+            for m_key, m_val in self.metrics["centrality"].items():
+                m[uid]["centrality"][m_key] = {}
                 for d_key, d_val in m_val.items():
-                    m[uid]['centrality'][m_key][d_key] = d_val[i]
+                    m[uid]["centrality"][m_key][d_key] = d_val[i]
 
-            m[uid]['mixed_uses'] = {}
-            for m_key, m_val in self.metrics['mixed_uses'].items():
-                m[uid]['mixed_uses'][m_key] = {}
-                if 'hill' in m_key:
+            m[uid]["mixed_uses"] = {}
+            for m_key, m_val in self.metrics["mixed_uses"].items():
+                m[uid]["mixed_uses"][m_key] = {}
+                if "hill" in m_key:
                     for q_key, q_val in m_val.items():
-                        m[uid]['mixed_uses'][m_key][q_key] = {}
+                        m[uid]["mixed_uses"][m_key][q_key] = {}
                         for d_key, d_val in q_val.items():
-                            m[uid]['mixed_uses'][m_key][q_key][d_key] = d_val[i]
+                            m[uid]["mixed_uses"][m_key][q_key][d_key] = d_val[i]
                 else:
                     for d_key, d_val in m_val.items():
-                        m[uid]['mixed_uses'][m_key][d_key] = d_val[i]
-            m[uid]['accessibility'] = {
-                'non_weighted': {},
-                'weighted': {}
-            }
-            for cat in ['non_weighted', 'weighted']:
-                for cl_key, cl_val in self.metrics['accessibility'][cat].items():
-                    m[uid]['accessibility'][cat][cl_key] = {}
+                        m[uid]["mixed_uses"][m_key][d_key] = d_val[i]
+            m[uid]["accessibility"] = {"non_weighted": {}, "weighted": {}}
+            for cat in ["non_weighted", "weighted"]:
+                for cl_key, cl_val in self.metrics["accessibility"][cat].items():
+                    m[uid]["accessibility"][cat][cl_key] = {}
                     for d_key, d_val in cl_val.items():
-                        m[uid]['accessibility'][cat][cl_key][d_key] = d_val[i]
-            m[uid]['stats'] = {}
-            for th_key, th_val in self.metrics['stats'].items():
-                m[uid]['stats'][th_key] = {}
+                        m[uid]["accessibility"][cat][cl_key][d_key] = d_val[i]
+            m[uid]["stats"] = {}
+            for th_key, th_val in self.metrics["stats"].items():
+                m[uid]["stats"][th_key] = {}
                 for stat_key, stat_val in th_val.items():
-                    m[uid]['stats'][th_key][stat_key] = {}
+                    m[uid]["stats"][th_key][stat_key] = {}
                     for d_key, d_val in stat_val.items():
-                        m[uid]['stats'][th_key][stat_key][d_key] = d_val[i]
+                        m[uid]["stats"][th_key][stat_key][d_key] = d_val[i]
         return m
 
     # for unpacking to a networkX graph
-    def to_networkX(self) -> nx.MultiGraph:
+    def to_nx_multigraph(self) -> nx.MultiGraph:
         """
-        Transposes a `NetworkLayer` into a `networkX` `MultiGraph`. This method calls
-        [`nX_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
+        Transposes a `NetworkLayer` into a `networkX` `MultiGraph`.
+
+        This method calls [`nx_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
 
         Returns
         -------
         nx.MultiGraph
             A `networkX` `MultiGraph`.
-            
+
             `x`, `y`, and `live` node attributes will be copied from `node_data` to the `MultiGraph` nodes. `length`,
             `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data`
             to the `MultiGraph` edges.
-            
+
             If a `metrics_dict` is provided, all derived data will be copied to the `MultiGraph` nodes based on matching
             node identifiers.
 
@@ -689,14 +747,14 @@ class NetworkLayer:
 
         # prepare a mock graph
         G = mock.mock_graph()
-        G = graphs.nX_simple_geoms(G)
+        G = graphs.nx_simple_geoms(G)
 
         # generate the network layer and compute some metrics
         N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
         # compute some-or-other metrics
         N.node_centrality(measures=['node_harmonic'])
         # convert back to networkX
-        G_post = N.to_networkX()
+        G_post = N.to_nx_multigraph()
 
         # let's select a random node id
         random_idx = 6
@@ -713,34 +771,28 @@ class NetworkLayer:
         _A `networkX` graph before conversion to a `NetworkLayer`._
         ![Graph after conversion back to networkX](/images/graph_after.png)
         _A graph after conversion back to `networkX`._
+
         """
         metrics_dict = self.metrics_to_dict()
-        return graphs.nX_from_graph_maps(self._uids,
-                                         self._node_data,
-                                         self._edge_data,
-                                         self._node_edge_map,
-                                         self._networkX_multigraph,
-                                         metrics_dict)
-
-    # deprecated method
-    def compute_centrality(self):
-        """
-        This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use
-        [`node_centrality`](#networklayer-node-centrality) or [`segment_centrality`](#networklayer-segment-centrality)
-        instead.
-        """
-        raise DeprecationWarning('The compute_centrality method has been deprecated. '
-                                 'It has been split into two: '
-                                 'use "node_centrality" for node based measures '
-                                 'and "segment_centrality" for segmentised measures.'
-                                 'See the documentation for further information.')
+        return graphs.nx_from_graph_maps(
+            self._uids,
+            self._node_data,
+            self._edge_data,
+            self._node_edge_map,
+            self._nx_multigraph,
+            metrics_dict,
+        )
 
     # provides access to the underlying centrality.local_centrality method
-    def node_centrality(self,
-                        measures: list | tuple = None,
-                        jitter_scale: float = 0.0,
-                        angular: bool = False):
-        """
+    def node_centrality(
+        self,
+        measures: list | tuple | None = None,
+        jitter_scale: float = 0.0,
+        angular: bool = False,
+    ):
+        r"""
+        Compute node-based network centrality.
+
         Parameters
         ----------
         measures
@@ -754,7 +806,6 @@ class NetworkLayer:
 
         Examples
         --------
-
         The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the
         default value of `False`:
 
@@ -771,7 +822,7 @@ class NetworkLayer:
         increase. |
         | node_betweenness      | $$\\sum_{j\\neq{i}}^{n}\\sum_{k\\neq{j}\\neq{i}}^{n}1$$ | Betweenness centrality
         summing all shortest-paths traversing each node $i$. |
-        | node_betweenness_beta | $$\\sum_{j\\neq{i}}^{n}\\sum_{k\\neq{j}\\neq{i}}^{n}\\exp(-\\beta\\cdot d[j,k])$$ | Applies
+        | node_betweenness_beta | $$\\sum_{j\\neq{i}}^{n}\\sum_{k\\neq{j}\\neq{i}}^{n}\\exp(-\\beta\\cdot d[j,k])$$ | Applies  # pylint: disable=line-too-long
         a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to
         $k$ node pair passing through node $i$. |
 
@@ -786,71 +837,74 @@ class NetworkLayer:
         | node_betweenness_angular | $$\\sum_{j\\neq{i}}^{n}\\sum_{k\\neq{j}\\neq{i}}^{n}1$$ | The simplest-path
         version of betweenness centrality. This is distinguished from the shortest-path version by use of a
         simplest-path heuristic (shortest angular distance). |
-        
+
         """
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
-            heuristic = 'shortest (non-angular)'
-            options = (
-                'node_density',
-                'node_farness',
-                'node_cycles',
-                'node_harmonic',
-                'node_beta',
-                'node_betweenness',
-                'node_betweenness_beta'
+            heuristic = "shortest (non-angular)"
+            options: tuple[str, ...] = (
+                "node_density",
+                "node_farness",
+                "node_cycles",
+                "node_harmonic",
+                "node_beta",
+                "node_betweenness",
+                "node_betweenness_beta",
             )
         else:
-            heuristic = 'simplest (angular)'
-            options = (
-                'node_harmonic_angular',
-                'node_betweenness_angular'
-            )
+            heuristic = "simplest (angular)"
+            options = ("node_harmonic_angular", "node_betweenness_angular")
         if measures is None:
-            raise ValueError(f'Please select at least one measure to compute.')
-        measure_keys = []
+            raise ValueError("Please select at least one measure to compute.")
+        prep_measure_keys: list[str] = []
         for measure in measures:
             if measure not in options:
-                raise ValueError(f'Invalid network measure: {measure}. '
-                                 f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.')
-            if measure in measure_keys:
-                raise ValueError(f'Please remove duplicate measure: {measure}.')
-            measure_keys.append(measure)
-        measure_keys = tuple(measure_keys)
-        if not checks.quiet_mode:
+                raise ValueError(
+                    f"Invalid network measure: {measure}. "
+                    f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.'
+                )
+            if measure in prep_measure_keys:
+                raise ValueError(f"Please remove duplicate measure: {measure}.")
+            prep_measure_keys.append(measure)
+        measure_keys = tuple(prep_measure_keys)
+        if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
             progress_proxy = ProgressBar(total=len(self._node_data))
         else:
             progress_proxy = None
-        measures_data = centrality.local_node_centrality(self._node_data,
-                                                         self._edge_data,
-                                                         self._node_edge_map,
-                                                         np.array(self._distances),
-                                                         np.array(self._betas),
-                                                         measure_keys,
-                                                         jitter_scale=jitter_scale,
-                                                         angular=angular,
-                                                         progress_proxy=progress_proxy)
+        # pylint: disable=duplicate-code
+        measures_data = centrality.local_node_centrality(
+            self._node_data,
+            self._edge_data,
+            self._node_edge_map,
+            np.array(self._distances, dtype=np.float32),
+            np.array(self._betas, dtype=np.float32),
+            measure_keys,
+            jitter_scale=jitter_scale,
+            angular=angular,
+            progress_proxy=progress_proxy,
+        )
         if progress_proxy is not None:
             progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
-            if measure_name not in self.metrics['centrality']:
-                self.metrics['centrality'][measure_name] = {}
+            if measure_name not in self.metrics["centrality"]:
+                self.metrics["centrality"][measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                self.metrics['centrality'][measure_name][d_key] = measures_data[measure_idx][d_idx]
+                self.metrics["centrality"][measure_name][d_key] = measures_data[measure_idx][d_idx]
 
     # provides access to the underlying centrality.local_centrality method
-    def segment_centrality(self,
-                           measures: list | tuple = None,
-                           jitter_scale: float = 0.0,
-                           angular: bool = False):
-        """
-        A list or tuple of strings, containing any combination of the following `key` values, computed within the
-        respective distance thresholds of $d_{max}$.
+    def segment_centrality(
+        self,
+        measures: list | tuple | None = None,
+        jitter_scale: float = 0.0,
+        angular: bool = False,
+    ):
+        r"""
+        Compute segment-based network centrality.
 
         Parameters
         ----------
@@ -873,7 +927,7 @@ class NetworkLayer:
         | segment_density     | $$\\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
         | segment_harmonic    | $$\\sum_{(a, b)}^{edges}\\int_{a}^{b}\\ln(b) -\\ln(a)$$ | A continuous form of
         harmonic closeness centrality applied to edge lengths. |
-        | segment_beta        | $$\\sum_{(a, b)}^{edges}\\int_{a}^{b}\\frac{\\exp(-\\beta\\cdot b) -\\exp(-\\beta\\cdot a)}{-\\beta}$$ | A
+        | segment_beta        | $$\\sum_{(a, b)}^{edges}\\int_{a}^{b}\\frac{\\exp(-\\beta\\cdot b) -\\exp(-\\beta\\cdot a)}{-\\beta}$$ | A  # pylint: disable=line-too-long
         continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
         | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
         on shortest paths between all nodes $j$ and $k$ passing through $i$. |
@@ -892,72 +946,86 @@ class NetworkLayer:
         # see centrality.local_centrality for integrity checks on closeness and betweenness keys
         # typos are caught below
         if not angular:
-            heuristic = 'shortest (non-angular)'
-            options = (
-                'segment_density',
-                'segment_harmonic',
-                'segment_beta',
-                'segment_betweenness'
+            heuristic = "shortest (non-angular)"
+            options: tuple[str, ...] = (
+                "segment_density",
+                "segment_harmonic",
+                "segment_beta",
+                "segment_betweenness",
             )
         else:
-            heuristic = 'simplest (angular)'
-            options = (
-                'segment_harmonic_hybrid',
-                'segment_betweeness_hybrid'
-            )
+            heuristic = "simplest (angular)"
+            options = ("segment_harmonic_hybrid", "segment_betweeness_hybrid")
         if measures is None:
-            raise ValueError(f'Please select at least one measure to compute.')
-        measure_keys = []
+            raise ValueError("Please select at least one measure to compute.")
+        prep_measure_keys: list[str] = []
         for measure in measures:
             if measure not in options:
-                raise ValueError(f'Invalid network measure: {measure}. '
-                                 f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.')
-            if measure in measure_keys:
-                raise ValueError(f'Please remove duplicate measure: {measure}.')
-            measure_keys.append(measure)
-        measure_keys = tuple(measure_keys)
-        if not checks.quiet_mode:
+                raise ValueError(
+                    f"Invalid network measure: {measure}. "
+                    f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.'
+                )
+            if measure in prep_measure_keys:
+                raise ValueError(f"Please remove duplicate measure: {measure}.")
+            prep_measure_keys.append(measure)
+        measure_keys = tuple(prep_measure_keys)
+        if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
             progress_proxy = ProgressBar(total=len(self._node_data))
         else:
             progress_proxy = None
-        measures_data = centrality.local_segment_centrality(self._node_data,
-                                                            self._edge_data,
-                                                            self._node_edge_map,
-                                                            np.array(self._distances),
-                                                            np.array(self._betas),
-                                                            measure_keys,
-                                                            jitter_scale=jitter_scale,
-                                                            angular=angular,
-                                                            progress_proxy=progress_proxy)
+        measures_data = centrality.local_segment_centrality(
+            self._node_data,
+            self._edge_data,
+            self._node_edge_map,
+            np.array(self._distances, dtype=np.float32),
+            np.array(self._betas, dtype=np.float32),
+            measure_keys,
+            jitter_scale=jitter_scale,
+            angular=angular,
+            progress_proxy=progress_proxy,
+        )
         if progress_proxy is not None:
             progress_proxy.close()
         # write the results
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
-            if measure_name not in self.metrics['centrality']:
-                self.metrics['centrality'][measure_name] = {}
+            if measure_name not in self.metrics["centrality"]:
+                self.metrics["centrality"][measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                self.metrics['centrality'][measure_name][d_key] = measures_data[measure_idx][d_idx]
+                self.metrics["centrality"][measure_name][d_key] = measures_data[measure_idx][d_idx]
 
 
 class NetworkLayerFromNX(NetworkLayer):
-    def __init__(self,
-                 networkX_multigraph: nx.MultiGraph,
-                 distances: list | tuple | np.ndarray = None,
-                 betas: list | tuple | np.ndarray = None,
-                 min_threshold_wt: float = min_thresh_wt):
+    """
+    Instantiate a NetworkLayer class from a networkX graph.
+    """
+
+    def __init__(
+        self,
+        nx_multigraph: nx.MultiGraph,
+        distances: int
+        | float
+        | list[int | float]
+        | tuple[int | float]
+        | npt.NDArray[np.int_ | np.float32]
+        | None = None,
+        betas: float | list[float] | tuple[float] | npt.NDArray[np.float32] | None = None,
+        min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+    ):
         """
-        Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`. This `class` simplifies the conversion of
-        a `NetworkX` `MultiGraph` by calling [`graph_maps_from_nX`](/tools/graphs/#graph-maps-from-nx) internally.
-        Methods and properties are inherited from the parent [`NetworkLayer`](#networklayer) class.
+        Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`.
+
+        This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling
+        [`graph_maps_from_nx`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from
+        the parent [`NetworkLayer`](#networklayer) class.
 
         Parameters
         ----------
-        networkX_multigraph
+        nx_multigraph
             A `networkX` `MultiGraph`.
-            
+
             `x` and `y` node attributes are required. The `live` node attribute is optional, but recommended. See
             [`NetworkLayer`](#networklayer) for more information about what these attributes represent.
         distances
@@ -971,14 +1039,17 @@ class NetworkLayerFromNX(NetworkLayer):
         -------
         NetworkLayer
             A `NetworkLayer`.
+
         """
-        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nX(networkX_multigraph)
-        super().__init__(node_uids,
-                         node_data,
-                         edge_data,
-                         node_edge_map,
-                         distances,
-                         betas,
-                         min_threshold_wt)
+        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(nx_multigraph)
+        super().__init__(
+            node_uids,
+            node_data,
+            edge_data,
+            node_edge_map,
+            distances,
+            betas,
+            min_threshold_wt,
+        )
         # keep reference to networkX graph
-        self.networkX_multigraph = networkX_multigraph
+        self.nx_multigraph = nx_multigraph

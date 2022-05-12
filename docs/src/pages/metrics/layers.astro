@@ -415,7 +415,7 @@ The `max_dist` parameter should not be set too small. There are two steps in the
 
 
 :::note
-The precision of assignment improves on decomposed networks (see [graphs.nX_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
+The precision of assignment improves on decomposed networks (see [graphs.nx_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular representation of variations in metrics along street-fronts.
 :::
 
 
@@ -619,7 +619,7 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # generate the network layer
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -664,7 +664,7 @@ print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
 ```
 
 
- Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
 
 
 :::warning
@@ -966,7 +966,7 @@ from cityseer.tools import mock, graphs
 
 # prepare a mock graph
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
+G = graphs.nx_simple_geoms(G)
 
 # generate the network layer
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
@@ -995,7 +995,7 @@ print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
 ```
 
 
- Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_networkX`](/metrics/networks/#networklayer-to-networkx).
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
 
 
 :::note

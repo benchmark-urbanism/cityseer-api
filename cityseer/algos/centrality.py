@@ -1,26 +1,30 @@
-from typing import Tuple
+from __future__ import annotations
 
 import numpy as np
-from numba import njit, types, prange
-from numba.typed import List, Dict
+import numpy.typing as npt
+from numba import njit, prange, types
+from numba.typed import Dict, List  # pylint: disable=no-name-in-module
 
+from cityseer import config
 from cityseer.algos import checks
-
 
 # Note: Tempting to wrap these into a numba jitclass, but parallel and fastmath njit flags are not yet supported.
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def shortest_path_tree(edge_data: np.ndarray,
-                       node_edge_map: Dict,
-                       src_idx: int,
-                       max_dist: float = np.inf,
-                       jitter_scale: float = 0.0,
-                       angular: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def shortest_path_tree(
+    edge_data: npt.NDArray[np.float32],
+    node_edge_map: Dict,
+    src_idx: int,
+    max_dist: float = np.inf,
+    jitter_scale: float = 0.0,
+    angular: bool = False,
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """
-    All shortest paths to max network distance from source node
-    Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance
-    Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns)
+    All shortest paths to max network distance from source node.
+
+    Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance.
+    Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns).
 
     NODE MAP:
     0 - x
@@ -44,9 +48,10 @@ def shortest_path_tree(edge_data: np.ndarray,
     4 - cycles
     5 - origin segments - for any to_idx, the origin segment of the shortest path
     6 - last segments - for any to_idx, the last segment of the shortest path
+
     """
     if angular and not np.all(edge_data[:, 4] == 1):
-        raise ValueError('The distance impedance factor parameter must be set to 1 when using angular centralities.')
+        raise ValueError("The distance impedance factor parameter must be set to 1 when using angular centralities.")
     # prepare the arrays
     n = len(node_edge_map)
     tree_map = np.full((n, 7), np.nan, dtype=np.float32)
@@ -75,9 +80,9 @@ def shortest_path_tree(edge_data: np.ndarray,
     # this loops continues until all nodes within the max distance have been discovered and processed
     while len(active):
         # iterate the currently active indices and find the one with the smallest distance
-        min_nd_idx = None
+        min_nd_idx: int = -1  # uses -1 as placeholder instead of None for type-checking
         min_imp = np.inf
-        for idx, nd_idx in enumerate(active):
+        for nd_idx in active:
             if angular:
                 imp = tree_simpl_dist[nd_idx]
             else:
@@ -94,7 +99,15 @@ def shortest_path_tree(edge_data: np.ndarray,
         # iterate the node's neighbours
         for edge_idx in node_edge_map[active_nd_idx]:
             # get the edge's properties
-            start_nd, end_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
+            (
+                _start_nd,
+                end_nd,
+                seg_len,
+                seg_ang,
+                seg_imp_fact,
+                seg_in_bear,
+                seg_out_bear,
+            ) = edge_data[edge_idx]
             # cast to int for indexing
             nb_nd_idx = int(end_nd)
             # don't follow self-loops
@@ -117,7 +130,8 @@ def shortest_path_tree(edge_data: np.ndarray,
                 # in some cases all distances are run at once, so keep behaviour consistent by
                 # designating the farthest node (but via the shortest distance) as the cycle node
                 if not np.isnan(tree_preds[nb_nd_idx]):
-                    # bump farther location - prevents mismatching if cycle exceeds threshold in one direction or another
+                    # bump farther location
+                    # prevents mismatching if cycle exceeds threshold in one direction or another
                     if tree_short_dist[active_nd_idx] <= tree_short_dist[nb_nd_idx]:
                         tree_cycles[nb_nd_idx] += 0.5
                     else:
@@ -141,8 +155,9 @@ def shortest_path_tree(edge_data: np.ndarray,
             # jitter injects a small amount of stochasticity for rectlinear grids
             jitter = np.random.normal(loc=0, scale=jitter_scale)
             # shortest path heuristic differs for angular vs. not
-            if (angular and simpl_dist + jitter < tree_simpl_dist[nb_nd_idx]) or \
-                    (not angular and short_dist + jitter < tree_short_dist[nb_nd_idx]):
+            if (angular and simpl_dist + jitter < tree_simpl_dist[nb_nd_idx]) or (
+                not angular and short_dist + jitter < tree_short_dist[nb_nd_idx]
+            ):
                 tree_simpl_dist[nb_nd_idx] = simpl_dist
                 tree_short_dist[nb_nd_idx] = short_dist
                 tree_preds[nb_nd_idx] = active_nd_idx
@@ -158,106 +173,120 @@ def shortest_path_tree(edge_data: np.ndarray,
     return tree_map, tree_edges
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _find_edge_idx(node_edge_map: Dict,
-                   edge_data: np.ndarray,
-                   start_nd_idx: int,
-                   end_nd_idx: int) -> int:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _find_edge_idx(node_edge_map: Dict, edge_data: npt.NDArray[np.float32], start_nd_idx: int, end_nd_idx: int) -> int:
     """
-    Finds an edge from start and end nodes
+    Find the edge spanning the specified start / end node pair.
     """
     # iterate the start node's edges
     for edge_idx in node_edge_map[start_nd_idx]:
-        # check whether the edge's out node matches the target node
+        # find the edge which has an out node matching the target node
         if edge_data[edge_idx, 1] == end_nd_idx:
-            return edge_idx
+            return int(edge_idx)
+    return -1
 
 
-node_close_func_proto = types.FunctionType(types.float64(types.float64, types.float64, types.float64, types.float64))
+node_close_func_proto = types.FunctionType(types.float32(types.float64, types.float64, types.float64, types.float64))
 
 
 # node density
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_density(to_short_dist, to_simpl_dist, beta, cycles):
-    return 1.0  # return float explicitly
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_density(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    return np.float32(1)
 
 
 # node farness
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_farness(to_short_dist, to_simpl_dist, beta, cycles):
-    return to_short_dist
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_farness(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    return np.float32(to_short_dist)
 
 
 # node cycles
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_cycles(to_short_dist, to_simpl_dist, beta, cycles):
-    return cycles
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_cycles(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    return np.float32(cycles)
 
 
 # node harmonic
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_harmonic(to_short_dist, to_simpl_dist, beta, cycles):
-    return 1.0 / to_short_dist
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_harmonic(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    return np.float32(1 / to_short_dist)
 
 
 # node beta weighted
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_beta(to_short_dist, to_simpl_dist, beta, cycles):
-    return np.exp(-beta * to_short_dist)
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_beta(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    return np.float32(np.exp(-beta * to_short_dist))
 
 
 # node harmonic angular
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_harmonic_angular(to_short_dist, to_simpl_dist, beta, cycles):
-    a = 1 + (to_simpl_dist / 180)
-    return 1.0 / a
+@njit("float32(float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_harmonic_angular(
+    to_short_dist: float, to_simpl_dist: float, beta: float, cycles: float  # pylint: disable=unused-argument
+) -> np.float32:
+    ang = 1 + (to_simpl_dist / 180)
+    return np.float32(1 / ang)
 
 
-node_betw_func_proto = types.FunctionType(types.float64(types.float64, types.float64))
+node_betw_func_proto = types.FunctionType(types.float32(types.float64, types.float64))
 
 
 # node betweenness
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_betweenness(to_short_dist, beta):
-    return 1.0  # return float explicitly
+@njit("float32(float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_betweenness(to_short_dist: float, beta: float) -> np.float32:  # pylint: disable=unused-argument
+    return np.float32(1)
 
 
 # node betweenness beta weighted
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def node_betweenness_beta(to_short_dist, beta):
+@njit("float32(float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _node_betweenness_beta(to_short_dist: float, beta: float) -> np.float32:  # pylint: disable=unused-argument
     """
-    distance is based on distance between from and to vertices
-    thus potential spatial impedance via between vertex
+    Distance is based on distance between from and to vertices.
+
+    Thus potential spatial impedance via between vertex.
     """
-    return np.exp(-beta * to_short_dist)
+    return np.float32(np.exp(-beta * to_short_dist))
 
 
-'''
-NODE MAP:
-0 - x
-1 - y
-2 - live
-EDGE MAP:
-0 - start node
-1 - end node
-2 - length in metres
-3 - sum of angular travel along length
-4 - impedance factor
-5 - in bearing
-6 - out bearing
-'''
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+def local_node_centrality(
+    node_data: npt.NDArray[np.float32],
+    edge_data: npt.NDArray[np.float32],
+    node_edge_map: Dict,
+    distances: npt.NDArray[np.float32],
+    betas: npt.NDArray[np.float32],
+    measure_keys: tuple,
+    jitter_scale: float = 0.0,
+    angular: bool = False,
+    progress_proxy=None,
+) -> npt.NDArray[np.float32]:
+    """
+    Localised node centrality.
 
+    NODE MAP:
+    0 - x
+    1 - y
+    2 - live
+    EDGE MAP:
+    0 - start node
+    1 - end node
+    2 - length in metres
+    3 - sum of angular travel along length
+    4 - impedance factor
+    5 - in bearing
+    6 - out bearing
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
-def local_node_centrality(node_data: np.ndarray,
-                          edge_data: np.ndarray,
-                          node_edge_map: Dict,
-                          distances: np.ndarray,
-                          betas: np.ndarray,
-                          measure_keys: tuple,
-                          jitter_scale: float = 0.0,
-                          angular: bool = False,
-                          progress_proxy=None) -> np.ndarray:
+    """
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
     checks.check_network_maps(node_data, edge_data, node_edge_map)
@@ -269,47 +298,51 @@ def local_node_centrality(node_data: np.ndarray,
     for m_idx, m_key in enumerate(measure_keys):
         if not angular:
             # closeness keys
-            if m_key == 'node_density':
-                close_funcs.append(node_density)
+            if m_key == "node_density":
+                close_funcs.append(_node_density)
                 close_idxs.append(m_idx)
-            elif m_key == 'node_farness':
-                close_funcs.append(node_farness)
+            elif m_key == "node_farness":
+                close_funcs.append(_node_farness)
                 close_idxs.append(m_idx)
-            elif m_key == 'node_cycles':
-                close_funcs.append(node_cycles)
+            elif m_key == "node_cycles":
+                close_funcs.append(_node_cycles)
                 close_idxs.append(m_idx)
-            elif m_key == 'node_harmonic':
-                close_funcs.append(node_harmonic)
+            elif m_key == "node_harmonic":
+                close_funcs.append(_node_harmonic)
                 close_idxs.append(m_idx)
-            elif m_key == 'node_beta':
-                close_funcs.append(node_beta)
+            elif m_key == "node_beta":
+                close_funcs.append(_node_beta)
                 close_idxs.append(m_idx)
             # betweenness keys
-            elif m_key == 'node_betweenness':
-                betw_funcs.append(node_betweenness)
+            elif m_key == "node_betweenness":
+                betw_funcs.append(_node_betweenness)
                 betw_idxs.append(m_idx)
-            elif m_key == 'node_betweenness_beta':
-                betw_funcs.append(node_betweenness_beta)
+            elif m_key == "node_betweenness_beta":
+                betw_funcs.append(_node_betweenness_beta)
                 betw_idxs.append(m_idx)
             else:
-                raise ValueError('''
+                raise ValueError(
+                    """
                 Unable to match requested centrality measure key against available options.
                 Shortest-path measures can't be mixed with simplest-path measures.
-                Set angular=True if using simplest-path measures.''')
+                Set angular=True if using simplest-path measures."""
+                )
         else:
             # aggregative keys
-            if m_key == 'node_harmonic_angular':
-                close_funcs.append(node_harmonic_angular)
+            if m_key == "node_harmonic_angular":
+                close_funcs.append(_node_harmonic_angular)
                 close_idxs.append(m_idx)
             # betweenness keys
-            elif m_key == 'node_betweenness_angular':
-                betw_funcs.append(node_betweenness)
+            elif m_key == "node_betweenness_angular":
+                betw_funcs.append(_node_betweenness)
                 betw_idxs.append(m_idx)
             else:
-                raise ValueError('''
+                raise ValueError(
+                    """
                 Unable to match requested centrality measure key against available options.
                 Shortest-path measures can't be mixed with simplest-path measures.
-                Set angular=False if using shortest-path measures.''')
+                Set angular=False if using shortest-path measures."""
+                )
     # prepare variables
     n = len(node_data)
     d_n = len(distances)
@@ -318,7 +351,7 @@ def local_node_centrality(node_data: np.ndarray,
     global_max_dist = float(np.nanmax(distances))
     nodes_live = node_data[:, 2]
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in prange(n):
+    for src_idx in prange(n):  # pylint: disable=not-an-iterable
         shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
@@ -327,8 +360,8 @@ def local_node_centrality(node_data: np.ndarray,
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
-        '''
-        Shortest tree dijkstra        
+        """
+        Shortest tree dijkstra
         Predecessor map is based on impedance heuristic - which can be different from metres
         Distance map in metres still necessary for defining max distances and computing equivalent distance measures
         RETURNS A SHORTEST PATH TREE MAP:
@@ -339,13 +372,15 @@ def local_node_centrality(node_data: np.ndarray,
         4 - cycles
         5 - origin segments
         6 - last segments
-        '''
-        tree_map, tree_edges = shortest_path_tree(edge_data,
-                                                  node_edge_map,
-                                                  src_idx,
-                                                  max_dist=global_max_dist,
-                                                  jitter_scale=jitter_scale,
-                                                  angular=angular)
+        """
+        tree_map, _tree_edges = shortest_path_tree(
+            edge_data,
+            node_edge_map,
+            src_idx,
+            max_dist=global_max_dist,
+            jitter_scale=jitter_scale,
+            angular=angular,
+        )
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_short_dists = tree_map[:, 2]
@@ -365,8 +400,7 @@ def local_node_centrality(node_data: np.ndarray,
                 continue
             # calculate closeness centralities
             if close_funcs:
-                for d_idx in range(len(distances)):
-                    dist_cutoff = distances[d_idx]
+                for d_idx, dist_cutoff in enumerate(distances):
                     beta = betas[d_idx]
                     if to_short_dist <= dist_cutoff:
                         for m_idx, close_func in zip(close_idxs, close_funcs):
@@ -383,8 +417,7 @@ def local_node_centrality(node_data: np.ndarray,
                     if inter_idx == src_idx:
                         break
                     # iterate the distance thresholds
-                    for d_idx in range(len(distances)):
-                        dist_cutoff = distances[d_idx]
+                    for d_idx, dist_cutoff in enumerate(distances):
                         beta = betas[d_idx]
                         # check threshold
                         if tree_short_dists[to_idx] <= dist_cutoff:
@@ -399,47 +432,48 @@ def local_node_centrality(node_data: np.ndarray,
     return measures_data
 
 
-segment_func_proto = types.FunctionType(types.float64(types.float64,
-                                                      types.float64,
-                                                      types.float64,
-                                                      types.float64,
-                                                      types.float64))
+segment_func_proto = types.FunctionType(
+    types.float32(types.float64, types.float64, types.float64, types.float64, types.float64)
+)
 
 
 # segment density
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def segment_density(n, m, n_imp, m_imp, beta):
-    return m - n
+@njit("float32(float64, float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _segment_density(n, m, n_imp, m_imp, beta) -> np.float32:  # pylint: disable=unused-argument
+    return np.float32(m - n)
 
 
 # segment harmonic
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def segment_harmonic(n, m, n_imp, m_imp, beta):
+@njit("float32(float64, float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _segment_harmonic(n, m, n_imp, m_imp, beta) -> np.float32:  # pylint: disable=unused-argument
     if n_imp < 1:
-        return np.log(m_imp)
-    else:
-        return np.log(m_imp) - np.log(n_imp)
+        return np.float32(np.log(m_imp))
+    return np.float32(np.log(m_imp) - np.log(n_imp))
 
 
 # segment beta
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def segment_beta(n, m, n_imp, m_imp, beta):
+@njit("float32(float64, float64, float64, float64, float64)", cache=True, fastmath=config.FASTMATH, nogil=True)
+def _segment_beta(n, m, n_imp, m_imp, beta) -> np.float32:  # pylint: disable=unused-argument
     if beta == 0.0:
-        return m_imp - n_imp
-    else:
-        return (np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta
+        return np.float32(m_imp - n_imp)
+    return np.float32((np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta)
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
-def local_segment_centrality(node_data: np.ndarray,
-                             edge_data: np.ndarray,
-                             node_edge_map: Dict,
-                             distances: np.ndarray,
-                             betas: np.ndarray,
-                             measure_keys: tuple,
-                             jitter_scale: float = 0.0,
-                             angular: bool = False,
-                             progress_proxy=None) -> np.ndarray:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+def local_segment_centrality(
+    node_data: npt.NDArray[np.float32],
+    edge_data: npt.NDArray[np.float32],
+    node_edge_map: Dict,
+    distances: npt.NDArray[np.float32],
+    betas: npt.NDArray[np.float32],
+    measure_keys: tuple,
+    jitter_scale: float = 0.0,
+    angular: bool = False,
+    progress_proxy=None,
+) -> npt.NDArray[np.float32]:
+    """
+    Localised segment centrality.
+    """
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
     checks.check_network_maps(node_data, edge_data, node_edge_map)
@@ -450,47 +484,51 @@ def local_segment_centrality(node_data: np.ndarray,
     for m_idx, m_key in enumerate(measure_keys):
         if not angular:
             # segment keys
-            if m_key == 'segment_density':
-                close_funcs.append(segment_density)
+            if m_key == "segment_density":
+                close_funcs.append(_segment_density)
                 close_idxs.append(m_idx)
-            elif m_key == 'segment_harmonic':
-                close_funcs.append(segment_harmonic)
+            elif m_key == "segment_harmonic":
+                close_funcs.append(_segment_harmonic)
                 close_idxs.append(m_idx)
-            elif m_key == 'segment_beta':
-                close_funcs.append(segment_beta)
+            elif m_key == "segment_beta":
+                close_funcs.append(_segment_beta)
                 close_idxs.append(m_idx)
-            elif m_key == 'segment_betweenness':
+            elif m_key == "segment_betweenness":
                 # only one version of shortest path betweenness - no need for func
                 betw_idxs.append(m_idx)
             else:
-                raise ValueError('''
+                raise ValueError(
+                    """
                     Unable to match requested centrality measure key against available options.
                     Shortest-path measures can't be mixed with simplest-path measures.
-                    Set angular=True if using simplest-path measures. 
-                ''')
+                    Set angular=True if using simplest-path measures.
+                """
+                )
         else:
             # segment keys
-            if m_key == 'segment_harmonic_hybrid':
+            if m_key == "segment_harmonic_hybrid":
                 # only one version of simplest path closeness - no need for func
                 close_idxs.append(m_idx)
-            elif m_key == 'segment_betweeness_hybrid':
+            elif m_key == "segment_betweeness_hybrid":
                 # only one version of simplest path betweenness - no need for func
                 betw_idxs.append(m_idx)
             else:
-                raise ValueError('''
+                raise ValueError(
+                    """
                     Unable to match requested centrality measure key against available options.
                     Shortest-path measures can't be mixed with simplest-path measures.
-                    Set angular=False if using shortest-path measures. 
-                ''')
+                    Set angular=False if using shortest-path measures.
+                """
+                )
     # prepare variables
     n = len(node_data)
     d_n = len(distances)
     k_n = len(measure_keys)
     measures_data = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
-    global_max_dist = float(np.nanmax(distances))
+    global_max_dist = np.nanmax(distances)
     nodes_live = node_data[:, 2]
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in prange(n):
+    for src_idx in prange(n):  # pylint: disable=not-an-iterable
         shadow_arr = np.full((k_n, d_n, n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
@@ -499,8 +537,8 @@ def local_segment_centrality(node_data: np.ndarray,
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
-        '''
-        Shortest tree dijkstra        
+        """
+        Shortest tree dijkstra
         Predecessor map is based on impedance heuristic - i.e. angular vs not
         Shortest path distances in metres used for defining max distances regardless
         RETURNS A SHORTEST PATH TREE MAP:
@@ -511,31 +549,41 @@ def local_segment_centrality(node_data: np.ndarray,
         4 - cycles
         5 - origin segments
         6 - last segments
-        '''
-        tree_map, tree_edges = shortest_path_tree(edge_data,
-                                                  node_edge_map,
-                                                  src_idx,
-                                                  max_dist=global_max_dist,
-                                                  jitter_scale=jitter_scale,
-                                                  angular=angular)
+        """
+        tree_map, tree_edges = shortest_path_tree(
+            edge_data,
+            node_edge_map,
+            src_idx,
+            max_dist=global_max_dist,
+            jitter_scale=jitter_scale,
+            angular=angular,
+        )
         tree_nodes = np.where(tree_map[:, 0])[0]
         tree_preds = tree_map[:, 1]
         tree_short_dists = tree_map[:, 2]
         tree_simpl_dists = tree_map[:, 3]
         tree_origin_seg = tree_map[:, 5]
         tree_last_seg = tree_map[:, 6]
-        '''
+        """
         can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
         hence visiting all processed edges and extrapolating information
         NOTES:
         1. the above shortest tree algorithm only tracks edges in one direction - i.e. no duplication
         2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
-        '''
+        """
         # only build edge data if necessary
         if close_idxs:
             for edge_idx in np.where(tree_edges)[0]:
                 # unpack the edge data
-                seg_n_nd, seg_m_nd, seg_len, seg_ang, seg_imp_fact, seg_in_bear, seg_out_bear = edge_data[edge_idx]
+                (
+                    seg_n_nd,
+                    seg_m_nd,
+                    seg_len,
+                    seg_ang,
+                    seg_imp_fact,
+                    seg_in_bear,
+                    _seg_out_bear,
+                ) = edge_data[edge_idx]
                 n_nd_idx = int(seg_n_nd)
                 m_nd_idx = int(seg_m_nd)
                 n_simpl_dist = tree_simpl_dists[n_nd_idx]
@@ -545,18 +593,18 @@ def local_segment_centrality(node_data: np.ndarray,
                 # don't process unreachable segments
                 if np.isinf(n_short_dist) and np.isinf(m_short_dist):
                     continue
-                '''
+                """
                 shortest path (non-angular) uses a split segment workflow
                 the split workflow allows for non-shortest-path edges to be approached from either direction
                 i.e. the shortest path to node "b" isn't necessarily via node "a"
                 the edge is then split at the farthest point from either direction and apportioned either way
                 if the segment is on the shortest path then the second segment will squash down to naught
-                '''
+                """
                 if not angular:
-                    '''
+                    """
                     dijkstra discovers edges from near to far (sorts before popping next node)
                     i.e. this sort may be unnecessary?
-                    '''
+                    """
                     # sort where a < b
                     if n_short_dist <= m_short_dist:
                         a = tree_short_dists[n_nd_idx]
@@ -577,9 +625,9 @@ def local_segment_centrality(node_data: np.ndarray,
                     for d_idx in range(len(distances) - 1, -1, -1):
                         dist_cutoff = distances[d_idx]
                         beta = betas[d_idx]
-                        '''
+                        """
                         if c or d are greater than the distance threshold, then the segments are "snipped"
-                        '''
+                        """
                         # a to c segment
                         if a <= dist_cutoff:
                             if c > dist_cutoff:
@@ -597,15 +645,15 @@ def local_segment_centrality(node_data: np.ndarray,
                             for m_idx, close_func in zip(close_idxs, close_funcs):
                                 shadow_arr[m_idx, d_idx, src_idx] += close_func(b, d, b_imp, d_imp, beta)
                 else:
-                    '''
+                    """
                     there is a different workflow for angular - uses single segment (no segment splitting)
                     this is because the simplest path onto the entire length of segment is from the lower impedance end
                     this assumes segments are relatively straight, overly complex to subdivide segments for spliting...
-                    '''
+                    """
                     # only a single case existing for angular version so no need for abstracted functions
                     # there are three scenarios:
                     # 1) e is the predecessor for f
-                    if n_nd_idx == src_idx or tree_preds[m_nd_idx] == n_nd_idx:
+                    if n_nd_idx == src_idx or tree_preds[m_nd_idx] == n_nd_idx:  # pylint: disable=consider-using-in
                         e = tree_short_dists[n_nd_idx]
                         f = tree_short_dists[m_nd_idx]
                         # if travelling via n, then m = n_imp + seg_ang
@@ -615,7 +663,7 @@ def local_segment_centrality(node_data: np.ndarray,
                         # i.e. exit impedance minus half segment impedance
                         ang = m_simpl_dist - seg_ang / 2
                     # 2) f is the predecessor for e
-                    elif m_nd_idx == src_idx or tree_preds[n_nd_idx] == m_nd_idx:
+                    elif m_nd_idx == src_idx or tree_preds[n_nd_idx] == m_nd_idx:  # pylint: disable=consider-using-in
                         e = tree_short_dists[m_nd_idx]
                         f = tree_short_dists[n_nd_idx]
                         ang = n_simpl_dist - seg_ang / 2  # per above
@@ -674,8 +722,7 @@ def local_segment_centrality(node_data: np.ndarray,
                     for d_idx in range(len(distances) - 1, -1, -1):
                         dist_cutoff = distances[d_idx]
                         if e <= dist_cutoff:
-                            if f > dist_cutoff:
-                                f = dist_cutoff
+                            f = min(f, dist_cutoff)
                             # uses segment length as base (in this sense hybrid)
                             # intentionally not using integral because conflates harmonic shortest-path w. simplest
                             # there is only one case for angular - no need to abstract to func
@@ -705,7 +752,7 @@ def local_segment_centrality(node_data: np.ndarray,
                 to_dist = tree_short_dists[to_idx]
                 if np.isinf(to_dist):
                     continue
-                '''
+                """
                 BETWEENNESS
                 segment versions only agg first and last segments
                 the distance decay is based on the distance between the src segment and to segment
@@ -715,7 +762,7 @@ def local_segment_centrality(node_data: np.ndarray,
                 other sections (in between current first and last) are respectively processed from other to nodes
 
                 distance thresholds are computed using the innner as opposed to outer edges of the segments
-                '''
+                """
                 o_seg_len = edge_data[int(tree_origin_seg[to_idx])][2]
                 l_seg_len = edge_data[int(tree_last_seg[to_idx])][2]
                 min_span = to_dist - o_seg_len - l_seg_len
@@ -736,10 +783,8 @@ def local_segment_centrality(node_data: np.ndarray,
                         beta = betas[d_idx]
                         if min_span <= dist_cutoff:
                             # prune if necessary
-                            if o_2 > dist_cutoff:
-                                o_2 = dist_cutoff
-                            if l_2 > dist_cutoff:
-                                l_2 = dist_cutoff
+                            o_2 = min(o_2, dist_cutoff)
+                            l_2 = min(l_2, dist_cutoff)
                             # only one version for betweenness for respective angular / non angular
                             # i.e. no need to abstract to function
                             for m_idx in betw_idxs:
@@ -748,10 +793,9 @@ def local_segment_centrality(node_data: np.ndarray,
                                     if beta == 0.0:
                                         auc = o_2 - o_1 + l_2 - l_1
                                     else:
-                                        auc = (np.exp(-beta * o_2) -
-                                               np.exp(-beta * o_1)) / -beta + \
-                                              (np.exp(-beta * l_2) -
-                                               np.exp(-beta * l_1)) / -beta
+                                        auc = (np.exp(-beta * o_2) - np.exp(-beta * o_1)) / -beta + (
+                                            np.exp(-beta * l_2) - np.exp(-beta * l_1)
+                                        ) / -beta
                                     shadow_arr[m_idx, d_idx, inter_idx] += auc
                                 else:
                                     bt_ang = 1 + tree_simpl_dists[to_idx] / 180
