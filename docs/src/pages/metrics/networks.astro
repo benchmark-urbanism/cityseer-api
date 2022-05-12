@@ -300,13 +300,13 @@ from cityseer.tools import mock, graphs
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 
-# if initialised with distances: 
+# if initialised with distances:
 # betas for weighted metrics will be generated implicitly
 N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 print(N.distances)  # prints: [200, 400, 800, 1600]
 print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
-# if initialised with betas: 
+# if initialised with betas:
 # distances for non-weighted metrics will be generated implicitly
 N = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
 print(N.distances)  # prints: [200, 400, 800, 1600]
@@ -1032,4 +1032,3 @@ A `NetworkLayer`.
   </section>
 </div>
 </PageLayout>
-
