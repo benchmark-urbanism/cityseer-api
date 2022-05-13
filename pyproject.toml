@@ -120,6 +120,8 @@ good-names = [
     "js",
     "mu",
     "qs",
+    "xs",
+    "ys",
     "wt",
 ]
 
@@ -159,6 +161,7 @@ module = [
     "numba.typed",
     "numba_progress",
     "numpy",
+    "numpy.random",
     "numpy.typing",
     "osmnx",
     "pandas",
