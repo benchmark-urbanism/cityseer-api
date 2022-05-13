@@ -278,7 +278,7 @@ def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: 
 
     """
     if random_seed is not None:
-        np.random.seed(seed=random_seed)
+        np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     min_x, min_y, max_x, max_y = get_graph_extents(nx_multigraph)
 
@@ -286,8 +286,8 @@ def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: 
 
     for i in range(length):
         data_dict[i] = {
-            "x": np.random.uniform(min_x, max_x),
-            "y": np.random.uniform(min_y, max_y),
+            "x": np.random.uniform(min_x, max_x),  # pylint: disable=no-member
+            "y": np.random.uniform(min_y, max_y),  # pylint: disable=no-member
         }
 
     return data_dict
@@ -316,7 +316,7 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
 
     """
     if random_seed is not None:
-        np.random.seed(seed=random_seed)
+        np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     random_class_str = string.ascii_lowercase
     if num_classes > len(random_class_str):
@@ -327,7 +327,7 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
 
     cl_codes = []
     for _ in range(length):
-        cl_codes.append(random_class_str[int(np.random.randint(0, len(random_class_str)))])
+        cl_codes.append(random_class_str[int(np.random.randint(0, len(random_class_str)))])  # pylint: disable=no-member
 
     return cl_codes
 
@@ -368,11 +368,11 @@ def mock_numerical_data(
 
     """
     if random_seed is not None:
-        np.random.seed(seed=random_seed)
+        np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     num_data = []
     for _ in range(num_arrs):
-        num_data.append(np.random.randint(val_min, high=val_max, size=length))
+        num_data.append(np.random.randint(val_min, high=val_max, size=length))  # pylint: disable=no-member
     # return a 2d array
     num_arr = np.array(num_data, dtype=np.float32)
     num_arr /= 10**floating_pt
@@ -428,10 +428,10 @@ def mock_species_data(random_seed: int = None) -> Generator:
 
     """
     if random_seed is not None:
-        np.random.seed(seed=random_seed)
+        np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     for n in range(1, 50, 5):
-        data = np.random.randint(1, 10, n)
+        data = np.random.randint(1, 10, n)  # pylint: disable=no-member
         unique = np.unique(data)
         counts = np.zeros_like(unique)
         for idx, uniq in enumerate(unique):
@@ -443,7 +443,7 @@ def mock_species_data(random_seed: int = None) -> Generator:
 
 def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response:
     """
-    Fetches an OSM response.
+    Fetch and parse an OSM response.
 
     Parameters
     ----------

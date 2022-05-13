@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def dict_wgs_to_utm(data_dict: dict) -> dict:
     """
-    Converts a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
+    Convert a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
 
     This method converts [WGS84](https://epsg.io/4326) geographic coordinates to the associated projected UTM coordinate
     system. This means that `lng`, `lat` style coordinates will be converted to `easting`, `northing` style coordinates.
@@ -82,6 +82,7 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
         if i == 1:
             break
     ```
+
     """
     if not isinstance(data_dict, dict):
         raise TypeError("This method requires dictionary object.")
@@ -112,8 +113,10 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
 
 def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.NDArray[np.int64]]:
     """
-    Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique
-    elements.
+    Convert a list of land-use classes (or other categorical data) to encoded integers.
+
+    Encodes land-use class labels, e.g. "a", "b" or "pub", "shop" to an encoded representation. Unique elements will be
+    encoded to the same encoding, i.e. `["a", "b", "c"]` will be encoded to `[0, 1, 0]`.
 
     :::note
     It is generally not necessary to utilise this function directly. It will be called implicitly if calculating
@@ -144,6 +147,7 @@ def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.
     print(class_descriptors)  # prints: ('cat', 'dog', 'owl')
     print(list(class_encodings))  # prints: [0, 1, 0, 2, 1]
     ```
+
     """
     if not isinstance(classes, (list, tuple, np.ndarray)):
         raise TypeError("This method requires an iterable object.")
@@ -158,7 +162,7 @@ def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.
 
 def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]:
     """
-    Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
+    Convert a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
     :::note
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking
@@ -201,6 +205,7 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]
 
         The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the
         [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
+
     """
     if not isinstance(data_dict, dict):
         raise TypeError("This method requires dictionary object.")
@@ -224,22 +229,27 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]
 
 class DataLayer:
     """
-    Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a
-    [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial locations of data points, and
-    can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these
-    measures are computed directly over the street network and offer distance-weighted variants; the combination of
-    which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation
-    methods.
+    DataLayer Class representing data samples.
+
+    Categorical data, such as land-use classifications, and numerical data, such as valuations or census statistics,
+    can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial
+    locations of data points, and is used to calculate various mixed-use, land-use accessibility, and statistical
+    measures. Importantly, these measures are computed directly over the street network and offer distance-weighted
+    variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler
+    crow-flies aggregation methods.
 
     The coordinates of data points should correspond as precisely as possible to the location of the feature in space;
     or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
     Note that in many cases, the [`DataLayerFromDict`](#datalayerfromdict) class will provide a more convenient
     alternative for instantiating this class.
+
     """
 
     def __init__(self, data_uids: list | tuple, data_map: npt.NDArray[np.float32]):
         """
+        Initialise a DataLayer.
+
         Parameters
         ----------
         data_uids
@@ -277,22 +287,22 @@ class DataLayer:
 
     @property
     def uids(self):
-        """Tuple of labels corresponding to each entry in the data map."""
+        """Tuple of labels corresponding to each data sample."""
         return self._uids
 
     @property
     def data_x_arr(self):
-        """Array of x values corresponding to each entry in the data map."""
+        """Array of x values corresponding to each data sample."""
         return self._data[:, 0]
 
     @property
     def data_y_arr(self):
-        """Array of y values corresponding to each entry in the data map."""
+        """Array of y values corresponding to each data sample."""
         return self._data[:, 1]
 
     @property
     def network_layer(self):  # pylint: disable=invalid-name
-        """The cityseer NetworkLayer to which this DataLayer is assigned."""
+        """NetworkLayer to which this DataLayer is assigned."""
         return self._network_layer
 
     @network_layer.setter
@@ -301,6 +311,8 @@ class DataLayer:
 
     def assign_to_network(self, network_layer: networks.NetworkLayer, max_dist: int | float):
         """
+        Assign this DataLayer to a [`NetworkLayer`](/metrics/networks/#networklayer).
+
         Once created, a [`DataLayer`](#datalayer) should be assigned to a
         [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised
         spatial aggregation of data points over the street network. The measures will be computed over the same distance
@@ -344,6 +356,7 @@ class DataLayer:
 
         ![Example assignment of data to a network](/images/assignment_decomposed.png)
         _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
+
         """
         self._network_layer = network_layer
         if not config.QUIET_MODE:
@@ -371,7 +384,9 @@ class DataLayer:
         jitter_scale: float = 0.0,
         angular: bool = False,
     ):
-        """
+        r"""
+        Compute landuse metrics.
+
         This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
         land-use accessibility measures. These are computed simultaneously for any required combinations of measures
         (and distances), which can have significant speed implications. Situations requiring only a single measure can
@@ -576,6 +591,7 @@ class DataLayer:
         has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
         been applied.
         :::
+
         """
         if self.network_layer is None:
             raise ValueError("Assign this data layer to a network prior to computing mixed-uses or accessibilities.")
@@ -708,8 +724,9 @@ class DataLayer:
         qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
     ):
         """
-        Compute hill diversity for the provided `landuse_labels` at the specified values of `q`. See
-        [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+        Compute hill diversity for the provided `landuse_labels` at the specified values of `q`.
+
+        See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
 
         Parameters
         ----------
@@ -724,6 +741,7 @@ class DataLayer:
         The data key is `hill`, e.g.:
 
         `NetworkLayer.metrics['mixed_uses']['hill'][q_key][distance_key][node_idx]`
+
         """
         return self.compute_landuses(landuse_labels, mixed_use_keys=["hill"], qs=qs)
 
@@ -733,8 +751,9 @@ class DataLayer:
         qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
     ):
         """
-        Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`. See
-        [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+        Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`.
+
+        See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
 
         Parameters
         ----------
@@ -749,6 +768,7 @@ class DataLayer:
         The data key is `hill_branch_wt`, e.g.:
 
         `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][q_key][distance_key][node_idx]`
+
         """
         return self.compute_landuses(landuse_labels, mixed_use_keys=["hill_branch_wt"], qs=qs)
 
@@ -758,8 +778,9 @@ class DataLayer:
         accessibility_keys: list | tuple,
     ):
         """
-        Compute land-use accessibilities for the specified land-use classification keys. See
-        [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+        Compute land-use accessibilities for the specified land-use classification keys.
+
+        See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
 
         Parameters
         ----------
@@ -780,6 +801,7 @@ class DataLayer:
         NetworkLayer.metrics['accessibility']['weighted']['retail'][distance_key][node_idx]
         NetworkLayer.metrics['accessibility']['non_weighted']['retail'][distance_key][node_idx]
         ```
+
         """
         return self.compute_landuses(landuse_labels, accessibility_keys=accessibility_keys)
 
@@ -791,6 +813,8 @@ class DataLayer:
         angular: bool = False,
     ):
         """
+        Compute stats.
+
         This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
         aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication
         that statistical aggregations are generated from the same locations as for centrality computations, which can
@@ -874,7 +898,6 @@ class DataLayer:
 
         Examples
         --------
-
         The data keys will correspond to the `stats_keys` parameter, e.g.:
 
         ```python
@@ -930,6 +953,7 @@ class DataLayer:
         - `mean` and `mean_weighted`
         - `variance` and `variance_weighted`
         :::
+
         """
         if self.network_layer is None:
             raise ValueError("Assign this data layer to a network prior to computing mixed-uses or accessibilities.")
@@ -1015,13 +1039,17 @@ class DataLayer:
 
 class DataLayerFromDict(DataLayer):
     """
-    Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls
-    [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent
-    [`DataLayer`](#datalayer) class, which can be referenced for more information.
+    Transpose an appropriately prepared data dictionary into a `DataLayer`.
+
+    This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from
+    the parent [`DataLayer`](#datalayer) class, which can be referenced for more information.
+
     """
 
     def __init__(self, data_dict: dict):
         """
+        Initialise a DataLayer from a python `dict`.
+
         Parameters
         ----------
         data_dict
@@ -1050,6 +1078,7 @@ class DataLayerFromDict(DataLayer):
             }
         }
         ```
+
         """
         data_uids, data_map = data_map_from_dict(data_dict)
 

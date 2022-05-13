@@ -308,7 +308,7 @@ def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> float:
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> float:
     """
-    Shannon diversity (information entropy)
+    Shannon diversity (information entropy).
 
     Entropy
     p = Xi/N

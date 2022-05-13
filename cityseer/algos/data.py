@@ -13,7 +13,7 @@ from cityseer.algos import centrality, checks, diversity
 def find_nearest(
     src_x: float, src_y: float, x_arr: npt.NDArray[np.float32], y_arr: npt.NDArray[np.float32], max_dist: float
 ) -> tuple[int, float]:
-    """Finds nearest index and distance from point."""
+    """Find nearest index and distance from a given point."""
     if len(x_arr) != len(y_arr):
         raise ValueError("Mismatching x and y array lengths.")
     # filter by distance
@@ -29,13 +29,10 @@ def find_nearest(
     return min_idx, min_dist
 
 
+# https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
+# these two points / angles are relative to the origin so pass in difference between the points and origin as vectors
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _calculate_rotation(point_a, point_b):
-    """
-    https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
-    these two points / angles are relative to the origin
-    so pass in difference between the points and origin as vectors
-    """
     ang_a = np.arctan2(point_a[1], point_a[0])  # arctan is in y/x order
     ang_b = np.arctan2(point_b[1], point_b[0])
     return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
@@ -393,6 +390,8 @@ def aggregate_landuses(
     progress_proxy=None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """
+    Aggregate landuses.
+
     NODE MAP:
     0 - x
     1 - y
@@ -609,6 +608,8 @@ def aggregate_stats(
     npt.NDArray[np.float32],
 ]:
     """
+    Aggregate stats.
+
     NODE MAP:
     0 - x
     1 - y
