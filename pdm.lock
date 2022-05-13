@@ -102,12 +102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cfgv"
-version = "3.3.1"
-requires_python = ">=3.6.1"
-summary = "Validate configuration and produce human readable error messages."
-
-[[package]]
 name = "charset-normalizer"
 version = "2.0.12"
 requires_python = ">=3.5.0"
@@ -182,11 +176,6 @@ requires_python = ">=2.7, !=3.0.*"
 summary = "serialize all of python"
 
 [[package]]
-name = "distlib"
-version = "0.3.4"
-summary = "Distribution utilities"
-
-[[package]]
 name = "docstring-parser"
 version = "0.14.1"
 requires_python = ">=3.6,<4.0"
@@ -208,12 +197,6 @@ summary = "Discover and load entry points from installed packages."
 name = "fastjsonschema"
 version = "2.15.3"
 summary = "Fastest Python implementation of JSON schema"
-
-[[package]]
-name = "filelock"
-version = "3.6.0"
-requires_python = ">=3.7"
-summary = "A platform independent file lock."
 
 [[package]]
 name = "fiona"
@@ -247,12 +230,6 @@ dependencies = [
     "pyproj>=2.2.0",
     "shapely>=1.6",
 ]
-
-[[package]]
-name = "identify"
-version = "2.5.0"
-requires_python = ">=3.7"
-summary = "File identification library for Python"
 
 [[package]]
 name = "idna"
@@ -627,11 +604,6 @@ requires_python = ">=3.8"
 summary = "Python package for creating and manipulating graphs and networks"
 
 [[package]]
-name = "nodeenv"
-version = "1.6.0"
-summary = "Node.js virtual environment builder"
-
-[[package]]
 name = "notebook"
 version = "6.4.11"
 requires_python = ">=3.7"
@@ -769,20 +741,6 @@ name = "pluggy"
 version = "1.0.0"
 requires_python = ">=3.6"
 summary = "plugin and hook calling mechanisms for python"
-
-[[package]]
-name = "pre-commit"
-version = "2.19.0"
-requires_python = ">=3.7"
-summary = "A framework for managing and maintaining multi-language pre-commit hooks."
-dependencies = [
-    "cfgv>=2.0.0",
-    "identify>=1.0.0",
-    "nodeenv>=0.11.1",
-    "pyyaml>=5.1",
-    "toml",
-    "virtualenv>=20.0.8",
-]
 
 [[package]]
 name = "prometheus-client"
@@ -1096,12 +1054,6 @@ requires_python = ">=3.6.1"
 summary = "A wrapper around the stdlib `tokenize` which roundtrips."
 
 [[package]]
-name = "toml"
-version = "0.10.2"
-requires_python = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-summary = "Python Library for Tom's Obvious, Minimal Language"
-
-[[package]]
 name = "tomli"
 version = "2.0.1"
 requires_python = ">=3.7"
@@ -1159,18 +1111,6 @@ version = "0.7.0"
 summary = "Bidirectional UTM-WGS84 converter for python"
 
 [[package]]
-name = "virtualenv"
-version = "20.14.1"
-requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
-summary = "Virtual Python Environment builder"
-dependencies = [
-    "distlib<1,>=0.3.1",
-    "filelock<4,>=3.2",
-    "platformdirs<3,>=2",
-    "six<2,>=1.9.0",
-]
-
-[[package]]
 name = "wcwidth"
 version = "0.2.5"
 summary = "Measures the displayed width of unicode strings in a terminal"
@@ -1215,7 +1155,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a664746b2472"
+content_hash = "sha256:1e04b761ad6d2aad9ff15aea5421fae4cd6b7acb5f0abecaa58f0a09104505be"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -1358,10 +1298,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
     {file = "cffi-1.15.0-cp39-cp39-win_amd64.whl", hash = "sha256:3773c4d81e6e818df2efbc7dd77325ca0dcb688116050fb2b3011218eda36139"},
     {file = "cffi-1.15.0.tar.gz", hash = "sha256:920f0d66a896c2d99f0adbb391f990a84091179542c205fa53ce5787aff87954"},
 ]
-"cfgv 3.3.1" = [
-    {file = "cfgv-3.3.1-py2.py3-none-any.whl", hash = "sha256:c6a0883f3917a037485059700b9e75da2464e6c27051014ad85ba6aaa5884426"},
-    {file = "cfgv-3.3.1.tar.gz", hash = "sha256:f5a830efb9ce7a445376bb66ec94c638a9787422f96264c98edc6bdeed8ab736"},
-]
 "charset-normalizer 2.0.12" = [
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
     {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
@@ -1461,10 +1397,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
     {file = "dill-0.3.4-py2.py3-none-any.whl", hash = "sha256:7e40e4a70304fd9ceab3535d36e58791d9c4a776b38ec7f7ec9afc8d3dca4d4f"},
     {file = "dill-0.3.4.zip", hash = "sha256:9f9734205146b2b353ab3fec9af0070237b6ddae78452af83d2fca84d739e675"},
 ]
-"distlib 0.3.4" = [
-    {file = "distlib-0.3.4-py2.py3-none-any.whl", hash = "sha256:6564fe0a8f51e734df6333d08b8b94d4ea8ee6b99b5ed50613f731fd4089f34b"},
-    {file = "distlib-0.3.4.zip", hash = "sha256:e4b58818180336dc9c529bfb9a0b58728ffc09ad92027a3f30b7cd91e3458579"},
-]
 "docstring-parser 0.14.1" = [
     {file = "docstring_parser-0.14.1-py3-none-any.whl", hash = "sha256:14ac6ec1f1ba6905c4d8cb90fd0bc55394f5678183752c90e44812bf28d7a515"},
     {file = "docstring_parser-0.14.1.tar.gz", hash = "sha256:2c77522e31b7c88b1ab457a1f3c9ae38947ad719732260ba77ee8a3deb58622a"},
@@ -1480,10 +1412,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
 "fastjsonschema 2.15.3" = [
     {file = "fastjsonschema-2.15.3-py3-none-any.whl", hash = "sha256:ddb0b1d8243e6e3abb822bd14e447a89f4ab7439342912d590444831fa00b6a0"},
     {file = "fastjsonschema-2.15.3.tar.gz", hash = "sha256:0a572f0836962d844c1fc435e200b2e4f4677e4e6611a2e3bdd01ba697c275ec"},
-]
-"filelock 3.6.0" = [
-    {file = "filelock-3.6.0-py3-none-any.whl", hash = "sha256:f8314284bfffbdcfa0ff3d7992b023d4c628ced6feb957351d4c48d059f56bc0"},
-    {file = "filelock-3.6.0.tar.gz", hash = "sha256:9cd540a9352e432c7246a48fe4e8712b10acb1df2ad1f30e8c070b82ae1fed85"},
 ]
 "fiona 1.8.21" = [
     {file = "Fiona-1.8.21-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:39c656421e25b4d0d73d0b6acdcbf9848e71f3d9b74f44c27d2d516d463409ae"},
@@ -1505,10 +1433,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
 "geopandas 0.10.2" = [
     {file = "geopandas-0.10.2-py2.py3-none-any.whl", hash = "sha256:1722853464441b603d9be3d35baf8bde43831424a891e82a8545eb8997b65d6c"},
     {file = "geopandas-0.10.2.tar.gz", hash = "sha256:efbf47e70732e25c3727222019c92b39b2e0a66ebe4fe379fbe1aa43a2a871db"},
-]
-"identify 2.5.0" = [
-    {file = "identify-2.5.0-py2.py3-none-any.whl", hash = "sha256:3acfe15a96e4272b4ec5662ee3e231ceba976ef63fd9980ed2ce9cc415df393f"},
-    {file = "identify-2.5.0.tar.gz", hash = "sha256:c83af514ea50bf2be2c4a3f2fb349442b59dc87284558ae9ff54191bff3541d2"},
 ]
 "idna 3.3" = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
@@ -1854,10 +1778,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
     {file = "networkx-2.8-py3-none-any.whl", hash = "sha256:1a1e8fe052cc1b4e0339b998f6795099562a264a13a5af7a32cad45ab9d4e126"},
     {file = "networkx-2.8.tar.gz", hash = "sha256:4a52cf66aed221955420e11b3e2e05ca44196b4829aab9576d4d439212b0a14f"},
 ]
-"nodeenv 1.6.0" = [
-    {file = "nodeenv-1.6.0-py2.py3-none-any.whl", hash = "sha256:621e6b7076565ddcacd2db0294c0381e01fd28945ab36bcf00f41c5daf63bef7"},
-    {file = "nodeenv-1.6.0.tar.gz", hash = "sha256:3ef13ff90291ba2a4a7a4ff9a979b63ffdd00a464dbe04acf0ea6471517a4c2b"},
-]
 "notebook 6.4.11" = [
     {file = "notebook-6.4.11-py3-none-any.whl", hash = "sha256:b4a6baf2eba21ce67a0ca11a793d1781b06b8078f34d06c710742e55f3eee505"},
     {file = "notebook-6.4.11.tar.gz", hash = "sha256:709b1856a564fe53054796c80e17a67262071c86bfbdfa6b96aaa346113c555a"},
@@ -2024,10 +1944,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
 "pluggy 1.0.0" = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
-]
-"pre-commit 2.19.0" = [
-    {file = "pre_commit-2.19.0-py2.py3-none-any.whl", hash = "sha256:10c62741aa5704faea2ad69cb550ca78082efe5697d6f04e5710c3c229afdd10"},
-    {file = "pre_commit-2.19.0.tar.gz", hash = "sha256:4233a1e38621c87d9dda9808c6606d7e7ba0e087cd56d3fe03202a01d2919615"},
 ]
 "prometheus-client 0.14.1" = [
     {file = "prometheus_client-0.14.1-py3-none-any.whl", hash = "sha256:522fded625282822a89e2773452f42df14b5a8e84a86433e3f8a189c1d54dc01"},
@@ -2489,10 +2405,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
     {file = "tokenize_rt-4.2.1-py2.py3-none-any.whl", hash = "sha256:08a27fa032a81cf45e8858d0ac706004fcd523e8463415ddf1442be38e204ea8"},
     {file = "tokenize_rt-4.2.1.tar.gz", hash = "sha256:0d4f69026fed520f8a1e0103aa36c406ef4661417f20ca643f913e33531b3b94"},
 ]
-"toml 0.10.2" = [
-    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
-    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
-]
 "tomli 2.0.1" = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
@@ -2566,10 +2478,6 @@ content_hash = "sha256:d67d4d36b7d3a944f8bda1f5cb026b9bb5388972d664b6cd9d28a6647
 ]
 "utm 0.7.0" = [
     {file = "utm-0.7.0.tar.gz", hash = "sha256:3c9a3650e98bb6eecec535418d0dfd4db8f88c8ceaca112a0ff0787e116566e2"},
-]
-"virtualenv 20.14.1" = [
-    {file = "virtualenv-20.14.1-py2.py3-none-any.whl", hash = "sha256:e617f16e25b42eb4f6e74096b9c9e37713cf10bf30168fb4a739f3fa8f898a3a"},
-    {file = "virtualenv-20.14.1.tar.gz", hash = "sha256:ef589a79795589aada0c1c5b319486797c03b67ac3984c48c669c0e4f50df3a5"},
 ]
 "wcwidth 0.2.5" = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},

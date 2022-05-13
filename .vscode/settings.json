@@ -1,5 +1,0 @@
-{
-  "terminal.integrated.env.osx": {
-    "PYTHONPATH": "${env:PROJ_DIR}__pypackages__/3.9/lib:${env:PYTHONPATH}"
-  },
-}

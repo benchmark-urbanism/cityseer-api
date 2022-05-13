@@ -160,6 +160,7 @@ module = [
     "numba.typed",
     "numba_progress",
     "numpy",
+    "numpy.typing",
     "osmnx",
     "pandas",
     "pytest",
@@ -237,7 +238,7 @@ typechecks = "mypy --config-file=pyproject.toml"
 linting = "pylint --rcfile=pyproject.toml ./cityseer"
 tests = "pytest ./tests"
 # coverage can't trace jitted files
-coverage_run = "coverage run -m pytest ./tests"
+coverage_run = "coverage run pytest"
 coverage_report = { shell = "coverage report --show-missing --skip-empty && coverage lcov" }
 build = { shell = "pdm run formatting && pdm run typechecks && pdm run linting && pdm run tests && python -m build" }
 publish = { shell = "pdm run build && pdm run build_docs && pdm publish -u shongololo -v" }
