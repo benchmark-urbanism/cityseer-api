@@ -1,0 +1,12 @@
+exclude .*
+exclude build
+include cityseer
+exclude *.egg-info
+exclude demos
+exclude docs
+include tests
+exclude coverage.lcov
+include LICENSE.txt
+exclude *pdm*
+include pyproject.toml
+include README.md

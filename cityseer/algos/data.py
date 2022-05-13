@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from numba import njit, prange
+from numba import njit, prange  # type: ignore
 from numba.typed import Dict  # pylint: disable=no-name-in-module
 
 from cityseer import config
