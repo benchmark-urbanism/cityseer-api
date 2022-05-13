@@ -71,7 +71,7 @@ documentation = "https://cityseer.benchmarkurbanism.com/"
 repository = "https://github.com/benchmark-urbanism/cityseer-api"
 
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -132,6 +132,7 @@ max-line-length = 120
 [tool.pylint.logging]
 logging_format_style = "new"
 
+# TODO: warn_unused_ignores is false now as workaround for spurious "Module "numba" has no attribute "njit""
 [tool.mypy]
 plugins = ["numpy.typing.mypy_plugin"]
 files = ["cityseer", "demos", "tests"]
@@ -141,7 +142,7 @@ explicit_package_bases = true
 python_version = "3.9"
 strict_optional = false
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_no_return = true
 warn_return_any = true
 warn_unreachable = true
@@ -157,6 +158,8 @@ module = [
     "numba.core",
     "numba.typed",
     "numba_progress",
+    "numpy",
+    "numpy.typing",
     "osmnx",
     "pandas",
     "pytest",

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib as mpl
@@ -69,7 +71,7 @@ def plot_scatter(
     s_exp=1,
     cmap=None,
     rasterized=True,
-    **kwargs
+    **kwargs,
 ):
     """ """
     if vals is not None and vals.ndim == 2:
@@ -83,7 +85,7 @@ def plot_scatter(
     else:
         x_left, x_right, y_bottom, y_top = _dynamic_view_extent(fig, ax, km_per_inch, centre=centre)
     select_idx = _view_idx(xs, ys, x_left, x_right, y_bottom, y_top)
-    if "c" in kwargs and isinstance(kwargs["c"], (list | tuple | np.ndarray)):
+    if "c" in kwargs and isinstance(kwargs["c"], (list, tuple, np.ndarray)):
         c = np.array(kwargs["c"])
         kwargs["c"] = c[select_idx]
     elif "c" in kwargs and isinstance(kwargs["c"], str):
@@ -93,8 +95,8 @@ def plot_scatter(
         # apply exponential - still [0, 1]
         c = v**c_exp
         kwargs["c"] = c[select_idx]
-    if "s" in kwargs and isinstance(kwargs["s"], (list | tuple | np.ndarray)):
-        s = np.array(kwargs["s"])
+    if "s" in kwargs and isinstance(kwargs["c"], (list, tuple, np.ndarray)):
+        s = np.array(kwargs["c"])
         kwargs["s"] = s[select_idx]
     elif vals is not None:
         v = _prepare_v(vals)
