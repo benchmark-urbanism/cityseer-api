@@ -29,7 +29,7 @@ plt.tight_layout()
 
 
 class ColourMap:  # pylint: disable=too-few-public-methods
-    """global colour presets"""
+    """Specifies global colour presets."""
 
     primary: str = "#0091ea"
     accent: str = "#64c1ff"
@@ -520,9 +520,12 @@ def plot_graph_maps(  # noqa
     poly: geometry.Polygon | None = None,
 ):
     """
-    Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending
-    short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular
-    algorithms during the software development cycle.
+    Plot a graph from raw `cityseer` data structures.
+
+    :::note
+    Note that this function is subject to frequent revision pending short-term development requirements. It is used
+    mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
+    :::
 
     Parameters
     ----------
@@ -534,6 +537,7 @@ def plot_graph_maps(  # noqa
         An optional data map. Defaults to None.
     poly
         An optional polygon. Defaults to None.
+
     """
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges

@@ -46,14 +46,13 @@ def _view_idx(xs, ys, x_left, x_right, y_bottom, y_top):
 
 
 def _prepare_v(vals):
-    """ """
     # don't reshape distribution: emphasise larger values if necessary using exponential
     # i.e. amplify existing distribution rather than using a reshaped normal or uniform distribution
     # clip out outliers
-    v = np.clip(vals, np.nanpercentile(vals, 0.1), np.nanpercentile(vals, 99.9))
+    vals = np.clip(vals, np.nanpercentile(vals, 0.1), np.nanpercentile(vals, 99.9))
     # scale colours to [0, 1]
-    v = minmax_scale(v, feature_range=(0, 1))
-    return v
+    vals = minmax_scale(vals, feature_range=(0, 1))
+    return vals
 
 
 def plot_scatter(

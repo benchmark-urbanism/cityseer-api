@@ -1,8 +1,8 @@
 """
-Functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from
-`cityseer` data structures.
+Convenience functions for the preparation and conversion of `networkX` graphs to and from `cityseer` data structures.
 
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
+
 """
 from __future__ import annotations
 
@@ -27,8 +27,10 @@ logger = logging.getLogger(__name__)
 
 def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes.
-    The edge geometry will be stored to the edge `geom` attribute.
+    Generate straight-line geometries for each edge.
+
+    Prepares "simple" straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant
+    edge geometry will be stored to the edge `geom` attribute.
 
     Parameters
     ----------
@@ -85,7 +87,7 @@ def _add_node(
     live: bool | None = None,
 ) -> str | None:
     """
-    Adds a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
+    Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
     """
     # suggest a name based on the given names
     if len(node_names) == 1:
@@ -134,7 +136,7 @@ def _add_node(
 
 def nx_from_osm(osm_json: str) -> nx.MultiGraph:
     """
-    Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+    Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
 
     Parameters
     ----------
@@ -165,6 +167,8 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
 
 def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int = None) -> nx.MultiGraph:
     """
+    Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
+
     Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
     local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
     will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
@@ -185,6 +189,7 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int = None) -
     nx.MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
          `geom` attributes are present, these will also be converted.
+
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
@@ -240,8 +245,7 @@ def nx_remove_dangling_nodes(
     remove_disconnected: bool = True,
 ) -> nx.MultiGraph:
     """
-    Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network
-    datasets.
+    Remove disconnected components and optionally removes short dead-end street stubs.
 
     Parameters
     ----------
@@ -260,6 +264,7 @@ def nx_remove_dangling_nodes(
     nx.MultiGraph
         A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
          the `despine` parameter distance.
+
     """
     logger.info("Removing dangling nodes.")
     g_multi_copy = nx_multigraph.copy()
@@ -333,9 +338,11 @@ def _align_linestring_coords(
     tolerance=0.5,
 ) -> list:
     """
-    Aligns a LineString's coordinate order to either start or end at the x_y coordinate within a given tolerance.
+    Align a LineString's coordinate order to either start or end at a specified x_y coordinate within a given tolerance.
+
     If reverse=False the coordinate order will be aligned to start from the given x_y coordinate.
     If reverse=True the coordinate order will be aligned to end at the given x_y coordinate.
+
     """
     # check types
     if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
@@ -365,10 +372,13 @@ def _weld_linestring_coords(
     tolerance=config.ATOL,
 ) -> list[list[float]]:
     """
-    Takes two geometries, finds a matching start / end point combination and merges the coordinates accordingly.
-    If the optional force_xy is provided then the weld will be performed at the x_y end of the LineStrings.
-    The force_xy parameter is useful for looping geometries or overlapping geometries where it can happen that
-    welding works from either of the two ends, thus potentially mis-aligning the start point unless explicit.
+    Welds two linestrings.
+
+    Finds a matching start / end point combination and merges the coordinates accordingly. If the optional force_xy is
+    provided then the weld will be performed at the x_y end of the LineStrings. The force_xy parameter is useful for
+    looping geometries or overlapping geometries where it can happen that welding works from either of the two ends,
+    thus potentially mis-aligning the start point unless explicit.
+
     """
     # check types
     for line_coords in [linestring_coords_a, linestring_coords_b]:
@@ -425,8 +435,12 @@ def _weld_linestring_coords(
 
 def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge.
-    The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
+    Remove nodes of degree=2.
+
+    Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently
+    found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology
+    point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new
+    spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
 
     :::note
     Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
@@ -447,6 +461,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     nx.MultiGraph
         A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new
         edge with associated `geom` attributes spliced together.
+
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
@@ -580,11 +595,14 @@ def _squash_adjacent(
     cent_min_len_factor: float | None = None,
 ) -> nx.MultiGraph:
     """
-    Squashes nodes from the node group down to a new node. The new node can either be based on:
+    Squash nodes from a specified node group down to a new node.
+
+    The new node can either be based on:
     - The centroid of all nodes;
     - Else, all nodes of degree greater or equal to cent_min_degree;
     - Else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the node with
       the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
@@ -718,12 +736,14 @@ def _merge_parallel_edges(
     multi_edge_min_len: float,
 ) -> nx.MultiGraph:
     """
-    Checks a MultiGraph for duplicate edges, which are then consolidated.
+    Check a MultiGraph for duplicate edges; which, if found, will be consolidated.
+
     If merge_edges_by_midline is False, then the shortest of the edges is used and the others are simply dropped.
     If merge_edges_by_midline is True, then the duplicates are replaced with a new edge following the merged centreline.
     In cases where one line is significantly longer than another (e.g. a crescent streets),
     then the longer edge is retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest
     length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless.
+
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
@@ -793,7 +813,7 @@ def _merge_parallel_edges(
 
 def _create_nodes_strtree(nx_multigraph: nx.MultiGraph) -> strtree.STRtree:
     """
-    Creates a nodes-based STRtree spatial index.
+    Create a nodes-based STRtree spatial index.
     """
     point_geoms = []
     for nd_key, node_data in nx_multigraph.nodes(data=True):
@@ -814,7 +834,7 @@ def _create_nodes_strtree(nx_multigraph: nx.MultiGraph) -> strtree.STRtree:
 
 def _create_edges_strtree(nx_multigraph: nx.MultiGraph) -> strtree.STRtree:
     """
-    Creates an edges-based STRtree spatial index.
+    Create an edges-based STRtree spatial index.
     """
     lines = []
     for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):
@@ -844,8 +864,10 @@ def nx_consolidate_nodes(
     multi_edge_min_len: float = 100,
 ) -> nx.MultiGraph:
     """
-    Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over
-    the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
+    Consolidates nodes if they are within a buffer distance of each other.
+
+    Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The
+    algorithm proceeds in two steps:
 
     Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
     edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
@@ -913,6 +935,7 @@ def nx_consolidate_nodes(
 
     ![Example cleaned graph](/images/graph_cleaning_5.png)
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
+
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
@@ -1015,8 +1038,10 @@ def nx_split_opposing_geoms(
     multi_edge_min_len: float = 100,
 ) -> nx.MultiGraph:
     """
-    Projects nodes to pierce opposing edges within a buffer distance. The pierced nodes facilitate subsequent
-    merging for scenarios such as divided boulevards.
+    Split edges opposite nodes on parallel edge segments if within a buffer distance.
+
+    This facilitates merging parallel roadways through subsequent use of
+    [`nx_consolidate_nodes`](#nx_consolidate_nodes).
 
     Parameters
     ----------
@@ -1039,6 +1064,7 @@ def nx_split_opposing_geoms(
     -------
     nx.MultiGraph
         A `networkX` `MultiGraph` with consolidated nodes.
+
     """
 
     def make_edge_key(start_nd_key, end_nd_key, edge_idx):
@@ -1050,8 +1076,7 @@ def nx_split_opposing_geoms(
     # recursive function for retrieving nested layers of successively replaced edges
     def recurse_child_keys(start_nd_key, end_nd_key, edge_idx, geom, current_edges):
         """
-        Checks if an edge has been replaced by children, if so, use children instead.
-        Children may also have children, so recurse downwards.
+        Recursively checks if an edge has been replaced by children, if so, use children instead.
         """
         edge_key = make_edge_key(start_nd_key, end_nd_key, edge_idx)
         # if an edge does not have children, add to current_edges and return
@@ -1197,9 +1222,10 @@ def nx_split_opposing_geoms(
 
 def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.MultiGraph:
     """
-    Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular
-    representation of potential variations along street lengths, while reducing network centrality side-effects that
-    arise as a consequence of varied node densities.
+    Decomposes a graph so that no edge is longer than a set maximum.
+
+    Decomposition provides a more granular representation of potential variations along street lengths, while reducing
+    network centrality side-effects that arise as a consequence of varied node densities.
 
     :::note
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
@@ -1325,9 +1351,11 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
 
 def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the
-    dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom`
-    attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
+    Convert a primal graph representation to the dual representation.
+
+    Primal graphs represent intersections as nodes and streets as edges. This method will invert this representation
+    so that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to
+    adjacent edges and split into the new dual edge `geom` attributes.
 
     :::note
     Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
@@ -1368,7 +1396,6 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
-
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting graph to dual.")
@@ -1376,7 +1403,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     def get_half_geoms(nx_multigraph_ref, a_node, b_node, edge_k):
         """
-        For splitting and orienting half geoms
+        Split geom and orient half-geoms.
         """
         # get edge data
         edge_data = nx_multigraph_ref[a_node][b_node][edge_k]
@@ -1501,8 +1528,10 @@ def graph_maps_from_nx(
     nx_multigraph: nx.MultiGraph,
 ) -> tuple[tuple, npt.NDArray[np.float32], npt.NDArray[np.float32], Dict]:
     """
-    Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and
-    angle attributes, as well as in and out bearings and stores these in the returned data maps.
+    Transpose a `networkX` `MultiGraph` into `numpy` arrays for use by `cityseer` `NetworkLayer` classes.
+
+    Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
+    data maps.
 
     :::warning
     It is generally not necessary to use this function directly. This function will be called internally when invoking
@@ -1548,8 +1577,8 @@ def graph_maps_from_nx(
     node_edge_map
         A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
         indices for each node.
-    """
 
+    """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
@@ -1684,8 +1713,10 @@ def nx_from_graph_maps(
     metrics_dict: dict | None = None,
 ) -> nx.MultiGraph:
     """
-    Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing
-    graph is provided as an argument to the `nx_multigraph` parameter.
+    Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
+
+    This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the
+    `nx_multigraph` parameter.
 
     :::warning
     It is generally not necessary to use this function directly. This function will be called internally when invoking
@@ -1741,6 +1772,7 @@ def nx_from_graph_maps(
         `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data`
         to the graph edges. If a `metrics_dict` is provided, all data will be copied to the graph nodes based on
         matching node identifiers.
+
     """
     logger.info("Populating node and edge map data to a networkX graph.")
     if nx_multigraph is not None:
@@ -1837,9 +1869,10 @@ def nx_from_osm_nx(
     tolerance: float = config.ATOL,
 ) -> nx.MultiGraph:
     """
-    Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible
-    `MultiGraph`. See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on
-    workflows combining `OSMnx` with `cityseer`.
+    Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
+
+    See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on workflows
+    combining `OSMnx` with `cityseer`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge
     attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end
@@ -1877,6 +1910,7 @@ def nx_from_osm_nx(
     -------
     nx.MultiGraph
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
+
     """
     if not isinstance(nx_multidigraph, nx.MultiDiGraph):
         raise TypeError("This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.")

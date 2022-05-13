@@ -10,7 +10,7 @@ from cityseer import config
 
 @njit(cache=True, fastmath=config.FASTMATH)
 def check_numerical_data(data_arr: npt.NDArray[np.float32]):
-    """Checks the integrity of numeric data arrays."""
+    """Check the integrity of numeric data arrays."""
     if not data_arr.ndim == 2:
         raise ValueError(
             "The numeric data array must have a dimensionality 2, "
@@ -23,7 +23,7 @@ def check_numerical_data(data_arr: npt.NDArray[np.float32]):
 
 @njit(cache=True, fastmath=config.FASTMATH)
 def check_categorical_data(data_arr: npt.NDArray[np.float32]):
-    """Checks the integrity of categoric data arrays."""
+    """Check the integrity of categoric data arrays."""
     for cat in data_arr:
         if not np.isfinite(float(cat)) or not cat >= 0:
             raise ValueError("Data map contains points with missing data classes.")
@@ -34,7 +34,7 @@ def check_categorical_data(data_arr: npt.NDArray[np.float32]):
 @njit(cache=True, fastmath=config.FASTMATH)
 def check_data_map(data_map: npt.NDArray[np.float32], check_assigned=True):
     """
-    Checks the integrity of data maps.
+    Check the integrity of data maps.
 
     Notes
     -----
@@ -66,7 +66,7 @@ def check_data_map(data_map: npt.NDArray[np.float32], check_assigned=True):
 @njit(cache=True, fastmath=config.FASTMATH)
 def check_network_maps(node_data: npt.NDArray[np.float32], edge_data: npt.NDArray[np.float32], node_edge_map: Dict):
     """
-    Checks the integrity of network maps.
+    Check the integrity of network maps.
 
     NODE MAP:
     0 - x
@@ -128,7 +128,7 @@ def check_network_maps(node_data: npt.NDArray[np.float32], edge_data: npt.NDArra
 
 @njit(cache=True, fastmath=config.FASTMATH)
 def check_distances_and_betas(distances: npt.NDArray[np.float32], betas: npt.NDArray[np.float32]):
-    """Checks integrity across distances and betas."""
+    """Check integrity across distances and betas."""
     if len(distances) == 0:
         raise ValueError("No distances provided.")
     if len(betas) == 0:
