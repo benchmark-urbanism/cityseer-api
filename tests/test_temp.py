@@ -1,5 +1,6 @@
 import numpy as np
 
+from cityseer.algos import structures
 from cityseer.tools import graphs
 
 
@@ -15,4 +16,5 @@ def test_network_structure_from_nx(diamond_graph):
         for n in G.nodes():
             G.nodes[n]["live"] = bool(np.random.randint(0, 1))
         # generate test maps
+        structures.NodeMap(10)
         network_structure = graphs.network_structure_from_nx(G)

@@ -1598,6 +1598,7 @@ def network_structure_from_nx(
     for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
         # don't cast to string because otherwise correspondence between original and round-trip graph indices is lost
         node_idx: int = nd_key
+        # TODO: string vs unknown types...
         label: str = node_data["label"]
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')

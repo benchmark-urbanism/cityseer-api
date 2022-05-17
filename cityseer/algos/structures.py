@@ -42,8 +42,8 @@ class TreeMap:
 
 node_map_spec: list[tuple[str, Any]] = [
     ("nodes_n", types.int_),
-    ("x", types.float_[:]),
-    ("y", types.float_[:]),
+    ("x", types.float32[:]),
+    ("y", types.float32[:]),
     ("live", types.bool_[:]),
 ]
 
@@ -52,14 +52,14 @@ node_map_spec: list[tuple[str, Any]] = [
 class NodeMap:
     """Node Map for network."""
 
-    x: npt.NDArray[np.float_]
-    y: npt.NDArray[np.float_]
+    x: npt.NDArray[np.float32]
+    y: npt.NDArray[np.float32]
     live: npt.NDArray[np.bool_]
 
     def __init__(self, nodes_n: int):
         """Instance NodeMap."""
-        self.x = np.full(nodes_n, np.nan, dtype=np.float_)
-        self.y = np.full(nodes_n, np.nan, dtype=np.float_)
+        self.x = np.full(nodes_n, np.nan, dtype=np.float32)
+        self.y = np.full(nodes_n, np.nan, dtype=np.float32)
         self.live = np.full(nodes_n, False, dtype=np.bool_)
 
 
@@ -104,10 +104,10 @@ network_spec: list[tuple[str, Any]] = [
     ("edges_n", types.int_),
     # set_node
     ("node_idx", types.int_),
-    ("label", types.unicode_type),
-    ("x", types.float_),
-    ("y", types.float_),
-    ("live", types.bool_),
+    ("node_label", types.unicode_type),
+    ("node_x", types.float32),
+    ("node_y", types.float32),
+    ("node_live", types.bool_),
     # set_edge
     ("root_node_idx", types.int_),
     ("start", types.int_),
@@ -118,17 +118,17 @@ network_spec: list[tuple[str, Any]] = [
     ("in_bearing", types.float32),
     ("out_bearing", types.float32),
     # attributes
-    ("node_uids", types.uchar[:]),
+    ("node_uids", types.ListType(types.unicode_type)),
     ("node_edge_map", types.DictType(types.int64, types.ListType(types.int64))),
     ("next_edge_idx", types.int_),
 ]
 
 
-# @jitclass(network_spec)
+@jitclass(network_spec)
 class NetworkStructure:
     """Network with nodes, edges, node_edge_map."""
 
-    node_uids: npt.NDArray[np.str_]
+    node_uids: list[str]
     nodes: NodeMap
     edges: EdgeMap
     node_edge_map: dict[int, list[int]]
@@ -136,23 +136,24 @@ class NetworkStructure:
 
     def __init__(self, nodes_n: int, edges_n: int):
         """Instance Network."""
-        self.node_uids = np.full(nodes_n, "", dtype=np.unicode_)
+        self.node_uids = List.empty_list(types.unicode_type)
         self.nodes = NodeMap(nodes_n)
         self.edges = EdgeMap(edges_n)
-        self.node_edge_map = Dict.empty(key_type=types.int64, value_type=types.List(types.int64))
+        self.node_edge_map = Dict.empty(types.int64, List.empty_list(types.int64))
         self.next_edge_idx = 0
 
-    def set_node(self, node_idx: int, label: str, x: float, y: float, live: bool):
+    def set_node(self, node_idx: int, node_label: str, node_x: float, node_y: float, node_live: bool):
         """Add a node to the network."""
-        self.node_uids[node_idx] = label
-        self.nodes.x[node_idx] = x
-        self.nodes.y[node_idx] = y
-        self.nodes.live[node_idx] = live
+        self.node_uids.append(node_label)
+        self.nodes.x[node_idx] = node_x
+        self.nodes.y[node_idx] = node_y
+        self.nodes.live[node_idx] = node_live
         self.node_edge_map[node_idx] = List.empty_list(types.int64)  # type: ignore
 
     def set_edge(
         self,
         root_node_idx: int,
+        edge_idx: int,
         start: int,
         end: int,
         length: float,
@@ -162,12 +163,11 @@ class NetworkStructure:
         out_bearing: float,
     ):
         """Add an edge to the network."""
-        self.node_edge_map[root_node_idx].append(self.next_edge_idx)
-        self.edges.start[self.next_edge_idx] = start
-        self.edges.end[self.next_edge_idx] = end
-        self.edges.length[self.next_edge_idx] = length
-        self.edges.angular[self.next_edge_idx] = angular
-        self.edges.impedance[self.next_edge_idx] = impedance
-        self.edges.in_bearing[self.next_edge_idx] = in_bearing
-        self.edges.out_bearing[self.next_edge_idx] = out_bearing
-        self.next_edge_idx += 1
+        self.node_edge_map[root_node_idx].append(edge_idx)  # type: ignore
+        self.edges.start[edge_idx] = start
+        self.edges.end[edge_idx] = end
+        self.edges.length[edge_idx] = length
+        self.edges.angular[edge_idx] = angular
+        self.edges.impedance[edge_idx] = impedance
+        self.edges.in_bearing[edge_idx] = in_bearing
+        self.edges.out_bearing[edge_idx] = out_bearing
