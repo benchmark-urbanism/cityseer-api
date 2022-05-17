@@ -71,7 +71,7 @@ def test_check_data_map(primal_graph):
 
 def test_check_network_maps(primal_graph):
     # network maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # catch zero length node and edge arrays
     empty_node_arr = np.full((0, 5), np.nan)
     with pytest.raises(ValueError):

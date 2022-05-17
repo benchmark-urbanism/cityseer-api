@@ -70,7 +70,7 @@ def test_beta_from_distance():
 
 def test_Network_Layer(primal_graph):
     # manual graph maps for comparison
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
     betas = [0.02, 0.005]
@@ -141,7 +141,7 @@ def test_Network_Layer(primal_graph):
 
 
 def test_Network_Layer_From_nx(primal_graph):
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
     betas = np.array([0.04, 0.02])

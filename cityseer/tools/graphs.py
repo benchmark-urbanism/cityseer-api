@@ -13,13 +13,11 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import utm
-from numba.core import types
-from numba.typed import Dict
 from shapely import coords, geometry, ops, strtree
 from tqdm.auto import tqdm
 
 from cityseer import config
-from cityseer.algos import checks
+from cityseer.algos import checks, structures
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,7 +79,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 def _add_node(
     nx_multigraph: nx.MultiGraph,
-    node_names: list | tuple,
+    nodes_names: list | tuple,
     x: float,
     y: float,
     live: bool | None = None,
@@ -90,12 +88,12 @@ def _add_node(
     Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
     """
     # suggest a name based on the given names
-    if len(node_names) == 1:
-        new_nd_name = str(node_names[0])
+    if len(nodes_names) == 1:
+        new_nd_name = str(nodes_names[0])
     # if concatenating existing nodes, suggest a name based on a combination of existing names
     else:
         names = []
-        for name in node_names:
+        for name in nodes_names:
             name = str(name)
             if len(name) > 10:
                 name = f"{name[:5]}|{name[-5:]}"
@@ -1524,7 +1522,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     return g_dual
 
 
-def graph_maps_from_nx(
+def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph,
 ) -> tuple[tuple, npt.NDArray[np.float32], npt.NDArray[np.float32], Dict]:
     """
@@ -1592,48 +1590,29 @@ def graph_maps_from_nx(
             total_out_degrees += g_multi_copy.number_of_edges(nd_key, nb_nd_key)
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_multi_copy = nx.convert_node_labels_to_integers(g_multi_copy, 0)
-    # prepare the node and edge maps
-    node_keys = []
-    # float - for consistency - requires higher accuracy for x, y work
-    node_data_arr = np.full((g_multi_copy.number_of_nodes(), 3), np.nan, dtype=np.float32)
-    # float - allows for nan and inf - float32 should be ample...
-    edge_data = np.full((total_out_degrees, 7), np.nan, dtype=np.float32)
-    # nodes have a one-to-many mapping to edges
-    node_edge_map = Dict.empty(key_type=types.int64, value_type=types.int64[:])
-    edge_idx = 0
-    # populate the nodes
+    # prepare the network structure
+    nodes_n: int = g_multi_copy.number_of_nodes()
+    edges_n: int = total_out_degrees
+    network_structure: structures.NetworkStructure = structures.NetworkStructure(nodes_n, edges_n)
+    # generate the network information
     for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
-        # label
         # don't cast to string because otherwise correspondence between original and round-trip graph indices is lost
-        node_keys.append(node_data["label"])
-        # cast to int for indexing
-        node_idx = int(nd_key)
-        # NODE MAP INDEX POSITION 0 = x coordinate
+        node_idx: int = nd_key
+        label: str = node_data["label"]
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        node_data_arr[node_idx][0] = node_data["x"]
-        # NODE MAP INDEX POSITION 1 = y coordinate
+        x: float = node_data["x"]
         if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        node_data_arr[node_idx][1] = node_data["y"]
-        # NODE MAP INDEX POSITION 2 = live or not
-        if "live" in node_data:
-            node_data_arr[node_idx][2] = node_data["live"]
-        else:
-            node_data_arr[node_idx][2] = True
+        y: float = node_data["y"]
+        live: bool = "live" in node_data and node_data["live"]
+        network_structure.set_node(node_idx, label, x, y, live)
         # build edges
-        out_edges = []
         for nb_nd_key in g_multi_copy.neighbors(nd_key):
             # cast to int for indexing
             nb_idx = int(nb_nd_key)
+            # add the new edge index to the node's out edges
             for _nx_edge_idx, nx_edge_data in g_multi_copy[nd_key][nb_nd_key].items():
-                # add the new edge index to the node's out edges
-                out_edges.append(edge_idx)
-                # EDGE MAP INDEX POSITION 0 = start node
-                edge_data[edge_idx][0] = node_idx
-                # EDGE MAP INDEX POSITION 1 = end node
-                edge_data[edge_idx][1] = nb_idx
-                # EDGE MAP INDEX POSITION 2 = length
                 if not "geom" in nx_edge_data:
                     raise KeyError(
                         f'No edge geom found for edge {nd_key}-{nb_nd_key}: Please add an edge "geom" attribute '
@@ -1649,8 +1628,6 @@ def graph_maps_from_nx(
                 line_len = line_geom.length
                 if not np.isfinite(line_len) or line_len <= 0:
                     raise ValueError(f"Length {line_len} for edge {nd_key}-{nb_nd_key} must be finite and positive.")
-                edge_data[edge_idx][2] = line_len
-                # EDGE MAP INDEX POSITION 3 = angle_sum
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
                 s_x, s_y = node_data_arr[node_idx][:2]
@@ -1673,9 +1650,9 @@ def graph_maps_from_nx(
                     raise ValueError(
                         f"Angle sum {angle_sum} for edge {nd_key}-{nb_nd_key} must be finite and positive."
                     )
-                edge_data[edge_idx][3] = angle_sum
-                # EDGE MAP INDEX POSITION 4 = imp_factor
                 # if imp_factor is set explicitly, then use
+                # fallback imp_factor of 1
+                imp_factor: float = 1
                 if "imp_factor" in nx_edge_data:
                     # cannot have imp_factor less than zero (but == 0 is OK)
                     imp_factor = nx_edge_data["imp_factor"]
@@ -1684,24 +1661,21 @@ def graph_maps_from_nx(
                             f"Impedance factor: {imp_factor} for edge {nd_key}-{nb_nd_key} must be finite and positive "
                             "or positive infinity."
                         )
-                    edge_data[edge_idx][4] = imp_factor
-                else:
-                    # fallback imp_factor of 1
-                    edge_data[edge_idx][4] = 1
-                # EDGE MAP INDEX POSITION 5 - in bearing
-                x_1, y_1 = line_geom_coords[0][:2]
-                x_2, y_2 = line_geom_coords[1][:2]
-                edge_data[edge_idx][5] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                # EDGE MAP INDEX POSITION 6 - out bearing
-                x_1, y_1 = line_geom_coords[-2][:2]
-                x_2, y_2 = line_geom_coords[-1][:2]
-                edge_data[edge_idx][6] = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                # increment the edge_idx
-                edge_idx += 1
-        # add the node to the node_edge_map
-        node_edge_map[node_idx] = np.array(out_edges, dtype=np.int64)
+                # in bearing
+                x_1: float = line_geom_coords[0][0]
+                y_1: float = line_geom_coords[0][1]
+                x_2: float = line_geom_coords[1][0]
+                y_2: float = line_geom_coords[1][1]
+                in_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                # out bearing
+                x_1: float = line_geom_coords[-2][0]
+                y_1: float = line_geom_coords[-2][1]
+                x_2: float = line_geom_coords[-1][0]
+                y_2: float = line_geom_coords[-1][1]
+                out_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                network_structure.set_edge(node_idx, nb_idx, line_len, angle_sum, imp_factor, in_bearing, out_bearing)
 
-    return tuple(node_keys), node_data_arr, edge_data, node_edge_map
+    return network_structure
 
 
 def nx_from_graph_maps(

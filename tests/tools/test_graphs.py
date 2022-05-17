@@ -650,7 +650,7 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         assert G_dual.number_of_edges(s, e) == 1
 
 
-def test_graph_maps_from_nx(diamond_graph):
+def test_network_structure_from_nx(diamond_graph):
     # test maps vs. networkX
     G_test = diamond_graph.copy()
     G_test_dual = graphs.nx_to_dual(G_test)
@@ -658,9 +658,8 @@ def test_graph_maps_from_nx(diamond_graph):
         # set some random 'live' statuses
         for n in G.nodes():
             G.nodes[n]["live"] = bool(np.random.randint(0, 1))
-
         # generate test maps
-        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(G)
+        network_structure = graphs.network_structure_from_nx(G)
         # debug plot
         # plot.plot_graphs(primal=G)
         # plot.plot_graph_maps(node_uids, node_data, edge_data)
@@ -1036,14 +1035,14 @@ def test_graph_maps_from_nx(diamond_graph):
         del G_test[s][e][k]["geom"]
         break
     with pytest.raises(KeyError):
-        graphs.graph_maps_from_nx(G_test)
+        graphs.network_structure_from_nx(G_test)
 
     # check that non-LineString geoms throw an error
     G_test = diamond_graph.copy()
     for s, e, k in G_test.edges(keys=True):
         G_test[s][e][k]["geom"] = geometry.Point([G_test.nodes[s]["x"], G_test.nodes[s]["y"]])
     with pytest.raises(TypeError):
-        graphs.graph_maps_from_nx(G_test)
+        graphs.network_structure_from_nx(G_test)
 
     # check that missing node keys throw an error
     G_test = diamond_graph.copy()
@@ -1053,7 +1052,7 @@ def test_graph_maps_from_nx(diamond_graph):
             del G_test.nodes[n][k]
             break
         with pytest.raises(KeyError):
-            graphs.graph_maps_from_nx(G_test)
+            graphs.network_structure_from_nx(G_test)
 
     # check that invalid imp_factors are caught
     G_test = diamond_graph.copy()
@@ -1063,7 +1062,7 @@ def test_graph_maps_from_nx(diamond_graph):
             G_test[s][e][k]["imp_factor"] = corrupt_val
             break
         with pytest.raises(ValueError):
-            graphs.graph_maps_from_nx(G_test)
+            graphs.network_structure_from_nx(G_test)
 
 
 def test_nx_from_graph_maps(primal_graph):
@@ -1076,7 +1075,7 @@ def test_nx_from_graph_maps(primal_graph):
         primal_graph.nodes[n]["live"] = bool(np.random.randint(0, 1))
 
     # test directly from and to graph maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     G_round_trip = graphs.nx_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
@@ -1119,7 +1118,7 @@ def test_nx_from_graph_maps(primal_graph):
     # set live explicitly
     for n in G_decomposed.nodes():
         G_decomposed.nodes[n]["live"] = bool(np.random.randint(0, 1))
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nx(G_decomposed)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.network_structure_from_nx(G_decomposed)
 
     G_round_trip_d = graphs.nx_from_graph_maps(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
     assert list(G_round_trip_d.nodes) == list(G_decomposed.nodes)

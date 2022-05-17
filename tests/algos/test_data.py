@@ -35,7 +35,7 @@ def test_assign_to_network(primal_graph):
     primal_graph.remove_edge(15, 28)
     # G = graphs.nx_auto_edge_params(G)
     G = graphs.nx_decompose(primal_graph, 50)
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(G)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(G)
     # generate data
     data_dict = mock.mock_data_dict(G, random_seed=25)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
@@ -118,7 +118,7 @@ def test_assign_to_network(primal_graph):
 
 
 def test_aggregate_to_src_idx(primal_graph):
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # generate data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
@@ -207,7 +207,7 @@ def test_aggregate_to_src_idx(primal_graph):
 
 def test_aggregate_landuses_signatures(primal_graph):
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
@@ -333,7 +333,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
         node_data,
         edge_data,
         node_edge_map,
-    ) = graphs.graph_maps_from_nx(primal_graph)
+    ) = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
@@ -486,7 +486,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
         node_data_dual,
         edge_data_dual,
         node_edge_map_dual,
-    ) = graphs.graph_maps_from_nx(G_dual)
+    ) = graphs.network_structure_from_nx(G_dual)
     data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
     _data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
     data_map_dual = data.assign_to_network(data_map_dual, node_data_dual, edge_data_dual, node_edge_map_dual, 500)
@@ -534,7 +534,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
 
 def test_local_aggregator_numerical_components(primal_graph):
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)
