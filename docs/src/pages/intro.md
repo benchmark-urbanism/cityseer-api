@@ -167,9 +167,9 @@ The data is aggregated and computed over the street network relative to the `Net
 distance_idx = 800  # any of the initialised distances
 q_idx = 0  # q index: any of the invoked q parameters
 # centrality
-print('centrality keys:', list(N.metrics['centrality'].keys()))
-print('distance keys:', list(N.metrics['centrality']['segment_harmonic'].keys()))
-print(N.metrics['centrality']['segment_harmonic'][distance_idx][:4])
+print('centrality keys:', list(N.metrics.centrality.keys()))
+print('distance keys:', list(N.metrics.centrality['segment_harmonic'].keys()))
+print(N.metrics.centrality['segment_harmonic'][distance_idx][:4])
 # mixed-uses
 print('mixed-use keys:', list(N.metrics['mixed_uses'].keys()))
 # here we are indexing in to the specified q_idx, distance_idx
@@ -182,10 +182,10 @@ print('valuations weighted by 1600m decay:', N.metrics['stats']['valuations']['m
 G_metrics = N.to_nx_multigraph()
 print(nx.info(G_metrics))
 # the data arrays are unpacked accordingly
-print(G_metrics.nodes[0]['metrics']['centrality']['segment_betweenness'][200])
+print(G_metrics.nodes[0]['metrics'].centrality['segment_betweenness'][200])
 # and can also be extracted to a dictionary:
 G_dict = N.metrics_to_dict()
-print(G_dict[0]['centrality']['segment_betweenness'][200])
+print(G_dict[0].centrality['segment_betweenness'][200])
 ```
 
 The data can then be passed to data analysis or plotting methods. For example, the [`tools.plot`](/tools/plot/) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
@@ -196,7 +196,7 @@ from matplotlib import colors
 segment_harmonic_vals = []
 mixed_uses_vals = []
 for node, data in G_metrics.nodes(data=True):
-    segment_harmonic_vals.append(data['metrics']['centrality']['segment_harmonic'][800])
+    segment_harmonic_vals.append(data['metrics'].centrality['segment_harmonic'][800])
     mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
 # custom colourmap
 cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])

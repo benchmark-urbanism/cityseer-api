@@ -54,14 +54,14 @@ dev = [
     "yapper>=0.2.1",
     "setuptools-scm>=6.4.2",
     "jupyter>=1.0.0",
-    "mypy>=0.950",
     "pylint>=2.13.7",
     "black>=22.3.0",
     "isort>=5.10.1",
     "pydocstyle>=6.1.1",
-    "types-requests>=2.27.25",
     "jupyter-black>=0.3.1",
     "coverage>=6.3.2",
+    "pyright>=1.1.246",
+    "pandas-stubs>=1.2.0.58",
 ]
 
 [project.urls]
@@ -93,7 +93,9 @@ disable = [
     "too-many-arguments",
     "too-many-instance-attributes",
     "too-many-lines",
+    "too-few-public-methods",
     "missing-module-docstring",
+    "no-name-in-module",
     "pointless-string-statement",
     "logging-fstring-interpolation",
 ]
@@ -133,49 +135,17 @@ max-line-length = 120
 [tool.pylint.logging]
 logging_format_style = "new"
 
-# TODO: warn_unused_ignores is false now as workaround for spurious "Module "numba" has no attribute "njit""
-[tool.mypy]
-plugins = ["numpy.typing.mypy_plugin"]
-files = ["cityseer", "demos", "tests"]
-exclude = ["__pypackages__", "build", "docs"]
-namespace_packages = true
-explicit_package_bases = true
-python_version = "3.9"
-strict_optional = false
-warn_redundant_casts = true
-warn_unused_ignores = false
-warn_no_return = true
-warn_return_any = true
-warn_unreachable = true
-
-[[tool.mypy.overrides]]
-module = [
-    "matplotlib",
-    "matplotlib.pyplot",
-    "matplotlib.collections",
-    "matplotlib.colors",
-    "networkx",
-    "numba",
-    "numba.core",
-    "numba.typed",
-    "numba_progress",
-    "numpy",
-    "numpy.typing",
-    "osmnx",
-    "pandas",
-    "pytest",
-    "requests",
-    "scipy",
-    "scipy.stats",
-    "shapely",
-    "sklearn",
-    "sklearn.preprocessing",
-    "tensorflow",
-    "tensorflow.keras",
-    "tqdm.auto",
-    "utm",
-]
-ignore_missing_imports = true
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#sample-pyprojecttoml-file
+[tool.pyright]
+include = ["cityseer"]
+exclude = ["**/node_modules", "**/__pycache__", "**/__pypackages__"]
+typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
+stubPath = "cityseer/typings"
+reportUntypedFunctionDecorator = false
+reportUntypedClassDecorator = false
+reportUnknownMemberType = false
+reportMissingTypeStubs = true
 
 [tool.pydocstyle]
 # http://www.pydocstyle.org/en/stable/error_codes.html
@@ -234,7 +204,7 @@ docs_dev = { shell = "pdm run build_docs && pnpm --prefix ./docs dev" }
 docs_build = { shell = "pdm run build_docs && pnpm --prefix ./docs build" }
 docs_preview = { shell = "pdm run build_docs && pnpm --prefix ./docs preview" }
 formatting = { shell = "black --config=pyproject.toml ./ && isort --settings-file=pyproject.toml ./" }
-typechecks = "mypy --config-file=pyproject.toml"
+typechecks = "pyright"
 linting = "pylint --rcfile=pyproject.toml ./cityseer"
 tests = "pytest ./tests"
 # coverage can't trace jitted files

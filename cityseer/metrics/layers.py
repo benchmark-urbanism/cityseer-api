@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -11,13 +12,13 @@ from tqdm.auto import tqdm
 
 from cityseer import config
 from cityseer.algos import checks, data
-from cityseer.metrics import networks
+from cityseer.metrics import networks, typing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def dict_wgs_to_utm(data_dict: dict) -> dict:
+def dict_wgs_to_utm(data_dict: typing.DataDictType) -> typing.DataDictType:
     """
     Convert a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
 
@@ -84,34 +85,36 @@ def dict_wgs_to_utm(data_dict: dict) -> dict:
     ```
 
     """
-    if not isinstance(data_dict, dict):
+    if not isinstance(data_dict, dict):  # type: ignore
         raise TypeError("This method requires dictionary object.")
     logger.info("Converting data dictionary from WGS to UTM.")
-    data_dict_copy = data_dict.copy()
+    data_dict_copy: typing.DataDictType = data_dict.copy()
     logger.info("Processing node x, y coordinates.")
-    for key, val in tqdm(data_dict_copy.items(), disable=config.QUIET_MODE):
+    for key, val in tqdm(data_dict_copy.items(), disable=config.QUIET_MODE):  # type: ignore
         # x coordinate
         if "x" not in val:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {key}.')
-        lng = val["x"]
+        lng: float = val["x"]
         # y coordinate
         if "y" not in val:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at data dictionary key {key}.')
-        lat = val["y"]
+        lat: float = val["y"]
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
             raise AttributeError("x, y coordinates exceed WGS bounds. Please check your coordinate system.")
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng)[:2]
+        easting, northing = utm.from_latlon(lat, lng)[:2]  # type: ignore
         # write back to graph
-        data_dict_copy[key]["x"] = easting
-        data_dict_copy[key]["y"] = northing
+        data_dict_copy[key]["x"] = easting  # type: ignore
+        data_dict_copy[key]["y"] = northing  # type: ignore
 
     return data_dict_copy
 
 
-def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.NDArray[np.int64]]:
+def encode_categorical(
+    classes: list[str] | tuple[str] | npt.NDArray[np.str_],
+) -> tuple[tuple[str], npt.NDArray[np.int64]]:
     """
     Convert a list of land-use classes (or other categorical data) to encoded integers.
 
@@ -149,18 +152,19 @@ def encode_categorical(classes: list | tuple | npt.NDArray) -> tuple[tuple, npt.
     ```
 
     """
-    if not isinstance(classes, (list, tuple, np.ndarray)):
+    if not isinstance(classes, (list, tuple, np.ndarray)):  # type: ignore
         raise TypeError("This method requires an iterable object.")
     # use sklearn's label encoder
     lab_enc = LabelEncoder()
-    lab_enc.fit(classes)
+    lab_enc.fit(classes)  # type: ignore
     # map the int encodings to the respective classes
-    classes_int = lab_enc.transform(classes)
+    classes_str: tuple[str] = tuple(lab_enc.classes_)  # type: ignore
+    classes_int: npt.NDArray[int] = lab_enc.transform(classes)  # type: ignore
 
-    return tuple(lab_enc.classes_), classes_int
+    return classes_str, classes_int  # type: ignore
 
 
-def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]:
+def data_map_from_dict(data_dict: typing.DataDictType) -> tuple[tuple[str], npt.NDArray[np.float32]]:
     """
     Convert a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
@@ -207,22 +211,22 @@ def data_map_from_dict(data_dict: dict) -> tuple[tuple, npt.NDArray[np.float32]]
         [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
 
     """
-    if not isinstance(data_dict, dict):
+    if not isinstance(data_dict, dict):  # type: ignore
         raise TypeError("This method requires dictionary object.")
 
-    data_uids = []
-    data_map = np.full((len(data_dict), 4), np.nan)
+    data_uids: list[str] = []
+    data_map: npt.NDArray[np.float_] = np.full((len(data_dict), 4), np.nan)  # type: ignore
     for i, (key, val) in enumerate(data_dict.items()):
         # set key to data labels
         data_uids.append(key)
         # DATA MAP INDEX POSITION 0 = x coordinate
         if "x" not in val:
             raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
-        data_map[i][0] = val["x"]
+        data_map[i][0] = val["x"]  # type: ignore
         # DATA MAP INDEX POSITION 1 = y coordinate
         if "y" not in val:
             raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
-        data_map[i][1] = val["y"]
+        data_map[i][1] = val["y"]  # type: ignore
 
     return tuple(data_uids), data_map
 
@@ -246,7 +250,11 @@ class DataLayer:
 
     """
 
-    def __init__(self, data_uids: list | tuple, data_map: npt.NDArray[np.float32]):
+    _uids: tuple[str]  # original labels / indices for each data point
+    _data: npt.NDArray[np.float_]  # data map per above
+    _network_layer: networks.NetworkLayer | None  # pylint: disable=invalid-name
+
+    def __init__(self, data_uids: list[str] | tuple[str], data_map: npt.NDArray[np.float32]):
         """
         Initialise a DataLayer.
 
@@ -275,9 +283,9 @@ class DataLayer:
             Returns a `DataLayer`.
 
         """
-        self._uids: tuple = tuple(data_uids)  # original labels / indices for each data point
-        self._data: npt.NDArray = data_map  # data map per above
-        self._network_layer: networks.NetworkLayer | None = None  # pylint: disable=invalid-name
+        self._uids = tuple(data_uids)  # original labels / indices for each data point
+        self._data = data_map  # data map per above
+        self._network_layer = None  # pylint: disable=invalid-name
 
         # checks
         checks.check_data_map(self._data, check_assigned=False)
@@ -306,10 +314,10 @@ class DataLayer:
         return self._network_layer
 
     @network_layer.setter
-    def network_layer(self, network_layer):  # pylint: disable=invalid-name
+    def network_layer(self, network_layer):  # type: ignore pylint: disable=invalid-name
         self._network_layer = network_layer
 
-    def assign_to_network(self, network_layer: networks.NetworkLayer, max_dist: int | float):
+    def assign_to_network(self, network_layer: networks.NetworkLayer, max_dist: int | float) -> None:
         """
         Assign this DataLayer to a [`NetworkLayer`](/metrics/networks/#networklayer).
 
@@ -360,10 +368,10 @@ class DataLayer:
         """
         self._network_layer = network_layer
         if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
+            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))  # type: ignore
         else:
             progress_proxy = None
-        data.assign_to_network(
+        data.assign_to_network(  # type: ignore
             self._data,
             self.network_layer.node_data,
             self.network_layer.edge_data,
@@ -408,48 +416,46 @@ class DataLayer:
         following structure:
 
         ```python
-        NetworkLayer.metrics = {
-            'mixed_uses': {
-                # note that hill measures have q keys
-                'hill': {
-                    # here, q=0
-                    0: {
-                        800: [...],
-                        1600: [...]
-                    },
-                    # here, q=1
-                    1: {
-                        800: [...],
-                        1600: [...]
-                    }
+        NetworkLayer.metrics.mixed_uses = {
+            # note that hill measures have q keys
+            'hill': {
+                # here, q=0
+                0: {
+                    800: [...],
+                    1600: [...]
                 },
-                # non-hill measures do not have q keys
-                'shannon': {
+                # here, q=1
+                1: {
                     800: [...],
                     1600: [...]
                 }
             },
-            'accessibility': {
-                # accessibility keys are computed in both weighted and unweighted forms
-                'weighted': {
-                    'shops': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'factories': {
-                        800: [...],
-                        1600: [...]
-                    }
+            # non-hill measures do not have q keys
+            'shannon': {
+                800: [...],
+                1600: [...]
+            }
+        }
+        NetworkLayer.metrics.accessibility = {
+            # accessibility keys are computed in both weighted and unweighted forms
+            'weighted': {
+                'shops': {
+                    800: [...],
+                    1600: [...]
                 },
-                'non_weighted': {
-                    'shops': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'factories': {
-                        800: [...],
-                        1600: [...]
-                    }
+                'factories': {
+                    800: [...],
+                    1600: [...]
+                }
+            },
+            'non_weighted': {
+                'shops': {
+                    800: [...],
+                    1600: [...]
+                },
+                'factories': {
+                    800: [...],
+                    1600: [...]
                 }
             }
         }

@@ -9,11 +9,12 @@ import logging
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-from numba.typed import Dict  # pylint: disable=no-name-in-module
+from numba.typed import Dict
 from numba_progress import ProgressBar
 
 from cityseer import config
 from cityseer.algos import centrality, checks
+from cityseer.metrics import typing
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +31,7 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
         raise TypeError("Expected beta but encountered None value.")
     if isinstance(beta, (int, float)):
         beta = [beta]
-    if not isinstance(beta, (list, tuple, np.ndarray)):
+    if not isinstance(beta, (list, tuple, np.ndarray)):  # type: ignore
         raise TypeError("Please provide a beta or a list, tuple, or numpy.ndarray of betas.")
     if len(beta) == 0:
         raise ValueError("Encountered empty iterable of beta.")
@@ -46,8 +47,7 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
             # so: catch all betas that don't give positive infinity (via -\\beta)
             if np.log(MIN_THRESHOLD_WEIGHT) / -b != np.inf:
                 raise ValueError("Please provide zeros in float form without a leading negative.")
-    # cast to numpy
-    return np.array(beta, dtype=np.float32)
+    return np.array(beta, dtype=np.float32)  # type: ignore
 
 
 def distance_from_beta(
@@ -130,8 +130,7 @@ def distance_from_beta(
     # cast
     betas_arr = _cast_beta(beta)
     # deduce the effective distance thresholds
-    distances: npt.NDArray[np.float32] = np.log(min_threshold_wt) / -betas_arr
-    return distances
+    return np.log(min_threshold_wt) / -betas_arr
 
 
 def _cast_distance(
@@ -143,7 +142,7 @@ def _cast_distance(
     # cast to list form
     if isinstance(distance, (int, float)):
         distance = [distance]
-    if not isinstance(distance, (list, tuple, np.ndarray)):
+    if not isinstance(distance, (list, tuple, np.ndarray)):  # type: ignore
         raise TypeError("Please provide a distance or a list, tuple, or numpy.ndarray of distances.")
     if len(distance) == 0:
         raise ValueError("Encountered empty iterable of distances.")
@@ -152,7 +151,7 @@ def _cast_distance(
         if dist <= 0:
             raise ValueError("Please provide only positive distance values.")
     # cast to numpy
-    return np.array(distance, dtype=np.float32)
+    return np.array(distance, dtype=np.float32)  # type: ignore
 
 
 def beta_from_distance(
@@ -352,30 +351,21 @@ class NetworkLayer:
     may therefore be preferable when working at small thresholds on decomposed networks.
     :::
 
-    The computed metrics will be written to a dictionary available at the `NetworkLayer.metrics` property and will be
-    categorised by the respective centrality and distance keys:
+    The computed metrics will be written to a metrics state object which can be accessed according to the computed
+    measures:
 
     ```python
-    NetworkLayer.metrics['centrality'][measure_key][distance_key][node_idx]
+    NetworkLayer.metrics.centrality.measure_key.[distance_key][node_idx]
     ```
 
-    For example, if `node_density`, and `node_betweenness_beta` centrality keys are computed at 800m and 1600m,
-    then the dictionary would assume the following structure:
+    For example, if `node_density`, and `node_betweenness_beta` centrality methods are computed at 800m and 1600m, then
+    the state can be accessed for a node at index `12` as follows:
 
     ```python
-    # example structure
-    NetworkLayer.metrics = {
-        'centrality': {
-            'node_density': {
-                800: [np.array],
-                1600: [np.array]
-            },
-            'node_betweenness_beta': {
-                800: [np.array],
-                1600: [np.array]
-            }
-        }
-    }
+    NetworkLayer.metrics.centrality.node_density[800][12]
+    NetworkLayer.metrics.centrality.node_density[1600][12]
+    NetworkLayer.metrics.centrality.node_betweenness_beta[800][12]
+    NetworkLayer.metrics.centrality.node_betweenness_beta[1600][12]
     ```
 
     A worked example:
@@ -394,11 +384,11 @@ class NetworkLayer:
     N.node_centrality(measures=['node_density', 'node_betweenness_beta'])
 
     # fetch node density for 400m threshold for the first 5 nodes
-    print(N.metrics['centrality']['node_density'][400][:5])
+    print(N.metrics.centrality.node_density[400][:5])
     # prints [15, 13, 10, 11, 12]
 
     # fetch betweenness beta for 1600m threshold for the first 5 nodes
-    print(N.metrics['centrality']['node_betweenness_beta'][1600][:5])
+    print(N.metrics.centrality.node_betweenness_beta[1600][:5])
     # prints [76.01161, 45.261307, 6.805982, 11.478158, 33.74703]
     ```
 
@@ -407,21 +397,22 @@ class NetworkLayer:
     [`NetworkLayer.to_nx_multigraph`](#networklayer-to-networkx).
     """
 
-    _uids: list | tuple
+    _uids: list[str | int] | tuple[str | int]
     _node_data: npt.NDArray[np.float32]
     _edge_data: npt.NDArray[np.float32]
     _node_edge_map: Dict
     _distances: npt.NDArray[np.float32]
     _betas: npt.NDArray[np.float32]
     _min_threshold_wt: float
-    metrics: dict
+    _metrics_state: typing.MetricsState
+    _nx_multigraph: nx.MultiGraph | None
 
     def __init__(
         self,
-        node_uids: list | tuple,
+        node_uids: list[int | str] | tuple[int | str],
         node_data: npt.NDArray[np.float32],
         edge_data: npt.NDArray[np.float32],
-        node_edge_map: Dict,
+        node_edge_map: Dict,  # type: ignore
         distances: int
         | float
         | list[int | float]
@@ -531,20 +522,14 @@ class NetworkLayer:
         self._edge_data = edge_data
         self._node_edge_map = node_edge_map
         self._min_threshold_wt = min_threshold_wt
-        self.metrics = {
-            "centrality": {},
-            "mixed_uses": {},
-            "accessibility": {"non_weighted": {}, "weighted": {}},
-            "stats": {},
-            "models": {},
-        }
+        self._metrics_state = typing.MetricsState()
         # for storing originating networkX graph
         self._nx_multigraph = None
         # check the data structures
         if len(self._uids) != len(self._node_data):
             raise ValueError("The number of indices does not match the number of nodes.")
         # check network maps
-        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)
+        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)  # type: ignore
         # if distances, check the types and generate the betas
         if distances is not None and betas is None:
             self._distances = _cast_distance(distances)
@@ -581,9 +566,9 @@ class NetworkLayer:
         return self._edge_data
 
     @property
-    def node_edge_map(self):
+    def node_edge_map(self):  # type: ignore
         """Node to Edges mapping for this network."""
-        return self._node_edge_map
+        return self._node_edge_map  # type: ignore
 
     @property
     def node_x_arr(self):
@@ -634,16 +619,21 @@ class NetworkLayer:
         return self._edge_data[:, 6]
 
     @property
+    def metrics_state(self):
+        """Metrics state."""
+        return self._metrics_state
+
+    @property
     def nx_multigraph(self):
         """If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived."""
         return self._nx_multigraph
 
     @nx_multigraph.setter
-    def nx_multigraph(self, nx_multigraph):
+    def nx_multigraph(self, nx_multigraph: nx.MultiGraph):
         self._nx_multigraph = nx_multigraph
 
     # for retrieving metrics to a dictionary
-    def metrics_to_dict(self):
+    def metrics_to_dict(self) -> dict:  # type: ignore
         """
         Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary.
 
@@ -669,56 +659,26 @@ class NetworkLayer:
 
         # the data is directly available at N.metrics
         # in this case the data is stored in arrays corresponding to the node indices
-        print(N.metrics['centrality']['node_harmonic'][200][random_idx])
+        print(N.metrics.centrality.node_harmonic[200][random_idx])
         # prints: 0.023120252
 
         # let's convert the data to a dictionary
         # the unpacked data is now stored by the uid of the node identifier
         data_dict = N.metrics_to_dict()
-        print(data_dict[random_uid]['centrality']['node_harmonic'][200])
+        print(data_dict[random_uid][centrality['node_harmonic'][200])
         # prints: 0.023120252
         ```
 
         """
         m = {}
         for i, uid in enumerate(self._uids):
-            m[uid] = {
-                "x": self.node_x_arr[i],
-                "y": self.node_y_arr[i],
-                "live": self.node_live_arr[i] == 1,
-            }
-            # unpack centralities
-            m[uid]["centrality"] = {}
-            for m_key, m_val in self.metrics["centrality"].items():
-                m[uid]["centrality"][m_key] = {}
-                for d_key, d_val in m_val.items():
-                    m[uid]["centrality"][m_key][d_key] = d_val[i]
+            node_state: dict = self.metrics.extract_node_metrics(node_idx=i)  # type: ignore
+            node_state["x"] = self.node_x_arr[i]
+            node_state["y"] = self.node_y_arr[i]
+            node_state["live"] = self.node_live_arr[i] == 1
+            m[uid] = node_state
 
-            m[uid]["mixed_uses"] = {}
-            for m_key, m_val in self.metrics["mixed_uses"].items():
-                m[uid]["mixed_uses"][m_key] = {}
-                if "hill" in m_key:
-                    for q_key, q_val in m_val.items():
-                        m[uid]["mixed_uses"][m_key][q_key] = {}
-                        for d_key, d_val in q_val.items():
-                            m[uid]["mixed_uses"][m_key][q_key][d_key] = d_val[i]
-                else:
-                    for d_key, d_val in m_val.items():
-                        m[uid]["mixed_uses"][m_key][d_key] = d_val[i]
-            m[uid]["accessibility"] = {"non_weighted": {}, "weighted": {}}
-            for cat in ["non_weighted", "weighted"]:
-                for cl_key, cl_val in self.metrics["accessibility"][cat].items():
-                    m[uid]["accessibility"][cat][cl_key] = {}
-                    for d_key, d_val in cl_val.items():
-                        m[uid]["accessibility"][cat][cl_key][d_key] = d_val[i]
-            m[uid]["stats"] = {}
-            for th_key, th_val in self.metrics["stats"].items():
-                m[uid]["stats"][th_key] = {}
-                for stat_key, stat_val in th_val.items():
-                    m[uid]["stats"][th_key][stat_key] = {}
-                    for d_key, d_val in stat_val.items():
-                        m[uid]["stats"][th_key][stat_key][d_key] = d_val[i]
-        return m
+        return m  # type: ignore
 
     # for unpacking to a networkX graph
     def to_nx_multigraph(self) -> nx.MultiGraph:
@@ -760,11 +720,11 @@ class NetworkLayer:
         random_idx = 6
         random_uid = N.uids[random_idx]
 
-        print(N.metrics['centrality']['node_harmonic'][200][random_idx])
+        print(N.metrics.centrality['node_harmonic'][200][random_idx])
         # prints: 0.023120252
 
         # the metrics have been copied to the new networkX graph
-        print(G_post.nodes[random_uid]['metrics']['centrality']['node_harmonic'][200])
+        print(G_post.nodes[random_uid]['metrics'].centrality['node_harmonic'][200])
         # prints: 0.023120252
         ```
         ![Graph before conversion](/images/graph_before.png)
@@ -773,12 +733,12 @@ class NetworkLayer:
         _A graph after conversion back to `networkX`._
 
         """
-        metrics_dict = self.metrics_to_dict()
-        return graphs.nx_from_graph_maps(
+        metrics_dict: dict = self.metrics_to_dict()  # type: ignore
+        return graphs.nx_from_graph_maps(  # type: ignore
             self._uids,
             self._node_data,
             self._edge_data,
-            self._node_edge_map,
+            self._node_edge_map,  # type: ignore
             self._nx_multigraph,
             metrics_dict,
         )
@@ -786,7 +746,7 @@ class NetworkLayer:
     # provides access to the underlying centrality.local_centrality method
     def node_centrality(
         self,
-        measures: list | tuple | None = None,
+        measures: list[str] | tuple[str],
         jitter_scale: float = 0.0,
         angular: bool = False,
     ):
@@ -874,12 +834,12 @@ class NetworkLayer:
         else:
             progress_proxy = None
         # pylint: disable=duplicate-code
-        measures_data = centrality.local_node_centrality(
+        measures_data = centrality.local_node_centrality(  # type: ignore
             self._node_data,
             self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances, dtype=np.float32),
-            np.array(self._betas, dtype=np.float32),
+            self._node_edge_map,  # type: ignore
+            np.array(self._distances, dtype=np.float32),  # type: ignore
+            np.array(self._betas, dtype=np.float32),  # type: ignore
             measure_keys,
             jitter_scale=jitter_scale,
             angular=angular,
@@ -891,15 +851,13 @@ class NetworkLayer:
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
-            if measure_name not in self.metrics["centrality"]:
-                self.metrics["centrality"][measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                self.metrics["centrality"][measure_name][d_key] = measures_data[measure_idx][d_idx]
+                getattr(self._metrics_state.centrality, measure_name)[d_key] = measures_data[measure_idx][d_idx]
 
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(
         self,
-        measures: list | tuple | None = None,
+        measures: list[str] | tuple[str],
         jitter_scale: float = 0.0,
         angular: bool = False,
     ):
@@ -974,12 +932,12 @@ class NetworkLayer:
             progress_proxy = ProgressBar(total=len(self._node_data))
         else:
             progress_proxy = None
-        measures_data = centrality.local_segment_centrality(
+        measures_data = centrality.local_segment_centrality(  # type: ignore
             self._node_data,
             self._edge_data,
-            self._node_edge_map,
-            np.array(self._distances, dtype=np.float32),
-            np.array(self._betas, dtype=np.float32),
+            self._node_edge_map,  # type: ignore
+            np.array(self._distances, dtype=np.float32),  # type: ignore
+            np.array(self._betas, dtype=np.float32),  # type: ignore
             measure_keys,
             jitter_scale=jitter_scale,
             angular=angular,
@@ -991,10 +949,8 @@ class NetworkLayer:
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
-            if measure_name not in self.metrics["centrality"]:
-                self.metrics["centrality"][measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                self.metrics["centrality"][measure_name][d_key] = measures_data[measure_idx][d_idx]
+                getattr(self._metrics_state.centrality, measure_name)[d_key] = measures_data[measure_idx][d_idx]
 
 
 class NetworkLayerFromNX(NetworkLayer):

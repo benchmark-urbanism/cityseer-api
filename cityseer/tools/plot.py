@@ -355,7 +355,7 @@ def plot_nx(
     # let's extract and normalise the values
     vals = []
     for node, data in G_after.nodes(data=True):
-        vals.append(data['metrics']['centrality']['node_beta'][800])
+        vals.append(data['metrics'].centrality['node_beta'][800])
     # let's create a custom colourmap using matplotlib
     cmap = colors.LinearSegmentedColormap.from_list('cityseer',
                                                     [(100/255, 193/255, 255/255, 255/255),
