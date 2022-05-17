@@ -15,17 +15,15 @@ def test_local_centrality_time(primal_graph):
 
     originally based on node_harmonic and node_betweenness:
     OLD VERSION with trim maps:
-    Timing: 10.490865555 for 10000 iterations
+    Timing: 10.490865555 for 10000 iters
     version with numba typed list - faster and removes arcane full vs. trim maps workflow
-    8.24 for 10000 iterations
+    8.24 for 10000 iters
     version with node_edge_map Dict - tad slower but worthwhile for cleaner and more intuitive code
-    8.88 for 10000 iterations
+    8.88 for 10000 iters
     version with shortest path tree algo simplified to nodes and non-angular only
-    8.19 for 10000 iterations
-
-    if reducing floating precision
-    float64 - 17.881911942000002
-    float32 - 13.612861239
+    8.19 for 10000 iters
+    version with jitclasses and float32
+    5.06 for 10000 iters
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
@@ -39,7 +37,7 @@ def test_local_centrality_time(primal_graph):
         return
     os.environ["CITYSEER_QUIET_MODE"] = "1"
     # load the test graph
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
     betas = networks.beta_from_distance(distances)
@@ -59,10 +57,10 @@ def test_local_centrality_time(primal_graph):
     # prime the function
     node_cent_wrapper()
     iters = 10000
-    # time and report - roughly 6.37s on 4.2GHz i7
+    # time and report
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 15
+    assert func_time < 5.5
 
     def segment_cent_wrapper():
         centrality.local_segment_centrality(
@@ -99,7 +97,7 @@ def test_local_agg_time(primal_graph):
         node_data,
         edge_data,
         node_edge_map,
-    ) = graphs.graph_maps_from_nx(primal_graph)
+    ) = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_uids, data_map = layers.data_map_from_dict(data_dict)

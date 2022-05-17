@@ -12,38 +12,38 @@ def find_path(start_idx, target_idx, tree_preds):
     """
     for extracting paths from predecessor map
     """
-    s_path = []
-    pred = start_idx
+    s_path: list[int] = []
+    pred: int = start_idx
     while True:
         s_path.append(pred)
         if pred == target_idx:
             break
         pred = tree_preds[pred].astype(int)
+
     return list(reversed(s_path))
 
 
 def test_shortest_path_tree(primal_graph, dual_graph):
-    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.graph_maps_from_nx(primal_graph)
+
+    node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
     G_round_trip = graphs.nx_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.graph_maps_from_nx(dual_graph)
+    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.network_structure_from_nx(dual_graph)
     assert len(node_uids_d) > len(node_uids_p)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000, np.inf]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
-            tree_map, tree_edges = centrality.shortest_path_tree(
+            tree_map_p, tree_edges = centrality.shortest_path_tree(
                 edge_data_p, node_edge_map_p, src_idx, max_dist=max_dist, angular=False
             )
-            tree_preds_p = tree_map[:, 1]
-            tree_short_dists_p = tree_map[:, 2]
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G_round_trip, src_idx, weight="length", cutoff=max_dist)
             for j in range(len(primal_graph)):
                 if j in nx_path:
-                    assert find_path(j, src_idx, tree_preds_p) == nx_path[j]
-                    assert np.allclose(tree_short_dists_p[j], nx_dist[j], atol=config.ATOL, rtol=config.RTOL)
+                    assert find_path(j, src_idx, tree_map_p.preds) == nx_path[j]
+                    assert np.allclose(tree_map_p.short_dist[j], nx_dist[j], atol=config.ATOL, rtol=config.RTOL)
     # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
@@ -156,7 +156,7 @@ def test_local_node_centrality(primal_graph):
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     """
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(primal_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     G_round_trip = graphs.nx_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([0.02, 0.01, 0.005, 0.0008, 0.0])
@@ -300,7 +300,7 @@ def test_local_centrality(diamond_graph):
     measures_data is multidimensional in the form of measure_keys x distances x nodes
     """
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(diamond_graph)
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(diamond_graph)
     # generate dual
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
     (
@@ -308,7 +308,7 @@ def test_local_centrality(diamond_graph):
         node_data_dual,
         edge_data_dual,
         node_edge_map_dual,
-    ) = graphs.graph_maps_from_nx(diamond_graph_dual)
+    ) = graphs.network_structure_from_nx(diamond_graph_dual)
     # setup distances and betas
     distances = np.array([50, 150, 250])
     betas = networks.beta_from_distance(distances)
@@ -576,7 +576,7 @@ def test_decomposed_local_centrality(primal_graph):
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(
+    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(
         primal_graph
     )  # generate node and edge maps
     (
@@ -584,7 +584,7 @@ def test_decomposed_local_centrality(primal_graph):
         node_data_decomp,
         edge_data_decomp,
         node_edge_map_decomp,
-    ) = graphs.graph_maps_from_nx(G_decomposed)
+    ) = graphs.network_structure_from_nx(G_decomposed)
     # non-decomposed case
     node_measures_data = centrality.local_node_centrality(
         node_data,

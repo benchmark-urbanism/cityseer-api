@@ -1,75 +1,16 @@
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import numpy.typing as npt
-from numba import njit, jitclass, prange, types  # type: ignore
+from numba import njit, prange, types  # type: ignore
+from numba.experimental import jitclass  # type: ignore
 from numba.typed import Dict, List
 
 from cityseer import config
-from cityseer.algos import checks
+from cityseer.algos import checks, structures
 
 # Note: Tempting to wrap these into a numba jitclass, but parallel and fastmath njit flags are not yet supported.
-
-
-@jitclass
-class TreeMap:
-    """Tree Map for shortest-path algo."""
-
-    tree_nodes: npt.NDArray[np.bool_]
-    tree_preds: npt.NDArray[np.int_]
-    tree_short_dist: npt.NDArray[np.float32]
-    tree_simpl_dist: npt.NDArray[np.float32]
-    tree_cycles: npt.NDArray[np.float32]
-    tree_origin_seg: npt.NDArray[np.int_]
-    tree_last_seg: npt.NDArray[np.int_]
-
-    def __init__(self, dim: int):
-        """Instance TreeMap."""
-        self.tree_nodes = np.full(dim, False, dtype=np.bool_)
-        self.tree_preds = np.full(dim, -1, dtype=np.int_)
-        self.tree_short_dist = np.full(dim, np.inf, dtype=np.float32)
-        self.tree_simpl_dist = np.full(dim, np.inf, dtype=np.float32)
-        self.tree_cycles = np.full(dim, 0.0, dtype=np.float32)
-        self.tree_origin_seg = np.full(dim, -1, dtype=np.int_)
-        self.tree_last_seg = np.full(dim, -1, dtype=np.int_)
-
-
-@jitclass
-class NodeMap:
-    """Node Map for network."""
-
-    x: npt.NDArray[np.float_]
-    y: npt.NDArray[np.float_]
-    live: npt.NDArray[np.bool_]
-
-    def __init__(self, dim: int):
-        """Instance NodeMap."""
-        self.x = np.full(dim, np.nan, dtype=np.float_)
-        self.y = np.full(dim, np.nan, dtype=np.float_)
-        self.live = np.full(dim, False, dtype=np.bool_)
-
-
-@jitclass
-class EdgeMap:
-    """Edge Map for network."""
-
-    start: npt.NDArray[np.int_]
-    end: npt.NDArray[np.int_]
-    length: npt.NDArray[np.float32]
-    angular: npt.NDArray[np.float32]
-    impedance: npt.NDArray[np.float32]
-    in_bearing: npt.NDArray[np.float32]
-    out_bearing: npt.NDArray[np.float32]
-
-    def __init__(self, dim: int):
-        """Instance EdgeMap."""
-        self.start = np.full(dim, -1, dtype=np.int_)
-        self.end = np.full(dim, -1, dtype=np.int_)
-        self.length = np.full(dim, np.nan, dtype=np.float32)
-        self.angular = np.full(dim, np.nan, dtype=np.float32)
-        self.impedance = np.full(dim, np.nan, dtype=np.float32)
-        self.in_bearing = np.full(dim, np.nan, dtype=np.float32)
-        self.out_bearing = np.full(dim, np.nan, dtype=np.float32)
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -80,63 +21,28 @@ def shortest_path_tree(
     max_dist: float = np.inf,
     jitter_scale: float = 0.0,
     angular: bool = False,
-) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+) -> structures.TreeMap:
     """
     All shortest paths to max network distance from source node.
 
     Returns impedances and predecessors for shortest paths from a source node to all other nodes within max distance.
     Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns).
 
-    NODE MAP:
-    0 - x
-    1 - y
-    2 - live
-
-    EDGE MAP:
-    0 - start node
-    1 - end node
-    2 - length in metres
-    3 - sum of angular travel along length
-    4 - impedance factor
-    5 - in bearing
-    6 - out bearing
-
-    RETURNS A SHORTEST PATH TREE MAP:
-    0 - processed nodes
-    1 - predecessors
-    2 - shortest path distance
-    3 - simplest path angular distance
-    4 - cycles
-    5 - origin segments - for any to_idx, the origin segment of the shortest path
-    6 - last segments - for any to_idx, the last segment of the shortest path
-
+    Prepares a shortest path tree map - loosely based on dijkstra's shortest path algo.
+    Predecessor map is based on impedance heuristic - which can be different from metres.
+    Distance map in metres is used for defining max distances and computing equivalent distance measures.
     """
     if angular and not np.all(edge_data[:, 4] == 1):  # type: ignore
         raise ValueError("The distance impedance factor parameter must be set to 1 when using angular centralities.")
     # prepare the arrays
-    n = len(node_edge_map)  # type: ignore
-    tree_map: npt.NDArray[np.float_] = np.full((n, 7), np.nan, dtype=np.float32)
-    tree_map[:, 0] = 0
-    tree_map[:, 2] = np.inf
-    tree_map[:, 3] = np.inf
-    tree_map[:, 4] = 0
-    # prepare proxies
-    tree_nodes = tree_map[:, 0]
-    tree_preds = tree_map[:, 1]
-    tree_short_dist = tree_map[:, 2]
-    tree_simpl_dist = tree_map[:, 3]
-    tree_cycles = tree_map[:, 4]
-    tree_origin_seg = tree_map[:, 5]
-    tree_last_seg = tree_map[:, 6]
-    # when doing angular, need to keep track of out bearings
-    out_bearings: npt.NDArray[np.float_] = np.full(n, np.nan, dtype=np.float32)
-    # keep track of visited edges
-    tree_edges: npt.NDArray[np.float_] = np.full(len(edge_data), False)
+    nodes_n: int = len(node_edge_map)  # type: ignore
+    edges_n: int = len(edge_data)  # type: ignore
+    tree_map: structures.TreeMap = structures.TreeMap(nodes_n, edges_n)
     # the starting node's impedance and distance will be zero
-    tree_simpl_dist[src_idx] = 0
-    tree_short_dist[src_idx] = 0
+    tree_map.simpl_dist[src_idx] = 0
+    tree_map.short_dist[src_idx] = 0
     # prep the active list and add the source index
-    active = List.empty_list(types.int64)  # type: ignore
+    active: list[int] = List.empty_list(types.int64)
     active.append(src_idx)  # type: ignore
     # this loops continues until all nodes within the max distance have been discovered and processed
     while len(active):  # type: ignore
@@ -145,9 +51,9 @@ def shortest_path_tree(
         min_imp = np.inf
         for nd_idx in active:  # type: ignore
             if angular:
-                imp = tree_simpl_dist[nd_idx]
+                imp = tree_map.simpl_dist[nd_idx]
             else:
-                imp = tree_short_dist[nd_idx]
+                imp = tree_map.short_dist[nd_idx]
             if imp < min_imp:
                 min_imp = imp
                 min_nd_idx = nd_idx
@@ -156,7 +62,7 @@ def shortest_path_tree(
         # the currently processed node can now be removed from the active list and added to the processed list
         active.remove(active_nd_idx)  # type: ignore
         # add to processed nodes
-        tree_nodes[active_nd_idx] = True
+        tree_map.visited_nodes[active_nd_idx] = True
         # iterate the node's neighbours
         for edge_idx in node_edge_map[active_nd_idx]:  # type: ignore
             # get the edge's properties
@@ -164,45 +70,45 @@ def shortest_path_tree(
                 edge_idx
             ]  # type: ignore
             # cast to int for indexing
-            nb_nd_idx = int(end_nd)
+            nb_nd_idx: int = int(end_nd)
             # don't follow self-loops
             if nb_nd_idx == active_nd_idx:
                 # add edge to active (used for segment methods)
-                tree_edges[edge_idx] = True  # type: ignore
+                tree_map.visited_edges[edge_idx] = True  # type: ignore
                 continue
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
-            if nb_nd_idx == tree_preds[active_nd_idx]:
+            if nb_nd_idx == tree_map.preds[active_nd_idx]:
                 continue
             # only add edge to active if the neighbour node has not been processed previously
             # i.e. single direction only
             # i.e. if neighbour node has been processed all out edges have already been explored
-            if not tree_nodes[nb_nd_idx]:
-                tree_edges[edge_idx] = True  # type: ignore
+            if not tree_map.visited_nodes[nb_nd_idx]:
+                tree_map.visited_edges[edge_idx] = True  # type: ignore
             if not angular:
                 # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
                 # do before distance cutoff because this node and the neighbour can respectively be within max distance
                 # even if cumulative distance across this edge (via non-shortest path) exceeds distance
                 # in some cases all distances are run at once, so keep behaviour consistent by
                 # designating the farthest node (but via the shortest distance) as the cycle node
-                if not np.isnan(tree_preds[nb_nd_idx]):
+                if not tree_map.preds[nb_nd_idx] == -1:
                     # bump farther location
                     # prevents mismatching if cycle exceeds threshold in one direction or another
-                    if tree_short_dist[active_nd_idx] <= tree_short_dist[nb_nd_idx]:
-                        tree_cycles[nb_nd_idx] += 0.5
+                    if tree_map.short_dist[active_nd_idx] <= tree_map.short_dist[nb_nd_idx]:
+                        tree_map.cycles[nb_nd_idx] += 0.5
                     else:
-                        tree_cycles[active_nd_idx] += 0.5
+                        tree_map.cycles[active_nd_idx] += 0.5
             # impedance and distance is previous plus new
-            short_dist = tree_short_dist[active_nd_idx] + seg_len * seg_imp_fact
+            short_dist = tree_map.short_dist[active_nd_idx] + seg_len * seg_imp_fact
             # angular impedance include two parts:
             # A - turn from prior simplest-path route segment
             # B - angular change across current segment
             if active_nd_idx == src_idx:
                 turn = 0
             else:
-                turn = np.abs((seg_in_bear - out_bearings[active_nd_idx] + 180) % 360 - 180)
-            simpl_dist = tree_simpl_dist[active_nd_idx] + turn + seg_ang
+                turn = np.abs((seg_in_bear - tree_map.out_bearings[active_nd_idx] + 180) % 360 - 180)
+            simpl_dist = tree_map.simpl_dist[active_nd_idx] + turn + seg_ang
             # add the neighbour to active if undiscovered but only if less than max shortest path threshold
-            if np.isnan(tree_preds[nb_nd_idx]) and short_dist <= max_dist:
+            if tree_map.preds[nb_nd_idx] == -1 and short_dist <= max_dist:
                 active.append(nb_nd_idx)  # type: ignore
             # if impedance less than prior, update
             # this will also happen for the first nodes that overshoot the boundary
@@ -210,22 +116,23 @@ def shortest_path_tree(
             # jitter injects a small amount of stochasticity for rectlinear grids
             jitter = np.random.normal(loc=0, scale=jitter_scale)
             # shortest path heuristic differs for angular vs. not
-            if (angular and simpl_dist + jitter < tree_simpl_dist[nb_nd_idx]) or (
-                not angular and short_dist + jitter < tree_short_dist[nb_nd_idx]
+            if (angular and simpl_dist + jitter < tree_map.simpl_dist[nb_nd_idx]) or (
+                not angular and short_dist + jitter < tree_map.short_dist[nb_nd_idx]
             ):
-                tree_simpl_dist[nb_nd_idx] = simpl_dist
-                tree_short_dist[nb_nd_idx] = short_dist
-                tree_preds[nb_nd_idx] = active_nd_idx
-                out_bearings[nb_nd_idx] = seg_out_bear
+                tree_map.simpl_dist[nb_nd_idx] = simpl_dist
+                tree_map.short_dist[nb_nd_idx] = short_dist
+                tree_map.preds[nb_nd_idx] = active_nd_idx
+                tree_map.out_bearings[nb_nd_idx] = seg_out_bear
                 # chain through origin segs - identifies which segment a particular shortest path originated from
                 if active_nd_idx == src_idx:
-                    tree_origin_seg[nb_nd_idx] = edge_idx
+                    tree_map.origin_seg[nb_nd_idx] = edge_idx  # type: ignore
                 else:
-                    tree_origin_seg[nb_nd_idx] = tree_origin_seg[active_nd_idx]
+                    tree_map.origin_seg[nb_nd_idx] = tree_map.origin_seg[active_nd_idx]
                 # keep track of last seg
-                tree_last_seg[nb_nd_idx] = edge_idx
+                tree_map.last_seg[nb_nd_idx] = edge_idx  # type: ignore
+
     # the returned active edges contain activated edges, but only in direction of shortest-path discovery
-    return tree_map, tree_edges
+    return tree_map
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -327,24 +234,10 @@ def local_node_centrality(
 ) -> npt.NDArray[np.float32]:
     """
     Localised node centrality.
-
-    NODE MAP:
-    0 - x
-    1 - y
-    2 - live
-    EDGE MAP:
-    0 - start node
-    1 - end node
-    2 - length in metres
-    3 - sum of angular travel along length
-    4 - impedance factor
-    5 - in bearing
-    6 - out bearing
-
     """
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
-    checks.check_network_maps(node_data, edge_data, node_edge_map)  # type: ignore
+    checks.check_network_maps(node_data, edge_data, node_edge_map)
     # gather functions
     close_funcs = List.empty_list(node_close_func_proto)  # type: ignore
     close_idxs: list[int] = []
@@ -354,26 +247,26 @@ def local_node_centrality(
         if not angular:
             # closeness keys
             if m_key == "node_density":
-                close_funcs.append(_node_density)  # type: ignore
+                close_funcs.append(_node_density)
                 close_idxs.append(m_idx)
             elif m_key == "node_farness":
-                close_funcs.append(_node_farness)  # type: ignore
+                close_funcs.append(_node_farness)
                 close_idxs.append(m_idx)
             elif m_key == "node_cycles":
-                close_funcs.append(_node_cycles)  # type: ignore
+                close_funcs.append(_node_cycles)
                 close_idxs.append(m_idx)
             elif m_key == "node_harmonic":
-                close_funcs.append(_node_harmonic)  # type: ignore
+                close_funcs.append(_node_harmonic)
                 close_idxs.append(m_idx)
             elif m_key == "node_beta":
-                close_funcs.append(_node_beta)  # type: ignore
+                close_funcs.append(_node_beta)
                 close_idxs.append(m_idx)
             # betweenness keys
             elif m_key == "node_betweenness":
-                betw_funcs.append(_node_betweenness)  # type: ignore
+                betw_funcs.append(_node_betweenness)
                 betw_idxs.append(m_idx)
             elif m_key == "node_betweenness_beta":
-                betw_funcs.append(_node_betweenness_beta)  # type: ignore
+                betw_funcs.append(_node_betweenness_beta)
                 betw_idxs.append(m_idx)
             else:
                 raise ValueError(
@@ -415,20 +308,7 @@ def local_node_centrality(
         # only compute for live nodes
         if not nodes_live[src_idx]:
             continue
-        """
-        Shortest tree dijkstra
-        Predecessor map is based on impedance heuristic - which can be different from metres
-        Distance map in metres still necessary for defining max distances and computing equivalent distance measures
-        RETURNS A SHORTEST PATH TREE MAP:
-        0 - processed nodes
-        1 - predecessors
-        2 - shortest path distance
-        3 - simplest path angular distance
-        4 - cycles
-        5 - origin segments
-        6 - last segments
-        """
-        tree_map, _tree_edges = shortest_path_tree(
+        tree_map = shortest_path_tree(
             edge_data,
             node_edge_map,  # type: ignore
             src_idx,
@@ -436,20 +316,16 @@ def local_node_centrality(
             jitter_scale=jitter_scale,
             angular=angular,
         )
-        tree_nodes: list[int] = np.where(tree_map[:, 0])[0]  # type: ignore
-        tree_preds = tree_map[:, 1]
-        tree_short_dists = tree_map[:, 2]
-        tree_simpl_dists = tree_map[:, 3]
-        tree_cycles = tree_map[:, 4]
+        visited_nodes: list[int] = np.where(tree_map.visited_nodes)[0]  # type: ignore
         # process each reachable node
-        for to_idx in tree_nodes:
+        for to_idx in visited_nodes:
             # skip self node
             if to_idx == src_idx:
                 continue
             # unpack impedance and distance for to index
-            to_short_dist = tree_short_dists[to_idx]
-            to_simpl_dist = tree_simpl_dists[to_idx]
-            cycles = tree_cycles[to_idx]
+            to_short_dist = tree_map.short_dist[to_idx]
+            to_simpl_dist = tree_map.simpl_dist[to_idx]
+            cycles = tree_map.cycles[to_idx]
             # do not proceed if no route available
             if np.isinf(to_short_dist):
                 continue
@@ -468,7 +344,7 @@ def local_node_centrality(
             # calculate betweenness centralities
             if betw_funcs:
                 # only counting truly between vertices, not starting and ending verts
-                inter_idx = int(tree_preds[to_idx])
+                inter_idx = tree_map.preds[to_idx]
                 while True:
                     # break out of while loop if the intermediary has reached the source node
                     if inter_idx == src_idx:
@@ -477,12 +353,12 @@ def local_node_centrality(
                     for d_idx, dist_cutoff in enumerate(distances):
                         beta = betas[d_idx]
                         # check threshold
-                        if tree_short_dists[to_idx] <= dist_cutoff:
+                        if tree_map.short_dist[to_idx] <= dist_cutoff:
                             # iterate betweenness functions
                             for m_idx, betw_func in zip(betw_idxs, betw_funcs):  # type: ignore
                                 shadow_arr[m_idx, d_idx, inter_idx] += betw_func(to_short_dist, beta)  # type: ignore
                     # follow the chain
-                    inter_idx = int(tree_preds[inter_idx])
+                    inter_idx = tree_map.preds[inter_idx]
         # reduce
         measures_data += shadow_arr
 
@@ -613,7 +489,7 @@ def local_segment_centrality(
         5 - origin segments
         6 - last segments
         """
-        tree_map, tree_edges = shortest_path_tree(
+        tree_map = shortest_path_tree(
             edge_data,
             node_edge_map,  # type: ignore
             src_idx,
@@ -621,7 +497,7 @@ def local_segment_centrality(
             jitter_scale=jitter_scale,
             angular=angular,
         )
-        tree_nodes: list[int] = np.where(tree_map[:, 0])[0]  # type: ignore
+        visited_nodes: list[int] = np.where(tree_map.visited_nodes[:, 0])[0]  # type: ignore
         tree_preds = tree_map[:, 1]
         tree_short_dists = tree_map[:, 2]
         tree_simpl_dists = tree_map[:, 3]
@@ -795,7 +671,7 @@ def local_segment_centrality(
                 out_nd_idx = int(edge_data[edge_idx][1])  # type: ignore # to node is index 1
                 nb_nodes.append(out_nd_idx)  # type: ignore
             # betweenness keys computed per to_idx
-            for to_idx in tree_nodes:
+            for to_idx in visited_nodes:
                 # only process in one direction
                 if to_idx < src_idx:
                     continue

@@ -672,7 +672,7 @@ class NetworkLayer:
         """
         m = {}
         for i, uid in enumerate(self._uids):
-            node_state: dict = self.metrics.extract_node_metrics(node_idx=i)  # type: ignore
+            node_state: dict = self._metrics.extract_node_metrics(node_idx=i)  # type: ignore
             node_state["x"] = self.node_x_arr[i]
             node_state["y"] = self.node_y_arr[i]
             node_state["live"] = self.node_live_arr[i] == 1
@@ -974,7 +974,7 @@ class NetworkLayerFromNX(NetworkLayer):
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`.
 
         This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling
-        [`graph_maps_from_nx`](/tools/graphs/#graph-maps-from-nx) internally. Methods and properties are inherited from
+        [`network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) internally. Methods and properties are inherited from
         the parent [`NetworkLayer`](#networklayer) class.
 
         Parameters
@@ -997,7 +997,7 @@ class NetworkLayerFromNX(NetworkLayer):
             A `NetworkLayer`.
 
         """
-        node_uids, node_data, edge_data, node_edge_map = graphs.graph_maps_from_nx(nx_multigraph)
+        node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(nx_multigraph)
         super().__init__(
             node_uids,
             node_data,
