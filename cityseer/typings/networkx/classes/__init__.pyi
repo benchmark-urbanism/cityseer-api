@@ -1,0 +1,1 @@
+from .multigraph import MultiGraph as MultiGraph

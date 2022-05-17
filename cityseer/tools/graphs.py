@@ -14,7 +14,7 @@ import numpy as np
 import numpy.typing as npt
 import utm
 from numba.core import types
-from numba.typed import Dict  # pylint: disable=no-name-in-module
+from numba.typed import Dict
 from shapely import coords, geometry, ops, strtree
 from tqdm.auto import tqdm
 
@@ -45,20 +45,20 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         `geom` attributes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
+    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Generating simple (straight) edge geometries.")
-    g_multi_copy = nx_multigraph.copy()
+    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
 
-    def _process_node(nd_key):
+    def _process_node(nd_key: int | str):
         # x coordinate
-        if "x" not in g_multi_copy.nodes[nd_key]:
+        if "x" not in g_multi_copy.nodes[nd_key]:  # type: ignore
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x = g_multi_copy.nodes[nd_key]["x"]
+        x: float = g_multi_copy.nodes[nd_key]["x"]  # type: ignore
         # y coordinate
-        if "y" not in g_multi_copy.nodes[nd_key]:
+        if "y" not in g_multi_copy.nodes[nd_key]:  # type: ignore
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y = g_multi_copy.nodes[nd_key]["y"]
+        y: float = g_multi_copy.nodes[nd_key]["y"]  # type: ignore
 
         return x, y
 

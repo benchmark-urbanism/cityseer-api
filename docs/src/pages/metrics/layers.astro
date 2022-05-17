@@ -34,7 +34,12 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Converts data dictionary `x` and `y` values from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system.
+Convert a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates). This method converts [WGS84](https://epsg.io/4326) geographic coordinates to the associated projected UTM coordinate system. This means that `lng`, `lat` style coordinates will be converted to `easting`, `northing` style coordinates.
+
+
+::: note
+All coordinates have to be converted to a project coordinate system prior to network or other analysis in Cityseer.
+:::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -123,7 +128,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Converts a list of land-use classes (or other categorical data) to an integer encoded version based on the unique elements.
+Convert a list of land-use classes (or other categorical data) to encoded integers. Encodes land-use class labels, e.g. &quot;a&quot;, &quot;b&quot; or &quot;pub&quot;, &quot;shop&quot; to an encoded representation. Unique elements will be encoded to the same encoding, i.e. `[&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]` will be encoded to `[0, 1, 0]`.
 
 
 :::note
@@ -153,7 +158,7 @@ A `tuple` of unique class descriptors extracted from the input classes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">np.ndarray</div>
+          <div class="yap doc-str-elem-type">np.array</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `numpy` array of the encoded classes. The value of the `int` encoding will correspond to the order of the `class_descriptors`.
@@ -194,7 +199,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Converts a data dictionary into a `numpy` array for use by `DataLayer` classes.
+Convert a data dictionary into a `numpy` array for use by `DataLayer` classes.
 :::note
 It is generally not necessary to use this function directly. This function will be called implicitly when invoking [DataLayerFromDict](#datalayerfromdict)
 :::
@@ -206,7 +211,7 @@ It is generally not necessary to use this function directly. This function will 
           <div class="yap doc-str-elem-type">dict</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
+A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system matching that of the [`network_layer`](/metrics/networks/#networklayer) to which the data will be assigned.
 
 
 ```python
@@ -237,7 +242,7 @@ A tuple of data `uids` corresponding to the data point identifiers in the source
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">np.ndarray</div>
+          <div class="yap doc-str-elem-type">np.array</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
@@ -266,7 +271,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         </svg>
       </a>DataLayer
     </h2><Markdown is:raw>
-Categorical data, such as land-use classifications and numerical data, can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial locations of data points, and can be used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
+DataLayer Class representing data samples.
+
+ Categorical data, such as land-use classifications, and numerical data, such as valuations or census statistics, can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial locations of data points, and is used to calculate various mixed-use, land-use accessibility, and statistical measures. Importantly, these measures are computed directly over the street network and offer distance-weighted variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler crow-flies aggregation methods.
 
  The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
@@ -296,7 +303,7 @@ Categorical data, such as land-use classifications and numerical data, can be as
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
-        <div class="yap class-prop-def-name">Network</div>
+        <div class="yap class-prop-def-name">network_layer</div>
         <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
@@ -321,7 +328,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           </div>
         </div>
       </div>
-      <div class="yap">
+      <div class="yap"><Markdown is:raw>
+Initialise a DataLayer.
+</Markdown>
         <h3 class="yap">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
@@ -365,6 +374,26 @@ Returns a `DataLayer`.
       </div>
     </section>
     <section class="yap func">
+      <h2 class="yap func-title" id="datalayer-network-layer">
+        <a aria-hidden="true" href="#datalayer-network-layer" tab_index="-1">
+          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataLayer.network_layer
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataLayer.network_layer(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">network_layer)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"></div>
+    </section>
+    <section class="yap func">
       <h2 class="yap func-title" id="datalayer-assign-to-network">
         <a aria-hidden="true" href="#datalayer-assign-to-network" tab_index="-1">
           <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -378,20 +407,20 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig">
           <span>DataLayer.assign_to_network(</span>
           <div class="yap func-sig-params">
-            <div class="yap func-sig-param">Network_Layer, </div>
+            <div class="yap func-sig-param">network_layer, </div>
             <div class="yap func-sig-param">max_dist)</div>
           </div>
         </div>
       </div>
       <div class="yap"><Markdown is:raw>
-Once created, a [`DataLayer`](#datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
+Assign this DataLayer to a [`NetworkLayer`](/metrics/networks/#networklayer). Once created, a [`DataLayer`](#datalayer) should be assigned to a [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised spatial aggregation of data points over the street network. The measures will be computed over the same distance thresholds as used for the `NetworkLayer`.
 
  The data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes distances over the network to data points, relative to the direction of approach.
 </Markdown>
         <h3 class="yap">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
-            <div class="yap doc-str-elem-name">Network_Layer</div>
+            <div class="yap doc-str-elem-name">network_layer</div>
             <div class="yap doc-str-elem-type"></div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
@@ -428,26 +457,6 @@ The precision of assignment improves on decomposed networks (see [graphs.nx_deco
       </div>
     </section>
     <section class="yap func">
-      <h2 class="yap func-title" id="datalayer-compute-aggregated">
-        <a aria-hidden="true" href="#datalayer-compute-aggregated" tab_index="-1">
-          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-          </svg>
-        </a>DataLayer.compute_aggregated
-      </h2>
-      <div class="yap func-sig-content">
-        <div class="yap func-sig">
-          <span>DataLayer.compute_aggregated(</span>
-          <div class="yap func-sig-params"></div>
-        </div>
-      </div>
-      <div class="yap"><Markdown is:raw>
-This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_landuses`](#datalayer-compute-landuses) or [`compute_stats`](#datalayer-compute-stats) instead.
-</Markdown></div>
-    </section>
-    <section class="yap func">
       <h2 class="yap func-title" id="datalayer-compute-landuses">
         <a aria-hidden="true" href="#datalayer-compute-landuses" tab_index="-1">
           <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -472,7 +481,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         </div>
       </div>
       <div class="yap"><Markdown is:raw>
-This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayer-hill-branch-wt-diversity), and [`DataLayer.compute_accessibilities`](#datalayer-compute-accessibilities) methods.
+Compute landuse metrics. This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances), which can have significant speed implications. Situations requiring only a single measure can instead make use of the simplified [`DataLayer.hill_diversity`](#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](#datalayer-hill-branch-wt-diversity), and [`DataLayer.compute_accessibilities`](#datalayer-compute-accessibilities) methods.
 
  See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
 
@@ -537,7 +546,7 @@ NetworkLayer.metrics = {
             <div class="yap doc-str-elem-type">list | tuple</div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A set of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;. This parameter is only required if computing mixed-uses or land-use accessibilities.
+A tuple of land-use labels corresponding to the length and order of the data points. The labels should correspond to descriptors from the land-use schema, such as &quot;retail&quot; or &quot;commercial&quot;. This parameter is only required if computing mixed-uses or land-use accessibilities.
 </Markdown></div>
         </div>
         <div class="yap doc-str-elem-container">
@@ -561,7 +570,7 @@ An optional `list` or `tuple` of land-use classifications for which to calculate
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">cl_disparity_wt_matrix</div>
-            <div class="yap doc-str-elem-type">list | tuple</div>
+            <div class="yap doc-str-elem-type"></div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by [`encode_categorical`](#encode_categorical), by default None.
@@ -570,7 +579,7 @@ A pairwise `NxN` disparity matrix numerically describing the degree of disparity
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">qs</div>
-            <div class="yap doc-str-elem-type">list | tuple</div>
+            <div class="yap doc-str-elem-type">float | list | tuple</div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures, by default None.
@@ -598,13 +607,13 @@ Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic wh
           <h3 class="yap">Notes</h3><Markdown is:raw>
 | key | formula | notes |
 |-----|:-------:|-------|
-| hill | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
-| hill_branch_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
-| hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
-| hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \\ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.|
-| shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
-| gini_simpson | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
-| raos_pairwise_disparity | $$ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.|
+| hill | $$q\\geq{0},\\ q\\neq{1} \\\\ \\big(\\sum_{i}^{S}p_{i}^q\\big)^{1/(1-q)} \\\\ lim_{q\\to1} \\\\ exp\\big(-\\sum_{i}^{S}\\ p_{i}\\ log\\ p_{i}\\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
+| hill_branch_wt | $$\\big[\\sum_{i}^{S}d_{i}\\big(\\frac{p_{i}}{\\bar{T}}\\big)^{q} \\big]^{1/(1-q)} \\\\ \\bar{T} = \\sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\\beta$ controls the strength of the decay. ($\\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+| hill_pairwise_wt | $$\\big[\\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} \\big(  \\frac{p_{i} p_{j}}{Q} \\big)^{q} \\big]^{1/(1-q)} \\\\ Q = \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $\\beta$ controls the strength of the decay. ($\\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+| hill_pairwise_disparity | $$\\big[ \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} w_{ij} \\big(  \\frac{p_{i} p_{j}}{Q} \\big)^{q} \\big]^{1/(1-q)} \\\\ Q = \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} w_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.|
+| shannon | $$ -\\sum_{i}^{S}\\ p_{i}\\ log\\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
+| gini_simpson | $$ 1 - \\sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
+| raos_pairwise_disparity | $$ \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.|
 
 
 :::note
@@ -709,7 +718,7 @@ A set of land-use labels corresponding to the length and order of the data point
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">qs</div>
-            <div class="yap doc-str-elem-type">list | tuple</div>
+            <div class="yap doc-str-elem-type">float | list | tuple</div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity, by default None
@@ -759,7 +768,7 @@ A set of land-use labels corresponding to the length and order of the data point
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
             <div class="yap doc-str-elem-name">qs</div>
-            <div class="yap doc-str-elem-type">list | tuple</div>
+            <div class="yap doc-str-elem-type">float | list | tuple</div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity, by default None
@@ -851,7 +860,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         </div>
       </div>
       <div class="yap"><Markdown is:raw>
-This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
+Compute stats. This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
 
  For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the following structure:
 
@@ -1009,46 +1018,6 @@ Per the above worked example, the following stat types will be available for eac
         </div>
       </div>
     </section>
-    <section class="yap func">
-      <h2 class="yap func-title" id="datalayer-compute-stats-single">
-        <a aria-hidden="true" href="#datalayer-compute-stats-single" tab_index="-1">
-          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-          </svg>
-        </a>DataLayer.compute_stats_single
-      </h2>
-      <div class="yap func-sig-content">
-        <div class="yap func-sig">
-          <span>DataLayer.compute_stats_single(</span>
-          <div class="yap func-sig-params"></div>
-        </div>
-      </div>
-      <div class="yap"><Markdown is:raw>
-This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayer-compute-stats) instead.
-</Markdown></div>
-    </section>
-    <section class="yap func">
-      <h2 class="yap func-title" id="datalayer-compute-stats-multiple">
-        <a aria-hidden="true" href="#datalayer-compute-stats-multiple" tab_index="-1">
-          <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-          </svg>
-        </a>DataLayer.compute_stats_multiple
-      </h2>
-      <div class="yap func-sig-content">
-        <div class="yap func-sig">
-          <span>DataLayer.compute_stats_multiple(</span>
-          <div class="yap func-sig-params"></div>
-        </div>
-      </div>
-      <div class="yap"><Markdown is:raw>
-This method is deprecated and, if invoked, will raise a DeprecationWarning. Please use [`compute_stats`](#datalayer-compute-stats) instead.
-</Markdown></div>
-    </section>
   </section>
   <section class="yap class">
     <h2 class="yap class-title" id="datalayerfromdict">
@@ -1063,7 +1032,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     <p class="yap class-base">Inherits from
       <a href="#datalayer">DataLayer</a>.
     </p><Markdown is:raw>
-Directly transposes an appropriately prepared data dictionary into a `DataLayer`. This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#datalayer) class, which can be referenced for more information.
+Transpose an appropriately prepared data dictionary into a `DataLayer`.
+
+ This `class` calls [`data_map_from_dict`](#data-map-from-dict) internally. Methods and properties are inherited from the parent [`DataLayer`](#datalayer) class, which can be referenced for more information.
 </Markdown>
     <h3 class="yap">Methods</h3>
     <section class="yap func">
@@ -1084,7 +1055,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           </div>
         </div>
       </div>
-      <div class="yap">
+      <div class="yap"><Markdown is:raw>
+Initialise a DataLayer from a python `dict`.
+</Markdown>
         <h3 class="yap">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
@@ -1128,3 +1101,4 @@ example_data_dict = {
   </section>
 </div>
 </PageLayout>
+
