@@ -1,13 +1,12 @@
 import numpy as np
+from numba.core import types
+from numba.typed import Dict, List
 
 from cityseer.algos import structures
 from cityseer.tools import graphs
 
 
 def test_network_structure_from_nx(diamond_graph):
-    import os
-
-    os.environ["NUMBA_DEBUGINFO"] = "1"
     # test maps vs. networkX
     G_test = diamond_graph.copy()
     G_test_dual = graphs.nx_to_dual(G_test)
@@ -17,4 +16,6 @@ def test_network_structure_from_nx(diamond_graph):
             G.nodes[n]["live"] = bool(np.random.randint(0, 1))
         # generate test maps
         structures.NodeMap(10)
-        network_structure = graphs.network_structure_from_nx(G)
+        node_keys, network_structure = graphs.network_structure_from_nx(G)
+        network_structure.validate()
+        print("here")

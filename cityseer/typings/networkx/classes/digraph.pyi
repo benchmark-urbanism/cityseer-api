@@ -6,134 +6,103 @@ from networkx.classes.graph import Graph
 
 """Base class for directed graphs."""
 __all__ = ["DiGraph"]
+
 class DiGraph(Graph):
     """
     Base class for directed gra"""
+
     def __init__(self, incoming_graph_data=..., **attr) -> None:
         """Initialize a graph with edges, n"""
         ...
-    
     @property
-    def adj(self): # -> AdjacencyView:
+    def adj(self):  # -> AdjacencyView:
         """Graph adjacency object holding t"""
         ...
-    
     @property
-    def succ(self): # -> AdjacencyView:
+    def succ(self):  # -> AdjacencyView:
         """Graph adjacency object holding t"""
         ...
-    
     @property
-    def pred(self): # -> AdjacencyView:
+    def pred(self):  # -> AdjacencyView:
         """Graph adjacency object holding t"""
         ...
-    
-    def add_node(self, node_for_adding, **attr): # -> None:
+    def add_node(self, node_for_adding, **attr):  # -> None:
         """Add a single node `node_for_addi"""
         ...
-    
-    def add_nodes_from(self, nodes_for_adding, **attr): # -> None:
+    def add_nodes_from(self, nodes_for_adding, **attr):  # -> None:
         """Add multiple nodes.
 
         Par"""
         ...
-    
-    def remove_node(self, n): # -> None:
+    def remove_node(self, n):  # -> None:
         """Remove node n.
 
-        Removes """
+        Removes"""
         ...
-    
-    def remove_nodes_from(self, nodes): # -> None:
-        """Remove multiple nodes.
-
-        """
+    def remove_nodes_from(self, nodes):  # -> None:
+        """Remove multiple nodes."""
         ...
-    
-    def add_edge(self, u_of_edge, v_of_edge, **attr): # -> None:
-        """Add an edge between u and v.
-
-  """
+    def add_edge(self, u_of_edge, v_of_edge, **attr):  # -> None:
+        """Add an edge between u and v."""
         ...
-    
-    def add_edges_from(self, ebunch_to_add, **attr): # -> None:
+    def add_edges_from(self, ebunch_to_add, **attr):  # -> None:
         """Add all the edges in ebunch_to_a"""
         ...
-    
-    def remove_edge(self, u, v): # -> None:
+    def remove_edge(self, u, v):  # -> None:
         """Remove the edge between u and v."""
         ...
-    
-    def remove_edges_from(self, ebunch): # -> None:
+    def remove_edges_from(self, ebunch):  # -> None:
         """Remove all edges specified in eb"""
         ...
-    
-    def has_successor(self, u, v): # -> bool:
+    def has_successor(self, u, v):  # -> bool:
         """Returns True if node u has succe"""
         ...
-    
-    def has_predecessor(self, u, v): # -> bool:
+    def has_predecessor(self, u, v):  # -> bool:
         """Returns True if node u has prede"""
         ...
-    
     def successors(self, n):
         """Returns an iterator over success"""
         ...
-    
     neighbors = ...
     def predecessors(self, n):
         """Returns an iterator over predece"""
         ...
-    
     @property
-    def edges(self): # -> OutEdgeView:
+    def edges(self):  # -> OutEdgeView:
         """An OutEdgeView of the DiGraph as"""
         ...
-    
     out_edges = ...
     @property
-    def in_edges(self): # -> InEdgeView:
+    def in_edges(self):  # -> InEdgeView:
         """An InEdgeView of the Graph as G."""
         ...
-    
     @property
-    def degree(self): # -> DiDegreeView:
+    def degree(self):  # -> DiDegreeView:
         """A DegreeView for the Graph as G."""
         ...
-    
     @property
-    def in_degree(self): # -> InDegreeView:
+    def in_degree(self):  # -> InDegreeView:
         """An InDegreeView for (node, in_de"""
         ...
-    
     @property
-    def out_degree(self): # -> OutDegreeView:
+    def out_degree(self):  # -> OutDegreeView:
         """An OutDegreeView for (node, out_"""
         ...
-    
-    def clear(self): # -> None:
-        """Remove all nodes and edges from """
+    def clear(self):  # -> None:
+        """Remove all nodes and edges from"""
         ...
-    
-    def clear_edges(self): # -> None:
-        """Remove all edges from the graph """
+    def clear_edges(self):  # -> None:
+        """Remove all edges from the graph"""
         ...
-    
-    def is_multigraph(self): # -> Literal[False]:
+    def is_multigraph(self):  # -> Literal[False]:
         """Returns True if graph is a multi"""
         ...
-    
-    def is_directed(self): # -> Literal[True]:
+    def is_directed(self):  # -> Literal[True]:
         """Returns True if graph is directe"""
         ...
-    
-    def to_undirected(self, reciprocal=..., as_view=...): # -> Generator[Unknown, None, None] | Graph:
+    def to_undirected(self, reciprocal=..., as_view=...):  # -> Generator[Unknown, None, None] | Graph:
         """Returns an undirected representa"""
         ...
-    
-    def reverse(self, copy=...): # -> Self@DiGraph | Generator[Unknown, None, None]:
+    def reverse(self, copy=...):  # -> Self@DiGraph | Generator[Unknown, None, None]:
         """Returns the reverse of the graph"""
         ...
-    
-
-

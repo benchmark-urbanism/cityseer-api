@@ -8,7 +8,7 @@ from cityseer import config
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
-def hill_diversity(class_counts: npt.NDArray[np.int_], q: float) -> float:
+def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.float32:
     """
     Compute Hill diversity.
 
@@ -49,8 +49,8 @@ def hill_diversity(class_counts: npt.NDArray[np.int_], q: float) -> float:
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_branch_distance_wt(
-    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: float, beta: float
-) -> float:
+    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+) -> np.float32:
     """
     Compute Hill diversity weighted by branch distances.
 
@@ -74,7 +74,7 @@ def hill_diversity_branch_distance_wt(
     # catch potential division by zero situations
     num: int = class_counts.sum()  # type: ignore
     if num == 0:
-        return 0
+        return np.float32(0)
     # find T
     agg_t = 0
     for class_count, class_dist in zip(class_counts, class_distances):
@@ -109,8 +109,8 @@ def hill_diversity_branch_distance_wt(
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_pairwise_distance_wt(
-    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: float, beta: float
-) -> float:
+    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+) -> np.float32:
     """
     Compute Hill diversity weighted by pairwise distances.
 
@@ -138,7 +138,7 @@ def hill_diversity_pairwise_distance_wt(
     # catch potential division by zero situations
     num: int = class_counts.sum()  # type: ignore
     if num == 0:
-        return 0.0
+        return np.float32(0)
     # calculate Q
     agg_q = 0
     for i, class_count_i in enumerate(class_counts):
@@ -157,7 +157,7 @@ def hill_diversity_pairwise_distance_wt(
             agg_q += wt * a_i * a_j
     # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
     if agg_q == 0:
-        return 0.0
+        return np.float32(0)
     # if in the limit, use exponential
     if q == 1:
         div_pw_wt_lim = 0  # using the same variable name as non limit version causes errors for parallel
@@ -177,7 +177,7 @@ def hill_diversity_pairwise_distance_wt(
                 div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
         # once summed
         div_pw_wt_lim = np.exp(-div_pw_wt_lim)
-        return float(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
+        return np.float32(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
     # otherwise conventional form
     div_pw_wt = 0
     for i, class_count_i in enumerate(class_counts):
@@ -195,13 +195,13 @@ def hill_diversity_pairwise_distance_wt(
             wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
             div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
     div_pw_wt = div_pw_wt ** (1 / (1 - q))
-    return float(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
+    return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_pairwise_matrix_wt(
-    class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], q: float
-) -> float:
+    class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], q: np.float32
+) -> np.float32:
     """
     Hill diversity weighted by pairwise weights matrix.
 
@@ -219,7 +219,7 @@ def hill_diversity_pairwise_matrix_wt(
     # catch potential division by zero situations
     num: int = class_counts.sum()  # type: ignore
     if num == 0:
-        return 0
+        return np.float32(0)
     # calculate Q
     agg_q = 0
     for i, class_count_i in enumerate(class_counts):
@@ -238,7 +238,7 @@ def hill_diversity_pairwise_matrix_wt(
             agg_q += wt * a_i * a_j
     # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
     if agg_q == 0:
-        return 0.0
+        return np.float32(0)
     # if in the limit, use exponential
     if q == 1:
         div_pw_wt_lim = 0  # using the same variable name as non limit version causes errors for parallel
@@ -258,7 +258,7 @@ def hill_diversity_pairwise_matrix_wt(
                 div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
         # once summed
         div_pw_wt_lim = np.exp(-div_pw_wt_lim)
-        return float(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
+        return np.float32(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
     # otherwise conventional form
     div_pw_wt = 0
     for i, class_count_i in enumerate(class_counts):
@@ -276,11 +276,11 @@ def hill_diversity_pairwise_matrix_wt(
             wt = wt_matrix[i][j]
             div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
     div_pw_wt = div_pw_wt ** (1 / (1 - q))
-    return float(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
+    return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
-def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> float:
+def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
     Gini-Simpson diversity.
 
@@ -295,7 +295,7 @@ def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> float:
 
     """
     num: int = class_counts.sum()  # type: ignore
-    gini = 0
+    gini: np.float32 = np.float32(0)
     # catch potential division by zero situations
     if num < 2:
         return gini
@@ -306,7 +306,7 @@ def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> float:
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
-def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> float:
+def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
     Shannon diversity (information entropy).
 
@@ -317,7 +317,7 @@ def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> float:
 
     """
     num: int = class_counts.sum()  # type: ignore
-    shannon = 0
+    shannon: np.float32 = np.float32(0)
     # catch potential division by zero situations
     if num == 0:
         return shannon
@@ -331,8 +331,11 @@ def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> float:
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def raos_quadratic_diversity(
-    class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], alpha: float = 1, beta: float = 1
-) -> float:
+    class_counts: npt.NDArray[np.int_],
+    wt_matrix: npt.NDArray[np.float32],
+    alpha: np.float32 = np.float32(1),
+    beta: np.float32 = np.float32(1),
+) -> np.float32:
     """
     Rao's quadratic diversity.
 
@@ -359,8 +362,8 @@ def raos_quadratic_diversity(
     # catch potential division by zero situations
     num: int = class_counts.sum()  # type: ignore
     if num < 2:
-        return 0
-    raos = 0  # variable for additive calculations of distance * p1 * p2
+        return np.float32(0)
+    raos: np.float32 = np.float32(0)  # variable for additive calculations of distance * p1 * p2
     for i, class_count_i in enumerate(class_counts):
         for j, class_count_j in enumerate(class_counts):
             # only need to examine the pair if j > i, otherwise double-counting

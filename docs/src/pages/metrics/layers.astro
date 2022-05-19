@@ -323,7 +323,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig">
           <span>DataLayer.__init__(</span>
           <div class="yap func-sig-params">
-            <div class="yap func-sig-param">data_uids, </div>
+            <div class="yap func-sig-param">data_keys, </div>
             <div class="yap func-sig-param">data_map)</div>
           </div>
         </div>
@@ -334,7 +334,7 @@ Initialise a DataLayer.
         <h3 class="yap">Parameters</h3>
         <div class="yap doc-str-elem-container">
           <div class="yap doc-str-elem-def">
-            <div class="yap doc-str-elem-name">data_uids</div>
+            <div class="yap doc-str-elem-name">data_keys</div>
             <div class="yap doc-str-elem-type">list | tuple</div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
@@ -347,7 +347,7 @@ A `list` or `tuple` of data identifiers corresponding to each data point. This l
             <div class="yap doc-str-elem-type"></div>
           </div>
           <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array representing the data points. The length of the first dimension should match that of the `data_uids`. The indices of the second dimension correspond as follows:
+A 2d `numpy` array representing the data points. The length of the first dimension should match that of the `data_keys`. The indices of the second dimension correspond as follows:
 
 
 | idx | property |

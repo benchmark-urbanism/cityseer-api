@@ -70,18 +70,14 @@ def test_beta_from_distance():
 
 def test_Network_Layer(primal_graph):
     # manual graph maps for comparison
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
-    x_arr = node_data[:, 0]
-    y_arr = node_data[:, 1]
+    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     betas = [0.02, 0.005]
     distances = networks.distance_from_beta(betas)
 
     # test NetworkLayer's class
     for d, b in zip([distances, None], [None, betas]):
-        N = networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map, distances=d, betas=b)
-        assert np.allclose(N.uids, node_uids, atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N._node_data, node_data, atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N._edge_data, edge_data, atol=config.ATOL, rtol=config.RTOL)
+        N = networks.NetworkLayer(node_keys, network_structure, distances=d, betas=b)
+        assert np.allclose(N.node_keys, node_keys, atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
             N.distances, distances, atol=config.ATOL, rtol=config.RTOL
         )  # inferred automatically when only betas provided
@@ -89,59 +85,45 @@ def test_Network_Layer(primal_graph):
             N.betas, betas, atol=config.ATOL, rtol=config.RTOL
         )  # inferred automatically when only distances provided
         assert N._min_threshold_wt == config.MIN_THRESH_WT
-        assert np.allclose(N.node_x_arr, x_arr, atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.node_y_arr, y_arr, atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.node_live_arr, node_data[:, 2], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.edge_lengths_arr, edge_data[:, 2], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.edge_angles_arr, edge_data[:, 3], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.edge_impedance_factors_arr, edge_data[:, 4], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.edge_in_bearings_arr, edge_data[:, 5], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(N.edge_out_bearings_arr, edge_data[:, 6], atol=config.ATOL, rtol=config.RTOL)
 
     # test round-trip graph to and from NetworkLayer
-    N = networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map, distances=distances)
+    N = networks.NetworkLayer(node_keys, network_structure, distances=distances)
     G_round_trip = N.to_nx_multigraph()
-    # graph_maps_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
+    # network_structure_from_networkX generates implicit live (all True) and weight (all 1) attributes if missing
     # i.e. can't simply check that all nodes equal, so check properties manually
-    for n, d in primal_graph.nodes(data=True):
-        assert n in G_round_trip
-        assert G_round_trip.nodes[n]["x"] == d["x"]
-        assert G_round_trip.nodes[n]["y"] == d["y"]
+    for node_key, node_data in primal_graph.nodes(data=True):
+        assert node_key in G_round_trip
+        assert G_round_trip.nodes[node_key]["x"] == node_data["x"]
+        assert G_round_trip.nodes[node_key]["y"] == node_data["y"]
     # edges can be checked en masse
     assert G_round_trip.edges == primal_graph.edges
     # check alternate min_threshold_wt gets passed through successfully
     alt_min = 0.02
     alt_distances = networks.distance_from_beta(betas, min_threshold_wt=alt_min)
     N = networks.NetworkLayer(
-        node_uids,
-        node_data,
-        edge_data,
-        node_edge_map,
+        node_keys,
+        network_structure,
         betas=betas,
         min_threshold_wt=alt_min,
     )
     assert np.allclose(N.distances, alt_distances, atol=config.ATOL, rtol=config.RTOL)
     # check for malformed signatures
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids[:-1], node_data, edge_data, node_edge_map, distances)
+        networks.NetworkLayer(node_keys[:-1], network_structure, distances)
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data[:, :-1], edge_data, node_edge_map, distances)
+        networks.NetworkLayer(node_keys, None, distances)  # type: ignore
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data[:, :-1], node_edge_map, distances)
+        networks.NetworkLayer(node_keys, network_structure)  # no betas or distances
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data[:, :-1], node_edge_map, distances)
+        networks.NetworkLayer(node_keys, network_structure, distances=None, betas=None)
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map)  # no betas or distances
+        networks.NetworkLayer(node_keys, network_structure, distances=[])
     with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map, distances=None, betas=None)
-    with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map, distances=[])
-    with pytest.raises(ValueError):
-        networks.NetworkLayer(node_uids, node_data, edge_data, node_edge_map, betas=[])
+        networks.NetworkLayer(node_keys, network_structure, betas=[])
 
 
 def test_Network_Layer_From_nx(primal_graph):
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
+    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     x_arr = node_data[:, 0]
     y_arr = node_data[:, 1]
     betas = np.array([0.04, 0.02])
@@ -151,7 +133,7 @@ def test_Network_Layer_From_nx(primal_graph):
     for d, b in zip([distances, None], [None, betas]):
         for angular in [True, False]:
             N = networks.NetworkLayerFromNX(primal_graph, distances=d, betas=b)
-            assert np.allclose(N.uids, node_uids, atol=config.ATOL, rtol=config.RTOL)
+            assert np.allclose(N.node_keys, node_keys, atol=config.ATOL, rtol=config.RTOL)
             assert np.allclose(N._node_data, node_data, atol=config.ATOL, rtol=config.RTOL)
             assert np.allclose(N._edge_data, edge_data, atol=config.ATOL, rtol=config.RTOL)
             assert np.allclose(
@@ -190,30 +172,30 @@ def test_Network_Layer_From_nx(primal_graph):
 
 
 def dict_check(m_dict, Network):
-    for i, uid in enumerate(Network.uids):
-        assert m_dict[uid]["x"] == Network._node_data[i][0]
-        assert m_dict[uid]["y"] == Network._node_data[i][1]
-        assert m_dict[uid]["live"] == Network._node_data[i][2]
+    for i, node_key in enumerate(Network.node_keys):
+        assert m_dict[node_key]["x"] == Network._node_data[i][0]
+        assert m_dict[node_key]["y"] == Network._node_data[i][1]
+        assert m_dict[node_key]["live"] == Network._node_data[i][2]
 
         for c_key, c_val in Network.metrics["centrality"].items():
             for d_key, d_val in c_val.items():
-                assert d_val[i] == m_dict[uid]["centrality"][c_key][d_key]
+                assert d_val[i] == m_dict[node_key]["centrality"][c_key][d_key]
 
         for mu_key, mu_val in Network.metrics["mixed_uses"].items():
             if "hill" in mu_key:
                 for q_key, q_val in mu_val.items():
                     for d_key, d_val in q_val.items():
-                        assert d_val[i] == m_dict[uid]["mixed_uses"][mu_key][q_key][d_key]
+                        assert d_val[i] == m_dict[node_key]["mixed_uses"][mu_key][q_key][d_key]
             else:
                 for d_key, d_val in mu_val.items():
-                    assert d_val[i] == m_dict[uid]["mixed_uses"][mu_key][d_key]
+                    assert d_val[i] == m_dict[node_key]["mixed_uses"][mu_key][d_key]
 
         for cat in ["non_weighted", "weighted"]:
             if cat not in Network.metrics["accessibility"]:
                 continue
             for cl_key, cl_val in Network.metrics["accessibility"][cat].items():
                 for d_key, d_val in cl_val.items():
-                    assert d_val[i] == m_dict[uid]["accessibility"][cat][cl_key][d_key]
+                    assert d_val[i] == m_dict[node_key]["accessibility"][cat][cl_key][d_key]
 
         for th_key, th_val in Network.metrics["stats"].items():
             for stat_key, stat_val in th_val.items():
@@ -221,7 +203,7 @@ def dict_check(m_dict, Network):
                     # some NaN so use np.allclose
                     assert np.allclose(
                         d_val[i],
-                        m_dict[uid]["stats"][th_key][stat_key][d_key],
+                        m_dict[node_key]["stats"][th_key][stat_key][d_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
@@ -243,11 +225,11 @@ def test_metrics_to_dict(primal_graph):
 
 
 def test_to_nx_multigraph(primal_graph):
-    # also see test_graphs.test_networkX_from_graph_maps for underlying graph maps version
+    # also see test_graphs.test_networkX_from_network_structure for underlying graph maps version
 
     # check round trip to and from graph maps results in same graph
     # explicitly set live and weight params for equality checks
-    # graph_maps_from_networkX generates these implicitly if missing
+    # network_structure_from_networkX generates these implicitly if missing
     G = graphs.nx_decompose(primal_graph, decompose_max=20)
     for n in G.nodes():
         G.nodes[n]["live"] = bool(np.random.randint(0, 1))
@@ -279,8 +261,8 @@ def test_to_nx_multigraph(primal_graph):
         assert G_round_trip[s][e][k]["geom"] == d["geom"]
         assert np.isclose(G_round_trip[s][e][k]["imp_factor"], d["imp_factor"], atol=config.ATOL, rtol=config.RTOL)
     # check that metrics came through
-    for uid, metrics in metrics_dict.items():
-        assert G_round_trip.nodes[uid]["metrics"] == metrics
+    for node_key, metrics in metrics_dict.items():
+        assert G_round_trip.nodes[node_key]["metrics"] == metrics
     # check data persistence
     assert G_round_trip.nodes[baa_node]["boo"] == "baa"
     assert G_round_trip[boo_edge[0]][boo_edge[1]][0]["baa"] == "boo"

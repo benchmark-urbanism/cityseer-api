@@ -100,7 +100,7 @@ def test_local_agg_time(primal_graph):
     ) = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
