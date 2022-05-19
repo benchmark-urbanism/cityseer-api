@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -10,15 +9,15 @@ from numba_progress import ProgressBar
 from sklearn.preprocessing import LabelEncoder
 from tqdm.auto import tqdm
 
-from cityseer import config
-from cityseer.algos import checks, data
-from cityseer.metrics import networks, typing
+from cityseer import config, structures
+from cityseer.algos import data
+from cityseer.metrics import networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def dict_wgs_to_utm(data_dict: typing.DataDictType) -> typing.DataDictType:
+def dict_wgs_to_utm(data_dict: structures.DataDictType) -> structures.DataDictType:
     """
     Convert a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
 
@@ -32,15 +31,15 @@ def dict_wgs_to_utm(data_dict: typing.DataDictType) -> typing.DataDictType:
     Parameters
     ----------
     data_dict
-        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a
-        nested dictionary with `x` and `y` key-value pairs.
+        A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
+        represents a nested dictionary with `x` and `y` key-value pairs.
         ```python
         example_data_dict = {
-            'uid_01': {
+            'key_01': {
                 'x': 6000956.463188213,
                 'y': 600693.4059810264
             },
-            'uid_02': {
+            'key_02': {
                 'x': 6000753.336609659,
                 'y': 600758.7916663144
             }
@@ -88,17 +87,17 @@ def dict_wgs_to_utm(data_dict: typing.DataDictType) -> typing.DataDictType:
     if not isinstance(data_dict, dict):  # type: ignore
         raise TypeError("This method requires dictionary object.")
     logger.info("Converting data dictionary from WGS to UTM.")
-    data_dict_copy: typing.DataDictType = data_dict.copy()
+    data_dict_copy: structures.DataDictType = data_dict.copy()
     logger.info("Processing node x, y coordinates.")
-    for key, val in tqdm(data_dict_copy.items(), disable=config.QUIET_MODE):  # type: ignore
+    for key, val in tqdm(data_dict_copy.items(), disable=config.QUIET_MODE):
         # x coordinate
         if "x" not in val:
             raise AttributeError(f'Encountered node missing "x" coordinate attribute at data dictionary key {key}.')
-        lng: float = val["x"]
+        lng: float = val["x"]  # type: ignore
         # y coordinate
         if "y" not in val:
             raise AttributeError(f'Encountered node missing "y" coordinate attribute at data dictionary key {key}.')
-        lat: float = val["y"]
+        lat: float = val["y"]  # type: ignore
         # check for unintentional use of conversion
         if abs(lng) > 180 or abs(lat) > 90:
             raise AttributeError("x, y coordinates exceed WGS bounds. Please check your coordinate system.")
@@ -156,7 +155,7 @@ def encode_categorical(
         raise TypeError("This method requires an iterable object.")
     # use sklearn's label encoder
     lab_enc = LabelEncoder()
-    lab_enc.fit(classes)  # type: ignore
+    lab_enc.fit(classes)
     # map the int encodings to the respective classes
     classes_str: tuple[str] = tuple(lab_enc.classes_)  # type: ignore
     classes_int: npt.NDArray[int] = lab_enc.transform(classes)  # type: ignore
@@ -164,7 +163,7 @@ def encode_categorical(
     return classes_str, classes_int  # type: ignore
 
 
-def data_map_from_dict(data_dict: typing.DataDictType) -> tuple[tuple[str], npt.NDArray[np.float32]]:
+def data_map_from_dict(data_dict: structures.DataDictType) -> tuple[tuple[int | str], structures.DataMap]:
     """
     Convert a data dictionary into a `numpy` array for use by `DataLayer` classes.
 
@@ -176,17 +175,18 @@ def data_map_from_dict(data_dict: typing.DataDictType) -> tuple[tuple[str], npt.
     Parameters
     ----------
     data_dict
-        A dictionary representing distinct data points, where each `key` represents a `uid` and each value represents a
-        nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected coordinate system
-        matching that of the [`network_layer`](/metrics/networks/#networklayer) to which the data will be assigned.
+        A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
+        represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
+        coordinate system matching that of the [`network_layer`](/metrics/networks/#networklayer) to which the data will
+        be assigned.
 
         ```python
         example_data_dict = {
-            'uid_01': {
+            'key_01': {
                 'x': 6000956.463188213,
                 'y': 600693.4059810264
             },
-            'uid_02': {
+            'key_02': {
                 'x': 6000753.336609659,
                 'y': 600758.7916663144
             }
@@ -196,7 +196,7 @@ def data_map_from_dict(data_dict: typing.DataDictType) -> tuple[tuple[str], npt.
     Returns
     -------
     tuple
-        A tuple of data `uids` corresponding to the data point identifiers in the source `data_dict`.
+        A tuple of data `data_keys` corresponding to the data point identifiers in the source `data_dict`.
     np.array
         A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
 
@@ -214,21 +214,19 @@ def data_map_from_dict(data_dict: typing.DataDictType) -> tuple[tuple[str], npt.
     if not isinstance(data_dict, dict):  # type: ignore
         raise TypeError("This method requires dictionary object.")
 
-    data_uids: list[str] = []
-    data_map: npt.NDArray[np.float_] = np.full((len(data_dict), 4), np.nan)  # type: ignore
-    for i, (key, val) in enumerate(data_dict.items()):
-        # set key to data labels
-        data_uids.append(key)
+    data_keys: list[int | str] = []
+    data_map: structures.DataMap = structures.DataMap(len(data_dict))
+    for data_idx, (key, val) in enumerate(data_dict.items()):
         # DATA MAP INDEX POSITION 0 = x coordinate
         if "x" not in val:
-            raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {i}.')
-        data_map[i][0] = val["x"]  # type: ignore
+            raise AttributeError(f'Encountered entry missing "x" coordinate attribute at index {data_idx}.')
         # DATA MAP INDEX POSITION 1 = y coordinate
         if "y" not in val:
-            raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {i}.')
-        data_map[i][1] = val["y"]  # type: ignore
+            raise AttributeError(f'Encountered entry missing "y" coordinate attribute at index {data_idx}.')
+        data_keys.append(key)
+        data_map.set_data_point(data_idx, val["x"], val["y"])  # type: ignore
 
-    return tuple(data_uids), data_map
+    return tuple(data_keys), data_map
 
 
 class DataLayer:
@@ -250,22 +248,22 @@ class DataLayer:
 
     """
 
-    _uids: tuple[str]  # original labels / indices for each data point
-    _data: npt.NDArray[np.float_]  # data map per above
+    _data_keys: tuple[int | str]  # original labels / indices for each data point
+    _data_map: structures.DataMap  # data map per above
     _network_layer: networks.NetworkLayer | None  # pylint: disable=invalid-name
 
-    def __init__(self, data_uids: list[str] | tuple[str], data_map: npt.NDArray[np.float32]):
+    def __init__(self, data_keys: list[int | str] | tuple[int | str], data_map: structures.DataMap):
         """
         Initialise a DataLayer.
 
         Parameters
         ----------
-        data_uids
+        data_keys
             A `list` or `tuple` of data identifiers corresponding to each data point. This list must be in the same
             order and of the same length as the `data_map`.
         data_map
             A 2d `numpy` array representing the data points. The length of the first dimension should match that of the
-            `data_uids`. The indices of the second dimension correspond as follows:
+            `data_keys`. The indices of the second dimension correspond as follows:
 
             | idx | property |
             |-----|:----------|
@@ -283,39 +281,27 @@ class DataLayer:
             Returns a `DataLayer`.
 
         """
-        self._uids = tuple(data_uids)  # original labels / indices for each data point
-        self._data = data_map  # data map per above
+        data_map.validate()
+        if len(self._data_keys) != data_map.count:
+            raise ValueError("The number of data labels does not match the number of data points.")
+        self._data_keys = tuple(data_keys)  # original labels / indices for each data point
+        self._data_map: structures.DataMap = data_map  # data map per above
         self._network_layer = None  # pylint: disable=invalid-name
 
-        # checks
-        checks.check_data_map(self._data, check_assigned=False)
-
-        if len(self._uids) != len(self._data):
-            raise ValueError("The number of data labels does not match the number of data points.")
-
     @property
-    def uids(self):
+    def data_keys(self) -> tuple[int | str]:
         """Tuple of labels corresponding to each data sample."""
-        return self._uids
+        return self._data_keys
 
     @property
-    def data_x_arr(self):
+    def data_map(self) -> structures.DataMap:
         """Array of x values corresponding to each data sample."""
-        return self._data[:, 0]
+        return self._data_map
 
     @property
-    def data_y_arr(self):
-        """Array of y values corresponding to each data sample."""
-        return self._data[:, 1]
-
-    @property
-    def network_layer(self):  # pylint: disable=invalid-name
+    def network_layer(self) -> networks.NetworkLayer | None:  # pylint: disable=invalid-name
         """NetworkLayer to which this DataLayer is assigned."""
         return self._network_layer
-
-    @network_layer.setter
-    def network_layer(self, network_layer):  # type: ignore pylint: disable=invalid-name
-        self._network_layer = network_layer
 
     def assign_to_network(self, network_layer: networks.NetworkLayer, max_dist: int | float) -> None:
         """
@@ -368,15 +354,14 @@ class DataLayer:
         """
         self._network_layer = network_layer
         if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))  # type: ignore
+            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)  # type: ignore
         else:
             progress_proxy = None
-        data.assign_to_network(  # type: ignore
-            self._data,
-            self.network_layer.node_data,
-            self.network_layer.edge_data,
-            self.network_layer.node_edge_map,
-            max_dist,
+            self.data_map,
+        data.assign_to_network(
+            self.data_map,
+            self.network_layer.network_structure,  # type: ignore
+            np.float32(max_dist),
             progress_proxy=progress_proxy,
         )
         if progress_proxy is not None:
@@ -384,11 +369,11 @@ class DataLayer:
 
     def compute_landuses(
         self,
-        landuse_labels: list | tuple | npt.NDArray,
-        mixed_use_keys: list | tuple | None = None,
-        accessibility_keys: list | tuple | None = None,
+        landuse_labels: list[str] | tuple[str] | npt.NDArray[np.unicode_],
+        mixed_use_keys: list[str] | tuple[str] | None = None,
+        accessibility_keys: list[str] | tuple[str] | None = None,
         cl_disparity_wt_matrix: npt.NDArray[np.float32] | None = None,
-        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+        qs: structures.qsType = None,
         jitter_scale: float = 0.0,
         angular: bool = False,
     ):
@@ -612,7 +597,7 @@ class DataLayer:
         ]
         # remember, most checks on parameter integrity occur in underlying method
         # so, don't duplicate here
-        if len(landuse_labels) != len(self._data):
+        if len(landuse_labels) != self.data_map.count:
             raise ValueError("The number of landuse labels should match the number of data points.")
         # get the landuse encodings
         landuse_classes, landuse_encodings = encode_categorical(landuse_labels)
@@ -620,7 +605,7 @@ class DataLayer:
         if cl_disparity_wt_matrix is None:
             cl_disparity_wt_matrix = np.full((0, 0), np.nan)
         elif (
-            not isinstance(cl_disparity_wt_matrix, np.ndarray)
+            not isinstance(cl_disparity_wt_matrix, np.ndarray)  # type: ignore
             or cl_disparity_wt_matrix.ndim != 2
             or cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1]
             or len(cl_disparity_wt_matrix) != len(landuse_classes)
@@ -631,14 +616,14 @@ class DataLayer:
             )
         # warn if no qs provided
         if qs is None:
-            qs = ()
+            qs = tuple([])
         if isinstance(qs, (int, float)):
             qs = [qs]
-        if not isinstance(qs, (list, tuple, np.ndarray)):
+        if not isinstance(qs, (list, tuple, np.ndarray)):  # type: ignore
             raise TypeError("Please provide a float, list, tuple, or numpy.ndarray of q values.")
         # extrapolate the requested mixed use measures
-        mu_hill_keys = []
-        mu_other_keys = []
+        mu_hill_keys: list[int] = []
+        mu_other_keys: list[int] = []
         if mixed_use_keys is not None:
             for mu in mixed_use_keys:
                 if mu not in mixed_uses_options:
@@ -652,7 +637,7 @@ class DataLayer:
                 logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
         # figure out the corresponding indices for the landuse classes that are present in the dataset
         # these indices are passed as keys which will be matched against the integer landuse encodings
-        acc_keys = []
+        acc_keys: list[int] = []
         if accessibility_keys is not None:
             for ac_label in accessibility_keys:
                 if ac_label not in landuse_classes:
@@ -662,7 +647,7 @@ class DataLayer:
             if not config.QUIET_MODE:
                 logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
         if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
+            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)
         else:
             progress_proxy = None
         # call the underlying method
@@ -673,19 +658,17 @@ class DataLayer:
             accessibility_data,
             accessibility_data_wt,
         ) = data.aggregate_landuses(
-            self.network_layer.node_data,
-            self.network_layer.edge_data,
-            self.network_layer.node_edge_map,
-            self._data,
-            distances=np.array(self.network_layer.distances, dtype=np.float32),
-            betas=np.array(self.network_layer.betas, dtype=np.float32),
-            landuse_encodings=np.array(landuse_encodings, dtype=np.float32),
-            qs=np.array(qs, dtype=np.float32),
-            mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.float32),
-            mixed_use_other_keys=np.array(mu_other_keys, dtype=np.float32),
-            accessibility_keys=np.array(acc_keys, dtype=np.float32),
-            cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
-            jitter_scale=jitter_scale,
+            self.network_layer.network_structure,
+            self.data_map,
+            distances=np.array(self.network_layer.distances, dtype=np.float32),  # type: ignore
+            betas=np.array(self.network_layer.betas, dtype=np.float32),  # type: ignore
+            landuse_encodings=np.array(landuse_encodings, dtype=np.float32),  # type: ignore
+            qs=np.array(qs, dtype=np.float32),  # type: ignore
+            mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.float32),  # type: ignore
+            mixed_use_other_keys=np.array(mu_other_keys, dtype=np.float32),  # type: ignore
+            accessibility_keys=np.array(acc_keys, dtype=np.float32),  # type: ignore
+            cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),  # type: ignore
+            jitter_scale=np.float32(jitter_scale),
             angular=angular,
             progress_proxy=progress_proxy,
         )
@@ -696,38 +679,41 @@ class DataLayer:
         # unpack mixed use hill
         for mu_h_idx, mu_h_key in enumerate(mu_hill_keys):
             mu_h_label = mixed_uses_options[mu_h_key]
-            if mu_h_label not in self.network_layer.metrics["mixed_uses"]:
-                self.network_layer.metrics["mixed_uses"][mu_h_label] = {}
+            if mu_h_label not in self.network_layer.metrics_state.mixed_uses:
+                self.network_layer.metrics_state.mixed_uses[mu_h_label] = {}
             for q_idx, q_key in enumerate(qs):
-                self.network_layer.metrics["mixed_uses"][mu_h_label][q_key] = {}
+                self.network_layer.metrics_state.mixed_uses[mu_h_label][q_key] = {}
                 for d_idx, d_key in enumerate(self.network_layer.distances):
-                    self.network_layer.metrics["mixed_uses"][mu_h_label][q_key][d_key] = mixed_use_hill_data[mu_h_idx][
-                        q_idx
-                    ][d_idx]
+                    val = mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
+                    self.network_layer.metrics_state.mixed_uses[mu_h_label][q_key][d_key] = val
         # unpack mixed use other
         for mu_o_idx, mu_o_key in enumerate(mu_other_keys):
             mu_o_label = mixed_uses_options[mu_o_key + 4]
-            if mu_o_label not in self.network_layer.metrics["mixed_uses"]:
-                self.network_layer.metrics["mixed_uses"][mu_o_label] = {}
+            if mu_o_label not in self.network_layer.metrics_state.mixed_uses:
+                self.network_layer.metrics_state.mixed_uses[mu_o_label] = {}
             # no qs
             for d_idx, d_key in enumerate(self.network_layer.distances):
-                self.network_layer.metrics["mixed_uses"][mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
+                self.network_layer.metrics_state.mixed_uses[mu_o_label][d_key] = mixed_use_other_data[mu_o_idx][d_idx]
         # unpack accessibility data
         for ac_idx, ac_code in enumerate(acc_keys):
             ac_label = landuse_classes[ac_code]  # ac_code is index of ac_label
-            for key, ac_data in zip(
-                ["non_weighted", "weighted"],
-                [accessibility_data, accessibility_data_wt],
-            ):
-                if ac_label not in self.network_layer.metrics["accessibility"][key]:
-                    self.network_layer.metrics["accessibility"][key][ac_label] = {}
-                for d_idx, d_key in enumerate(self.network_layer.distances):
-                    self.network_layer.metrics["accessibility"][key][ac_label][d_key] = ac_data[ac_idx][d_idx]
+            # non-weighted
+            if ac_label not in self.network_layer.metrics_state.accessibility.non_weighted:
+                self.network_layer.metrics_state.accessibility.non_weighted[ac_label] = {}
+            for d_idx, d_key in enumerate(self.network_layer.distances):
+                val = accessibility_data[ac_idx][d_idx]
+                self.network_layer.metrics_state.accessibility.non_weighted[ac_label][d_key] = val
+            # weighted
+            if ac_label not in self.network_layer.metrics_state.accessibility.weighted:
+                self.network_layer.metrics_state.accessibility.weighted[ac_label] = {}
+            for d_idx, d_key in enumerate(self.network_layer.distances):
+                val = accessibility_data_wt[ac_idx][d_idx]
+                self.network_layer.metrics_state.accessibility.weighted[ac_label][d_key] = val
 
     def hill_diversity(
         self,
-        landuse_labels: list | tuple | npt.NDArray,
-        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+        landuse_labels: list[str] | tuple[str] | npt.NDArray[np.unicode_],
+        qs: structures.qsType = None,
     ):
         """
         Compute hill diversity for the provided `landuse_labels` at the specified values of `q`.
@@ -753,8 +739,8 @@ class DataLayer:
 
     def hill_branch_wt_diversity(
         self,
-        landuse_labels: list | tuple | npt.NDArray,
-        qs: float | list | tuple | npt.NDArray[np.float32] | None = None,
+        landuse_labels: list[str] | tuple[str] | npt.NDArray[np.unicode_],
+        qs: structures.qsType = None,
     ):
         """
         Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`.
@@ -780,8 +766,8 @@ class DataLayer:
 
     def compute_accessibilities(
         self,
-        landuse_labels: list | tuple | npt.NDArray,
-        accessibility_keys: list | tuple,
+        landuse_labels: list[str] | tuple[str] | npt.NDArray[np.unicode_],
+        accessibility_keys: list[str] | tuple[str],
     ):
         """
         Compute land-use accessibilities for the specified land-use classification keys.
@@ -813,8 +799,12 @@ class DataLayer:
 
     def compute_stats(
         self,
-        stats_keys: str | list | tuple,
-        stats_data_arrs: list | tuple | npt.NDArray | list[npt.NDArray] | tuple[npt.NDArray],
+        stats_keys: str | list[str] | tuple[str],
+        stats_data: list[np.float32]
+        | tuple[np.float32]
+        | npt.NDArray[np.float32]
+        | list[npt.NDArray[np.float32]]
+        | tuple[npt.NDArray[np.float32]],
         jitter_scale: float = 0.0,
         angular: bool = False,
     ):
@@ -880,7 +870,7 @@ class DataLayer:
             If computing a single stat: a `str` key describing the stats computed for the `stats_data_arr` parameter.
             If computing multiple stats: a `list` or `tuple` of keys. Computed stats will be saved under the supplied
             key to the `N.metrics` dictionary.
-        stats_data_arrs
+        stats_data
             If computing a single stat: a 1d `list`, `tuple` or `numpy` array of numerical data, where the length
             corresponds to the number of data points in the `DataLayer`.
             If computing multiple stats keys: a 2d `list`, `tuple`, or `numpy` array of numerical data, where the first
@@ -889,7 +879,7 @@ class DataLayer:
             ```python
             # if computing three keys for a DataLayer containg 5 data points
             stats_keys = ['valuations', 'floors', 'occupants']
-            stats_data_arrs = [
+            stats_data = [
                 [50000, 60000, 55000, 42000, 46000],  # valuations
                 [3, 3, 2, 3, 5],  # floors
                 [420, 300, 220, 250, 600]  # occupants
@@ -935,7 +925,7 @@ class DataLayer:
         L.assign_to_network(N, max_dist=500)
         # compute some metrics
         L.compute_stats(stats_keys='mock_stat',
-                        stats_data_arrs=stats_data)
+                        stats_data=stats_data)
         # let's prepare some keys for accessing the computational outputs
         # distance idx: any of the distances with which the NetworkLayer was initialised
         distance_idx = 200
@@ -964,26 +954,26 @@ class DataLayer:
         if self.network_layer is None:
             raise ValueError("Assign this data layer to a network prior to computing mixed-uses or accessibilities.")
         # check keys
-        if not isinstance(stats_keys, (str, list, tuple)):
+        if not isinstance(stats_keys, (str, list, tuple)):  # type: ignore
             raise TypeError("Stats keys should be a string else a list or tuple of strings.")
         # wrap single keys
         if isinstance(stats_keys, str):
             stats_keys = [stats_keys]
         # check data arrays
-        if not isinstance(stats_data_arrs, (list, tuple, np.ndarray)):
+        if not isinstance(stats_data, (list, tuple, np.ndarray)):  # type: ignore
             raise TypeError("Stats data must be in the form of a list, tuple, or numpy array.")
-        stats_data_arrs = np.array(stats_data_arrs, dtype=np.float32)
+        stats_data_arrs: npt.NDArray[np.float32] = np.array(stats_data, dtype=np.float32)
         # check for single dimensional arrays and change to 2d if necessary
         if stats_data_arrs.ndim == 1:
             stats_data_arrs = np.expand_dims(stats_data_arrs, axis=0)
         # lengths of keys and array dims should match
         if len(stats_data_arrs) != len(stats_keys):
             raise ValueError("An equal number of stats labels and stats data arrays is required.")
-        if stats_data_arrs.shape[1] != len(self._data):
+        if stats_data_arrs.shape[1] != len(self._data_map):  # type: ignore
             raise ValueError("The length of data arrays must match the number of data points.")
         if not config.QUIET_MODE:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
-            progress_proxy = ProgressBar(total=len(self.network_layer.node_data))
+            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)
         else:
             progress_proxy = None
         # call the underlying method
@@ -998,14 +988,12 @@ class DataLayer:
             stats_max,
             stats_min,
         ) = data.aggregate_stats(
-            self.network_layer.node_data,
-            self.network_layer.edge_data,
-            self.network_layer.node_edge_map,
-            self._data,
-            distances=np.array(self.network_layer.distances, dtype=np.float32),
-            betas=np.array(self.network_layer.betas, dtype=np.float32),
+            self.network_layer.network_structure,
+            self.data_map,
+            distances=np.array(self.network_layer.distances, dtype=np.float32),  # type: ignore
+            betas=np.array(self.network_layer.betas, dtype=np.float32),  # type: ignore
             numerical_arrays=stats_data_arrs,
-            jitter_scale=jitter_scale,
+            jitter_scale=np.float32(jitter_scale),
             angular=angular,
             progress_proxy=progress_proxy,
         )
@@ -1013,8 +1001,8 @@ class DataLayer:
             progress_proxy.close()
         # unpack the numerical arrays
         for num_idx, stats_key in enumerate(stats_keys):
-            if stats_key not in self.network_layer.metrics["stats"]:
-                self.network_layer.metrics["stats"][stats_key] = {}
+            if stats_key not in self.network_layer.metrics_state.stats:
+                self.network_layer.metrics_state.stats[stats_key] = {}
             for key, stats_data in zip(
                 [
                     "max",
@@ -1037,10 +1025,10 @@ class DataLayer:
                     stats_variance_wt,
                 ],
             ):
-                if key not in self.network_layer.metrics["stats"][stats_key]:
-                    self.network_layer.metrics["stats"][stats_key][key] = {}
+                if key not in self.network_layer.metrics_state.stats[stats_key]:
+                    self.network_layer.metrics_state.stats[stats_key][key] = {}
                 for d_idx, d_key in enumerate(self.network_layer.distances):
-                    self.network_layer.metrics["stats"][stats_key][key][d_key] = stats_data[num_idx][d_idx]
+                    self.network_layer.metrics_state.stats[stats_key][key][d_key] = stats_data[num_idx][d_idx]
 
 
 class DataLayerFromDict(DataLayer):
@@ -1052,14 +1040,14 @@ class DataLayerFromDict(DataLayer):
 
     """
 
-    def __init__(self, data_dict: dict):
+    def __init__(self, data_dict: structures.DataDictType):
         """
         Initialise a DataLayer from a python `dict`.
 
         Parameters
         ----------
         data_dict
-            A dictionary representing distinct data points, where each `key` represents a `uid` and each value
+            A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
             represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
             coordinate system matching that of the
             [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
@@ -1074,11 +1062,11 @@ class DataLayerFromDict(DataLayer):
         Example dictionary:
         ```python
         example_data_dict = {
-            'uid_01': {
+            'key_01': {
                 'x': 6000956.463188213,
                 'y': 600693.4059810264
             },
-            'uid_02': {
+            'key_02': {
                 'x': 6000753.336609659,
                 'y': 600758.7916663144
             }
@@ -1086,6 +1074,6 @@ class DataLayerFromDict(DataLayer):
         ```
 
         """
-        data_uids, data_map = data_map_from_dict(data_dict)
+        data_keys, data_map = data_map_from_dict(data_dict)
 
-        super().__init__(data_uids, data_map)
+        super().__init__(data_keys, data_map)

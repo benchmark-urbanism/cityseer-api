@@ -8,16 +8,17 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import cast
 
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import utm
 from shapely import coords, geometry, ops, strtree
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
-from cityseer import config
-from cityseer.algos import checks, structures
+from cityseer import config, structures
+from cityseer.algos import checks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1245,7 +1246,7 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
     nx.MultiGraph
         A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes
         were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes
-        were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will
+        were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `imp_factor` edge attributes will
         be set to match the lengths of the new edges.
 
     Examples
@@ -1524,7 +1525,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph,
-) -> tuple[tuple, npt.NDArray[np.float32], npt.NDArray[np.float32], Dict]:
+) -> tuple[tuple[str | int], structures.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into `numpy` arrays for use by `cityseer` `NetworkLayer` classes.
 
@@ -1591,48 +1592,46 @@ def network_structure_from_nx(
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_multi_copy = nx.convert_node_labels_to_integers(g_multi_copy, 0)
     # prepare the network structure
+    node_keys: list[str | int] = []
     nodes_n: int = g_multi_copy.number_of_nodes()
     edges_n: int = total_out_degrees
     network_structure: structures.NetworkStructure = structures.NetworkStructure(nodes_n, edges_n)
     # generate the network information
-    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
-        # don't cast to string because otherwise correspondence between original and round-trip graph indices is lost
-        node_idx: int = nd_key
-        # TODO: string vs unknown types...
-        label: str = node_data["label"]
+    for start_node_idx, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        # don't cast label to string otherwise correspondence between original and round-trip graph indices is lost
+        node_keys.append(node_data["label"])
         if "x" not in node_data:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x: float = node_data["x"]
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {start_node_idx}.')
+        node_x: float = node_data["x"]
         if "y" not in node_data:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y: float = node_data["y"]
-        live: bool = "live" in node_data and node_data["live"]
-        network_structure.set_node(node_idx, label, x, y, live)
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {start_node_idx}.')
+        node_y: float = node_data["y"]
+        is_live: bool = "live" in node_data and node_data["live"]
+        network_structure.set_node(start_node_idx, node_x, node_y, is_live)
         # build edges
-        for nb_nd_key in g_multi_copy.neighbors(nd_key):
-            # cast to int for indexing
-            nb_idx = int(nb_nd_key)
+        for end_node_idx in g_multi_copy.neighbors(start_node_idx):
             # add the new edge index to the node's out edges
-            for _nx_edge_idx, nx_edge_data in g_multi_copy[nd_key][nb_nd_key].items():
+            for _nx_edge_idx, nx_edge_data in g_multi_copy[start_node_idx][end_node_idx].items():
                 if not "geom" in nx_edge_data:
                     raise KeyError(
-                        f'No edge geom found for edge {nd_key}-{nb_nd_key}: Please add an edge "geom" attribute '
+                        f'No edge geom found for edge {start_node_idx}-{end_node_idx}: Please add an edge "geom" attribute '
                         "consisting of a shapely LineString. Simple (straight) geometries can be inferred "
                         "automatically through the nx_simple_geoms() method."
                     )
                 line_geom = nx_edge_data["geom"]
                 if line_geom.type != "LineString":
                     raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.type} geom for edge {nd_key}-{nb_nd_key}."
+                        f"Expecting LineString geometry but found {line_geom.type} geom for edge {start_node_idx}-{end_node_idx}."
                     )
                 # cannot have zero or negative length - division by zero
                 line_len = line_geom.length
                 if not np.isfinite(line_len) or line_len <= 0:
-                    raise ValueError(f"Length {line_len} for edge {nd_key}-{nb_nd_key} must be finite and positive.")
+                    raise ValueError(
+                        f"Length {line_len} for edge {start_node_idx}-{end_node_idx} must be finite and positive."
+                    )
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
-                s_x, s_y = node_data_arr[node_idx][:2]
-                line_geom_coords = _align_linestring_coords(line_geom.coords, (s_x, s_y))
+                line_geom_coords = _align_linestring_coords(line_geom.coords, (node_x, node_y))
                 # iterate the coordinates and calculate the angular change
                 angle_sum = 0
                 for c in range(len(line_geom_coords) - 2):
@@ -1649,7 +1648,7 @@ def network_structure_from_nx(
                     # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
                 if not np.isfinite(angle_sum) or angle_sum < 0:
                     raise ValueError(
-                        f"Angle sum {angle_sum} for edge {nd_key}-{nb_nd_key} must be finite and positive."
+                        f"Angle sum {angle_sum} for edge {start_node_idx}-{end_node_idx} must be finite and positive."
                     )
                 # if imp_factor is set explicitly, then use
                 # fallback imp_factor of 1
@@ -1659,7 +1658,7 @@ def network_structure_from_nx(
                     imp_factor = nx_edge_data["imp_factor"]
                     if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
                         raise ValueError(
-                            f"Impedance factor: {imp_factor} for edge {nd_key}-{nb_nd_key} must be finite and positive "
+                            f"Impedance factor: {imp_factor} for edge {start_node_idx}-{end_node_idx} must be finite and positive "
                             "or positive infinity."
                         )
                 # in bearing
@@ -1674,18 +1673,18 @@ def network_structure_from_nx(
                 x_2: float = line_geom_coords[-1][0]
                 y_2: float = line_geom_coords[-1][1]
                 out_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                network_structure.set_edge(node_idx, nb_idx, line_len, angle_sum, imp_factor, in_bearing, out_bearing)
+                network_structure.set_edge(
+                    start_node_idx, end_node_idx, line_len, angle_sum, imp_factor, in_bearing, out_bearing
+                )
 
-    return network_structure
+    return tuple(node_keys), network_structure
 
 
-def nx_from_graph_maps(
-    node_keys: tuple | list,
-    node_data: npt.NDArray[np.float32],
-    edge_data: npt.NDArray[np.float32],
-    node_edge_map: Dict,
+def nx_from_network_structure(
+    node_keys: tuple[int | str] | list[int | str],
+    network_structure: structures.NetworkStructure,
     nx_multigraph: nx.MultiGraph | None = None,
-    metrics_dict: dict | None = None,
+    dict_node_metrics: structures.DictNodeMetrics | None = None,
 ) -> nx.MultiGraph:
     """
     Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
@@ -1702,33 +1701,8 @@ def nx_from_graph_maps(
     ----------
     node_keys
         A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
-    node_data
-        A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as
-        follows:
-
-        | idx | property |
-        | :-: | :------- |
-        | 0   | `x` coordinate |
-        | 1   | `y` coordinate |
-        | 2   | `bool` describing whether the node is `live` |
-
-    edge_data
-        A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should
-        correspond as follows:
-
-        | idx | property |
-        | :-: | :------- |
-        | 0   | start node `idx` |
-        | 1   | end node `idx` |
-        | 2   | the segment length in metres |
-        | 3   | the sum of segment's angular change |
-        | 4   | 'impedance factor' applied to magnify or reduce the edge impedance. |
-        | 5   | the edge's entry angular bearing |
-        | 6   | the edge's exit angular bearing |
-
-    node_edge_map
-        A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
-        indices for each node.
+    network_structure
+        A NetworkStructure instance.
     nx_multigraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
         correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
@@ -1752,32 +1726,36 @@ def nx_from_graph_maps(
     logger.info("Populating node and edge map data to a networkX graph.")
     if nx_multigraph is not None:
         logger.info("Reusing existing graph as backbone.")
-        if nx_multigraph.number_of_nodes() != len(node_data):
+        if nx_multigraph.number_of_nodes() != network_structure.nodes.count:
             raise ValueError("The number of nodes in the graph does not match the number of nodes in the node map.")
         g_multi_copy = nx_multigraph.copy()
         for nd_key in node_keys:
             if nd_key not in g_multi_copy:
                 raise KeyError(
-                    f"Node key {nd_key} not found in graph. "
-                    f"If passing a graph as backbone, the keys must match those supplied with the node and edge maps."
+                    f"Node key {nd_key} not found in graph. If passing an existing nx graph as backbone "
+                    "then the keys must match those supplied with the node and edge maps."
                 )
     else:
-        logger.info("No existing graph found, creating new.")
+        logger.info("No existing graph found, creating new nx multigraph.")
         g_multi_copy = nx.MultiGraph()
         g_multi_copy.add_nodes_from(node_keys)
     # after above so that errors caught first
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
+    network_structure.validate()
     logger.info("Unpacking node data.")
-    for nd_key, node in tqdm(zip(node_keys, node_data), disable=config.QUIET_MODE):
-        x, y, live = node
-        g_multi_copy.nodes[nd_key]["x"] = x
-        g_multi_copy.nodes[nd_key]["y"] = y
-        g_multi_copy.nodes[nd_key]["live"] = bool(live)
+    for nd_idx, nd_key in tqdm(enumerate(node_keys), disable=config.QUIET_MODE):
+        g_multi_copy.nodes[nd_key]["x"] = network_structure.nodes.xs[nd_idx]
+        g_multi_copy.nodes[nd_key]["y"] = network_structure.nodes.ys[nd_idx]
+        g_multi_copy.nodes[nd_key]["live"] = bool(network_structure.nodes.live[nd_idx])
     logger.info("Unpacking edge data.")
-    for edge in tqdm(edge_data, disable=config.QUIET_MODE):
-        start, end, length, angle_sum, imp_factor, _start_bearing, _end_bearing = edge
-        start_nd_key = node_keys[int(start)]
-        end_nd_key = node_keys[int(end)]
+    for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):
+        start_nd_idx = network_structure.edges.start[edge_idx]
+        end_nd_idx = network_structure.edges.end[edge_idx]
+        length = network_structure.edges.length[edge_idx]
+        angle_sum = network_structure.edges.angle_sum[edge_idx]
+        imp_factor = network_structure.edges.imp_factor[edge_idx]
+        # find corresponding node keys
+        start_nd_key: int | str = node_keys[start_nd_idx]
+        end_nd_key: int | str = node_keys[end_nd_idx]
         # note that the original geom is lost with round trip unless retained in a supplied backbone graph.
         # the edge map is directional, so each original edge will be processed twice, once from either direction.
         # edges are only added if A) not using a backbone graph and B) the edge hasn't already been added
@@ -1824,9 +1802,9 @@ def nx_from_graph_maps(
                     existing_edge["angle_sum"] = angle_sum
                     existing_edge["imp_factor"] = imp_factor
     # unpack any metrics written to the nodes
-    if metrics_dict is not None:
+    if dict_node_metrics is not None:
         logger.info("Unpacking metrics to nodes.")
-        for nd_key, metrics in tqdm(metrics_dict.items(), disable=config.QUIET_MODE):
+        for nd_key, metrics in tqdm(dict_node_metrics.items(), disable=config.QUIET_MODE):
             if nd_key not in g_multi_copy:
                 raise KeyError(
                     f"Node key {nd_key} not found in graph. "
@@ -1839,8 +1817,8 @@ def nx_from_graph_maps(
 
 def nx_from_osm_nx(
     nx_multidigraph: nx.MultiDiGraph,
-    node_attributes: list | tuple | None = None,
-    edge_attributes: list | tuple | None = None,
+    node_attributes: list[str] | tuple[str] | None = None,
+    edge_attributes: list[str] | tuple[str] | None = None,
     tolerance: float = config.ATOL,
 ) -> nx.MultiGraph:
     """
@@ -1912,7 +1890,7 @@ def nx_from_osm_nx(
             if node_attributes is not None:
                 for node_att in node_attributes:
                     if node_att not in nx_multidigraph.nodes[nd_key]:
-                        raise ValueError(f"Attribute {node_att} is not available for node {nd_key}.")
+                        raise ValueError(f"Specified attribute {node_att} is not available for node {nd_key}.")
                     g_multi.nodes[nd_key][node_att] = nx_multidigraph.nodes[nd_key][node_att]
 
         return x, y

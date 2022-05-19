@@ -46,7 +46,7 @@ def test_check_categorical_data():
 def test_check_data_map(primal_graph):
     N = networks.NetworkLayerFromNX(primal_graph, distances=[500])
     data_dict = mock.mock_data_dict(primal_graph)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
 
     # should throw error if not assigned
     with pytest.raises(ValueError):

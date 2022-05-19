@@ -1,3 +1,5 @@
+# pyright: basic
+
 import networkx as nx
 import numpy as np
 import pytest
@@ -652,41 +654,51 @@ def test_nx_to_dual(primal_graph, diamond_graph):
 
 def test_network_structure_from_nx(diamond_graph):
     # test maps vs. networkX
-    G_test = diamond_graph.copy()
+    G_test: nx.MultiGraph = diamond_graph.copy()
     G_test_dual = graphs.nx_to_dual(G_test)
     for G, is_dual in zip((G_test, G_test_dual), (False, True)):
         # set some random 'live' statuses
-        for n in G.nodes():
-            G.nodes[n]["live"] = bool(np.random.randint(0, 1))
+        for nd_idx in G.nodes():
+            G.nodes[nd_idx]["live"] = bool(np.random.randint(0, 1))
         # generate test maps
-        network_structure = graphs.network_structure_from_nx(G)
+        node_keys, network_structure = graphs.network_structure_from_nx(G)
+        network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
-        # plot.plot_graph_maps(node_uids, node_data, edge_data)
-
-        # run check (this checks node to edge maps internally)
-        checks.check_network_maps(node_data, edge_data, node_edge_map)
+        # plot.plot_network_structure(node_uids, node_data, edge_data)
 
         # check lengths
-        assert len(node_uids) == len(node_data) == G.number_of_nodes()
+        assert len(node_keys) == network_structure.nodes.count == G.number_of_nodes()
         # edges = x2
-        assert len(edge_data) == G.number_of_edges() * 2
+        assert network_structure.edges.count == G.number_of_edges() * 2
 
         # check node maps (idx and label match in this case...)
-        for n_label in node_uids:
-            n_idx = node_uids.index(n_label)
-            assert np.allclose(node_data[n_idx][0], G.nodes[n_label]["x"], atol=config.ATOL, rtol=config.RTOL)
-            assert np.allclose(node_data[n_idx][1], G.nodes[n_label]["y"], atol=config.ATOL, rtol=config.RTOL)
-            assert np.allclose(node_data[n_idx][2], G.nodes[n_label]["live"], atol=config.ATOL, rtol=config.RTOL)
+        for n_label in node_keys:
+            n_idx = node_keys.index(n_label)
+            assert np.isclose(
+                network_structure.nodes.xs[n_idx], G.nodes[n_label]["x"], atol=config.ATOL, rtol=config.RTOL
+            )
+            assert np.isclose(
+                network_structure.nodes.ys[n_idx], G.nodes[n_label]["y"], atol=config.ATOL, rtol=config.RTOL
+            )
+            assert np.isclose(
+                network_structure.nodes.live[n_idx], G.nodes[n_label]["live"], atol=config.ATOL, rtol=config.RTOL
+            )
 
         # check edge maps (idx and label match in this case...)
-        for start, end, length, angle, imp_fact, start_bear, end_bear in edge_data:
-            # print(f'elif (start, end) == ({start}, {end}):')
-            # print(f'assert (length, angle, imp_fact, start_bear, end_bear) == ({length}, {angle}, {imp_fact}, {start_bear}, {end_bear})')
+        for edge_idx in range(network_structure.edges.count):
+            start_nd = network_structure.edges.start[edge_idx]
+            end_nd = network_structure.edges.end[edge_idx]
+            length = network_structure.edges.length[edge_idx]
+            angle_sum = network_structure.edges.angle_sum[edge_idx]
+            imp_factor = network_structure.edges.imp_factor[edge_idx]
+            in_bearing = network_structure.edges.in_bearing[edge_idx]
+            out_bearing = network_structure.edges.out_bearing[edge_idx]
+            # checks
             if not is_dual:
-                if (start, end) == (0.0, 1.0):
+                if (start_nd, end_nd) == (0.0, 1.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -697,9 +709,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (0.0, 2.0):
+                elif (start_nd, end_nd) == (0.0, 2.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -710,9 +722,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 0.0):
+                elif (start_nd, end_nd) == (1.0, 0.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -723,9 +735,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 2.0):
+                elif (start_nd, end_nd) == (1.0, 2.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -736,9 +748,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 3.0):
+                elif (start_nd, end_nd) == (1.0, 3.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -749,9 +761,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 0.0):
+                elif (start_nd, end_nd) == (2.0, 0.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -760,9 +772,9 @@ def test_network_structure_from_nx(diamond_graph):
                             -120.0,
                         ),
                     )
-                elif (start, end) == (2.0, 1.0):
+                elif (start_nd, end_nd) == (2.0, 1.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -773,9 +785,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 3.0):
+                elif (start_nd, end_nd) == (2.0, 3.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -786,9 +798,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (3.0, 1.0):
+                elif (start_nd, end_nd) == (3.0, 1.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -799,9 +811,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (3.0, 2.0):
+                elif (start_nd, end_nd) == (3.0, 2.0):
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             0.0,
@@ -815,12 +827,12 @@ def test_network_structure_from_nx(diamond_graph):
                 else:
                     raise KeyError("Unmatched edge.")
             else:
-                s_idx = node_uids[int(start)]
-                e_idx = node_uids[int(end)]
+                s_idx = node_keys[int(start_nd)]
+                e_idx = node_keys[int(end_nd)]
                 print(s_idx, e_idx)
-                if (start, end) == (0.0, 1.0):  # 0_1 0_2
+                if (start_nd, end_nd) == (0.0, 1.0):  # 0_1 0_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -831,9 +843,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (0.0, 2.0):  # 0_1 1_2
+                elif (start_nd, end_nd) == (0.0, 2.0):  # 0_1 1_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -844,9 +856,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (0.0, 3.0):  # 0_1 1_3
+                elif (start_nd, end_nd) == (0.0, 3.0):  # 0_1 1_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             60.0,
@@ -857,9 +869,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 0.0):  # 0_2 0_1
+                elif (start_nd, end_nd) == (1.0, 0.0):  # 0_2 0_1
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -870,9 +882,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 2.0):  # 0_2 1_2
+                elif (start_nd, end_nd) == (1.0, 2.0):  # 0_2 1_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -883,9 +895,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (1.0, 4.0):  # 0_2 2_3
+                elif (start_nd, end_nd) == (1.0, 4.0):  # 0_2 2_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             60.0,
@@ -896,9 +908,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 0.0):  # 1_2 0_1
+                elif (start_nd, end_nd) == (2.0, 0.0):  # 1_2 0_1
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -909,9 +921,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 1.0):  # 1_2 0_2
+                elif (start_nd, end_nd) == (2.0, 1.0):  # 1_2 0_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -922,9 +934,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 3.0):  # 1_2 1_3
+                elif (start_nd, end_nd) == (2.0, 3.0):  # 1_2 1_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -935,9 +947,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (2.0, 4.0):  # 1_2 2_3
+                elif (start_nd, end_nd) == (2.0, 4.0):  # 1_2 2_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -948,9 +960,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (3.0, 0.0):  # 1_3 0_1
+                elif (start_nd, end_nd) == (3.0, 0.0):  # 1_3 0_1
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             60.0,
@@ -961,9 +973,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (3.0, 2.0):  # 1_3 1_2
+                elif (start_nd, end_nd) == (3.0, 2.0):  # 1_3 1_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -974,9 +986,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (3.0, 4.0):  # 1_3 2_3
+                elif (start_nd, end_nd) == (3.0, 4.0):  # 1_3 2_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -987,9 +999,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (4.0, 1.0):  # 2_3 0_2
+                elif (start_nd, end_nd) == (4.0, 1.0):  # 2_3 0_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             60.0,
@@ -1000,9 +1012,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (4.0, 2.0):  # 2_3 1_2
+                elif (start_nd, end_nd) == (4.0, 2.0):  # 2_3 1_2
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -1013,9 +1025,9 @@ def test_network_structure_from_nx(diamond_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                elif (start, end) == (4.0, 3.0):  # 2_3 1_3
+                elif (start_nd, end_nd) == (4.0, 3.0):  # 2_3 1_3
                     assert np.allclose(
-                        (length, angle, imp_fact, start_bear, end_bear),
+                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
                         (
                             100.0,
                             120.0,
@@ -1030,26 +1042,28 @@ def test_network_structure_from_nx(diamond_graph):
                     raise KeyError("Unmatched edge.")
     # check that missing geoms throw an error
     G_test = diamond_graph.copy()
-    for s, e, k in G_test.edges(keys=True):
+    for start_nd, end_nd, edge_key in G_test.edges(keys=True):
         # delete key from first node and break
-        del G_test[s][e][k]["geom"]
+        del G_test[start_nd][end_nd][edge_key]["geom"]
         break
     with pytest.raises(KeyError):
         graphs.network_structure_from_nx(G_test)
 
     # check that non-LineString geoms throw an error
     G_test = diamond_graph.copy()
-    for s, e, k in G_test.edges(keys=True):
-        G_test[s][e][k]["geom"] = geometry.Point([G_test.nodes[s]["x"], G_test.nodes[s]["y"]])
+    for start_nd, end_nd, edge_key in G_test.edges(keys=True):
+        G_test[start_nd][end_nd][edge_key]["geom"] = geometry.Point(
+            [G_test.nodes[start_nd]["x"], G_test.nodes[start_nd]["y"]]
+        )
     with pytest.raises(TypeError):
         graphs.network_structure_from_nx(G_test)
 
     # check that missing node keys throw an error
     G_test = diamond_graph.copy()
-    for k in ["x", "y"]:
-        for n in G_test.nodes():
+    for edge_key in ["x", "y"]:
+        for nd_idx in G_test.nodes():
             # delete key from first node and break
-            del G_test.nodes[n][k]
+            del G_test.nodes[nd_idx][edge_key]
             break
         with pytest.raises(KeyError):
             graphs.network_structure_from_nx(G_test)
@@ -1058,25 +1072,25 @@ def test_network_structure_from_nx(diamond_graph):
     G_test = diamond_graph.copy()
     # corrupt imp_factor value and break
     for corrupt_val in [-1, -np.inf, np.nan]:
-        for s, e, k in G_test.edges(keys=True):
-            G_test[s][e][k]["imp_factor"] = corrupt_val
+        for start_nd, end_nd, edge_key in G_test.edges(keys=True):
+            G_test[start_nd][end_nd][edge_key]["imp_factor"] = corrupt_val
             break
         with pytest.raises(ValueError):
             graphs.network_structure_from_nx(G_test)
 
 
-def test_nx_from_graph_maps(primal_graph):
+def test_nx_from_network_structure(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
 
     # check round trip to and from graph maps results in same graph
     # explicitly set live params for equality checks
-    # graph_maps_from_networkX generates these implicitly if missing
+    # network_structure_from_networkX generates these implicitly if missing
     for n in primal_graph.nodes():
         primal_graph.nodes[n]["live"] = bool(np.random.randint(0, 1))
 
     # test directly from and to graph maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
-    G_round_trip = graphs.nx_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
+    node_keys, networkx_structure = graphs.network_structure_from_nx(primal_graph)
+    G_round_trip = graphs.nx_from_network_structure(node_keys, networkx_structure)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
 
@@ -1096,13 +1110,13 @@ def test_nx_from_graph_maps(primal_graph):
     )
     metrics_dict = N.metrics_to_dict()
     # without backbone
-    G_round_trip_data = graphs.nx_from_graph_maps(
+    G_round_trip_data = graphs.nx_from_network_structure(
         node_uids, node_data, edge_data, node_edge_map, metrics_dict=metrics_dict
     )
-    for uid, metrics in metrics_dict.items():
-        assert G_round_trip_data.nodes[uid]["metrics"] == metrics
+    for node_key, metrics in metrics_dict.items():
+        assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
     # with backbone
-    G_round_trip_data = graphs.nx_from_graph_maps(
+    G_round_trip_data = graphs.nx_from_network_structure(
         node_uids,
         node_data,
         edge_data,
@@ -1110,8 +1124,8 @@ def test_nx_from_graph_maps(primal_graph):
         nx_multigraph=primal_graph,
         metrics_dict=metrics_dict,
     )
-    for uid, metrics in metrics_dict.items():
-        assert G_round_trip_data.nodes[uid]["metrics"] == metrics
+    for node_key, metrics in metrics_dict.items():
+        assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
 
     # test with decomposed
     G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
@@ -1120,7 +1134,7 @@ def test_nx_from_graph_maps(primal_graph):
         G_decomposed.nodes[n]["live"] = bool(np.random.randint(0, 1))
     node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.network_structure_from_nx(G_decomposed)
 
-    G_round_trip_d = graphs.nx_from_graph_maps(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
+    G_round_trip_d = graphs.nx_from_network_structure(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
     assert list(G_round_trip_d.nodes) == list(G_decomposed.nodes)
     for n, iter_node_data in G_round_trip.nodes(data=True):
         assert n in G_decomposed
@@ -1134,18 +1148,18 @@ def test_nx_from_graph_maps(primal_graph):
     corrupt_G = primal_graph.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
-        graphs.nx_from_graph_maps(
+        graphs.nx_from_network_structure(
             node_uids,
             node_data,
             edge_data,
             node_edge_map,
             nx_multigraph=corrupt_G,
         )
-    # mismatching node uid
+    # mismatching node_key
     with pytest.raises(KeyError):
         corrupt_node_uids = list(node_uids)
         corrupt_node_uids[0] = "boo"
-        graphs.nx_from_graph_maps(
+        graphs.nx_from_network_structureructureructure(
             corrupt_node_uids,
             node_data,
             edge_data,
@@ -1156,7 +1170,7 @@ def test_nx_from_graph_maps(primal_graph):
     with pytest.raises(KeyError):
         corrupt_primal_graph = primal_graph.copy()
         corrupt_primal_graph.remove_edge(0, 1)
-        graphs.nx_from_graph_maps(
+        graphs.nx_from_network_structure(
             node_uids,
             node_data,
             edge_data,

@@ -27,7 +27,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
 
     node_uids_p, node_data_p, edge_data_p, node_edge_map_p = graphs.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nx_from_graph_maps(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
+    G_round_trip = graphs.nx_from_network_structure(node_uids_p, node_data_p, edge_data_p, node_edge_map_p)
     # prepare dual graph
     node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.network_structure_from_nx(dual_graph)
     assert len(node_uids_d) > len(node_uids_p)
@@ -84,7 +84,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     # takes 1597m route via long outside segment
-    # tree_dists[int(full_to_trim_idx_map[node_labels.index('39_40')])]
+    # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
     assert path_transpose == [
         "11_6",
         "11_14",
@@ -104,7 +104,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     path = find_path(target, src_idx, tree_preds)
     path_transpose = [node_uids_d[n] for n in path]
     # takes 1345m shorter route
-    # tree_dists[int(full_to_trim_idx_map[node_labels.index('39_40')])]
+    # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
     assert path_transpose == [
         "11_6",
         "6_7",
@@ -157,7 +157,7 @@ def test_local_node_centrality(primal_graph):
     """
     # generate node and edge maps
     node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
-    G_round_trip = graphs.nx_from_graph_maps(node_uids, node_data, edge_data, node_edge_map)
+    G_round_trip = graphs.nx_from_network_structure(node_uids, node_data, edge_data, node_edge_map)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = np.array([0.02, 0.01, 0.005, 0.0008, 0.0])
     distances = networks.distance_from_beta(betas)

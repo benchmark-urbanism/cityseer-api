@@ -61,9 +61,9 @@ def test_encode_categorical():
 def test_data_map_from_dict(primal_graph):
     # generate mock data
     data_dict = mock.mock_data_dict(primal_graph)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
-    assert len(data_uids) == len(data_map) == len(data_dict)
-    for d_label, d in zip(data_uids, data_map):
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
+    assert len(data_keys) == len(data_map) == len(data_dict)
+    for d_label, d in zip(data_keys, data_map):
         assert d[0] == data_dict[d_label]["x"]
         assert d[1] == data_dict[d_label]["y"]
         assert np.isnan(d[2])
@@ -78,12 +78,12 @@ def test_data_map_from_dict(primal_graph):
 
 def test_Data_Layer(primal_graph):
     data_dict = mock.mock_data_dict(primal_graph)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
     # test against DataLayer internal process
-    D = layers.DataLayer(data_uids, data_map)
-    assert D.uids == data_uids
+    D = layers.DataLayer(data_keys, data_map)
+    assert D.uids == data_keys
     assert np.allclose(D._data, data_map, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(D.data_x_arr, x_arr, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(D.data_y_arr, y_arr, atol=config.ATOL, rtol=config.RTOL)
@@ -91,12 +91,12 @@ def test_Data_Layer(primal_graph):
 
 def test_Data_Layer_From_Dict(primal_graph):
     data_dict = mock.mock_data_dict(primal_graph)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     x_arr = data_map[:, 0]
     y_arr = data_map[:, 1]
     # test against DataLayerFromDict's internal process
     D = layers.DataLayerFromDict(data_dict)
-    assert D.uids == data_uids
+    assert D.uids == data_keys
     assert np.allclose(D._data, data_map, equal_nan=True)
     assert np.allclose(D.data_x_arr, x_arr, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(D.data_y_arr, y_arr, atol=config.ATOL, rtol=config.RTOL)

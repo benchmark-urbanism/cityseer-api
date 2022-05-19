@@ -9,12 +9,10 @@ import logging
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-from numba.typed import Dict
 from numba_progress import ProgressBar
 
-from cityseer import config
-from cityseer.algos import centrality, checks
-from cityseer.metrics import typing
+from cityseer import config, structures
+from cityseer.algos import centrality
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -397,22 +395,18 @@ class NetworkLayer:
     [`NetworkLayer.to_nx_multigraph`](#networklayer-to-networkx).
     """
 
-    _uids: list[str | int] | tuple[str | int]
-    _node_data: npt.NDArray[np.float32]
-    _edge_data: npt.NDArray[np.float32]
-    _node_edge_map: Dict
+    _node_keys: list[str | int] | tuple[str | int]
+    _network_structure: structures.NetworkStructure
     _distances: npt.NDArray[np.float32]
     _betas: npt.NDArray[np.float32]
     _min_threshold_wt: float
-    _metrics_state: typing.MetricsState
+    _metrics_state: structures.MetricsState
     _nx_multigraph: nx.MultiGraph | None
 
     def __init__(
         self,
-        node_uids: list[int | str] | tuple[int | str],
-        node_data: npt.NDArray[np.float32],
-        edge_data: npt.NDArray[np.float32],
-        node_edge_map: Dict,  # type: ignore
+        node_keys: list[int | str] | tuple[int | str],
+        network_structure: structures.NetworkStructure,
         distances: int
         | float
         | list[int | float]
@@ -427,9 +421,9 @@ class NetworkLayer:
 
         Parameters
         ----------
-        node_uids
+        node_keys
             A `list` or `tuple` of node identifiers corresponding to each node. This list must be in the same order and
-            of the same length as the `node_data`.
+            of the same length as the nodes contained in `network_structure`.
         node_data
             A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as
             follows:
@@ -516,20 +510,26 @@ class NetworkLayer:
         completion of the algorithms on large networks.
         :::
 
+        :::warning
+        Networks should be buffered according to the largest distance threshold that will be used for analysis. This
+        protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
+        buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
+        Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
+        when calculating shortest paths and landuse accessibilities.
+        :::
+
         """
-        self._uids = node_uids
-        self._node_data = node_data
-        self._edge_data = edge_data
-        self._node_edge_map = node_edge_map
+        self._node_keys = node_keys
+        self._network_structure = network_structure
         self._min_threshold_wt = min_threshold_wt
-        self._metrics_state = typing.MetricsState()
+        self._metrics_state = structures.MetricsState()
         # for storing originating networkX graph
         self._nx_multigraph = None
         # check the data structures
-        if len(self._uids) != len(self._node_data):
-            raise ValueError("The number of indices does not match the number of nodes.")
-        # check network maps
-        checks.check_network_maps(self._node_data, self._edge_data, self._node_edge_map)  # type: ignore
+        if len(self._node_keys) != network_structure.nodes.count:
+            raise ValueError("The number of indices does not match the number of nodes contained in network_structure.")
+        # validate network structure
+        network_structure.validate()
         # if distances, check the types and generate the betas
         if distances is not None and betas is None:
             self._distances = _cast_distance(distances)
@@ -541,90 +541,32 @@ class NetworkLayer:
             raise ValueError("Please provide either a distance/s or beta/s, but not both.")
 
     @property
-    def uids(self):
-        """Uids corresponding to each node in the graph's node_map."""
-        return self._uids
+    def node_keys(self) -> list[str | int] | tuple[str | int]:
+        """Node keys."""
+        return self._node_keys
 
     @property
-    def distances(self):
+    def distances(self) -> npt.NDArray[np.float_]:
         """Distance threshold/s at which the class has been initialised."""
         return self._distances
 
     @property
-    def betas(self):
+    def betas(self) -> npt.NDArray[np.float_]:
         r"""Distance decay $\\beta$ thresholds (spatial impedance) at which the class is initialised."""
         return self._betas
 
     @property
-    def node_data(self):
-        """Node data for this network."""
-        return self._node_data
+    def network_structure(self) -> structures.NetworkStructure:
+        """Network structure."""
+        return self._network_structure
 
     @property
-    def edge_data(self):
-        """Edge data for this network."""
-        return self._edge_data
-
-    @property
-    def node_edge_map(self):  # type: ignore
-        """Node to Edges mapping for this network."""
-        return self._node_edge_map  # type: ignore
-
-    @property
-    def node_x_arr(self):
-        """Network node 'x' coordinates."""
-        return self._node_data[:, 0]
-
-    @property
-    def node_y_arr(self):
-        """Network node 'y' coordinates."""
-        return self._node_data[:, 1]
-
-    @property
-    def node_live_arr(self):
-        """
-        Network node 'live' state, corresponding to whether a node is 'live' or 'dead'.
-
-        Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-        protects nodes near network boundaries from edge falloffs. Nodes within these buffered extents should be set to
-        'dead' so that centralities or other forms of measures are not calculated. Whereas metrics are not calculated
-        for 'dead' nodes, they can still be traversed by network analysis algorithms when calculating shortest paths and
-        landuse accessibilities.
-        """
-        return self._node_data[:, 2]
-
-    @property
-    def edge_lengths_arr(self):
-        """Edge lengths."""
-        return self._edge_data[:, 2]
-
-    @property
-    def edge_angles_arr(self):
-        """Edge angular change."""
-        return self._edge_data[:, 3]
-
-    @property
-    def edge_impedance_factors_arr(self):
-        """Edge impedance factor."""
-        return self._edge_data[:, 4]
-
-    @property
-    def edge_in_bearings_arr(self):
-        """Edge in-bearing angle."""
-        return self._edge_data[:, 5]
-
-    @property
-    def edge_out_bearings_arr(self):
-        """Edge out-bearing angle."""
-        return self._edge_data[:, 6]
-
-    @property
-    def metrics_state(self):
+    def metrics_state(self) -> structures.MetricsState:
         """Metrics state."""
         return self._metrics_state
 
     @property
-    def nx_multigraph(self):
+    def nx_multigraph(self) -> nx.MultiGraph | None:
         """If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived."""
         return self._nx_multigraph
 
@@ -633,11 +575,11 @@ class NetworkLayer:
         self._nx_multigraph = nx_multigraph
 
     # for retrieving metrics to a dictionary
-    def metrics_to_dict(self) -> dict:  # type: ignore
+    def metrics_to_dict(self) -> structures.DictNodeMetrics:
         """
         Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary.
 
-        The dictionary `keys` will correspond to the node `uids`.
+        The dictionary `keys` will correspond to the node keys.
 
         Examples
         --------
@@ -663,29 +605,29 @@ class NetworkLayer:
         # prints: 0.023120252
 
         # let's convert the data to a dictionary
-        # the unpacked data is now stored by the uid of the node identifier
+        # the unpacked data is now stored by the node_key of the node identifier
         data_dict = N.metrics_to_dict()
         print(data_dict[random_uid][centrality['node_harmonic'][200])
         # prints: 0.023120252
         ```
 
         """
-        m = {}
-        for i, uid in enumerate(self._uids):
-            node_state: dict = self._metrics.extract_node_metrics(node_idx=i)  # type: ignore
-            node_state["x"] = self.node_x_arr[i]
-            node_state["y"] = self.node_y_arr[i]
-            node_state["live"] = self.node_live_arr[i] == 1
-            m[uid] = node_state
+        dict_node_metrics: structures.DictNodeMetrics = {}
+        for i, node_key in enumerate(self._node_keys):
+            node_metrics: structures.NodeMetrics = self._metrics_state.extract_node_metrics(node_idx=i)
+            node_metrics["x"] = self.network_structure.nodes.xs[i]
+            node_metrics["y"] = self.network_structure.nodes.ys[i]
+            node_metrics["live"] = self.network_structure.nodes.live[i]
+            dict_node_metrics[node_key] = node_metrics
 
-        return m  # type: ignore
+        return dict_node_metrics
 
     # for unpacking to a networkX graph
     def to_nx_multigraph(self) -> nx.MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`.
 
-        This method calls [`nx_from_graph_maps`](/tools/graphs/#nx-from-graph-maps) internally.
+        This method calls [`nx_from_network_structure`](/tools/graphs/#nx-from-graph-maps) internally.
 
         Returns
         -------
@@ -733,14 +675,12 @@ class NetworkLayer:
         _A graph after conversion back to `networkX`._
 
         """
-        metrics_dict: dict = self.metrics_to_dict()  # type: ignore
-        return graphs.nx_from_graph_maps(  # type: ignore
-            self._uids,
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,  # type: ignore
+        dict_node_metrics: structures.DictNodeMetrics = self.metrics_to_dict()
+        return graphs.nx_from_network_structure(
+            self.node_keys,
+            self.network_structure,
             self._nx_multigraph,
-            metrics_dict,
+            dict_node_metrics,
         )
 
     # provides access to the underlying centrality.local_centrality method
@@ -830,18 +770,16 @@ class NetworkLayer:
         measure_keys = tuple(prep_measure_keys)
         if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-            progress_proxy = ProgressBar(total=len(self._node_data))
+            progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
         # pylint: disable=duplicate-code
         measures_data = centrality.local_node_centrality(  # type: ignore
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,  # type: ignore
+            self.network_structure,
             np.array(self._distances, dtype=np.float32),  # type: ignore
             np.array(self._betas, dtype=np.float32),  # type: ignore
             measure_keys,
-            jitter_scale=jitter_scale,
+            jitter_scale=np.float32(jitter_scale),
             angular=angular,
             progress_proxy=progress_proxy,
         )
@@ -929,17 +867,15 @@ class NetworkLayer:
         measure_keys = tuple(prep_measure_keys)
         if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-            progress_proxy = ProgressBar(total=len(self._node_data))
+            progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
         measures_data = centrality.local_segment_centrality(  # type: ignore
-            self._node_data,
-            self._edge_data,
-            self._node_edge_map,  # type: ignore
+            self.network_structure,
             np.array(self._distances, dtype=np.float32),  # type: ignore
             np.array(self._betas, dtype=np.float32),  # type: ignore
             measure_keys,
-            jitter_scale=jitter_scale,
+            jitter_scale=np.float32(jitter_scale),
             angular=angular,
             progress_proxy=progress_proxy,
         )
@@ -997,12 +933,10 @@ class NetworkLayerFromNX(NetworkLayer):
             A `NetworkLayer`.
 
         """
-        node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(nx_multigraph)
+        node_keys, network_structure = graphs.network_structure_from_nx(nx_multigraph)
         super().__init__(
-            node_uids,
-            node_data,
-            edge_data,
-            node_edge_map,
+            node_keys,
+            network_structure,
             distances,
             betas,
             min_threshold_wt,

@@ -490,8 +490,8 @@ def plot_assignment(  # noqa
     for x, y, nearest_netw_idx, next_n_netw_idx in zip(
         DataLayer.data_x_arr[:, 0],
         DataLayer.data_y_arr[:, 1],
-        DataLayer._data[:, 2],  # pylint: disable=protected-access
-        DataLayer._data[:, 3],  # pylint: disable=protected-access
+        DataLayer._data_map[:, 2],  # pylint: disable=protected-access
+        DataLayer._data_map[:, 3],  # pylint: disable=protected-access
     ):
 
         # if the data points have been assigned network indices
@@ -513,7 +513,7 @@ def plot_assignment(  # noqa
         plt.show()
 
 
-def plot_graph_maps(  # noqa
+def plot_network_structure(
     node_data: npt.NDArray[np.float32],
     edge_data: npt.NDArray[np.float32],
     data_map: npt.NDArray[np.float32] | None = None,

@@ -17,6 +17,7 @@ import requests
 import utm
 from shapely import geometry
 
+from cityseer import structures
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -208,14 +209,14 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
     nx_multigraph.add_edges_from(edges)
 
     if wgs84_coords:
-        for n, d in nx_multigraph.nodes(data=True):
-            easting = d["x"]
-            northing = d["y"]
+        for node_idx, node_data in nx_multigraph.nodes(data=True):  # type: ignore
+            easting = node_data["x"]  # type: ignore
+            northing = node_data["y"]  # type: ignore
             # be cognisant of parameter and return order
             # returns in lat, lng order
-            lat, lng = utm.to_latlon(easting, northing, 30, "U")
-            nx_multigraph.nodes[n]["x"] = lng
-            nx_multigraph.nodes[n]["y"] = lat
+            lat, lng = utm.to_latlon(easting, northing, 30, "U")  # type: ignore
+            nx_multigraph.nodes[node_idx]["x"] = lng  # type: ignore
+            nx_multigraph.nodes[node_idx]["y"] = lat  # type: ignore
 
     return nx_multigraph
 
@@ -238,25 +239,25 @@ def get_graph_extents(
 
     """
     # get min and maxes for x and y
-    min_x = np.inf
-    max_x = -np.inf
-    min_y = np.inf
-    max_y = -np.inf
+    min_x: float = np.inf
+    max_x: float = -np.inf
+    min_y: float = np.inf
+    max_y: float = -np.inf
 
-    for _, d in nx_multigraph.nodes(data=True):
-        if d["x"] < min_x:
-            min_x = d["x"]
-        if d["x"] > max_x:
-            max_x = d["x"]
-        if d["y"] < min_y:
-            min_y = d["y"]
-        if d["y"] > max_y:
-            max_y = d["y"]
+    for _node_idx, node_data in nx_multigraph.nodes(data=True):
+        if node_data["x"] < min_x:
+            min_x = node_data["x"]
+        if node_data["x"] > max_x:
+            max_x = node_data["x"]
+        if node_data["y"] < min_y:
+            min_y = node_data["y"]
+        if node_data["y"] > max_y:
+            max_y = node_data["y"]
 
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = None) -> dict:
+def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = 0) -> structures.DataDictType:
     """
     Generate a dictionary containing mock data for testing or experimentation purposes.
 
@@ -273,27 +274,21 @@ def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: 
     Returns
     -------
     dict
-        A dictionary where each entry consists of a `key` representing a distinct data point `uid`, and corresponding
-        `x`, `y` and `live` values.
+        A dictionary where each entry consists of a distinct `data_key`, and corresponding `x` and `y`.
 
     """
-    if random_seed is not None:
-        np.random.seed(seed=random_seed)  # pylint: disable=no-member
-
+    np.random.seed(seed=random_seed)  # pylint: disable=no-member
     min_x, min_y, max_x, max_y = get_graph_extents(nx_multigraph)
-
-    data_dict = {}
-
-    for i in range(length):
-        data_dict[i] = {
+    data_dict: structures.DataDictType = {}
+    for data_idx in range(length):
+        data_dict[data_idx] = {
             "x": np.random.uniform(min_x, max_x),  # pylint: disable=no-member
             "y": np.random.uniform(min_y, max_y),  # pylint: disable=no-member
         }
-
     return data_dict
 
 
-def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int = None) -> list[str]:
+def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int = 0) -> list[str]:
     """
     Generate a `numpy` array containing mock categorical data for testing or experimentation purposes.
 
@@ -315,8 +310,7 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
         The categorical data will consist of randomly selected characters.
 
     """
-    if random_seed is not None:
-        np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)
 
     random_class_str = string.ascii_lowercase
     if num_classes > len(random_class_str):
@@ -325,9 +319,10 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
         )
     random_class_str = random_class_str[:num_classes]
 
-    cl_codes = []
+    cl_codes: list[str] = []
     for _ in range(length):
-        cl_codes.append(random_class_str[int(np.random.randint(0, len(random_class_str)))])  # pylint: disable=no-member
+        random_idx = int(np.random.randint(0, len(random_class_str)))
+        cl_codes.append(random_class_str[random_idx])
 
     return cl_codes
 
@@ -338,7 +333,7 @@ def mock_numerical_data(
     val_max: int = 100000,
     num_arrs: int = 1,
     floating_pt: int = 3,
-    random_seed: int | None = None,
+    random_seed: int = 0,
 ) -> npt.NDArray[np.float32]:
     """
     Generate a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
@@ -367,20 +362,21 @@ def mock_numerical_data(
         integers.
 
     """
-    if random_seed is not None:
-        np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     num_data = []
     for _ in range(num_arrs):
         num_data.append(np.random.randint(val_min, high=val_max, size=length))  # pylint: disable=no-member
     # return a 2d array
-    num_arr = np.array(num_data, dtype=np.float32)
+    num_arr: npt.NDArray[np.float32] = np.array(num_data, dtype=np.float32)
     num_arr /= 10**floating_pt
 
     return num_arr
 
 
-def mock_species_data(random_seed: int = None) -> Generator:
+def mock_species_data(
+    random_seed: int = 0,
+) -> Generator[tuple[npt.NDArray[np.int_], npt.NDArray[np.float32]], None, None]:
     """
     Generate a series of randomly generated counts and corresponding probabilities.
 
@@ -427,13 +423,12 @@ def mock_species_data(random_seed: int = None) -> Generator:
     ```
 
     """
-    if random_seed is not None:
-        np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)  # pylint: disable=no-member
 
     for n in range(1, 50, 5):
         data = np.random.randint(1, 10, n)  # pylint: disable=no-member
-        unique = np.unique(data)
-        counts = np.zeros_like(unique)
+        unique: npt.NDArray[np.int_] = np.unique(data)
+        counts: npt.NDArray[np.int_] = np.zeros_like(unique, dtype=np.int_)
         for idx, uniq in enumerate(unique):
             counts[idx] = (data == uniq).sum()
         probs = counts / len(data)
@@ -441,7 +436,7 @@ def mock_species_data(random_seed: int = None) -> Generator:
         yield counts, probs
 
 
-def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response:
+def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response | None:
     """
     Fetch and parse an OSM response.
 
@@ -495,7 +490,7 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
     /* return only basic info */
     out skel qt;
     """
-    osm_response = None
+    osm_response: requests.Response | None = None
     while max_tries:
         osm_response = requests.get(
             "https://overpass-api.de/api/interpreter",
@@ -503,13 +498,13 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
             params={"data": request},
         )
         # break if OK response
-        if osm_response is not None and osm_response.status_code == 200:
+        if osm_response is not None and osm_response.status_code == 200:  # type: ignore
             break
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
         max_tries -= 1
 
-    if osm_response is None or not osm_response.status_code == 200:
+    if osm_response is None or not osm_response.status_code == 200:  # type: ignore
         raise requests.RequestException("Unsuccessful OSM API request.")
 
     return osm_response
@@ -543,16 +538,16 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGr
     # convert back to WGS
     # the polygon is too big for the OSM server, so have to use convex hull then later prune
     geom = [
-        utm.to_latlon(east, north, utm_zone_number, utm_zone_letter)
-        for east, north in poly_utm.convex_hull.exterior.coords  # pylint: disable=no-member
+        utm.to_latlon(east, north, utm_zone_number, utm_zone_letter)  # type: ignore
+        for east, north in poly_utm.convex_hull.exterior.coords  # type: ignore
     ]
     poly_wgs = geometry.Polygon(geom)
     # format for OSM query
-    geom_osm = str.join(" ", [f"{lat} {lng}" for lat, lng in poly_wgs.exterior.coords])
+    geom_osm = str.join(" ", [f"{lat} {lng}" for lat, lng in poly_wgs.exterior.coords])  # type: ignore
     # generate the query
     osm_response = fetch_osm_response(geom_osm)
     # build graph
-    graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)
+    graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
     graph_utm = graphs.nx_wgs_to_utm(graph_wgs)
 

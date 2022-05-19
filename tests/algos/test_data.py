@@ -38,7 +38,7 @@ def test_assign_to_network(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(G)
     # generate data
     data_dict = mock.mock_data_dict(G, random_seed=25)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     # override data point locations for test cases vis-a-vis isolated nodes and isolated edges
     data_map[18, :2] = [701200, 5719400]
     data_map[39, :2] = [700750, 5720025]
@@ -102,7 +102,7 @@ def test_assign_to_network(primal_graph):
     )
     # for debugging
     # from cityseer.tools import plot
-    # plot.plot_graph_maps(node_data, edge_data, data_map)
+    # plot.plot_network_structure(node_data, edge_data, data_map)
     # assignment map includes data x, data y, nearest assigned, next nearest assigned
     assert np.allclose(data_map_1600[:, 2:], targets[:, 1:], equal_nan=True, atol=0, rtol=config.RTOL)
     # max distance of 0 should return all NaN
@@ -121,7 +121,7 @@ def test_aggregate_to_src_idx(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # generate data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     for max_dist in [400, 750]:
         # in this case, use same assignment max dist as search max dist
         data_map_temp = data_map.copy()
@@ -140,7 +140,7 @@ def test_aggregate_to_src_idx(primal_graph):
                 )
                 # for debugging
                 # from cityseer.tools import plot
-                # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map)
+                # plot.plot_network_structure(node_uids, node_data, edge_data, data_map)
                 # compare to manual checks on distances:
                 netw_x_arr = node_data[:, 0]
                 netw_y_arr = node_data[:, 1]
@@ -210,7 +210,7 @@ def test_aggregate_landuses_signatures(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
     betas = np.array([0.02, 0.01, 0.005, 0.0025])
@@ -336,7 +336,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     ) = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # set parameters
     betas = np.array([0.02, 0.01, 0.005, 0.0025])
@@ -482,7 +482,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     # setup dual data
     G_dual = graphs.nx_to_dual(primal_graph)
     (
-        _node_labels_dual,
+        _node_keys_dual,
         node_data_dual,
         edge_data_dual,
         node_edge_map_dual,
@@ -537,11 +537,11 @@ def test_local_aggregator_numerical_components(primal_graph):
     node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
+    data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # for debugging
     # from cityseer.tools import plot
-    # plot.plot_graph_maps(node_uids, node_data, edge_data, data_map)
+    # plot.plot_network_structure(node_uids, node_data, edge_data, data_map)
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     betas = np.array([0.00125])
     distances = networks.distance_from_beta(betas)
