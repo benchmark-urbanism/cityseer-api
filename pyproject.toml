@@ -63,6 +63,7 @@ dev = [
     "pyright>=1.1.246",
     "pandas-stubs>=1.2.0.58",
     "types-requests>=2.27.27",
+    "networkx-stubs>=0.0.0",
 ]
 
 [project.urls]
@@ -175,7 +176,7 @@ console_output_style = "count"
 log_cli = true
 log_cli_level = "INFO"
 testpaths = ["tests"]
-addopts = "--ignore=tests/test_performance.py"
+# addopts = "--ignore=tests/test_performance.py"
 
 [tool.coverage.run]
 source = ["cityseer"]

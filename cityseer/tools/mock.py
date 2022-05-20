@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import string
-from typing import Generator
+from typing import Any, Generator, cast
 
 import networkx as nx
 import numpy as np
@@ -244,7 +244,10 @@ def get_graph_extents(
     min_y: float = np.inf
     max_y: float = -np.inf
 
+    _node_idx: int | str
+    node_data: dict[str, Any]
     for _node_idx, node_data in nx_multigraph.nodes(data=True):
+        node_data = cast(dict[str, Any], node_data)
         if node_data["x"] < min_x:
             min_x = node_data["x"]
         if node_data["x"] > max_x:
@@ -534,12 +537,12 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGr
     easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
     # create a point, and then buffer
     pnt = geometry.Point(easting, northing)
-    poly_utm = pnt.buffer(buffer)
+    poly_utm: geometry.Polygon = pnt.buffer(buffer)  # type: ignore
     # convert back to WGS
     # the polygon is too big for the OSM server, so have to use convex hull then later prune
     geom = [
         utm.to_latlon(east, north, utm_zone_number, utm_zone_letter)  # type: ignore
-        for east, north in poly_utm.convex_hull.exterior.coords  # type: ignore
+        for east, north in poly_utm.convex_hull.exterior.coords  # type: ignore # pylint: disable=no-member
     ]
     poly_wgs = geometry.Polygon(geom)
     # format for OSM query

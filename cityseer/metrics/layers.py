@@ -357,7 +357,6 @@ class DataLayer:
             progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)  # type: ignore
         else:
             progress_proxy = None
-            self.data_map,
         data.assign_to_network(
             self.data_map,
             self.network_layer.network_structure,  # type: ignore
@@ -1003,7 +1002,7 @@ class DataLayer:
         for num_idx, stats_key in enumerate(stats_keys):
             if stats_key not in self.network_layer.metrics_state.stats:
                 self.network_layer.metrics_state.stats[stats_key] = {}
-            for key, stats_data in zip(
+            for key, stats in zip(
                 [
                     "max",
                     "min",
@@ -1028,7 +1027,7 @@ class DataLayer:
                 if key not in self.network_layer.metrics_state.stats[stats_key]:
                     self.network_layer.metrics_state.stats[stats_key][key] = {}
                 for d_idx, d_key in enumerate(self.network_layer.distances):
-                    self.network_layer.metrics_state.stats[stats_key][key][d_key] = stats_data[num_idx][d_idx]
+                    self.network_layer.metrics_state.stats[stats_key][key][d_key] = stats[num_idx][d_idx]
 
 
 class DataLayerFromDict(DataLayer):

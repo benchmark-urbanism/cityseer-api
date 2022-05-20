@@ -342,7 +342,7 @@ def aggregate_landuses(
     mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     mixed_use_other_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     accessibility_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
-    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan), dtype=np.float32),  # type: ignore
+    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan), dtype=np.float32),  # type: ignore # pylint: disable=line-too-long
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Any = None,

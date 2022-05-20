@@ -3,13 +3,10 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 from numba import njit, prange, types  # type: ignore
-from numba.experimental import jitclass  # type: ignore
 from numba.typed import List
 
 from cityseer import config, structures
 from cityseer.algos import checks
-
-# Note: Tempting to wrap these into a numba jitclass, but parallel and fastmath njit flags are not yet supported.
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -145,7 +142,9 @@ def _find_edge_idx(network_structure: structures.NetworkStructure, start_nd_idx:
     return -1
 
 
-node_close_func_proto = types.FunctionType(types.float32(types.float32, types.float32, types.float32, types.float32))  # type: ignore
+node_close_func_proto = types.FunctionType(
+    types.float32(types.float32, types.float32, types.float32, types.float32)  # type: ignore
+)
 
 
 # node density
@@ -307,11 +306,11 @@ def local_node_centrality(
     # prepare variables
     d_n = len(distances)
     k_n = len(measure_keys)
-    measures_data: npt.NDArray[np.float_] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
-        shadow_arr: npt.NDArray[np.float_] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
@@ -470,11 +469,11 @@ def local_segment_centrality(
     # prepare variables
     d_n = len(distances)
     k_n = len(measure_keys)
-    measures_data: npt.NDArray[np.float_] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
-        shadow_arr: npt.NDArray[np.float_] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
@@ -562,7 +561,7 @@ def local_segment_centrality(
                                 c = dist_cutoff
                                 c_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
                             for m_idx, close_func in zip(close_idxs, close_funcs):  # type: ignore
-                                shadow_arr[m_idx, d_idx, src_idx] += close_func(a, c, a_imp, c_imp, beta)  # type: ignore
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(np.float32(a), np.float32(c), np.float32(a_imp), np.float32(c_imp), np.float32(beta))  # type: ignore # pylint: disable=line-too-long
                         # a to b segment - if on the shortest path then b == d, in which case, continue
                         if b == d:
                             continue
@@ -571,7 +570,7 @@ def local_segment_centrality(
                                 d = dist_cutoff
                                 d_imp = b_imp + (dist_cutoff - b) * seg_imp_fact
                             for m_idx, close_func in zip(close_idxs, close_funcs):  # type: ignore
-                                shadow_arr[m_idx, d_idx, src_idx] += close_func(b, d, b_imp, d_imp, beta)  # type: ignore
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(np.float32(b), np.float32(d), np.float32(b_imp), np.float32(d_imp), np.float32(beta))  # type: ignore # pylint: disable=line-too-long
                 else:
                     """
                     there is a different workflow for angular - uses single segment (no segment splitting)

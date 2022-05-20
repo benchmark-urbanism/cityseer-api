@@ -743,6 +743,7 @@ class NetworkLayer:
         # typos are caught below
         if not angular:
             heuristic = "shortest (non-angular)"
+            # pylint: disable=duplicate-code
             options: tuple[str, ...] = (
                 "node_density",
                 "node_farness",
@@ -773,7 +774,6 @@ class NetworkLayer:
             progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
-        # pylint: disable=duplicate-code
         measures_data = centrality.local_node_centrality(  # type: ignore
             self.network_structure,
             np.array(self._distances, dtype=np.float32),  # type: ignore
@@ -910,8 +910,8 @@ class NetworkLayerFromNX(NetworkLayer):
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`.
 
         This `class` simplifies the conversion of a `NetworkX` `MultiGraph` by calling
-        [`network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) internally. Methods and properties are inherited from
-        the parent [`NetworkLayer`](#networklayer) class.
+        [`network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) internally. Methods and properties are
+        inherited from the parent [`NetworkLayer`](#networklayer) class.
 
         Parameters
         ----------
