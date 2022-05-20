@@ -9,8 +9,7 @@ from numba.core import types
 from numba.experimental import jitclass  # type: ignore
 from numba.typed import Dict, List
 
-
-qsType = Union[
+qsType = Union[  # pylint: disable=invalid-name
     int,
     float,
     Union[list[int], list[float]],
@@ -370,6 +369,7 @@ class MetricsState:
         node_state: NodeMetrics = {}
         # centrality
         node_state["centrality"] = {}
+        # pylint: disable=duplicate-code
         for key in [
             "node_density",
             "node_farness",
@@ -429,7 +429,7 @@ class MetricsState:
                 node_state["accessibility"]["weighted"][cl_key][d_key] = d_val[node_idx]
         # stats
         node_state["stats"] = {}
-        for th_key in self.stats.keys():
+        for th_key in self.stats:  # pylint: disable=consider-using-dict-items
             node_state["stats"][th_key] = {}
             for stat_attr in [
                 "max",
