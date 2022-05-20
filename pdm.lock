@@ -1089,6 +1089,19 @@ requires_python = ">=3.7"
 summary = ""
 
 [[package]]
+name = "types-requests"
+version = "2.27.27"
+summary = "Typing stubs for requests"
+dependencies = [
+    "types-urllib3<1.27",
+]
+
+[[package]]
+name = "types-urllib3"
+version = "1.26.14"
+summary = "Typing stubs for urllib3"
+
+[[package]]
 name = "typing-extensions"
 version = "4.2.0"
 requires_python = ">=3.7"
@@ -1150,7 +1163,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:4a30a2848fedf2950e28747c44004b3a5b609899b544c98a71b1a403aa5ad765"
+content_hash = "sha256:13a2727dcd09eaef00cb71cc4246c96baa38daa4dc50bc690b5cdb3b1c06b30d"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -2427,6 +2440,14 @@ content_hash = "sha256:4a30a2848fedf2950e28747c44004b3a5b609899b544c98a71b1a403a
 "traitlets 5.2.1.post0" = [
     {file = "traitlets-5.2.1.post0-py3-none-any.whl", hash = "sha256:f44b708d33d98b0addb40c29d148a761f44af740603a8fd0e2f8b5b27cf0f087"},
     {file = "traitlets-5.2.1.post0.tar.gz", hash = "sha256:70815ecb20ec619d1af28910ade523383be13754283aef90528eb3d47b77c5db"},
+]
+"types-requests 2.27.27" = [
+    {file = "types_requests-2.27.27-py3-none-any.whl", hash = "sha256:6d8463ffe1f6edcf2e5361740a6140e7a16d427c267d83c7c1d3d1298f4e67c5"},
+    {file = "types-requests-2.27.27.tar.gz", hash = "sha256:d618d9809fa32f514cf17cea8460814da671c56366fb1c908accca8bf183112b"},
+]
+"types-urllib3 1.26.14" = [
+    {file = "types_urllib3-1.26.14-py3-none-any.whl", hash = "sha256:5d2388aa76395b1e3999ff789ea5b3283677dad8e9bcf3d9117ba19271fd35d9"},
+    {file = "types-urllib3-1.26.14.tar.gz", hash = "sha256:2a2578e4b36341ccd240b00fccda9826988ff0589a44ba4a664bbd69ef348d27"},
 ]
 "typing-extensions 4.2.0" = [
     {file = "typing_extensions-4.2.0-py3-none-any.whl", hash = "sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"},
