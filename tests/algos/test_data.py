@@ -1,7 +1,11 @@
-import numpy as np
-import pytest
+from __future__ import annotations
 
-from cityseer import config
+import numpy as np
+import numpy.typing as npt
+import pytest
+import networkx as nx
+
+from cityseer import config, structures
 from cityseer.algos import centrality, data, diversity
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
@@ -13,20 +17,35 @@ def test_find_nearest(primal_graph):
     data_dict = mock.mock_data_dict(primal_graph)
     D = layers.DataLayerFromDict(data_dict)
     # test the filter - iterating each point in data map
-    for d in D._data:
-        d_x = d[0]
-        d_y = d[1]
+    for d_idx in range(D.data_map.count):
         # find the closest point on the network
-        min_idx, min_dist = data.find_nearest(d_x, d_y, N.node_x_arr, N.node_y_arr, max_dist=500)
+        d_x, d_y = D.data_map.x_y(d_idx)
+        min_idx, min_dist, _next_min_idx = data.find_nearest(
+            d_x, d_y, N.network_structure.nodes, max_dist=np.float32(500)
+        )
         # check that no other indices are nearer
-        for i, n in enumerate(N._node_data):
-            n_x = n[0]
-            n_y = n[1]
+        for n_idx in range(N.network_structure.nodes.count):
+            n_x = N.network_structure.nodes.xs[n_idx]
+            n_y = N.network_structure.nodes.ys[n_idx]
             dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
-            if i == min_idx:
-                assert round(dist, 8) == round(min_dist, 8)
+            if n_idx == min_idx:
+                assert np.isclose(dist, min_dist, rtol=config.RTOL, atol=config.ATOL)
             else:
                 assert dist > min_dist
+
+
+def override_coords(graph: nx.MultiGraph, max_dist: int) -> structures.DataMap:
+    data_dict = mock.mock_data_dict(graph, random_seed=25)
+    _data_keys, data_map = layers.data_map_from_dict(data_dict)
+    _node_keys, network_structure = graphs.network_structure_from_nx(graph)
+    data_map.xs[18] = 701200
+    data_map.ys[18] = 5719400
+    data_map.xs[39] = 700750
+    data_map.ys[39] = 5720025
+    data_map.xs[26] = 700400
+    data_map.ys[26] = 5719525
+    data_map = data.assign_to_network(data_map, network_structure, max_dist=np.float32(max_dist))
+    return data_map
 
 
 def test_assign_to_network(primal_graph):
@@ -35,17 +54,7 @@ def test_assign_to_network(primal_graph):
     primal_graph.remove_edge(15, 28)
     # G = graphs.nx_auto_edge_params(G)
     G = graphs.nx_decompose(primal_graph, 50)
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(G)
-    # generate data
-    data_dict = mock.mock_data_dict(G, random_seed=25)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
-    # override data point locations for test cases vis-a-vis isolated nodes and isolated edges
-    data_map[18, :2] = [701200, 5719400]
-    data_map[39, :2] = [700750, 5720025]
-    data_map[26, :2] = [700400, 5719525]
-    # 500m visually confirmed in plots
-    data_map_1600 = data_map.copy()
-    data_map_1600 = data.assign_to_network(data_map_1600, node_data, edge_data, node_edge_map, max_dist=1600)
+    # visually confirmed in plots
     targets = np.array(
         [
             [0, 164, 163],
@@ -69,12 +78,12 @@ def test_assign_to_network(primal_graph):
             [18, 182, 183],
             [19, 158, 157],
             [20, 83, 84],
-            [21, 2, np.nan],
+            [21, 2, 65],
             [22, 171, 170],
             [23, 266, 52],
             [24, 83, 84],
             [25, 88, 11],
-            [26, 49, np.nan],
+            [26, 49, -1],
             [27, 19, 138],
             [28, 134, 135],
             [29, 262, 46],
@@ -87,110 +96,107 @@ def test_assign_to_network(primal_graph):
             [36, 39, 228],
             [37, 158, 25],
             [38, 88, 87],
-            [39, 263, np.nan],
+            [39, 263, 264],
             [40, 120, 121],
             [41, 146, 21],
             [42, 10, 97],
             [43, 119, 118],
             [44, 82, 5],
-            [45, 11, 88],
+            [45, 116, 11],
             [46, 100, 99],
             [47, 138, 19],
-            [48, 14, np.nan],
+            [48, 14, 119],
             [49, 106, 105],
         ]
     )
-    # for debugging
+    # generate data
+    data_map_1600 = override_coords(G, 1600)
     # from cityseer.tools import plot
-    # plot.plot_network_structure(node_data, edge_data, data_map)
+    # _node_keys, network_structure = graphs.network_structure_from_nx(G)
+    # plot.plot_network_structure(network_structure, data_map_1600)
+    # plot.plot_assignment(network_structure, G, data_map_1600)
     # assignment map includes data x, data y, nearest assigned, next nearest assigned
-    assert np.allclose(data_map_1600[:, 2:], targets[:, 1:], equal_nan=True, atol=0, rtol=config.RTOL)
+    assert np.allclose(data_map_1600.nearest_assign, targets[:, 1], atol=0, rtol=0)
+    assert np.allclose(data_map_1600.next_nearest_assign, targets[:, 2], atol=0, rtol=0)
     # max distance of 0 should return all NaN
-    data_map_test_0 = data_map.copy()
-    data_map_test_0 = data.assign_to_network(data_map_test_0, node_data, edge_data, node_edge_map, max_dist=0)
-    assert np.all(np.isnan(data_map_test_0[:, 2]))
-    assert np.all(np.isnan(data_map_test_0[:, 3]))
-    # max distance of 2000 should return no NaN for nearest
-    # there will be some NaN for next nearest
-    data_map_test_2000 = data_map.copy()
-    data_map_test_2000 = data.assign_to_network(data_map_test_2000, node_data, edge_data, node_edge_map, max_dist=2000)
-    assert not np.any(np.isnan(data_map_test_2000[:, 2]))
+    data_map_0 = override_coords(G, 0)
+    # plot.plot_network_structure(network_structure, data_map_0)
+    # plot.plot_assignment(network_structure, G, data_map_0)
+    assert np.all(data_map_0.nearest_assign == -1)
+    assert np.all(data_map_0.next_nearest_assign == -1)
+    # with enough distance, all should be matched except location 26
+    data_map_2000 = override_coords(G, 2000)
+    # plot.plot_network_structure(network_structure, data_map_2000)
+    # plot.plot_assignment(network_structure, G, data_map_2000)
+    assert not np.any(data_map_2000.nearest_assign == -1)
+    assert np.where(data_map_2000.next_nearest_assign == -1)[0][0] == 26
 
 
 def test_aggregate_to_src_idx(primal_graph):
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
-    # generate data
-    data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
     for max_dist in [400, 750]:
+        # generate data
+        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
+        data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
+        _data_keys, data_map = layers.data_map_from_dict(data_dict)
         # in this case, use same assignment max dist as search max dist
-        data_map_temp = data_map.copy()
-        data_map_temp = data.assign_to_network(data_map_temp, node_data, edge_data, node_edge_map, max_dist=max_dist)
+        data_map = data.assign_to_network(data_map, network_structure, max_dist=np.float32(max_dist))
         for angular in [True, False]:
-            for netw_src_idx in range(len(node_data)):
+            for netw_src_idx in range(network_structure.nodes.count):
                 # aggregate to src...
-                (reachable_data, reachable_data_dist, tree_preds,) = data.aggregate_to_src_idx(
+                (reachable_data, reachable_data_dist, _tree_map) = data.aggregate_to_src_idx(
                     netw_src_idx,
-                    node_data,
-                    edge_data,
-                    node_edge_map,
-                    data_map_temp,
-                    max_dist,
+                    network_structure,
+                    data_map,
+                    np.float32(max_dist),
+                    angular=angular,
+                )
+                # compare to manual checks on distances:
+                # get the network distances
+                tree_map = centrality.shortest_path_tree(
+                    network_structure,
+                    netw_src_idx,
+                    max_dist=np.float32(max_dist),
                     angular=angular,
                 )
                 # for debugging
                 # from cityseer.tools import plot
-                # plot.plot_network_structure(node_uids, node_data, edge_data, data_map)
-                # compare to manual checks on distances:
-                netw_x_arr = node_data[:, 0]
-                netw_y_arr = node_data[:, 1]
-                data_x_arr = data_map_temp[:, 0]
-                data_y_arr = data_map_temp[:, 1]
-                # get the network distances
-                tree_map, tree_edges = centrality.shortest_path_tree(
-                    edge_data,
-                    node_edge_map,
-                    netw_src_idx,
-                    max_dist=max_dist,
-                    angular=angular,
-                )
-                tree_dists = tree_map[:, 2]
+                # plot.plot_network_structure(network_structure, data_map)
                 # verify distances vs. the max
-                for d_idx in range(len(data_map_temp)):
+                for d_idx in range(data_map.count):
                     # check the integrity of the distances and classes
                     reachable = reachable_data[d_idx]
                     reachable_dist = reachable_data_dist[d_idx]
                     # get the distance via the nearest assigned index
                     nearest_dist = np.inf
                     # if a nearest node has been assigned
-                    if np.isfinite(data_map_temp[d_idx, 2]):
+                    if data_map.nearest_assign[d_idx] != -1:
                         # get the index for the assigned network node
-                        netw_idx = int(data_map_temp[d_idx, 2])
+                        netw_idx = data_map.nearest_assign[d_idx]
                         # if this node is within the cutoff distance:
-                        if tree_dists[netw_idx] < max_dist:
+                        if tree_map.short_dist[netw_idx] < max_dist:
                             # get the distances from the data point to the assigned network node
                             d_d = np.hypot(
-                                data_x_arr[d_idx] - netw_x_arr[netw_idx],
-                                data_y_arr[d_idx] - netw_y_arr[netw_idx],
+                                data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
+                                data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
                             )
                             # and add it to the network distance path from the source to the assigned node
-                            n_d = tree_dists[netw_idx]
+                            n_d = tree_map.short_dist[netw_idx]
                             nearest_dist = d_d + n_d
                     # also get the distance via the next nearest assigned index
                     next_nearest_dist = np.inf
                     # if a nearest node has been assigned
-                    if np.isfinite(data_map_temp[d_idx, 3]):
+                    if data_map.next_nearest_assign[d_idx] != -1:
                         # get the index for the assigned network node
-                        netw_idx = int(data_map_temp[d_idx, 3])
+                        netw_idx = data_map.next_nearest_assign[d_idx]
                         # if this node is within the radial cutoff distance:
-                        if tree_dists[netw_idx] < max_dist:
+                        if tree_map.short_dist[netw_idx] < max_dist:
                             # get the distances from the data point to the assigned network node
                             d_d = np.hypot(
-                                data_x_arr[d_idx] - netw_x_arr[netw_idx],
-                                data_y_arr[d_idx] - netw_y_arr[netw_idx],
+                                data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
+                                data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
                             )
                             # and add it to the network distance path from the source to the assigned node
-                            n_d = tree_dists[netw_idx]
+                            n_d = tree_map.short_dist[netw_idx]
                             next_nearest_dist = d_d + n_d
                     # now check distance integrity
                     if np.isinf(reachable_dist):
@@ -205,36 +211,33 @@ def test_aggregate_to_src_idx(primal_graph):
                             assert reachable_dist == next_nearest_dist
 
 
+# TODO: pickling error re: cache and NodeMap
 def test_aggregate_landuses_signatures(primal_graph):
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
+    _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
-    data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
+    _data_keys, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, network_structure, np.float32(500))
     # set parameters
-    betas = np.array([0.02, 0.01, 0.005, 0.0025])
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025])
     distances = networks.distance_from_beta(betas)
-    qs = np.array([0, 1, 2])
-    mock_categorical = mock.mock_categorical_data(len(data_map))
+    qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
+    mock_categorical = mock.mock_categorical_data(data_map.count)
     landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
     # check that empty land_use encodings are caught
     with pytest.raises(ValueError):
         data.aggregate_landuses(
-            node_data,
-            edge_data,
-            node_edge_map,
+            network_structure,
             data_map,
             distances,
             betas,
-            mixed_use_hill_keys=np.array([0]),
+            mixed_use_hill_keys=np.array([0], dtype=np.int_),
         )
     # check that unequal land_use encodings vs data map lengths are caught
     with pytest.raises(ValueError):
         data.aggregate_landuses(
-            node_data,
-            edge_data,
-            node_edge_map,
+            network_structure,
             data_map,
             distances,
             betas,
@@ -244,9 +247,7 @@ def test_aggregate_landuses_signatures(primal_graph):
     # check that no provided metrics flags
     with pytest.raises(ValueError):
         data.aggregate_landuses(
-            node_data,
-            edge_data,
-            node_edge_map,
+            network_structure,
             data_map,
             distances,
             betas,
@@ -255,9 +256,7 @@ def test_aggregate_landuses_signatures(primal_graph):
     # check that missing qs flags
     with pytest.raises(ValueError):
         data.aggregate_landuses(
-            node_data,
-            edge_data,
-            node_edge_map,
+            network_structure,
             data_map,
             distances,
             betas,
@@ -281,9 +280,7 @@ def test_aggregate_landuses_signatures(primal_graph):
     ]:
         with pytest.raises(ValueError):
             data.aggregate_landuses(
-                node_data,
-                edge_data,
-                node_edge_map,
+                network_structure,
                 data_map,
                 distances,
                 betas,
@@ -297,9 +294,7 @@ def test_aggregate_landuses_signatures(primal_graph):
         # check that missing matrix is caught for disparity weighted indices
         with pytest.raises(ValueError):
             data.aggregate_landuses(
-                node_data,
-                edge_data,
-                node_edge_map,
+                network_structure,
                 data_map,
                 distances,
                 betas,
@@ -312,9 +307,7 @@ def test_aggregate_landuses_signatures(primal_graph):
         mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
         with pytest.raises(ValueError):
             data.aggregate_landuses(
-                node_data,
-                edge_data,
-                node_edge_map,
+                network_structure,
                 data_map,
                 distances,
                 betas,
@@ -328,12 +321,7 @@ def test_aggregate_landuses_signatures(primal_graph):
 
 def test_aggregate_landuses_categorical_components(primal_graph):
     # generate node and edge maps
-    (
-        node_uids,
-        node_data,
-        edge_data,
-        node_edge_map,
-    ) = graphs.network_structure_from_nx(primal_graph)
+    _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_keys, data_map = layers.data_map_from_dict(data_dict)
@@ -534,14 +522,14 @@ def test_aggregate_landuses_categorical_components(primal_graph):
 
 def test_local_aggregator_numerical_components(primal_graph):
     # generate node and edge maps
-    node_uids, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
+    _node_keys, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
     data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
     # for debugging
     # from cityseer.tools import plot
-    # plot.plot_network_structure(node_uids, node_data, edge_data, data_map)
+    # plot.plot_network_structure(_node_keys, node_data, edge_data, data_map)
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     betas = np.array([0.00125])
     distances = networks.distance_from_beta(betas)

@@ -12,20 +12,26 @@ from cityseer.algos import centrality, checks, diversity
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def find_nearest(
-    src_x: np.float32, src_y: np.float32, network_structure: structures.NetworkStructure, max_dist: np.float32
-) -> tuple[int, np.float32]:
+    src_x: np.float32, src_y: np.float32, node_map: structures.NodeMap, max_dist: np.float32
+) -> tuple[int, np.float32, int]:
     """Find nearest index and distance from a given point."""
-    total_count = network_structure.nodes.count
     min_idx = -1
     min_dist = np.float32(np.inf)
+    next_min_idx = -1
+    next_min_dist = np.float32(np.inf)
     # filter by distance
-    for i in range(total_count):
-        dist = np.hypot(network_structure.nodes.xs[i] - src_x, network_structure.nodes.ys[i] - src_y)
+    for i in range(node_map.count):
+        dist = np.hypot(node_map.xs[i] - src_x, node_map.ys[i] - src_y)
         if dist <= max_dist and dist < min_dist:
+            next_min_idx = min_idx
+            next_min_dist = min_dist
             min_idx = i
             min_dist = dist
+        elif dist <= max_dist and dist < next_min_dist:
+            next_min_idx = i
+            next_min_dist = dist
 
-    return min_idx, min_dist
+    return min_idx, min_dist, next_min_idx
 
 
 # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
@@ -135,16 +141,29 @@ def assign_to_network(
     4 - find the neighbouring node that minimises the distance between the data point on "street-front"
     """
     network_structure.validate()
-    data_map.validate(check_assigned=False)
+    data_map.validate(False)
     for data_idx in prange(data_map.count):  # pylint: disable=not-an-iterable
         if progress_proxy is not None:
             progress_proxy.update(1)
-        # find the nearest network node
+        # find the nearest and next nearest network nodes
         src_x, src_y = data_map.x_y(data_idx)
-        min_idx, min_dist = find_nearest(src_x, src_y, network_structure, max_dist)
-        # in some cases no network node will be within max_dist... so accept NaN
+        min_idx, min_dist, next_min_idx = find_nearest(src_x, src_y, network_structure.nodes, max_dist)
+        # in some cases no network node will be within max_dist...
         if min_idx == -1:
             continue
+        connected = False
+        # check if min and next min are connected
+        for edge_idx in network_structure.node_edge_map[min_idx]:
+            nb_idx = network_structure.edges.end[edge_idx]
+            if nb_idx == next_min_idx:
+                connected = True
+                break
+        # if connected, then no need to circle the block
+        if connected:
+            data_map.nearest_assign[data_idx] = min_idx
+            data_map.next_nearest_assign[data_idx] = next_min_idx
+            continue
+        # if not connected, find the nearest adjacent by edges
         # nearest is initially set for this nearest node, but if a nearer street-edge is found, it will be overriden
         nearest_idx = min_idx
         next_nearest_idx = -1
@@ -230,7 +249,7 @@ def assign_to_network(
             # ignore the following conditions while backtracking
             # (if backtracking, the current node's predecessor will be equal to the new neighbour)
             if nb_idx != pred_map[node_idx]:
-                # if the new nb node has already been visited then terminate, this prevent infinite loops
+                # if the new nb node has already been visited then terminate, this prevents infinite loops
                 # or, if the algorithm has circled the block back to the original starting node
                 if not pred_map[nb_idx] == -1 or nb_idx == min_idx:
                     # set the final predecessor, BUT ONLY if re-encountered the original node
@@ -331,7 +350,7 @@ def aggregate_to_src_idx(
     return reachable_data, reachable_data_dist, tree_map
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_landuses(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
@@ -393,7 +412,7 @@ def aggregate_landuses(
                 if i_key == j_key:
                     raise ValueError("Duplicate accessibility key.")
 
-    def disp_check(disp_matrix: npt.NDArray[np.float32]):
+    def disp_check(disp_matrix):  # type: ignore # numba can't handle nested function with type annotation
         # the length of the disparity matrix vis-a-vis unique landuses is tested in underlying diversity functions
         if disp_matrix.ndim != 2 or disp_matrix.shape[0] != disp_matrix.shape[1]:
             raise ValueError("The disparity matrix must be a square NxN matrix.")

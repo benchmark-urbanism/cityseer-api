@@ -402,8 +402,9 @@ def plot_nx(
 
 
 def plot_assignment(  # noqa
-    network_layer: networks.NetworkLayer,
-    data_layer: layers.DataLayer,
+    network_structure: structures.NetworkStructure,
+    nx_multigraph: nx.MultiGraph,
+    data_map: structures.DataMap,
     path: str | None = None,
     node_colour: ColourType | None = None,
     node_labels: bool = False,
@@ -412,6 +413,10 @@ def plot_assignment(  # noqa
 ):
     """
     Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
+
+    :::warning
+    This method is primarily intended for package testing and development.
+    :::
 
     Parameters
     ----------
@@ -443,9 +448,6 @@ def plot_assignment(  # noqa
 
     """
     plt.figure(**kwargs)
-
-    # extract NetworkX
-    nx_multigraph = network_layer.to_nx_multigraph()
 
     if isinstance(node_colour, (list, tuple, np.ndarray)):
         if not (len(node_colour) == 1 or len(node_colour) == len(nx_multigraph)):
@@ -494,8 +496,8 @@ def plot_assignment(  # noqa
 
     # overlay data map
     plt.scatter(
-        x=data_layer.data_map.xs[:, 0],
-        y=data_layer.data_map.ys[:, 1],
+        x=data_map.xs,
+        y=data_map.ys,
         c=data_colour,  # type: ignore
         cmap=data_cmap,  # type: ignore
         s=30,
@@ -505,15 +507,15 @@ def plot_assignment(  # noqa
     )
 
     # draw assignment
-    for data_idx in range(data_layer.data_map.count):
+    for data_idx in range(data_map.count):
         # if the data points have been assigned network indices
-        data_x: float = data_layer.data_map.xs[data_idx]
-        data_y: float = data_layer.data_map.ys[data_idx]
-        nearest_netw_idx: int = data_layer.data_map.nearest_assign[data_idx]
+        data_x: float = data_map.xs[data_idx]
+        data_y: float = data_map.ys[data_idx]
+        nearest_netw_idx: int = data_map.nearest_assign[data_idx]
         if nearest_netw_idx != -1:
             # plot lines to parents for easier viz
-            p_x = network_layer.network_structure.nodes.xs[nearest_netw_idx]
-            p_y = network_layer.network_structure.nodes.ys[nearest_netw_idx]
+            p_x = network_structure.nodes.xs[nearest_netw_idx]
+            p_y = network_structure.nodes.ys[nearest_netw_idx]
             plt.plot(
                 [p_x, data_x],
                 [p_y, data_y],
@@ -521,10 +523,10 @@ def plot_assignment(  # noqa
                 lw=0.5,
                 ls="--",
             )
-        next_nearest_netw_idx: int = data_layer.data_map.next_nearest_assign[data_idx]
+        next_nearest_netw_idx: int = data_map.next_nearest_assign[data_idx]
         if next_nearest_netw_idx != -1:
-            p_x = network_layer.network_structure.nodes.xs[next_nearest_netw_idx]
-            p_y = network_layer.network_structure.nodes.ys[next_nearest_netw_idx]
+            p_x = network_structure.nodes.xs[next_nearest_netw_idx]
+            p_y = network_structure.nodes.ys[next_nearest_netw_idx]
             plt.plot([p_x, data_x], [p_y, data_y], c="#888888", lw=0.5, ls="--")
 
     if path:
@@ -557,11 +559,11 @@ def plot_network_structure(
     """
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
-    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))  # type: ignore
+    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
     # set extents
     for ax in (ax1, ax2):  # type: ignore
-        ax.set_xlim(network_structure.nodes.xs[:, 0].min() - 100, network_structure.nodes.xs[:, 0].max() + 100)
-        ax.set_ylim(network_structure.nodes.ys[:, 1].min() - 100, network_structure.nodes.ys[:, 1].max() + 100)
+        ax.set_xlim(network_structure.nodes.xs.min() - 100, network_structure.nodes.xs.max() + 100)
+        ax.set_ylim(network_structure.nodes.ys.min() - 100, network_structure.nodes.ys.max() + 100)
     if poly:
         x = list(poly.exterior.coords.xy[0])  # type: ignore
         y = list(poly.exterior.coords.xy[1])  # type: ignore
@@ -571,9 +573,9 @@ def plot_network_structure(
     cols = []
     for is_live in network_structure.nodes.live:
         if is_live:
-            cols.append(ColourMap.secondary)
-        else:
             cols.append(ColourMap.accent)
+        else:
+            cols.append(ColourMap.secondary)
     ax1.scatter(
         network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=ColourMap.primary, edgecolor=cols, lw=0.5
     )
@@ -585,7 +587,8 @@ def plot_network_structure(
     for edge_idx in range(network_structure.edges.count):
         start_idx = network_structure.edges.start[edge_idx]
         end_idx = network_structure.edges.end[edge_idx]
-        se_key = "-".join(sorted([start_idx, end_idx]))
+        keys = sorted([start_idx, end_idx])
+        se_key = "-".join([str(k) for k in keys])
         # bool indicating whether second copy in opposite direction
         dupe = se_key in processed_edges
         processed_edges.add(se_key)

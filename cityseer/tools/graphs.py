@@ -1677,7 +1677,9 @@ def network_structure_from_nx(
         if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {start_node_key}.')
         node_y: float = node_data["y"]
-        is_live: bool = "live" in node_data and node_data["live"]
+        is_live: bool = True
+        if "live" in node_data:
+            is_live = bool(node_data["live"])
         network_structure.set_node(start_node_key, node_x, node_y, is_live)
         # build edges
         end_node_key: int
@@ -1756,7 +1758,7 @@ def network_structure_from_nx(
 
 
 def nx_from_network_structure(
-    node_keys: list[NodeKey],
+    node_keys: tuple[NodeKey] | list[NodeKey],
     network_structure: structures.NetworkStructure,
     nx_multigraph: nx.MultiGraph | None = None,
     dict_node_metrics: structures.DictNodeMetrics | None = None,

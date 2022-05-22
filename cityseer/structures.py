@@ -50,6 +50,8 @@ class TreeMap:
 
 
 node_map_spec: list[tuple[str, Any]] = [
+    ("nodes_n", types.int_),
+    ("node_idx", types.int_),
     ("xs", types.float32[:]),
     ("ys", types.float32[:]),
     ("live", types.bool_[:]),
@@ -83,15 +85,18 @@ class NodeMap:
         """Validate NodeMap."""
         if self.count == 0:
             raise ValueError("Zero length NodeMap")
+        if len(self.ys) != self.count or len(self.live) != self.count:
+            raise ValueError("X, Y and 'live' arrays are not the same length")
         if not np.all(np.isfinite(self.xs)) or not np.all(self.xs >= 0):  # type: ignore
             raise ValueError("Missing or invalid start x data encountered.")
         if not np.all(np.isfinite(self.ys)) or not np.all(self.ys >= 0):  # type: ignore
             raise ValueError("Missing or invalid start y data encountered.")
-        if not np.all(~self.live):
+        if np.all(~self.live):
             raise ValueError("NodeMap has no live nodes.")
 
 
 edge_map_spec: list[tuple[str, Any]] = [
+    ("edges_n", types.int_),
     ("start", types.int_[:]),
     ("end", types.int_[:]),
     ("length", types.float32[:]),
@@ -133,6 +138,15 @@ class EdgeMap:
         """Validate Edgemap."""
         if self.count == 0:
             raise ValueError("Zero length NodeMap")
+        if (
+            len(self.end) != self.count
+            or len(self.length) != self.count
+            or len(self.angle_sum) != self.count
+            or len(self.imp_factor) != self.count
+            or len(self.in_bearing) != self.count
+            or len(self.out_bearing) != self.count
+        ):
+            raise ValueError("Arrays are not of the same length.")
         if not np.all(np.isfinite(self.start)) or not np.all(self.start >= 0):  # type: ignore
             raise ValueError("Missing or invalid start node index encountered.")
         if not np.all(np.isfinite(self.end)) or not np.all(self.end >= 0):  # type: ignore
@@ -150,6 +164,12 @@ class EdgeMap:
 
 
 network_spec: list[tuple[str, Any]] = [
+    ("nodes_n", types.int_),
+    ("edges_n", types.int_),
+    ("node_idx", types.int_),
+    ("node_x", types.float32),
+    ("node_y", types.float32),
+    ("node_live", types.bool_),
     ("node_edge_map", types.DictType(types.int64, types.ListType(types.int64))),
     ("next_edge_idx", types.int_),
 ]
@@ -230,14 +250,6 @@ class NetworkStructure:
             raise ValueError("Mismatched node and edge maps encountered.")
 
 
-data_map_spec: list[tuple[str, Any]] = [
-    ("xs", types.float32[:]),
-    ("ys", types.float32[:]),
-    ("nearest_assign", types.int_[:]),
-    ("next_nearest_assign", types.int_[:]),
-]
-
-
 class DataPoint(TypedDict):
     """DataPoint type for type-hinting."""
 
@@ -246,6 +258,13 @@ class DataPoint(TypedDict):
 
 
 DataDictType = dict[Union[str, int], DataPoint]
+
+data_map_spec: list[tuple[str, Any]] = [
+    ("xs", types.float32[:]),
+    ("ys", types.float32[:]),
+    ("nearest_assign", types.int_[:]),
+    ("next_nearest_assign", types.int_[:]),
+]
 
 
 @jitclass(data_map_spec)
@@ -279,11 +298,20 @@ class DataMap:
         return np.array([self.xs[data_idx], self.ys[data_idx]], dtype=np.float32)  # type: ignore
 
     def validate(self, check_assigned: bool = False):
-        """Validate NodeMap."""
+        """Validate DataMap."""
         if self.count == 0:
             raise ValueError("Zero length DataMap")
-        if np.any(np.isnan(self.xs)) or np.any(np.isnan(self.ys)):
-            raise ValueError("Found empty x or y entries: not all data points have been set.")
+        if (
+            len(self.xs) != self.count
+            or len(self.ys) != self.count
+            or len(self.nearest_assign) != self.count
+            or len(self.nearest_assign) != self.count
+        ):
+            raise ValueError("Arrays are not of the same length.")
+        if np.any(np.isnan(self.xs)) or np.any(self.xs < 0):
+            raise ValueError("X coordinates must be positive finite values.")
+        if np.any(np.isnan(self.ys)) or np.any(self.ys < 0):
+            raise ValueError("Y coordinates must be positive finite values.")
         if check_assigned:
             # check that data map has been assigned - only if explicitly requested
             if np.all(self.nearest_assign == -1):  # type: ignore
