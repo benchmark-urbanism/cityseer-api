@@ -591,7 +591,7 @@ def local_segment_centrality(
                         ang = m_simpl_dist - seg_ang / 2
                     # 2) f is the predecessor for e
                     elif (
-                        m_nd_idx == src_idx or tree_map.preds[n_nd_idx] == m_nd_idx
+                        m_nd_idx == src_idx or tree_map.preds[n_nd_idx] == m_nd_idx  # pylint: disable=consider-using-in
                     ):  # pylint: disable=consider-using-in
                         e = tree_map.short_dist[m_nd_idx]
                         f = tree_map.short_dist[n_nd_idx]

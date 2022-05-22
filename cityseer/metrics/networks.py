@@ -789,8 +789,10 @@ class NetworkLayer:
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
+            if measure_name not in self.metrics_state.centrality:
+                self.metrics_state.centrality[measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                getattr(self._metrics_state.centrality, measure_name)[d_key] = measures_data[measure_idx][d_idx]
+                self.metrics_state.centrality[measure_name][d_key] = measures_data[measure_idx][d_idx]
 
     # provides access to the underlying centrality.local_centrality method
     def segment_centrality(
@@ -885,8 +887,10 @@ class NetworkLayer:
         # writing metrics to dictionary will check for pre-existing
         # but writing sub-distances arrays will overwrite prior
         for measure_idx, measure_name in enumerate(measure_keys):
+            if measure_name not in self.metrics_state.centrality:
+                self.metrics_state.centrality[measure_name] = {}
             for d_idx, d_key in enumerate(self._distances):
-                getattr(self._metrics_state.centrality, measure_name)[d_key] = measures_data[measure_idx][d_idx]
+                self.metrics_state.centrality[measure_name][d_key] = measures_data[measure_idx][d_idx]
 
 
 class NetworkLayerFromNX(NetworkLayer):

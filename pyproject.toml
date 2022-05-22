@@ -42,8 +42,7 @@ dependencies = [
     "numba-progress>=0.0.2",
     "utm>=0.7.0",
     "shapely>=1.8.2",
-    "numpy>=1.21.6",
-]
+    "numpy>=1.21.6"]
 
 [project.optional-dependencies]
 [tool.pdm.dev-dependencies]

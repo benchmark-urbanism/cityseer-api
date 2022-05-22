@@ -282,7 +282,7 @@ class DataLayer:
 
         """
         data_map.validate()
-        if len(self._data_keys) != data_map.count:
+        if len(data_keys) != data_map.count:
             raise ValueError("The number of data labels does not match the number of data points.")
         self._data_keys = tuple(data_keys)  # original labels / indices for each data point
         self._data_map: structures.DataMap = data_map  # data map per above
