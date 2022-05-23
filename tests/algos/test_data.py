@@ -324,27 +324,25 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
-    data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
+    _data_keys, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, network_structure, np.float32(500))
     # set parameters
-    betas = np.array([0.02, 0.01, 0.005, 0.0025])
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
-    qs = np.array([0, 1, 2])
-    mock_categorical = mock.mock_categorical_data(len(data_map))
+    qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
+    mock_categorical = mock.mock_categorical_data(data_map.count)
     landuse_classes, landuse_encodings = layers.encode_categorical(mock_categorical)
-    mock_matrix = np.full((len(landuse_classes), len(landuse_classes)), 1)
+    mock_matrix: npt.NDArray[np.float32] = np.full((len(landuse_classes), len(landuse_classes)), 1)
     # set the keys - add shuffling to be sure various orders work
-    hill_keys = np.arange(4)
+    hill_keys: npt.NDArray[np.int_] = np.arange(4)
     np.random.shuffle(hill_keys)
-    non_hill_keys = np.arange(3)
+    non_hill_keys: npt.NDArray[np.int_] = np.arange(3)
     np.random.shuffle(non_hill_keys)
-    ac_keys = np.array([1, 2, 5])
+    ac_keys: npt.NDArray[np.int_] = np.array([1, 2, 5])
     np.random.shuffle(ac_keys)
     # generate
     mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(
-        node_data,
-        edge_data,
-        node_edge_map,
+        network_structure,
         data_map,
         distances,
         betas,
@@ -376,17 +374,15 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     # test manual metrics against all nodes
     mu_max_unique = len(landuse_classes)
     # test against various distances
-    for d_idx in range(len(distances)):
-        dist_cutoff = distances[d_idx]
-        beta = betas[d_idx]
+    for d_idx, (dist_cutoff, beta) in enumerate(zip(distances, betas)):
         for src_idx in range(len(primal_graph)):
-            reachable_data, reachable_data_dist, tree_preds = data.aggregate_to_src_idx(
-                src_idx, node_data, edge_data, node_edge_map, data_map, dist_cutoff
+            reachable_data, reachable_data_dist, _tree_map = data.aggregate_to_src_idx(
+                src_idx, network_structure, data_map, dist_cutoff
             )
             # counts of each class type (array length per max unique classes - not just those within max distance)
-            cl_counts = np.full(mu_max_unique, 0)
+            cl_counts: npt.NDArray[np.int_] = np.full(mu_max_unique, 0)
             # nearest of each class type (likewise)
-            cl_nearest = np.full(mu_max_unique, np.inf)
+            cl_nearest: npt.NDArray[np.float32] = np.full(mu_max_unique, np.inf)
             # aggregate
             a_1_nw = 0
             a_2_nw = 0
@@ -417,51 +413,96 @@ def test_aggregate_landuses_categorical_components(primal_graph):
                     a_5_nw += 1
                     a_5_w += np.exp(-beta * data_dist)
             # assertions
-            assert ac_1_nw[d_idx, src_idx] == a_1_nw
-            assert ac_2_nw[d_idx, src_idx] == a_2_nw
-            assert ac_5_nw[d_idx, src_idx] == a_5_nw
-
-            assert ac_1_w[d_idx, src_idx] == a_1_w
-            assert ac_2_w[d_idx, src_idx] == a_2_w
-            assert ac_5_w[d_idx, src_idx] == a_5_w
-
-            assert hill[0, d_idx, src_idx] == diversity.hill_diversity(cl_counts, 0)
-            assert hill[1, d_idx, src_idx] == diversity.hill_diversity(cl_counts, 1)
-            assert hill[2, d_idx, src_idx] == diversity.hill_diversity(cl_counts, 2)
-
-            assert hill_branch_wt[0, d_idx, src_idx] == diversity.hill_diversity_branch_distance_wt(
-                cl_counts, cl_nearest, 0, beta
+            assert np.isclose(ac_1_nw[d_idx, src_idx], a_1_nw, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(ac_2_nw[d_idx, src_idx], a_2_nw, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(ac_5_nw[d_idx, src_idx], a_5_nw, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(ac_1_w[d_idx, src_idx], a_1_w, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(ac_2_w[d_idx, src_idx], a_2_w, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(ac_5_w[d_idx, src_idx], a_5_w, rtol=config.RTOL, atol=config.ATOL)
+            assert np.isclose(
+                hill[0, d_idx, src_idx],
+                diversity.hill_diversity(cl_counts, np.float32(0)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_branch_wt[1, d_idx, src_idx] == diversity.hill_diversity_branch_distance_wt(
-                cl_counts, cl_nearest, 1, beta
+            assert np.isclose(
+                hill[1, d_idx, src_idx],
+                diversity.hill_diversity(cl_counts, np.float32(1)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_branch_wt[2, d_idx, src_idx] == diversity.hill_diversity_branch_distance_wt(
-                cl_counts, cl_nearest, 2, beta
+            assert np.isclose(
+                hill[2, d_idx, src_idx],
+                diversity.hill_diversity(cl_counts, np.float32(2)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-
-            assert hill_pw_wt[0, d_idx, src_idx] == diversity.hill_diversity_pairwise_distance_wt(
-                cl_counts, cl_nearest, 0, beta
+            assert np.isclose(
+                hill_branch_wt[0, d_idx, src_idx],
+                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(0), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_pw_wt[1, d_idx, src_idx] == diversity.hill_diversity_pairwise_distance_wt(
-                cl_counts, cl_nearest, 1, beta
+            assert np.isclose(
+                hill_branch_wt[1, d_idx, src_idx],
+                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(1), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_pw_wt[2, d_idx, src_idx] == diversity.hill_diversity_pairwise_distance_wt(
-                cl_counts, cl_nearest, 2, beta
+            assert np.isclose(
+                hill_branch_wt[2, d_idx, src_idx],
+                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(2), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-
-            assert hill_disp_wt[0, d_idx, src_idx] == diversity.hill_diversity_pairwise_matrix_wt(
-                cl_counts, mock_matrix, 0
+            assert np.isclose(
+                hill_pw_wt[0, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(0), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_disp_wt[1, d_idx, src_idx] == diversity.hill_diversity_pairwise_matrix_wt(
-                cl_counts, mock_matrix, 1
+            assert np.isclose(
+                hill_pw_wt[1, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(1), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-            assert hill_disp_wt[2, d_idx, src_idx] == diversity.hill_diversity_pairwise_matrix_wt(
-                cl_counts, mock_matrix, 2
+            assert np.isclose(
+                hill_pw_wt[2, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(2), beta),
+                rtol=config.RTOL,
+                atol=config.ATOL,
             )
-
-            assert shannon[d_idx, src_idx] == diversity.shannon_diversity(cl_counts)
-            assert gini[d_idx, src_idx] == diversity.gini_simpson_diversity(cl_counts)
-            assert raos[d_idx, src_idx] == diversity.raos_quadratic_diversity(cl_counts, mock_matrix)
+            assert np.isclose(
+                hill_disp_wt[0, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(0)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.isclose(
+                hill_disp_wt[1, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(1)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.isclose(
+                hill_disp_wt[2, d_idx, src_idx],
+                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(2)),
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.isclose(
+                shannon[d_idx, src_idx], diversity.shannon_diversity(cl_counts), rtol=config.RTOL, atol=config.ATOL
+            )
+            assert np.isclose(
+                gini[d_idx, src_idx], diversity.gini_simpson_diversity(cl_counts), rtol=config.RTOL, atol=config.ATOL
+            )
+            assert np.isclose(
+                raos[d_idx, src_idx],
+                diversity.raos_quadratic_diversity(cl_counts, mock_matrix),
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
 
     # check that angular is passed-through
     # actual angular tests happen in test_shortest_path_tree()
@@ -469,23 +510,16 @@ def test_aggregate_landuses_categorical_components(primal_graph):
 
     # setup dual data
     G_dual = graphs.nx_to_dual(primal_graph)
-    (
-        _node_keys_dual,
-        node_data_dual,
-        edge_data_dual,
-        node_edge_map_dual,
-    ) = graphs.network_structure_from_nx(G_dual)
+    _node_keys_dual, network_structure_dual = graphs.network_structure_from_nx(G_dual)
     data_dict_dual = mock.mock_data_dict(G_dual, random_seed=13)
     _data_uids_dual, data_map_dual = layers.data_map_from_dict(data_dict_dual)
-    data_map_dual = data.assign_to_network(data_map_dual, node_data_dual, edge_data_dual, node_edge_map_dual, 500)
-    mock_categorical = mock.mock_categorical_data(len(data_map_dual))
+    data_map_dual = data.assign_to_network(data_map_dual, network_structure_dual, np.float32(500))
+    mock_categorical = mock.mock_categorical_data(data_map_dual.count)
     landuse_classes_dual, landuse_encodings_dual = layers.encode_categorical(mock_categorical)
     mock_matrix = np.full((len(landuse_classes_dual), len(landuse_classes_dual)), 1)
 
     mu_hill_dual, mu_other_dual, ac_dual, ac_wt_dual = data.aggregate_landuses(
-        node_data_dual,
-        edge_data_dual,
-        node_edge_map_dual,
+        network_structure_dual,
         data_map_dual,
         distances,
         betas,
@@ -499,9 +533,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     )
 
     (mu_hill_dual_sidestep, mu_other_dual_sidestep, ac_dual_sidestep, ac_wt_dual_sidestep,) = data.aggregate_landuses(
-        node_data_dual,
-        edge_data_dual,
-        node_edge_map_dual,
+        network_structure_dual,
         data_map_dual,
         distances,
         betas,
@@ -522,32 +554,30 @@ def test_aggregate_landuses_categorical_components(primal_graph):
 
 def test_local_aggregator_numerical_components(primal_graph):
     # generate node and edge maps
-    _node_keys, node_data, edge_data, node_edge_map = graphs.network_structure_from_nx(primal_graph)
+    _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
-    data_map = data.assign_to_network(data_map, node_data, edge_data, node_edge_map, 500)
+    _data_keys, data_map = layers.data_map_from_dict(data_dict)
+    data_map = data.assign_to_network(data_map, network_structure, np.float32(500))
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(_node_keys, node_data, edge_data, data_map)
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
-    betas = np.array([0.00125])
+    betas: npt.NDArray[np.float32] = np.array([0.00125])
     distances = networks.distance_from_beta(betas)
     mock_numerical = mock.mock_numerical_data(len(data_dict), num_arrs=2, random_seed=0)
     # compute
     (
         stats_sum,
-        stats_sum_wt,
+        _stats_sum_wt,
         stats_mean,
-        stats_mean_wt,
+        _stats_mean_wt,
         stats_variance,
-        stats_variance_wt,
+        _stats_variance_wt,
         stats_max,
         stats_min,
     ) = data.aggregate_stats(
-        node_data,
-        edge_data,
-        node_edge_map,
+        network_structure,
         data_map,
         distances,
         betas,
