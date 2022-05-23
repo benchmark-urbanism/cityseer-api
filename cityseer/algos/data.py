@@ -543,7 +543,7 @@ def aggregate_landuses(
     )
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_stats(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,

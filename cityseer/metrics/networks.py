@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 # separate out so that ast parser can parse function def
-MIN_THRESHOLD_WEIGHT = config.MIN_THRESH_WT
+MIN_THRESH_WT = config.MIN_THRESH_WT
 
 
 def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
@@ -43,13 +43,13 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
             # GOTCHA: ints have no concept of -0
             # so: dividing through a positive OR negative int will return negative infinity regardless
             # so: catch all betas that don't give positive infinity (via -\\beta)
-            if np.log(MIN_THRESHOLD_WEIGHT) / -b != np.inf:
+            if np.log(MIN_THRESH_WT) / -b != np.inf:
                 raise ValueError("Please provide zeros in float form without a leading negative.")
     return np.array(beta, dtype=np.float32)  # type: ignore
 
 
 def distance_from_beta(
-    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESHOLD_WEIGHT
+    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESH_WT
 ) -> npt.NDArray[np.float32]:
     r"""
     Map decay parameters $\\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
@@ -154,7 +154,7 @@ def _cast_distance(
 
 def beta_from_distance(
     distance: int | float | list[int | float] | tuple[int | float] | npt.NDArray[np.int_ | np.float32],
-    min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+    min_threshold_wt: float = MIN_THRESH_WT,
 ) -> npt.NDArray[np.float32]:
     r"""
     Map distance thresholds $d_{max}$ to equivalent decay parameters $\\beta$ at the specified cutoff weight $w_{min}$.
@@ -215,7 +215,7 @@ def beta_from_distance(
 
 
 def avg_distance_for_beta(
-    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESHOLD_WEIGHT
+    beta: float | list[float] | tuple[float] | npt.NDArray[np.float32], min_threshold_wt: float = MIN_THRESH_WT
 ) -> npt.NDArray[np.float32]:
     r"""
     Calculate the mean distance for a given $\\beta$ parameter.
@@ -414,7 +414,7 @@ class NetworkLayer:
         | npt.NDArray[np.int_ | np.float32]
         | None = None,
         betas: float | list[float] | tuple[float] | npt.NDArray[np.float32] | None = None,
-        min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+        min_threshold_wt: float = MIN_THRESH_WT,
     ):
         r"""
         Instantiate a NetworkLayer class.
@@ -908,7 +908,7 @@ class NetworkLayerFromNX(NetworkLayer):
         | npt.NDArray[np.int_ | np.float32]
         | None = None,
         betas: float | list[float] | tuple[float] | npt.NDArray[np.float32] | None = None,
-        min_threshold_wt: float = MIN_THRESHOLD_WEIGHT,
+        min_threshold_wt: float = MIN_THRESH_WT,
     ):
         """
         Directly transposes a `networkX` `MultiGraph` into a `NetworkLayer`.
