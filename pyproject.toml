@@ -34,7 +34,7 @@ classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "matplotlib>=3.5.1",
     "networkx>=2.7.1",
-    "numba>=0.55.1",
+    "numba>=0.56.0.dev0",
     "pyproj>=3.3.0",
     "requests>=2.27.1",
     "scikit-learn>=1.0.2",
@@ -199,6 +199,14 @@ omit = [
     "cityseer/config.py",
     "cityseer/tools/plot.py",
 ]
+
+[[tool.pdm.source]]
+url = "https://pypi.anaconda.org/numba/label/wheels_experimental_m1/simple"
+verify_ssl = true
+name = "numba"
+
+[tool.pdm]
+allow_prereleases = true
 
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
