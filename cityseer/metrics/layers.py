@@ -968,7 +968,7 @@ class DataLayer:
         # lengths of keys and array dims should match
         if len(stats_data_arrs) != len(stats_keys):
             raise ValueError("An equal number of stats labels and stats data arrays is required.")
-        if stats_data_arrs.shape[1] != len(self._data_map):  # type: ignore
+        if stats_data_arrs.shape[1] != self.data_map.count:  # type: ignore
             raise ValueError("The length of data arrays must match the number of data points.")
         if not config.QUIET_MODE:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
