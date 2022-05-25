@@ -288,15 +288,15 @@ class NetworkLayer:
 
     # if initialised with distances:
     # betas for weighted metrics will be generated implicitly
-    N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-    print(N.distances)  # prints: [200, 400, 800, 1600]
-    print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
+    cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+    print(cc_netw.distances)  # prints: [200, 400, 800, 1600]
+    print(cc_netw.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
     # if initialised with betas:
     # distances for non-weighted metrics will be generated implicitly
-    N = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
-    print(N.distances)  # prints: [200, 400, 800, 1600]
-    print(N.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
+    cc_netw = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
+    print(cc_netw.distances)  # prints: [200, 400, 800, 1600]
+    print(cc_netw.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
     ```
 
     There are two network centrality methods available depending on whether you're using a node-based or segment-based
@@ -377,16 +377,16 @@ class NetworkLayer:
     G = graphs.nx_simple_geoms(G)
 
     # generate the network layer and compute some metrics
-    N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+    cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
     # compute a centrality measure
-    N.node_centrality(measures=['node_density', 'node_betweenness_beta'])
+    cc_netw.node_centrality(measures=['node_density', 'node_betweenness_beta'])
 
     # fetch node density for 400m threshold for the first 5 nodes
-    print(N.metrics.centrality.node_density[400][:5])
+    print(cc_netw.metrics.centrality.node_density[400][:5])
     # prints [15, 13, 10, 11, 12]
 
     # fetch betweenness beta for 1600m threshold for the first 5 nodes
-    print(N.metrics.centrality.node_betweenness_beta[1600][:5])
+    print(cc_netw.metrics.centrality.node_betweenness_beta[1600][:5])
     # prints [76.01161, 45.261307, 6.805982, 11.478158, 33.74703]
     ```
 
@@ -592,22 +592,22 @@ class NetworkLayer:
         G = graphs.nx_simple_geoms(G)
 
         # generate the network layer and compute some metrics
-        N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-        N.node_centrality(measures=['node_harmonic'])
+        cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+        cc_netw.node_centrality(measures=['node_harmonic'])
 
         # let's select a random node id
         random_idx = 6
-        random_uid = N.uids[random_idx]
+        random_nd_key = cc_netw.node_keys[random_idx]
 
-        # the data is directly available at N.metrics
+        # the data is directly available at cc_netw.metrics
         # in this case the data is stored in arrays corresponding to the node indices
-        print(N.metrics.centrality.node_harmonic[200][random_idx])
+        print(cc_netw.metrics.centrality.node_harmonic[200][random_idx])
         # prints: 0.023120252
 
         # let's convert the data to a dictionary
         # the unpacked data is now stored by the node_key of the node identifier
-        data_dict = N.metrics_to_dict()
-        print(data_dict[random_uid][centrality['node_harmonic'][200])
+        data_dict = cc_netw.metrics_to_dict()
+        print(data_dict[random_nd_key][centrality['node_harmonic'][200])
         # prints: 0.023120252
         ```
 
@@ -652,21 +652,21 @@ class NetworkLayer:
         G = graphs.nx_simple_geoms(G)
 
         # generate the network layer and compute some metrics
-        N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+        cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
         # compute some-or-other metrics
-        N.node_centrality(measures=['node_harmonic'])
+        cc_netw.node_centrality(measures=['node_harmonic'])
         # convert back to networkX
-        G_post = N.to_nx_multigraph()
+        G_post = cc_netw.to_nx_multigraph()
 
         # let's select a random node id
         random_idx = 6
-        random_uid = N.uids[random_idx]
+        random_nd_key = cc_netw.node_keys[random_idx]
 
-        print(N.metrics.centrality['node_harmonic'][200][random_idx])
+        print(cc_netw.metrics.centrality['node_harmonic'][200][random_idx])
         # prints: 0.023120252
 
         # the metrics have been copied to the new networkX graph
-        print(G_post.nodes[random_uid]['metrics'].centrality['node_harmonic'][200])
+        print(G_post.nodes[random_nd_key]['metrics'].centrality['node_harmonic'][200])
         # prints: 0.023120252
         ```
         ![Graph before conversion](/images/graph_before.png)

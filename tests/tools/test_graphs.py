@@ -1101,19 +1101,19 @@ def test_nx_from_network_structure(primal_graph):
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
     # check with metrics dictionary
-    N = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
-    N.node_centrality(measures=["node_harmonic"])
+    cc_netw = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
+    cc_netw.node_centrality(measures=["node_harmonic"])
     data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
-    D = layers.DataLayerFromDict(data_dict)
-    D.assign_to_network(N, max_dist=400)
-    D.compute_landuses(
+    cc_data = layers.DataLayerFromDict(data_dict)
+    cc_data.assign_to_network(cc_netw, max_dist=400)
+    cc_data.compute_landuses(
         landuse_labels,
         mixed_use_keys=["hill", "shannon"],
         accessibility_keys=["a", "c"],
         qs=[0, 1],
     )
-    metrics_dict = N.metrics_to_dict()
+    metrics_dict = cc_netw.metrics_to_dict()
     # without backbone
     G_round_trip_data = graphs.nx_from_network_structure(node_keys, network_structure, dict_node_metrics=metrics_dict)
     for node_key, metrics in metrics_dict.items():
