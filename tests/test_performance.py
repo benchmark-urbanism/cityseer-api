@@ -1,3 +1,6 @@
+# pyright: basic
+from __future__ import annotations
+
 import os
 import timeit
 
@@ -92,7 +95,7 @@ def test_local_agg_time(primal_graph):
     _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # setup data
     data_dict = mock.mock_data_dict(primal_graph, random_seed=13)
-    data_keys, data_map = layers.data_map_from_dict(data_dict)
+    _data_keys, data_map = layers.data_map_from_dict(data_dict)
     data_map = data.assign_to_network(data_map, network_structure, 500)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances = np.array([np.inf])
