@@ -21,7 +21,6 @@ from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
 from cityseer import structures
-from cityseer.metrics import layers, networks
 from cityseer.tools.graphs import NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
@@ -363,9 +362,9 @@ def plot_nx(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    N = networks.NetworkLayerFromNX(G, distances=[800])
-    N.node_centrality(measures=['node_beta'])
-    G_after = N.to_nx_multigraph()
+    cc_netw = networks.NetworkLayerFromNX(G, distances=[800])
+    cc_netw.node_centrality(measures=['node_beta'])
+    G_after = cc_netw.to_nx_multigraph()
     # let's extract and normalise the values
     vals = []
     for node, data in G_after.nodes(data=True):

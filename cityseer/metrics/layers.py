@@ -531,7 +531,7 @@ class DataLayer:
         G = graphs.nx_simple_geoms(G)
 
         # generate the network layer
-        N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+        cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 
         # prepare a mock data dictionary
         data_dict = mock.mock_data_dict(G, random_seed=25)
@@ -541,7 +541,7 @@ class DataLayer:
         # generate a data layer
         L = layers.DataLayerFromDict(data_dict)
         # assign to the network
-        L.assign_to_network(N, max_dist=500)
+        L.assign_to_network(cc_netw, max_dist=500)
         # compute some metrics - here we'll use the full interface, see below for simplified interfaces
         # FULL INTERFACE
         # ==============
@@ -563,12 +563,12 @@ class DataLayer:
         # a node idx
         node_idx = 0
 
-        # the data is available at N.metrics
-        print(N.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
+        # the data is available at cc_netw.metrics
+        print(cc_netw.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
         # prints: 4.0
-        print(N.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
+        print(cc_netw.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
         # prints: 0.019168843947614676
-        print(N.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
+        print(cc_netw.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
         # prints: 1.0
         ```
 
@@ -868,7 +868,7 @@ class DataLayer:
         stats_keys
             If computing a single stat: a `str` key describing the stats computed for the `stats_data_arr` parameter.
             If computing multiple stats: a `list` or `tuple` of keys. Computed stats will be saved under the supplied
-            key to the `N.metrics` dictionary.
+            key to the `cc_netw.metrics` dictionary.
         stats_data
             If computing a single stat: a 1d `list`, `tuple` or `numpy` array of numerical data, where the length
             corresponds to the number of data points in the `DataLayer`.
@@ -911,7 +911,7 @@ class DataLayer:
         G = graphs.nx_simple_geoms(G)
 
         # generate the network layer
-        N = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+        cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
 
         # prepare a mock data dictionary
         data_dict = mock.mock_data_dict(G, random_seed=25)
@@ -921,7 +921,7 @@ class DataLayer:
         # generate a data layer
         L = layers.DataLayerFromDict(data_dict)
         # assign to the network
-        L.assign_to_network(N, max_dist=500)
+        L.assign_to_network(cc_netw, max_dist=500)
         # compute some metrics
         L.compute_stats(stats_keys='mock_stat',
                         stats_data=stats_data)
@@ -931,8 +931,8 @@ class DataLayer:
         # a node idx
         node_idx = 0
 
-        # the data is available at N.metrics
-        print(N.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
+        # the data is available at cc_netw.metrics
+        print(cc_netw.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
         # prints: 71297.82967202332
         ```
 

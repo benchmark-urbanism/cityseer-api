@@ -102,9 +102,9 @@ The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayer-node-centra
 ```python
 from cityseer.metrics import networks
 # create a Network layer from the networkX graph
-N = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
+cc_netw = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-N.segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
+cc_netw.segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
 ```
 
 ## Data Layers
@@ -117,12 +117,12 @@ from cityseer.metrics import layers
 data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
 print(data_dict[0], data_dict[1], 'etc.')
 # generate a data layer
-D = layers.DataLayerFromDict(data_dict)
+cc_data = layers.DataLayerFromDict(data_dict)
 # assign to the prior Network Layer
 # max_dist represents the farthest to search for adjacent street edges
-D.assign_to_network(N, max_dist=400)
+cc_data.assign_to_network(cc_netw, max_dist=400)
 # let's plot the assignments
-plot.plot_assignment(N, D, dpi=100)
+plot.plot_assignment(cc_netw, cc_data, dpi=100)
 ```
 
 ![DataLayer assigned to NetworkLayer](/images/assignment.png)
@@ -139,13 +139,13 @@ Landuse labels can be used to generate mixed-use and land-use accessibility meas
 landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
 print(landuse_labels)
 # example easy-wrapper method for computing mixed-uses
-D.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
+cc_data.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # example easy-wrapper method for computing accessibilities
 # the keys correspond to keys present in the landuse data
 # for which accessibilities will be computed
-D.compute_accessibilities(landuse_labels, accessibility_keys=['a', 'c'])
+cc_data.compute_accessibilities(landuse_labels, accessibility_keys=['a', 'c'])
 # or compute multiple measures at once, e.g.:
-D.compute_landuses(landuse_labels,
+cc_data.compute_landuses(landuse_labels,
                      mixed_use_keys=['hill', 'hill_branch_wt', 'shannon'],
                      accessibility_keys=['a', 'c'],
                      qs=[0, 1, 2])
@@ -157,7 +157,7 @@ We can do the same thing with numerical data. Let's generate some mock numerical
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
 print(mock_valuations_data)
 # compute max, min, mean, mean-weighted, variance, and variance-weighted
-D.compute_stats('valuations', mock_valuations_data)
+cc_data.compute_stats('valuations', mock_valuations_data)
 ```
 
 The data is aggregated and computed over the street network relative to the `NetworkLayer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised by the respective keys and parameters.
@@ -167,24 +167,24 @@ The data is aggregated and computed over the street network relative to the `Net
 distance_idx = 800  # any of the initialised distances
 q_idx = 0  # q index: any of the invoked q parameters
 # centrality
-print('centrality keys:', list(N.metrics.centrality.keys()))
-print('distance keys:', list(N.metrics.centrality['segment_harmonic'].keys()))
-print(N.metrics.centrality['segment_harmonic'][distance_idx][:4])
+print('centrality keys:', list(cc_netw.metrics.centrality.keys()))
+print('distance keys:', list(cc_netw.metrics.centrality['segment_harmonic'].keys()))
+print(cc_netw.metrics.centrality['segment_harmonic'][distance_idx][:4])
 # mixed-uses
-print('mixed-use keys:', list(N.metrics['mixed_uses'].keys()))
+print('mixed-use keys:', list(cc_netw.metrics['mixed_uses'].keys()))
 # here we are indexing in to the specified q_idx, distance_idx
-print(N.metrics['mixed_uses']['hill_branch_wt'][q_idx][distance_idx][:4])
+print(cc_netw.metrics['mixed_uses']['hill_branch_wt'][q_idx][distance_idx][:4])
 # statistical keys can be retrieved the same way:
-print('stats keys:', list(N.metrics['stats'].keys()))
-print('valuations keys:', list(N.metrics['stats']['valuations'].keys()))
-print('valuations weighted by 1600m decay:', N.metrics['stats']['valuations']['mean_weighted'][1600][:4])
+print('stats keys:', list(cc_netw.metrics['stats'].keys()))
+print('valuations keys:', list(cc_netw.metrics['stats']['valuations'].keys()))
+print('valuations weighted by 1600m decay:', cc_netw.metrics['stats']['valuations']['mean_weighted'][1600][:4])
 # the data can also be convert back to a NetworkX graph
-G_metrics = N.to_nx_multigraph()
+G_metrics = cc_netw.to_nx_multigraph()
 print(nx.info(G_metrics))
 # the data arrays are unpacked accordingly
 print(G_metrics.nodes[0]['metrics'].centrality['segment_betweenness'][200])
 # and can also be extracted to a dictionary:
-G_dict = N.metrics_to_dict()
+G_dict = cc_netw.metrics_to_dict()
 print(G_dict[0].centrality['segment_betweenness'][200])
 ```
 
@@ -215,7 +215,7 @@ _800m segmentised harmonic centrality._
 # plot distance-weighted hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
-plot.plot_assignment(N, D, node_colour=mixed_uses_cols, data_labels=landuse_labels, dpi=100)
+plot.plot_assignment(cc_netw, cc_data, node_colour=mixed_uses_cols, data_labels=landuse_labels, dpi=100)
 ```
 
 ![Example mixed-use plot](/images/intro_mixed_uses.png)

@@ -139,7 +139,7 @@ class EdgeMap:
         if self.count == 0:
             raise ValueError("Zero length NodeMap")
         if (
-            len(self.end) != self.count
+            len(self.end) != self.count  # pylint: disable=too-many-boolean-expressions
             or len(self.length) != self.count
             or len(self.angle_sum) != self.count
             or len(self.imp_factor) != self.count
@@ -387,10 +387,16 @@ DictNodeMetrics = dict[Union[str, int], NodeMetrics]
 class MetricsState:
     """Metrics typing scaffold."""
 
-    centrality: CentralityMetricsState = CentralityMetricsState()
-    mixed_uses: MixedUsesMetricsState = MixedUsesMetricsState()
-    accessibility: AccessibilityMetricsState = AccessibilityMetricsState()
-    stats: dict[str, StatsMetricsState] = {}
+    centrality: CentralityMetricsState
+    mixed_uses: MixedUsesMetricsState
+    accessibility: AccessibilityMetricsState
+    stats: dict[str, StatsMetricsState]
+
+    def __init__(self) -> None:
+        self.centrality = CentralityMetricsState()
+        self.mixed_uses = MixedUsesMetricsState()
+        self.accessibility = AccessibilityMetricsState()
+        self.stats = {}
 
     def extract_node_metrics(self, node_idx: int) -> NodeMetrics:
         """Extract metrics for a given node idx."""
