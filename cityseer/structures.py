@@ -470,8 +470,7 @@ class MetricsState:
                 "variance_weighted",
             ]:
                 node_state["stats"][th_key][stat_attr] = {}
-                stat_val = getattr(self.stats[th_key], stat_attr)
-                for d_key, d_val in stat_val.items():
+                for d_key, d_val in self.stats[th_key][stat_attr].items():
                     node_state["stats"][th_key][stat_attr][d_key] = d_val[node_idx]
 
         return node_state

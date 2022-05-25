@@ -655,17 +655,25 @@ def test_nx_to_dual(primal_graph, diamond_graph):
 def test_network_structure_from_nx(diamond_graph):
     # test maps vs. networkX
     G_test: nx.MultiGraph = diamond_graph.copy()
+    # set some random 'live' statuses
+    G_test.nodes[0]["live"] = True
+    G_test.nodes[1]["live"] = True
+    G_test.nodes[2]["live"] = True
+    G_test.nodes[3]["live"] = False
     G_test_dual = graphs.nx_to_dual(G_test)
+    # set some random 'live' statuses
+    G_test_dual.nodes["0_1"]["live"] = True
+    G_test_dual.nodes["0_2"]["live"] = True
+    G_test_dual.nodes["1_2"]["live"] = True
+    G_test_dual.nodes["1_3"]["live"] = True
+    G_test_dual.nodes["2_3"]["live"] = False
     for G, is_dual in zip((G_test, G_test_dual), (False, True)):
-        # set some random 'live' statuses
-        for nd_idx in G.nodes():
-            G.nodes[nd_idx]["live"] = bool(np.random.randint(0, 1))
         # generate test maps
         node_keys, network_structure = graphs.network_structure_from_nx(G)
         network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
-        # plot.plot_network_structure(node_uids, node_data, edge_data)
+        # plot.plot_network_structure(node_keys, node_data, edge_data)
 
         # check lengths
         assert len(node_keys) == network_structure.nodes.count == G.number_of_nodes()
@@ -1081,22 +1089,18 @@ def test_network_structure_from_nx(diamond_graph):
 
 def test_nx_from_network_structure(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
-
     # check round trip to and from graph maps results in same graph
     # explicitly set live params for equality checks
     # network_structure_from_networkX generates these implicitly if missing
-    for n in primal_graph.nodes():
-        primal_graph.nodes[n]["live"] = bool(np.random.randint(0, 1))
-
+    for node_key in primal_graph.nodes():
+        primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
-    node_keys, networkx_structure = graphs.network_structure_from_nx(primal_graph)
-    G_round_trip = graphs.nx_from_network_structure(node_keys, networkx_structure)
+    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
+    G_round_trip = graphs.nx_from_network_structure(node_keys, network_structure)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
-
     # check with metrics dictionary
     N = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
-
     N.node_centrality(measures=["node_harmonic"])
     data_dict = mock.mock_data_dict(primal_graph)
     landuse_labels = mock.mock_categorical_data(len(data_dict))
@@ -1110,60 +1114,49 @@ def test_nx_from_network_structure(primal_graph):
     )
     metrics_dict = N.metrics_to_dict()
     # without backbone
-    G_round_trip_data = graphs.nx_from_network_structure(
-        node_uids, node_data, edge_data, node_edge_map, metrics_dict=metrics_dict
-    )
+    G_round_trip_data = graphs.nx_from_network_structure(node_keys, network_structure, dict_node_metrics=metrics_dict)
     for node_key, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
     # with backbone
     G_round_trip_data = graphs.nx_from_network_structure(
-        node_uids,
-        node_data,
-        edge_data,
-        node_edge_map,
+        node_keys,
+        network_structure,
         nx_multigraph=primal_graph,
-        metrics_dict=metrics_dict,
+        dict_node_metrics=metrics_dict,
     )
     for node_key, metrics in metrics_dict.items():
         assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
-
     # test with decomposed
     G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
     # set live explicitly
-    for n in G_decomposed.nodes():
-        G_decomposed.nodes[n]["live"] = bool(np.random.randint(0, 1))
-    node_uids_d, node_data_d, edge_data_d, node_edge_map_d = graphs.network_structure_from_nx(G_decomposed)
-
-    G_round_trip_d = graphs.nx_from_network_structure(node_uids_d, node_data_d, edge_data_d, node_edge_map_d)
-    assert list(G_round_trip_d.nodes) == list(G_decomposed.nodes)
-    for n, iter_node_data in G_round_trip.nodes(data=True):
-        assert n in G_decomposed
-        assert iter_node_data["live"] == G_decomposed.nodes[n]["live"]
-        assert iter_node_data["x"] == G_decomposed.nodes[n]["x"]
-        assert iter_node_data["y"] == G_decomposed.nodes[n]["y"]
-    assert G_round_trip_d.edges == G_decomposed.edges
-
+    for node_key in G_decomposed.nodes():
+        G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
+    node_keys_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed)
+    G_round_trip_decomp = graphs.nx_from_network_structure(node_keys_decomp, network_structure_decomp)
+    assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
+    for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
+        assert node_key in G_decomposed
+        assert iter_node_data["live"] == G_decomposed.nodes[node_key]["live"]
+        assert np.isclose(iter_node_data["x"], G_decomposed.nodes[node_key]["x"], rtol=config.RTOL, atol=config.ATOL)
+        assert np.isclose(iter_node_data["y"], G_decomposed.nodes[node_key]["y"], rtol=config.RTOL, atol=config.ATOL)
+    assert G_round_trip_decomp.edges == G_decomposed.edges
     # error checks for when using backbone graph:
     # mismatching numbers of nodes
     corrupt_G = primal_graph.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
         graphs.nx_from_network_structure(
-            node_uids,
-            node_data,
-            edge_data,
-            node_edge_map,
+            node_keys,
+            network_structure,
             nx_multigraph=corrupt_G,
         )
     # mismatching node_key
     with pytest.raises(KeyError):
-        corrupt_node_uids = list(node_uids)
-        corrupt_node_uids[0] = "boo"
-        graphs.nx_from_network_structureructureructure(
-            corrupt_node_uids,
-            node_data,
-            edge_data,
-            node_edge_map,
+        corrupt_node_keys = list(node_keys)
+        corrupt_node_keys[0] = "boo"
+        graphs.nx_from_network_structure(
+            corrupt_node_keys,
+            network_structure,
             nx_multigraph=primal_graph,
         )
     # missing edge
@@ -1171,10 +1164,8 @@ def test_nx_from_network_structure(primal_graph):
         corrupt_primal_graph = primal_graph.copy()
         corrupt_primal_graph.remove_edge(0, 1)
         graphs.nx_from_network_structure(
-            node_uids,
-            node_data,
-            edge_data,
-            node_edge_map,
+            node_keys,
+            network_structure,
             nx_multigraph=corrupt_primal_graph,
         )
 
