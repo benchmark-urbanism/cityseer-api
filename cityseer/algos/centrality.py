@@ -1,9 +1,9 @@
-from __future__ import annotations
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from numba import njit, prange, types  # type: ignore
-from numba.typed import List
+from numba.typed import List  # type: ignore
 
 from cityseer import config, structures
 from cityseer.algos import checks
@@ -27,7 +27,7 @@ def shortest_path_tree(
     Predecessor map is based on impedance heuristic - which can be different from metres.
     Distance map in metres is used for defining max distances and computing equivalent distance measures.
     """
-    if angular and not np.all(network_structure.edges.imp_factor == 1):  # type: ignore
+    if angular and not np.all(network_structure.edges.imp_factor == 1):
         raise ValueError("The distance impedance factor parameter must be set to 1 when using angular centralities.")
     # prepare the arrays
     tree_map: structures.TreeMap = structures.TreeMap(network_structure.nodes.count, network_structure.edges.count)
@@ -135,10 +135,10 @@ def _find_edge_idx(network_structure: structures.NetworkStructure, start_nd_idx:
     Find the edge spanning the specified start / end node pair.
     """
     # iterate the start node's edges
-    for edge_idx in network_structure.node_edge_map[start_nd_idx]:  # type: ignore
+    for edge_idx in network_structure.node_edge_map[start_nd_idx]:
         # find the edge which has an out node matching the target node
         if network_structure.edges.end[edge_idx] == end_nd_idx:
-            return int(edge_idx)  # type: ignore
+            return int(edge_idx)
     return -1
 
 
@@ -251,9 +251,9 @@ def local_node_centrality(
     network_structure.validate()
     checks.check_distances_and_betas(distances, betas)
     # gather functions
-    close_funcs = List.empty_list(node_close_func_proto)  # type: ignore
+    close_funcs: list[Any] = List.empty_list(node_close_func_proto)
     close_idxs: list[int] = []
-    betw_funcs = List.empty_list(node_betw_func_proto)  # type: ignore
+    betw_funcs: list[Any] = List.empty_list(node_betw_func_proto)
     betw_idxs: list[int] = []
     for m_idx, m_key in enumerate(measure_keys):
         if not angular:
@@ -290,11 +290,11 @@ def local_node_centrality(
         else:
             # aggregative keys
             if m_key == "node_harmonic_angular":
-                close_funcs.append(_node_harmonic_angular)  # type: ignore
+                close_funcs.append(_node_harmonic_angular)
                 close_idxs.append(m_idx)
             # betweenness keys
             elif m_key == "node_betweenness_angular":
-                betw_funcs.append(_node_betweenness)  # type: ignore
+                betw_funcs.append(_node_betweenness)
                 betw_idxs.append(m_idx)
             else:
                 raise ValueError(
@@ -307,14 +307,14 @@ def local_node_centrality(
     d_n = len(distances)
     k_n = len(measure_keys)
     measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
-    global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
         shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
-            progress_proxy.update(1)  # type: ignore
+            progress_proxy.update(1)
         # only compute for live nodes
         if not network_structure.nodes.live[src_idx]:
             continue
@@ -343,10 +343,8 @@ def local_node_centrality(
                 for d_idx, dist_cutoff in enumerate(distances):
                     beta = betas[d_idx]
                     if to_short_dist <= dist_cutoff:
-                        for m_idx, close_func in zip(close_idxs, close_funcs):  # type: ignore
-                            shadow_arr[m_idx, d_idx, src_idx] += close_func(  # type: ignore
-                                to_short_dist, to_simpl_dist, beta, cycles
-                            )
+                        for m_idx, close_func in zip(close_idxs, close_funcs):
+                            shadow_arr[m_idx, d_idx, src_idx] += close_func(to_short_dist, to_simpl_dist, beta, cycles)
             # only process in one direction
             if to_idx < src_idx:
                 continue
@@ -364,8 +362,8 @@ def local_node_centrality(
                         # check threshold
                         if tree_map.short_dist[to_idx] <= dist_cutoff:
                             # iterate betweenness functions
-                            for m_idx, betw_func in zip(betw_idxs, betw_funcs):  # type: ignore
-                                shadow_arr[m_idx, d_idx, inter_idx] += betw_func(to_short_dist, beta)  # type: ignore
+                            for m_idx, betw_func in zip(betw_idxs, betw_funcs):
+                                shadow_arr[m_idx, d_idx, inter_idx] += betw_func(to_short_dist, beta)
                     # follow the chain
                     inter_idx = tree_map.preds[inter_idx]
         # reduce
@@ -424,20 +422,20 @@ def local_segment_centrality(
     checks.check_distances_and_betas(distances, betas)
     network_structure.validate()
     # gather functions
-    close_funcs = List.empty_list(segment_func_proto)  # type: ignore
+    close_funcs: list[Any] = List.empty_list(segment_func_proto)
     close_idxs: list[int] = []
     betw_idxs: list[int] = []
     for m_idx, m_key in enumerate(measure_keys):
         if not angular:
             # segment keys
             if m_key == "segment_density":
-                close_funcs.append(_segment_density)  # type: ignore
+                close_funcs.append(_segment_density)
                 close_idxs.append(m_idx)
             elif m_key == "segment_harmonic":
-                close_funcs.append(_segment_harmonic)  # type: ignore
+                close_funcs.append(_segment_harmonic)
                 close_idxs.append(m_idx)
             elif m_key == "segment_beta":
-                close_funcs.append(_segment_beta)  # type: ignore
+                close_funcs.append(_segment_beta)
                 close_idxs.append(m_idx)
             elif m_key == "segment_betweenness":
                 # only one version of shortest path betweenness - no need for func
@@ -470,14 +468,14 @@ def local_segment_centrality(
     d_n = len(distances)
     k_n = len(measure_keys)
     measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
-    global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # iterate through each vert and calculate the shortest path tree
     for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
         shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
-            progress_proxy.update(1)  # type: ignore
+            progress_proxy.update(1)
         # only compute for live nodes
         if not network_structure.nodes.live[src_idx]:
             continue
@@ -503,7 +501,7 @@ def local_segment_centrality(
         """
         # only build edge data if necessary
         if close_idxs:
-            visited_edges: list[int] = np.where(tree_map.visited_edges)[0]
+            visited_edges: list[int] = np.where(tree_map.visited_edges)[0]  # type: ignore
             for edge_idx in visited_edges:
                 # unpack the edge data
                 n_nd_idx = network_structure.edges.start[edge_idx]
@@ -560,8 +558,10 @@ def local_segment_centrality(
                             if c > dist_cutoff:
                                 c = dist_cutoff
                                 c_imp = a_imp + (dist_cutoff - a) * seg_imp_fact
-                            for m_idx, close_func in zip(close_idxs, close_funcs):  # type: ignore
-                                shadow_arr[m_idx, d_idx, src_idx] += close_func(np.float32(a), np.float32(c), np.float32(a_imp), np.float32(c_imp), np.float32(beta))  # type: ignore # pylint: disable=line-too-long
+                            for m_idx, close_func in zip(close_idxs, close_funcs):
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(
+                                    np.float32(a), np.float32(c), np.float32(a_imp), np.float32(c_imp), np.float32(beta)
+                                )  # pylint: disable=line-too-long
                         # a to b segment - if on the shortest path then b == d, in which case, continue
                         if b == d:
                             continue
@@ -569,8 +569,10 @@ def local_segment_centrality(
                             if d > dist_cutoff:
                                 d = dist_cutoff
                                 d_imp = b_imp + (dist_cutoff - b) * seg_imp_fact
-                            for m_idx, close_func in zip(close_idxs, close_funcs):  # type: ignore
-                                shadow_arr[m_idx, d_idx, src_idx] += close_func(np.float32(b), np.float32(d), np.float32(b_imp), np.float32(d_imp), np.float32(beta))  # type: ignore # pylint: disable=line-too-long
+                            for m_idx, close_func in zip(close_idxs, close_funcs):
+                                shadow_arr[m_idx, d_idx, src_idx] += close_func(
+                                    np.float32(b), np.float32(d), np.float32(b_imp), np.float32(d_imp), np.float32(beta)
+                                )  # pylint: disable=line-too-long
                 else:
                     """
                     there is a different workflow for angular - uses single segment (no segment splitting)
@@ -662,10 +664,10 @@ def local_segment_centrality(
                                 shadow_arr[m_idx, d_idx, src_idx] += (f - e) / agg_ang
         if betw_idxs:
             # prepare a list of neighbouring nodes
-            nb_nodes = List.empty_list(types.int64)  # type: ignore
-            for edge_idx in network_structure.node_edge_map[src_idx]:  # type: ignore
+            nb_nodes: list[int] = List.empty_list(types.int64)
+            for edge_idx in network_structure.node_edge_map[src_idx]:
                 out_nd_idx = network_structure.edges.end[edge_idx]
-                nb_nodes.append(out_nd_idx)  # type: ignore
+                nb_nodes.append(out_nd_idx)
             # betweenness keys computed per to_idx
             for to_idx in visited_nodes:
                 # only process in one direction

@@ -4,7 +4,7 @@ A collection of functions for the generation of mock data.
 This module is intended for project development and writing code tests, but may otherwise be useful for demonstration
 and utility purposes.
 """
-from __future__ import annotations
+
 
 import logging
 import string
@@ -17,7 +17,7 @@ import requests
 import utm
 from shapely import geometry
 
-from cityseer import structures
+from cityseer import types
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -260,7 +260,7 @@ def get_graph_extents(
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = 0) -> structures.DataDictType:
+def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = 0) -> types.DataDictType:
     """
     Generate a dictionary containing mock data for testing or experimentation purposes.
 
@@ -282,7 +282,7 @@ def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: 
     """
     np.random.seed(seed=random_seed)  # pylint: disable=no-member
     min_x, min_y, max_x, max_y = get_graph_extents(nx_multigraph)
-    data_dict: structures.DataDictType = {}
+    data_dict: types.DataDictType = {}
     for data_idx in range(length):
         data_dict[data_idx] = {
             "x": np.random.uniform(min_x, max_x),  # pylint: disable=no-member
@@ -501,13 +501,13 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
             params={"data": request},
         )
         # break if OK response
-        if osm_response is not None and osm_response.status_code == 200:  # type: ignore
+        if osm_response is not None and osm_response.status_code == 200:
             break
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
         max_tries -= 1
 
-    if osm_response is None or not osm_response.status_code == 200:  # type: ignore
+    if osm_response is None or not osm_response.status_code == 200:
         raise requests.RequestException("Unsuccessful OSM API request.")
 
     return osm_response

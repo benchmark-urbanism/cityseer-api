@@ -1,5 +1,5 @@
 # pyright: basic
-from __future__ import annotations
+
 
 import os
 import timeit
@@ -62,7 +62,7 @@ def test_local_centrality_time(primal_graph):
     # time and report
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 7
+    assert func_time < 10
 
     def segment_cent_wrapper():
         centrality.local_segment_centrality(
@@ -80,7 +80,7 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f"segment_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 8
+    assert func_time < 10
 
 
 def test_local_agg_time(primal_graph):
