@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any
 
 import numpy as np
@@ -361,7 +359,9 @@ def aggregate_landuses(
     mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     mixed_use_other_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     accessibility_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
-    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan), dtype=np.float32),  # type: ignore # pylint: disable=line-too-long
+    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
+        np.full((0, 0), np.nan), dtype=np.float32
+    ),  # pylint: disable=line-too-long
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Any = None,
@@ -416,7 +416,7 @@ def aggregate_landuses(
         # the length of the disparity matrix vis-a-vis unique landuses is tested in underlying diversity functions
         if disp_matrix.ndim != 2 or disp_matrix.shape[0] != disp_matrix.shape[1]:
             raise ValueError("The disparity matrix must be a square NxN matrix.")
-        if len(disp_matrix) == 0:
+        if disp_matrix.shape[0] == 0:
             raise ValueError("Hill disparity and Rao pairwise measures requires a class disparity weights matrix.")
 
     # check that missing or malformed disparity weights matrices are caught
@@ -430,7 +430,7 @@ def aggregate_landuses(
     netw_n = network_structure.nodes.count
     d_n = len(distances)
     q_n = len(qs)
-    global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # setup data structures
     # hill mixed uses are structured separately to take values of q into account
     mixed_use_hill_data: npt.NDArray[np.float32] = np.full((4, q_n, d_n, netw_n), 0.0, dtype=np.float32)  # 4 dim
@@ -464,9 +464,9 @@ def aggregate_landuses(
         # LANDUSES
         mu_max_unique_cl = int(landuse_encodings.max() + 1)
         # counts of each class type (array length per max unique classes - not just those within max distance)
-        classes_counts: npt.NDArray[np.int_] = np.full((d_n, mu_max_unique_cl), 0)  # type: ignore
+        classes_counts: npt.NDArray[np.int_] = np.full((d_n, mu_max_unique_cl), 0)
         # nearest of each class type (likewise)
-        classes_nearest: npt.NDArray[np.float32] = np.full((d_n, mu_max_unique_cl), np.inf)  # type: ignore
+        classes_nearest: npt.NDArray[np.float32] = np.full((d_n, mu_max_unique_cl), np.inf)
         # iterate the reachable indices and related distances
         for data_idx, (reachable, data_dist) in enumerate(zip(reachable_data, reachable_data_dist)):
             if not reachable:
@@ -549,7 +549,7 @@ def aggregate_stats(
     data_map: structures.DataMap,
     distances: npt.NDArray[np.float32],
     betas: npt.NDArray[np.float32],
-    numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),  # type: ignore
+    numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Any = None,
@@ -595,7 +595,7 @@ def aggregate_stats(
     netw_n = network_structure.nodes.count
     d_n = len(distances)
     n_n = len(numerical_arrays)
-    global_max_dist: np.float32 = np.float32(np.nanmax(distances))  # type: ignore
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # setup data structures
     stats_sum: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)
     stats_sum_wt: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)

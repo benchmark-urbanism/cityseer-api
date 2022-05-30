@@ -6,7 +6,7 @@ Custom behaviour can be achieved by directly manipulating the underlying [`Netwo
 of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 See the demos section for examples.
 """
-from __future__ import annotations
+
 
 import logging
 from typing import Any, Union, cast
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 plt.tight_layout()
 
 
-ColourType = Union[str, npt.NDArray[np.float_]]
+ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
 
 
 class ColourMap:  # pylint: disable=too-few-public-methods
@@ -160,7 +160,7 @@ def plot_nx_primal_or_dual(  # noqa
         _edge_style: str,
         _edge_width: int | float | None,
     ) -> None:
-        if not len(_graph.nodes()):  # pylint: disable=use-implicit-booleaness-not-len
+        if not len(_graph):  # pylint: disable=len-as-condition
             raise ValueError("Graph contains no nodes to plot.")
         if not isinstance(_node_size, int) or _node_size < 1:
             raise ValueError("Node sizes should be a positive integer.")
@@ -182,7 +182,7 @@ def plot_nx_primal_or_dual(  # noqa
                 _edge_colour = ColourMap.accent
         # edge width
         if _edge_width is not None:
-            if not isinstance(_edge_width, (int, float)):  # type: ignore
+            if not isinstance(_edge_width, (int, float)):
                 raise ValueError("Edge widths should be an int or float.")
         else:
             if _is_primal:
@@ -479,7 +479,7 @@ def plot_assignment(  # noqa
         alpha=0.75,
     )
 
-    data_colour: str | ColourType
+    data_colour: ColourType
     if data_labels is None:
         data_colour = ColourMap.info
         data_cmap = None

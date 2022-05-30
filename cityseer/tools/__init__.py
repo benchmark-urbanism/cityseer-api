@@ -1,1 +1,1 @@
-from cityseer.tools import graphs, mock, plot
+from cityseer.tools import graphs, mock, plot  # type: ignore

@@ -1,11 +1,11 @@
 # pyright: basic
-from __future__ import annotations
+
 
 import numpy as np
 import numpy.typing as npt
 import pytest
 
-from cityseer import config, structures
+from cityseer import config, types
 from cityseer.algos import centrality
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
@@ -115,7 +115,7 @@ def test_Network_Layer(primal_graph):
     with pytest.raises(ValueError):
         networks.NetworkLayer(node_keys[:-1], network_structure, distances)
     with pytest.raises(AttributeError):
-        networks.NetworkLayer(node_keys, None, distances)  # type: ignore
+        networks.NetworkLayer(node_keys, None, distances)
     with pytest.raises(ValueError):
         networks.NetworkLayer(node_keys, network_structure)  # no betas or distances
     with pytest.raises(ValueError):
@@ -207,7 +207,7 @@ def test_Network_Layer_From_nx(primal_graph):
         networks.NetworkLayerFromNX(primal_graph, betas=[])
 
 
-def dict_check(dict_node_metrics: structures.DictNodeMetrics, Network: networks.NetworkLayer):
+def dict_check(dict_node_metrics: types.DictNodeMetrics, Network: networks.NetworkLayer):
     for i, node_key in enumerate(Network.node_keys):
         # general
         assert dict_node_metrics[node_key]["x"] == Network.network_structure.nodes.xs[i]

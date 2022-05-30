@@ -4,7 +4,7 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
 """
-from __future__ import annotations
+
 
 import json
 import logging
@@ -15,9 +15,9 @@ import numpy as np
 import numpy.typing as npt
 import utm
 from shapely import coords, geometry, ops, strtree
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
-from cityseer import config, structures
+from cityseer import config, structures, types
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         `geom` attributes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Generating simple (straight) edge geometries.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
@@ -77,12 +77,14 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
-    for start_nd_key, end_nd_key, edge_idx in tqdm(g_multi_copy.edges(keys=True), disable=config.QUIET_MODE):  # type: ignore # pylint: disable=line-too-long
+    for start_nd_key, end_nd_key, edge_idx in tqdm(
+        g_multi_copy.edges(keys=True), disable=config.QUIET_MODE
+    ):  # pylint: disable=line-too-long
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         if start_nd_key == end_nd_key and seg.length == 0:
-            remove_edges.append((start_nd_key, end_nd_key, edge_idx))  # type: ignore
+            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
         else:
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg
     for start_nd_key, end_nd_key, edge_idx in remove_edges:
@@ -165,7 +167,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
 
     """
     osm_network_data = json.loads(osm_json)
-    nx_multigraph = nx.MultiGraph()
+    nx_multigraph: nx.MultiGraph = nx.MultiGraph()
     for elem in osm_network_data["elements"]:
         if elem["type"] == "node":
             nx_multigraph.add_node(elem["id"], x=elem["lon"], y=elem["lat"])
@@ -204,7 +206,7 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
          `geom` attributes are present, these will also be converted.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting networkX graph from WGS to UTM.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
@@ -214,7 +216,7 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
-    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
+    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
         # x coordinate
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
@@ -241,12 +243,12 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
         # check if geom present - optional step
-        if "geom" in edge_data:  # type: ignore
-            line_geom: geometry.LineString = edge_data["geom"]  # type: ignore
+        if "geom" in edge_data:
+            line_geom: geometry.LineString = edge_data["geom"]
             if line_geom.type != "LineString":
                 raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
             # be cognisant of parameter and return order
@@ -289,7 +291,9 @@ def nx_remove_dangling_nodes(
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
     if remove_disconnected:
         # finds connected components - this behaviour changed with networkx v2.4
-        connected_components: list[list[NodeKey]] = list(nx.algorithms.components.connected_components(g_multi_copy))  # type: ignore # pylint: disable=line-too-long
+        connected_components: list[list[NodeKey]] = list(
+            nx.algorithms.components.connected_components(g_multi_copy)  # type: ignore
+        )  # pylint: disable=line-too-long
         # sort by largest component
         g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
         # make a copy of the graph using the largest component
@@ -317,7 +321,7 @@ def _snap_linestring_idx(
     Snaps a LineString's coordinate at the specified index to the provided x_y coordinate.
     """
     # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):  # type: ignore
+    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
         raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
     list_linestring_coords: ListCoordsType = list(linestring_coords)
     # check that the index is either 0 or -1
@@ -365,7 +369,7 @@ def _align_linestring_coords(
 
     """
     # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):  # type: ignore
+    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
         raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
     linestring_coords = list(linestring_coords)
     # the target indices depend on whether reversed or not
@@ -402,7 +406,7 @@ def _weld_linestring_coords(
     """
     # check types
     for line_coords in [linestring_coords_a, linestring_coords_b]:
-        if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):  # type: ignore
+        if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
     linestring_coords_a = list(linestring_coords_a)
     linestring_coords_b = list(linestring_coords_b)
@@ -483,7 +487,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         edge with associated `geom` attributes spliced together.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Removing filler nodes.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
@@ -627,7 +631,7 @@ def _squash_adjacent(
       the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
     if cent_min_degree is not None and cent_min_degree < 1:
         raise ValueError("merge_node_min_degree should be a positive integer.")
@@ -773,7 +777,7 @@ def _merge_parallel_edges(
     length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
     if multi_edge_len_factor <= 1:
         raise TypeError("multi_edge_len_factor should be a factor greater than 1. ")
@@ -789,10 +793,12 @@ def _merge_parallel_edges(
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_data in tqdm(nx_multigraph.edges(data=True), disable=config.QUIET_MODE):  # type: ignore # pylint: disable=line-too-long
+    for start_nd_key, end_nd_key, edge_data in tqdm(
+        nx_multigraph.edges(data=True), disable=config.QUIET_MODE
+    ):  # pylint: disable=line-too-long
         # if only one edge is associated with this node pair, then add
         if nx_multigraph.number_of_edges(start_nd_key, end_nd_key) == 1:
-            deduped_graph.add_edge(start_nd_key, end_nd_key, **edge_data)  # type: ignore
+            deduped_graph.add_edge(start_nd_key, end_nd_key, **edge_data)
         # otherwise, add if not already added from another (parallel) edge
         elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
             # there are normally two edges, but sometimes three or possibly more
@@ -974,7 +980,7 @@ def nx_consolidate_nodes(
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     if min_node_group < 2:
         raise ValueError("The minimum node threshold should be set to at least two.")
@@ -1133,7 +1139,7 @@ def nx_split_opposing_geoms(
             for child_s, child_e, child_k, child_geom in edge_children[edge_key]:
                 recurse_child_keys(child_s, child_e, child_k, child_geom, current_edges)
 
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Splitting opposing edges.")
     _multi_graph: nx.MultiGraph = nx_multigraph.copy()
@@ -1154,7 +1160,8 @@ def nx_split_opposing_geoms(
         edge_geoms: list[geometry.LineString] = edges_tree.query(n_point.buffer(buffer_dist))  # type: ignore
         # extract the start node, end node, geom
         edges: list[EdgeMapping] = [
-            (edge_geom.start_nd_key, edge_geom.end_nd_key, edge_geom.edge_idx, edge_geom) for edge_geom in edge_geoms  # type: ignore # pylint: disable=line-too-long
+            (edge_geom.start_nd_key, edge_geom.end_nd_key, edge_geom.edge_idx, edge_geom)  # type: ignore
+            for edge_geom in edge_geoms  # pylint: disable=line-too-long
         ]
         # check against removed edges
         current_edges: list[EdgeMapping] = []
@@ -1322,7 +1329,7 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
     _Example graph after decomposition._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
@@ -1330,7 +1337,9 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_data in tqdm(nx_multigraph.edges(data=True), disable=config.QUIET_MODE):  # type: ignore # pylint: disable=line-too-long
+    for start_nd_key, end_nd_key, edge_data in tqdm(
+        nx_multigraph.edges(data=True), disable=config.QUIET_MODE
+    ):  # pylint: disable=line-too-long
         # test for x, y in start coordinates
         if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
@@ -1342,13 +1351,13 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
         e_x: float = nx_multigraph.nodes[end_nd_key]["x"]
         e_y: float = nx_multigraph.nodes[end_nd_key]["y"]
         # test for geom
-        if "geom" not in edge_data:  # type: ignore
+        if "geom" not in edge_data:
             raise KeyError(
                 f"No edge geom found for edge {start_nd_key}-{end_nd_key}: "
                 f'Please add an edge "geom" attribute consisting of a shapely LineString.'
             )
         # get edge geometry
-        line_geom: geometry.LineString = edge_data["geom"]  # type: ignore
+        line_geom: geometry.LineString = edge_data["geom"]
         if line_geom.type != "LineString":
             raise TypeError(
                 f"Expecting LineString geometry but found {line_geom.type} geometry for "
@@ -1453,7 +1462,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting graph to dual.")
     g_dual = nx.MultiGraph()
@@ -1493,7 +1502,9 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         line_geom = geometry.LineString(line_geom_coords)
         # generate the two half geoms
         a_half_geom: geometry.LineString = ops.substring(line_geom, 0, line_geom.length / 2)  # type: ignore
-        b_half_geom: geometry.LineString = ops.substring(line_geom, line_geom.length / 2, line_geom.length)  # type: ignore # pylint: disable=line-too-long
+        b_half_geom: geometry.LineString = ops.substring(
+            line_geom, line_geom.length / 2, line_geom.length  # type: ignore
+        )  # pylint: disable=line-too-long
         # check that nothing odd happened with new midpoint
         if not np.allclose(
             a_half_geom.coords[-1][:2],
@@ -1534,11 +1545,11 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
-    for start_nd_key, end_nd_key, edge_idx in tqdm(  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx in tqdm(
         nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE
     ):
         # get the first and second half geoms
-        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)  # type: ignore
+        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
         # create a new dual node corresponding to the current primal edge
         # nodes are added manually to retain link to origin node names and to check for duplicates
         s_e = sorted([str(start_nd_key), str(end_nd_key)])
@@ -1564,7 +1575,9 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                 if g_dual.has_edge(hub_node_dual, spoke_node_dual):
                     continue
                 # get the near and far half geoms
-                spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)  # type: ignore # pylint: disable=line-too-long
+                spoke_half_geom, _discard_geom = get_half_geoms(
+                    nx_multigraph, n_side, nb_nd_key, edge_idx
+                )  # pylint: disable=line-too-long
                 # nodes will be added if not already present (i.e. from first direction processed)
                 if spoke_node_dual not in g_dual:
                     x, y = spoke_half_geom.coords[-1][:2]
@@ -1644,7 +1657,7 @@ def network_structure_from_nx(
         indices for each node.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
@@ -1761,7 +1774,7 @@ def nx_from_network_structure(
     node_keys: tuple[NodeKey] | list[NodeKey],
     network_structure: structures.NetworkStructure,
     nx_multigraph: nx.MultiGraph | None = None,
-    dict_node_metrics: structures.DictNodeMetrics | None = None,
+    dict_node_metrics: types.DictNodeMetrics | None = None,
 ) -> nx.MultiGraph:
     """
     Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
@@ -1819,17 +1832,17 @@ def nx_from_network_structure(
     # after above so that errors caught first
     network_structure.validate()
     logger.info("Unpacking node data.")
-    for nd_idx, nd_key in tqdm(enumerate(node_keys), disable=config.QUIET_MODE):
-        g_multi_copy.nodes[nd_key]["x"] = network_structure.nodes.xs[nd_idx]
-        g_multi_copy.nodes[nd_key]["y"] = network_structure.nodes.ys[nd_idx]
-        g_multi_copy.nodes[nd_key]["live"] = bool(network_structure.nodes.live[nd_idx])
+    for nd_idx, nd_key in tqdm(enumerate(node_keys), disable=config.QUIET_MODE):  # type: ignore
+        g_multi_copy.nodes[nd_key]["x"] = network_structure.nodes.xs[nd_idx]  # type: ignore
+        g_multi_copy.nodes[nd_key]["y"] = network_structure.nodes.ys[nd_idx]  # type: ignore
+        g_multi_copy.nodes[nd_key]["live"] = bool(network_structure.nodes.live[nd_idx])  # type: ignore
     logger.info("Unpacking edge data.")
-    for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):
-        start_nd_idx = network_structure.edges.start[edge_idx]
-        end_nd_idx = network_structure.edges.end[edge_idx]
-        length = network_structure.edges.length[edge_idx]
-        angle_sum = network_structure.edges.angle_sum[edge_idx]
-        imp_factor = network_structure.edges.imp_factor[edge_idx]
+    for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):  # type: ignore
+        start_nd_idx: int = network_structure.edges.start[edge_idx]  # type: ignore
+        end_nd_idx: int = network_structure.edges.end[edge_idx]  # type: ignore
+        length: float = network_structure.edges.length[edge_idx]  # type: ignore
+        angle_sum: float = network_structure.edges.angle_sum[edge_idx]  # type: ignore
+        imp_factor: float = network_structure.edges.imp_factor[edge_idx]  # type: ignore
         # find corresponding node keys
         start_nd_key: NodeKey = node_keys[start_nd_idx]
         end_nd_key: NodeKey = node_keys[end_nd_idx]
@@ -1884,13 +1897,13 @@ def nx_from_network_structure(
     # unpack any metrics written to the nodes
     if dict_node_metrics is not None:
         logger.info("Unpacking metrics to nodes.")
-        for nd_key, metrics in tqdm(dict_node_metrics.items(), disable=config.QUIET_MODE):
+        for nd_key, metrics in tqdm(dict_node_metrics.items(), disable=config.QUIET_MODE):  # type: ignore
             if nd_key not in g_multi_copy:
                 raise KeyError(
                     f"Node key {nd_key} not found in graph. "
                     f"Data dictionary keys must match the node keys supplied with the node and edge maps."
                 )
-            g_multi_copy.nodes[nd_key]["metrics"] = metrics
+            g_multi_copy.nodes[nd_key]["metrics"] = metrics  # type: ignore
 
     return g_multi_copy
 
@@ -1945,11 +1958,11 @@ def nx_from_osm_nx(
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
 
     """
-    if not isinstance(nx_multidigraph, nx.MultiDiGraph):  # type: ignore
+    if not isinstance(nx_multidigraph, nx.MultiDiGraph):
         raise TypeError("This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.")
-    if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):  # type: ignore
+    if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):
         raise TypeError("Node attributes to be copied should be provided as either a list or tuple of attribute keys.")
-    if edge_attributes is not None and not isinstance(edge_attributes, (list, tuple)):  # type: ignore
+    if edge_attributes is not None and not isinstance(edge_attributes, (list, tuple)):
         raise TypeError("Edge attributes to be copied should be provided as either a list or tuple of attribute keys.")
     logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
     # target MultiGraph
@@ -1980,10 +1993,10 @@ def nx_from_osm_nx(
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         nx_multidigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
-        edge_data = cast(EdgeData, edge_data)
+        edge_data = cast(EdgeData, edge_data)  # type: ignore
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         # copy edge if present

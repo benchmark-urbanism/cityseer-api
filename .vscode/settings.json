@@ -23,7 +23,6 @@
     "**/node_modules/**": true
   },
   "eslint.enable": true,
-  "eslint.packageManager": "yarn",
   "eslint.alwaysShowStatus": true,
   "eslint.validate": ["javascript", "javascriptreact", "vue"],
   "eslint.codeAction.disableRuleComment": {},
@@ -48,7 +47,6 @@
   },
   "notebook.lineNumbers": "on",
   "python.formatting.provider": "black",
-  "python.formatting.blackArgs": ["--config=pyproject.toml"],
   "python.testing.pytestEnabled": true,
   "python.analysis.completeFunctionParens": true,
   "python.analysis.indexing": true,
@@ -64,33 +62,6 @@
     "**/*test*/**/*.py"
   ],
   "python.languageServer": "Pylance",
-  "yaml.customTags": [
-    "!And",
-    "!And sequence",
-    "!If",
-    "!If sequence",
-    "!Not",
-    "!Not sequence",
-    "!Equals",
-    "!Equals sequence",
-    "!Or",
-    "!Or sequence",
-    "!FindInMap",
-    "!FindInMap sequence",
-    "!Base64",
-    "!Join",
-    "!Join sequence",
-    "!Cidr",
-    "!Ref",
-    "!Sub",
-    "!Sub sequence",
-    "!GetAtt",
-    "!GetAZs",
-    "!ImportValue",
-    "!ImportValue sequence",
-    "!Select",
-    "!Select sequence",
-    "!Split",
-    "!Split sequence"
-  ]
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.stubPath": "stubs"
 }

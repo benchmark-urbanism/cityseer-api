@@ -2,7 +2,7 @@
 """
 Cityseer network module for creating networks and calculating network centralities.
 """
-from __future__ import annotations
+
 
 import logging
 
@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 from numba_progress import ProgressBar
 
-from cityseer import config, structures
+from cityseer import config, structures, types
 from cityseer.algos import centrality
 from cityseer.tools import graphs
 
@@ -29,7 +29,7 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
         raise TypeError("Expected beta but encountered None value.")
     if isinstance(beta, (int, float)):
         beta = [beta]
-    if not isinstance(beta, (list, tuple, np.ndarray)):  # type: ignore
+    if not isinstance(beta, (list, tuple, np.ndarray)):
         raise TypeError("Please provide a beta or a list, tuple, or numpy.ndarray of betas.")
     if len(beta) == 0:
         raise ValueError("Encountered empty iterable of beta.")
@@ -45,7 +45,7 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
             # so: catch all betas that don't give positive infinity (via -\\beta)
             if np.log(MIN_THRESH_WT) / -b != np.inf:
                 raise ValueError("Please provide zeros in float form without a leading negative.")
-    return np.array(beta, dtype=np.float32)  # type: ignore
+    return np.array(beta, dtype=np.float32)
 
 
 def distance_from_beta(
@@ -140,7 +140,7 @@ def _cast_distance(
     # cast to list form
     if isinstance(distance, (int, float)):
         distance = [distance]
-    if not isinstance(distance, (list, tuple, np.ndarray)):  # type: ignore
+    if not isinstance(distance, (list, tuple, np.ndarray)):
         raise TypeError("Please provide a distance or a list, tuple, or numpy.ndarray of distances.")
     if len(distance) == 0:
         raise ValueError("Encountered empty iterable of distances.")
@@ -149,7 +149,7 @@ def _cast_distance(
         if dist <= 0:
             raise ValueError("Please provide only positive distance values.")
     # cast to numpy
-    return np.array(distance, dtype=np.float32)  # type: ignore
+    return np.array(distance, dtype=np.float32)
 
 
 def beta_from_distance(
@@ -400,7 +400,7 @@ class NetworkLayer:
     _distances: npt.NDArray[np.float32]
     _betas: npt.NDArray[np.float32]
     _min_threshold_wt: float
-    _metrics_state: structures.MetricsState
+    _metrics_state: types.MetricsState
     _nx_multigraph: nx.MultiGraph | None
 
     def __init__(
@@ -522,7 +522,7 @@ class NetworkLayer:
         self._node_keys = node_keys
         self._network_structure = network_structure
         self._min_threshold_wt = min_threshold_wt
-        self._metrics_state = structures.MetricsState()
+        self._metrics_state = types.MetricsState()
         # for storing originating networkX graph
         self._nx_multigraph = None
         # check the data structures
@@ -561,7 +561,7 @@ class NetworkLayer:
         return self._network_structure
 
     @property
-    def metrics_state(self) -> structures.MetricsState:
+    def metrics_state(self) -> types.MetricsState:
         """Metrics state."""
         return self._metrics_state
 
@@ -575,7 +575,7 @@ class NetworkLayer:
         self._nx_multigraph = nx_multigraph
 
     # for retrieving metrics to a dictionary
-    def metrics_to_dict(self) -> structures.DictNodeMetrics:
+    def metrics_to_dict(self) -> types.DictNodeMetrics:
         """
         Unpacks all calculated metrics from the `NetworkLayer.metrics` property into a `python` dictionary.
 
@@ -612,9 +612,9 @@ class NetworkLayer:
         ```
 
         """
-        dict_node_metrics: structures.DictNodeMetrics = {}
+        dict_node_metrics: types.DictNodeMetrics = {}
         for i, node_key in enumerate(self._node_keys):
-            node_metrics: structures.NodeMetrics = self._metrics_state.extract_node_metrics(node_idx=i)
+            node_metrics: types.NodeMetrics = self._metrics_state.extract_node_metrics(node_idx=i)
             node_metrics["x"] = self.network_structure.nodes.xs[i]
             node_metrics["y"] = self.network_structure.nodes.ys[i]
             node_metrics["live"] = self.network_structure.nodes.live[i]
@@ -675,7 +675,7 @@ class NetworkLayer:
         _A graph after conversion back to `networkX`._
 
         """
-        dict_node_metrics: structures.DictNodeMetrics = self.metrics_to_dict()
+        dict_node_metrics: types.DictNodeMetrics = self.metrics_to_dict()
         return graphs.nx_from_network_structure(
             self.node_keys,
             self.network_structure,
@@ -774,10 +774,10 @@ class NetworkLayer:
             progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
-        measures_data = centrality.local_node_centrality(  # type: ignore
+        measures_data = centrality.local_node_centrality(
             self.network_structure,
-            np.array(self._distances, dtype=np.float32),  # type: ignore
-            np.array(self._betas, dtype=np.float32),  # type: ignore
+            np.array(self._distances, dtype=np.float32),
+            np.array(self._betas, dtype=np.float32),
             measure_keys,
             jitter_scale=np.float32(jitter_scale),
             angular=angular,
@@ -872,10 +872,10 @@ class NetworkLayer:
             progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
-        measures_data = centrality.local_segment_centrality(  # type: ignore
+        measures_data = centrality.local_segment_centrality(
             self.network_structure,
-            np.array(self._distances, dtype=np.float32),  # type: ignore
-            np.array(self._betas, dtype=np.float32),  # type: ignore
+            np.array(self._distances, dtype=np.float32),
+            np.array(self._betas, dtype=np.float32),
             measure_keys,
             jitter_scale=np.float32(jitter_scale),
             angular=angular,

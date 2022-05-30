@@ -1,1 +1,1 @@
-from cityseer import algos, metrics, tools
+from cityseer import algos, metrics, tools  # type: ignore

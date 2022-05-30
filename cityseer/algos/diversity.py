@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 import numpy.typing as npt
 from numba import njit  # type: ignore
@@ -24,7 +22,7 @@ def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.floa
     """
     if q < 0:
         raise ValueError("Please select a non-zero value for q.")
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     # catch potential division by zero situations
     if num == 0:
         hill = 0
@@ -72,7 +70,7 @@ def hill_diversity_branch_distance_wt(
     if q < 0:
         raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     if num == 0:
         return np.float32(0)
     # find T
@@ -136,7 +134,7 @@ def hill_diversity_pairwise_distance_wt(
     if q < 0:
         raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     if num == 0:
         return np.float32(0)
     # calculate Q
@@ -217,7 +215,7 @@ def hill_diversity_pairwise_matrix_wt(
     if q < 0:
         raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     if num == 0:
         return np.float32(0)
     # calculate Q
@@ -294,7 +292,7 @@ def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     D = 1 - sum(Xi/N * (Xi-1/N-1))
 
     """
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     gini: np.float32 = np.float32(0)
     # catch potential division by zero situations
     if num < 2:
@@ -316,7 +314,7 @@ def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     Uncertainty of the species identity of an individual picked at random (Tuomisto)
 
     """
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     shannon: np.float32 = np.float32(0)
     # catch potential division by zero situations
     if num == 0:
@@ -360,7 +358,7 @@ def raos_quadratic_diversity(
     if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
         raise ValueError("Weights matrix must be an NxN pairwise matrix of disparity weights.")
     # catch potential division by zero situations
-    num: int = class_counts.sum()  # type: ignore
+    num: int = class_counts.sum()
     if num < 2:
         return np.float32(0)
     raos: np.float32 = np.float32(0)  # variable for additive calculations of distance * p1 * p2
