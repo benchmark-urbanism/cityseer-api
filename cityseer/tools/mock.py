@@ -7,7 +7,7 @@ and utility purposes.
 
 import logging
 import string
-from typing import Any, Generator, cast
+from typing import Any, Generator
 
 import networkx as nx
 import numpy as np
@@ -23,7 +23,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
+# type hack until networkx supports type-hinting
+MultiGraph = Any
+
+
+def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     """
     Generate a `NetworkX` `MultiGraph` for testing or experimentation purposes.
 
@@ -35,7 +39,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
 
     Returns
     -------
-    nx.MultiGraph
+    MultiGraph
         A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
 
     Examples
@@ -221,14 +225,14 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
 
 
 def get_graph_extents(
-    nx_multigraph: nx.MultiGraph,
+    nx_multigraph: MultiGraph,
 ) -> tuple[float, float, float, float]:
     """
     Derive geographic bounds for a given networkX graph.
 
     Parameters
     ----------
-    nx_multigraph: nx.MultiGraph
+    nx_multigraph: MultiGraph
         A `NetworkX` `MultiGraph` with `x` and `y` node parameters.
 
     Returns
@@ -248,7 +252,6 @@ def get_graph_extents(
     _node_idx: int | str
     node_data: dict[str, Any]
     for _node_idx, node_data in nx_multigraph.nodes(data=True):
-        node_data = cast(dict[str, Any], node_data)
         if node_data["x"] < min_x:
             min_x = node_data["x"]
         if node_data["x"] > max_x:
@@ -261,13 +264,13 @@ def get_graph_extents(
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: int = 0) -> types.DataDictType:
+def mock_data_dict(nx_multigraph: MultiGraph, length: int = 50, random_seed: int = 0) -> types.DataDictType:
     """
     Generate a dictionary containing mock data for testing or experimentation purposes.
 
     Parameters
     ----------
-    nx_multigraph: nx.MultiGraph
+    nx_multigraph: MultiGraph
         A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
         network. The returned data will be within these extents.
     length: int
@@ -514,7 +517,7 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
     return osm_response
 
 
-def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGraph:  # noqa
+def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> MultiGraph:  # noqa
     """
 
     Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`
@@ -531,7 +534,7 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGr
 
     Returns
     -------
-    nx.MultiGraph
+    MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes that have been converted to UTM.
     """
     # cast the WGS coordinates to UTM prior to buffering

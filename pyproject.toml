@@ -69,7 +69,8 @@ dev = [
     "pandas-stubs>=1.2.0.58",
     "types-requests>=2.27.27",
     "tqdm-stubs>=0.2.0",
-    "notebook>=7.0.0a4"]
+    "notebook>=7.0.0a4",
+]
 
 [[tool.pdm.source]]
 url = "https://test.pypi.org/simple"
@@ -92,7 +93,7 @@ tests = "pytest ./tests"
 # coverage can't trace jitted files
 coverage_run = "coverage run pytest"
 coverage_report = { shell = "coverage report --show-missing --skip-empty && coverage lcov" }
-build_project = { shell = "pdm run formatting && pdm run linting && pdm run tests && python -m build" }
+build_project = { shell = "pdm run formatting && pdm run linting && pdm run typechecks && pdm run tests && python -m build" }
 
 
 [build-system]
@@ -158,7 +159,6 @@ max-args = 10
 max-line-length = 120
 
 [tool.pylint.logging]
-logging_format_style = "new"
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#sample-pyprojecttoml-file
 [tool.pyright]
@@ -171,6 +171,7 @@ exclude = [
     "docs",
     "temp",
     "tests",
+    "cityseer/stubs",
 ]
 typeCheckingMode = "strict"
 stubPath = "cityseer/stubs"

@@ -44,7 +44,7 @@ Generate straight-line geometries for each edge. Prepares &quot;simple&quot; str
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes.
@@ -54,7 +54,7 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge `geom` attributes.
@@ -97,7 +97,7 @@ A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
@@ -131,7 +131,7 @@ Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
@@ -150,7 +150,7 @@ An optional UTM zone number for coercing all conversions to an explicit UTM zone
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge `geom` attributes are present, these will also be converted.
@@ -185,7 +185,7 @@ Remove disconnected components and optionally removes short dead-end street stub
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -213,7 +213,7 @@ Whether to remove disconnected components. If set to `True`, only the largest co
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
@@ -253,7 +253,7 @@ side-effects as a function of varied node intensities when computing network cen
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -263,7 +263,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.
@@ -318,7 +318,7 @@ Consolidates nodes if they are within a buffer distance of each other. Several p
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -436,7 +436,7 @@ See `multi_edge_len_factor`. Defaults to 100.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
@@ -482,7 +482,7 @@ Split edges opposite nodes on parallel edge segments if within a buffer distance
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -528,7 +528,7 @@ See `multi_edge_len_factor`. Defaults to 100.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
@@ -568,7 +568,7 @@ unnecessarily for subsequent analysis. For larger-scale urban analysis, it is ge
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -587,7 +587,7 @@ The maximum length threshold for decomposed edges.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `imp_factor` edge attributes will be set to match the lengths of the new edges.
@@ -643,7 +643,7 @@ primal. The same type of situation does not arise in the dual because the nodes 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -653,7 +653,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
@@ -708,7 +708,7 @@ It is generally not necessary to use this function directly. This function will 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -786,7 +786,7 @@ A [`NetworkStructure`](/structures/networkstructure) instance.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
@@ -805,7 +805,7 @@ An optional dictionary with keys corresponding to the identifiers in `node_keys`
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated. `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data` to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on matching node identifiers.
@@ -846,7 +846,7 @@ Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an u
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">nx_multidigraph</div>
-          <div class="yap doc-str-elem-type">nx.MultiDiGraph</div>
+          <div class="yap doc-str-elem-type">MultiDiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry` edge attributes containing `LineString` geoms (for simplified edges).
@@ -883,7 +883,7 @@ Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
