@@ -1,7 +1,9 @@
 """
-The `structures` module defines data structures used by the low-level `cityseer` API. These are created and managed
-automatically by the user-facing API. It is therefore generally not necessary to create these structures directly unless
-direct interaction the lower-level API is intentional.
+The `structures` module defines data structures used by the low-level `cityseer` API.
+
+The data structures defined in this modules are created and managed automatically by the user-facing API. It is
+therefore generally not necessary to create these structures directly unless direct interaction the lower-level API is
+intentional.
 """
 from typing import Any
 
@@ -364,8 +366,10 @@ class NetworkStructure:
         out_bearing: float,
     ):
         """
-        Add an edge to the `NetworkStructure`. Edges are directed, meaning that each bidirectionaly street is
-        represented twice: once in each direction; start/end nodes and in/out bearings will differ accordingly.
+        Add an edge to the `NetworkStructure`.
+
+        Edges are directed, meaning that each bidirectionaly street is represented twice: once in each direction;
+        start/end nodes and in/out bearings will differ accordingly.
 
         Parameters
         ----------
@@ -393,6 +397,7 @@ class NetworkStructure:
             The edge's inwards angular bearing.
         out_bearing: float
             The edge's outwards angular bearing.
+
         """
         self.node_edge_map[start_node_idx].append(self._next_edge_idx)
         self.edges.start[self._next_edge_idx] = start_node_idx

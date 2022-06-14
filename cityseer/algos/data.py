@@ -94,7 +94,7 @@ def _closest_intersections(
     predecessor_map: npt.NDArray[np.int_],
     end_node_idx: int,
 ) -> tuple[np.float32, int, int]:
-    """ """
+    """Find the closest and next closest nodes."""
     if len(predecessor_map) == 1:
         return np.float32(np.inf), end_node_idx, -1
     current_idx = end_node_idx
