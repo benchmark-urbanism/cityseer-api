@@ -3,7 +3,9 @@ exclude build
 include cityseer
 exclude *.egg-info
 exclude demos
+exclude dist
 exclude docs
+exclude temp
 include tests
 exclude coverage.lcov
 include LICENSE.txt
