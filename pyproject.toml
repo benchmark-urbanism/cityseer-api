@@ -68,10 +68,8 @@ dev = [
     "pyright>=1.1.246",
     "pandas-stubs>=1.2.0.58",
     "types-requests>=2.27.27",
-    "networkx-stubs>=0.0.0",
     "tqdm-stubs>=0.2.0",
-    "notebook>=7.0.0a4",
-]
+    "notebook>=7.0.0a4"]
 
 [[tool.pdm.source]]
 url = "https://test.pypi.org/simple"

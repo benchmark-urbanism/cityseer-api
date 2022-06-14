@@ -580,14 +580,6 @@ requires_python = ">=3.8"
 summary = "Python package for creating and manipulating graphs and networks"
 
 [[package]]
-name = "networkx-stubs"
-version = "0.0.0"
-summary = "Typing stubs for NetworkX"
-dependencies = [
-    "networkx",
-]
-
-[[package]]
 name = "nodeenv"
 version = "1.6.0"
 summary = "Node.js virtual environment builder"
@@ -1156,7 +1148,7 @@ dependencies = [
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:538217a1a7ed0fc7fb96df978cc8b03c98cd1962a2c3708ee4e3d5f2f36ab158"
+content_hash = "sha256:afc990ee2efa24a452d8ca754c3701312a91e4b064264a6c45e246750fe78e2e"
 
 [metadata.files]
 "appdirs 1.4.4" = [
@@ -1750,10 +1742,6 @@ content_hash = "sha256:538217a1a7ed0fc7fb96df978cc8b03c98cd1962a2c3708ee4e3d5f2f
 "networkx 2.8.4" = [
     {file = "networkx-2.8.4-py3-none-any.whl", hash = "sha256:6933b9b3174a0bdf03c911bb4a1ee43a86ce3edeb813e37e1d4c553b3f4a2c4f"},
     {file = "networkx-2.8.4.tar.gz", hash = "sha256:5e53f027c0d567cf1f884dbb283224df525644e43afd1145d64c9d88a3584762"},
-]
-"networkx-stubs 0.0.0" = [
-    {file = "networkx_stubs-0.0.0-py3-none-any.whl", hash = "sha256:094f417cbbd123194d33aac7cf54d1f9f46a9b6ae1306d4964b425aab9f04396"},
-    {file = "networkx-stubs-0.0.0.tar.gz", hash = "sha256:0ba03959c7c09172214ae5d55b761417426df6577381871a822bff48b275a327"},
 ]
 "nodeenv 1.6.0" = [
     {file = "nodeenv-1.6.0-py2.py3-none-any.whl", hash = "sha256:621e6b7076565ddcacd2db0294c0381e01fd28945ab36bcf00f41c5daf63bef7"},
