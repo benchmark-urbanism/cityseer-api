@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-dynamic = ["version"]
+version = '2.0.0b1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.11"
@@ -105,14 +105,12 @@ build-backend = "setuptools.build_meta"
 packages = ["cityseer"]
 
 [tool.setuptools_scm]
-write_to = "cityseer/_version.py"
 
 [tool.black]
 line-length = 120
 color = true
 
 [tool.pylint.master]
-ignore = ["_version.py"]
 disable = [
     "too-many-branches",
     "too-many-statements",
@@ -221,7 +219,6 @@ branch = true
 omit = [
     "**/__init__.py",
     "cityseer/algos/**",      # NOTE: coverage can't trace jitted files
-    "cityseer/_version.py",
     "cityseer/config.py",
     "cityseer/tools/plot.py",
 ]
@@ -231,7 +228,6 @@ include = ["cityseer/**"]
 omit = [
     "**/__init__.py",
     "cityseer/algos/**",      # NOTE: coverage can't trace jitted files
-    "cityseer/_version.py",
     "cityseer/config.py",
     "cityseer/tools/plot.py",
 ]
