@@ -1,3 +1,8 @@
+"""
+The `structures` module defines data structures used by the low-level `cityseer` API. These are created and managed
+automatically by the user-facing API. It is therefore generally not necessary to create these structures directly unless
+direct interaction the lower-level API is intentional.
+"""
 from typing import Any
 
 import numpy as np
@@ -55,9 +60,9 @@ class TreeMap:
 
         Parameters
         ----------
-        nodes_n
+        nodes_n: int
             The number of nodes this `TreeMap` instance should contain.
-        edges_n
+        edges_n: int
             The number of edges this `TreeMap` instance should contain.
 
         """
@@ -84,12 +89,31 @@ node_map_spec: list[tuple[str, Any]] = [
 @jitclass(node_map_spec)
 class NodeMap:
     """
-    `NodeMap` structure representing the `x`, `y`, and `live` information for the netwrok.
+    `NodeMap` structure representing the `x`, `y`, and `live` information for the network.
 
     Each attribute contains a `numpy` array with indices corresponding to the graph's node indices.
 
     It is not necessary to invoke this class directly if using a `NetworkStructure` class, which will generate the
     `NodeMap` implicitly.
+
+    :::note
+    The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
+    projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
+    can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
+    UTM `x`, `y` projected coordinate system.
+    :::
+
+    :::note
+    When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the
+    network by a distance equal to the maximum distance threshold to be considered. This prevents problematic
+    results arising due to boundary roll-off effects.
+
+    The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
+    that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus
+    reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area.
+    If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered,
+    then set all nodes to `live=True`.
+    :::
     """
 
     xs: npt.NDArray[np.float32]
@@ -113,7 +137,7 @@ class NodeMap:
 
         Parameters
         ----------
-        nodes_n
+        nodes_n: int
             The number of nodes to be contained by this `NodeMap` instance.
 
         """
@@ -127,14 +151,14 @@ class NodeMap:
 
         Parameters
         ----------
-        node_idx
+        node_idx: int
             The node index for which to return `x` and `y` coordinates.
 
         Returns
         -------
-        float: `x`
+        x: float
             `x` coordinate.
-        float: `y`
+        y: float
             `y` coordinate.
 
         """
@@ -204,7 +228,7 @@ class EdgeMap:
 
         Parameters
         ----------
-        edges_n
+        edges_n: int
             The number of edges to be contained by this `EdgeMap` instance.
 
         """
@@ -260,7 +284,7 @@ network_spec: list[tuple[str, Any]] = [
 @jitclass(network_spec)
 class NetworkStructure:
     """
-    `NetworkStructure` instance consisting of `NodeMap`, `EdgeMap` and `node_edge_map` attributes.
+    `NetworkStructure` instance consisting of `nodes`, `edges` and `node_edge_map` attributes.
 
     Each of these attributes will be created automatically when instancing this class.
     """
@@ -279,9 +303,9 @@ class NetworkStructure:
 
         Parameters
         ----------
-        nodes_n
+        nodes_n: int
             The number of nodes this `NetworkStructure` will contain.
-        edges_n
+        edges_n: int
             The number of edges this `NetworkStructure` will contain.
 
         """
@@ -297,17 +321,31 @@ class NetworkStructure:
         """
         Add a node to the `NetworkStructure`.
 
+        The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
+        projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
+        can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
+        UTM `x`, `y` projected coordinate system.
+
+        :::warning
+        When calculating local network centralities or land-use accessibilities it is necessary to buffer the network by
+        a distance equal to the maximum distance threshold to be considered. This prevents problematic results due to
+        boundary roll-off effects.
+        :::
+
         Parameters
         ----------
-        node_idx
+        node_idx: int
             The index at which to add the node.
-        node_x
+        node_x: float
             The `x` coordinate for the added node.
-        node_y
+        node_y: float
             The `y` coordinate for the added node.
-        node_live:
-            Whether this node is `live`. Metrics are calculated for all `live` nodes. "Dead" nodes are for inclusion of
-            a network buffer zone for purposes of avoiding edge rolloff effects.
+        node_live: bool
+            The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
+            that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus
+            reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area.
+            If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered,
+            then set all nodes to `live=True`.
 
         """
         self.nodes.xs[node_idx] = node_x
@@ -326,25 +364,35 @@ class NetworkStructure:
         out_bearing: float,
     ):
         """
-        Add an edge to the `NetworkStructure`.
+        Add an edge to the `NetworkStructure`. Edges are directed, meaning that each bidirectionaly street is
+        represented twice: once in each direction; start/end nodes and in/out bearings will differ accordingly.
 
         Parameters
         ----------
-        start_node_idx
+        start_node_idx: int
             Index for the starting node for the added edge.
-        end_node_idx
+        end_node_idx: int
             Index for the ending node for the added edge.
-        length
-            Edge length.
-        angle_sum
-            Sum of angular change.
-        imp_factor
-            Edge impedance.
-        in_bearing
-            Edge inwards bearing.
-        out_bearing
-            Edge outwards bearing.
-
+        length: float
+            The `length` edge attribute should always correspond to the edge lengths in metres. This is used when
+            calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum
+            distance thresholds can be enforced: these distance thresholds are based on the actual network-paths
+            traversed by the algorithm as opposed to crow-flies distances.
+        angle_sum: float
+            The `angle_sum` edge bearing should correspond to the total angular change along the length of
+            the segment. This is used when calculating angular impedances for simplest-path measures. The
+            `in_bearing` and `out_bearing` attributes respectively represent the starting and
+            ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm
+            steps from one edge to another.
+        imp_factor: float
+            The `imp_factor` edge attribute represents an impedance multiplier for increasing or diminishing
+            the impedance of an edge. This is ordinarily set to 1, therefor not impacting calculations. By setting
+            this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can
+            be used to take considerations such as street gradients into account, but should be used with caution.
+        in_bearing: float
+            The edge's inwards angular bearing.
+        out_bearing: float
+            The edge's outwards angular bearing.
         """
         self.node_edge_map[start_node_idx].append(self._next_edge_idx)
         self.edges.start[self._next_edge_idx] = start_node_idx
@@ -423,7 +471,7 @@ class DataMap:
 
         Parameters
         ----------
-        data_n
+        data_n: int
             The number of data points to be contained by this `DataMap` instance.
 
         """
@@ -438,11 +486,11 @@ class DataMap:
 
         Parameters
         ----------
-        data_idx
+        data_idx: int
             The index for the added node.
-        data_x
+        data_x: np.float32
             The x coordinate for the added node.
-        data_y
+        data_y: np.float32
             The y coordinate for the added node.
 
         """
@@ -455,21 +503,29 @@ class DataMap:
 
         Parameters
         ----------
-        data_idx:
+        data_idx: int
             The data point index for which to return `x` and `y` coordinates.
 
         Returns
         -------
-        float: `x`
+        x: float
             `x` coordinate.
-        float: `y`
+        y: float
             `y` coordinate.
 
         """
         return np.array([self.xs[data_idx], self.ys[data_idx]], dtype=np.float32)
 
     def validate(self, check_assigned: bool = False):
-        """Validate this `DataMap` instance."""
+        """
+        Validate this `DataMap` instance.
+
+        Parameters
+        ----------
+        check_assigned: bool
+            Whether to check if data points have been assigned to a network.
+
+        """
         if self.count == 0:
             raise ValueError("Zero length DataMap")
         if (

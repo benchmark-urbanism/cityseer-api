@@ -51,6 +51,7 @@ export default defineConfig({
       wrap: true,
     },
     remarkPlugins: [
+      'remark-gfm',
       'remark-emoji',
       '@fec/remark-a11y-emoji',
       [

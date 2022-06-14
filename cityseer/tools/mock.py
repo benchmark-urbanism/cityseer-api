@@ -5,7 +5,6 @@ This module is intended for project development and writing code tests, but may 
 and utility purposes.
 """
 
-
 import logging
 import string
 from typing import Any, Generator, cast
@@ -30,7 +29,7 @@ def mock_graph(wgs84_coords: bool = False) -> nx.MultiGraph:
 
     Parameters
     ----------
-    wgs84_coords
+    wgs84_coords: bool
         If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/4326) geographic coordinates
         instead of a projected cartesion coordinate system. By default False
 
@@ -229,13 +228,15 @@ def get_graph_extents(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `NetworkX` `MultiGraph` with `x` and `y` node parameters.
 
     Returns
     -------
-    tuple
-        A tuple of `min_x`, `min_y`, `max_x`, `max_y` values.
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
 
     """
     # get min and maxes for x and y
@@ -266,12 +267,12 @@ def mock_data_dict(nx_multigraph: nx.MultiGraph, length: int = 50, random_seed: 
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
         network. The returned data will be within these extents.
-    length
+    length: int
         The number of data elements to return in the dictionary, by default 50.
-    random_seed
+    random_seed: int
         An optional random seed, by default None.
 
     Returns
@@ -297,19 +298,19 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
 
     Parameters
     ----------
-    length
+    length: int
         The number of categorical elements to return in the array.
-    num_classes
+    num_classes: int
         The maximum number of unique classes to return in the randomly assigned categorical data. The classes are
         randomly generated from a pool of unique class labels of length `num_classes`. The number of returned unique
         classes will be less than or equal to `num_classes`. By default 10
-    random_seed
+    random_seed: int
         An optional random seed, by default None
 
     Returns
     -------
-    np.array
-        A `numpy` array containing categorical data elements. The number of elements will match the `length` parameter.
+    list[str]
+        A `list`containing categorical data elements. The number of elements will match the `length` parameter.
         The categorical data will consist of randomly selected characters.
 
     """
@@ -343,22 +344,22 @@ def mock_numerical_data(
 
     Parameters
     ----------
-    length
+    length: int
         The number of numerical elements to return in the array.
-    val_min
+    val_min: int
         The (inclusive) minimum value in the `val_min`, `val_max` range of randomly generated integers.
-    val_max
+    val_max: int
         The (exclusive) maximum value in the `val_min`, `val_max` range of randomly generated integers.
-    num_arrs
+    num_arrs: int
         The number of arrays to nest in the returned 2d array.
-    floating_pt
+    floating_pt: int
         The floating point precision
-    random_seed
+    random_seed: int
         An optional random seed, by default None
 
     Returns
     -------
-    np.array
+    ndarray[float]
         A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data
         arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number
         of data elements and will match the `length` parameter. The numerical data will consist of randomly selected
@@ -389,14 +390,14 @@ def mock_species_data(
 
     Parameters
     ----------
-    random_seed
+    random_seed: int
         An optional random seed, by default None
 
     Yields
     ------
-    counts
+    counts: ndarray[int]
         The number of members for each species class.
-    probs
+    probs: ndarray[float]
         The probability of encountering the respective species classes.
 
     Examples
@@ -445,11 +446,11 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
 
     Parameters
     ----------
-    geom_osm
+    geom_osm: str
         A string representing a polygon for the request extents, formatting according to OSM conventions.
-    timeout
+    timeout: int
         An optional timeout, by default 30s
-    max_tries
+    max_tries: int
         The number of attempts to fetch a response before raising, by default 3
 
     Returns
@@ -521,11 +522,11 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> nx.MultiGr
 
     Parameters
     ----------
-    lng
+    lng: float
         The longitude argument for the request.
-    lat
+    lat: float
         The latitude argument for the request.
-    buffer
+    buffer: float
         The buffer distance.
 
     Returns

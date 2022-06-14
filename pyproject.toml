@@ -56,7 +56,7 @@ dev = [
     "pytest>=7.1.1",
     "osmnx>=1.1.2",
     "momepy>=0.5.2",
-    "yapper>=0.3.0a10",
+    "yapper>=0.3.0a18",
     "setuptools-scm>=6.4.2",
     "jupyter>=1.0.0",
     "pylint>=2.13.7",
@@ -70,6 +70,7 @@ dev = [
     "types-requests>=2.27.27",
     "networkx-stubs>=0.0.0",
     "tqdm-stubs>=0.2.0",
+    "notebook>=7.0.0a4",
 ]
 
 [[tool.pdm.source]]
@@ -238,22 +239,21 @@ omit = [
 [tool.yapper]
 package_root_relative_path = './'
 intro_template = """
----\n
-import { Markdown } from 'astro/components';\n
-import ArXivLink from '@src/components/ArXivLink.vue'\n
-import PageLayout from '@src/layouts/PageLayout.astro'\n
----\n
-\n
+---
+import { Markdown } from 'astro/components'
+import ArXivLink from '@src/components/ArXivLink.vue'
+import PageLayout from '@src/layouts/PageLayout.astro'
+---
 <PageLayout>
 """
-outro_template = """\n
-</PageLayout>\n
+outro_template = """
+</PageLayout>
 """
 module_map = [
     { module = "cityseer.structures", py = "cityseer/structures.py", astro = "docs/src/pages/structures.astro" },
-    #{ module = "cityseer.metrics.layers", py = "cityseer/metrics/layers.py", astro = "docs/src/pages/metrics/layers.astro" },
-    #{ module = "cityseer.metrics.networks", py = "cityseer/metrics/networks.py", astro = "docs/src/pages/metrics/networks.astro" },
-    #{ module = "cityseer.tools.graphs", py = "cityseer/tools/graphs.py", astro = "docs/src/pages/tools/graphs.astro" },
-    #{ module = "cityseer.tools.mock", py = "cityseer/tools/mock.py", astro = "docs/src/pages/tools/mock.astro" },
-    #{ module = "cityseer.tools.plot", py = "cityseer/tools/plot.py", astro = "docs/src/pages/tools/plot.astro" },
+    { module = "cityseer.metrics.layers", py = "cityseer/metrics/layers.py", astro = "docs/src/pages/metrics/layers.astro" },
+    { module = "cityseer.metrics.networks", py = "cityseer/metrics/networks.py", astro = "docs/src/pages/metrics/networks.astro" },
+    { module = "cityseer.tools.graphs", py = "cityseer/tools/graphs.py", astro = "docs/src/pages/tools/graphs.astro" },
+    { module = "cityseer.tools.mock", py = "cityseer/tools/mock.py", astro = "docs/src/pages/tools/mock.astro" },
+    { module = "cityseer.tools.plot", py = "cityseer/tools/plot.py", astro = "docs/src/pages/tools/plot.astro" },
 ]

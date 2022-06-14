@@ -275,7 +275,7 @@ ax.set_ylabel("Weighting")
 ax.set_facecolor("#19181B")
 leg = ax.legend(
     loc="upper right",
-    title="$exp(-\\beta \\cdot d[i,j])$",
+    title="$exp(-\\beta \cdot d[i,j])$",
     fancybox=True,
     facecolor="#19181B",
 )
