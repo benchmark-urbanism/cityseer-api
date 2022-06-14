@@ -20,7 +20,7 @@ from matplotlib.collections import LineCollection
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
-from cityseer import structures
+from cityseer import structures, types
 from cityseer.tools.graphs import NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
@@ -30,19 +30,10 @@ logger = logging.getLogger(__name__)
 plt.tight_layout()
 
 
+COLOUR_MAP = types.ColourMap()
+
+
 ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
-
-
-class ColourMap:  # pylint: disable=too-few-public-methods
-    """Specifies global colour presets."""
-
-    primary: str = "#0091ea"
-    accent: str = "#64c1ff"
-    info: str = "#0064b7"
-    secondary: str = "#d32f2f"
-    warning: str = "#9a0007"
-    error: str = "#ffffff"
-    background: str = "#19181B"
 
 
 def plot_nx_primal_or_dual(  # noqa
@@ -169,9 +160,9 @@ def plot_nx_primal_or_dual(  # noqa
                 raise ValueError("A list, tuple, or array of colours should match the number of nodes in the graph.")
         else:
             if _is_primal:
-                _node_colour = ColourMap.secondary
+                _node_colour = COLOUR_MAP.secondary
             else:
-                _node_colour = ColourMap.info
+                _node_colour = COLOUR_MAP.info
         if _edge_colour is not None:
             if not isinstance(_edge_colour, str):
                 raise ValueError("Edge colours should be a string representing a single colour.")
@@ -179,7 +170,7 @@ def plot_nx_primal_or_dual(  # noqa
             if _is_primal:
                 _edge_colour = "w"
             else:
-                _edge_colour = ColourMap.accent
+                _edge_colour = COLOUR_MAP.accent
         # edge width
         if _edge_width is not None:
             if not isinstance(_edge_width, (int, float)):
@@ -296,9 +287,9 @@ def plot_nx_primal_or_dual(  # noqa
         plt.ylim(*y_lim)
     if ax is None:
         if path is not None:
-            plt.savefig(path, facecolor=ColourMap.background)
+            plt.savefig(path, facecolor=COLOUR_MAP.background)
         else:
-            plt.gcf().set_facecolor(ColourMap.background)
+            plt.gcf().set_facecolor(COLOUR_MAP.background)
             plt.show()
 
 
@@ -457,7 +448,7 @@ def plot_assignment(  # noqa
                 "the number of nodes in the graph."
             )
     elif node_colour is None:
-        node_colour = ColourMap.secondary
+        node_colour = COLOUR_MAP.secondary
 
     # do a simple plot - don't provide path
     pos = {}
@@ -483,7 +474,7 @@ def plot_assignment(  # noqa
 
     data_colour: ColourType
     if data_labels is None:
-        data_colour = ColourMap.info
+        data_colour = COLOUR_MAP.info
         data_cmap = None
     else:
         # generate categorical colormap
@@ -531,9 +522,9 @@ def plot_assignment(  # noqa
             plt.plot([p_x, data_x], [p_y, data_y], c="#888888", lw=0.5, ls="--")
 
     if path:
-        plt.savefig(path, facecolor=ColourMap.background, dpi=150)
+        plt.savefig(path, facecolor=COLOUR_MAP.background, dpi=150)
     else:
-        plt.gcf().set_facecolor(ColourMap.background)
+        plt.gcf().set_facecolor(COLOUR_MAP.background)
         plt.show()
 
 
@@ -576,14 +567,14 @@ def plot_network_structure(
     cols = []
     for is_live in network_structure.nodes.live:
         if is_live:
-            cols.append(ColourMap.accent)
+            cols.append(COLOUR_MAP.accent)
         else:
-            cols.append(ColourMap.secondary)
+            cols.append(COLOUR_MAP.secondary)
     ax1.scatter(
-        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=ColourMap.primary, edgecolor=cols, lw=0.5
+        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
     )
     ax2.scatter(
-        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=ColourMap.primary, edgecolor=cols, lw=0.5
+        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
     )
     # plot edges
     processed_edges: set[str] = set()
@@ -599,9 +590,9 @@ def plot_network_structure(
         s_x, s_y = network_structure.nodes.xs[start_idx], network_structure.nodes.ys[start_idx]
         e_x, e_y = network_structure.nodes.xs[end_idx], network_structure.nodes.ys[end_idx]
         if not dupe:
-            ax1.plot([s_x, e_x], [s_y, e_y], c=ColourMap.accent, linewidth=1)
+            ax1.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
         else:
-            ax2.plot([s_x, e_x], [s_y, e_y], c=ColourMap.accent, linewidth=1)
+            ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.nodes.count):
         ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)
     if data_map is not None:
@@ -609,16 +600,16 @@ def plot_network_structure(
         ax1.scatter(
             x=data_map.xs,
             y=data_map.ys,
-            color=ColourMap.secondary,
-            edgecolor=ColourMap.warning,
+            color=COLOUR_MAP.secondary,
+            edgecolor=COLOUR_MAP.warning,
             alpha=0.9,
             lw=0.5,
         )
         ax2.scatter(
             x=data_map.xs,
             y=data_map.ys,
-            color=ColourMap.secondary,
-            edgecolor=ColourMap.warning,
+            color=COLOUR_MAP.secondary,
+            edgecolor=COLOUR_MAP.warning,
             alpha=0.9,
             lw=0.5,
         )
@@ -632,9 +623,9 @@ def plot_network_structure(
             if nearest_netw_idx != -1:
                 # plot lines to parents for easier viz
                 p_x, p_y = network_structure.nodes.x_y(nearest_netw_idx)
-                ax1.plot([p_x, data_x], [p_y, data_y], c=ColourMap.warning, lw=0.75, ls="-")
+                ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.warning, lw=0.75, ls="-")
             if next_nearest_netw_idx != -1:
                 p_x, p_y = network_structure.nodes.x_y(next_nearest_netw_idx)
-                ax1.plot([p_x, data_x], [p_y, data_y], c=ColourMap.info, lw=0.75, ls="--")
-    plt.gcf().set_facecolor(ColourMap.background)
+                ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
+    plt.gcf().set_facecolor(COLOUR_MAP.background)
     plt.show()
