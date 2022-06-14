@@ -4,6 +4,19 @@ from typing import Any, TypedDict, Union
 import numpy as np
 import numpy.typing as npt
 
+
+class ColourMap:  # pylint: disable=too-few-public-methods
+    """Specifies global colour presets."""
+
+    primary: str = "#0091ea"
+    accent: str = "#64c1ff"
+    info: str = "#0064b7"
+    secondary: str = "#d32f2f"
+    warning: str = "#9a0007"
+    error: str = "#ffffff"
+    background: str = "#19181B"
+
+
 qsType = Union[  # pylint: disable=invalid-name
     int,
     float,
