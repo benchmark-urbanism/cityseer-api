@@ -44,7 +44,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes.
 
     Returns
@@ -155,7 +155,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
 
     Parameters
     ----------
-    osm_json
+    osm_json: str
         A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
         consisting of `nodes` and `ways`.
 
@@ -192,12 +192,12 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
         attributes containing `LineString` geoms to be converted.
-    force_zone_number
+    force_zone_number: int
         An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-        UTM zones may introduce substantial distortions in the results. Defaults to None.
+        UTM zones may introduce substantial distortions in the results. By Default None.
 
     Returns
     -------
@@ -270,13 +270,13 @@ def nx_remove_dangling_nodes(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    despine
+    despine: bool
         The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
         Defaults to None.
-    remove_disconnected
+    remove_disconnected: bool
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
 
@@ -468,15 +468,14 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     :::note
     Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
-    through the addition of nodes to describe arced geometries. `cityseer` uses `shapely`
-    [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road
-    geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects as a
-    function of varied node intensities when computing network centralities.
+    through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` `Linestrings` to describe
+    arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing
+    side-effects as a function of varied node intensities when computing network centralities.
     :::
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
 
@@ -855,7 +854,7 @@ def _create_nodes_strtree(nx_multigraph: nx.MultiGraph) -> strtree.STRtree:
     point_geoms = []
     nd_key: NodeKey
     node_data: NodeData
-    for nd_key, node_data in nx_multigraph.nodes(data=True):
+    for nd_key, node_data in nx_multigraph.nodes(data=True):  # type: ignore
         # x coordinate
         if "x" not in node_data:  # type: ignore
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
@@ -928,40 +927,40 @@ def nx_consolidate_nodes(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    buffer_dist
+    buffer_dist: float
         The buffer distance to be used for consolidating nearby nodes. Defaults to 5.
-    min_node_group
+    min_node_group: int
         The minimum number of nodes to consider a valid group for consolidation. Defaults to 2.
-    min_node_degree
+    min_node_degree: int
         The least number of edges a node should have in order to be considered for consolidation. Defaults to 1.
-    min_cumulative_degree
+    min_cumulative_degree: int
         An optional minimum cumulative degree to consider a valid node group for consolidation. Defaults to None.
-    max_cumulative_degree
+    max_cumulative_degree: int
         An optional maximum cumulative degree to consider a valid node group for consolidation. Defaults to None.
-    neighbour_policy
+    neighbour_policy: str
         Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to
         None.
-    crawl
+    crawl: bool
         Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the
         buffer distance from the prior node. Defaults to True.
-    cent_min_degree
+    cent_min_degree: int
         The minimum node degree for a node to be considered when calculating the new centroid for the merged node
         cluster. Defaults to 3.
-    cent_min_len_factor
+    cent_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
         lengths. Defaults to None.
-    merge_edges_by_midline
+    merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    multi_edge_len_factor
+    multi_edge_len_factor: float
         In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is
         retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the
         exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
-    multi_edge_min_len
+    multi_edge_min_len: float
         See `multi_edge_len_factor`. Defaults to 100.
 
     Returns
@@ -1091,19 +1090,19 @@ def nx_split_opposing_geoms(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    buffer_dist
+    buffer_dist: int
         The buffer distance to be used for splitting nearby nodes. Defaults to 5.
-    merge_edges_by_midline
+    merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    multi_edge_len_factor
+    multi_edge_len_factor: float
         In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is
         retained as separate if exceeding the `multi_edge_len_factor` as a factor of the shortest length but with the
         exception that (longer) edges still shorter than `multi_edge_min_len` are removed regardless. Defaults to 1.5.
-    multi_edge_min_len
+    multi_edge_min_len: float
         See `multi_edge_len_factor`. Defaults to 100.
 
     Returns
@@ -1296,11 +1295,11 @@ def nx_decompose(nx_multigraph: nx.MultiGraph, decompose_max: float) -> nx.Multi
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
 
-    decompose_max
+    decompose_max: float
         The maximum length threshold for decomposed edges.
 
     Returns
@@ -1431,7 +1430,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
 
@@ -1618,43 +1617,16 @@ def network_structure_from_nx(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
 
     Returns
     -------
-    node_keys
+    node_keys: tuple[int | str]
         A tuple of node `keys` corresponding to the node identifiers in the source `networkX` graph.
-    node_data
-        A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
-
-        | idx | property |
-        |-----|:---------|
-        | 0 | `x` coordinate |
-        | 1 | `y` coordinate |
-        | 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
-
-    edge_data
-        A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of
-        travel. The indices of the second dimension correspond as follows:
-
-        | idx | property |
-        |-----|:---------|
-        | 0 | start node `idx` |
-        | 1 | end node `idx` |
-        | 2 | the segment length in metres |
-        | 3 | the sum of segment's angular change |
-        | 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on
-        shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
-        | 5 | the edge's entry angular bearing |
-        | 6 | the edge's exit angular bearing |
-
-        All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden
-        by supplying a `imp_factor` attribute on the input graph's edges.
-    node_edge_map
-        A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge
-        indices for each node.
+    network_structure: structures.NetworkStructure
+        A [`NetworkStructure`](/structures/networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -1789,16 +1761,16 @@ def nx_from_network_structure(
 
     Parameters
     ----------
-    node_keys
+    node_keys: tuple[int | str]
         A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
-    network_structure
-        A NetworkStructure instance.
-    nx_multigraph
+    network_structure: structures.NetworkStructure
+        A [`NetworkStructure`](/structures/networkstructure) instance.
+    nx_multigraph: nx.MultiGraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
         correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
         provided, then a new `networkX` graph will be returned. This function is intended to be used for situations
         where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
-    metrics_dict
+    dict_node_metrics: dict
         An optional dictionary with keys corresponding to the identifiers in `node_keys`. The dictionary's `values` will
         be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
 
@@ -1808,8 +1780,8 @@ def nx_from_network_structure(
         A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data
         overridden as described below. If no graph was provided, then a new graph will be generated.
         `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`,
-        `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data`
-        to the graph edges. If a `metrics_dict` is provided, all data will be copied to the graph nodes based on
+        `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data`
+        to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on
         matching node identifiers.
 
     """
@@ -1936,14 +1908,14 @@ def nx_from_osm_nx(
 
     Parameters
     ----------
-    nx_multidigraph
+    nx_multidigraph: nx.MultiDiGraph
         A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry`
         edge attributes containing `LineString` geoms (for simplified edges).
-    node_attributes
+    node_attributes: tuple[str]
         Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
-    edge_attributes
+    edge_attributes: tuple[str]
         Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
-    tolerance
+    tolerance: float
         Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates.
         Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding
         end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if

@@ -69,47 +69,47 @@ def plot_nx_primal_or_dual(  # noqa
 
     Parameters
     ----------
-    primal_graph
+    primal_graph: nx.MultiGraph
         An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.
-    dual_graph
+    dual_graph: nx.MultiGraph
         An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.
-    path
+    path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
-    labels
+    labels: bool
         Whether to display node labels. Defaults to False.
-    primal_node_size
+    primal_node_size: int
         The diameter for the primal graph's nodes.
-    primal_node_colour
+    primal_node_colour: str | float | ndarray
         Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order
         and number of nodes in the MultiGraph. The colours are passed to the underlying
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
-    primal_edge_colour
+    primal_edge_colour: str | float | ndarray
         Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
-    dual_node_size
+    dual_node_size:  int
         The diameter for the dual graph's nodes.
-    dual_node_colour
+    dual_node_colour: str | float | ndarray
         Dual node colour or colours. When passing a list of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
-    dual_edge_colour
+    dual_edge_colour: str | float | ndarray
         Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
-    primal_edge_width
+    primal_edge_width: float
         Linewidths for the primal edge. Defaults to None.
-    dual_edge_width
+    dual_edge_width: float
         Linewidths for the dual edge. Defaults to None.
-    plot_geoms
+    plot_geoms: bool
         Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to
         represent edges. Defaults to True.
-    x_lim
+    x_lim: tuple[float, float]
         A tuple or list with the minimum and maxium `x` extents to be plotted.
         Defaults to None.
-    y_lim
+    y_lim: tuple[float, float]
         A tuple or list with the minimum and maxium `y` extents to be plotted.
         Defaults to None.
-    ax
+    ax: plt.Axes
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If
@@ -321,32 +321,32 @@ def plot_nx(
 
     Parameters
     ----------
-    nx_multigraph
+    nx_multigraph: nx.MultiGraph
         A `NetworkX` MultiGraph.
-    path
+    path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
-    labels
+    labels: bool
         Whether to display node labels. Defaults to False.
-    node_size
+    node_size: int
         The diameter for the graph's nodes.
-    node_colour
+    node_colour: str | float | ndarray
         Node colour or colours. When passing an iterable of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
-    edge_colour
+    edge_colour: str | float | ndarray
         Edges colour as a `matplotlib` compatible colour string. Defaults to None.
-    edge_width
+    edge_width: float
         Linewidths for edges. Defaults to None.
-    plot_geoms
+    plot_geoms: bool
         Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to
         represent edges. Defaults to True.
-    x_lim
+    x_lim: tuple[float, float]
         A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
-    y_lim
+    y_lim: tuple[float, float]
         A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
-    ax
+    ax: plt.Axes
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     kwargs
         `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
@@ -419,21 +419,23 @@ def plot_assignment(  # noqa
 
     Parameters
     ----------
-    network_layer
-        A [`NetworkLayer`](/metrics/networks/#networklayer).
-    data_layer
-        A [`DataLayer`](/metrics/layers/#datalayer).
-    path
+    network_structure: structures.NetworkStructure
+        A [`NetworkStructure`](/structures/networkstructure) instance.
+    nx_multigraph: nx.MultiGraph
+        A `NetworkX` MultiGraph.
+    data_map: structures.DataMap
+        A [`DataMap`](/structures/datamap) instance.
+    path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
-    node_colour
+    node_colour: str | float | ndarray
         Node colour or colours. When passing a list of colours, the number of colours should match the order and number
         of nodes in the MultiGraph. The colours are passed to the underlying
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
-    node_labels
+    node_labels: bool
         Whether to plot the node labels. Defaults to False.
-    data_labels
+    data_labels: ndarray[int | str]
         An optional iterable of categorical data labels which will be mapped to colours. The number of labels should
         match the number of data points in `data_layer`. Defaults to None.
     kwargs
@@ -550,9 +552,11 @@ def plot_network_structure(
 
     Parameters
     ----------
-    network_structure
-        `cityseer` NetworkStructure.
-    poly
+    network_structure: structures.NetworkStructure
+        A [`NetworkStructure`](/structures/networkstructure) instance.
+    data_map: structures.DataMap
+        A [`DataMap`](/structures/datamap) instance.
+    poly: geometry.Polygon
         An optional polygon. Defaults to None.
 
     """

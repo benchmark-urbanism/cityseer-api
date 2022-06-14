@@ -600,24 +600,24 @@ def test_nx_to_dual(primal_graph, diamond_graph):
             s_x, s_y = d["geom"].coords[-1]
             m_x, m_y = d["geom"].coords[1]
             e_x, e_y = d["geom"].coords[0]
-        start_bearing = np.rad2deg(np.arctan2(m_y - s_y, m_x - s_x)).round()
-        end_bearing = np.rad2deg(np.arctan2(e_y - m_y, e_x - m_x)).round()
+        in_bearing = np.rad2deg(np.arctan2(m_y - s_y, m_x - s_x)).round()
+        out_bearing = np.rad2deg(np.arctan2(e_y - m_y, e_x - m_x)).round()
         if (start, end) == ("0_1", "0_2"):
-            assert (start_bearing, end_bearing) == (-60, 60)
+            assert (in_bearing, out_bearing) == (-60, 60)
         elif (start, end) == ("0_1", "1_2"):
-            assert (start_bearing, end_bearing) == (120, 0)
+            assert (in_bearing, out_bearing) == (120, 0)
         elif (start, end) == ("0_1", "1_3"):
-            assert (start_bearing, end_bearing) == (120, 60)
+            assert (in_bearing, out_bearing) == (120, 60)
         elif (start, end) == ("0_2", "1_2"):
-            assert (start_bearing, end_bearing) == (60, 180)
+            assert (in_bearing, out_bearing) == (60, 180)
         elif (start, end) == ("0_2", "2_3"):
-            assert (start_bearing, end_bearing) == (60, 120)
+            assert (in_bearing, out_bearing) == (60, 120)
         elif (start, end) == ("1_2", "1_3"):
-            assert (start_bearing, end_bearing) == (180, 60)
+            assert (in_bearing, out_bearing) == (180, 60)
         elif (start, end) == ("1_2", "2_3"):
-            assert (start_bearing, end_bearing) == (0, 120)
+            assert (in_bearing, out_bearing) == (0, 120)
         elif (start, end) == ("1_3", "2_3"):
-            assert (start_bearing, end_bearing) == (60, -60)
+            assert (in_bearing, out_bearing) == (60, -60)
 
     # complexify the geoms to check with and without kinks, and in mixed forward and reverse directions
     # see if any issues arise

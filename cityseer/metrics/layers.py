@@ -17,20 +17,22 @@ logger = logging.getLogger(__name__)
 
 def dict_wgs_to_utm(data_dict: types.DataDictType) -> types.DataDictType:
     """
-    Convert a dictionary of `x`, `y` values from WGS (geographic coordinates) to UTM (projected coordinates).
+    Convert a dictionary containing datapoints from WGS (geographic coordinates) to UTM (projected coordinates).
 
     This method converts [WGS84](https://epsg.io/4326) geographic coordinates to the associated projected UTM coordinate
-    system. This means that `lng`, `lat` style coordinates will be converted to `easting`, `northing` style coordinates.
+    system. i.e. `lng`, `lat` style coordinates will be converted to `easting`, `northing` style coordinates.
 
-    ::: note
-    All coordinates have to be converted to a project coordinate system prior to network or other analysis in Cityseer.
+    :::note
+    All coordinates have to be converted to a projected coordinate system prior to network or other analysis in
+    `cityseer`. When working with data points passed to a [DataLayer](#datalayer), the coordinate reference system
+    must match that used by the network node's coordinates in the [NetworkLayer](/metrics/networks/#networklayer)
     :::
 
     Parameters
     ----------
-    data_dict
-        A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
-        represents a nested dictionary with `x` and `y` key-value pairs.
+    data_dict: dict
+        A `dict` type (`types.DataDictType`) containing data points, where each `key` represents a `data_key` and each
+        value value represents a `dict` (`types.DataPoint`) with `x` and `y` keys corresponding to coordinates, e.g.:
         ```python
         example_data_dict = {
             'key_01': {
@@ -46,9 +48,9 @@ def dict_wgs_to_utm(data_dict: types.DataDictType) -> types.DataDictType:
 
     Returns
     -------
-    dict
-        Returns a copy of the source dictionary with the `x` and `y` values converted to the local UTM coordinate
-        system.
+    data_dict: dict
+        Returns a copy of the source dictionary with the (nested) `x` and `y` values converted to the local UTM
+        coordinate system.
 
     Examples
     --------
@@ -56,29 +58,28 @@ def dict_wgs_to_utm(data_dict: types.DataDictType) -> types.DataDictType:
     from cityseer.tools import mock
     from cityseer.metrics import layers
 
-    # let's generate a mock data dictionary
+    # generate a mock data dictionary
     G_wgs = mock.mock_graph(wgs84_coords=True)
-    # mock_data_dict takes on the same extents on the graph parameter
     data_dict_WGS = mock.mock_data_dict(G_wgs, random_seed=25)
-    # the dictionary now contains wgs coordinates
+    # the dictionary currently contains wgs coordinates
     for i, (key, value) in enumerate(data_dict_WGS.items()):
         print(key, value)
-        # prints:
-        # 0 {'x': -0.09600470559254023, 'y': 51.592916036617794}
-        # 1 {'x': -0.10621770551738155, 'y': 51.58888719412964}
         if i == 1:
             break
+    # prints:
+    # 0 {'x': -0.09600564183475842, 'y': 51.59291609374019}
+    # 1 {'x': -0.10621863188942433, 'y': 51.58888725138961}
 
     # any data dictionary that follows this template can be passed to dict_wgs_to_utm()
     data_dict_UTM = layers.dict_wgs_to_utm(data_dict_WGS)
     # the coordinates have now been converted to UTM
     for i, (key, value) in enumerate(data_dict_UTM.items()):
         print(key, value)
-        # prints:
-        # 0 {'x': 701144.5207785056, 'y': 5719758.706109629}
-        # 1 {'x': 700455.0000341447, 'y': 5719282.703221394}
         if i == 1:
             break
+    # prints:
+    # 0 {'x': 701144.4556901165, 'y': 5719758.709883339}
+    # 1 {'x': 700454.9356237546, 'y': 5719282.707046473}
     ```
 
     """
@@ -115,28 +116,28 @@ def encode_categorical(
     classes: list[str] | tuple[str] | npt.NDArray[np.str_],
 ) -> tuple[tuple[str], npt.NDArray[np.int64]]:
     """
-    Convert a list of land-use classes (or other categorical data) to encoded integers.
+    Convert a list of land-use classes (or other categorical data) into encoded integers.
 
-    Encodes land-use class labels, e.g. "a", "b" or "pub", "shop" to an encoded representation. Unique elements will be
-    encoded to the same encoding, i.e. `["a", "b", "c"]` will be encoded to `[0, 1, 0]`.
+    Used for encoding land-use class labels, e.g. "a", "b" or "pub", "shop" to an encoded representation. Unique
+    elements will be encoded to the same encoding, i.e. `['pub', 'shop', 'pub']` will be encoded to `[0, 1, 0]`.
 
     :::note
-    It is generally not necessary to utilise this function directly. It will be called implicitly if calculating
+    It is generally not necessary to utilise this function directly. It is used automatically when calculating
     land-use metrics.
     :::
 
     Parameters
     ----------
-    classes
-        A `list`, `tuple` or `numpy` array of classes to be encoded.
+    classes: ndarray[str]
+        An array of classes to be encoded.
 
     Returns
     -------
-    tuple
+    descriptors: tuple[str]
         A `tuple` of unique class descriptors extracted from the input classes.
-    np.array
-        A `numpy` array of the encoded classes. The value of the `int` encoding will correspond to the order of the
-        `class_descriptors`.
+    encodings: ndarray[int]
+        A `numpy` array of the encoded classes. The value of the encoding will correspond to the order of the
+        class descriptors.
 
     Examples
     --------
@@ -165,7 +166,7 @@ def encode_categorical(
 
 def data_map_from_dict(data_dict: types.DataDictType) -> tuple[tuple[int | str], structures.DataMap]:
     """
-    Convert a data dictionary into a `numpy` array for use by `DataLayer` classes.
+    Convert a data dictionary into a [`DataMap`](/structures/#datamap) for use by a [`DataLayer`](#datalayer/).
 
     :::note
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking
@@ -174,11 +175,11 @@ def data_map_from_dict(data_dict: types.DataDictType) -> tuple[tuple[int | str],
 
     Parameters
     ----------
-    data_dict
-        A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
-        represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
-        coordinate system matching that of the [`network_layer`](/metrics/networks/#networklayer) to which the data will
-        be assigned.
+    data_dict: dict
+        A `dict` type (`types.DataDictType`) containing data points, where each `key` represents a `data_key` and each
+        value value represents a `dict` (`types.DataPoint`) with `x` and `y` keys corresponding to coordinates. The
+        coordinates must be in a projected coordinate system matching that of the
+        [`network_layer`](/metrics/networks/#networklayer) to which the data will be assigned, e.g.:
 
         ```python
         example_data_dict = {
@@ -195,20 +196,10 @@ def data_map_from_dict(data_dict: types.DataDictType) -> tuple[tuple[int | str],
 
     Returns
     -------
-    tuple
+    data_keys: tuple[int | str]
         A tuple of data `data_keys` corresponding to the data point identifiers in the source `data_dict`.
-    np.array
-        A 2d numpy array representing the data points. The indices of the second dimension correspond as follows:
-
-        | idx | property |
-        |-----|:----------|
-        | 0   | `x` coordinate |
-        | 1   | `y` coordinate |
-        | 2   | assigned network index - nearest |
-        | 3   | assigned network index - next-nearest |
-
-        The arrays at indices `2` and `3` will be initialised with `np.nan`. These will be populated when the
-        [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
+    DataMap: structures.DataMap
+        A [`DataMap`](/structures/#datamap) representing the data points.
 
     """
     if not isinstance(data_dict, dict):
@@ -237,14 +228,17 @@ class DataLayer:
     can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial
     locations of data points, and is used to calculate various mixed-use, land-use accessibility, and statistical
     measures. Importantly, these measures are computed directly over the street network and offer distance-weighted
-    variants; the combination of which, makes them more contextually sensitive than methods otherwise based on simpler
-    crow-flies aggregation methods.
+    variants. The combination of these strategies makes `cityseer` more contextually sensitive than methods otherwise
+    based on crow-flies aggregation methods that do not take the network structure and its affect on pedestrian
+    walking distances into account.
 
     The coordinates of data points should correspond as precisely as possible to the location of the feature in space;
     or, in the case of buildings, should ideally correspond to the location of the building entrance.
 
+    :::note
     Note that in many cases, the [`DataLayerFromDict`](#datalayerfromdict) class will provide a more convenient
     alternative for instantiating this class.
+    :::
 
     """
 
@@ -258,27 +252,17 @@ class DataLayer:
 
         Parameters
         ----------
-        data_keys
-            A `list` or `tuple` of data identifiers corresponding to each data point. This list must be in the same
-            order and of the same length as the `data_map`.
-        data_map
-            A 2d `numpy` array representing the data points. The length of the first dimension should match that of the
-            `data_keys`. The indices of the second dimension correspond as follows:
-
-            | idx | property |
-            |-----|:----------|
-            | 0 | `x` coordinate |
-            | 1 | `y` coordinate |
-            | 2 | assigned network index - nearest |
-            | 3 | assigned network index - next-nearest |
-
-            The arrays at indices `2` and `3` will be populated when the
+        data_keys: tuple[int | str]
+            A tuple of data `data_keys` corresponding to the data point identifiers in the source `data_dict`.
+        data_map: structures.DataMap
+            A [`DataMap`](/structures/#datamap) representing the data points. The `nearest_assign` and
+            `next_nearest_assign` attributes will be generated when the
             [DataLayer.assign_to_network](#datalayer-assign-to-network) method is invoked.
 
         Returns
         -------
         DataLayer
-            Returns a `DataLayer`.
+            Returns a `DataLayer` instance.
 
         """
         data_map.validate()
@@ -307,42 +291,38 @@ class DataLayer:
         """
         Assign this DataLayer to a [`NetworkLayer`](/metrics/networks/#networklayer).
 
-        Once created, a [`DataLayer`](#datalayer) should be assigned to a
-        [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer` provides the backbone for the localised
-        spatial aggregation of data points over the street network. The measures will be computed over the same distance
-        thresholds as used for the `NetworkLayer`.
+        Assigns a [`DataLayer`](#datalayer) to a [`NetworkLayer`](/metrics/networks/#networklayer). The `NetworkLayer`
+        provides the backbone for the calculation of land-use and statistical aggregations over the network. These
+        will be computed using the same distance thresholds defined in the `NetworkLayer`.
 
-        The data points will be assigned to the two closest network nodes — one in either direction — based on the
-        closest adjacent street edge. This enables a dynamic spatial aggregation method that more accurately describes
-        distances over the network to data points, relative to the direction of approach.
+        Data points will be assigned to the two closest network nodes — one in either direction — based on the closest
+        adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest
+        distance to a data point relative to either direction of approach.
 
         Parameters
         ----------
-        network_layer
-            A [`NetworkLayer`](/metrics/networks/#networklayer).
-        max_dist
+        network_layer: networks.NetworkLayer
+            A [`NetworkLayer`](/metrics/networks/#networklayer) instance.
+        max_dist: int
             The maximum distance to consider when assigning respective data points to the nearest adjacent network
             nodes.
 
         Examples
         --------
         :::note
-        The `max_dist` parameter should not be set too small. There are two steps in the assignment process: the first,
-        identifies the closest street node; the second, sets-out from this node and attempts to wind around the data
-        point — akin to circling the block. It will then review the discovered graph edges from which it is able to
-        identify the closest adjacent street-front. The `max_dist` parameter sets a crow-flies distance limit on how far
-        the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small, then the
-        algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to terminate
-        exploration prematurely because it can't travel far enough away from the data point to explore the surrounding
-        network. If too many data points are not being successfully assigned to the correct street edges, then this
-        distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then it may be
-        possible to decrease this threshold. A distance of around 400m provides a good starting point.
+        The `max_dist` parameter should not be set overly low. The `max_dist` parameter sets a crow-flies distance limit
+        on how far the algorithm will search in its attempts to encircle the data point. If the `max_dist` is too small,
+        then the algorithm is potentially hampered from finding a starting node; or, if a node is found, may have to
+        terminate exploration prematurely because it can't travel sufficiently far from the data point to explore the
+        surrounding network. If too many data points are not being successfully assigned to the correct street edges,
+        then this distance should be increased. Conversely, if most of the data points are satisfactorily assigned, then
+        it may be possible to decrease this threshold. A distance of around 400m may provide a good starting point.
         :::
 
         :::note
         The precision of assignment improves on decomposed networks (see
         [graphs.nx_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
-        representation of variations in metrics along street-fronts.
+        representation of variations of metrics along street-fronts.
         :::
 
         ![Example assignment of data to a network](/images/assignment.png)
@@ -392,7 +372,7 @@ class DataLayer:
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
         implication that mixed-use and land-use accessibility aggregations are generated from the same locations as
         for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the
-        calculations are written to the corresponding node indices in the same `NetworkLayer.metrics` dictionary used
+        calculations are written to the corresponding node indices in the same `NetworkLayer.metrics_state` dictionary used
         for centrality methods, and will be categorised by the respective keys and parameters.
 
         For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on
@@ -400,7 +380,7 @@ class DataLayer:
         following structure:
 
         ```python
-        NetworkLayer.metrics.mixed_uses = {
+        NetworkLayer.metrics_state.mixed_uses = {
             # note that hill measures have q keys
             'hill': {
                 # here, q=0
@@ -420,105 +400,102 @@ class DataLayer:
                 1600: [...]
             }
         }
-        NetworkLayer.metrics.accessibility = {
-            # accessibility keys are computed in both weighted and unweighted forms
-            'weighted': {
-                'shops': {
-                    800: [...],
-                    1600: [...]
-                },
-                'factories': {
-                    800: [...],
-                    1600: [...]
-                }
+        # accessibility keys are computed in both weighted and unweighted forms
+        NetworkLayer.metrics_state.accessibility.weighted = {
+            'shops': {
+                800: [...],
+                1600: [...]
             },
-            'non_weighted': {
-                'shops': {
-                    800: [...],
-                    1600: [...]
-                },
-                'factories': {
-                    800: [...],
-                    1600: [...]
-                }
+            'factories': {
+                800: [...],
+                1600: [...]
+            }
+        }
+        NetworkLayer.metrics_state.accessibility.non_weighted = {
+            'shops': {
+                800: [...],
+                1600: [...]
+            },
+            'factories': {
+                800: [...],
+                1600: [...]
             }
         }
         ```
 
         Parameters
         ----------
-        landuse_labels
-            A tuple of land-use labels corresponding to the length and order of the data points. The labels should
-            correspond to descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only
-            required if computing mixed-uses or land-use accessibilities.
-        mixed_use_keys
-            An optional list of strings describing which mixed-use metrics to compute, containing any combination of
-            `key` values from the following table, by default None. See **Notes** for additional information.
+        landuse_labels: tuple[str]
+            Land-use labels corresponding to the length and order of the data points. The labels should correspond to
+            descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
+            computing mixed-uses or land-use accessibilities.
+        mixed_use_keys: tuple[str]
+            Mixed-use metrics to compute, containing any combination of the `key` values from the following table, by
+            default None. See examples below for additional information.
         accessibility_keys
-            An optional `list` or `tuple` of land-use classifications for which to calculate accessibilities. The keys
-            should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The
-            calculations will be performed in both `weighted` and `non_weighted` variants, by default None.
-        cl_disparity_wt_matrix
-            A pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of
-            distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity`
-            or `raos_pairwise_disparity`.  The number and order of land-uses should match those implicitly generated by
-            [`encode_categorical`](#encode_categorical), by default None.
-        qs
+            Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
+            schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
+            `weighted` and `non_weighted` variants. By default None.
+        cl_disparity_wt_matrix: ndarray[float]
+            An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair
+            of distinct land-uses. This parameter is only required if computing mixed-uses using
+            `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match
+            those implicitly generated by [`encode_categorical`](#encode_categorical). By default None.
+        qs: tuple[float]
             The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-            the Hill diversity mixed-use measures, by default None.
-        jitter_scale
+            the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+        jitter_scale: float
             The scale of random jitter to add to shortest path calculations, useful for situations with highly
             rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
-        angular
+        angular: bool
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-            and distances, by default False
+            and distances. By default False
 
         Examples
         --------
         | key | formula | notes |
         |-----|:-------:|-------|
-        | hill | $$q\\geq{0},\\ q\\neq{1} \\\\ \\big(\\sum_{i}^{S}p_{i}^q\\big)^{1/(1-q)} \\\\
-        lim_{q\\to1} \\\\ exp\\big(-\\sum_{i}^{S}\\ p_{i}\\ log\\ p_{i}\\big)$$ | Hill diversity: this is the
+        | hill | $$q\geq{0},\ q\neq{1} \ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \
+        lim_{q\to1} \ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the
         preferred form of diversity metric because it adheres to the replication principle and uses units of effective
         species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on
         the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in
         an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of
         distinct land-uses.|
-        | hill_branch_wt | $$\\big[\\sum_{i}^{S}d_{i}\\big(\\frac{p_{i}}{\\bar{T}}\\big)^{q} \\big]^{1/(1-q)} \\\\
-        \\bar{T} = \\sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based
+        | hill_branch_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \
+        \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based
         on the distances from the point of computation to the nearest example of a particular land-use. It therefore
         gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
-        function where $\\beta$ controls the strength of the decay. ($\\beta$ is provided by the `Network Layer`, see
+        function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
-        | hill_pairwise_wt | $$\\big[\\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} \\big(  \\frac{p_{i} p_{j}}{Q}
-        \\big)^{q} \\big]^{1/(1-q)} \\\\ Q = \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a
+        | hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
+        \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a
         pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
         examples of the pairwise distinct land-use combinations as routed through the point of computation.
-        $d_{ij}$ represents a negative exponential function where $\\beta$ controls the strength of the decay.
-        ($\\beta$ is provided by the `Network Layer`, see
+        $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay.
+        ($\beta$ is provided by the `Network Layer`, see
         [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
-        | hill_pairwise_disparity | $$\\big[ \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} w_{ij} \\big(  \\frac{p_{i}
-        p_{j}}{Q} \\big)^{q} \\big]^{1/(1-q)} \\\\ Q = \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} w_{ij} p_{i}
+        | hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
+        p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
         p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
         land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix`
         parameter.|
-        | shannon | $$ -\\sum_{i}^{S}\\ p_{i}\\ log\\ p_{i}$$ | Shannon diversity (or_information entropy_) is
+        | shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is
         one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is
         effectively a transformation of Shannon diversity into units of effective species.|
-        | gini_simpson | $$ 1 - \\sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index.
+        | gini_simpson | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index.
         It can behave problematically because it does not adhere to the replication principle and places emphasis on the
         balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an
         emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a
         transformation of Gini-Simpson diversity into units of effective species.|
-        | raos_pairwise_disparity | $$ \\sum_{i}^{S} \\sum_{j\\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity
+        | raos_pairwise_disparity | $$ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity
         is a pairwise disparity measure and requires the use of a disparity matrix provided through the
         `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use
         disparity weighted Hill diversity with `q=2`.|
 
         :::note
-        The available choices of land-use diversity measures may seem overwhelming. `hill_branch_wt` paired with `q=0`
-        is generally the best choice for granular landuse data, or else `q=1` or `q=2` for increasingly crude landuse
-        classifications schemas.
+        `hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+        `q=2` for increasingly crude landuse classifications schemas.
         :::
 
         A worked example:
@@ -563,12 +540,12 @@ class DataLayer:
         # a node idx
         node_idx = 0
 
-        # the data is available at cc_netw.metrics
-        print(cc_netw.metrics['mixed_uses']['hill'][q_idx][distance_idx][node_idx])
+        # the data is available at cc_netw.metrics_state
+        print(cc_netw.metrics_state.mixed_uses['hill'][q_idx][distance_idx][node_idx])
         # prints: 4.0
-        print(cc_netw.metrics['accessibility']['weighted']['d'][distance_idx][node_idx])
-        # prints: 0.019168843947614676
-        print(cc_netw.metrics['accessibility']['non_weighted']['d'][distance_idx][node_idx])
+        print(cc_netw.metrics_state.accessibility.weighted['d'][distance_idx][node_idx])
+        # prints: 0.019174593
+        print(cc_netw.metrics_state.accessibility.non_weighted['d'][distance_idx][node_idx])
         # prints: 1.0
         ```
 
@@ -721,17 +698,19 @@ class DataLayer:
 
         Parameters
         ----------
-        landuse_labels
-            A set of land-use labels corresponding to the length and order of the data points. The labels should
-            correspond to descriptors from the land-use schema, such as "retail" or "commercial".
-        qs
-            The values of `q` for which to compute Hill diversity, by default None
+        landuse_labels: tuple[str]
+            Land-use labels corresponding to the length and order of the data points. The labels should correspond to
+            descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
+            computing mixed-uses or land-use accessibilities.
+        qs: tuple[float]
+            The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
+            the Hill diversity mixed-use measures and is otherwise ignored. By default None.
 
         Examples
         --------
         The data key is `hill`, e.g.:
 
-        `NetworkLayer.metrics['mixed_uses']['hill'][q_key][distance_key][node_idx]`
+        `NetworkLayer.metrics_state.mixed_uses['hill'][q_key][distance_key][node_idx]`
 
         """
         return self.compute_landuses(landuse_labels, mixed_use_keys=["hill"], qs=qs)
@@ -748,17 +727,19 @@ class DataLayer:
 
         Parameters
         ----------
-        landuse_labels
-            A set of land-use labels corresponding to the length and order of the data points. The labels should
-            correspond to descriptors from the land-use schema, such as "retail" or "commercial".
-        qs
-            The values of `q` for which to compute Hill diversity, by default None
+        landuse_labels: tuple[str]
+            Land-use labels corresponding to the length and order of the data points. The labels should correspond to
+            descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
+            computing mixed-uses or land-use accessibilities.
+        qs: tuple[float]
+            The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
+            the Hill diversity mixed-use measures and is otherwise ignored. By default None.
 
         Examples
         --------
         The data key is `hill_branch_wt`, e.g.:
 
-        `NetworkLayer.metrics['mixed_uses']['hill_branch_wt'][q_key][distance_key][node_idx]`
+        `NetworkLayer.metrics_state.mixed_uses['hill_branch_wt'][q_key][distance_key][node_idx]`
 
         """
         return self.compute_landuses(landuse_labels, mixed_use_keys=["hill_branch_wt"], qs=qs)
@@ -775,13 +756,14 @@ class DataLayer:
 
         Parameters
         ----------
-        landuse_labels
-            A set of land-use labels corresponding to the length and order of the data points. The labels should
-            correspond to descriptors from the land-use schema, such as "retail" or "commercial".
+        landuse_labels: tuple[str]
+            Land-use labels corresponding to the length and order of the data points. The labels should correspond to
+            descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
+            computing mixed-uses or land-use accessibilities.
         accessibility_keys
-            The land-use keys for which to compute accessibilies. The keys should be selected from the same land-use
+            Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
             schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-            `weighted` and `non_weighted` variants.
+            `weighted` and `non_weighted` variants. By default None.
 
         Examples
         --------
@@ -789,8 +771,8 @@ class DataLayer:
         accessibility:
 
         ```python
-        NetworkLayer.metrics['accessibility']['weighted']['retail'][distance_key][node_idx]
-        NetworkLayer.metrics['accessibility']['non_weighted']['retail'][distance_key][node_idx]
+        NetworkLayer.metrics_state.accessibility.weighted['retail'][distance_key][node_idx]
+        NetworkLayer.metrics_state.accessibility.non_weighted['retail'][distance_key][node_idx]
         ```
 
         """
@@ -814,50 +796,48 @@ class DataLayer:
         aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication
         that statistical aggregations are generated from the same locations as for centrality computations, which can
         therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding
-        node indices in the same `NetworkLayer.metrics` dictionary used for centrality methods, and will be categorised
+        node indices in the same `NetworkLayer.metrics_state` dictionary used for centrality methods, and will be categorised
         by the respective keys and parameters.
 
         For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m
         distance thresholds, then the dictionary would assume the following structure:
 
         ```python
-        NetworkLayer.metrics = {
-            'stats': {
-                # stats grouped by each stats key
-                'valuations': {
-                    # each stat will have the following key-value pairs
-                    'max': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'min': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'sum': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'sum_weighted': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'mean': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'mean_weighted': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'variance': {
-                        800: [...],
-                        1600: [...]
-                    },
-                    'variance_weighted': {
-                        800: [...],
-                        1600: [...]
-                    }
+        NetworkLayer.metrics_state.stats = {
+            # stats grouped by each stats key
+            'valuations': {
+                # each stat will have the following key-value pairs
+                'max': {
+                    800: [...],
+                    1600: [...]
+                },
+                'min': {
+                    800: [...],
+                    1600: [...]
+                },
+                'sum': {
+                    800: [...],
+                    1600: [...]
+                },
+                'sum_weighted': {
+                    800: [...],
+                    1600: [...]
+                },
+                'mean': {
+                    800: [...],
+                    1600: [...]
+                },
+                'mean_weighted': {
+                    800: [...],
+                    1600: [...]
+                },
+                'variance': {
+                    800: [...],
+                    1600: [...]
+                },
+                'variance_weighted': {
+                    800: [...],
+                    1600: [...]
                 }
             }
         }
@@ -865,14 +845,13 @@ class DataLayer:
 
         Parameters
         ----------
-        stats_keys
-            If computing a single stat: a `str` key describing the stats computed for the `stats_data_arr` parameter.
-            If computing multiple stats: a `list` or `tuple` of keys. Computed stats will be saved under the supplied
-            key to the `cc_netw.metrics` dictionary.
-        stats_data
-            If computing a single stat: a 1d `list`, `tuple` or `numpy` array of numerical data, where the length
-            corresponds to the number of data points in the `DataLayer`.
-            If computing multiple stats keys: a 2d `list`, `tuple`, or `numpy` array of numerical data, where the first
+        stats_keys: str | tuple[str]
+            If computing a single stat: a `str` key describing the stats computed for the `stats_data` parameter.
+            If computing multiple stats: a `tuple` of keys. Computed stats will be stored under the supplied key. See
+            examples below.
+        stats_data: ndarray[int | float]
+            If computing a single stat: a 1d array of numerical data, where the length corresponds to the number of data
+            points in the `DataLayer`. If computing multiple stats keys: an array of numerical data, where the first
             dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension
             corresponds to number of data points in the `DataLayer`. e.g:
             ```python
@@ -884,21 +863,22 @@ class DataLayer:
                 [420, 300, 220, 250, 600]  # occupants
             ]
             ```
-        jitter_scale
+        jitter_scale: float
             The scale of random jitter to add to shortest path calculations, useful for situations with highly
-            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+            rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. By default zero.
         angular
             Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-            and distances, by default False
+            and distances. By default False.
 
         Examples
         --------
-        The data keys will correspond to the `stats_keys` parameter, e.g.:
+        If computing three sets of stats data corresponding to stats_keys ['valuations', 'floors', 'occupants'], then
+        the computed data is arranged as follows:
 
         ```python
-        NetworkLayer.metrics['stats']['valuations'][stat_type][distance_key][node_idx]
-        NetworkLayer.metrics['stats']['floors'][stat_type][distance_key][node_idx]
-        NetworkLayer.metrics['stats']['occupants'][stat_type][distance_key][node_idx]
+        NetworkLayer.NetworkLayer.metrics_state.stats['valuations'][stat_type][distance_key][node_idx]
+        NetworkLayer.NetworkLayer.metrics_state.stats['floors'][stat_type][distance_key][node_idx]
+        NetworkLayer.NetworkLayer.metrics_state.stats['occupants'][stat_type][distance_key][node_idx]
         ```
 
         A worked example:
@@ -931,9 +911,9 @@ class DataLayer:
         # a node idx
         node_idx = 0
 
-        # the data is available at cc_netw.metrics
-        print(cc_netw.metrics['stats']['mock_stat']['mean_weighted'][distance_idx][node_idx])
-        # prints: 71297.82967202332
+        # the data is available at cc_netw.metrics_state
+        print(cc_netw.metrics_state.stats['mock_stat']['mean_weighted'][distance_idx][node_idx])
+        # prints: 71.29311697979952
         ```
 
         Note that the data can also be unpacked to a dictionary using
@@ -1045,32 +1025,30 @@ class DataLayerFromDict(DataLayer):
 
         Parameters
         ----------
-        data_dict
-            A dictionary representing distinct data points, where each `key` represents a `data_key` and each value
-            represents a nested dictionary with `x` and `y` key-value pairs. The coordinates must be in a projected
-            coordinate system matching that of the
-            [`NetworkLayer`](/metrics/networks/#networklayer) to which the data will be assigned.
+        data_dict: dict
+            A `dict` type (`types.DataDictType`) containing data points, where each `key` represents a `data_key` and
+            each value value represents a `dict` (`types.DataPoint`) with `x` and `y` keys corresponding to coordinates.
+            The coordinates must be in a projected coordinate system matching that of the
+            [`network_layer`](/metrics/networks/#networklayer) to which the data will be assigned.
+
+            For example:
+            ```python
+            example_data_dict = {
+                'key_01': {
+                    'x': 6000956.463188213,
+                    'y': 600693.4059810264
+                },
+                'key_02': {
+                    'x': 6000753.336609659,
+                    'y': 600758.7916663144
+                }
+            }
+            ```
 
         Returns
         -------
         DataLayer
             Returns a [`DataLayer`](#datalayer).
-
-        Examples
-        --------
-        Example dictionary:
-        ```python
-        example_data_dict = {
-            'key_01': {
-                'x': 6000956.463188213,
-                'y': 600693.4059810264
-            },
-            'key_02': {
-                'x': 6000753.336609659,
-                'y': 600758.7916663144
-            }
-        }
-        ```
 
         """
         data_keys, data_map = data_map_from_dict(data_dict)
