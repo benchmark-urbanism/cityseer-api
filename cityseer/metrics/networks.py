@@ -5,8 +5,8 @@ Cityseer network module for creating networks and calculating network centraliti
 
 
 import logging
+from typing import Any
 
-import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from numba_progress import ProgressBar
@@ -18,6 +18,9 @@ from cityseer.tools import graphs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# type hack until networkx supports type-hinting
+MultiGraph = Any
 
 # separate out so that ast parser can parse function def
 MIN_THRESH_WT = config.MIN_THRESH_WT
@@ -407,7 +410,7 @@ class NetworkLayer:
     _betas: npt.NDArray[np.float32]
     _min_threshold_wt: float
     _metrics_state: types.MetricsState
-    _nx_multigraph: nx.MultiGraph | None
+    _nx_multigraph: MultiGraph | None
 
     def __init__(
         self,
@@ -514,12 +517,12 @@ class NetworkLayer:
         return self._metrics_state
 
     @property
-    def nx_multigraph(self) -> nx.MultiGraph | None:
+    def nx_multigraph(self) -> MultiGraph | None:
         """If initialised with `NetworkLayerFromNX`, the `networkX` `MultiGraph` from which the graph is derived."""
         return self._nx_multigraph
 
     @nx_multigraph.setter
-    def nx_multigraph(self, nx_multigraph: nx.MultiGraph):
+    def nx_multigraph(self, nx_multigraph: MultiGraph):
         self._nx_multigraph = nx_multigraph
 
     # for retrieving metrics to a dictionary
@@ -571,7 +574,7 @@ class NetworkLayer:
         return dict_node_metrics
 
     # for unpacking to a networkX graph
-    def to_nx_multigraph(self) -> nx.MultiGraph:
+    def to_nx_multigraph(self) -> MultiGraph:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`.
 
@@ -579,7 +582,7 @@ class NetworkLayer:
 
         Returns
         -------
-        nx.MultiGraph
+        MultiGraph
             A `networkX` `MultiGraph`.
 
             `x`, `y`, and `live` node attributes will be copied to the `MultiGraph` nodes. `length`, `angle_sum`,
@@ -841,7 +844,7 @@ class NetworkLayerFromNX(NetworkLayer):
 
     def __init__(
         self,
-        nx_multigraph: nx.MultiGraph,
+        nx_multigraph: MultiGraph,
         distances: int
         | float
         | list[int | float]
@@ -860,7 +863,7 @@ class NetworkLayerFromNX(NetworkLayer):
 
         Parameters
         ----------
-        nx_multigraph: nx.MultiGraph
+        nx_multigraph: MultiGraph
             A `networkX` `MultiGraph`. `x` and `y` node attributes are required. The `live` node attribute is optional,
             but recommended.
         distances: int | ndarray[int]

@@ -9,7 +9,7 @@ See the demos section for examples.
 
 
 import logging
-from typing import Any, Union, cast
+from typing import Any, Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -29,16 +29,17 @@ logger = logging.getLogger(__name__)
 
 plt.tight_layout()
 
+# type hack until networkx supports type-hinting
+MultiGraph = Any
 
 COLOUR_MAP = types.ColourMap()
-
 
 ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
 
 
 def plot_nx_primal_or_dual(  # noqa
-    primal_graph: nx.MultiGraph | None = None,
-    dual_graph: nx.MultiGraph | None = None,
+    primal_graph: MultiGraph | None = None,
+    dual_graph: MultiGraph | None = None,
     path: str | None = None,
     labels: bool = False,
     primal_node_size: int = 30,
@@ -60,9 +61,9 @@ def plot_nx_primal_or_dual(  # noqa
 
     Parameters
     ----------
-    primal_graph: nx.MultiGraph
+    primal_graph: MultiGraph
         An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.
-    dual_graph: nx.MultiGraph
+    dual_graph: MultiGraph
         An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
@@ -132,7 +133,7 @@ def plot_nx_primal_or_dual(  # noqa
         plt.cla()
         plt.clf()
         # create new plot
-        _fig, target_ax = plt.subplots(1, 1, **kwargs)
+        _fig, target_ax = plt.subplots(1, 1, **kwargs)  # type: ignore
     else:
         target_ax = ax
     # setup params
@@ -142,7 +143,7 @@ def plot_nx_primal_or_dual(  # noqa
 
     # setup a function that can be used for either the primal or dual graph
     def _plot_graph(
-        _graph: nx.MultiGraph,
+        _graph: MultiGraph,
         _is_primal: bool,
         _node_size: float,
         _node_colour: ColourType | None,
@@ -220,7 +221,6 @@ def plot_nx_primal_or_dual(  # noqa
                 try:
                     x_arr: npt.NDArray[np.float_]
                     y_arr: npt.NDArray[np.float_]
-                    node_data = cast(NodeData, node_data)
                     x_arr, y_arr = node_data["geom"].coords.xy
                 except KeyError as err:
                     raise KeyError(
@@ -294,7 +294,7 @@ def plot_nx_primal_or_dual(  # noqa
 
 
 def plot_nx(
-    nx_multigraph: nx.MultiGraph,
+    nx_multigraph: MultiGraph,
     path: str | None = None,
     labels: bool = False,
     node_size: int = 20,
@@ -312,7 +312,7 @@ def plot_nx(
 
     Parameters
     ----------
-    nx_multigraph: nx.MultiGraph
+    nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
@@ -393,7 +393,7 @@ def plot_nx(
 
 def plot_assignment(  # noqa
     network_structure: structures.NetworkStructure,
-    nx_multigraph: nx.MultiGraph,
+    nx_multigraph: MultiGraph,
     data_map: structures.DataMap,
     path: str | None = None,
     node_colour: ColourType | None = None,
@@ -412,7 +412,7 @@ def plot_assignment(  # noqa
     ----------
     network_structure: structures.NetworkStructure
         A [`NetworkStructure`](/structures/networkstructure) instance.
-    nx_multigraph: nx.MultiGraph
+    nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_map: structures.DataMap
         A [`DataMap`](/structures/datamap) instance.
@@ -455,7 +455,6 @@ def plot_assignment(  # noqa
     node_key: NodeKey
     node_data: NodeData
     for node_key, node_data in nx_multigraph.nodes(data=True):
-        node_data = cast(NodeData, node_data)
         pos[node_key] = (node_data["x"], node_data["y"])
     nx.draw(
         nx_multigraph,

@@ -372,8 +372,8 @@ class DataLayer:
         The data is aggregated and computed over the street network relative to the `Network Layer` nodes, with the
         implication that mixed-use and land-use accessibility aggregations are generated from the same locations as
         for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the
-        calculations are written to the corresponding node indices in the same `NetworkLayer.metrics_state` dictionary used
-        for centrality methods, and will be categorised by the respective keys and parameters.
+        calculations are written to the corresponding node indices in the same `NetworkLayer.metrics_state` dictionary
+        used for centrality methods, and will be categorised by the respective keys and parameters.
 
         For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on
         a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the
@@ -796,8 +796,8 @@ class DataLayer:
         aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication
         that statistical aggregations are generated from the same locations as for centrality computations, which can
         therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding
-        node indices in the same `NetworkLayer.metrics_state` dictionary used for centrality methods, and will be categorised
-        by the respective keys and parameters.
+        node indices in the same `NetworkLayer.metrics_state` dictionary used for centrality methods, and will be
+        categorised by the respective keys and parameters.
 
         For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m
         distance thresholds, then the dictionary would assume the following structure:
