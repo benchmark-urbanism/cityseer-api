@@ -121,7 +121,7 @@ def _closest_intersections(
     return min_d, nearest_idx, next_nearest_idx
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def assign_to_network(
     data_map: structures.DataMap,
     network_structure: structures.NetworkStructure,
@@ -348,7 +348,7 @@ def aggregate_to_src_idx(
     return reachable_data, reachable_data_dist, tree_map
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def aggregate_landuses(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
@@ -543,7 +543,7 @@ def aggregate_landuses(
     )
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def aggregate_stats(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,

@@ -30,10 +30,8 @@ def _cast_beta(beta: float | list[float] | tuple[float] | npt.NDArray[np.float32
     """Type checks and casts beta parameter to a numpy array of beta."""
     if beta is None:
         raise TypeError("Expected beta but encountered None value.")
-    if isinstance(beta, (int, float)):
-        beta = [beta]
     if not isinstance(beta, (list, tuple, np.ndarray)):
-        raise TypeError("Please provide a beta or a list, tuple, or numpy.ndarray of betas.")
+        beta = [beta]
     if len(beta) == 0:
         raise ValueError("Encountered empty iterable of beta.")
     # check that the betas do not have leading negatives
