@@ -27,7 +27,7 @@ Python 3.
 
 ## Notebooks
 
-The getting started guide on this page, and a growing collection of other examples, is available on the [`Examples`](/examples/) page.
+The getting started guide on this page, and a growing collection of other examples, is available as an Ipython Notebook on the [`Examples`](/examples/) page.
 
 ## Quickstart
 
@@ -43,9 +43,9 @@ import networkx as nx
 from cityseer.tools import mock, graphs, plot
 
 G = mock.mock_graph()
-print(nx.info(G), '\n')
+print(nx.info(G), "\n")
 # let's plot the network
-plot.plot_nx(G, labels=True, node_size=80, dpi=100)
+plot.plot_nx(G, labels=True, node_size=80, dpi=200)
 ```
 
 ![An example graph](/images/graph.png)
@@ -65,7 +65,7 @@ Here, we'll walk through a high-level overview showing how to use `cityseer`. Yo
 
 ```python
 G = graphs.nx_simple_geoms(G)
-plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True, dpi=100)
+plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True, dpi=200)
 ```
 
 ![An example graph](/images/graph_example.png)
@@ -77,7 +77,7 @@ Once the geoms are readied, we can use tools such as [`nx_decompose`](/tools/gra
 
 ```python
 G_decomp = graphs.nx_decompose(G, 50)
-plot.plot_nx(G_decomp, plot_geoms=True, labels=False, dpi=100)
+plot.plot_nx(G_decomp, plot_geoms=True, labels=False, dpi=200)
 ```
 
 ![An example decomposed graph](/images/graph_decomposed.png)
@@ -87,7 +87,7 @@ _A decomposed graph._
 # optionally cast to a dual network
 G_dual = graphs.nx_to_dual(G)
 # here we are plotting the newly decomposed graph (blue) against the original graph (red)
-plot.plot_nx_primal_or_dual(G, G_dual, plot_geoms=False, dpi=100)
+plot.plot_nx_primal_or_dual(G, G_dual, plot_geoms=False, dpi=200)
 ```
 
 ![An example dual graph](/images/graph_dual.png)
@@ -101,10 +101,11 @@ The [`NetworkLayer.node_centrality`](/metrics/networks/#networklayer-node-centra
 
 ```python
 from cityseer.metrics import networks
+
 # create a Network layer from the networkX graph
-cc_netw = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
+N = networks.NetworkLayerFromNX(G_decomp, distances=[200, 400, 800, 1600])
 # the underlying method allows the computation of various centralities simultaneously, e.g.
-cc_netw.segment_centrality(measures=['segment_harmonic', 'segment_betweenness'])
+N.segment_centrality(measures=["segment_harmonic", "segment_betweenness"])
 ```
 
 ## Data Layers
@@ -113,16 +114,19 @@ A [`DataLayer`](/metrics/layers/#datalayer) represents data points. A `DataLayer
 
 ```python
 from cityseer.metrics import layers
+
 # a mock data dictionary representing the 'x', 'y' attributes for data points
 data_dict = mock.mock_data_dict(G_decomp, random_seed=25)
-print(data_dict[0], data_dict[1], 'etc.')
+print(data_dict[0], data_dict[1], "etc.")
 # generate a data layer
 cc_data = layers.DataLayerFromDict(data_dict)
 # assign to the prior Network Layer
 # max_dist represents the farthest to search for adjacent street edges
-cc_data.assign_to_network(cc_netw, max_dist=400)
+cc_data.assign_to_network(N, max_dist=400)
 # let's plot the assignments
-plot.plot_assignment(cc_netw, cc_data, dpi=100)
+plot.plot_assignment(
+  N.network_structure, N.nx_multigraph, cc_data.data_map, dpi=200
+)
 ```
 
 ![DataLayer assigned to NetworkLayer](/images/assignment.png)
@@ -143,12 +147,11 @@ cc_data.hill_branch_wt_diversity(landuse_labels, qs=[0, 1, 2])
 # example easy-wrapper method for computing accessibilities
 # the keys correspond to keys present in the landuse data
 # for which accessibilities will be computed
-cc_data.compute_accessibilities(landuse_labels, accessibility_keys=['a', 'c'])
+cc_data.compute_accessibilities(landuse_labels, accessibility_keys=["a", "c"])
 # or compute multiple measures at once, e.g.:
-cc_data.compute_landuses(landuse_labels,
-                     mixed_use_keys=['hill', 'hill_branch_wt', 'shannon'],
-                     accessibility_keys=['a', 'c'],
-                     qs=[0, 1, 2])
+cc_data.compute_landuses(
+    landuse_labels, mixed_use_keys=["hill", "hill_branch_wt", "shannon"], accessibility_keys=["a", "c"], qs=[0, 1, 2]
+)
 ```
 
 We can do the same thing with numerical data. Let's generate some mock numerical data:
@@ -157,7 +160,7 @@ We can do the same thing with numerical data. Let's generate some mock numerical
 mock_valuations_data = mock.mock_numerical_data(len(data_dict), random_seed=25)
 print(mock_valuations_data)
 # compute max, min, mean, mean-weighted, variance, and variance-weighted
-cc_data.compute_stats('valuations', mock_valuations_data)
+cc_data.compute_stats("valuations", mock_valuations_data)
 ```
 
 The data is aggregated and computed over the street network relative to the `NetworkLayer` (i.e. street) nodes. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `NetworkLayer.metrics_state` attribute used for centrality methods, and will be categorised by the respective keys and parameters.
@@ -167,25 +170,27 @@ The data is aggregated and computed over the street network relative to the `Net
 distance_idx = 800  # any of the initialised distances
 q_idx = 0  # q index: any of the invoked q parameters
 # centrality
-print('centrality keys:', list(cc_netw.metrics.centrality.keys()))
-print('distance keys:', list(cc_netw.metrics.centrality['segment_harmonic'].keys()))
-print(cc_netw.metrics.centrality['segment_harmonic'][distance_idx][:4])
+print("centrality keys:", list(N.metrics_state.centrality.keys()))
+print("distance keys:", list(N.metrics_state.centrality["segment_harmonic"].keys()))
+print(N.metrics_state.centrality["segment_harmonic"][distance_idx][:4])
 # mixed-uses
-print('mixed-use keys:', list(cc_netw.metrics['mixed_uses'].keys()))
+print("mixed-use keys:", list(N.metrics_state.mixed_uses.keys()))
 # here we are indexing in to the specified q_idx, distance_idx
-print(cc_netw.metrics['mixed_uses']['hill_branch_wt'][q_idx][distance_idx][:4])
+print(N.metrics_state.mixed_uses["hill_branch_wt"][q_idx][distance_idx][:4])
 # statistical keys can be retrieved the same way:
-print('stats keys:', list(cc_netw.metrics['stats'].keys()))
-print('valuations keys:', list(cc_netw.metrics['stats']['valuations'].keys()))
-print('valuations weighted by 1600m decay:', cc_netw.metrics['stats']['valuations']['mean_weighted'][1600][:4])
+print("stats keys:", list(N.metrics_state.stats.keys()))
+print("valuations keys:", list(N.metrics_state.stats["valuations"].keys()))
+print(
+  "valuations weighted by 1600m decay:",
+  N.metrics_state.stats["valuations"]["mean_weighted"][1600][:4])
 # the data can also be convert back to a NetworkX graph
-G_metrics = cc_netw.to_nx_multigraph()
+G_metrics = N.to_nx_multigraph()
 print(nx.info(G_metrics))
 # the data arrays are unpacked accordingly
-print(G_metrics.nodes[0]['metrics'].centrality['segment_betweenness'][200])
+print(G_metrics.nodes[0]["metrics"]["centrality"]["segment_betweenness"][200])
 # and can also be extracted to a dictionary:
-G_dict = cc_netw.metrics_to_dict()
-print(G_dict[0].centrality['segment_betweenness'][200])
+G_dict = N.metrics_to_dict()
+print(G_dict[0]["centrality"]["segment_betweenness"][200])
 ```
 
 The data can then be passed to data analysis or plotting methods. For example, the [`tools.plot`](/tools/plot/) module can be used to plot the segmentised harmonic closeness centrality and mixed uses for the above mock data:
@@ -193,19 +198,20 @@ The data can then be passed to data analysis or plotting methods. For example, t
 ```python
 # plot centrality
 from matplotlib import colors
+
 segment_harmonic_vals = []
 mixed_uses_vals = []
 for node, data in G_metrics.nodes(data=True):
-    segment_harmonic_vals.append(data['metrics'].centrality['segment_harmonic'][800])
-    mixed_uses_vals.append(data['metrics']['mixed_uses']['hill_branch_wt'][0][400])
+    segment_harmonic_vals.append(data["metrics"]["centrality"]["segment_harmonic"][800])
+    mixed_uses_vals.append(data["metrics"]["mixed_uses"]["hill_branch_wt"][0][400])
 # custom colourmap
-cmap = colors.LinearSegmentedColormap.from_list('cityseer', ['#64c1ff', '#d32f2f'])
+cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 # normalise the values
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 # cast against the colour map
 segment_harmonic_cols = cmap(segment_harmonic_vals)
 # plot segment_harmonic
-plot.plot_nx(G_metrics, labels=False, node_colour=segment_harmonic_cols, dpi=100)
+plot.plot_nx(G_metrics, labels=False, node_colour=segment_harmonic_cols, dpi=200)
 ```
 
 ![Example centrality plot](/images/intro_segment_harmonic.png)
@@ -215,7 +221,14 @@ _800m segmentised harmonic centrality._
 # plot distance-weighted hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
-plot.plot_assignment(cc_netw, cc_data, node_colour=mixed_uses_cols, data_labels=landuse_labels, dpi=100)
+plot.plot_assignment(
+  N.network_structure,
+  N.nx_multigraph,
+  cc_data.data_map,
+  node_colour=mixed_uses_cols,
+  data_labels=landuse_labels,
+  dpi=200
+)
 ```
 
 ![Example mixed-use plot](/images/intro_mixed_uses.png)

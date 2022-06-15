@@ -72,15 +72,17 @@ min_x, min_y, max_x, max_y = buff.bounds
 # reusable plot function
 def simple_plot(_G, plot_geoms=True):
     # plot using the selected extents
-    plot.plot_nx(_G,
-                 labels=False,
-                 plot_geoms=plot_geoms,
-                 node_size=15,
-                 edge_width=2,
-                 x_lim=(min_x, max_x),
-                 y_lim=(min_y, max_y),
-                 figsize=(20, 20),
-                 dpi=200)
+    plot.plot_nx(
+        _G,
+        labels=False,
+        plot_geoms=plot_geoms,
+        node_size=15,
+        edge_width=2,
+        x_lim=(min_x, max_x),
+        y_lim=(min_y, max_y),
+        figsize=(20, 20),
+        dpi=200,
+    )
 
 
 simple_plot(G_utm, plot_geoms=False)
@@ -153,11 +155,13 @@ _After "splitting opposing geoms" on longer parallel segments._
 In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
 
 ```py
-G3 = graphs.nx_consolidate_nodes(G2,
-                                 buffer_dist=15,
-                                 crawl=False,
-                                 min_node_degree=2,
-                                 cent_min_degree=4)
+G3 = graphs.nx_consolidate_nodes(
+  G2,
+  buffer_dist=15,
+  crawl=False,
+  min_node_degree=2,
+  cent_min_degree=4
+)
 simple_plot(G3)
 ```
 
