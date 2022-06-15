@@ -128,10 +128,6 @@ def plot_nx_primal_or_dual(  # noqa
     """
     # cleanup old plots
     if ax is None:
-        plt.ioff()
-        plt.close("all")
-        plt.cla()
-        plt.clf()
         # create new plot
         _fig, target_ax = plt.subplots(1, 1, **kwargs)  # type: ignore
     else:
