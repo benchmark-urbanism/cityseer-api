@@ -166,7 +166,7 @@ def encode_categorical(
 
 def data_map_from_dict(data_dict: types.DataDictType) -> tuple[tuple[int | str], structures.DataMap]:
     """
-    Convert a data dictionary into a [`DataMap`](/structures/#datamap) for use by a [`DataLayer`](#datalayer/).
+    Convert a data dictionary into a [`DataMap`](/structures/#datamap) for use by a [`DataLayer`](#datalayer).
 
     :::note
     It is generally not necessary to use this function directly. This function will be called implicitly when invoking
@@ -551,7 +551,7 @@ class DataLayer:
 
         Note that the data can also be unpacked to a dictionary using
         [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
-        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
+        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
 
         :::warning
         Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
@@ -918,7 +918,7 @@ class DataLayer:
 
         Note that the data can also be unpacked to a dictionary using
         [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
-        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
+        graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
 
         :::note
         Per the above worked example, the following stat types will be available for each `stats_key` for each of the

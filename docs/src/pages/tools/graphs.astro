@@ -476,7 +476,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx_consolidate_nodes`](#nx_consolidate_nodes).
+Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx-consolidate-nodes`](#nx-consolidate-nodes).
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -730,7 +730,7 @@ A tuple of node `keys` corresponding to the node identifiers in the source `netw
           <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`NetworkStructure`](/structures/networkstructure) instance.
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
     </div>
@@ -761,7 +761,7 @@ Write `cityseer` data graph maps back to a `networkX` `MultiGraph`. This method 
 
 :::warning
 It is generally not necessary to use this function directly. This function will be called internally when invoking
-[NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-networkx)
+[NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-nx-multigraph)
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
@@ -780,7 +780,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
           <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`NetworkStructure`](/structures/networkstructure) instance.
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -834,7 +834,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide/#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 

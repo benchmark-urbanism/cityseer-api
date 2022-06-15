@@ -401,7 +401,7 @@ class NetworkLayer:
 
     The data can be handled using the underlying `numpy` arrays, and can also be unpacked to a dictionary using
     [`NetworkLayer.metrics_to_dict`](#networklayer-metrics-to-dict) or transposed to a `networkX` graph using
-    [`NetworkLayer.to_nx_multigraph`](#networklayer-to-networkx).
+    [`NetworkLayer.to_nx_multigraph`](#networklayer-to-nx-multigraph).
     """
 
     _node_keys: list[str | int] | tuple[str | int]
@@ -434,7 +434,7 @@ class NetworkLayer:
             A `list` or `tuple` of node identifiers corresponding to each node. This list must be in the same order and
             of the same length as the nodes contained in `network_structure`.
         network_structure: NetworkStructure
-            A [`NetworkStructure`](/structures/networkstructure) instance.
+            A [`NetworkStructure`](/structures/#networkstructure) instance.
         distances: ndarray[int]
             Distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use)
             calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the
@@ -578,7 +578,7 @@ class NetworkLayer:
         """
         Transposes a `NetworkLayer` into a `networkX` `MultiGraph`.
 
-        This method calls [`nx_from_network_structure`](/tools/graphs/#nx-from-graph-maps) internally.
+        This method calls [`nx_from_network_structure`](/tools/graphs/#nx-from-network-structure) internally.
 
         Returns
         -------
