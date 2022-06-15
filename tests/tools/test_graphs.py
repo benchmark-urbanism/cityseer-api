@@ -452,13 +452,13 @@ def test_nx_consolidate():
     # behaviour confirmed visually
     # from cityseer.tools import plot
     # plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True)
-    G_merged_spatial = graphs.nx - consolidate - nodes(G, buffer_dist=25, crawl=True, merge_edges_by_midline=True)
+    G_merged_spatial = graphs.nx_consolidate_nodes(G, buffer_dist=25, crawl=True, merge_edges_by_midline=True)
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     # this time, start with same origin graph but split opposing geoms first
     G_split_opps = graphs.nx_split_opposing_geoms(G, buffer_dist=25, merge_edges_by_midline=True)
     # plot.plot_nx(G_split_opps, labels=True, node_size=80, plot_geoms=True)
-    G_merged_spatial = (
-        graphs.nx - consolidate - nodes(G_split_opps, buffer_dist=25, merge_edges_by_midline=True, cent_min_degree=2)
+    G_merged_spatial = graphs.nx_consolidate_nodes(
+        G_split_opps, buffer_dist=25, merge_edges_by_midline=True, cent_min_degree=2
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
 
