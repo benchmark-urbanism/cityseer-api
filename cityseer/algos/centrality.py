@@ -234,7 +234,7 @@ def _node_betweenness_beta(to_short_dist: np.float32, beta: np.float32) -> np.fl
     return np.float32(np.exp(-beta * to_short_dist))
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def local_node_centrality(
     network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.float32],
@@ -405,7 +405,7 @@ def _segment_beta(  # pylint: disable=unused-argument
     return np.float32((np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta)
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def local_segment_centrality(
     network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.float32],
