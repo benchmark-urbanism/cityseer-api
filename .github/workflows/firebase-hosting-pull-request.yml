@@ -2,29 +2,27 @@
 # https://github.com/firebase/firebase-tools
 
 name: deploy docs to stage via pull request
-"on": pull_request
+on: pull_request
 jobs:
   build_and_preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
       - uses: pdm-project/setup-pdm@main
         name: Setup PDM
         with:
-          python-version: 3.9
+          python-version: "3.10"
           prerelease: true
           enable-pep582: true
-      - name: Install dependencies
-        run: pdm install --dev
       - name: Build docs
-        run: pdm run build_docs
-      - name: Cache pnpm modules
-        uses: actions/cache@v2
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-
-      - uses: pnpm/action-setup@v2.1.0
+        run: |
+          pdm install --dev
+          pdm run build_docs
+      - uses: pnpm/action-setup@v2.2.2
         with:
           version: latest
           run_install: |
