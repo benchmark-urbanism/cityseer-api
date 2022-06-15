@@ -714,7 +714,7 @@ class NetworkLayer:
         measure_keys = tuple(prep_measure_keys)
         if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-            progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
+            progress_proxy = ProgressBar(update_interval=1, total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
         measures_data = centrality.local_node_centrality(
@@ -813,7 +813,7 @@ class NetworkLayer:
         measure_keys = tuple(prep_measure_keys)
         if not config.QUIET_MODE:
             logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-            progress_proxy = ProgressBar(total=self.network_structure.nodes.count)
+            progress_proxy = ProgressBar(update_interval=1, total=self.network_structure.nodes.count)
         else:
             progress_proxy = None
         measures_data = centrality.local_segment_centrality(
