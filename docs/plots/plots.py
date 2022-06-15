@@ -130,7 +130,7 @@ G = graphs.nx_remove_filler_nodes(G)
 simple_plot(G, f"{images_path}/graph_cleaning_2.png")
 
 # first pass of consolidation
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
+G1 = graphs.nx - consolidate - nodes(G, buffer_dist=10, min_node_group=3)
 simple_plot(G1, f"{images_path}/graph_cleaning_3.png")
 
 # split opposing line geoms to facilitate parallel merging
@@ -138,7 +138,7 @@ G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
 simple_plot(G2, f"{images_path}/graph_cleaning_4.png")
 
 # second pass of consolidation
-G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
+G3 = graphs.nx - consolidate - nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
 simple_plot(G3, f"{images_path}/graph_cleaning_5.png")
 
 #
@@ -335,8 +335,8 @@ G = graphs.nx_remove_dangling_nodes(G, despine=10)
 # repeat degree=2 removal to remove orphaned nodes due to despining
 G = graphs.nx_remove_filler_nodes(G)
 # let's consolidate the nodes
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
+G1 = graphs.nx - consolidate - nodes(G, buffer_dist=10, min_node_group=3)
 # let's also remove as many parallel carriageways as possible
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
+G3 = graphs.nx - consolidate - nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
 simple_plot(G3, f"{images_path}/osmnx_cityseer_simplification.png")

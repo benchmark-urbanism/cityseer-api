@@ -199,7 +199,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Convert a data dictionary into a [`DataMap`](/structures/#datamap) for use by a [`DataLayer`](#datalayer/).
+Convert a data dictionary into a [`DataMap`](/structures/#datamap) for use by a [`DataLayer`](#datalayer).
 :::note
 It is generally not necessary to use this function directly. This function will be called implicitly when invoking
 [DataLayerFromDict](#datalayerfromdict)
@@ -625,7 +625,7 @@ print(cc_netw.metrics_state.accessibility.non_weighted['d'][distance_idx][node_i
 # prints: 1.0
 ```
 
- Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
 
 :::warning
 Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
@@ -950,7 +950,7 @@ print(cc_netw.metrics_state.stats['mock_stat']['mean_weighted'][distance_idx][no
 # prints: 71.29311697979952
 ```
 
- Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-networkx).
+ Note that the data can also be unpacked to a dictionary using [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX` graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
 
 :::note
 Per the above worked example, the following stat types will be available for each `stats_key` for each of the

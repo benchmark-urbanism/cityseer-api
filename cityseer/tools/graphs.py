@@ -1089,7 +1089,7 @@ def nx_split_opposing_geoms(
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
 
     This facilitates merging parallel roadways through subsequent use of
-    [`nx_consolidate_nodes`](#nx_consolidate_nodes).
+    [`nx-consolidate-nodes`](#nx-consolidate-nodes).
 
     Parameters
     ----------
@@ -1629,7 +1629,7 @@ def network_structure_from_nx(
     node_keys: tuple[int | str]
         A tuple of node `keys` corresponding to the node identifiers in the source `networkX` graph.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/networkstructure) instance.
+        A [`NetworkStructure`](/structures/#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -1759,7 +1759,7 @@ def nx_from_network_structure(
 
     :::warning
     It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-networkx)
+    [NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-nx-multigraph)
     :::
 
     Parameters
@@ -1767,7 +1767,7 @@ def nx_from_network_structure(
     node_keys: tuple[int | str]
         A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/networkstructure) instance.
+        A [`NetworkStructure`](/structures/#networkstructure) instance.
     nx_multigraph: MultiGraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
         correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
@@ -1892,7 +1892,7 @@ def nx_from_osm_nx(
     """
     Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
 
-    See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on workflows
+    See the [`OSMnx`](/guide/#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows
     combining `OSMnx` with `cityseer`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge

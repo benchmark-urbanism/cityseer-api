@@ -411,11 +411,11 @@ def plot_assignment(  # noqa
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/networkstructure) instance.
+        A [`NetworkStructure`](/structures/#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_map: structures.DataMap
-        A [`DataMap`](/structures/datamap) instance.
+        A [`DataMap`](/structures/#datamap) instance.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -543,9 +543,9 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/networkstructure) instance.
+        A [`NetworkStructure`](/structures/#networkstructure) instance.
     data_map: structures.DataMap
-        A [`DataMap`](/structures/datamap) instance.
+        A [`DataMap`](/structures/#datamap) instance.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 

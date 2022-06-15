@@ -1,9 +1,8 @@
 """
-The `structures` module defines data structures used by the low-level `cityseer` API.
+The `structures` module defines data structures used by the lower-level `cityseer` API.
 
 The data structures defined in this modules are created and managed automatically by the user-facing API. It is
-therefore generally not necessary to create these structures directly unless direct interaction the lower-level API is
-intentional.
+therefore not necessary to create these structures directly unless interaction the lower-level API is intentional.
 """
 from typing import Any
 
@@ -97,25 +96,6 @@ class NodeMap:
 
     It is not necessary to invoke this class directly if using a `NetworkStructure` class, which will generate the
     `NodeMap` implicitly.
-
-    :::note
-    The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-    projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
-    can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
-    UTM `x`, `y` projected coordinate system.
-    :::
-
-    :::note
-    When calculating local network centralities or land-use accessibilities, it is best-practice to buffer the
-    network by a distance equal to the maximum distance threshold to be considered. This prevents problematic
-    results arising due to boundary roll-off effects.
-
-    The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
-    that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus
-    reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area.
-    If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered,
-    then set all nodes to `live=True`.
-    :::
     """
 
     xs: npt.NDArray[np.float32]
@@ -323,17 +303,6 @@ class NetworkStructure:
         """
         Add a node to the `NetworkStructure`.
 
-        The `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable
-        projected (flat) coordinate reference system in metres. [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
-        can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic coordinates to the local
-        UTM `x`, `y` projected coordinate system.
-
-        :::warning
-        When calculating local network centralities or land-use accessibilities it is necessary to buffer the network by
-        a distance equal to the maximum distance threshold to be considered. This prevents problematic results due to
-        boundary roll-off effects.
-        :::
-
         Parameters
         ----------
         node_idx: int
@@ -344,10 +313,8 @@ class NetworkStructure:
             The `y` coordinate for the added node.
         node_live: bool
             The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
-            that fall within the surrounding buffered area. Calculations are only performed for `live=True` nodes, thus
-            reducing frivolous computation while also cleanly identifying which nodes are in the buffered roll-off area.
-            If some other process will be used for filtering the nodes, or if boundary roll-off is not being considered,
-            then set all nodes to `live=True`.
+            that fall within the surrounding buffered area. See the [edge-rolloff](/guide/#edge-rolloff) section in the
+            guide.
 
         """
         self.nodes.xs[node_idx] = node_x
