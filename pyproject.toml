@@ -38,11 +38,11 @@ dependencies = [
     "requests>=2.27.1",
     "scikit-learn>=1.0.2",
     "tqdm>=4.63.1",
-    "numba-progress>=0.0.2",
     "utm>=0.7.0",
     "shapely>=1.8.2",
     "numba>=0.55.2",
     "numpy>=1.22.4",
+    "numba-progress>=0.0.3",
 ]
 
 [project.urls]

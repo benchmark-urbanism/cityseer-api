@@ -27,7 +27,7 @@ Python 3.
 
 ## Notebooks
 
-The getting started guide on this page, and a growing collection of other examples, is available as an Ipython Notebook on the [`Examples`](/examples/) page.
+The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebook on the [`Examples`](/examples/) page.
 
 ## Quickstart
 
