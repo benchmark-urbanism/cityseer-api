@@ -38,6 +38,7 @@ specifiers:
   remark-math: 5.1.1
   remark-smartypants: 2.0.0
   serialize-javascript: ^6.0.0
+  shiki: ^0.10.1
   shorthash: ^0.0.2
   stylelint: 14.9.1
   stylelint-config-prettier: 9.0.3
@@ -90,6 +91,7 @@ devDependencies:
   remark-math: 5.1.1
   remark-smartypants: 2.0.0
   serialize-javascript: 6.0.0
+  shiki: 0.10.1
   shorthash: 0.0.2
   stylelint: 14.9.1
   stylelint-config-prettier: 9.0.3_stylelint@14.9.1
