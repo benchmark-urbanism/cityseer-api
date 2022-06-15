@@ -334,7 +334,7 @@ class DataLayer:
         """
         self._network_layer = network_layer
         if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)  # type: ignore
+            progress_proxy = ProgressBar(update_interval=1, total=self.data_map.count)  # type: ignore
         else:
             progress_proxy = None
         data.assign_to_network(
@@ -623,7 +623,7 @@ class DataLayer:
             if not config.QUIET_MODE:
                 logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
         if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)
+            progress_proxy = ProgressBar(update_interval=1, total=self.network_layer.network_structure.nodes.count)
         else:
             progress_proxy = None
         # call the underlying method
@@ -952,7 +952,7 @@ class DataLayer:
             raise ValueError("The length of data arrays must match the number of data points.")
         if not config.QUIET_MODE:
             logger.info(f'Computing stats for: {", ".join(stats_keys)}')
-            progress_proxy = ProgressBar(total=self.network_layer.network_structure.nodes.count)
+            progress_proxy = ProgressBar(update_interval=1, total=self.network_layer.network_structure.nodes.count)
         else:
             progress_proxy = None
         # call the underlying method
