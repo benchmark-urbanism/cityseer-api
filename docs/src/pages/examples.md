@@ -29,3 +29,9 @@ The following notebooks provide some general examples of how this package can be
 [Github](https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_pubs.ipynb)
 
 [Google colab](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demos/london_pubs.ipynb)
+
+## Importing OSM data with OSMnx
+
+[Github](https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/osm_to_cityseer.ipynb)
+
+[Google colab](https://colab.research.google.com/github/cityseer/cityseer/blob/master/demos/osm_to_cityseer.ipynb)
