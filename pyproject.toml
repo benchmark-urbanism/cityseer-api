@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '2.0.0b4'
+version = '2.0.0b5'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.8, <3.11"
@@ -96,13 +96,15 @@ coverage_report = { shell = "coverage report --show-missing --skip-empty && cove
 build_project = { shell = "pdm run formatting && pdm run linting && pdm run typechecks && pdm run tests && pdm build" }
 
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["cityseer"]
 
-[tool.setuptools_scm]
+[tool.setuptools.packages.find]
+where = [
+    "./cityseer",
+] # list of folders that contain the packages (["."] by default)
 
 [tool.black]
 line-length = 120
