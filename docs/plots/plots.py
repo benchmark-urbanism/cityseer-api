@@ -10,17 +10,19 @@ from shapely import geometry
 from cityseer.metrics import layers, networks  # pylint: disable=import-error
 from cityseer.tools import graphs, mock, plot  # pylint: disable=import-error
 
-plt_rc_path = pathlib.Path(__file__).parent / "matplotlibrc"
-print(f"matplotlibrc path: {plt_rc_path}")
-plt.style.use(plt_rc_path)
+PLOT_RC_PATH = pathlib.Path(__file__).parent / "matplotlibrc"
+print(f"matplotlibrc path: {PLOT_RC_PATH}")
+plt.style.use(PLOT_RC_PATH)
 
-images_path = pathlib.Path(__file__).parent.parent / "public/images"
-print(f"images path: {images_path}")
+IMAGES_PATH = pathlib.Path(__file__).parent.parent / "public/images"
+print(f"images path: {IMAGES_PATH}")
+
+FORMAT = "png"
 
 ###
 # INTRO PLOT
 G = mock.mock_graph()
-plot.plot_nx(G, labels=True, node_size=80, path=f"{images_path}/graph.png", dpi=150)
+plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}", dpi=150)
 
 # INTRO EXAMPLE PLOTS
 G = graphs.nx_simple_geoms(G)
@@ -50,7 +52,7 @@ plot.plot_nx(
     G_metrics,
     plot_geoms=True,
     node_colour=segment_harmonic_cols,
-    path=f"{images_path}/intro_segment_harmonic.png",
+    path=f"{IMAGES_PATH}/intro_segment_harmonic.{FORMAT}",
     dpi=150,
 )
 
@@ -62,7 +64,7 @@ plot.plot_assignment(
     cc_netw.network_structure,
     cc_netw.nx_multigraph,
     cc_data.data_map,
-    path=f"{images_path}/intro_mixed_uses.png",
+    path=f"{IMAGES_PATH}/intro_mixed_uses.{FORMAT}",
     node_colour=mixed_uses_cols,
     data_labels=landuse_labels,
     dpi=150,
@@ -78,21 +80,21 @@ plot.plot_nx(
     plot_geoms=True,
     labels=True,
     node_size=80,
-    path=f"{images_path}/graph_example.png",
+    path=f"{IMAGES_PATH}/graph_example.{FORMAT}",
     dpi=150,
 )  # WITH LABELS
 
 #
 #
 # GRAPH MODULE
-plot.plot_nx(G, plot_geoms=True, path=f"{images_path}/graph_simple.png", dpi=150)  # NO LABELS
+plot.plot_nx(G, plot_geoms=True, path=f"{IMAGES_PATH}/graph_simple.{FORMAT}", dpi=150)  # NO LABELS
 
 G_simple = graphs.nx_simple_geoms(G)
 G_decomposed = graphs.nx_decompose(G_simple, 100)
-plot.plot_nx(G_decomposed, plot_geoms=True, path=f"{images_path}/graph_decomposed.png", dpi=150)
+plot.plot_nx(G_decomposed, plot_geoms=True, path=f"{IMAGES_PATH}/graph_decomposed.{FORMAT}", dpi=150)
 
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=True, path=f"{images_path}/graph_dual.png", dpi=150)
+plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=True, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=150)
 
 # graph cleanup examples
 lng, lat = -0.13396079424572427, 51.51371088849723
@@ -122,24 +124,24 @@ def simple_plot(_G, _path, plot_geoms=True):
 
 
 G = graphs.nx_simple_geoms(G_utm)
-simple_plot(G, f"{images_path}/graph_cleaning_1.png", plot_geoms=False)
+simple_plot(G, f"{IMAGES_PATH}/graph_cleaning_1.{FORMAT}", plot_geoms=False)
 
 G = graphs.nx_remove_filler_nodes(G)
 G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nx_remove_filler_nodes(G)
-simple_plot(G, f"{images_path}/graph_cleaning_2.png")
+simple_plot(G, f"{IMAGES_PATH}/graph_cleaning_2.{FORMAT}")
 
 # first pass of consolidation
-G1 = graphs.nx - consolidate - nodes(G, buffer_dist=10, min_node_group=3)
-simple_plot(G1, f"{images_path}/graph_cleaning_3.png")
+G1 = graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
+simple_plot(G1, f"{IMAGES_PATH}/graph_cleaning_3.{FORMAT}")
 
 # split opposing line geoms to facilitate parallel merging
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-simple_plot(G2, f"{images_path}/graph_cleaning_4.png")
+simple_plot(G2, f"{IMAGES_PATH}/graph_cleaning_4.{FORMAT}")
 
 # second pass of consolidation
-G3 = graphs.nx - consolidate - nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
-simple_plot(G3, f"{images_path}/graph_cleaning_5.png")
+G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
+simple_plot(G3, f"{IMAGES_PATH}/graph_cleaning_5.{FORMAT}")
 
 #
 #
@@ -153,7 +155,7 @@ plot.plot_nx(
     plot_geoms=True,
     labels=True,
     node_size=80,
-    path=f"{images_path}/graph_before.png",
+    path=f"{IMAGES_PATH}/graph_before.{FORMAT}",
     dpi=150,
 )
 
@@ -168,7 +170,7 @@ plot.plot_nx(
     plot_geoms=True,
     labels=True,
     node_size=80,
-    path=f"{images_path}/graph_after.png",
+    path=f"{IMAGES_PATH}/graph_after.{FORMAT}",
     dpi=150,
 )
 
@@ -185,7 +187,7 @@ data_dict = mock.mock_data_dict(G, random_seed=25)
 L = layers.DataLayerFromDict(data_dict)
 L.assign_to_network(cc_netw, max_dist=500)
 plot.plot_assignment(
-    cc_netw.network_structure, cc_netw.nx_multigraph, L.data_map, path=f"{images_path}/assignment.png", dpi=150
+    cc_netw.network_structure, cc_netw.nx_multigraph, L.data_map, path=f"{IMAGES_PATH}/assignment.{FORMAT}", dpi=150
 )
 
 G_decomposed = graphs.nx_decompose(G, 50)
@@ -197,7 +199,7 @@ plot.plot_assignment(
     N_decomposed.network_structure,
     N_decomposed.nx_multigraph,
     L.data_map,
-    path=f"{images_path}/assignment_decomposed.png",
+    path=f"{IMAGES_PATH}/assignment_decomposed.{FORMAT}",
     dpi=150,
 )
 
@@ -209,7 +211,7 @@ from cityseer.tools import graphs, mock, plot
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False, path=f"{images_path}/graph_dual.png", dpi=150)
+plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=150)
 
 # generate a MultiGraph and compute gravity
 G = mock.mock_graph()
@@ -237,7 +239,7 @@ cols = cmap(vals)
 plot.plot_nx(
     G_after,
     plot_geoms=True,
-    path=f"{images_path}/graph_colour.png",
+    path=f"{IMAGES_PATH}/graph_colour.{FORMAT}",
     node_colour=cols,
     dpi=150,
 )
@@ -251,7 +253,7 @@ plot.plot_assignment(
     cc_netw.network_structure,
     cc_netw.nx_multigraph,
     cc_data.data_map,
-    path=f"{images_path}/assignment_plot.png",
+    path=f"{IMAGES_PATH}/assignment_plot.{FORMAT}",
     data_labels=landuse_labels,
     dpi=150,
 )
@@ -293,7 +295,7 @@ leg = ax.legend(
     facecolor="#19181B",
 )
 leg.get_frame().set_linewidth(0.1)
-plt.savefig(f"{images_path}/betas.png", dpi=300, facecolor="#19181B")
+plt.savefig(f"{IMAGES_PATH}/betas.{FORMAT}", dpi=300, facecolor="#19181B")
 
 #
 #
@@ -318,7 +320,7 @@ multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
 multi_graph_cons = graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
-simple_plot(multi_graph_cons, f"{images_path}/osmnx_simplification.png")
+simple_plot(multi_graph_cons, f"{IMAGES_PATH}/osmnx_simplification.{FORMAT}")
 
 # WORKFLOW 2: Using cityseer for simplification
 # =============================================
@@ -335,8 +337,8 @@ G = graphs.nx_remove_dangling_nodes(G, despine=10)
 # repeat degree=2 removal to remove orphaned nodes due to despining
 G = graphs.nx_remove_filler_nodes(G)
 # let's consolidate the nodes
-G1 = graphs.nx - consolidate - nodes(G, buffer_dist=10, min_node_group=3)
+G1 = graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
 # let's also remove as many parallel carriageways as possible
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = graphs.nx - consolidate - nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
-simple_plot(G3, f"{images_path}/osmnx_cityseer_simplification.png")
+G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
+simple_plot(G3, f"{IMAGES_PATH}/osmnx_cityseer_simplification.{FORMAT}")
