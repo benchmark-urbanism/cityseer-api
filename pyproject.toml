@@ -30,7 +30,11 @@ keywords = [
 ]
 authors = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
 maintainers = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
-classifiers = ["Programming Language :: Python :: 3"]
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
 dependencies = [
     "matplotlib>=3.5.1",
     "networkx>=2.7.1",
@@ -72,13 +76,13 @@ dev = [
     "notebook>=7.0.0a4",
 ]
 
-[tool.pdm]
-allow_prereleases = true
+# [tool.pdm]
+# allow_prereleases = true
 
-[[tool.pdm.source]]
-url = "https://test.pypi.org/simple"
-name = "test"
-verify_ssl = true
+# [[tool.pdm.source]]
+# url = "https://test.pypi.org/simple"
+# name = "test"
+# verify_ssl = true
 
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
@@ -96,15 +100,22 @@ coverage_report = { shell = "coverage report --show-missing --skip-empty && cove
 build_project = { shell = "pdm run formatting && pdm run linting && pdm run typechecks && pdm run tests && pdm build" }
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
+include-package-data = false
 
 [tool.setuptools.packages.find]
-where = [
-    "./cityseer",
-] # list of folders that contain the packages (["."] by default)
+where = ["."] # list of folders that contain the packages (["."] by default)
+include = [
+    "cityseer*",
+] # package names should match these glob patterns (["*"] by default)
+exclude = [
+    "demos*",
+    "build*",
+] # exclude packages matching these glob patterns (empty by default)
+namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 
 [tool.black]
 line-length = 120

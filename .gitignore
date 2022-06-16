@@ -5,7 +5,7 @@
 cityseer/_version.py
 
 # temporary working directories
-**/temp
+**/temp/**
 
 # pdm
 .pdm.toml
@@ -28,7 +28,7 @@ __pycache__/
 *.so
 
 # general cache
-cache/
+cache
 
 # node modules and gridsome are nested into the docs directory
 **/logs
