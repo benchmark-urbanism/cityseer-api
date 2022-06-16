@@ -53,12 +53,13 @@ dependencies = [
 
 [[package]]
 name = "astroid"
-version = "2.11.5"
+version = "2.11.6"
 requires_python = ">=3.6.2"
 summary = "An abstract syntax tree for Python with inference support."
 dependencies = [
     "lazy-object-proxy>=1.4.0",
     "setuptools>=20.0",
+    "typing-extensions>=3.10; python_version < \"3.10\"",
     "wrapt<2,>=1.11",
 ]
 
@@ -108,6 +109,7 @@ dependencies = [
     "pathspec>=0.9.0",
     "platformdirs>=2",
     "tomli>=1.1.0; python_version < \"3.11\"",
+    "typing-extensions>=3.10.0.0; python_version < \"3.10\"",
 ]
 
 [[package]]
@@ -271,6 +273,24 @@ requires_python = ">=3.5"
 summary = "Internationalized Domain Names in Applications (IDNA)"
 
 [[package]]
+name = "importlib-metadata"
+version = "4.11.4"
+requires_python = ">=3.7"
+summary = "Read metadata from Python packages"
+dependencies = [
+    "zipp>=0.5",
+]
+
+[[package]]
+name = "importlib-resources"
+version = "5.8.0"
+requires_python = ">=3.7"
+summary = "Read resources from Python packages"
+dependencies = [
+    "zipp>=3.1.0; python_version < \"3.10\"",
+]
+
+[[package]]
 name = "iniconfig"
 version = "1.1.2.dev35"
 summary = "iniconfig: brain-dead simple config-ini parsing"
@@ -289,6 +309,7 @@ dependencies = [
     "nest-asyncio",
     "packaging",
     "psutil",
+    "pyzmq>=17",
     "tornado>=6.1",
     "traitlets>=5.1.0",
 ]
@@ -374,6 +395,7 @@ requires_python = ">=3.7"
 summary = "An implementation of JSON Schema validation for Python"
 dependencies = [
     "attrs>=17.4.0",
+    "importlib-resources>=1.4.0; python_version < \"3.9\"",
     "pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0",
 ]
 
@@ -410,7 +432,7 @@ dependencies = [
     "jupyter-core>=4.9.2",
     "nest-asyncio>=1.5.4",
     "python-dateutil>=2.8.2",
-    "pyzmq>=22.3",
+    "pyzmq>=23.0",
     "tornado>=6.0",
     "traitlets",
 ]
@@ -479,6 +501,8 @@ version = "4.0.0a26"
 requires_python = ">=3.7"
 summary = "JupyterLab computational environment"
 dependencies = [
+    "importlib-metadata>=3.6; python_version < \"3.10\"",
+    "importlib-resources>=1.4; python_version < \"3.9\"",
     "ipykernel",
     "jinja2>=3.0.3",
     "jupyter-core",
@@ -504,6 +528,7 @@ requires_python = ">=3.7"
 summary = "A set of server components for JupyterLab and JupyterLab like applications."
 dependencies = [
     "babel",
+    "importlib-metadata>=3.6; python_version < \"3.10\"",
     "jinja2>=3.0.3",
     "json5",
     "jsonschema>=3.0.1",
@@ -557,6 +582,9 @@ name = "markdown"
 version = "3.3.7"
 requires_python = ">=3.6"
 summary = "Python implementation of Markdown."
+dependencies = [
+    "importlib-metadata>=4.4; python_version < \"3.10\"",
+]
 
 [[package]]
 name = "markupsafe"
@@ -635,7 +663,7 @@ dependencies = [
     "jupyter-client>=6.1.5",
     "nbformat>=5.0",
     "nest-asyncio",
-    "traitlets>=5.0.0",
+    "traitlets>=5.2.2",
 ]
 
 [[package]]
@@ -743,7 +771,7 @@ summary = "NumPy is the fundamental package for array computing with Python."
 
 [[package]]
 name = "osmnx"
-version = "1.2.0"
+version = "1.2.1"
 requires_python = ">=3.8"
 summary = "Retrieve, model, analyze, and visualize OpenStreetMap street networks and other spatial data"
 dependencies = [
@@ -773,6 +801,9 @@ version = "1.4.2"
 requires_python = ">=3.8"
 summary = "Powerful data structures for data analysis, time series, and statistics"
 dependencies = [
+    "numpy>=1.18.5; platform_machine != \"aarch64\" and platform_machine != \"arm64\" and python_version < \"3.10\"",
+    "numpy>=1.19.2; platform_machine == \"aarch64\" and python_version < \"3.10\"",
+    "numpy>=1.20.0; platform_machine == \"arm64\" and python_version < \"3.10\"",
     "numpy>=1.21.0; python_version >= \"3.10\"",
     "python-dateutil>=2.8.1",
     "pytz>=2020.1",
@@ -900,7 +931,7 @@ version = "3.0.0a5"
 requires_python = ">=3.7.2"
 summary = "python code static checker"
 dependencies = [
-    "astroid<=2.12.0-dev0,>=2.11.5",
+    "astroid<=2.12.0-dev0,>=2.11.6",
     "colorama; sys_platform == \"win32\"",
     "dill>=0.2",
     "isort<6,>=4.2.5",
@@ -908,6 +939,7 @@ dependencies = [
     "platformdirs>=2.2.0",
     "tomli>=1.1.0; python_version < \"3.11\"",
     "tomlkit>=0.10.1",
+    "typing-extensions>=3.10.0; python_version < \"3.10\"",
 ]
 
 [[package]]
@@ -1013,7 +1045,7 @@ dependencies = [
     "pygments",
     "pyzmq>=17.1",
     "qtpy>=2.0.1",
-    "traitlets",
+    "traitlets!=5.2.1,!=5.2.2",
 ]
 
 [[package]]
@@ -1193,7 +1225,7 @@ summary = "Stub type files for tqdm"
 
 [[package]]
 name = "traitlets"
-version = "5.2.1.post0"
+version = "5.3.0.dev0"
 requires_python = ">=3.7"
 summary = ""
 
@@ -1264,8 +1296,8 @@ summary = ""
 
 [[package]]
 name = "yapper"
-version = "0.3.0b18"
-requires_python = ">=3.10,<4.0"
+version = "0.3.1"
+requires_python = ">=3.8,<4.0"
 summary = "Parser for converting python docstrings to .astro files for the Astro static site generator."
 dependencies = [
     "Markdown<4.0.0,>=3.3.6",
@@ -1286,9 +1318,15 @@ dependencies = [
     "y-py<0.6.0,>=0.5.0",
 ]
 
+[[package]]
+name = "zipp"
+version = "3.8.0"
+requires_python = ">=3.7"
+summary = "Backport of pathlib-compatible object wrapper for zip files"
+
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e555bd1cc0"
+content_hash = "sha256:ed125085d6fb47dea279e4c9047cfda70569b805de5a8e9abebbceb28a360885"
 
 [metadata.files]
 "aiofiles 0.8.0" = [
@@ -1338,9 +1376,9 @@ content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e55
     {file = "argon2_cffi_bindings-21.2.0-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:5e00316dabdaea0b2dd82d141cc66889ced0cdcbfa599e8b471cf22c620c329a"},
     {file = "argon2-cffi-bindings-21.2.0.tar.gz", hash = "sha256:bb89ceffa6c791807d1305ceb77dbfacc5aa499891d2c55661c6459651fc39e3"},
 ]
-"astroid 2.11.5" = [
-    {file = "astroid-2.11.5-py3-none-any.whl", hash = "sha256:14ffbb4f6aa2cf474a0834014005487f7ecd8924996083ab411e7fa0b508ce0b"},
-    {file = "astroid-2.11.5.tar.gz", hash = "sha256:f4e4ec5294c4b07ac38bab9ca5ddd3914d4bf46f9006eb5c0ae755755061044e"},
+"astroid 2.11.6" = [
+    {file = "astroid-2.11.6-py3-none-any.whl", hash = "sha256:ba33a82a9a9c06a5ceed98180c5aab16e29c285b828d94696bf32d6015ea82a9"},
+    {file = "astroid-2.11.6.tar.gz", hash = "sha256:4f933d0bf5e408b03a6feb5d23793740c27e07340605f236496cd6ce552043d6"},
 ]
 "atomicwrites 1.4.0" = [
     {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
@@ -1584,6 +1622,14 @@ content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e55
 "idna 3.3" = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
+]
+"importlib-metadata 4.11.4" = [
+    {file = "importlib_metadata-4.11.4-py3-none-any.whl", hash = "sha256:c58c8eb8a762858f49e18436ff552e83914778e50e9d2f1660535ffb364552ec"},
+    {file = "importlib_metadata-4.11.4.tar.gz", hash = "sha256:5d26852efe48c0a32b0509ffbc583fda1a2266545a78d104a6f4aff3db17d700"},
+]
+"importlib-resources 5.8.0" = [
+    {file = "importlib_resources-5.8.0-py3-none-any.whl", hash = "sha256:7952325ffd516c05a8ad0858c74dff2c3343f136fe66a6002b2623dd1d43f223"},
+    {file = "importlib_resources-5.8.0.tar.gz", hash = "sha256:568c9f16cb204f9decc8d6d24a572eeea27dacbb4cee9e6b03a8025736769751"},
 ]
 "iniconfig 1.1.2.dev35" = [
     {file = "iniconfig-1.1.2.dev35-py3-none-any.whl", hash = "sha256:f5e49ca31c4bdec8c09e510ba86e4f5b7d4f7dd665e77afbd534149a51902a16"},
@@ -1988,9 +2034,9 @@ content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e55
     {file = "numpy-1.22.4-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0791fbd1e43bf74b3502133207e378901272f3c156c4df4954cad833b1380207"},
     {file = "numpy-1.22.4.zip", hash = "sha256:425b390e4619f58d8526b3dcf656dde069133ae5c240229821f01b5f44ea07af"},
 ]
-"osmnx 1.2.0" = [
-    {file = "osmnx-1.2.0-py2.py3-none-any.whl", hash = "sha256:c2d3bce9fa3f4f459acb525a06075e6142c29e8842880105b203f09b0f6914bd"},
-    {file = "osmnx-1.2.0.tar.gz", hash = "sha256:efd5bbea05f9f4677ba7e18cc9d7de814317405c8cf059909e06a7861dc5486b"},
+"osmnx 1.2.1" = [
+    {file = "osmnx-1.2.1-py2.py3-none-any.whl", hash = "sha256:d800aa613cd5a16a5bef9d798f2a0ee660962dc87e577ad3afbc2177ae047e5c"},
+    {file = "osmnx-1.2.1.tar.gz", hash = "sha256:826f834b8a954142fabd2aeae57f84a899c1e68f3eea2ffbdf04aeb2e8e761b9"},
 ]
 "packaging 21.3" = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
@@ -2583,9 +2629,9 @@ content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e55
     {file = "tqdm_stubs-0.2.0-py3-none-any.whl", hash = "sha256:08af5babaa9945c86315d0fb2c3c98866a7bbe1085ec2c9130a00a6a825162b9"},
     {file = "tqdm-stubs-0.2.0.tar.gz", hash = "sha256:ff0c90e78c2736ffaf68922e2c84025cee571b48c02e7ded1549ab0f807f816f"},
 ]
-"traitlets 5.2.1.post0" = [
-    {file = "traitlets-5.2.1.post0-py3-none-any.whl", hash = "sha256:f44b708d33d98b0addb40c29d148a761f44af740603a8fd0e2f8b5b27cf0f087"},
-    {file = "traitlets-5.2.1.post0.tar.gz", hash = "sha256:70815ecb20ec619d1af28910ade523383be13754283aef90528eb3d47b77c5db"},
+"traitlets 5.3.0.dev0" = [
+    {file = "traitlets-5.3.0.dev0-py3-none-any.whl", hash = "sha256:c08a63e48d645734db27f153808fb35022f97a22becb6ed22171c03cc361a120"},
+    {file = "traitlets-5.3.0.dev0.tar.gz", hash = "sha256:678693c3e0a71c968cc80f959205a6e87350ea45e289906a8e356fb3e402ae19"},
 ]
 "types-requests 2.27.30" = [
     {file = "types_requests-2.27.30-py3-none-any.whl", hash = "sha256:b9b6cd0a6e5d500e56419b79f44ec96f316e9375ff6c8ee566c39d25e9612621"},
@@ -2715,11 +2761,15 @@ content_hash = "sha256:3b10928bfb5f85190400ad0f1b551a315a606796c336a032bda782e55
     {file = "y_py-0.5.0-pp37-pypy37_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:5191fdd7f70a4bad135af24d8e4f2ffddade4a44598a6b1430f6d3b3b6eac3b8"},
     {file = "y_py-0.5.0.tar.gz", hash = "sha256:951b763fc19d0867e35c2b936b6874c982a674a45db9cf086b269cea3e495883"},
 ]
-"yapper 0.3.0b18" = [
-    {file = "yapper-0.3.0b18-py3-none-any.whl", hash = "sha256:53ffb68d5172cad27c7b2755f01053c7ff3bf496bc76196f0dac61561bf8b50d"},
-    {file = "yapper-0.3.0b18.tar.gz", hash = "sha256:a15ce1ff00ffb3ea1c4564591a42fffe5ff5d2d88715654761668b06aebfd09c"},
+"yapper 0.3.1" = [
+    {file = "yapper-0.3.1-py3-none-any.whl", hash = "sha256:8e24e8dae5b6e11d82be847172dd440d5f8b53b0c578da33fc7c526cc1fa8124"},
+    {file = "yapper-0.3.1.tar.gz", hash = "sha256:6eb99ea45c2b739ef3e07f4f2852c042752189e617477b65f8869dac153534c8"},
 ]
 "ypy-websocket 0.1.13" = [
     {file = "ypy_websocket-0.1.13-py2.py3-none-any.whl", hash = "sha256:37e77e1cdc7073d512417bc59264549e15bde06539cc8bdfb01b3aa36b867017"},
     {file = "ypy_websocket-0.1.13.tar.gz", hash = "sha256:2e667658db404be063ea0c9d4652c7a1d051d4e181e9c4d07580b2d7477f6989"},
+]
+"zipp 3.8.0" = [
+    {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},
+    {file = "zipp-3.8.0.tar.gz", hash = "sha256:56bf8aadb83c24db6c4b577e13de374ccfb67da2078beba1d037c17980bf43ad"},
 ]

@@ -1,9 +1,9 @@
 [project]
 name = "cityseer"
-version = '2.0.0b2'
+version = '2.0.0b3'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.10, <3.11"
+requires-python = ">=3.8, <3.11"
 license = { text = "AGPL-3.0" }
 keywords = [
     "network-topology",
@@ -72,13 +72,13 @@ dev = [
     "notebook>=7.0.0a4",
 ]
 
+[tool.pdm]
+allow_prereleases = true
+
 [[tool.pdm.source]]
 url = "https://test.pypi.org/simple"
 name = "test"
 verify_ssl = true
-
-[tool.pdm]
-allow_prereleases = true
 
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
