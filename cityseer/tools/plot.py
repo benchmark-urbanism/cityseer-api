@@ -37,7 +37,7 @@ COLOUR_MAP = types.ColourMap()
 ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
 
 
-def open_plots_reset():
+def _open_plots_reset():
     plt.close("all")
 
 
@@ -132,7 +132,7 @@ def plot_nx_primal_or_dual(  # noqa
     """
     # cleanup old plots
     if ax is None:
-        open_plots_reset()
+        _open_plots_reset()
         # create new plot
         _fig, target_ax = plt.subplots(1, 1, **kwargs)  # type: ignore
     else:
@@ -440,7 +440,7 @@ def plot_assignment(  # noqa
     _An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels._
 
     """
-    open_plots_reset()
+    _open_plots_reset()
     plt.figure(**kwargs)
 
     if isinstance(node_colour, (list, tuple, np.ndarray)):
@@ -552,7 +552,7 @@ def plot_network_structure(
         An optional polygon. Defaults to None.
 
     """
-    open_plots_reset()
+    _open_plots_reset()
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
     _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
