@@ -14,7 +14,7 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 Documentation for `v2+`: <https://cityseer.benchmarkurbanism.com/>
 
-> If working with version 1, please see [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer) for the now deprecated code and associated docs per the docstrings.
+> If working with version 1, please see [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer) for the now deprecated code and associated docs per the docstrings. The API remains largely similar, except that `nX` named methods have been renamed to `nx`, for example, `nX_simple_geoms` has become `nx_simple_geoms`.
 
 Demo Notebooks: <https://cityseer.benchmarkurbanism.com/examples/>
 
