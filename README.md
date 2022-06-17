@@ -14,7 +14,7 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 Documentation for `v2+`: <https://cityseer.benchmarkurbanism.com/>
 
-> `cityseer` code is documented using docstrings: historically tagged releases can be browsed on this repo for associated docs. See [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1) if looking for `v1`.
+> If working with version 1, please see [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer) for the now deprecated code and associated docs per the docstrings.
 
 Demo Notebooks: <https://cityseer.benchmarkurbanism.com/examples/>
 
