@@ -22,15 +22,15 @@
   }
 
   h1 {
-    @apply pt-12 text-4xl font-extralight pt-8 pb-4;
+    @apply pt-12 pt-8 pb-4 text-4xl font-extralight;
   }
 
   h2 {
-    @apply text-3xl font-normal pt-6 pb-2;
+    @apply pt-6 pb-2 text-3xl font-normal;
   }
 
   h3 {
-    @apply text-2xl font-medium pt-4;
+    @apply pt-4 text-2xl font-medium;
   }
 
   h4 {
@@ -46,10 +46,10 @@
   }
 
   ul {
-    @apply font-light pl-2;
+    @apply pl-2 font-light;
 
     & li {
-      @apply font-light ml-2 my-2 text-sm;
+      @apply my-2 ml-2 text-sm font-light;
 
       list-style-type: disc;
     }
@@ -68,7 +68,7 @@
   }
 
   pre {
-    @apply my-4 p-2 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey;
+    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey p-2;
 
     & code {
       @apply text-xs font-normal tracking-tight;
@@ -88,7 +88,7 @@
   }
 
   table {
-    @apply table-auto text-xs m-1 justify-self-center;
+    @apply mx-auto my-2 table-auto text-xs;
 
     & th {
       @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-semibold;
@@ -176,7 +176,7 @@
   @apply my-4 border-t border-mid-grey py-2;
 }
 .csl-entry {
-  @apply text-xs font-light text-light-grey py-1;
+  @apply py-1 text-xs font-light text-light-grey;
 }
 .quote {
   @apply ml-10;
@@ -185,7 +185,7 @@
 
 .box,
 blockquote {
-  @apply bg-dark-grey border rounded p-2 my-2;
+  @apply my-3 rounded border bg-dark-grey px-2;
   & p {
     @apply text-xs;
   }
@@ -194,7 +194,7 @@ blockquote {
   }
 
   &.warning {
-    @apply border-theme;
+    @apply border-[#136ece];
   }
 }
 

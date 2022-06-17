@@ -1,121 +1,133 @@
-from typing import Tuple
+from typing import Any
 
 import numpy as np
-from numba import njit, prange
-from numba.typed import Dict
+import numpy.typing as npt
+from numba import njit, prange  # type: ignore
 
+from cityseer import config, structures
 from cityseer.algos import centrality, checks, diversity
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def find_nearest(src_x: float,
-                 src_y: float,
-                 x_arr: np.ndarray,
-                 y_arr: np.ndarray,
-                 max_dist: float) -> Tuple[int, float]:
-    if len(x_arr) != len(y_arr):
-        raise ValueError('Mismatching x and y array lengths.')
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def find_nearest(
+    src_x: np.float32, src_y: np.float32, node_map: structures.NodeMap, max_dist: np.float32
+) -> tuple[int, np.float32, int]:
+    """Find nearest index and distance from a given point."""
+    min_idx = -1
+    min_dist = np.float32(np.inf)
+    next_min_idx = -1
+    next_min_dist = np.float32(np.inf)
     # filter by distance
-    total_count = len(x_arr)
-    min_idx = np.nan
-    min_dist = np.inf
-    for i in range(total_count):
-        dist = np.hypot(x_arr[i] - src_x, y_arr[i] - src_y)
+    for i in range(node_map.count):
+        dist = np.hypot(node_map.xs[i] - src_x, node_map.ys[i] - src_y)
         if dist <= max_dist and dist < min_dist:
+            next_min_idx = min_idx
+            next_min_dist = min_dist
             min_idx = i
             min_dist = dist
+        elif dist <= max_dist and dist < next_min_dist:
+            next_min_idx = i
+            next_min_dist = dist
 
-    return min_idx, min_dist
+    return min_idx, min_dist, next_min_idx
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _calculate_rotation(point_a, point_b):
-    # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
-    # these two points / angles are relative to the origin - so pass in difference between the points and origin as vectors
+# https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
+# these two points / angles are relative to the origin so pass in difference between the points and origin as vectors
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _calculate_rotation(point_a: npt.NDArray[np.float32], point_b: npt.NDArray[np.float32]) -> np.float32:
     ang_a = np.arctan2(point_a[1], point_a[0])  # arctan is in y/x order
     ang_b = np.arctan2(point_b[1], point_b[0])
     return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _calculate_rotation_smallest(point_a, point_b):
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _calculate_rotation_smallest(point_a: npt.NDArray[np.float32], point_b: npt.NDArray[np.float32]) -> np.float32:
     # smallest difference angle
     ang_a = np.rad2deg(np.arctan2(point_a[1], point_a[0]))
     ang_b = np.rad2deg(np.arctan2(point_b[1], point_b[0]))
     return np.abs((ang_b - ang_a + 180) % 360 - 180)
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _road_distance(node_data, d_coords, netw_idx_a, netw_idx_b):
-    a_coords = node_data[netw_idx_a, :2]
-    b_coords = node_data[netw_idx_b, :2]
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _road_distance(
+    network_structure: structures.NetworkStructure, d_coords: npt.NDArray[np.float32], netw_idx_a: int, netw_idx_b: int
+) -> tuple[np.float32, int, int]:
+    a_coords = network_structure.nodes.x_y(netw_idx_a)
+    b_coords = network_structure.nodes.x_y(netw_idx_b)
     # get the angles from either intersection node to the data point
     ang_a = _calculate_rotation_smallest(d_coords - a_coords, b_coords - a_coords)
     ang_b = _calculate_rotation_smallest(d_coords - b_coords, a_coords - b_coords)
-    # assume offset street segment if either is significantly greater than 90 (in which case sideways offset from road)
+    # assume offset street segment if either is significantly greater than 90
+    # (in which case sideways offset from road)
     if ang_a > 110 or ang_b > 110:
-        return np.inf, np.nan, np.nan
+        return np.float32(np.inf), -1, -1
     # calculate height from two sides and included angle
     side_a = np.hypot(d_coords[0] - a_coords[0], d_coords[1] - a_coords[1])
     side_b = np.hypot(d_coords[0] - b_coords[0], d_coords[1] - b_coords[1])
     base = np.hypot(a_coords[0] - b_coords[0], a_coords[1] - b_coords[1])
     # forestall potential division by zero
     if base == 0:
-        return np.inf, np.nan, np.nan
+        return np.float32(np.inf), -1, -1
     # heron's formula
-    s = (side_a + side_b + base) / 2  # perimeter / 2
-    a = np.sqrt(s * (s - side_a) * (s - side_b) * (s - base))
-    # area is 1/2 base * h, so h = area / (0.5 * base)
-    h = a / (0.5 * base)
+    half_perim = (side_a + side_b + base) / 2  # perimeter / 2
+    area = np.sqrt(half_perim * (half_perim - side_a) * (half_perim - side_b) * (half_perim - base))
+    # area is 1/2 base * height, so height = area / (0.5 * base)
+    height = area / (0.5 * base)
     # NOTE - the height of the triangle may be less than the distance to the nodes
     # happens due to offset segments: can cause wrong assignment where adjacent segments have same triangle height
-    # in this case, set to length of closest node so that h (minimum distance) is still meaningful
+    # in this case, set to length of closest node so that height (minimum distance) is still meaningful
     # return indices in order of nearest then next nearest
     if side_a < side_b:
         if ang_a > 90:
-            h = side_a
-        return h, netw_idx_a, netw_idx_b
-    else:
-        if ang_b > 90:
-            h = side_b
-        return h, netw_idx_b, netw_idx_a
+            height = side_a
+        return height, netw_idx_a, netw_idx_b
+    if ang_b > 90:
+        height = side_b
+    return height, netw_idx_b, netw_idx_a
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def _closest_intersections(node_data, d_coords, pr_map, end_node):
-    if len(pr_map) == 1:
-        return np.inf, end_node, np.nan
-    current_idx = end_node
-    next_idx = int(pr_map[int(end_node)])
-    if len(pr_map) == 2:
-        return _road_distance(node_data, d_coords, current_idx, next_idx)
-    nearest_idx = np.nan
-    next_nearest_idx = np.nan
-    min_d = np.inf
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _closest_intersections(
+    network_structure: structures.NetworkStructure,
+    d_coords: npt.NDArray[np.float32],
+    predecessor_map: npt.NDArray[np.int_],
+    end_node_idx: int,
+) -> tuple[np.float32, int, int]:
+    """Find the closest and next closest nodes."""
+    if len(predecessor_map) == 1:
+        return np.float32(np.inf), end_node_idx, -1
+    current_idx = end_node_idx
+    next_idx = predecessor_map[end_node_idx]
+    if len(predecessor_map) == 2:
+        return _road_distance(network_structure, d_coords, current_idx, next_idx)
+    nearest_idx = -1
+    next_nearest_idx = -1
+    min_d = np.float32(np.inf)
     first_pred = next_idx  # for finding end of loop
     while True:
-        h, n_idx, n_n_idx = _road_distance(node_data, d_coords, current_idx, next_idx)
-        if h < min_d:
-            min_d = h
+        height, n_idx, n_n_idx = _road_distance(network_structure, d_coords, current_idx, next_idx)
+        if height < min_d:
+            min_d = height
             nearest_idx = n_idx
             next_nearest_idx = n_n_idx
-        # if the next in the chain is nan, then break
-        if np.isnan(pr_map[next_idx]):
+        # if the next in the chain is -1, then break
+        if predecessor_map[next_idx] == -1:
             break
         current_idx = next_idx
-        next_idx = int(pr_map[next_idx])
+        next_idx = predecessor_map[next_idx]
         if next_idx == first_pred:
             break
     return min_d, nearest_idx, next_nearest_idx
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
-def assign_to_network(data_map: np.ndarray,
-                      node_data: np.ndarray,
-                      edge_data: np.ndarray,
-                      node_edge_map: Dict,
-                      max_dist: float,
-                      progress_proxy=None) -> np.ndarray:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
+def assign_to_network(
+    data_map: structures.DataMap,
+    network_structure: structures.NetworkStructure,
+    max_dist: np.float32,
+    progress_proxy: Any = None,
+) -> structures.DataMap:
     """
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -125,299 +137,253 @@ def assign_to_network(data_map: np.ndarray,
     3A - select the closest block cycle node
     3B - if no enclosing cycle - simply use the closest node
     4 - find the neighbouring node that minimises the distance between the data point on "street-front"
-    NODE MAP:
-    0 - x
-    1 - y
-    2 - live
-    EDGE MAP:
-    0 - start node
-    1 - end node
-    2 - length in metres
-    3 - sum of angular travel along length
-    4 - impedance factor
-    5 - entry bearing
-    6 - exit bearing
-    DATA MAP:
-    0 - x
-    1 - y
-    2 - assigned network index - nearest
-    3 - assigned network index - next-nearest
     """
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
-
-    netw_coords = node_data[:, :2]
-    netw_x_arr = node_data[:, 0]
-    netw_y_arr = node_data[:, 1]
-    data_coords = data_map[:, :2]
-    data_x_arr = data_map[:, 0]
-    data_y_arr = data_map[:, 1]
-    total_count = len(data_map)
-    for data_idx in prange(total_count):
+    network_structure.validate()
+    data_map.validate(False)
+    for data_idx in prange(data_map.count):  # pylint: disable=not-an-iterable
         if progress_proxy is not None:
             progress_proxy.update(1)
-        # find the nearest network node
-        min_idx, min_dist = find_nearest(data_x_arr[data_idx],
-                                         data_y_arr[data_idx],
-                                         netw_x_arr,
-                                         netw_y_arr,
-                                         max_dist)
-        # in some cases no network node will be within max_dist... so accept NaN
-        if np.isnan(min_idx):
+        # find the nearest and next nearest network nodes
+        src_x, src_y = data_map.x_y(data_idx)
+        min_idx, min_dist, next_min_idx = find_nearest(src_x, src_y, network_structure.nodes, max_dist)
+        # in some cases no network node will be within max_dist...
+        if min_idx == -1:
             continue
+        connected = False
+        # check if min and next min are connected
+        for edge_idx in network_structure.node_edge_map[min_idx]:
+            nb_idx = network_structure.edges.end[edge_idx]
+            if nb_idx == next_min_idx:
+                connected = True
+                break
+        # if connected, then no need to circle the block
+        if connected:
+            data_map.nearest_assign[data_idx] = min_idx
+            data_map.next_nearest_assign[data_idx] = next_min_idx
+            continue
+        # if not connected, find the nearest adjacent by edges
         # nearest is initially set for this nearest node, but if a nearer street-edge is found, it will be overriden
-        nearest = min_idx
-        next_nearest = np.nan
+        nearest_idx = min_idx
+        next_nearest_idx = -1
         # set start node to nearest network node
-        node_idx = int(min_idx)
+        node_idx: int = min_idx
         # keep track of visited nodes
-        pred_map = np.full(len(node_data), np.nan)
+        pred_map: npt.NDArray[np.int_] = np.full(network_structure.nodes.count, -1, dtype=np.int_)
         # state
         reversing = False
         # keep track of previous indices
-        prev_idx = np.nan
+        prev_idx: int = -1
         # iterate neighbours
         while True:
             # reset neighbour rotation and index counters
             rotation = np.nan
-            nb_idx = np.nan
+            nb_idx = -1
             # iterate the edges
-            for edge_idx in node_edge_map[node_idx]:
-                # get the edge's start and end node indices
-                start, end = edge_data[edge_idx, :2]
-                # cast to int for indexing
-                new_idx = int(end)
+            for edge_idx in network_structure.node_edge_map[node_idx]:
+                # new idx from the edge's end node index
+                new_idx = network_structure.edges.end[edge_idx]
                 # don't follow self-loops
                 if new_idx == node_idx:
                     continue
                 # check that this isn't the previous node (already visited as neighbour from other direction)
-                if np.isfinite(prev_idx) and new_idx == prev_idx:
+                if new_idx == prev_idx:
                     continue
                 # look for the new neighbour with the smallest rightwards (anti-clockwise arctan2) angle
                 # measure the angle relative to the data point for the first node
-                if np.isnan(prev_idx):
-                    r = _calculate_rotation(netw_coords[int(new_idx)] - netw_coords[node_idx],
-                                            data_coords[data_idx] - netw_coords[node_idx])
+                if prev_idx == -1:
+                    rot = _calculate_rotation(
+                        network_structure.nodes.x_y(new_idx) - network_structure.nodes.x_y(node_idx),
+                        data_map.x_y(data_idx) - network_structure.nodes.x_y(node_idx),
+                    )
                 # else relative to the previous node
                 else:
-                    r = _calculate_rotation(netw_coords[int(new_idx)] - netw_coords[node_idx],
-                                            netw_coords[int(prev_idx)] - netw_coords[node_idx])
+                    rot = _calculate_rotation(
+                        network_structure.nodes.x_y(new_idx) - network_structure.nodes.x_y(node_idx),
+                        network_structure.nodes.x_y(prev_idx) - network_structure.nodes.x_y(node_idx),
+                    )
                 if reversing:
-                    r = 360 - r
+                    rot = 360 - rot
                 # if least angle, update
-                if np.isnan(rotation) or r < rotation:
-                    rotation = r
+                if np.isnan(rotation) or rot < rotation:
+                    rotation = rot
                     nb_idx = new_idx
             # allow backtracking if no neighbour is found - i.e. dead-ends
-            if np.isnan(nb_idx):
-                if np.isnan(pred_map[node_idx]):
-                    # for isolated nodes: nb_idx == np.nan, pred_map[node_idx] == np.nan, and prev_idx == np.nan
-                    if np.isnan(prev_idx):
+            if nb_idx == -1:
+                if pred_map[node_idx] == -1:
+                    # for isolated nodes: nb_idx == -1, pred_map[node_idx] == -1, and prev_idx == -1
+                    if prev_idx == -1:
                         break
                     # for isolated edges, the algorithm gets turned-around back to the starting node with nowhere to go
-                    # nb_idx == np.nan, pred_map[node_idx] == np.nan
+                    # nb_idx == -1, pred_map[node_idx] == -1
                     # in these cases, pass _closest_intersections the prev idx so that it has a predecessor to follow
-                    d, n, n_n = _closest_intersections(node_data,
-                                                       data_coords[data_idx],
-                                                       pred_map,
-                                                       int(prev_idx))
+                    d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, prev_idx)
                     if d < min_dist:
-                        nearest = n
-                        next_nearest = n_n
+                        nearest_idx = n
+                        next_nearest_idx = n_n
                     break
                 # otherwise, go ahead and backtrack
                 nb_idx = pred_map[node_idx]
             # if the distance is exceeded, reset and attempt in the other direction
-            dist = np.hypot(netw_x_arr[int(nb_idx)] - data_x_arr[data_idx],
-                            netw_y_arr[int(nb_idx)] - data_y_arr[data_idx])
+            dist = np.hypot(
+                network_structure.nodes.xs[nb_idx] - data_map.xs[data_idx],
+                network_structure.nodes.ys[nb_idx] - data_map.ys[data_idx],
+            )
             if dist > max_dist:
-                pred_map[int(nb_idx)] = node_idx
-                d, n, n_n = _closest_intersections(node_data,
-                                                   data_coords[data_idx],
-                                                   pred_map,
-                                                   int(nb_idx))
+                pred_map[nb_idx] = node_idx
+                d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, nb_idx)
                 # if the distance to the street edge is less than the nearest node, or than the prior closest edge
                 if d < min_dist:
                     min_dist = d
-                    nearest = n
-                    next_nearest = n_n
+                    nearest_idx = n
+                    next_nearest_idx = n_n
                 # reverse and try in opposite direction
                 if not reversing:
                     reversing = True
-                    pred_map.fill(np.nan)
-                    node_idx = int(min_idx)
-                    prev_idx = np.nan
+                    pred_map.fill(-1)
+                    node_idx = min_idx
+                    prev_idx = -1
                     continue
                 break
             # ignore the following conditions while backtracking
             # (if backtracking, the current node's predecessor will be equal to the new neighbour)
             if nb_idx != pred_map[node_idx]:
-                # if the new nb node has already been visited then terminate, this prevent infinite loops
+                # if the new nb node has already been visited then terminate, this prevents infinite loops
                 # or, if the algorithm has circled the block back to the original starting node
-                if not np.isnan(pred_map[int(nb_idx)]) or nb_idx == min_idx:
+                if not pred_map[nb_idx] == -1 or nb_idx == min_idx:
                     # set the final predecessor, BUT ONLY if re-encountered the original node
                     # this would otherwise occlude routes (e.g. backtracks) that have passed the same node twice
                     # (such routes are still able to recover the closest edge)
                     if nb_idx == min_idx:
-                        pred_map[int(nb_idx)] = node_idx
-                    d, n, n_n = _closest_intersections(node_data,
-                                                       data_coords[data_idx],
-                                                       pred_map,
-                                                       int(nb_idx))
+                        pred_map[nb_idx] = node_idx
+                    d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, nb_idx)
                     if d < min_dist:
-                        nearest = n
-                        next_nearest = n_n
+                        nearest_idx = n
+                        next_nearest_idx = n_n
                     break
                 # set predecessor (only if not backtracking)
-                pred_map[int(nb_idx)] = node_idx
+                pred_map[nb_idx] = node_idx
             # otherwise, keep going
             prev_idx = node_idx
-            node_idx = int(nb_idx)
+            node_idx = nb_idx
         # print(f'[{data_idx}, {nearest}, {next_nearest}],')
         # set in the data map
         # no race condition in spite of direct indexing because each is set only once?
-        data_map[data_idx, 2] = nearest  # adj_idx
+        data_map.nearest_assign[data_idx] = nearest_idx
         # in some cases next nearest will be NaN
         # this is mostly in situations where it works to leave as NaN
         # e.g. access off dead-ends...
-        data_map[data_idx, 3] = next_nearest  # next_adj_idx
+        data_map.next_nearest_assign[data_idx] = next_nearest_idx
 
     return data_map
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def aggregate_to_src_idx(netw_src_idx: int,
-                         node_data: np.ndarray,
-                         edge_data: np.ndarray,
-                         node_edge_map: Dict,
-                         data_map: np.ndarray,
-                         max_dist: float,
-                         jitter_scale: float = 0.0,
-                         angular: bool = False):
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def aggregate_to_src_idx(
+    netw_src_idx: int,
+    network_structure: structures.NetworkStructure,
+    data_map: structures.DataMap,
+    max_dist: np.float32,
+    jitter_scale: np.float32 = np.float32(0.0),
+    angular: bool = False,
+) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.float32], structures.TreeMap]:
+    """
+    Aggregate data points relative to a src index.
+
+    Shortest tree dijkstra returns predecessor map is based on impedance heuristic - i.e. angular vs not angular.
+    Shortest path distances are in metres and are used for defining max distances regardless.
+    """
     # this function is typically called iteratively, so do type checks from parent methods
-    netw_x_arr = node_data[:, 0]
-    netw_y_arr = node_data[:, 1]
-    netw_src_x = netw_x_arr[netw_src_idx]
-    netw_src_y = netw_y_arr[netw_src_idx]
-    d_x_arr = data_map[:, 0]
-    d_y_arr = data_map[:, 1]
-    d_assign_nearest = data_map[:, 2]
-    d_assign_next_nearest = data_map[:, 3]
     # run the shortest tree dijkstra
     # keep in mind that predecessor map is based on impedance heuristic - which can be different from metres
     # NOTE -> use np.inf for max distance so as to explore all paths
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is checked later
-    tree_map, tree_edges = centrality.shortest_path_tree(edge_data,
-                                                         node_edge_map,
-                                                         netw_src_idx,
-                                                         max_dist=max_dist,
-                                                         jitter_scale=jitter_scale,
-                                                         angular=angular)
-    '''
-    Shortest tree dijkstra        
-    Predecessor map is based on impedance heuristic - i.e. angular vs not
-    Shortest path distances in metres used for defining max distances regardless
-    RETURNS A SHORTEST PATH TREE MAP:
-    0 - processed nodes
-    1 - predecessors
-    2 - shortest path distance
-    3 - simplest path angular distance
-    4 - cycles
-    5 - origin segments
-    6 - last segments
-    '''
-    tree_preds = tree_map[:, 1]
-    tree_short_dists = tree_map[:, 2]
+    tree_map = centrality.shortest_path_tree(
+        network_structure,
+        netw_src_idx,
+        max_dist=max_dist,
+        jitter_scale=jitter_scale,
+        angular=angular,
+    )
     # arrays for writing the reachable data points and their distances
-    reachable_data = np.full(len(data_map), False)
-    reachable_data_dist = np.full(len(data_map), np.inf)
+    reachable_data: npt.NDArray[np.bool_] = np.full(data_map.count, False)
+    reachable_data_dist: npt.NDArray[np.float32] = np.full(data_map.count, np.inf)
     # iterate the data points
-    for data_idx in range(len(data_map)):
+    for data_idx in range(data_map.count):
         # find the primary assigned network index for the data point
-        if np.isfinite(d_assign_nearest[data_idx]):
-            netw_idx = int(d_assign_nearest[data_idx])
+        nearest_netw_idx = data_map.nearest_assign[data_idx]
+        if nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
-            if tree_short_dists[netw_idx] < max_dist:
+            dist = tree_map.short_dist[nearest_netw_idx]
+            if dist < max_dist:
                 # get the distance from the data point to the network node
-                d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_idx],
-                               d_y_arr[data_idx] - netw_y_arr[netw_idx])
-                # add to the distance assigned for the network node
-                dist = tree_short_dists[netw_idx] + d_d
+                d_d = np.hypot(
+                    data_map.xs[data_idx] - network_structure.nodes.xs[nearest_netw_idx],
+                    data_map.ys[data_idx] - network_structure.nodes.ys[nearest_netw_idx],
+                )
                 # only assign distance if within max distance
-                if dist <= max_dist:
+                total_dist = dist + d_d
+                if total_dist <= max_dist:
                     reachable_data[data_idx] = True
-                    reachable_data_dist[data_idx] = dist
+                    reachable_data_dist[data_idx] = total_dist
         # the next-nearest may offer a closer route depending on the direction the shortest path approaches from
-        if np.isfinite(d_assign_next_nearest[data_idx]):
-            netw_idx = int(d_assign_next_nearest[data_idx])
+        next_nearest_netw_idx = data_map.next_nearest_assign[data_idx]
+        if next_nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
-            if tree_short_dists[netw_idx] < max_dist:
+            dist = tree_map.short_dist[next_nearest_netw_idx]
+            if dist < max_dist:
                 # get the distance from the data point to the network node
-                d_d = np.hypot(d_x_arr[data_idx] - netw_x_arr[netw_idx],
-                               d_y_arr[data_idx] - netw_y_arr[netw_idx])
-                # add to the distance assigned for the network node
-                dist = tree_short_dists[netw_idx] + d_d
+                d_d = np.hypot(
+                    data_map.xs[data_idx] - network_structure.nodes.xs[next_nearest_netw_idx],
+                    data_map.ys[data_idx] - network_structure.nodes.ys[next_nearest_netw_idx],
+                )
                 # only assign distance if within max distance
                 # AND only if closer than other direction
-                if dist <= max_dist and dist < reachable_data_dist[data_idx]:
+                total_dist = dist + d_d
+                if total_dist <= max_dist and total_dist < reachable_data_dist[data_idx]:
                     reachable_data[data_idx] = True
-                    reachable_data_dist[data_idx] = dist
+                    reachable_data_dist[data_idx] = total_dist
 
     # note that some entries will be nan values if the max distance was exceeded
-    return reachable_data, reachable_data_dist, tree_preds
+    return reachable_data, reachable_data_dist, tree_map
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
-def aggregate_landuses(node_data: np.ndarray,
-                       edge_data: np.ndarray,
-                       node_edge_map: Dict,
-                       data_map: np.ndarray,
-                       distances: np.ndarray,
-                       betas: np.ndarray,
-                       landuse_encodings: np.ndarray = np.array([]),
-                       qs: np.ndarray = np.array([]),
-                       mixed_use_hill_keys: np.ndarray = np.array([]),
-                       mixed_use_other_keys: np.ndarray = np.array([]),
-                       accessibility_keys: np.ndarray = np.array([]),
-                       cl_disparity_wt_matrix: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                       jitter_scale: float = 0.0,
-                       angular: bool = False,
-                       progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
+def aggregate_landuses(
+    network_structure: structures.NetworkStructure,
+    data_map: structures.DataMap,
+    distances: npt.NDArray[np.float32],
+    betas: npt.NDArray[np.float32],
+    landuse_encodings: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
+    qs: npt.NDArray[np.float32] = np.array([], dtype=np.float32),
+    mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
+    mixed_use_other_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
+    accessibility_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
+    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
+        np.full((0, 0), np.nan), dtype=np.float32
+    ),  # pylint: disable=line-too-long
+    jitter_scale: np.float32 = np.float32(0.0),
+    angular: bool = False,
+    progress_proxy: Any = None,
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.int_], npt.NDArray[np.float32]]:
     """
-    NODE MAP:
-    0 - x
-    1 - y
-    2 - live
-    EDGE MAP:
-    0 - start node
-    1 - end node
-    2 - length in metres
-    3 - sum of angular travel along length
-    4 - impedance factor
-    5 - in bearing
-    6 - out bearing
-    DATA MAP:
-    0 - x
-    1 - y
-    2 - assigned network index - nearest
-    3 - assigned network index - next-nearest
+    Aggregate landuses.
     """
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
-    checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
+    network_structure.validate()
+    data_map.validate()
     checks.check_distances_and_betas(distances, betas)
     # check landuse encodings
     if len(landuse_encodings) == 0:
-        raise ValueError('Mixed use metrics or land-use accessibilities require an array of landuse labels.')
-    elif len(landuse_encodings) != len(data_map):
-        raise ValueError('The number of landuse encodings does not match the number of data points.')
-    else:
-        checks.check_categorical_data(landuse_encodings)
+        raise ValueError("Mixed use metrics or land-use accessibilities require an array of landuse labels.")
+    if len(landuse_encodings) != data_map.count:
+        raise ValueError("The number of landuse encodings does not match the number of data points.")
+    checks.check_categorical_data(landuse_encodings)
     # catch completely missing metrics
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
-        raise ValueError('No metrics specified, please specify at least one metric to compute.')
+        raise ValueError("No metrics specified, please specify at least one metric to compute.")
     # catch missing qs
     if len(mixed_use_hill_keys) != 0 and len(qs) == 0:
-        raise ValueError('Hill diversity measures require that at least one value of q is specified.')
+        raise ValueError("Hill diversity measures require that at least one value of q is specified.")
     # negative qs caught by hill diversity methods
     # check various problematic key combinations
     if len(mixed_use_hill_keys) != 0:
@@ -427,85 +393,80 @@ def aggregate_landuses(node_data: np.ndarray,
         if np.nanmin(mixed_use_other_keys) < 0 or np.max(mixed_use_other_keys) > 2:
             raise ValueError('Mixed-use "other" keys out of range of 0:3.')
     if len(accessibility_keys) != 0:
-        max_ac_key = np.nanmax(landuse_encodings)
+        max_ac_key: int = np.nanmax(landuse_encodings)
         if np.nanmin(accessibility_keys) < 0 or np.max(accessibility_keys) > max_ac_key:
-            raise ValueError('Negative or out of range accessibility key encountered. Keys must match class encodings.')
-    for i in range(len(mixed_use_hill_keys)):
-        for j in range(len(mixed_use_hill_keys)):
-            if j > i:
-                i_key = mixed_use_hill_keys[i]
-                j_key = mixed_use_hill_keys[j]
+            raise ValueError("Negative or out of range accessibility key encountered. Keys must match class encodings.")
+    for i_idx, i_key in enumerate(mixed_use_hill_keys):
+        for j_idx, j_key in enumerate(mixed_use_hill_keys):
+            if j_idx > i_idx:
                 if i_key == j_key:
                     raise ValueError('Duplicate mixed-use "hill" key.')
-    for i in range(len(mixed_use_other_keys)):
-        for j in range(len(mixed_use_other_keys)):
-            if j > i:
-                i_key = mixed_use_other_keys[i]
-                j_key = mixed_use_other_keys[j]
+    for i_idx, i_key in enumerate(mixed_use_other_keys):
+        for j_idx, j_key in enumerate(mixed_use_other_keys):
+            if j_idx > i_idx:
                 if i_key == j_key:
                     raise ValueError('Duplicate mixed-use "other" key.')
-    for i in range(len(accessibility_keys)):
-        for j in range(len(accessibility_keys)):
-            if j > i:
-                i_key = accessibility_keys[i]
-                j_key = accessibility_keys[j]
+    for i_idx, i_key in enumerate(accessibility_keys):
+        for j_idx, j_key in enumerate(accessibility_keys):
+            if j_idx > i_idx:
                 if i_key == j_key:
-                    raise ValueError('Duplicate accessibility key.')
+                    raise ValueError("Duplicate accessibility key.")
 
-    def disp_check(disp_matrix):
+    def disp_check(disp_matrix):  # type: ignore # numba can't handle nested function with type annotation
         # the length of the disparity matrix vis-a-vis unique landuses is tested in underlying diversity functions
         if disp_matrix.ndim != 2 or disp_matrix.shape[0] != disp_matrix.shape[1]:
-            raise ValueError('The disparity matrix must be a square NxN matrix.')
-        if len(disp_matrix) == 0:
-            raise ValueError('Hill disparity and Rao pairwise measures requires a class disparity weights matrix.')
+            raise ValueError("The disparity matrix must be a square NxN matrix.")
+        if disp_matrix.shape[0] == 0:
+            raise ValueError("Hill disparity and Rao pairwise measures requires a class disparity weights matrix.")
 
     # check that missing or malformed disparity weights matrices are caught
-    for k in mixed_use_hill_keys:
-        if k == 3:  # hill disparity
+    for key_idx in mixed_use_hill_keys:
+        if key_idx == 3:  # hill disparity
             disp_check(cl_disparity_wt_matrix)
-    for k in mixed_use_other_keys:
-        if k == 2:  # raos pairwise
+    for key_idx in mixed_use_other_keys:
+        if key_idx == 2:  # raos pairwise
             disp_check(cl_disparity_wt_matrix)
     # establish variables
-    netw_n = len(node_data)
+    netw_n = network_structure.nodes.count
     d_n = len(distances)
     q_n = len(qs)
-    global_max_dist = float(np.nanmax(distances))
-    netw_nodes_live = node_data[:, 2]
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # setup data structures
     # hill mixed uses are structured separately to take values of q into account
-    mixed_use_hill_data = np.full((4, q_n, d_n, netw_n), 0.0)  # 4 dim
-    mixed_use_other_data = np.full((3, d_n, netw_n), 0.0)  # 3 dim
-    accessibility_data = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
-    accessibility_data_wt = np.full((len(accessibility_keys), d_n, netw_n), 0.0)
+    mixed_use_hill_data: npt.NDArray[np.float32] = np.full((4, q_n, d_n, netw_n), 0.0, dtype=np.float32)  # 4 dim
+    mixed_use_other_data: npt.NDArray[np.float32] = np.full((3, d_n, netw_n), 0.0, dtype=np.float32)  # 3 dim
+    accessibility_data: npt.NDArray[np.int_] = np.full((len(accessibility_keys), d_n, netw_n), 0, dtype=np.int_)  # int
+    accessibility_data_wt: npt.NDArray[np.float32] = np.full(
+        (len(accessibility_keys), d_n, netw_n), 0.0, dtype=np.float32
+    )
     # iterate through each vert and aggregate
     # parallelise over n nodes:
     # each distance or stat array index is therefore only touched by one thread at a time
     # i.e. no need to use inner array deductions as with centralities
-    for netw_src_idx in prange(netw_n):
+    for netw_src_idx in prange(netw_n):  # pylint: disable=not-an-iterable
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not netw_nodes_live[netw_src_idx]:
+        if not network_structure.nodes.live[netw_src_idx]:
             continue
         # generate the reachable classes and their respective distances
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
         # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_data, reachable_data_dist, tree_preds = aggregate_to_src_idx(netw_src_idx,
-                                                                               node_data,
-                                                                               edge_data,
-                                                                               node_edge_map,
-                                                                               data_map,
-                                                                               global_max_dist,
-                                                                               jitter_scale=jitter_scale,
-                                                                               angular=angular)
+        reachable_data, reachable_data_dist, _tree_map = aggregate_to_src_idx(
+            netw_src_idx,
+            network_structure,
+            data_map,
+            global_max_dist,
+            jitter_scale=jitter_scale,
+            angular=angular,
+        )
         # LANDUSES
         mu_max_unique_cl = int(landuse_encodings.max() + 1)
         # counts of each class type (array length per max unique classes - not just those within max distance)
-        classes_counts = np.full((d_n, mu_max_unique_cl), 0)
+        classes_counts: npt.NDArray[np.int_] = np.full((d_n, mu_max_unique_cl), 0)
         # nearest of each class type (likewise)
-        classes_nearest = np.full((d_n, mu_max_unique_cl), np.inf)
+        classes_nearest: npt.NDArray[np.float32] = np.full((d_n, mu_max_unique_cl), np.inf)
         # iterate the reachable indices and related distances
         for data_idx, (reachable, data_dist) in enumerate(zip(reachable_data, reachable_data_dist)):
             if not reachable:
@@ -539,59 +500,72 @@ def aggregate_landuses(node_data: np.ndarray,
             for mu_hill_key in mixed_use_hill_keys:
                 for q_idx, q_key in enumerate(qs):
                     if mu_hill_key == 0:
-                        mixed_use_hill_data[0, q_idx, d_idx, netw_src_idx] = \
-                            diversity.hill_diversity(cl_counts, q_key)
+                        mixed_use_hill_data[0, q_idx, d_idx, netw_src_idx] = diversity.hill_diversity(cl_counts, q_key)
                     elif mu_hill_key == 1:
-                        mixed_use_hill_data[1, q_idx, d_idx, netw_src_idx] = \
-                            diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        mixed_use_hill_data[
+                            1, q_idx, d_idx, netw_src_idx
+                        ] = diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
                     elif mu_hill_key == 2:
-                        mixed_use_hill_data[2, q_idx, d_idx, netw_src_idx] = \
-                            diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        mixed_use_hill_data[
+                            2, q_idx, d_idx, netw_src_idx
+                        ] = diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
                     # land-use classification disparity hill diversity
                     # the wt matrix can be used without mapping because cl_counts is based on all classes
                     # regardless of whether they are reachable
                     elif mu_hill_key == 3:
-                        mixed_use_hill_data[3, q_idx, d_idx, netw_src_idx] = \
-                            diversity.hill_diversity_pairwise_matrix_wt(cl_counts,
-                                                                        wt_matrix=cl_disparity_wt_matrix,
-                                                                        q=q_key)
+                        mixed_use_hill_data[
+                            3, q_idx, d_idx, netw_src_idx
+                        ] = diversity.hill_diversity_pairwise_matrix_wt(
+                            cl_counts, wt_matrix=cl_disparity_wt_matrix, q=q_key
+                        )
             for mu_other_key in mixed_use_other_keys:
                 if mu_other_key == 0:
-                    mixed_use_other_data[0, d_idx, netw_src_idx] = \
-                        diversity.shannon_diversity(cl_counts)
+                    mixed_use_other_data[0, d_idx, netw_src_idx] = diversity.shannon_diversity(cl_counts)
                 elif mu_other_key == 1:
-                    mixed_use_other_data[1, d_idx, netw_src_idx] = \
-                        diversity.gini_simpson_diversity(cl_counts)
+                    mixed_use_other_data[1, d_idx, netw_src_idx] = diversity.gini_simpson_diversity(cl_counts)
                 elif mu_other_key == 2:
-                    mixed_use_other_data[2, d_idx, netw_src_idx] = \
-                        diversity.raos_quadratic_diversity(cl_counts, wt_matrix=cl_disparity_wt_matrix)
+                    mixed_use_other_data[2, d_idx, netw_src_idx] = diversity.raos_quadratic_diversity(
+                        cl_counts, wt_matrix=cl_disparity_wt_matrix
+                    )
     # send the data back in the same types and same order as the original keys - convert to int for indexing
-    mu_hill_k_int = np.full(len(mixed_use_hill_keys), 0)
-    for i, k in enumerate(mixed_use_hill_keys):
-        mu_hill_k_int[i] = k
-    mu_other_k_int = np.full(len(mixed_use_other_keys), 0)
-    for i, k in enumerate(mixed_use_other_keys):
-        mu_other_k_int[i] = k
+    mu_hill_k_int: npt.NDArray[np.int_] = np.full(len(mixed_use_hill_keys), 0, dtype=np.int_)
+    for idx, mu_hill_key in enumerate(mixed_use_hill_keys):
+        mu_hill_k_int[idx] = mu_hill_key
+    mu_other_k_int: npt.NDArray[np.int_] = np.full(len(mixed_use_other_keys), 0, dtype=np.int_)
+    for idx, mu_oth_key in enumerate(mixed_use_other_keys):
+        mu_other_k_int[idx] = mu_oth_key
 
-    return mixed_use_hill_data[mu_hill_k_int], \
-           mixed_use_other_data[mu_other_k_int], \
-           accessibility_data, \
-           accessibility_data_wt
+    return (
+        mixed_use_hill_data[mu_hill_k_int],
+        mixed_use_other_data[mu_other_k_int],
+        accessibility_data,
+        accessibility_data_wt,
+    )
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True, parallel=True)
-def aggregate_stats(node_data: np.ndarray,
-                    edge_data: np.ndarray,
-                    node_edge_map: Dict,
-                    data_map: np.ndarray,
-                    distances: np.ndarray,
-                    betas: np.ndarray,
-                    numerical_arrays: np.ndarray = np.array(np.full((0, 0), np.nan)),
-                    jitter_scale: float = 0.0,
-                    angular: bool = False,
-                    progress_proxy=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                              np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
+def aggregate_stats(
+    network_structure: structures.NetworkStructure,
+    data_map: structures.DataMap,
+    distances: npt.NDArray[np.float32],
+    betas: npt.NDArray[np.float32],
+    numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),
+    jitter_scale: np.float32 = np.float32(0.0),
+    angular: bool = False,
+    progress_proxy: Any = None,
+) -> tuple[
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+]:
     """
+    Aggregate stats.
+
     NODE MAP:
     0 - x
     1 - y
@@ -610,53 +584,51 @@ def aggregate_stats(node_data: np.ndarray,
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     """
-    checks.check_network_maps(node_data, edge_data, node_edge_map)
-    checks.check_data_map(data_map, check_assigned=True)  # raises ValueError data points are not assigned to a network
+    network_structure.validate()
+    data_map.validate(check_assigned=True)
     checks.check_distances_and_betas(distances, betas)
-    # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan))
-    if numerical_arrays.shape[1] != len(data_map):
-        raise ValueError('The length of the numerical data arrays do not match the length of the data map.')
+    # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan, dtype=np.float32))
+    if numerical_arrays.shape[1] != data_map.count:
+        raise ValueError("The length of the numerical data arrays do not match the length of the data map.")
     checks.check_numerical_data(numerical_arrays)
     # establish variables
-    netw_n = len(node_data)
+    netw_n = network_structure.nodes.count
     d_n = len(distances)
     n_n = len(numerical_arrays)
-    global_max_dist = float(np.nanmax(distances))
-    netw_nodes_live = node_data[:, 2]
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # setup data structures
-    stats_sum = np.full((n_n, d_n, netw_n), 0.0)
-    stats_sum_wt = np.full((n_n, d_n, netw_n), 0.0)
-    stats_mean = np.full((n_n, d_n, netw_n), np.nan)
-    stats_mean_wt = np.full((n_n, d_n, netw_n), np.nan)
-    stats_count = np.full((n_n, d_n, netw_n), 0.0)
-    stats_count_wt = np.full((n_n, d_n, netw_n), 0.0)
-    stats_variance = np.full((n_n, d_n, netw_n), np.nan)
-    stats_variance_wt = np.full((n_n, d_n, netw_n), np.nan)
-    stats_max = np.full((n_n, d_n, netw_n), np.nan)
-    stats_min = np.full((n_n, d_n, netw_n), np.nan)
+    stats_sum: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)
+    stats_sum_wt: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)
+    stats_mean: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
+    stats_mean_wt: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
+    stats_count: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)
+    stats_count_wt: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), 0.0)
+    stats_variance: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
+    stats_variance_wt: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
+    stats_max: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
+    stats_min: npt.NDArray[np.float32] = np.full((n_n, d_n, netw_n), np.nan)
     # iterate through each vert and aggregate
-    steps = int(netw_n / 10000)
     # parallelise over n nodes:
     # each distance or stat array index is therefore only touched by one thread at a time
     # i.e. no need to use inner array deductions as with centralities
-    for netw_src_idx in prange(netw_n):
+    for netw_src_idx in prange(netw_n):  # pylint: disable=not-an-iterable
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not netw_nodes_live[netw_src_idx]:
+        if not network_structure.nodes.live[netw_src_idx]:
             continue
         # generate the reachable classes and their respective distances
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
         # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_data, reachable_data_dist, tree_preds = aggregate_to_src_idx(netw_src_idx,
-                                                                               node_data,
-                                                                               edge_data,
-                                                                               node_edge_map,
-                                                                               data_map,
-                                                                               global_max_dist,
-                                                                               jitter_scale=jitter_scale,
-                                                                               angular=angular)
+        reachable_data, reachable_data_dist, _tree_map = aggregate_to_src_idx(
+            netw_src_idx,
+            network_structure,
+            data_map,
+            global_max_dist,
+            jitter_scale=jitter_scale,
+            angular=angular,
+        )
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array
         # iterate the reachable indices and related distances
@@ -694,10 +666,14 @@ def aggregate_stats(node_data: np.ndarray,
         for num_idx in range(n_n):
             for d_idx in range(d_n):
                 # use divide so that division through zero doesn't trigger
-                stats_mean[num_idx, d_idx, netw_src_idx] = np.divide(stats_sum[num_idx, d_idx, netw_src_idx],
-                                                                     stats_count[num_idx, d_idx, netw_src_idx])
-                stats_mean_wt[num_idx, d_idx, netw_src_idx] = np.divide(stats_sum_wt[num_idx, d_idx, netw_src_idx],
-                                                                        stats_count_wt[num_idx, d_idx, netw_src_idx])
+                stats_mean[num_idx, d_idx, netw_src_idx] = np.divide(
+                    stats_sum[num_idx, d_idx, netw_src_idx],
+                    stats_count[num_idx, d_idx, netw_src_idx],
+                )
+                stats_mean_wt[num_idx, d_idx, netw_src_idx] = np.divide(
+                    stats_sum_wt[num_idx, d_idx, netw_src_idx],
+                    stats_count_wt[num_idx, d_idx, netw_src_idx],
+                )
         # calculate variances - counts are already computed per above
         # weighted version is IDW by division through equivalently weighted counts above
         # iterate the reachable indices and related distances
@@ -718,24 +694,40 @@ def aggregate_stats(node_data: np.ndarray,
                     if data_dist <= d:
                         # aggregate
                         if np.isnan(stats_variance[num_idx, d_idx, netw_src_idx]):
-                            stats_variance[num_idx, d_idx, netw_src_idx] = \
-                                np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
-                            stats_variance_wt[num_idx, d_idx, netw_src_idx] = \
-                                np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
+                            stats_variance[num_idx, d_idx, netw_src_idx] = np.square(
+                                num - stats_mean[num_idx, d_idx, netw_src_idx]
+                            )
+                            stats_variance_wt[num_idx, d_idx, netw_src_idx] = np.square(
+                                num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
+                            ) * np.exp(-b * data_dist)
                         else:
-                            stats_variance[num_idx, d_idx, netw_src_idx] += \
-                                np.square(num - stats_mean[num_idx, d_idx, netw_src_idx])
-                            stats_variance_wt[num_idx, d_idx, netw_src_idx] += \
-                                np.square(num - stats_mean_wt[num_idx, d_idx, netw_src_idx]) * np.exp(-b * data_dist)
+                            stats_variance[num_idx, d_idx, netw_src_idx] += np.square(
+                                num - stats_mean[num_idx, d_idx, netw_src_idx]
+                            )
+                            stats_variance_wt[num_idx, d_idx, netw_src_idx] += np.square(
+                                num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
+                            ) * np.exp(-b * data_dist)
         # finalise variance calculations
         for num_idx in range(n_n):
             for d_idx in range(d_n):
                 # use divide so that division through zero doesn't trigger
                 stats_variance[num_idx, d_idx, netw_src_idx] = np.divide(
                     stats_variance[num_idx, d_idx, netw_src_idx],
-                    stats_count[num_idx, d_idx, netw_src_idx])
+                    stats_count[num_idx, d_idx, netw_src_idx],
+                )
                 stats_variance_wt[num_idx, d_idx, netw_src_idx] = np.divide(
                     stats_variance_wt[num_idx, d_idx, netw_src_idx],
-                    stats_count_wt[num_idx, d_idx, netw_src_idx])
+                    stats_count_wt[num_idx, d_idx, netw_src_idx],
+                )
 
-    return stats_sum, stats_sum_wt, stats_mean, stats_mean_wt, stats_variance, stats_variance_wt, stats_max, stats_min
+    # pylint: disable=duplicate-code
+    return (
+        stats_sum,
+        stats_sum_wt,
+        stats_mean,
+        stats_mean_wt,
+        stats_variance,
+        stats_variance_wt,
+        stats_max,
+        stats_min,
+    )

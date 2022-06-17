@@ -1,10 +1,14 @@
+# pyright: basic
+
+
+import string
+
 import networkx as nx
 import numpy as np
 import pytest
-import string
 
+from cityseer import config
 from cityseer.tools import mock
-from tests.tools import primal_graph
 
 
 def test_mock_graph(primal_graph):
@@ -19,15 +23,15 @@ def test_mock_graph(primal_graph):
             3: 3.0303030303030303,
             2: 2.4,
             1: 2.0,
-            0: 0
+            0: 0,
         }
 
         for n, d in g.nodes(data=True):
-            assert 'x' in d and isinstance(d['y'], (int, float))
-            assert 'y' in d and isinstance(d['y'], (int, float))
+            assert "x" in d and isinstance(d["y"], (int, float))
+            assert "y" in d and isinstance(d["y"], (int, float))
 
     # from cityseer.tools import plot
-    # plot.plot_nX(G)
+    # plot.plot_nx(G)
 
 
 def test_mock_data_dict(primal_graph):
@@ -38,21 +42,21 @@ def test_mock_data_dict(primal_graph):
     min_y = np.inf
     max_y = -np.inf
     for n, d in primal_graph.nodes(data=True):
-        if d['x'] < min_x:
-            min_x = d['x']
-        if d['x'] > max_x:
-            max_x = d['x']
-        if d['y'] < min_y:
-            min_y = d['y']
-        if d['y'] > max_y:
-            max_y = d['y']
+        if d["x"] < min_x:
+            min_x = d["x"]
+        if d["x"] > max_x:
+            max_x = d["x"]
+        if d["y"] < min_y:
+            min_y = d["y"]
+        if d["y"] > max_y:
+            max_y = d["y"]
 
     for v in data.values():
         # check that attributes are present
-        assert 'x' in v and isinstance(v['y'], (int, float))
-        assert 'y' in v and isinstance(v['y'], (int, float))
-        assert v['x'] >= min_x and v['x'] <= max_x
-        assert v['y'] >= min_y and v['y'] <= max_y
+        assert "x" in v and isinstance(v["y"], (int, float))
+        assert "y" in v and isinstance(v["y"], (int, float))
+        assert v["x"] >= min_x and v["x"] <= max_x
+        assert v["y"] >= min_y and v["y"] <= max_y
 
 
 def test_mock_categorical_data():
@@ -85,13 +89,13 @@ def test_mock_numerical_data():
 
             for arr in num_d:
                 for n in arr:
-                    assert isinstance(n, float)
+                    assert isinstance(n, (float, np.float32))
                     assert 0 <= n <= 100000
 
 
 def test_mock_species_data():
     for counts, probs in mock.mock_species_data():
-        assert np.allclose(counts / counts.sum(), probs, atol=0.001, rtol=0)
+        assert np.allclose(counts / counts.sum(), probs, atol=config.ATOL, rtol=config.RTOL)
         assert round(probs.sum(), 8) == 1
 
 

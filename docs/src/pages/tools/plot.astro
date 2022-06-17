@@ -1,35 +1,37 @@
 ---
-import { Markdown } from 'astro/components';
+import { Markdown } from 'astro/components'
 import ArXivLink from '@src/components/ArXivLink.vue'
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
-
 <PageLayout>
+
 <div class="yap module">
   <h1 class="yap module-title" id="cityseer-tools-plot">
-    <a aria-hidden="true" href="#cityseer-tools-plot" tab_index="-1">
-      <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <a aria-hidden="true" href="#cityseer-tools-plot" tabindex="-1">
+      <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
         <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
       </svg>
     </a>cityseer.tools.plot
   </h1><Markdown is:raw>
-Convenience methods for plotting graphs within the cityseer API context. This module is predominately used for basic plots or visual verification of behaviour in code tests. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures.
+Convenience methods for plotting graphs within the cityseer API context.
+
+ Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible. See the demos section for examples.
 </Markdown>
   <section class="yap func">
     <h2 class="yap func-title" id="plot-nx-primal-or-dual">
-      <a aria-hidden="true" href="#plot-nx-primal-or-dual" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#plot-nx-primal-or-dual" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>plot_nX_primal_or_dual
+      </a>plot_nx_primal_or_dual
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>plot_nX_primal_or_dual(</span>
+        <span>plot_nx_primal_or_dual(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">primal_graph, </div>
           <div class="yap func-sig-param">dual_graph, </div>
@@ -51,12 +53,14 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         </div>
       </div>
     </div>
-    <div class="yap">
+    <div class="yap"><Markdown is:raw>
+Plot a primal or dual cityseer graph.
+</Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_graph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.
@@ -65,7 +69,7 @@ An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_graph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.
@@ -101,16 +105,16 @@ The diameter for the primal graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_node_colour</div>
-          <div class="yap doc-str-elem-type">str | tuple | list</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
+Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_edge_colour</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -128,16 +132,16 @@ The diameter for the dual graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_node_colour</div>
-          <div class="yap doc-str-elem-type">str | tuple | list</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
+Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_edge_colour</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -146,7 +150,7 @@ Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_edge_width</div>
-          <div class="yap doc-str-elem-type">int | float</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for the primal edge. Defaults to None.
@@ -155,7 +159,7 @@ Linewidths for the primal edge. Defaults to None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_edge_width</div>
-          <div class="yap doc-str-elem-type">int | float</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for the dual edge. Defaults to None.
@@ -173,7 +177,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_lim</div>
-          <div class="yap doc-str-elem-type">tuple | list</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
@@ -182,7 +186,7 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">y_lim</div>
-          <div class="yap doc-str-elem-type">tuple | list</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
@@ -191,7 +195,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">ax</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">plt.Axes</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
@@ -200,7 +204,7 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">**kwargs</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -208,15 +212,14 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       </div>
       <div class="yap doc-str-meta">
         <h3 class="yap">Notes</h3><Markdown is:raw>
-Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nX`](/tools/plot/#plot-nx) method instead.
-
+Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot/#plot-nx) method instead.
 
 ```py
 from cityseer.tools import mock, graphs, plot
 G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple,
+G_simple = graphs.nx_simple_geoms(G)
+G_dual = graphs.nx_to_dual(G_simple)
+plot.plot_nx_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=False)
 ```
@@ -228,19 +231,19 @@ plot.plot_nX_primal_or_dual(G_simple,
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="plot-nx">
-      <a aria-hidden="true" href="#plot-nx" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#plot-nx" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>plot_nX
+      </a>plot_nx
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>plot_nX(</span>
+        <span>plot_nx(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_graph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">path, </div>
           <div class="yap func-sig-param">labels=False, </div>
           <div class="yap func-sig-param">node_size=20, </div>
@@ -261,8 +264,8 @@ Plot a `networkX` MultiGraph.
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_graph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `NetworkX` MultiGraph.
@@ -298,16 +301,16 @@ The diameter for the graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_colour</div>
-          <div class="yap doc-str-elem-type">str | tuple | list</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
+Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_colour</div>
-          <div class="yap doc-str-elem-type">str | tuple | list</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Edges colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -316,7 +319,7 @@ Edges colour as a `matplotlib` compatible colour string. Defaults to None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_width</div>
-          <div class="yap doc-str-elem-type">int | float</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for edges. Defaults to None.
@@ -334,7 +337,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_lim</div>
-          <div class="yap doc-str-elem-type">tuple | list</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
@@ -343,7 +346,7 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">y_lim</div>
-          <div class="yap doc-str-elem-type">tuple | list</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
@@ -352,7 +355,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">ax</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">plt.Axes</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
@@ -361,7 +364,7 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">**kwargs</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -375,15 +378,15 @@ from cityseer.metrics import networks
 from matplotlib import colors
 # generate a MultiGraph and compute gravity
 G = mock.mock_graph()
-G = graphs.nX_simple_geoms(G)
-G = graphs.nX_decompose(G, 50)
-N = networks.NetworkLayerFromNX(G, distances=[800])
-N.node_centrality(measures=['node_beta'])
-G_after = N.to_networkX()
+G = graphs.nx_simple_geoms(G)
+G = graphs.nx_decompose(G, 50)
+cc_netw = networks.NetworkLayerFromNX(G, distances=[800])
+cc_netw.node_centrality(measures=['node_beta'])
+G_after = cc_netw.to_nx_multigraph()
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
-    vals.append(data['metrics']['centrality']['node_beta'][800])
+    vals.append(data['metrics'].centrality['node_beta'][800])
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list('cityseer',
                                                 [(100/255, 193/255, 255/255, 255/255),
@@ -393,9 +396,8 @@ vals = colors.Normalize()(vals)
 # cast against the colour map
 cols = cmap(vals)
 # plot
-plot.plot_nX(G_after, node_colour=cols)
+plot.plot_nx(G_after, node_colour=cols)
 ```
-
 
 
 ![Example Colour Plot.](/images/graph_colour.png) _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
@@ -405,8 +407,8 @@ plot.plot_nX(G_after, node_colour=cols)
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="plot-assignment">
-      <a aria-hidden="true" href="#plot-assignment" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#plot-assignment" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
@@ -417,8 +419,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       <div class="yap func-sig">
         <span>plot_assignment(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">Network_Layer, </div>
-          <div class="yap func-sig-param">Data_Layer, </div>
+          <div class="yap func-sig-param">network_structure, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">data_map, </div>
           <div class="yap func-sig-param">path, </div>
           <div class="yap func-sig-param">node_colour, </div>
           <div class="yap func-sig-param">node_labels=False, </div>
@@ -429,24 +432,36 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     </div>
     <div class="yap"><Markdown is:raw>
 Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
+:::warning
+This method is primarily intended for package testing and development.
+:::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">Network_Layer</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">network_structure</div>
+          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`NetworkLayer`](/metrics/networks/#networklayer).
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">Data_Layer</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`DataLayer`](/metrics/layers/#datalayer).
+A `NetworkX` MultiGraph.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_map</div>
+          <div class="yap doc-str-elem-type">structures.DataMap</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A [`DataMap`](/structures/#datamap) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -461,10 +476,10 @@ An optional filepath: if provided, the image will be saved to the path instead o
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_colour</div>
-          <div class="yap doc-str-elem-type">list | tuple</div>
+          <div class="yap doc-str-elem-type">str | float | ndarray</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
+Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -479,16 +494,16 @@ Whether to plot the node labels. Defaults to False.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_labels</div>
-          <div class="yap doc-str-elem-type">list | tuple</div>
+          <div class="yap doc-str-elem-type">ndarray[int | str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `DataLayer`. Defaults to None.
+An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `data_layer`. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">**kwargs</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -502,61 +517,55 @@ An optional iterable of categorical data labels which will be mapped to colours.
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="plot-graph-maps">
-      <a aria-hidden="true" href="#plot-graph-maps" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <h2 class="yap func-title" id="plot-network-structure">
+      <a aria-hidden="true" href="#plot-network-structure" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>plot_graph_maps
+      </a>plot_network_structure
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>plot_graph_maps(</span>
+        <span>plot_network_structure(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">node_data, </div>
-          <div class="yap func-sig-param">edge_data, </div>
+          <div class="yap func-sig-param">network_structure, </div>
           <div class="yap func-sig-param">data_map, </div>
           <div class="yap func-sig-param">poly)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Plot a graph from raw `cityseer` data structures. Note that this function is subject to frequent revision pending short-term development requirements. It is used mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
+Plot a graph from raw `cityseer` data structures.
+:::note
+Note that this function is subject to frequent revision pending short-term development requirements. It is used
+mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
+:::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_data</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">network_structure</div>
+          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-`cityseer` node map.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">edge_data</div>
-          <div class="yap doc-str-elem-type"></div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-`cityseer` edge map.
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_map</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">structures.DataMap</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional data map. Defaults to None.
+A [`DataMap`](/structures/#datamap) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">poly</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-type">geometry.Polygon</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional polygon. Defaults to None.

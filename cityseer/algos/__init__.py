@@ -1,4 +1,1 @@
-from cityseer.algos import centrality
-from cityseer.algos import checks
-from cityseer.algos import data
-from cityseer.algos import diversity
+from cityseer.algos import centrality, checks, data, diversity  # type: ignore
