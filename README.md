@@ -12,9 +12,9 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Documentation: <https://cityseer.benchmarkurbanism.com/>
+Documentation for `v2+`: <https://cityseer.benchmarkurbanism.com/>
 
-> Please see correspondingly tagged versions in this repo for historic releases.
+> `cityseer` code is documented using docstrings: historically tagged releases can be browsed on this repo for associated docs. See [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1) if looking for `v1`.
 
 Demo Notebooks: <https://cityseer.benchmarkurbanism.com/examples/>
 
