@@ -1,12 +1,15 @@
 import numpy as np
-from numba import njit
+import numpy.typing as npt
+from numba import njit  # type: ignore
 
-from cityseer.algos import checks
+from cityseer import config
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def hill_diversity(class_counts: np.ndarray, q: float) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.float32:
     """
+    Compute Hill diversity.
+
     Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
 
     exponent at 1 results in undefined because of 1/0 - but limit exists as exp(entropy)
@@ -15,40 +18,41 @@ def hill_diversity(class_counts: np.ndarray, q: float) -> float:
     Exponent at 0 = variety - i.e. count of unique species
     Exponent at 1 = unity
     Exponent at 2 = diversity form of simpson index
+
     """
-
     if q < 0:
-        raise ValueError('Please select a non-zero value for q.')
-
-    N = class_counts.sum()
+        raise ValueError("Please select a non-zero value for q.")
+    num: int = class_counts.sum()
     # catch potential division by zero situations
-    if N == 0:
-        return 0
+    if num == 0:
+        hill = 0
     # hill number defined in the limit as the exponential of information entropy
     if q == 1:
-        H = 0
-        for a in class_counts:
-            if a:  # if not 0
-                p = a / N  # the probability of this class
-                H += p * np.log(p)  # sum entropy
-        return np.exp(-H)  # return exponent of entropy
+        ent = 0
+        for class_count in class_counts:
+            if class_count:  # if not 0
+                prob = class_count / num  # the probability of this class
+                ent += prob * np.log(prob)  # sum entropy
+        hill = np.exp(-ent)  # return exponent of entropy
     # otherwise use the usual form of Hill numbers
     else:
-        D = 0
-        for a in class_counts:
-            if a:
-                p = a / N  # the probability of this class
-                D += p ** q  # sum
-        return D ** (1 / (1 - q))  # return as equivalent species
+        div = 0
+        for class_count in class_counts:
+            if class_count:
+                prob = class_count / num  # the probability of this class
+                div += prob**q  # sum
+        hill = div ** (1 / (1 - q))  # return as equivalent species
+    return hill
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
-                                      class_distances: np.array,
-                                      q: float,
-                                      beta: float) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def hill_diversity_branch_distance_wt(
+    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+) -> np.float32:
     """
-    Based on unified framework for species diversity in Chao, Chiu, Jost 2014
+    Compute Hill diversity weighted by branch distances.
+
+    Based on unified framework for species diversity in Chao, Chiu, Jost 2014.
     See table on page 308 and surrounding text
 
     In this case the presumption is that you supply branch weights in the form of negative exponential distance weights
@@ -57,62 +61,57 @@ def hill_diversity_branch_distance_wt(class_counts: np.ndarray,
 
     The weighting is based on the nearest of each landuse
     This is debatably most relevant to q=0
+
     """
-
     if len(class_counts) != len(class_distances):
-        raise ValueError('Mismatching number of unique class counts and respective class distances.')
-
+        raise ValueError("Mismatching number of unique class counts and respective class distances.")
     if beta < 0:
-        raise ValueError('Please provide the beta without the leading negative.')
-
+        raise ValueError("Please provide the beta without the leading negative.")
     if q < 0:
-        raise ValueError('Please select a non-zero value for q.')
-
+        raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    N = class_counts.sum()
-    if N == 0:
-        return 0
-
+    num: int = class_counts.sum()
+    if num == 0:
+        return np.float32(0)
     # find T
-    T = 0
-    for i in range(len(class_counts)):
-        if class_counts[i]:
-            a = class_counts[i] / N
-            wt = np.exp(-beta * class_distances[i])
-            T += wt * a
-
+    agg_t = 0
+    for class_count, class_dist in zip(class_counts, class_distances):
+        if class_count:
+            proportion = class_count / num
+            wt = np.exp(-beta * class_dist)
+            agg_t += wt * proportion
     # hill number defined in the limit as the exponential of information entropy
     if q == 1:
-        PD_lim = 0  # using the same variable name as non limit version causes errors for parallel
+        div_branch_wt_lim = 0
         # get branch lengths and class abundances
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a = class_counts[i] / N
-                wt = np.exp(-beta * class_distances[i])
-                PD_lim += wt * a / T * np.log(a / T)  # sum entropy
+        for class_count, class_dist in zip(class_counts, class_distances):
+            if class_count:
+                proportion = class_count / num
+                wt = np.exp(-beta * class_dist)
+                div_branch_wt_lim += wt * proportion / agg_t * np.log(proportion / agg_t)  # sum entropy
         # return exponent of entropy
-        PD_lim = np.exp(-PD_lim)
-        return PD_lim  # / T
+        div_branch_wt_lim = np.exp(-div_branch_wt_lim)
+        return div_branch_wt_lim  # / T
     # otherwise use the usual form of Hill numbers
-    else:
-        PD = 0
-        # get branch lengths and class abundances
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a = class_counts[i] / N
-                wt = np.exp(-beta * class_distances[i])
-                PD += wt * (a / T) ** q  # sum
-        # once summed, apply q
-        PD = PD ** (1 / (1 - q))
-        return PD  # / T
+    div_branch_wt = 0
+    # get branch lengths and class abundances
+    for class_count, class_dist in zip(class_counts, class_distances):
+        if class_count:
+            a = class_count / num
+            wt = np.exp(-beta * class_dist)
+            div_branch_wt += wt * (a / agg_t) ** q  # sum
+    # once summed, apply q
+    div_branch_wt = div_branch_wt ** (1 / (1 - q))
+    return div_branch_wt  # / T
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
-                                        class_distances: np.ndarray,
-                                        q: float,
-                                        beta: float) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def hill_diversity_pairwise_distance_wt(
+    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+) -> np.float32:
     """
+    Compute Hill diversity weighted by pairwise distances.
+
     This is the distances version - see below for disparity matrix version
 
     Based on unified framework for species diversity in Chao, Chiu, Jost 2014
@@ -126,160 +125,163 @@ def hill_diversity_pairwise_distance_wt(class_counts: np.ndarray,
     Remember these are already distilled species counts - so it is OK to use closest distance to each species
 
     This is different to the non-pairwise form of the phylogenetic version which simply takes singular distance k to i
+
     """
-
     if len(class_counts) != len(class_distances):
-        raise ValueError('Mismatching number of unique class counts and respective class distances.')
-
+        raise ValueError("Mismatching number of unique class counts and respective class distances.")
     if beta < 0:
-        raise ValueError('Please provide the beta without the leading negative.')
-
+        raise ValueError("Please provide the beta without the leading negative.")
     if q < 0:
-        raise ValueError('Please select a non-zero value for q.')
-
+        raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    N = class_counts.sum()
-    if N == 0:
-        return 0
-
+    num: int = class_counts.sum()
+    if num == 0:
+        return np.float32(0)
     # calculate Q
-    Q = 0
-    for i in range(len(class_counts)):
-        if class_counts[i]:
-            a_i = class_counts[i] / N
-            for j in range(len(class_counts)):
+    agg_q = 0
+    for i, class_count_i in enumerate(class_counts):
+        if not class_count_i:
+            continue
+        a_i = class_count_i / num
+        for j, class_count_j in enumerate(class_counts):
+            # only need to examine the pair if j < i, otherwise double-counting
+            if j > i:
+                break
+            if not class_count_j:
+                continue
+            a_j = class_count_j / num
+            wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+            # pairwise distances
+            agg_q += wt * a_i * a_j
+    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
+    if agg_q == 0:
+        return np.float32(0)
+    # if in the limit, use exponential
+    if q == 1:
+        div_pw_wt_lim = 0  # using the same variable name as non limit version causes errors for parallel
+        for i, class_count_i in enumerate(class_counts):
+            if not class_count_i:
+                continue
+            a_i = class_count_i / num
+            for j, class_count_j in enumerate(class_counts):
                 # only need to examine the pair if j < i, otherwise double-counting
                 if j > i:
                     break
-                if class_counts[j]:
-                    a_j = class_counts[j] / N
-                    wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
-                    # pairwise distances
-                    Q += wt * a_i * a_j
-
-    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
-    if Q == 0:
-        return 0
-
-    # if in the limit, use exponential
-    if q == 1:
-        FD_lim = 0  # using the same variable name as non limit version causes errors for parallel
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a_i = class_counts[i] / N
-                for j in range(len(class_counts)):
-                    # only need to examine the pair if j < i, otherwise double-counting
-                    if j > i:
-                        break
-                    if class_counts[j]:
-                        a_j = class_counts[j] / N
-                        # pairwise distances
-                        wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
-                        FD_lim += wt * a_i * a_j / Q * np.log(a_i * a_j / Q)  # sum
+                if not class_count_j:
+                    continue
+                a_j = class_count_j / num
+                # pairwise distances
+                wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+                div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
         # once summed
-        FD_lim = np.exp(-FD_lim)
-        return FD_lim ** (1 / 2)  # (FD_lim / Q) ** (1 / 2)
+        div_pw_wt_lim = np.exp(-div_pw_wt_lim)
+        return np.float32(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
     # otherwise conventional form
-    else:
-        FD = 0
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a_i = class_counts[i] / N
-                for j in range(len(class_counts)):
-                    # only need to examine the pair if j < i, otherwise double-counting
-                    if j > i:
-                        break
-                    if class_counts[j]:
-                        a_j = class_counts[j] / N
-                        # pairwise distances
-                        wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
-                        FD += wt * (a_i * a_j / Q) ** q  # sum
-        FD = FD ** (1 / (1 - q))
-        return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
+    div_pw_wt = 0
+    for i, class_count_i in enumerate(class_counts):
+        if not class_count_i:
+            continue
+        a_i = class_count_i / num
+        for j, class_count_j in enumerate(class_counts):
+            # only need to examine the pair if j < i, otherwise double-counting
+            if j > i:
+                break
+            if not class_count_j:
+                continue
+            a_j = class_count_j / num
+            # pairwise distances
+            wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+            div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
+    div_pw_wt = div_pw_wt ** (1 / (1 - q))
+    return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def hill_diversity_pairwise_matrix_wt(class_counts: np.ndarray, wt_matrix: np.ndarray, q: float) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def hill_diversity_pairwise_matrix_wt(
+    class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], q: np.float32
+) -> np.float32:
     """
+    Hill diversity weighted by pairwise weights matrix.
+
     This is the matrix version - requires a precomputed (e.g. disparity) matrix for all classes.
 
     See above for distance version.
+
     """
-
     if len(class_counts) != len(wt_matrix):
-        raise ValueError('Mismatching number of unique class counts and dimensionality of class weights matrix.')
-
+        raise ValueError("Mismatching number of unique class counts and dimensionality of class weights matrix.")
     if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
-        raise ValueError('Weights matrix must be an NxN pairwise matrix of disparity weights.')
-
+        raise ValueError("Weights matrix must be an NxN pairwise matrix of disparity weights.")
     if q < 0:
-        raise ValueError('Please select a non-zero value for q.')
-
+        raise ValueError("Please select a non-zero value for q.")
     # catch potential division by zero situations
-    N = class_counts.sum()
-    if N == 0:
-        return 0
-
+    num: int = class_counts.sum()
+    if num == 0:
+        return np.float32(0)
     # calculate Q
-    Q = 0
-    for i in range(len(class_counts)):
-        if class_counts[i]:
-            a_i = class_counts[i] / N
-            for j in range(len(class_counts)):
+    agg_q = 0
+    for i, class_count_i in enumerate(class_counts):
+        if not class_count_i:
+            continue
+        a_i = class_count_i / num
+        for j, class_count_j in enumerate(class_counts):
+            # only need to examine the pair if j < i, otherwise double-counting
+            if j > i:
+                break
+            if not class_count_j:
+                continue
+            a_j = class_count_j / num
+            wt = wt_matrix[i][j]
+            # pairwise distances
+            agg_q += wt * a_i * a_j
+    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
+    if agg_q == 0:
+        return np.float32(0)
+    # if in the limit, use exponential
+    if q == 1:
+        div_pw_wt_lim = 0  # using the same variable name as non limit version causes errors for parallel
+        for i, class_count_i in enumerate(class_counts):
+            if not class_count_i:
+                continue
+            a_i = class_count_i / num
+            for j, class_count_j in enumerate(class_counts):
                 # only need to examine the pair if j < i, otherwise double-counting
                 if j > i:
                     break
-                if class_counts[j]:
-                    a_j = class_counts[j] / N
-                    wt = wt_matrix[i][j]
-                    # pairwise distances
-                    Q += wt * a_i * a_j
-
-    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
-    if Q == 0:
-        return 0
-
-    # if in the limit, use exponential
-    if q == 1:
-        FD_lim = 0  # using the same variable name as non limit version causes errors for parallel
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a_i = class_counts[i] / N
-                for j in range(len(class_counts)):
-                    # only need to examine the pair if j < i, otherwise double-counting
-                    if j > i:
-                        break
-                    if class_counts[j]:
-                        a_j = class_counts[j] / N
-                        # pairwise distances
-                        wt = wt_matrix[i][j]
-                        FD_lim += wt * a_i * a_j / Q * np.log(a_i * a_j / Q)  # sum
+                if not class_count_j:
+                    continue
+                a_j = class_count_j / num
+                # pairwise distances
+                wt = wt_matrix[i][j]
+                div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
         # once summed
-        FD_lim = np.exp(-FD_lim)
-        return FD_lim ** (1 / 2)  # (FD_lim / Q) ** (1 / 2)
+        div_pw_wt_lim = np.exp(-div_pw_wt_lim)
+        return np.float32(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
     # otherwise conventional form
-    else:
-        FD = 0
-        for i in range(len(class_counts)):
-            if class_counts[i]:
-                a_i = class_counts[i] / N
-                for j in range(len(class_counts)):
-                    # only need to examine the pair if j < i, otherwise double-counting
-                    if j > i:
-                        break
-                    if class_counts[j]:
-                        a_j = class_counts[j] / N
-                        # pairwise distances
-                        wt = wt_matrix[i][j]
-                        FD += wt * (a_i * a_j / Q) ** q  # sum
-        FD = FD ** (1 / (1 - q))
-        return FD ** (1 / 2)  # (FD / Q) ** (1 / 2)
+    div_pw_wt = 0
+    for i, class_count_i in enumerate(class_counts):
+        if not class_count_i:
+            continue
+        a_i = class_count_i / num
+        for j, class_count_j in enumerate(class_counts):
+            # only need to examine the pair if j < i, otherwise double-counting
+            if j > i:
+                break
+            if not class_count_j:
+                continue
+            a_j = class_count_j / num
+            # pairwise distances
+            wt = wt_matrix[i][j]
+            div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
+    div_pw_wt = div_pw_wt ** (1 / (1 - q))
+    return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def gini_simpson_diversity(class_counts: np.ndarray) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
-    Gini-Simpson
+    Gini-Simpson diversity.
+
     Gini transformed to 1 − λ
     Probability that two individuals picked at random do not represent the same species (Tuomisto)
 
@@ -288,47 +290,54 @@ def gini_simpson_diversity(class_counts: np.ndarray) -> float:
 
     Bias corrected:
     D = 1 - sum(Xi/N * (Xi-1/N-1))
+
     """
-    N = class_counts.sum()
-    G = 0
+    num: int = class_counts.sum()
+    gini: np.float32 = np.float32(0)
     # catch potential division by zero situations
-    if N < 2:
-        return G
+    if num < 2:
+        return gini
     # compute bias corrected gini-simpson
-    for c in class_counts:
-        if c:
-            G += c / N * (c - 1) / (N - 1)
-    return 1 - G
+    for class_count in class_counts:
+        gini += class_count / num * (class_count - 1) / (num - 1)
+    return 1 - gini
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def shannon_diversity(class_counts: np.ndarray) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
+    Shannon diversity (information entropy).
+
     Entropy
     p = Xi/N
     S = -sum(p * log(p))
     Uncertainty of the species identity of an individual picked at random (Tuomisto)
+
     """
-    N = class_counts.sum()
-    H = 0
+    num: int = class_counts.sum()
+    shannon: np.float32 = np.float32(0)
     # catch potential division by zero situations
-    if N == 0:
-        return H
+    if num == 0:
+        return shannon
     # compute
-    for a in class_counts:
-        if a:
-            p = a / N  # the probability of this class
-            H += p * np.log(p)  # sum entropy
-    return -H  # remember negative
+    for class_count in class_counts:
+        if class_count:
+            prob = class_count / num  # the probability of this class
+            shannon += prob * np.log(prob)  # sum entropy
+    return -shannon  # remember negative
 
 
-@njit(cache=True, fastmath=checks.fastmath, nogil=True)
-def raos_quadratic_diversity(class_counts: np.ndarray,
-                             wt_matrix: np.array,
-                             alpha: float = 1,
-                             beta: float = 1) -> float:
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def raos_quadratic_diversity(
+    class_counts: npt.NDArray[np.int_],
+    wt_matrix: npt.NDArray[np.float32],
+    alpha: np.float32 = np.float32(1),
+    beta: np.float32 = np.float32(1),
+) -> np.float32:
     """
-    Rao's quadratic - bias corrected and based on disparity
+    Rao's quadratic diversity.
+
+    Bias corrected and based on disparity
 
     Sum of weighted pairwise products
 
@@ -342,30 +351,25 @@ def raos_quadratic_diversity(class_counts: np.ndarray,
     0 and 1 reduces to balance (half-gini - pure balance, no weights)
     1 and 0 reduces to disparity (effectively a weighted count)
     1 and 1 is base stirling diversity / raos quadratic
+
     """
-
     if len(class_counts) != len(wt_matrix):
-        raise ValueError('Mismatching number of unique class counts and respective class taxonomy tiers.')
-
+        raise ValueError("Mismatching number of unique class counts and respective class taxonomy tiers.")
     if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
-        raise ValueError('Weights matrix must be an NxN pairwise matrix of disparity weights.')
-
+        raise ValueError("Weights matrix must be an NxN pairwise matrix of disparity weights.")
     # catch potential division by zero situations
-    N = class_counts.sum()
-    if N < 2:
-        return 0
-
-    R = 0  # variable for additive calculations of distance * p1 * p2
-    for i in range(len(class_counts)):
-        for j in range(len(class_counts)):
+    num: int = class_counts.sum()
+    if num < 2:
+        return np.float32(0)
+    raos: np.float32 = np.float32(0)  # variable for additive calculations of distance * p1 * p2
+    for i, class_count_i in enumerate(class_counts):
+        for j, class_count_j in enumerate(class_counts):
             # only need to examine the pair if j > i, otherwise double-counting
             if j > i:
                 break
-            if class_counts[i] and class_counts[j]:
-                p_i = class_counts[i] / N  # place here to catch division by zero for single element
-                p_j = class_counts[j] / (N - 1)  # bias adjusted
-                if p_i and p_j:  # if the probabilities aren't 0
-                    # calculate 3rd level disparity
-                    wt = wt_matrix[i][j]
-                    R += wt ** alpha * (p_i * p_j) ** beta
-    return R
+            p_i = class_count_i / num  # place here to catch division by zero for single element
+            p_j = class_count_j / (num - 1)  # bias adjusted
+            # calculate 3rd level disparity
+            wt = wt_matrix[i][j]
+            raos += wt**alpha * (p_i * p_j) ** beta
+    return raos

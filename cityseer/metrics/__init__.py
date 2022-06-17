@@ -1,2 +1,1 @@
-from cityseer.metrics import layers
-from cityseer.metrics import networks
+from cityseer.metrics import layers, networks  # type: ignore

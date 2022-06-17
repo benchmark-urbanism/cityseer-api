@@ -6,4 +6,6 @@ module.exports = {
   pugCommentPreserveSpaces: 'trim-all',
   pugWrapAttributesThreshold: -1,
   pugEmptyAttributes: 'as-is',
+  plugins: [require('prettier-plugin-tailwindcss')],
+  tailwindConfig: './tailwind.config.cjs',
 }

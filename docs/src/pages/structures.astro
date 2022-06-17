@@ -1,0 +1,906 @@
+---
+import { Markdown } from 'astro/components'
+import ArXivLink from '@src/components/ArXivLink.vue'
+import PageLayout from '@src/layouts/PageLayout.astro'
+---
+<PageLayout>
+
+<div class="yap module">
+  <h1 class="yap module-title" id="cityseer-structures">
+    <a aria-hidden="true" href="#cityseer-structures" tabindex="-1">
+      <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+        <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+      </svg>
+    </a>cityseer.structures
+  </h1><Markdown is:raw>
+The `structures` module defines data structures used by the lower-level `cityseer` API.
+
+ The data structures defined in this modules are created and managed automatically by the user-facing API. It is therefore not necessary to create these structures directly unless interaction the lower-level API is intentional.
+</Markdown>
+  <section class="yap class">
+    <h2 class="yap class-title" id="treemap">
+      <a aria-hidden="true" href="#treemap" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>TreeMap
+    </h2><Markdown is:raw>
+`TreeMap` class embodying shortest-path state derived from the `algos.shortest_path_tree` function.
+
+ Each attribute contains a `numpy` array with indices corresponding to the graph's node indices.
+
+ All array values are populated by the `algos.shortest_path_tree` algorithm relative to the currently selected origin node.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">visited_nodes</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">preds</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">short_dist</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">simpl_dist</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">cycles</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">origin_seg</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">last_seg</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">out_bearings</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">visited_edges</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="treemap-init">
+        <a aria-hidden="true" href="#treemap-init" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>TreeMap.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>TreeMap(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">nodes_n, </div>
+            <div class="yap func-sig-param">edges_n)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Instance a `TreeMap`.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of nodes this `TreeMap` instance should contain.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">edges_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of edges this `TreeMap` instance should contain.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="nodemap">
+      <a aria-hidden="true" href="#nodemap" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>NodeMap
+    </h2><Markdown is:raw>
+`NodeMap` structure representing the `x`, `y`, and `live` information for the network.
+
+ Each attribute contains a `numpy` array with indices corresponding to the graph's node indices.
+
+ It is not necessary to invoke this class directly if using a `NetworkStructure` class, which will generate the `NodeMap` implicitly.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">xs</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">ys</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">live</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">count</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="nodemap-init">
+        <a aria-hidden="true" href="#nodemap-init" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NodeMap.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>NodeMap(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">nodes_n)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Instance a `NodeMap`.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of nodes to be contained by this `NodeMap` instance.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="nodemap-x-y">
+        <a aria-hidden="true" href="#nodemap-x-y" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NodeMap.x_y
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>x_y(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">node_idx)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Return the `x` and `y` coordinates for a given node index.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">node_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The node index for which to return `x` and `y` coordinates.
+</Markdown></div>
+        </div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">x</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+`x` coordinate.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">y</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+`y` coordinate.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="nodemap-validate">
+        <a aria-hidden="true" href="#nodemap-validate" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NodeMap.validate
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>validate()</span>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Validate this `NodeMap` instance.
+</Markdown></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="edgemap">
+      <a aria-hidden="true" href="#edgemap" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>EdgeMap
+    </h2><Markdown is:raw>
+`EdgeMap` structure containing edge (segment) information for the network.
+
+ Each attribute contains a `numpy` array with indices corresponding to the graph's edges.
+
+ It is not necessary to invoke this class directly if using a `NetworkStructure` class, which will generate the `EdgeMap` implicitly.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">start</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">end</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">length</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">angle_sum</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">imp_factor</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">in_bearing</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">out_bearing</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">count</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="edgemap-init">
+        <a aria-hidden="true" href="#edgemap-init" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>EdgeMap.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>EdgeMap(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">edges_n)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Create an `EdgeMap` instance.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">edges_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of edges to be contained by this `EdgeMap` instance.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="edgemap-validate">
+        <a aria-hidden="true" href="#edgemap-validate" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>EdgeMap.validate
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>validate()</span>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Validate this Edgemap instance.
+</Markdown></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="networkstructure">
+      <a aria-hidden="true" href="#networkstructure" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>NetworkStructure
+    </h2><Markdown is:raw>
+`NetworkStructure` instance consisting of `nodes`, `edges` and `node_edge_map` attributes.
+
+ Each of these attributes will be created automatically when instancing this class.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">nodes</div>
+        <div class="yap class-prop-def-type">NodeMap</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">edges</div>
+        <div class="yap class-prop-def-type">EdgeMap</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">node_edge_map</div>
+        <div class="yap class-prop-def-type">dict</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="networkstructure-init">
+        <a aria-hidden="true" href="#networkstructure-init" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NetworkStructure.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>NetworkStructure(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">nodes_n, </div>
+            <div class="yap func-sig-param">edges_n)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Instances a `NetworkStructure`.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of nodes this `NetworkStructure` will contain.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">edges_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of edges this `NetworkStructure` will contain.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="networkstructure-set-node">
+        <a aria-hidden="true" href="#networkstructure-set-node" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NetworkStructure.set_node
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>set_node(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">node_idx, </div>
+            <div class="yap func-sig-param">node_x, </div>
+            <div class="yap func-sig-param">node_y, </div>
+            <div class="yap func-sig-param">node_live=True)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Add a node to the `NetworkStructure`.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">node_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The index at which to add the node.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">node_x</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `x` coordinate for the added node.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">node_y</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `y` coordinate for the added node.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">node_live</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those that fall within the surrounding buffered area. See the [edge-rolloff](/guide/#edge-rolloff) section in the guide.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="networkstructure-set-edge">
+        <a aria-hidden="true" href="#networkstructure-set-edge" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NetworkStructure.set_edge
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>set_edge(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">start_node_idx, </div>
+            <div class="yap func-sig-param">end_node_idx, </div>
+            <div class="yap func-sig-param">length, </div>
+            <div class="yap func-sig-param">angle_sum, </div>
+            <div class="yap func-sig-param">imp_factor, </div>
+            <div class="yap func-sig-param">in_bearing, </div>
+            <div class="yap func-sig-param">out_bearing)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Add an edge to the `NetworkStructure`. Edges are directed, meaning that each bidirectionaly street is represented twice: once in each direction; start/end nodes and in/out bearings will differ accordingly.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">start_node_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Index for the starting node for the added edge.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">end_node_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Index for the ending node for the added edge.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">length</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `length` edge attribute should always correspond to the edge lengths in metres. This is used when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths traversed by the algorithm as opposed to crow-flies distances.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">angle_sum</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `angle_sum` edge bearing should correspond to the total angular change along the length of the segment. This is used when calculating angular impedances for simplest-path measures. The `in_bearing` and `out_bearing` attributes respectively represent the starting and ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm steps from one edge to another.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">imp_factor</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The `imp_factor` edge attribute represents an impedance multiplier for increasing or diminishing the impedance of an edge. This is ordinarily set to 1, therefor not impacting calculations. By setting this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can be used to take considerations such as street gradients into account, but should be used with caution.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">in_bearing</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The edge's inwards angular bearing.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">out_bearing</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The edge's outwards angular bearing.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="networkstructure-validate">
+        <a aria-hidden="true" href="#networkstructure-validate" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NetworkStructure.validate
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>validate()</span>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Validate Network Structure.
+</Markdown></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="datamap">
+      <a aria-hidden="true" href="#datamap" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>DataMap
+    </h2><Markdown is:raw>
+`NodeMap` instance representing the `x`, `y` data coordinates and the nearest adjacent network node indices.
+
+ Each attribute contains a `numpy` array with indices corresponding to the graph's node indices.
+</Markdown>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">xs</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">ys</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">nearest_assign</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">next_nearest_assign</div>
+        <div class="yap class-prop-def-type">ndarray</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">count</div>
+        <div class="yap class-prop-def-type"></div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datamap-init">
+        <a aria-hidden="true" href="#datamap-init" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataMap.__init__
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>DataMap(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">data_n)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Instance a `DataMap`.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_n</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of data points to be contained by this `DataMap` instance.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datamap-set-data-point">
+        <a aria-hidden="true" href="#datamap-set-data-point" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataMap.set_data_point
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>set_data_point(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">data_idx, </div>
+            <div class="yap func-sig-param">data_x, </div>
+            <div class="yap func-sig-param">data_y)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Add a data point.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The index for the added node.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_x</div>
+            <div class="yap doc-str-elem-type">np.float32</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The x coordinate for the added node.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_y</div>
+            <div class="yap doc-str-elem-type">np.float32</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The y coordinate for the added node.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datamap-x-y">
+        <a aria-hidden="true" href="#datamap-x-y" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataMap.x_y
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>x_y(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">data_idx)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Return the `x` and `y` coordinates for a given data point index.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">data_idx</div>
+            <div class="yap doc-str-elem-type">int</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The data point index for which to return `x` and `y` coordinates.
+</Markdown></div>
+        </div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">x</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+`x` coordinate.
+</Markdown></div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">y</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+`y` coordinate.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="datamap-validate">
+        <a aria-hidden="true" href="#datamap-validate" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>DataMap.validate
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>validate(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">check_assigned=False)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"><Markdown is:raw>
+Validate this `DataMap` instance.
+</Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">check_assigned</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to check if data points have been assigned to a network.
+</Markdown></div>
+        </div>
+      </div>
+    </section>
+  </section>
+</div>
+</PageLayout>
+

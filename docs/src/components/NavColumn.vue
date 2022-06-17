@@ -23,8 +23,8 @@ nav#nav-tree
 
 <script setup>
 import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
-import { onMounted, nextTick, reactive } from 'vue'
 import anime from 'animejs/lib/anime.es'
+import { nextTick, onMounted, reactive } from 'vue'
 
 const props = defineProps({
   navPaths: {
@@ -40,12 +40,13 @@ const navTree = reactive([])
 let activeNavElems = []
 onMounted(() => {
   const contentCol = document.getElementById('content-col')
-  const headers = contentCol.querySelectorAll('h1, h2')
+  const headers = contentCol.querySelectorAll('h2') // h1?
   props.navPaths.forEach((path) => {
     const isActive = path === props.currentPath
     const headerInfo = []
     if (isActive) {
       headers.forEach((header) => {
+        if (header.textContent.includes('__init__')) return
         const headerId = `head-${header.id}`
         const targetPath = `#${header.id}`
         headerInfo.push({
@@ -99,9 +100,9 @@ const headingTargetsAnim = () => {
   nextTick(() => {
     anime({
       targets: '.nested-link',
-      scale: [0.9, 1],
-      duration: 100,
-      delay: anime.stagger(10),
+      scale: [0.95, 1],
+      duration: 50,
+      delay: anime.stagger(5),
     })
   })
 }
@@ -109,16 +110,16 @@ const headingTargetsAnim = () => {
 
 <style lang="postcss" scoped>
 .nav-link {
-  @apply text-sm text-right text-theme font-medium px-2 py-2 leading-none transition-all border-b;
+  @apply border-b px-2 py-2 text-right text-sm font-medium leading-none text-theme transition-all;
   &:hover {
-    @apply bg-dark-grey -translate-x-1 border-light-grey;
+    @apply -translate-x-1 border-light-grey bg-dark-grey;
   }
 }
 .nav-link-active {
-  @apply bg-dark-grey -translate-x-1 border-b border-light-grey;
+  @apply -translate-x-1 border-b border-light-grey bg-dark-grey;
 }
 .nested-link {
-  @apply text-xs text-right font-light py-1 pr-3 border-theme transition-all text-lighter-grey;
+  @apply border-theme py-1 pr-3 text-right text-xs font-light text-lighter-grey transition-all;
   &:hover,
   &:active {
     @apply border-r-2;
@@ -129,7 +130,7 @@ const headingTargetsAnim = () => {
 }
 @media only screen and (max-width: 958px) {
   .nav-link {
-    @apply text-sm text-left;
+    @apply text-left text-sm;
   }
   .nested-link {
     @apply text-xs;

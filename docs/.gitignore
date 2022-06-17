@@ -1,0 +1,17 @@
+# mac
+.DS_Store
+
+# Dev
+.idea/
+build/
+dist/
+
+# node modules and gridsome
+logs
+*.log
+node_modules/
+.cache
+.temp
+
+# firebase
+**/.firebase*

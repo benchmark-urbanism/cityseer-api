@@ -1,26 +1,27 @@
 .yap {
   & .module {
-    @apply py-3 m-3;
+    @apply m-3 py-3;
   }
   & .module-title,
   .func-title,
   .module-title {
-    @apply font-mono text-xl font-semibold pl-2;
+    @apply pl-2 font-mono text-xl font-semibold;
   }
   & .class {
-    @apply border-l-2 border-theme p-2 my-4;
+    @apply my-8 border-l-3 border-t-1 border-theme pl-2;
   }
   & .func {
-    @apply border-l border-mid-grey p-1 my-4 bg-dark-grey;
+    @apply my-4 border-l border-mid-grey bg-dark-grey p-1;
   }
   & .func-sig-content {
-    @apply border-theme flex border-t bg-darker-grey p-3 font-mono items-start mb-2;
+    @apply mb-2 flex items-start border-t-2 border-theme bg-darker-grey p-3 font-mono;
   }
   & .func-sig {
-    @apply flex text-sm items-start;
+    @apply flex items-start text-sm;
   }
   & .func-sig-params {
-    @apply flex flex-col;
+    white-space: pre-wrap;
+    @apply flex flex-wrap;
   }
   & .func-sig-param {
   }
@@ -28,23 +29,23 @@
   }
   & .doc-str-elem-container,
   .class-prop-elem-container {
-    @apply py-1 bg-darker-grey border-mid-grey border-t flex items-start;
+    @apply flex items-start border-t border-mid-grey bg-darker-grey py-1;
   }
   & .doc-str-elem-def,
   .class-prop-def {
-    @apply flex flex-col min-w-[170px] max-w-[230px] py-1;
+    @apply flex min-w-[170px] max-w-[230px] flex-col py-1;
   }
   & .doc-str-elem-name,
   .class-prop-def-name {
-    @apply text-xs font-semibold px-1;
+    @apply px-1 text-xs font-semibold;
   }
   & .doc-str-elem-type,
   .class-prop-def-type {
-    @apply text-xs font-light px-1;
+    @apply px-1 text-xs font-light;
   }
   & .doc-str-elem-desc,
   .class-prop-def-desc {
-    @apply w-full flex flex-col;
+    @apply flex w-full flex-col;
 
     & p {
       @apply text-xs;

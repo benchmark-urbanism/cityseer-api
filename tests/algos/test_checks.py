@@ -1,10 +1,13 @@
+# pyright: basic
+
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 
-from cityseer.algos import data, checks
-from cityseer.metrics import networks, layers
+from cityseer.algos import checks
+from cityseer.metrics import layers, networks
 from cityseer.tools import mock
-from tests.tools import primal_graph
 
 
 def test_check_numerical_data():
@@ -25,8 +28,7 @@ def test_check_numerical_data():
 
 def test_check_categorical_data():
     mock_categorical = mock.mock_categorical_data(50)
-    data_classes, data_encoding = layers.encode_categorical(mock_categorical)
-
+    _data_classes, data_encoding = layers.encode_categorical(mock_categorical)
     # check for malformed data
     # negatives
     with pytest.raises(ValueError):
@@ -38,92 +40,15 @@ def test_check_categorical_data():
         checks.check_categorical_data(data_encoding)
     # floats
     with pytest.raises(ValueError):
-        data_encoding_float = np.full(len(data_encoding), np.nan)
+        data_encoding_float: npt.NDArray[np.float32] = np.full(data_encoding.shape[0], np.nan, np.float32)
         data_encoding_float[:] = data_encoding[:].astype(float)
         data_encoding_float[0] = 1.2345
         checks.check_categorical_data(data_encoding_float)
 
 
-def test_check_data_map(primal_graph):
-    N = networks.NetworkLayerFromNX(primal_graph, distances=[500])
-    data_dict = mock.mock_data_dict(primal_graph)
-    data_uids, data_map = layers.data_map_from_dict(data_dict)
-
-    # should throw error if not assigned
-    with pytest.raises(ValueError):
-        checks.check_data_map(data_map)
-
-    # should work if flag set to False
-    checks.check_data_map(data_map, check_assigned=False)
-
-    # assign then check that it runs as intended
-    data_map = data.assign_to_network(data_map,
-                                      N._node_data,
-                                      N._edge_data,
-                                      N._node_edge_map,
-                                      max_dist=400)
-    checks.check_data_map(data_map)
-
-    # catch zero length data arrays
-    empty_2d_arr = np.full((0, 4), np.nan)
-    with pytest.raises(ValueError):
-        checks.check_data_map(empty_2d_arr)
-
-    # catch invalid dimensionality
-    with pytest.raises(ValueError):
-        checks.check_data_map(data_map[:, :-1])
-
-
-def test_check_network_maps(primal_graph):
-    # network maps
-    N = networks.NetworkLayerFromNX(primal_graph, distances=[500])
-    # from cityseer.tools import plot
-    # plot.plot_networkX_primal_or_dual(primal=G)
-    # plot.plot_graph_maps(N.uids, N._node_data, N._edge_data)
-    # catch zero length node and edge arrays
-    empty_node_arr = np.full((0, 5), np.nan)
-    with pytest.raises(ValueError):
-        checks.check_network_maps(empty_node_arr, N._edge_data, N._node_edge_map)
-    empty_edge_arr = np.full((0, 4), np.nan)
-    with pytest.raises(ValueError):
-        checks.check_network_maps(N._node_data, empty_edge_arr, N._node_edge_map)
-    # check that malformed node and data maps throw errors
-    with pytest.raises(ValueError):
-        checks.check_network_maps(N._node_data[:, :-1], N._edge_data, N._node_edge_map)
-    with pytest.raises(ValueError):
-        checks.check_network_maps(N._node_data, N._edge_data[:, :-1], N._node_edge_map)
-    # catch problematic edge map values
-    for x in [np.nan, -1]:
-        # missing start node
-        corrupted_edges = N._edge_data.copy()
-        corrupted_edges[0, 0] = x
-        with pytest.raises(AssertionError):
-            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
-        # missing end node
-        corrupted_edges = N._edge_data.copy()
-        corrupted_edges[0, 1] = x
-        with pytest.raises(KeyError):
-            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
-        # invalid length
-        corrupted_edges = N._edge_data.copy()
-        corrupted_edges[0, 2] = x
-        with pytest.raises(ValueError):
-            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
-        # invalid angle_sum
-        corrupted_edges = N._edge_data.copy()
-        corrupted_edges[0, 3] = x
-        with pytest.raises(ValueError):
-            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
-        # invalid imp_factor
-        corrupted_edges = N._edge_data.copy()
-        corrupted_edges[0, 4] = x
-        with pytest.raises(ValueError):
-            checks.check_network_maps(N._node_data, corrupted_edges, N._node_edge_map)
-
-
 def test_check_distances_and_betas():
-    betas = np.array([0.02, 0.01, 0.005, 0.0025, 0.0])
-    distances = np.array(networks.distance_from_beta(betas))
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025, 0.0], np.float32)
+    distances = networks.distance_from_beta(betas)
 
     # zero length arrays
     with pytest.raises(ValueError):

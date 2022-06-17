@@ -1,48 +1,50 @@
 ---
-import { Markdown } from 'astro/components';
+import { Markdown } from 'astro/components'
 import ArXivLink from '@src/components/ArXivLink.vue'
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
-
 <PageLayout>
+
 <div class="yap module">
   <h1 class="yap module-title" id="cityseer-tools-graphs">
-    <a aria-hidden="true" href="#cityseer-tools-graphs" tab_index="-1">
-      <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <a aria-hidden="true" href="#cityseer-tools-graphs" tabindex="-1">
+      <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
         <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
       </svg>
     </a>cityseer.tools.graphs
   </h1><Markdown is:raw>
-A collection of convenience functions for the preparation and conversion of [`NetworkX`](https://networkx.github.io/) graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
+Convenience functions for the preparation and conversion of `networkX` graphs to and from `cityseer` data structures.
+
+ Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 </Markdown>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-simple-geoms">
-      <a aria-hidden="true" href="#nx-simple-geoms" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-simple-geoms" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_simple_geoms
+      </a>nx_simple_geoms
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_simple_geoms(</span>
+        <span>nx_simple_geoms(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Generates straight-line geometries for each edge based on the the `x` and `y` coordinates of the adjacent nodes. The edge geometry will be stored to the edge `geom` attribute.
+Generate straight-line geometries for each edge. Prepares &quot;simple&quot; straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to the edge `geom` attribute.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes.
@@ -52,7 +54,7 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge `geom` attributes.
@@ -62,24 +64,24 @@ A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthed
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-from-osm">
-      <a aria-hidden="true" href="#nx-from-osm" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-from-osm" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_from_osm
+      </a>nx_from_osm
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_from_osm(</span>
+        <span>nx_from_osm(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">osm_json)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Generates a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -95,7 +97,7 @@ A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
@@ -105,31 +107,31 @@ A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-wgs-to-utm">
-      <a aria-hidden="true" href="#nx-wgs-to-utm" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-wgs-to-utm" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_wgs_to_utm
+      </a>nx_wgs_to_utm
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_wgs_to_utm(</span>
+        <span>nx_wgs_to_utm(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">force_zone_number)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
+Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
@@ -141,14 +143,14 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordina
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results. Defaults to None.
+An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results. By Default None.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge `geom` attributes are present, these will also be converted.
@@ -158,32 +160,32 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the loca
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-remove-dangling-nodes">
-      <a aria-hidden="true" href="#nx-remove-dangling-nodes" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-remove-dangling-nodes" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_remove_dangling_nodes
+      </a>nx_remove_dangling_nodes
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_remove_dangling_nodes(</span>
+        <span>nx_remove_dangling_nodes(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">despine, </div>
           <div class="yap func-sig-param">remove_disconnected=True)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Optionally removes short dead-ends or disconnected graph components, which may be prevalent on poor quality network datasets.
+Remove disconnected components and optionally removes short dead-end street stubs.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -192,7 +194,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">despine</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.
@@ -211,7 +213,7 @@ Whether to remove disconnected components. If set to `True`, only the largest co
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
@@ -221,35 +223,37 @@ A `networkX` `MultiGraph` with disconnected components optionally removed, and d
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-remove-filler-nodes">
-      <a aria-hidden="true" href="#nx-remove-filler-nodes" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-remove-filler-nodes" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_remove_filler_nodes
+      </a>nx_remove_filler_nodes
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_remove_filler_nodes(</span>
+        <span>nx_remove_filler_nodes(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Removes nodes of degree=2: such nodes represent no route-choices other than traversal to the next edge. The edges on either side of the deleted nodes will be removed and replaced with a new spliced edge.
-
+Remove nodes of degree=2. Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
 
 :::note
-Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` [`Linestrings`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) to describe arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing side-effects as a function of varied node intensities when computing network centralities.
+Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
+through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` `Linestrings` to describe
+arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing
+side-effects as a function of varied node intensities when computing network centralities.
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -259,7 +263,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.
@@ -269,19 +273,19 @@ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-consolidate-nodes">
-      <a aria-hidden="true" href="#nx-consolidate-nodes" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-consolidate-nodes" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_consolidate_nodes
+      </a>nx_consolidate_nodes
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_consolidate_nodes(</span>
+        <span>nx_consolidate_nodes(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">buffer_dist=5, </div>
           <div class="yap func-sig-param">min_node_group=2, </div>
           <div class="yap func-sig-param">min_node_degree=1, </div>
@@ -313,8 +317,8 @@ Consolidates nodes if they are within a buffer distance of each other. Several p
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -432,7 +436,7 @@ See `multi_edge_len_factor`. Defaults to 100.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
@@ -442,9 +446,7 @@ A `networkX` `MultiGraph` with consolidated nodes.
         <h3 class="yap">Notes</h3><Markdown is:raw>
 See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
 
-
 ![Example raw graph from OSM](/images/graph_cleaning_1.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
-
 
 ![Example cleaned graph](/images/graph_cleaning_5.png) _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 </Markdown>
@@ -453,19 +455,19 @@ See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-split-opposing-geoms">
-      <a aria-hidden="true" href="#nx-split-opposing-geoms" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-split-opposing-geoms" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_split_opposing_geoms
+      </a>nx_split_opposing_geoms
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_split_opposing_geoms(</span>
+        <span>nx_split_opposing_geoms(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">buffer_dist=10, </div>
           <div class="yap func-sig-param">merge_edges_by_midline=True, </div>
           <div class="yap func-sig-param">multi_edge_len_factor=1.25, </div>
@@ -474,13 +476,13 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Projects nodes to pierce opposing edges within a buffer distance. The pierced nodes facilitate subsequent merging for scenarios such as divided boulevards.
+Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx-consolidate-nodes`](#nx-consolidate-nodes).
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -489,7 +491,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">buffer_dist</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The buffer distance to be used for splitting nearby nodes. Defaults to 5.
@@ -526,7 +528,7 @@ See `multi_edge_len_factor`. Defaults to 100.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
@@ -536,19 +538,19 @@ A `networkX` `MultiGraph` with consolidated nodes.
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-decompose">
-      <a aria-hidden="true" href="#nx-decompose" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-decompose" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_decompose
+      </a>nx_decompose
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_decompose(</span>
+        <span>nx_decompose(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">decompose_max)</div>
         </div>
       </div>
@@ -556,16 +558,17 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     <div class="yap"><Markdown is:raw>
 Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
 
-
 :::note
-Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller 20m, and 50m may already be sufficient for the majority of cases.
+Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
+unnecessarily for subsequent analysis. For larger-scale urban analysis, it is generally not necessary to go smaller
+20m, and 50m may already be sufficient for the majority of cases.
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -584,10 +587,10 @@ The maximum length threshold for decomposed edges.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `impedance` edge attributes will be set to match the lengths of the new edges.
+A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `imp_factor` edge attributes will be set to match the lengths of the new edges.
 </Markdown></div>
       </div>
       <div class="yap doc-str-meta">
@@ -596,15 +599,13 @@ A decomposed `networkX` graph with no edge longer than the `decompose_max` param
 from cityseer.tools import mock, graphs, plot
 
 G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_decomposed = graphs.nX_decompose(G_simple, 100)
-plot.plot_nX(G_decomposed)
+G_simple = graphs.nx_simple_geoms(G)
+G_decomposed = graphs.nx_decompose(G_simple, 100)
+plot.plot_nx(G_decomposed)
 ```
 
 
-
 ![Example graph](/images/graph_simple.png) _Example graph prior to decomposition._
-
 
 ![Example decomposed graph](/images/graph_decomposed.png) _Example graph after decomposition._
 </Markdown>
@@ -613,35 +614,36 @@ plot.plot_nX(G_decomposed)
   </section>
   <section class="yap func">
     <h2 class="yap func-title" id="nx-to-dual">
-      <a aria-hidden="true" href="#nx-to-dual" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+      <a aria-hidden="true" href="#nx-to-dual" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_to_dual
+      </a>nx_to_dual
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_to_dual(</span>
+        <span>nx_to_dual(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Converts a primal graph representation, where intersections are represented as nodes and streets as edges, to the dual representation. So doing, edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
-
+Convert a primal graph representation to the dual representation. Primal graphs represent intersections as nodes and streets as edges. This method will invert this representation so that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
 :::note
-Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges. e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
+Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
+e.g. a crescent street that spans the same intersections as parallel straight street requires multiple edges in
+primal. The same type of situation does not arise in the dual because the nodes map to distinct edges regardless.
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -651,7 +653,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
@@ -663,13 +665,12 @@ A dual representation `networkX` graph. The new dual nodes will have `x` and `y`
 from cityseer.tools import graphs, mock, plot
 
 G = mock.mock_graph()
-G_simple = graphs.nX_simple_geoms(G)
-G_dual = graphs.nX_to_dual(G_simple)
-plot.plot_nX_primal_or_dual(G_simple,
+G_simple = graphs.nx_simple_geoms(G)
+G_dual = graphs.nx_to_dual(G_simple)
+plot.plot_nx_primal_or_dual(G_simple,
                             G_dual,
                             plot_geoms=False)
 ```
-
 
 
 ![Example dual graph](/images/graph_dual.png) _Dual graph (blue) overlaid on the source primal graph (red)._
@@ -678,36 +679,36 @@ plot.plot_nX_primal_or_dual(G_simple,
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="graph-maps-from-nx">
-      <a aria-hidden="true" href="#graph-maps-from-nx" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <h2 class="yap func-title" id="network-structure-from-nx">
+      <a aria-hidden="true" href="#network-structure-from-nx" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>graph_maps_from_nX
+      </a>network_structure_from_nx
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>graph_maps_from_nX(</span>
+        <span>network_structure_from_nx(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Transposes a `networkX` `MultiGraph` into `numpy` arrays for use by `NetworkLayer` classes. Calculates length and angle attributes, as well as in and out bearings and stores these in the returned data maps.
-
+Transpose a `networkX` `MultiGraph` into `numpy` arrays for use by `cityseer` `NetworkLayer` classes. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
 
 :::warning
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayerFromNX](/metrics/networks/#networklayerfromnx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking
+[NetworkLayerFromNX](/metrics/networks/#networklayerfromnx)
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
@@ -716,99 +717,58 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">node_uids</div>
+          <div class="yap doc-str-elem-name">node_keys</div>
+          <div class="yap doc-str-elem-type">tuple[int | str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of node `uids` corresponding to the node identifiers in the source `networkX` graph.
+A tuple of node `keys` corresponding to the node identifiers in the source `networkX` graph.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">node_data</div>
+          <div class="yap doc-str-elem-name">network_structure</div>
+          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array representing the graph's nodes. The indices of the second dimension correspond as follows:
-
-
-| idx | property |
-|-----|:---------|
-| 0 | `x` coordinate |
-| 1 | `y` coordinate |
-| 2 | `bool` describing whether the node is `live`. Metrics are only computed for `live` nodes. |
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">edge_data</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array representing the graph's edges. Each edge will be described separately for each direction of travel. The indices of the second dimension correspond as follows:
-
-
-| idx | property |
-|-----|:---------|
-| 0 | start node `idx` |
-| 1 | end node `idx` |
-| 2 | the segment length in metres |
-| 3 | the sum of segment's angular change |
-| 4 | an 'impedance factor' which can be applied to magnify or reduce the effect of the edge's impedance on shortest-path calculations. e.g. for gradients or other such considerations. Use with caution. |
-| 5 | the edge's entry angular bearing |
-| 6 | the edge's exit angular bearing |
-
-
-All edge attributes will be generated automatically, however, the impedance factor parameter can be over-ridden by supplying a `imp_factor` attribute on the input graph's edges.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">node_edge_map</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge indices for each node.
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="nx-from-graph-maps">
-      <a aria-hidden="true" href="#nx-from-graph-maps" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <h2 class="yap func-title" id="nx-from-network-structure">
+      <a aria-hidden="true" href="#nx-from-network-structure" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_from_graph_maps
+      </a>nx_from_network_structure
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_from_graph_maps(</span>
+        <span>nx_from_network_structure(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">node_uids, </div>
-          <div class="yap func-sig-param">node_data, </div>
-          <div class="yap func-sig-param">edge_data, </div>
-          <div class="yap func-sig-param">node_edge_map, </div>
-          <div class="yap func-sig-param">networkX_multigraph, </div>
-          <div class="yap func-sig-param">metrics_dict)</div>
+          <div class="yap func-sig-param">node_keys, </div>
+          <div class="yap func-sig-param">network_structure, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">dict_node_metrics)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Writes cityseer data graph maps back to a `MultiGraph`. Can write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `networkX_multigraph` parameter.
-
+Write `cityseer` data graph maps back to a `networkX` `MultiGraph`. This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `nx_multigraph` parameter.
 
 :::warning
-It is generally not necessary to use this function directly. This function will be called internally when invoking [NetworkLayer.to_networkX](/metrics/networks/#networklayer-to-networkx)
+It is generally not necessary to use this function directly. This function will be called internally when invoking
+[NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-nx-multigraph)
 :::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_uids</div>
-          <div class="yap doc-str-elem-type">tuple | list</div>
+          <div class="yap doc-str-elem-name">node_keys</div>
+          <div class="yap doc-str-elem-type">tuple[int | str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
@@ -816,102 +776,65 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_data</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">network_structure</div>
+          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array representing the graph's nodes. The indices of the second dimension should correspond as follows:
-
-
-| idx | property |
-| :-: | :------- |
-| 0   | `x` coordinate |
-| 1   | `y` coordinate |
-| 2   | `bool` describing whether the node is `live` |
+A [`NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">edge_data</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array representing the graph's directional edges. The indices of the second dimension should correspond as follows:
-
-
-| idx | property |
-| :-: | :------- |
-| 0   | start node `idx` |
-| 1   | end node `idx` |
-| 2   | the segment length in metres |
-| 3   | the sum of segment's angular change |
-| 4   | 'impedance factor' applied to magnify or reduce the edge impedance. |
-| 5   | the edge's entry angular bearing |
-| 6   | the edge's exit angular bearing |
+An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_edge_map</div>
-          <div class="yap doc-str-elem-type">Dict</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `numba` `Dict` with `node_data` indices as keys and `numba` `List` types as values containing the out-edge indices for each node.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multigraph</div>
-          <div class="yap doc-str-elem-type"></div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_uids`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">metrics_dict</div>
+          <div class="yap doc-str-elem-name">dict_node_metrics</div>
           <div class="yap doc-str-elem-type">dict</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional dictionary with keys corresponding to the identifiers in `node_uids`. The dictionary's `values` will be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
+An optional dictionary with keys corresponding to the identifiers in `node_keys`. The dictionary's `values` will be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated. `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `start_bearing`, and `end_bearing` attributes will be copied from the `edge_data` to the graph edges. If a `metrics_dict` is provided, all data will be copied to the graph nodes based on matching node identifiers.
+A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated. `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data` to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on matching node identifiers.
 </Markdown></div>
       </div>
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="nx-from-osmnx">
-      <a aria-hidden="true" href="#nx-from-osmnx" tab_index="-1">
-        <svg ariaHidden="true" class="heading-icon" height="15px" viewbox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+    <h2 class="yap func-title" id="nx-from-osm-nx">
+      <a aria-hidden="true" href="#nx-from-osm-nx" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nX_from_OSMnx
+      </a>nx_from_osm_nx
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nX_from_OSMnx(</span>
+        <span>nx_from_osm_nx(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">networkX_multidigraph, </div>
+          <div class="yap func-sig-param">nx_multidigraph, </div>
           <div class="yap func-sig-param">node_attributes, </div>
           <div class="yap func-sig-param">edge_attributes, </div>
-          <div class="yap func-sig-param">tolerance=&lt;ast.Name object at 0x109d2eb20&gt;)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` compatible `MultiGraph`. See the [`OSMnx`](/guide/#osmnx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide/#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
@@ -922,8 +845,8 @@ Copies an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">networkX_multidigraph</div>
-          <div class="yap doc-str-elem-type"></div>
+          <div class="yap doc-str-elem-name">nx_multidigraph</div>
+          <div class="yap doc-str-elem-type">MultiDiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry` edge attributes containing `LineString` geoms (for simplified edges).
@@ -932,7 +855,7 @@ A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attribut
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_attributes</div>
-          <div class="yap doc-str-elem-type">list | tuple</div>
+          <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
@@ -941,7 +864,7 @@ Optional node attributes to copy to the new MultiGraph. (In addition to the defa
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_attributes</div>
-          <div class="yap doc-str-elem-type">list | tuple</div>
+          <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
@@ -960,7 +883,7 @@ Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">nx.MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
