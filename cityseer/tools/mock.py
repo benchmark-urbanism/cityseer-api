@@ -4,11 +4,13 @@ A collection of functions for the generation of mock data.
 This module is intended for project development and writing code tests, but may otherwise be useful for demonstration
 and utility purposes.
 """
+from __future__ import annotations
 
 import logging
 import string
-from typing import Any, Generator
+from typing import Any, Generator, Optional, Union
 
+import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +18,6 @@ import requests
 import utm
 from shapely import geometry
 
-from cityseer import types
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -249,7 +250,7 @@ def get_graph_extents(
     min_y: float = np.inf
     max_y: float = -np.inf
 
-    _node_idx: int | str
+    _node_idx: Union[int, str]
     node_data: dict[str, Any]
     for _node_idx, node_data in nx_multigraph.nodes(data=True):
         if node_data["x"] < min_x:
@@ -264,7 +265,7 @@ def get_graph_extents(
     return min_x, min_y, max_x, max_y
 
 
-def mock_data_dict(nx_multigraph: MultiGraph, length: int = 50, random_seed: int = 0) -> types.DataDictType:
+def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int = 0) -> gpd.GeoDataFrame:
     """
     Generate a dictionary containing mock data for testing or experimentation purposes.
 
@@ -286,16 +287,21 @@ def mock_data_dict(nx_multigraph: MultiGraph, length: int = 50, random_seed: int
     """
     np.random.seed(seed=random_seed)  # pylint: disable=no-member
     min_x, min_y, max_x, max_y = get_graph_extents(nx_multigraph)
-    data_dict: types.DataDictType = {}
-    for data_idx in range(length):
-        data_dict[data_idx] = {
-            "x": np.random.uniform(min_x, max_x),  # pylint: disable=no-member
-            "y": np.random.uniform(min_y, max_y),  # pylint: disable=no-member
+    xs = np.random.uniform(min_x, max_x, length)
+    ys = np.random.uniform(min_y, max_y, length)
+    data_gpd = gpd.GeoDataFrame(
+        {
+            "data_key": np.arange(length),
+            "geometry": gpd.points_from_xy(xs, ys),
         }
-    return data_dict
+    )
+    data_gpd.set_index("data_key")
+    return data_gpd
 
 
-def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int = 0) -> list[str]:
+def mock_landuse_categorical_data(
+    nx_multigraph: MultiGraph, length: int = 50, num_classes: int = 10, random_seed: int = 0
+) -> gpd.GeoDataFrame:
     """
     Generate a `numpy` array containing mock categorical data for testing or experimentation purposes.
 
@@ -318,30 +324,31 @@ def mock_categorical_data(length: int, num_classes: int = 10, random_seed: int =
 
     """
     np.random.seed(seed=random_seed)
-
     random_class_str = string.ascii_lowercase
     if num_classes > len(random_class_str):
         raise ValueError(
             f"The requested {num_classes} classes exceeds max available categorical classes of {len(random_class_str)}"
         )
     random_class_str = random_class_str[:num_classes]
-
     cl_codes: list[str] = []
     for _ in range(length):
         random_idx = int(np.random.randint(0, len(random_class_str)))
         cl_codes.append(random_class_str[random_idx])
+    data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
+    data_gpd["categorical_landuses"] = cl_codes
 
-    return cl_codes
+    return data_gpd
 
 
 def mock_numerical_data(
-    length: int,
+    nx_multigraph: MultiGraph,
+    length: int = 50,
     val_min: int = 0,
     val_max: int = 100000,
     num_arrs: int = 1,
     floating_pt: int = 3,
     random_seed: int = 0,
-) -> npt.NDArray[np.float32]:
+) -> gpd.GeoDataFrame:
     """
     Generate a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
 
@@ -370,15 +377,14 @@ def mock_numerical_data(
 
     """
     np.random.seed(seed=random_seed)  # pylint: disable=no-member
-
-    num_data = []
-    for _ in range(num_arrs):
-        num_data.append(np.random.randint(val_min, high=val_max, size=length))  # pylint: disable=no-member
-    # return a 2d array
-    num_arr: npt.NDArray[np.float32] = np.array(num_data, dtype=np.float32)
-    num_arr /= 10**floating_pt
-
-    return num_arr
+    data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
+    for idx in range(1, num_arrs + 1):  # type: ignore
+        num_arr: npt.NDArray[np.float32] = np.array(
+            np.random.randint(val_min, high=val_max, size=length), dtype=np.float32
+        )
+        num_arr /= 10**floating_pt
+        data_gpd[f"mock_numerical_{idx}"] = num_arr
+    return data_gpd
 
 
 def mock_species_data(
@@ -443,7 +449,7 @@ def mock_species_data(
         yield counts, probs
 
 
-def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> requests.Response | None:
+def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> Optional[requests.Response]:
     """
     Fetch and parse an OSM response.
 
@@ -497,7 +503,7 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
     /* return only basic info */
     out skel qt;
     """
-    osm_response: requests.Response | None = None
+    osm_response: Optional[requests.Response] = None
     while max_tries:
         osm_response = requests.get(
             "https://overpass-api.de/api/interpreter",

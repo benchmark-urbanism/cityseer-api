@@ -1,5 +1,5 @@
 # pyright: basic
-
+from __future__ import annotations
 
 import string
 
@@ -14,83 +14,73 @@ from cityseer.tools import mock
 def test_mock_graph(primal_graph):
     G = mock.mock_graph()
     G_wgs = mock.mock_graph(wgs84_coords=True)
-
-    for g in [G, G_wgs, primal_graph]:
-        assert g.number_of_nodes() == 57
-        assert g.number_of_edges() == 79
-        assert nx.average_degree_connectivity(g) == {
+    for graph in [G, G_wgs, primal_graph]:  # type: ignore
+        assert graph.number_of_nodes() == 57
+        assert graph.number_of_edges() == 79
+        assert nx.average_degree_connectivity(graph) == {
             4: 3.0,
             3: 3.0303030303030303,
             2: 2.4,
             1: 2.0,
             0: 0,
         }
-
-        for n, d in g.nodes(data=True):
-            assert "x" in d and isinstance(d["y"], (int, float))
-            assert "y" in d and isinstance(d["y"], (int, float))
-
+        for _node_key, node_data in graph.nodes(data=True):  # type: ignore
+            assert "x" in node_data and isinstance(node_data["y"], (int, float))
+            assert "y" in node_data and isinstance(node_data["y"], (int, float))
     # from cityseer.tools import plot
     # plot.plot_nx(G)
 
 
-def test_mock_data_dict(primal_graph):
-    data = mock.mock_data_dict(primal_graph)
-
+def test_mock_data_gdf(primal_graph):
     min_x = np.inf
     max_x = -np.inf
     min_y = np.inf
     max_y = -np.inf
-    for n, d in primal_graph.nodes(data=True):
-        if d["x"] < min_x:
-            min_x = d["x"]
-        if d["x"] > max_x:
-            max_x = d["x"]
-        if d["y"] < min_y:
-            min_y = d["y"]
-        if d["y"] > max_y:
-            max_y = d["y"]
+    for _node_key, node_data in primal_graph.nodes(data=True):  # type: ignore
+        if node_data["x"] < min_x:
+            min_x = node_data["x"]
+        if node_data["x"] > max_x:
+            max_x = node_data["x"]
+        if node_data["y"] < min_y:
+            min_y = node_data["y"]
+        if node_data["y"] > max_y:
+            max_y = node_data["y"]
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    assert "data_key" in data_gdf.columns
+    assert "geometry" in data_gdf.columns
+    assert np.all(data_gdf.geometry.x >= min_x)
+    assert np.all(data_gdf.geometry.x <= max_x)
+    assert np.all(data_gdf.geometry.y >= min_y)
+    assert np.all(data_gdf.geometry.y <= max_y)
 
-    for v in data.values():
-        # check that attributes are present
-        assert "x" in v and isinstance(v["y"], (int, float))
-        assert "y" in v and isinstance(v["y"], (int, float))
-        assert v["x"] >= min_x and v["x"] <= max_x
-        assert v["y"] >= min_y and v["y"] <= max_y
 
-
-def test_mock_categorical_data():
-    cat_d = mock.mock_categorical_data(50)
-    assert len(cat_d) == 50
+def test_mock_landuse_categorical_data(primal_graph):
+    categorical_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50, num_classes=10)
+    assert len(categorical_gdf) == 50
     # classes are generated randomly from max number of classes
     # i.e. situations do exist where the number of classes will be less than the max permitted
     # use large enough max to reduce likelihood of this triggering issue for test
-    assert len(set(cat_d)) == 10
-
-    for c in cat_d:
+    assert len(set(categorical_gdf.categorical_landuses)) == 10
+    for c in categorical_gdf.categorical_landuses:
         assert isinstance(c, str)
         assert c in string.ascii_lowercase
-
-    cat_d = mock.mock_categorical_data(50, num_classes=3)
-    assert len(set(cat_d)) == 3
-
+    categorical_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50, num_classes=3)
+    assert len(set(categorical_gdf.categorical_landuses)) == 3
     # test that an error is raised when requesting more than available max classes per asii_lowercase
     with pytest.raises(ValueError):
-        mock.mock_categorical_data(50, num_classes=len(string.ascii_lowercase) + 1)
+        mock.mock_landuse_categorical_data(primal_graph, length=50, num_classes=len(string.ascii_lowercase) + 1)
 
 
-def test_mock_numerical_data():
+def test_mock_numerical_data(primal_graph):
     for length in [50, 100]:
         for num_arrs in range(1, 3):
-
-            num_d = mock.mock_numerical_data(length=length, num_arrs=num_arrs)
-            assert num_d.shape[0] == num_arrs
-            assert num_d.shape[1] == length
-
-            for arr in num_d:
-                for n in arr:
-                    assert isinstance(n, (float, np.float32))
-                    assert 0 <= n <= 100000
+            numerical_gdf = mock.mock_numerical_data(primal_graph, length=length, num_arrs=num_arrs)
+            assert len(numerical_gdf.columns) == num_arrs + 2
+            for col_label in numerical_gdf.columns:
+                if col_label in ["data_key", "geometry"]:
+                    continue
+                assert np.all(numerical_gdf[col_label] >= 0)
+                assert np.all(numerical_gdf[col_label] <= 100000)
 
 
 def test_mock_species_data():

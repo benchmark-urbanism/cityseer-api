@@ -1,5 +1,5 @@
 # pyright: basic
-
+from __future__ import annotations
 
 import networkx as nx
 import numpy as np
@@ -670,29 +670,21 @@ def test_network_structure_from_nx(diamond_graph):
     G_test_dual.nodes["2_3"]["live"] = False
     for G, is_dual in zip((G_test, G_test_dual), (False, True)):
         # generate test maps
-        node_keys, network_structure = graphs.network_structure_from_nx(G)
+        nodes_gdf, network_structure = graphs.network_structure_from_nx(G, 3395)
         network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
-        # plot.plot_network_structure(node_keys, node_data, edge_data)
+        # plot.plot_network_structure(nodes_gdf, node_data, edge_data)
 
         # check lengths
-        assert len(node_keys) == network_structure.nodes.count == G.number_of_nodes()
+        assert len(nodes_gdf) == network_structure.nodes.count == G.number_of_nodes()
         # edges = x2
         assert network_structure.edges.count == G.number_of_edges() * 2
 
         # check node maps (idx and label match in this case...)
-        for n_label in node_keys:
-            n_idx = node_keys.index(n_label)
-            assert np.isclose(
-                network_structure.nodes.xs[n_idx], G.nodes[n_label]["x"], atol=config.ATOL, rtol=config.RTOL
-            )
-            assert np.isclose(
-                network_structure.nodes.ys[n_idx], G.nodes[n_label]["y"], atol=config.ATOL, rtol=config.RTOL
-            )
-            assert np.isclose(
-                network_structure.nodes.live[n_idx], G.nodes[n_label]["live"], atol=config.ATOL, rtol=config.RTOL
-            )
+        np.allclose(network_structure.nodes.xs, nodes_gdf.geometry.x, atol=config.ATOL, rtol=config.RTOL)
+        np.allclose(network_structure.nodes.ys, nodes_gdf.geometry.y, atol=config.ATOL, rtol=config.RTOL)
+        np.allclose(network_structure.nodes.live, nodes_gdf.live, atol=config.ATOL, rtol=config.RTOL)
 
         # check edge maps (idx and label match in this case...)
         for edge_idx in range(network_structure.edges.count):
@@ -836,9 +828,6 @@ def test_network_structure_from_nx(diamond_graph):
                 else:
                     raise KeyError("Unmatched edge.")
             else:
-                s_idx = node_keys[int(start_nd)]
-                e_idx = node_keys[int(end_nd)]
-                print(s_idx, e_idx)
                 if (start_nd, end_nd) == (0.0, 1.0):  # 0_1 0_2
                     assert np.allclose(
                         (length, angle_sum, imp_factor, in_bearing, out_bearing),
@@ -1056,7 +1045,7 @@ def test_network_structure_from_nx(diamond_graph):
         del G_test[start_nd][end_nd][edge_key]["geom"]
         break
     with pytest.raises(KeyError):
-        graphs.network_structure_from_nx(G_test)
+        graphs.network_structure_from_nx(G_test, 3395)
 
     # check that non-LineString geoms throw an error
     G_test = diamond_graph.copy()
@@ -1065,7 +1054,7 @@ def test_network_structure_from_nx(diamond_graph):
             [G_test.nodes[start_nd]["x"], G_test.nodes[start_nd]["y"]]
         )
     with pytest.raises(TypeError):
-        graphs.network_structure_from_nx(G_test)
+        graphs.network_structure_from_nx(G_test, 3395)
 
     # check that missing node keys throw an error
     G_test = diamond_graph.copy()
@@ -1075,7 +1064,7 @@ def test_network_structure_from_nx(diamond_graph):
             del G_test.nodes[nd_idx][edge_key]
             break
         with pytest.raises(KeyError):
-            graphs.network_structure_from_nx(G_test)
+            graphs.network_structure_from_nx(G_test, 3395)
 
     # check that invalid imp_factors are caught
     G_test = diamond_graph.copy()
@@ -1085,7 +1074,7 @@ def test_network_structure_from_nx(diamond_graph):
             G_test[start_nd][end_nd][edge_key]["imp_factor"] = corrupt_val
             break
         with pytest.raises(ValueError):
-            graphs.network_structure_from_nx(G_test)
+            graphs.network_structure_from_nx(G_test, 3395)
 
 
 def test_nx_from_network_structure(primal_graph):
@@ -1096,44 +1085,68 @@ def test_nx_from_network_structure(primal_graph):
     for node_key in primal_graph.nodes():
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
-    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
-    G_round_trip = graphs.nx_from_network_structure(node_keys, network_structure)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    G_round_trip = graphs.nx_from_network_structure(nodes_gdf, network_structure)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
-    # check with metrics dictionary
-    cc_netw = networks.NetworkLayerFromNX(primal_graph, distances=[500, 1000])
-    cc_netw.node_centrality(measures=["node_harmonic"])
-    data_dict = mock.mock_data_dict(primal_graph)
-    landuse_labels = mock.mock_categorical_data(len(data_dict))
-    cc_data = layers.DataLayerFromDict(data_dict)
-    cc_data.assign_to_network(cc_netw, max_dist=400)
-    cc_data.compute_landuses(
-        landuse_labels,
+    # check with metrics
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf = networks.node_centrality(
+        measures=["node_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[500, 1000]
+    )
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
+    nodes_gdf, data_gdf = layers.compute_landuses(
+        data_gdf,
+        landuse_column_label="categorical_landuses",
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[500, 1000],
         mixed_use_keys=["hill", "shannon"],
         accessibility_keys=["a", "c"],
         qs=[0, 1],
     )
-    metrics_dict = cc_netw.metrics_to_dict()
+    column_labels: list[str] = [
+        "cc_metric_node_harmonic_500",
+        "cc_metric_node_harmonic_1000",
+        "cc_metric_hill_q0_500",
+        "cc_metric_hill_q0_1000",
+        "cc_metric_hill_q1_500",
+        "cc_metric_hill_q1_1000",
+        "cc_metric_shannon_500",
+        "cc_metric_shannon_1000",
+        "cc_metric_a_500_non_weighted",
+        "cc_metric_a_1000_non_weighted",
+        "cc_metric_a_500_weighted",
+        "cc_metric_a_1000_weighted",
+        "cc_metric_c_500_non_weighted",
+        "cc_metric_c_1000_non_weighted",
+        "cc_metric_c_500_weighted",
+        "cc_metric_c_1000_weighted",
+    ]
     # without backbone
-    G_round_trip_data = graphs.nx_from_network_structure(node_keys, network_structure, dict_node_metrics=metrics_dict)
-    for node_key, metrics in metrics_dict.items():
-        assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
+    G_round_trip_nx = graphs.nx_from_network_structure(
+        nodes_gdf,
+        network_structure,
+    )
+    for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
+        for col_label in column_labels:
+            assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
     # with backbone
-    G_round_trip_data = graphs.nx_from_network_structure(
-        node_keys,
+    G_round_trip_nx = graphs.nx_from_network_structure(
+        nodes_gdf,
         network_structure,
         nx_multigraph=primal_graph,
-        dict_node_metrics=metrics_dict,
     )
-    for node_key, metrics in metrics_dict.items():
-        assert G_round_trip_data.nodes[node_key]["metrics"] == metrics
+    for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
+        for col_label in column_labels:
+            assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
     # test with decomposed
     G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
     # set live explicitly
     for node_key in G_decomposed.nodes():
         G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
-    node_keys_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed)
-    G_round_trip_decomp = graphs.nx_from_network_structure(node_keys_decomp, network_structure_decomp)
+    nodes_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
+    G_round_trip_decomp = graphs.nx_from_network_structure(nodes_gdf_decomp, network_structure_decomp, G_decomposed)
     assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
     for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
         assert node_key in G_decomposed
@@ -1147,16 +1160,18 @@ def test_nx_from_network_structure(primal_graph):
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
         graphs.nx_from_network_structure(
-            node_keys,
+            nodes_gdf,
             network_structure,
             nx_multigraph=corrupt_G,
         )
     # mismatching node_key
     with pytest.raises(KeyError):
-        corrupt_node_keys = list(node_keys)
-        corrupt_node_keys[0] = "boo"
+        corrupt_nodes_gdf = nodes_gdf.copy(deep=True)
+        corrupt_index = corrupt_nodes_gdf.index.values
+        corrupt_index[0] = -1
+        corrupt_nodes_gdf.set_index(corrupt_index)
         graphs.nx_from_network_structure(
-            corrupt_node_keys,
+            corrupt_nodes_gdf,
             network_structure,
             nx_multigraph=primal_graph,
         )
@@ -1165,7 +1180,7 @@ def test_nx_from_network_structure(primal_graph):
         corrupt_primal_graph = primal_graph.copy()
         corrupt_primal_graph.remove_edge(0, 1)
         graphs.nx_from_network_structure(
-            node_keys,
+            nodes_gdf,
             network_structure,
             nx_multigraph=corrupt_primal_graph,
         )

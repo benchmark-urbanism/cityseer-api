@@ -6,11 +6,12 @@ Custom behaviour can be achieved by directly manipulating the underlying [`Netwo
 of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 See the demos section for examples.
 """
-
+from __future__ import annotations
 
 import logging
-from typing import Any, Union
+from typing import Any, Optional, Union
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -20,7 +21,7 @@ from matplotlib.collections import LineCollection
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder
 
-from cityseer import structures, types
+from cityseer import structures
 from cityseer.tools.graphs import NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,20 @@ plt.tight_layout()
 # type hack until networkx supports type-hinting
 MultiGraph = Any
 
-COLOUR_MAP = types.ColourMap()
+
+class ColourMap:  # pylint: disable=too-few-public-methods
+    """Specifies global colour presets."""
+
+    primary: str = "#0091ea"
+    accent: str = "#64c1ff"
+    info: str = "#0064b7"
+    secondary: str = "#d32f2f"
+    warning: str = "#9a0007"
+    error: str = "#ffffff"
+    background: str = "#19181B"
+
+
+COLOUR_MAP = ColourMap()
 
 ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
 
@@ -42,22 +56,22 @@ def _open_plots_reset():
 
 
 def plot_nx_primal_or_dual(  # noqa
-    primal_graph: MultiGraph | None = None,
-    dual_graph: MultiGraph | None = None,
-    path: str | None = None,
+    primal_graph: Optional[MultiGraph] = None,
+    dual_graph: Optional[MultiGraph] = None,
+    path: Optional[str] = None,
     labels: bool = False,
     primal_node_size: int = 30,
-    primal_node_colour: ColourType | None = None,
-    primal_edge_colour: ColourType | None = None,
+    primal_node_colour: Optional[ColourType] = None,
+    primal_edge_colour: Optional[ColourType] = None,
     dual_node_size: int = 30,
-    dual_node_colour: ColourType | None = None,
-    dual_edge_colour: ColourType | None = None,
-    primal_edge_width: int | float | None = None,
-    dual_edge_width: int | float | None = None,
+    dual_node_colour: Optional[ColourType] = None,
+    dual_edge_colour: Optional[ColourType] = None,
+    primal_edge_width: Optional[Union[int, float]] = None,
+    dual_edge_width: Optional[Union[int, float]] = None,
     plot_geoms: bool = True,
-    x_lim: tuple[float, float] | list[float] | None = None,
-    y_lim: tuple[float, float] | list[float] | None = None,
-    ax: plt.Axes | None = None,
+    x_lim: Optional[Union[tuple[float, float], list[float]]] = None,
+    y_lim: Optional[Union[tuple[float, float], list[float]]] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs: dict[str, Any],
 ):
     """
@@ -147,11 +161,11 @@ def plot_nx_primal_or_dual(  # noqa
         _graph: MultiGraph,
         _is_primal: bool,
         _node_size: float,
-        _node_colour: ColourType | None,
+        _node_colour: Optional[ColourType],
         _node_shape: str,
-        _edge_colour: ColourType | None,
+        _edge_colour: Optional[ColourType],
         _edge_style: str,
-        _edge_width: int | float | None,
+        _edge_width: Optional[Union[int, float]],
     ) -> None:
         if not len(_graph):  # pylint: disable=len-as-condition
             raise ValueError("Graph contains no nodes to plot.")
@@ -296,16 +310,16 @@ def plot_nx_primal_or_dual(  # noqa
 
 def plot_nx(
     nx_multigraph: MultiGraph,
-    path: str | None = None,
+    path: Optional[str] = None,
     labels: bool = False,
     node_size: int = 20,
-    node_colour: ColourType | None = None,
-    edge_colour: ColourType | None = None,
-    edge_width: int | float | None = None,
+    node_colour: Optional[ColourType] = None,
+    edge_colour: Optional[ColourType] = None,
+    edge_width: Optional[Union[int, float]] = None,
     plot_geoms: bool = False,
-    x_lim: tuple[float, float] | list[float] | None = None,
-    y_lim: tuple[float, float] | list[float] | None = None,
-    ax: plt.Axes | None = None,
+    x_lim: Optional[Union[tuple[float, float], list[float]]] = None,
+    y_lim: Optional[Union[tuple[float, float], list[float]]] = None,
+    ax: Optional[plt.Axes] = None,
     **kwargs: dict[str, Any],
 ):  # noqa
     """
@@ -395,11 +409,11 @@ def plot_nx(
 def plot_assignment(  # noqa
     network_structure: structures.NetworkStructure,
     nx_multigraph: MultiGraph,
-    data_map: structures.DataMap,
-    path: str | None = None,
-    node_colour: ColourType | None = None,
+    data_gdf: gpd.GeoDataFrame,
+    path: Optional[str] = None,
+    node_colour: Optional[ColourType] = None,
     node_labels: bool = False,
-    data_labels: npt.NDArray[np.int_] | npt.NDArray[np.unicode_] | None = None,
+    data_labels: Optional[Union[npt.NDArray[np.int_], npt.NDArray[np.unicode_]]] = None,
     **kwargs: dict[str, Any],
 ):
     """
@@ -489,8 +503,8 @@ def plot_assignment(  # noqa
 
     # overlay data map
     plt.scatter(
-        x=data_map.xs,
-        y=data_map.ys,
+        x=data_gdf.geometry.x,
+        y=data_gdf.geometry.y,
         c=data_colour,  # type: ignore
         cmap=data_cmap,  # type: ignore
         s=30,
@@ -498,13 +512,17 @@ def plot_assignment(  # noqa
         lw=0.5,
         alpha=0.95,
     )
-
+    if "nearest_assign" not in data_gdf.columns:
+        raise ValueError(
+            "Cannot plot assignment for GeoDataFrame that has not yet been assigned to a NetworkStructure."
+        )
     # draw assignment
-    for data_idx in range(data_map.count):
+    for _data_key, data_row in data_gdf.iterrows():  # type: ignore
         # if the data points have been assigned network indices
-        data_x: float = data_map.xs[data_idx]
-        data_y: float = data_map.ys[data_idx]
-        nearest_netw_idx: int = data_map.nearest_assign[data_idx]
+        data_x: float = data_row.geometry.x
+        data_y: float = data_row.geometry.y
+        nearest_netw_idx: int = data_row.nearest_assign
+        next_nearest_netw_idx: int = data_row.next_nearest_assign
         if nearest_netw_idx != -1:
             # plot lines to parents for easier viz
             p_x = network_structure.nodes.xs[nearest_netw_idx]
@@ -516,7 +534,6 @@ def plot_assignment(  # noqa
                 lw=0.5,
                 ls="--",
             )
-        next_nearest_netw_idx: int = data_map.next_nearest_assign[data_idx]
         if next_nearest_netw_idx != -1:
             p_x = network_structure.nodes.xs[next_nearest_netw_idx]
             p_y = network_structure.nodes.ys[next_nearest_netw_idx]
@@ -531,8 +548,8 @@ def plot_assignment(  # noqa
 
 def plot_network_structure(
     network_structure: structures.NetworkStructure,
-    data_map: structures.DataMap,
-    poly: geometry.Polygon | None = None,
+    data_gdf: gpd.GeoDataFrame,
+    poly: Optional[geometry.Polygon] = None,
 ):
     """
     Plot a graph from raw `cityseer` data structures.
@@ -597,29 +614,29 @@ def plot_network_structure(
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.nodes.count):
         ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)
-    if data_map is not None:
+    if data_gdf is not None:
         # plot parents on ax1
         ax1.scatter(
-            x=data_map.xs,
-            y=data_map.ys,
+            x=data_gdf.geometry.x,
+            y=data_gdf.geometry.y,
             color=COLOUR_MAP.secondary,
             edgecolor=COLOUR_MAP.warning,
             alpha=0.9,
             lw=0.5,
         )
         ax2.scatter(
-            x=data_map.xs,
-            y=data_map.ys,
+            x=data_gdf.geometry.x,
+            y=data_gdf.geometry.y,
             color=COLOUR_MAP.secondary,
             edgecolor=COLOUR_MAP.warning,
             alpha=0.9,
             lw=0.5,
         )
-        for data_idx in range(data_map.count):
-            data_x = data_map.xs[data_idx]
-            data_y = data_map.ys[data_idx]
-            nearest_netw_idx = data_map.nearest_assign[data_idx]
-            next_nearest_netw_idx = data_map.next_nearest_assign[data_idx]
+        for data_idx, data_row in data_gdf.iterrows():  # type: ignore
+            data_x: float = data_row.geometry.x
+            data_y: float = data_row.geometry.y
+            nearest_netw_idx: int = data_row.nearest_assign
+            next_nearest_netw_idx: int = data_row.next_nearest_assign
             ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
             # if the data points have been assigned network indices
             if nearest_netw_idx != -1:

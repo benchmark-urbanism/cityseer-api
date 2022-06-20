@@ -22,8 +22,7 @@ The github repository is available at [github.com/benchmark-urbanism/cityseer-ap
 pip install cityseer
 ```
 
-Code tests are run against `python 3.10`, though the code base will generally be compatible with other recent versions of
-Python 3.
+Code tests are run against `python 3.10`, though the code base will generally be compatible with Python 3.8+.
 
 ## Notebooks
 
@@ -135,7 +134,7 @@ _Data points assigned to a Network Layer._
 ![DataLayer assigned to a decomposed NetworkLayer](/images/assignment_decomposed.png)
 _Data assignment becomes more precise on a decomposed Network Layer._
 
-Once the data has been assigned, the [`DataLayer.compute_landuses`](/metrics/layers/#datalayer-compute-landuses) method is used for the calculation of mixed-use and land-use accessibility measures whereas [`DataLayer.compute_stats`](/metrics/layers/#datalayer-compute-stats) can likewise be used for statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including [`DataLayer.hill_diversity`](/metrics/layers/#datalayer-hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#datalayer-hill-branch-wt-diversity), and [`DataLayer.compute_accessibilities`](/metrics/layers/#datalayer-compute-accessibilities).
+Once the data has been assigned, the [`DataLayer.compute_landuses`](/metrics/layers/#datalayer-compute-landuses) method is used for the calculation of mixed-use and land-use accessibility measures whereas [`DataLayer.compute_stats`](/metrics/layers/#datalayer-compute-stats) can likewise be used for statistical measures. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including [`DataLayer.hill_diversity`](/metrics/layers/#hill-diversity), [`DataLayer.hill_branch_wt_diversity`](/metrics/layers/#hill-branch-wt-diversity), and [`DataLayer.compute_accessibilities`](/metrics/layers/#compute-accessibilities).
 
 Landuse labels can be used to generate mixed-use and land-use accessibility measures. Let's create mock landuse labels for the points in our data dictionary and compute mixed-uses and land-use accessibilities:
 
