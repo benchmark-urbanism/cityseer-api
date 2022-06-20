@@ -4,6 +4,8 @@ The `structures` module defines data structures used by the lower-level `citysee
 The data structures defined in this modules are created and managed automatically by the user-facing API. It is
 therefore not necessary to create these structures directly unless interaction the lower-level API is intentional.
 """
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np

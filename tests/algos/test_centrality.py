@@ -1,5 +1,5 @@
 # pyright: basic
-
+from __future__ import annotations
 
 import networkx as nx
 import numpy as np
@@ -28,13 +28,12 @@ def find_path(start_idx, target_idx, tree_preds):
 
 
 def test_shortest_path_tree(primal_graph, dual_graph):
-
-    node_keys_p, network_structure_p = graphs.network_structure_from_nx(primal_graph)
+    nodes_gdf_p, network_structure_p = graphs.network_structure_from_nx(primal_graph, 3395)
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nx_from_network_structure(node_keys_p, network_structure_p)
+    G_round_trip = graphs.nx_from_network_structure(nodes_gdf_p, network_structure_p)
     # prepare dual graph
-    node_keys_d, network_structure_d = graphs.network_structure_from_nx(dual_graph)
-    assert len(node_keys_d) > len(node_keys_p)
+    nodes_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
+    assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000, np.inf]:
         for src_idx in range(len(primal_graph)):
@@ -53,14 +52,14 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
     # plot.plot_nx_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True, node_size=80)
-    p_source_idx = node_keys_p.index(0)
+    p_source_idx = nodes_gdf_p.index.tolist().index(0)
     primal_targets = (15, 20, 37)
     dual_sources = ("0_1", "0_16", "0_31")
     dual_targets = ("13_15", "17_20", "36_37")
     for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets):
-        p_target_idx = node_keys_p.index(p_target)
-        d_source_idx = node_keys_d.index(d_source)  # dual source index changes depending on direction
-        d_target_idx = node_keys_d.index(d_target)
+        p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
+        d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
+        d_target_idx = nodes_gdf_d.index.tolist().index(d_target)
         tree_map_p = centrality.shortest_path_tree(network_structure_p, p_source_idx, np.float32(np.inf), angular=True)
         tree_map_d = centrality.shortest_path_tree(network_structure_d, d_source_idx, np.float32(np.inf), angular=True)
         assert np.allclose(
@@ -71,15 +70,15 @@ def test_shortest_path_tree(primal_graph, dual_graph):
         )
     # angular impedance should take a simpler but longer path - test basic case on dual
     # source and target are the same for either
-    src_idx = node_keys_d.index("11_6")
-    target = node_keys_d.index("39_40")
+    src_idx = nodes_gdf_d.index.tolist().index("11_6")
+    target = nodes_gdf_d.index.tolist().index("39_40")
     # SIMPLEST PATH: get simplest path tree using angular impedance
     tree_map = centrality.shortest_path_tree(
         network_structure_d, src_idx, np.float32(np.inf), angular=True
     )  # ANGULAR = TRUE
     # find path
     path = find_path(target, src_idx, tree_map.preds)
-    path_transpose = [node_keys_d[n] for n in path]
+    path_transpose = [nodes_gdf_d.index[n] for n in path]
     # takes 1597m route via long outside segment
     # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
     assert path_transpose == [
@@ -98,7 +97,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     )  # ANGULAR = FALSE
     # find path
     path = find_path(target, src_idx, tree_map.preds)
-    path_transpose = [node_keys_d[n] for n in path]
+    path_transpose = [nodes_gdf_d.index[n] for n in path]
     # takes 1345m shorter route
     # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
     assert path_transpose == [
@@ -116,23 +115,23 @@ def test_shortest_path_tree(primal_graph, dual_graph):
         "39_40",
     ]
     # NO SIDESTEPS - explicit check that sidesteps are prevented
-    src_idx = node_keys_d.index("10_43")
-    target = node_keys_d.index("10_5")
+    src_idx = nodes_gdf_d.index.tolist().index("10_43")
+    target = nodes_gdf_d.index.tolist().index("10_5")
     tree_map = centrality.shortest_path_tree(network_structure_d, src_idx, max_dist=np.float32(np.inf), angular=True)
     # find path
     path = find_path(target, src_idx, tree_map.preds)
-    path_transpose = [node_keys_d[n] for n in path]
+    path_transpose = [nodes_gdf_d.index[n] for n in path]
     # print(path_transpose)
     assert path_transpose == ["10_43", "10_5"]
     # WITH SIDESTEPS - set angular flag to False
     # manually overwrite distance impedances with angular for this test
     # (angular has to be false otherwise shortest-path sidestepping avoided)
-    node_keys_d, network_structure_d = graphs.network_structure_from_nx(dual_graph)
+    nodes_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
     network_structure_d.edges.length = network_structure_d.edges.angle_sum
     tree_map = centrality.shortest_path_tree(network_structure_d, src_idx, max_dist=np.float32(np.inf), angular=False)
     # find path
     path = find_path(target, src_idx, tree_map.preds)
-    path_transpose = [node_keys_d[n] for n in path]
+    path_transpose = [nodes_gdf_d.index[n] for n in path]
     assert path_transpose == ["10_43", "10_14", "10_5"]
 
 
@@ -145,10 +144,10 @@ def test_local_node_centrality(primal_graph):
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     """
     # generate node and edge maps
-    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
-    G_round_trip = graphs.nx_from_network_structure(node_keys, network_structure)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    G_round_trip = graphs.nx_from_network_structure(nodes_gdf, network_structure)
     # needs a large enough beta so that distance thresholds aren't encountered
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008, 0.0], dtype=np.float32)
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
     # set the keys - add shuffling to be sure various orders work
     measure_keys = [
@@ -173,21 +172,18 @@ def test_local_node_centrality(primal_graph):
     node_betweenness_beta = measures_data[measure_keys.index("node_betweenness_beta")]
     # improved closeness is derived after the fact
     improved_closness = node_density / node_farness / node_density
-
     # test node density
     # node density count doesn't include self-node
     # connected component == 49 == len(G) - 1
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
-    for n in node_density[4]:  # infinite distance - exceeds cutoff clashes
+    for n in node_density[3]:  # large distance - exceeds cutoff clashes
         assert n in [49, 3, 1, 0]
-
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.allclose(nx_harm_cl, node_harmonic[4], atol=config.ATOL, rtol=config.RTOL)
-
+    assert np.allclose(nx_harm_cl, node_harmonic[3], atol=config.ATOL, rtol=config.RTOL)
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
     # nx node centrality NOT implemented for MultiGraph
@@ -200,8 +196,7 @@ def test_local_node_centrality(primal_graph):
     nx_betw = np.array([v for v in nx_betw.values()])
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    assert np.allclose(nx_betw[:52], node_betweenness[4][:52], atol=config.ATOL, rtol=config.RTOL)
-
+    assert np.allclose(nx_betw[:52], node_betweenness[3][:52], atol=config.ATOL, rtol=config.RTOL)
     # do the comparisons array-wise so that betweenness can be aggregated
     d_n = len(distances)
     n_nodes: int = primal_graph.number_of_nodes()
@@ -213,7 +208,6 @@ def test_local_node_centrality(primal_graph):
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-
     for src_idx in range(n_nodes):
         # get shortest path maps
         tree_map = centrality.shortest_path_tree(network_structure, src_idx, max(distances), angular=False)
@@ -261,7 +255,6 @@ def test_local_node_centrality(primal_graph):
                         # follow
                         inter_idx = int(tree_map.preds[inter_idx])
     improved_cl = dens / far_short_dist / dens
-
     assert np.allclose(node_density, dens, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_farness, far_short_dist, atol=config.ATOL, rtol=config.RTOL)  # relax precision
     assert np.allclose(node_cycles, cyc, atol=config.ATOL, rtol=config.RTOL)
@@ -270,7 +263,6 @@ def test_local_node_centrality(primal_graph):
     assert np.allclose(improved_closness, improved_cl, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_betweenness, betw, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_betweenness_beta, betw_wt, atol=config.ATOL, rtol=config.RTOL)
-
     # catch typos
     with pytest.raises(ValueError):
         centrality.local_node_centrality(network_structure, distances, betas, ("typo_key",))
@@ -282,14 +274,13 @@ def test_local_centrality(diamond_graph):
     measures_data is multidimensional in the form of measure_keys x distances x nodes
     """
     # generate node and edge maps
-    _node_keys, network_structure = graphs.network_structure_from_nx(diamond_graph)
+    _nodes_gdf, network_structure = graphs.network_structure_from_nx(diamond_graph, 3395)
     # generate dual
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
-    _node_keys_dual, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual)
+    _node_keys_dual, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
-    distances: npt.NDArray[np.float32] = np.array([50, 150, 250], dtype=np.float32)
+    distances: npt.NDArray[np.int_] = np.array([50, 150, 250], dtype=np.float32)
     betas = networks.beta_from_distance(distances)
-
     # NODE SHORTEST
     # set the keys - add shuffling to be sure various orders work
     node_keys = [
@@ -386,7 +377,6 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-
     # NODE SIMPLEST ON DUAL
     node_keys_angular = ["node_harmonic_angular", "node_betweenness_angular"]
     np.random.shuffle(node_keys_angular)  # in place
@@ -411,7 +401,6 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][2], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
-
     # SEGMENT SHORTEST
     segment_keys = [
         "segment_density",
@@ -489,7 +478,6 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][0], [0, 24.542109, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][1], [0, 69.78874, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][2], [0, 99.76293, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-
     # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
     segment_keys_angular = ["segment_harmonic_hybrid", "segment_betweeness_hybrid"]
     np.random.shuffle(segment_keys_angular)  # in place
@@ -514,7 +502,6 @@ def test_local_centrality(diamond_graph):
     assert np.allclose(measures_data[m_idx][0], [0, 75, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][1], [0, 150, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(measures_data[m_idx][2], [0, 150, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-
     # SEGMENT SIMPLEST IS DISCOURAGED FOR DUAL
     # this is because it leads to double counting where segments overlap
     # e.g. 6 segments replace a single four-way intersection
@@ -523,7 +510,7 @@ def test_local_centrality(diamond_graph):
 
 def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008, 0.0], dtype=np.float32)
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
     node_measure_keys = (
         "node_density",
@@ -543,8 +530,8 @@ def test_decomposed_local_centrality(primal_graph):
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
-    node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)  # generate node and edge maps
-    _node_keys_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)  # generate node and edge maps
+    _node_keys_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
     # non-decomposed case
     node_measures_data = centrality.local_node_centrality(
         network_structure,
