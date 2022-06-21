@@ -74,7 +74,8 @@ dev = [
   "pandas-stubs>=1.2.0.58",
   "types-requests>=2.27.27",
   "tqdm-stubs>=0.2.0",
-  "notebook>=7.0.0a4"]
+  "notebook>=7.0.0a4",
+]
 
 # [tool.pdm]
 # allow_prereleases = true
@@ -160,6 +161,7 @@ max-line-length = 120
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#sample-pyprojecttoml-file
 [tool.pyright]
+pythonVersion = "3.9"
 include = ["cityseer"]
 exclude = [
   "**/node_modules",
@@ -170,6 +172,7 @@ exclude = [
   "**/temp/",
   "tests/",
   "cityseer/stubs",
+  "dist",
 ]
 typeCheckingMode = "strict"
 stubPath = "cityseer/stubs"

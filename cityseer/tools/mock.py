@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import string
-from typing import Any, Generator, Optional, Union
+from typing import Any, Generator, Optional, Union, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -295,7 +295,9 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
             "geometry": gpd.points_from_xy(xs, ys),
         }
     )
-    data_gpd.set_index("data_key")
+    data_gpd = data_gpd.set_index("data_key")
+    data_gpd = cast(gpd.GeoDataFrame, data_gpd)
+
     return data_gpd
 
 
@@ -545,6 +547,7 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> MultiGraph
     """
     # cast the WGS coordinates to UTM prior to buffering
     easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
+    logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
     # create a point, and then buffer
     pnt = geometry.Point(easting, northing)
     poly_utm: geometry.Polygon = pnt.buffer(buffer)  # type: ignore

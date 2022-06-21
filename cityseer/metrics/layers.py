@@ -763,7 +763,7 @@ def compute_stats(
     for col_label in stats_column_labels:
         if col_label not in data_gdf.columns:
             raise ValueError(f"Column label {col_label} not found in provided GeoDataFrame.")
-    stats_data_arrs: npt.NDArray[np.float32] = data_gdf[stats_column_labels].values.T
+    stats_data_arrs: npt.NDArray[np.float32] = data_gdf[stats_column_labels].values.T  # type: ignore
     # call the underlying method
     if not config.QUIET_MODE:
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)

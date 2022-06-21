@@ -214,9 +214,10 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting networkX graph from WGS to UTM.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    zone_number = None
+    utm_zone_number = None
+    utm_zone_letter = None
     if force_zone_number is not None:
-        zone_number = force_zone_number
+        utm_zone_number = force_zone_number
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
@@ -233,14 +234,15 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
         if abs(lng) > 180 or abs(lat) > 90:
             raise ValueError(f"x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.")
         # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
-        if zone_number is None:
-            zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
+        if utm_zone_number is None:
+            utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2]
+        easting, northing = utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2]
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
+    logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
     # if line geom property provided, then convert as well
     logger.info("Processing edge geom coordinates, if present.")
     start_nd_key: NodeKey
@@ -257,7 +259,9 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
                 raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
             # be cognisant of parameter and return order
             # returns in easting, northing order
-            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2] for lng, lat in line_geom.coords]
+            utm_coords = [
+                utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2] for lng, lat in line_geom.coords
+            ]
             # write back to edge
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(utm_coords)
 
@@ -1749,6 +1753,7 @@ def network_structure_from_nx(
     }
     nodes_gdf = gpd.GeoDataFrame(data, crs=crs)
     nodes_gdf = nodes_gdf.set_index("node_key")
+    nodes_gdf = cast(gpd.GeoDataFrame, nodes_gdf)
 
     return nodes_gdf, network_structure
 
