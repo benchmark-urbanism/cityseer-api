@@ -256,14 +256,15 @@ summary = "Tools to manipulate font files"
 
 [[package]]
 name = "geopandas"
-version = "0.10.2"
-requires_python = ">=3.7"
+version = "0.11.0"
+requires_python = ">=3.8"
 summary = "Geographic pandas extensions"
 dependencies = [
     "fiona>=1.8",
-    "pandas>=0.25.0",
-    "pyproj>=2.2.0",
-    "shapely>=1.6",
+    "packaging",
+    "pandas>=1.0.0",
+    "pyproj>=2.6.1.post1",
+    "shapely<2,>=1.7",
 ]
 
 [[package]]
@@ -927,12 +928,12 @@ summary = "Pygments is a syntax highlighting package written in Python."
 
 [[package]]
 name = "pylint"
-version = "2.14.2"
+version = "2.14.3"
 requires_python = ">=3.7.2"
 summary = "python code static checker"
 dependencies = [
     "astroid<=2.12.0-dev0,>=2.11.6",
-    "colorama; sys_platform == \"win32\"",
+    "colorama>=0.4.5; sys_platform == \"win32\"",
     "dill>=0.2",
     "isort<6,>=4.2.5",
     "mccabe<0.8,>=0.6",
@@ -940,6 +941,16 @@ dependencies = [
     "tomli>=1.1.0; python_version < \"3.11\"",
     "tomlkit>=0.10.1",
     "typing-extensions>=3.10.0; python_version < \"3.10\"",
+]
+
+[[package]]
+name = "pyogrio"
+version = "0.4.0"
+requires_python = ">=3.8"
+summary = "Vectorized spatial vector file format I/O using GDAL/OGR"
+dependencies = [
+    "certifi",
+    "numpy",
 ]
 
 [[package]]
@@ -959,7 +970,7 @@ dependencies = [
 
 [[package]]
 name = "pyright"
-version = "1.1.254"
+version = "1.1.255"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
@@ -1296,7 +1307,7 @@ summary = ""
 
 [[package]]
 name = "yapper"
-version = "0.3.1"
+version = "0.3.4"
 requires_python = ">=3.8,<4.0"
 summary = "Parser for converting python docstrings to .astro files for the Astro static site generator."
 dependencies = [
@@ -1326,7 +1337,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:373c3bdd6f811732c0ac584983c97c305a5c9655ad1d24c3180dd255424e76c5"
+content_hash = "sha256:e4985b2b05bfa4805911ee61c3992d366c2db820760938491fce2bb9f03f3b26"
 
 [metadata.files]
 "aiofiles 0.8.0" = [
@@ -1617,9 +1628,9 @@ content_hash = "sha256:373c3bdd6f811732c0ac584983c97c305a5c9655ad1d24c3180dd2554
     {file = "fonttools-4.33.3-py3-none-any.whl", hash = "sha256:f829c579a8678fa939a1d9e9894d01941db869de44390adb49ce67055a06cc2a"},
     {file = "fonttools-4.33.3.zip", hash = "sha256:c0fdcfa8ceebd7c1b2021240bd46ef77aa8e7408cf10434be55df52384865f8e"},
 ]
-"geopandas 0.10.2" = [
-    {file = "geopandas-0.10.2-py2.py3-none-any.whl", hash = "sha256:1722853464441b603d9be3d35baf8bde43831424a891e82a8545eb8997b65d6c"},
-    {file = "geopandas-0.10.2.tar.gz", hash = "sha256:efbf47e70732e25c3727222019c92b39b2e0a66ebe4fe379fbe1aa43a2a871db"},
+"geopandas 0.11.0" = [
+    {file = "geopandas-0.11.0-py3-none-any.whl", hash = "sha256:0991f279d4f9e3a04e3666f32b1ac64d6ba439933da3d9654a26031e0ccea5dc"},
+    {file = "geopandas-0.11.0.tar.gz", hash = "sha256:562fe7dc19a6e0f61532d654c4752f7bf46e0714990c5844fe3de3f9c99cb873"},
 ]
 "idna 3.3" = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
@@ -2237,9 +2248,21 @@ content_hash = "sha256:373c3bdd6f811732c0ac584983c97c305a5c9655ad1d24c3180dd2554
     {file = "Pygments-2.12.0-py3-none-any.whl", hash = "sha256:dc9c10fb40944260f6ed4c688ece0cd2048414940f1cea51b8b226318411c519"},
     {file = "Pygments-2.12.0.tar.gz", hash = "sha256:5eb116118f9612ff1ee89ac96437bb6b49e8f04d8a13b514ba26f620208e26eb"},
 ]
-"pylint 2.14.2" = [
-    {file = "pylint-2.14.2-py3-none-any.whl", hash = "sha256:592d0a4d2ffa8e33020209d255827c5a310499cdc023d156187bc677d86bd495"},
-    {file = "pylint-2.14.2.tar.gz", hash = "sha256:482f1329d4b6b9e52599754a2e502c0ed91ebdfd0992a2299b7fa136a6c12349"},
+"pylint 2.14.3" = [
+    {file = "pylint-2.14.3-py3-none-any.whl", hash = "sha256:6757a027e15816be23625b079ebc45464e4c9d9dde0c826d18beee53fe22a2e7"},
+    {file = "pylint-2.14.3.tar.gz", hash = "sha256:4e1378f815c63e7e44590d0d339ed6435f5281d0a0cc357d29a86ea0365ef868"},
+]
+"pyogrio 0.4.0" = [
+    {file = "pyogrio-0.4.0-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:ec5e461ef5076ea89cf29d0933f9c278b67dd84bb371e5ed64c6c049bdfaa719"},
+    {file = "pyogrio-0.4.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f564ee5778520e643e351826c6f6b5f4421c11c977876722adbc79fd58317c8b"},
+    {file = "pyogrio-0.4.0-cp310-cp310-win_amd64.whl", hash = "sha256:1a8ab670cce03c259eac8d7f8b1042fa4bb61b525f8157b7a39fa87dbb562281"},
+    {file = "pyogrio-0.4.0-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:ecd68c47153b85598f72cec979a7fb595731d5caa2b6ff7d753c76838a8ceac0"},
+    {file = "pyogrio-0.4.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a8100b233d34ee3438100662487e5c084dcfadfa65de7cdab5206f180929c9d0"},
+    {file = "pyogrio-0.4.0-cp38-cp38-win_amd64.whl", hash = "sha256:96f6d3fc15ccf1a6799704a559636b7a4ca62ecbea6a93b2dc146fea5be55466"},
+    {file = "pyogrio-0.4.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:f87605c383b8ff11049792118f948388cfc80131b3724c0b9b649f0a7709400b"},
+    {file = "pyogrio-0.4.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:54e7f6136568b19977380211cdece9a3f2a0bd806e97e00f2466aacef0039186"},
+    {file = "pyogrio-0.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:0d205bed128ade326392e94c7fcc2d66f86b1ebd87a26928efb12bf01d7ec3cc"},
+    {file = "pyogrio-0.4.0.tar.gz", hash = "sha256:85480e687872a3e3b11b3e2147e8aa779e28f165c60e01b2102971c895b84b82"},
 ]
 "pyparsing 3.0.9" = [
     {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
@@ -2270,9 +2293,9 @@ content_hash = "sha256:373c3bdd6f811732c0ac584983c97c305a5c9655ad1d24c3180dd2554
     {file = "pyproj-3.3.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:797ad5655d484feac14b0fbb4a4efeaac0cf780a223046e2465494c767fd1c3b"},
     {file = "pyproj-3.3.1.tar.gz", hash = "sha256:b3d8e14d91cc95fb3dbc03a9d0588ac58326803eefa5bbb0978d109de3304fbe"},
 ]
-"pyright 1.1.254" = [
-    {file = "pyright-1.1.254-py3-none-any.whl", hash = "sha256:4a12432a29359195738685091da9e5b39f830940d265c85ce8920fa936e92b31"},
-    {file = "pyright-1.1.254.tar.gz", hash = "sha256:55394e1198b0feef261552a7fcca13c7705cb89fd9c77e8c4cfa79b27f4af549"},
+"pyright 1.1.255" = [
+    {file = "pyright-1.1.255-py3-none-any.whl", hash = "sha256:3ad2789f51b261c48bf312b71275232e97ea30ad880fa920e1d667420d30a1a9"},
+    {file = "pyright-1.1.255.tar.gz", hash = "sha256:ccfe8796a0264fcaa2148bc4b9c348e99ad4e77482307371bd0682bd20c6617c"},
 ]
 "pyrsistent 0.18.1" = [
     {file = "pyrsistent-0.18.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:df46c854f490f81210870e509818b729db4488e1f30f2a1ce1698b2295a878d1"},
@@ -2763,9 +2786,9 @@ content_hash = "sha256:373c3bdd6f811732c0ac584983c97c305a5c9655ad1d24c3180dd2554
     {file = "y_py-0.5.0-pp37-pypy37_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:5191fdd7f70a4bad135af24d8e4f2ffddade4a44598a6b1430f6d3b3b6eac3b8"},
     {file = "y_py-0.5.0.tar.gz", hash = "sha256:951b763fc19d0867e35c2b936b6874c982a674a45db9cf086b269cea3e495883"},
 ]
-"yapper 0.3.1" = [
-    {file = "yapper-0.3.1-py3-none-any.whl", hash = "sha256:8e24e8dae5b6e11d82be847172dd440d5f8b53b0c578da33fc7c526cc1fa8124"},
-    {file = "yapper-0.3.1.tar.gz", hash = "sha256:6eb99ea45c2b739ef3e07f4f2852c042752189e617477b65f8869dac153534c8"},
+"yapper 0.3.4" = [
+    {file = "yapper-0.3.4-py3-none-any.whl", hash = "sha256:65ee32f0279bbbad7282dde66bd2abf332d5ef66dab45c36c2c70316c29b7b25"},
+    {file = "yapper-0.3.4.tar.gz", hash = "sha256:041cdaa45d6a60167a7760f9c775e3462c6a51097cd1944e4a30004e67aef462"},
 ]
 "ypy-websocket 0.1.13" = [
     {file = "ypy_websocket-0.1.13-py2.py3-none-any.whl", hash = "sha256:37e77e1cdc7073d512417bc59264549e15bde06539cc8bdfb01b3aa36b867017"},

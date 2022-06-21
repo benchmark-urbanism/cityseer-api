@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
@@ -352,7 +354,7 @@ def aggregate_to_src_idx(
 def aggregate_landuses(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
-    distances: npt.NDArray[np.float32],
+    distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     landuse_encodings: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     qs: npt.NDArray[np.float32] = np.array([], dtype=np.float32),
@@ -547,7 +549,7 @@ def aggregate_landuses(
 def aggregate_stats(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
-    distances: npt.NDArray[np.float32],
+    distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),
     jitter_scale: np.float32 = np.float32(0.0),

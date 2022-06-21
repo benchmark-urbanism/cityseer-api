@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
@@ -237,7 +239,7 @@ def _node_betweenness_beta(to_short_dist: np.float32, beta: np.float32) -> np.fl
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def local_node_centrality(
     network_structure: structures.NetworkStructure,
-    distances: npt.NDArray[np.float32],
+    distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     measure_keys: tuple[str],
     jitter_scale: np.float32 = np.float32(0.0),
@@ -408,7 +410,7 @@ def _segment_beta(  # pylint: disable=unused-argument
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
 def local_segment_centrality(
     network_structure: structures.NetworkStructure,
-    distances: npt.NDArray[np.float32],
+    distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     measure_keys: tuple[str],
     jitter_scale: np.float32 = np.float32(0.0),

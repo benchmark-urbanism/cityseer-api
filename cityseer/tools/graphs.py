@@ -4,12 +4,13 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
 """
-
+from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Union, cast
+from typing import Any, Optional, Union, cast
 
+import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
@@ -17,7 +18,7 @@ import utm
 from shapely import coords, geometry, ops, strtree
 from tqdm import tqdm
 
-from cityseer import config, structures, types
+from cityseer import config, structures
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -102,8 +103,8 @@ def _add_node(
     nodes_names: list[NodeKey],
     x: float,
     y: float,
-    live: bool | None = None,
-) -> str | None:
+    live: Optional[bool] = None,
+) -> Optional[str]:
     """
     Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
     """
@@ -183,7 +184,7 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     return nx_multigraph
 
 
-def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = None) -> MultiGraph:
+def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = None) -> MultiGraph:
     """
     Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
 
@@ -213,9 +214,10 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = Non
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting networkX graph from WGS to UTM.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    zone_number = None
+    utm_zone_number = None
+    utm_zone_letter = None
     if force_zone_number is not None:
-        zone_number = force_zone_number
+        utm_zone_number = force_zone_number
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
@@ -232,14 +234,15 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = Non
         if abs(lng) > 180 or abs(lat) > 90:
             raise ValueError(f"x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.")
         # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
-        if zone_number is None:
-            zone_number = utm.from_latlon(lat, lng)[2]  # zone number is position 2
+        if utm_zone_number is None:
+            utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
         # be cognisant of parameter and return order
         # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2]
+        easting, northing = utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2]
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
+    logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
     # if line geom property provided, then convert as well
     logger.info("Processing edge geom coordinates, if present.")
     start_nd_key: NodeKey
@@ -256,7 +259,9 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = Non
                 raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
             # be cognisant of parameter and return order
             # returns in easting, northing order
-            utm_coords = [utm.from_latlon(lat, lng, force_zone_number=zone_number)[:2] for lng, lat in line_geom.coords]
+            utm_coords = [
+                utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2] for lng, lat in line_geom.coords
+            ]
             # write back to edge
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(utm_coords)
 
@@ -265,7 +270,7 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = Non
 
 def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
-    despine: float | None = None,
+    despine: Optional[float] = None,
     remove_disconnected: bool = True,
 ) -> MultiGraph:
     """
@@ -395,7 +400,7 @@ def _align_linestring_coords(
 def _weld_linestring_coords(
     linestring_coords_a: AnyCoordsType,
     linestring_coords_b: AnyCoordsType,
-    force_xy: CoordsType | None = None,
+    force_xy: Optional[CoordsType] = None,
     tolerance: float = config.ATOL,
 ) -> ListCoordsType:
     """
@@ -511,7 +516,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             # otherwise randomly select one side and find a non-simple node as a starting point.
             nb_nd_key = nbs[0]
             # anchor_nd should be the first node of the chain of nodes to be merged, and should be a non-simple node
-            anchor_nd: NodeKey | None = None
+            anchor_nd: Optional[NodeKey] = None
             # next_link_nd should be a direct neighbour of anchor_nd and must be a simple node
             next_link_nd: NodeKey = nd_key
             # find the non-simple start node
@@ -535,7 +540,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             # accumulate and weld geometries along the way
             # break once finding another non-simple node
             trailing_nd: NodeKey = anchor_nd
-            end_nd: NodeKey | None = None
+            end_nd: Optional[NodeKey] = None
             drop_nodes: list[NodeKey] = []
             agg_geom: ListCoordsType = []
             while True:
@@ -620,8 +625,8 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 def _squash_adjacent(
     nx_multigraph: MultiGraph,
     node_group: list[NodeKey],
-    cent_min_degree: int | None = None,
-    cent_min_len_factor: float | None = None,
+    cent_min_degree: Optional[int] = None,
+    cent_min_len_factor: Optional[float] = None,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -898,12 +903,12 @@ def nx_consolidate_nodes(
     buffer_dist: float = 5,
     min_node_group: int = 2,
     min_node_degree: int = 1,
-    min_cumulative_degree: int | None = None,
-    max_cumulative_degree: int | None = None,
-    neighbour_policy: str | None = None,
+    min_cumulative_degree: Optional[int] = None,
+    max_cumulative_degree: Optional[int] = None,
+    neighbour_policy: Optional[str] = None,
     crawl: bool = True,
     cent_min_degree: int = 3,
-    cent_min_len_factor: float | None = None,
+    cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
     multi_edge_len_factor: float = 1.25,
     multi_edge_min_len: float = 100,
@@ -1606,30 +1611,30 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
-) -> tuple[tuple[NodeKey], structures.NetworkStructure]:
+    crs: str,
+) -> tuple[gpd.GeoDataFrame, structures.NetworkStructure]:
     """
-    Transpose a `networkX` `MultiGraph` into `numpy` arrays for use by `cityseer` `NetworkLayer` classes.
+    Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
 
     Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
     data maps.
-
-    :::warning
-    It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayerFromNX](/metrics/networks/#networklayerfromnx)
-    :::
 
     Parameters
     ----------
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
+    crs: str
+        CRS for initialising the returned structures. This is used for initialising the GeoPandas
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
 
     Returns
     -------
-    node_keys: tuple[int | str]
-        A tuple of node `keys` corresponding to the node identifiers in the source `networkX` graph.
+    nodes_gdf: GeoDataFrame
+        A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used
+        for the `GeoDataFrame` index.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -1668,6 +1673,7 @@ def network_structure_from_nx(
         is_live: bool = True
         if "live" in node_data:
             is_live = bool(node_data["live"])
+        # set node
         network_structure.set_node(start_node_key, node_x, node_y, is_live)
         # build edges
         end_node_key: int
@@ -1741,15 +1747,23 @@ def network_structure_from_nx(
                 network_structure.set_edge(
                     start_node_key, end_node_key, line_len, angle_sum, imp_factor, in_bearing, out_bearing
                 )
+    # create geopandas for node keys and data state
+    data = {
+        "node_key": node_keys,
+        "live": network_structure.nodes.live,
+        "geometry": gpd.points_from_xy(network_structure.nodes.xs, network_structure.nodes.ys),
+    }
+    nodes_gdf = gpd.GeoDataFrame(data, crs=crs)
+    nodes_gdf = nodes_gdf.set_index("node_key")
+    nodes_gdf = cast(gpd.GeoDataFrame, nodes_gdf)
 
-    return tuple(node_keys), network_structure
+    return nodes_gdf, network_structure
 
 
 def nx_from_network_structure(
-    node_keys: tuple[NodeKey] | list[NodeKey],
+    nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
-    nx_multigraph: MultiGraph | None = None,
-    dict_node_metrics: types.DictNodeMetrics | None = None,
+    nx_multigraph: Optional[MultiGraph] = None,
 ) -> MultiGraph:
     """
     Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
@@ -1757,35 +1771,28 @@ def nx_from_network_structure(
     This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the
     `nx_multigraph` parameter.
 
-    :::warning
-    It is generally not necessary to use this function directly. This function will be called internally when invoking
-    [NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-nx-multigraph)
-    :::
-
     Parameters
     ----------
-    node_keys: tuple[int | str]
-        A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
+    nodes_gdf: GeoDataFrame
+        A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX`
+        graph's node keys.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance corresponding to the `nodes_gdf`
+        parameter.
     nx_multigraph: MultiGraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
         correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
         provided, then a new `networkX` graph will be returned. This function is intended to be used for situations
         where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
-    dict_node_metrics: dict
-        An optional dictionary with keys corresponding to the identifiers in `node_keys`. The dictionary's `values` will
-        be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
 
     Returns
     -------
-    MultiGraph
-        A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data
-        overridden as described below. If no graph was provided, then a new graph will be generated.
-        `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`,
-        `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data`
-        to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on
-        matching node identifiers.
+    nx_multigraph: MultiGraph
+        A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was
+        provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf`
+        to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be
+        copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf`
+        `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
 
     """
     logger.info("Populating node and edge map data to a networkX graph.")
@@ -1794,7 +1801,7 @@ def nx_from_network_structure(
         if nx_multigraph.number_of_nodes() != network_structure.nodes.count:
             raise ValueError("The number of nodes in the graph does not match the number of nodes in the node map.")
         g_multi_copy: MultiGraph = nx_multigraph.copy()
-        for nd_key in node_keys:
+        for nd_key in nodes_gdf.index:  # type: ignore
             if nd_key not in g_multi_copy:
                 raise KeyError(
                     f"Node key {nd_key} not found in graph. If passing an existing nx graph as backbone "
@@ -1803,14 +1810,14 @@ def nx_from_network_structure(
     else:
         logger.info("No existing graph found, creating new nx multigraph.")
         g_multi_copy = nx.MultiGraph()
-        g_multi_copy.add_nodes_from(node_keys)
+        g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
     # after above so that errors caught first
     network_structure.validate()
     logger.info("Unpacking node data.")
-    for nd_idx, nd_key in tqdm(enumerate(node_keys), disable=config.QUIET_MODE):  # type: ignore
-        g_multi_copy.nodes[nd_key]["x"] = network_structure.nodes.xs[nd_idx]  # type: ignore
-        g_multi_copy.nodes[nd_key]["y"] = network_structure.nodes.ys[nd_idx]  # type: ignore
-        g_multi_copy.nodes[nd_key]["live"] = bool(network_structure.nodes.live[nd_idx])  # type: ignore
+    for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):  # type: ignore
+        g_multi_copy.nodes[nd_key]["x"] = nd_data.geometry.x
+        g_multi_copy.nodes[nd_key]["y"] = nd_data.geometry.y
+        g_multi_copy.nodes[nd_key]["live"] = nd_data.live
     logger.info("Unpacking edge data.")
     for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):  # type: ignore
         start_nd_idx: int = network_structure.edges.start[edge_idx]  # type: ignore
@@ -1819,8 +1826,8 @@ def nx_from_network_structure(
         angle_sum: float = network_structure.edges.angle_sum[edge_idx]  # type: ignore
         imp_factor: float = network_structure.edges.imp_factor[edge_idx]  # type: ignore
         # find corresponding node keys
-        start_nd_key: NodeKey = node_keys[start_nd_idx]
-        end_nd_key: NodeKey = node_keys[end_nd_idx]
+        start_nd_key: NodeKey = nodes_gdf.index[start_nd_idx]
+        end_nd_key: NodeKey = nodes_gdf.index[end_nd_idx]
         # note that the original geom is lost with round trip unless retained in a supplied backbone graph.
         # the edge map is directional, so each original edge will be processed twice, once from either direction.
         # edges are only added if A) not using a backbone graph and B) the edge hasn't already been added
@@ -1870,23 +1877,20 @@ def nx_from_network_structure(
                     exist_edge_data["angle_sum"] = angle_sum
                     exist_edge_data["imp_factor"] = imp_factor
     # unpack any metrics written to the nodes
-    if dict_node_metrics is not None:
+    metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]  # type: ignore
+    if metrics_column_labels is not None:
         logger.info("Unpacking metrics to nodes.")
-        for nd_key, metrics in tqdm(dict_node_metrics.items(), disable=config.QUIET_MODE):  # type: ignore
-            if nd_key not in g_multi_copy:
-                raise KeyError(
-                    f"Node key {nd_key} not found in graph. "
-                    f"Data dictionary keys must match the node keys supplied with the node and edge maps."
-                )
-            g_multi_copy.nodes[nd_key]["metrics"] = metrics  # type: ignore
+        for metrics_column_label in metrics_column_labels:
+            for nd_key, node_row in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):  # type: ignore
+                g_multi_copy.nodes[nd_key][metrics_column_label] = node_row[metrics_column_label]
 
     return g_multi_copy
 
 
 def nx_from_osm_nx(
     nx_multidigraph: MultiDiGraph,
-    node_attributes: list[str] | tuple[str] | None = None,
-    edge_attributes: list[str] | tuple[str] | None = None,
+    node_attributes: Optional[Union[list[str], tuple[str]]] = None,
+    edge_attributes: Optional[Union[list[str], tuple[str]]] = None,
     tolerance: float = config.ATOL,
 ) -> MultiGraph:
     """

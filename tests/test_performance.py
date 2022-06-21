@@ -1,5 +1,5 @@
 # pyright: basic
-
+from __future__ import annotations
 
 import os
 import timeit
@@ -43,7 +43,7 @@ def test_local_centrality_time(primal_graph):
     # load the test graph
     _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances: npt.NDArray[np.float32] = np.array([np.inf], np.float32)
+    distances: npt.NDArray[np.int_] = np.array([np.inf], np.float32)
     betas = networks.beta_from_distance(distances)
 
     def node_cent_wrapper():

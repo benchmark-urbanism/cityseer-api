@@ -1,5 +1,6 @@
 # pylint: disable=duplicate-code
 
+from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
@@ -32,7 +33,7 @@ def check_categorical_data(data_arr: npt.NDArray[np.int_]) -> None:
 
 
 @njit(cache=True, fastmath=config.FASTMATH)
-def check_distances_and_betas(distances: npt.NDArray[np.float32], betas: npt.NDArray[np.float32]) -> None:
+def check_distances_and_betas(distances: npt.NDArray[np.int_], betas: npt.NDArray[np.float32]) -> None:
     """Check integrity across distances and betas."""
     if len(distances) == 0:
         raise ValueError("No distances provided.")

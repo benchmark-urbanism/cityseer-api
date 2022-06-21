@@ -19,7 +19,7 @@ The broader emphasis on localised methods and how `cityseer` addresses these is 
 `x` and `y` node attributes determine the spatial coordinates of the node, and should be in a suitable projected
 ("flat") coordinate reference system (CRS) in metres. For convenience, [`nx_wgs_to_utm`](/tools/graphs/#nx-wgs-to-utm)
 can be used for converting a `networkX` graph from WGS84 `lng`, `lat` geographic CRS to the local UTM `x`, `y` projected
-CRS. Data points should likewise be in a projected CRS and the CRS should match that used by the node attributes.
+CRS. `geopandas` data points should likewise be in a projected CRS and the CRS should match that used by the node attributes.
 
 ## Edge Rolloff
 
@@ -155,13 +155,7 @@ _After "splitting opposing geoms" on longer parallel segments._
 In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
 
 ```py
-G3 = graphs.nx_consolidate_nodes(
-  G2,
-  buffer_dist=15,
-  crawl=False,
-  min_node_degree=2,
-  cent_min_degree=4
-)
+G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
 simple_plot(G3)
 ```
 
@@ -183,12 +177,12 @@ The above recipe should be enough to get you started, but there are innumerable 
 
 `cityseer` is intended to be data-source agnostic, and is predominately used in concert with `Postgres/PostGIS` databases or with `OSM` data. `OSM` queries can be used to populate `cityseer` graphs directly, else [`OSMnx`](https://osmnx.readthedocs.io/) can be used to gather `OSM` data which can then be converted into `cityseer` graphs, an example of which is provided in the code snippet beneath.
 
-`cityseer` uses `networkX` primarily as an in-out and graph preparation tool for end-user ease of use, not as a representation for algorithmic analysis. It avoids `networkX` for algorithmic analysis for two reasons. First, the algorithms employed in `cityseer` are intended for localised (windowed) graph analysis specifically within an urban analysis context: they use explicit distance thresholds; engage unique variants of centrality measures; handle cases such as simplest-path heuristics and segmentised forms of analysis; and extend these algorithms to handle the derivation of land-use accessibilities, mixed-uses, and statistical aggregations using similarly windowed and network-distance-weighted methods. Second, `networkX` scales very poorly to larger graphs, and can become unusable for large cities or big distance thresholds.
+`cityseer` uses `networkX` primarily as an in-out and graph preparation tool for end-user ease of use, not as a means for algorithmic analysis. It avoids `networkX` for algorithmic analysis for two reasons. First, the algorithms employed in `cityseer` are intended for localised (windowed) graph analysis specifically within an urban analysis context: they use explicit distance thresholds; engage unique variants of centrality measures; handle cases such as simplest-path heuristics and segmentised forms of analysis; and extend these algorithms to handle the derivation of land-use accessibilities, mixed-uses, and statistical aggregations using similarly windowed and network-distance-weighted methods. Second, `networkX` scales very poorly to larger graphs, and can become unusable for large cities or big distance thresholds.
 
 The following points may be helpful when using `OSMnx` and `cityseer` together:
 
 - Whereas some basic `OSM` ingestion and conversion functions are included in the `cityseer` [`tools.mock`](/tools/mock/) module, these are primarily intended for internal code development. If used directly, these assume that the end-user will have some direct knowledge of how these APIs work and how to manipulate the recipes and conversion functions for specific situations. i.e. unless you want to roll-your-own OSM queries, it is best to stick with `OSMnx` for purposes of ingesting `OSM` networks.
-- `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs/#nx-from-osmnx) method. In doing so, keep the following in mind:
+- `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs/#nx-from-osm-nx) method. In doing so, keep the following in mind:
   - `OSMnx` uses `networkX` `multiDiGraph` graph structures that use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` is only concerned with pedestrian networks and therefore uses `networkX` `MultiGraphs` on the premise that pedestrian networks are not ordinarily directional. When using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs/#nx-from-osm-nx) method, be cognisant that all directional information will be discarded.
   - `cityseer` graph simplification and consolidation workflows will give subtly different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
 - `cityseer` uses internal validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing graph manipulation outside of `cityseer` before conversion, the conversion function may complain of disconnected geometries. In these cases, you may need to relax the tolerance parameter used for error checking upon conversion to a `cityseer` `MultiGraph`, in which case geometries disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
@@ -210,35 +204,32 @@ easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(1000)
 min_x, min_y, max_x, max_y = buff.bounds
 
-
 # reusable plot function
 def simple_plot(_G):
     # plot using the selected extents
-    tools.plot.plot_nx(_G,
-                       labels=False,
-                       plot_geoms=True,
-                       node_size=15,
-                       edge_width=2,
-                       x_lim=(min_x, max_x),
-                       y_lim=(min_y, max_y),
-                       figsize=(20, 20),
-                       dpi=200)
+    tools.plot.plot_nx(
+        _G,
+        labels=False,
+        plot_geoms=True,
+        node_size=15,
+        edge_width=2,
+        x_lim=(min_x, max_x),
+        y_lim=(min_y, max_y),
+        figsize=(10, 10),
+        dpi=200,
+    )
 
 
 # Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
-multi_di_graph_raw = ox.graph_from_point((lat, lng),
-                                         dist=1250,
-                                         simplify=False)
+multi_di_graph_raw = ox.graph_from_point((lat, lng), dist=1250, simplify=False)
 
 # Workflow 1: Using OSMnx to prepare the graph
 # ============================================
 # explicit simplification and consolidation via OSMnx
 multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
-multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl,
-                                                   tolerance=10,
-                                                   dead_ends=True)
+multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
 multi_graph_cons = tools.graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
 simple_plot(multi_graph_cons)
@@ -261,11 +252,7 @@ G = tools.graphs.nx_remove_filler_nodes(G)
 G1 = tools.graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
 # and we'll try to remove as many parallel roadways as possible
 G2 = tools.graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = tools.graphs.nx_consolidate_nodes(G2,
-                                       buffer_dist=15,
-                                       crawl=False,
-                                       min_node_degree=2,
-                                       cent_min_degree=4)
+G3 = tools.graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
 simple_plot(G3)
 ```
 
@@ -281,8 +268,8 @@ Computational methods for network-based analysis rely extensively on shortest-pa
 
 Another difficulty in working with packages wrapping `C++` is that these present a barrier to experimentation with customised forms of analysis. Overloading these forms of packages with functionality such as land-use or statistical analysis from within the `Python` ecosystem can therefor entail a dramatic slow-down in performance, whereas modifying these directly in `C/C++` presents a steep learning curve.
 
-`cityseer` consists of pure `python` and [`numpy`](http://www.numpy.org/), but with computationally intensive algorithms wrapped in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation. The use of `numba` has made it feasible to scale these methods to large and, optionally, decomposed networks. Further, when convenient to do so, `numba` permits a style of programming more in keeping with lower-level languages i.e. it is possible to use loops explicitly, which can in many cases be simpler to reason-with than nested array indices more typical of `numpy`.
+`cityseer` evolved as a WIP package over the span of years, initially used for experimentation and comparative tests of centrality methods and landuse methods. For which purposes it has opted for pure `python` and [`numpy`](http://www.numpy.org/), but with computationally intensive algorithms wrapped in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation. The use of `numba` has made it feasible to scale these methods to large and, optionally, decomposed networks. Further, when convenient to do so, `numba` permits a style of programming more in keeping with lower-level languages i.e. it is possible to use loops explicitly, which can in many cases be simpler to reason-with than nested array indices more typical of `numpy`. The more recent additions of `networkX` (for friendlier graph manipulation) and `GeoDataFrame` (for managing data state) are intended to provide an easier interface.
 
 ## _GeoPandas_
 
-[`GeoPandas`](https://geopandas.org/) adds support for spatial features and related operations to `Pandas` dataframes. However, dataframes can be slow for purposes of iteratively adding and removing rows, for which reason it is preferable to use `networkX` graphs for graph cleaning and preparation workflows. After graph preparation steps, `cityseer` then uses `numpy` arrays directly instead of `GeoPandas` because `numba` optimised functions are not able to work with the latter. That said, it is relatively straight-forward to convert `GeoPandas` network and data representations --- such as those used by [`momepy`](http://docs.momepy.org) --- to and from `cityseer` compatible graphs or `numpy` arrays. Efforts are ongoing to automate these workflows. Stay tuned!
+[`GeoPandas`](https://geopandas.org/) adds support for spatial features and related operations to `Pandas` dataframes. However, dataframes can be slow for purposes of iteratively adding and removing rows, for which reason it is preferable to use `networkX` graphs for the graph cleaning and preparation stage of analysis. After graph preparation steps, `cityseer` then uses a combination of `GeoDataFrame` structures (for downstream data state) and `numpy` arrays (wrapped in [`structures.NetworkStructure`](/structures/#networkstructure), which is accessed by `numba` optimised functions). It is relatively straight-forward to convert `GeoPandas` network and data representations --- such as those used by [`momepy`](http://docs.momepy.org) --- to and from `cityseer` compatible graphs or data structures. Efforts are ongoing to automate these workflows. Stay tuned!
