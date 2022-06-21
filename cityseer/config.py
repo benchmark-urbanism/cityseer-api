@@ -1,4 +1,13 @@
+from __future__ import annotations
+
 import os
+
+
+def prep_gdf_key(key: str) -> str:
+    """Format a column label for GeoPandas."""
+    key = key.replace(".0", "")
+    key = key.replace(".0_", "_")
+    return f"cc_metric_{key}"
 
 
 def check_quiet() -> bool:

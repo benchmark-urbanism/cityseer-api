@@ -22,52 +22,50 @@ FORMAT = "png"
 ###
 # INTRO PLOT
 G = mock.mock_graph()
-plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}", dpi=150)
+plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}", dpi=200, figsize=(5, 5))
 
 # INTRO EXAMPLE PLOTS
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 20)
-
-cc_netw = networks.NetworkLayerFromNX(G, distances=[400, 800])
-cc_netw.segment_centrality(measures=["segment_harmonic"])
-
-data_dict = mock.mock_data_dict(G, random_seed=25)
-cc_data = layers.DataLayerFromDict(data_dict)
-cc_data.assign_to_network(cc_netw, max_dist=400)
-landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
-cc_data.hill_branch_wt_diversity(landuse_labels, qs=[0])
-G_metrics = cc_netw.to_nx_multigraph()
-
-segment_harmonic_vals = []
-mixed_uses_vals = []
-for node, data in G_metrics.nodes(data=True):
-    segment_harmonic_vals.append(data["metrics"]["centrality"]["segment_harmonic"][800])
-    mixed_uses_vals.append(data["metrics"]["mixed_uses"]["hill_branch_wt"][0][400])
-
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+networks.segment_centrality(
+    measures=["segment_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800]
+)
+data_gdf = mock.mock_landuse_categorical_data(G, random_seed=25)
+nodes_gdf, data_gdf = layers.hill_branch_wt_diversity(
+    data_gdf,
+    landuse_column_label="categorical_landuses",
+    nodes_gdf=nodes_gdf,
+    network_structure=network_structure,
+    distances=[400, 800],
+    qs=[0],
+)
 # custom colourmap
+segment_harmonic_vals = nodes_gdf["cc_metric_segment_harmonic_800"]
+mixed_uses_vals = nodes_gdf["cc_metric_hill_branch_wt_q0_400"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 segment_harmonic_cols = cmap(segment_harmonic_vals)
 plot.plot_nx(
-    G_metrics,
+    G,
     plot_geoms=True,
     node_colour=segment_harmonic_cols,
     path=f"{IMAGES_PATH}/intro_segment_harmonic.{FORMAT}",
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )
-
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
-
 plot.plot_assignment(
-    cc_netw.network_structure,
-    cc_netw.nx_multigraph,
-    cc_data.data_map,
+    network_structure,
+    G,
+    data_gdf=data_gdf,
     path=f"{IMAGES_PATH}/intro_mixed_uses.{FORMAT}",
     node_colour=mixed_uses_cols,
-    data_labels=landuse_labels,
-    dpi=150,
+    data_labels=data_gdf["categorical_landuses"],
+    dpi=200,
+    figsize=(5, 5),
 )
 
 #
@@ -81,20 +79,23 @@ plot.plot_nx(
     labels=True,
     node_size=80,
     path=f"{IMAGES_PATH}/graph_example.{FORMAT}",
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )  # WITH LABELS
 
 #
 #
 # GRAPH MODULE
-plot.plot_nx(G, plot_geoms=True, path=f"{IMAGES_PATH}/graph_simple.{FORMAT}", dpi=150)  # NO LABELS
+plot.plot_nx(G, plot_geoms=True, path=f"{IMAGES_PATH}/graph_simple.{FORMAT}", dpi=200, figsize=(5, 5))  # NO LABELS
 
 G_simple = graphs.nx_simple_geoms(G)
 G_decomposed = graphs.nx_decompose(G_simple, 100)
-plot.plot_nx(G_decomposed, plot_geoms=True, path=f"{IMAGES_PATH}/graph_decomposed.{FORMAT}", dpi=150)
+plot.plot_nx(G_decomposed, plot_geoms=True, path=f"{IMAGES_PATH}/graph_decomposed.{FORMAT}", dpi=200, figsize=(5, 5))
 
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=True, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=150)
+plot.plot_nx_primal_or_dual(
+    G_simple, G_dual, plot_geoms=True, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=200, figsize=(5, 5)
+)
 
 # graph cleanup examples
 lng, lat = -0.13396079424572427, 51.51371088849723
@@ -156,22 +157,29 @@ plot.plot_nx(
     labels=True,
     node_size=80,
     path=f"{IMAGES_PATH}/graph_before.{FORMAT}",
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )
 
 # generate the network layer and compute some metrics
-cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 # compute some-or-other metrics
-cc_netw.segment_centrality(measures=["segment_harmonic"])
+nodes_gdf = networks.segment_centrality(
+    measures=["segment_harmonic"],
+    network_structure=network_structure,
+    nodes_gdf=nodes_gdf,
+    distances=[200, 400, 800, 1600],
+)
 # convert back to networkX
-G_post = cc_netw.to_nx_multigraph()
+G_post = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
 plot.plot_nx(
     G_post,
     plot_geoms=True,
     labels=True,
     node_size=80,
     path=f"{IMAGES_PATH}/graph_after.{FORMAT}",
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )
 
 #
@@ -181,26 +189,28 @@ plot.plot_nx(
 # random seed 25
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-
-data_dict = mock.mock_data_dict(G, random_seed=25)
-L = layers.DataLayerFromDict(data_dict)
-L.assign_to_network(cc_netw, max_dist=500)
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+data_gdf = mock.mock_data_gdf(G, random_seed=25)
+data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
-    cc_netw.network_structure, cc_netw.nx_multigraph, L.data_map, path=f"{IMAGES_PATH}/assignment.{FORMAT}", dpi=150
+    network_structure,
+    G,
+    data_gdf,
+    path=f"{IMAGES_PATH}/assignment.{FORMAT}",
+    dpi=200,
+    figsize=(5, 5),
 )
-
 G_decomposed = graphs.nx_decompose(G, 50)
-N_decomposed = networks.NetworkLayerFromNX(G_decomposed, distances=[200, 400, 800, 1600])
-
-L = layers.DataLayerFromDict(data_dict)
-L.assign_to_network(N_decomposed, max_dist=500)
+nodes_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, crs=3395)
+data_gdf = mock.mock_data_gdf(G, random_seed=25)
+data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
 plot.plot_assignment(
-    N_decomposed.network_structure,
-    N_decomposed.nx_multigraph,
-    L.data_map,
+    network_structure_decomp,
+    G_decomposed,
+    data_gdf,
     path=f"{IMAGES_PATH}/assignment_decomposed.{FORMAT}",
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )
 
 #
@@ -211,26 +221,26 @@ from cityseer.tools import graphs, mock, plot
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=150)
+plot.plot_nx_primal_or_dual(
+    G_simple, G_dual, plot_geoms=False, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=200, figsize=(5, 5)
+)
 
 # generate a MultiGraph and compute gravity
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
-cc_netw = networks.NetworkLayerFromNX(G, distances=[800])
-cc_netw.node_centrality(measures=["node_beta"])
-G_after = cc_netw.to_nx_multigraph()
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+networks.node_centrality(
+    measures=["node_beta"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800]
+)
+G_after = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
-    vals.append(data["metrics"]["centrality"]["node_beta"][800])
+    vals.append(data["cc_metric_node_beta_800"])
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list(
-    "cityseer",
-    [
-        (100 / 255, 193 / 255, 255 / 255, 255 / 255),
-        (211 / 255, 47 / 255, 47 / 255, 1 / 255),
-    ],
+    "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]
 )
 # normalise the values
 vals = colors.Normalize()(vals)
@@ -245,17 +255,20 @@ plot.plot_nx(
 )
 
 # assignment plot
-data_dict = mock.mock_data_dict(G, random_seed=25)
-cc_data = layers.DataLayerFromDict(data_dict)
-cc_data.assign_to_network(cc_netw, max_dist=400)
-landuse_labels = mock.mock_categorical_data(len(data_dict), random_seed=25)
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+G_decomp = graphs.nx_decompose(G, 50)
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
+data_gdf = mock.mock_landuse_categorical_data(G_decomp, random_seed=25)
+data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
-    cc_netw.network_structure,
-    cc_netw.nx_multigraph,
-    cc_data.data_map,
+    network_structure,
+    G_decomp,
+    data_gdf,
+    data_labels=data_gdf["categorical_landuses"].values,
     path=f"{IMAGES_PATH}/assignment_plot.{FORMAT}",
-    data_labels=landuse_labels,
-    dpi=150,
+    dpi=200,
+    figsize=(5, 5),
 )
 
 #

@@ -1,6 +1,7 @@
 # pyright: basic
+from __future__ import annotations
 
-
+import numba
 import numpy as np
 import numpy.typing as npt
 import pytest
@@ -10,46 +11,40 @@ from cityseer.metrics import layers, networks
 from cityseer.tools import mock
 
 
-def test_check_numerical_data():
-    mock_numerical = mock.mock_numerical_data(50)
-
+def test_check_numerical_data(primal_graph):
+    mock_numerical = mock.mock_numerical_data(primal_graph)
     # check for malformed data
-    # difficult to catch int arrays without running into numba type checking errors
     # single dimension
     with pytest.raises(ValueError):
-        corrupt_numerical = mock_numerical[0]
+        corrupt_numerical = mock_numerical["mock_numerical_1"].values
         assert corrupt_numerical.ndim == 1
         checks.check_numerical_data(corrupt_numerical)
     # catch infinites
     with pytest.raises(ValueError):
-        mock_numerical[0][0] = np.inf
-        checks.check_numerical_data(mock_numerical)
+        mock_numerical.at[0, "mock_numerical_1"] = np.inf
+        checks.check_numerical_data(mock_numerical["mock_numerical_1"].values)
 
 
-def test_check_categorical_data():
-    mock_categorical = mock.mock_categorical_data(50)
-    _data_classes, data_encoding = layers.encode_categorical(mock_categorical)
+def test_check_categorical_data(primal_graph):
+    mock_categorical = mock.mock_landuse_categorical_data(primal_graph)
     # check for malformed data
+    corrupt_categorical = mock_categorical.categorical_landuses.values.copy()
     # negatives
-    with pytest.raises(ValueError):
-        data_encoding[0] = -1
-        checks.check_categorical_data(data_encoding)
+    with pytest.raises((ValueError, numba.TypingError)):
+        corrupt_categorical[0] = -1
+        checks.check_categorical_data(corrupt_categorical)
     # NaN
-    with pytest.raises(ValueError):
-        data_encoding[0] = np.nan
-        checks.check_categorical_data(data_encoding)
+    with pytest.raises((ValueError, numba.TypingError)):
+        corrupt_categorical[0] = np.nan
+        checks.check_categorical_data(corrupt_categorical)
     # floats
-    with pytest.raises(ValueError):
-        data_encoding_float: npt.NDArray[np.float32] = np.full(data_encoding.shape[0], np.nan, np.float32)
-        data_encoding_float[:] = data_encoding[:].astype(float)
-        data_encoding_float[0] = 1.2345
-        checks.check_categorical_data(data_encoding_float)
+    with pytest.raises((ValueError, numba.TypingError)):
+        checks.check_categorical_data(mock_categorical.categorical_landuses.values.astype(np.float_))
 
 
 def test_check_distances_and_betas():
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025, 0.0], np.float32)
+    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025], np.float32)
     distances = networks.distance_from_beta(betas)
-
     # zero length arrays
     with pytest.raises(ValueError):
         checks.check_distances_and_betas(np.array([]), betas)
