@@ -692,17 +692,13 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       <div class="yap func-sig">
         <span>network_structure_from_nx(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">crs)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Transpose a `networkX` `MultiGraph` into `numpy` arrays for use by `cityseer` `NetworkLayer` classes. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
-
-:::warning
-It is generally not necessary to use this function directly. This function will be called internally when invoking
-[NetworkLayerFromNX](/metrics/networks/#networklayerfromnx)
-:::
+Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -714,14 +710,23 @@ It is generally not necessary to use this function directly. This function will 
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
 </Markdown></div>
       </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">crs</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
+</Markdown></div>
+      </div>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_keys</div>
-          <div class="yap doc-str-elem-type">tuple[int | str]</div>
+          <div class="yap doc-str-elem-name">nodes_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of node `keys` corresponding to the node identifiers in the source `networkX` graph.
+A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -730,7 +735,7 @@ A tuple of node `keys` corresponding to the node identifiers in the source `netw
           <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`NetworkStructure`](/structures/#networkstructure) instance.
+A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
 </Markdown></div>
       </div>
     </div>
@@ -749,29 +754,23 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       <div class="yap func-sig">
         <span>nx_from_network_structure(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">node_keys, </div>
+          <div class="yap func-sig-param">nodes_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">dict_node_metrics)</div>
+          <div class="yap func-sig-param">nx_multigraph)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
 Write `cityseer` data graph maps back to a `networkX` `MultiGraph`. This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `nx_multigraph` parameter.
-
-:::warning
-It is generally not necessary to use this function directly. This function will be called internally when invoking
-[NetworkLayer.to_nx_multigraph](/metrics/networks/#networklayer-to-nx-multigraph)
-:::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_keys</div>
-          <div class="yap doc-str-elem-type">tuple[int | str]</div>
+          <div class="yap doc-str-elem-name">nodes_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
+A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX` graph's node keys.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -780,7 +779,7 @@ A tuple of node ids corresponding to the node identifiers for the target `networ
           <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`NetworkStructure`](/structures/#networkstructure) instance.
+A [`structures.NetworkStructure`](/structures/#networkstructure) instance corresponding to the `nodes_gdf` parameter.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -792,23 +791,14 @@ A [`NetworkStructure`](/structures/#networkstructure) instance.
 An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">dict_node_metrics</div>
-          <div class="yap doc-str-elem-type">dict</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional dictionary with keys corresponding to the identifiers in `node_keys`. The dictionary's `values` will be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
-</Markdown></div>
-      </div>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
           <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data overridden as described below. If no graph was provided, then a new graph will be generated. `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data` to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on matching node identifiers.
+A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf` `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
 </Markdown></div>
       </div>
     </div>

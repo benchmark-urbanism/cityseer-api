@@ -145,18 +145,18 @@ A `NetworkX` `MultiGraph` with `x` and `y` node parameters.
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="mock-data-dict">
-      <a aria-hidden="true" href="#mock-data-dict" tabindex="-1">
+    <h2 class="yap func-title" id="mock-data-gdf">
+      <a aria-hidden="true" href="#mock-data-gdf" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>mock_data_dict
+      </a>mock_data_gdf
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>mock_data_dict(</span>
+        <span>mock_data_gdf(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">length=50, </div>
@@ -199,29 +199,30 @@ An optional random seed, by default None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">dict</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A dictionary where each entry consists of a distinct `data_key`, and corresponding `x` and `y`.
+A `GeoDataFrame` with data points for testing purposes.
 </Markdown></div>
       </div>
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="mock-categorical-data">
-      <a aria-hidden="true" href="#mock-categorical-data" tabindex="-1">
+    <h2 class="yap func-title" id="mock-landuse-categorical-data">
+      <a aria-hidden="true" href="#mock-landuse-categorical-data" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>mock_categorical_data
+      </a>mock_landuse_categorical_data
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>mock_categorical_data(</span>
+        <span>mock_landuse_categorical_data(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">length, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">length=50, </div>
           <div class="yap func-sig-param">num_classes=10, </div>
           <div class="yap func-sig-param">random_seed=0)</div>
         </div>
@@ -231,6 +232,15 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
 Generate a `numpy` array containing mock categorical data for testing or experimentation purposes.
 </Markdown>
       <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the network. The returned data will be within these extents.
+</Markdown></div>
+      </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">length</div>
@@ -262,10 +272,10 @@ An optional random seed, by default None
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">list[str]</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `list`containing categorical data elements. The number of elements will match the `length` parameter. The categorical data will consist of randomly selected characters.
+A `GeoDataFrame` with a &quot;categorical_landuses&quot; data column for testing purposes. The number of rows will match the `length` parameter. The categorical data will consist of randomly selected characters from `num_classes`.
 </Markdown></div>
       </div>
     </div>
@@ -284,7 +294,8 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       <div class="yap func-sig">
         <span>mock_numerical_data(</span>
         <div class="yap func-sig-params">
-          <div class="yap func-sig-param">length, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">length=50, </div>
           <div class="yap func-sig-param">val_min=0, </div>
           <div class="yap func-sig-param">val_max=100000, </div>
           <div class="yap func-sig-param">num_arrs=1, </div>
@@ -297,6 +308,15 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
 Generate a 2d `numpy` array containing mock numerical data for testing or experimentation purposes.
 </Markdown>
       <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the network. The returned data will be within these extents.
+</Markdown></div>
+      </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">length</div>
@@ -355,10 +375,10 @@ An optional random seed, by default None
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">ndarray[float]</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number of data elements and will match the `length` parameter. The numerical data will consist of randomly selected integers.
+A `GeoDataFrame` with a &quot;mock_numerical_x&quot; data columns for testing purposes. The number of rows will match the `length` parameter. The numer of numerical columns will match the `num_arrs` paramter.
 </Markdown></div>
       </div>
     </div>

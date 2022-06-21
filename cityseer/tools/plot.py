@@ -364,21 +364,24 @@ def plot_nx(
     from cityseer.tools import mock, graphs, plot
     from cityseer.metrics import networks
     from matplotlib import colors
+
     # generate a MultiGraph and compute gravity
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    cc_netw = networks.NetworkLayerFromNX(G, distances=[800])
-    cc_netw.node_centrality(measures=['node_beta'])
-    G_after = cc_netw.to_nx_multigraph()
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    networks.node_centrality(
+        measures=["node_beta"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800]
+    )
+    G_after = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
     # let's extract and normalise the values
     vals = []
     for node, data in G_after.nodes(data=True):
-        vals.append(data['metrics'].centrality['node_beta'][800])
+        vals.append(data["cc_metric_node_beta_800"])
     # let's create a custom colourmap using matplotlib
-    cmap = colors.LinearSegmentedColormap.from_list('cityseer',
-                                                    [(100/255, 193/255, 255/255, 255/255),
-                                                    (211/255, 47/255, 47/255, 1/255)])
+    cmap = colors.LinearSegmentedColormap.from_list(
+        "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]
+    )
     # normalise the values
     vals = colors.Normalize()(vals)
     # cast against the colour map
@@ -417,7 +420,7 @@ def plot_assignment(  # noqa
     **kwargs: dict[str, Any],
 ):
     """
-    Plot a `NetworkLayer` and `DataLayer` for the purpose of visualising assignment of data points to respective nodes.
+    Plot a `network_structure` and `data_gdf` for visualising assignment of data points to respective nodes.
 
     :::warning
     This method is primarily intended for package testing and development.
@@ -426,11 +429,11 @@ def plot_assignment(  # noqa
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
-    data_map: structures.DataMap
-        A [`DataMap`](/structures/#datamap) instance.
+    data_gdf: GeoDataFrame
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -562,9 +565,9 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
-    data_map: structures.DataMap
-        A [`DataMap`](/structures/#datamap) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
+    data_gdf: GeoDataFrame
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 

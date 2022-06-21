@@ -1621,18 +1621,20 @@ def network_structure_from_nx(
 
     Parameters
     ----------
-    crs: str
-        `pyproj` compataible CRS sring for initialising the s.
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
+    crs: str
+        CRS for initialising the returned structures. This is used for initialising the GeoPandas
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        A GeoDataFrame with `node_key`, `node_live`, `geometry` attributes.
+        A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used
+        for the `GeoDataFrame` index.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -1771,28 +1773,26 @@ def nx_from_network_structure(
 
     Parameters
     ----------
-    node_keys: tuple[int | str]
-        A tuple of node ids corresponding to the node identifiers for the target `networkX` graph.
+    nodes_gdf: GeoDataFrame
+        A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX`
+        graph's node keys.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures/#networkstructure) instance corresponding to the `nodes_gdf`
+        parameter.
     nx_multigraph: MultiGraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
         correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
         provided, then a new `networkX` graph will be returned. This function is intended to be used for situations
         where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
-    dict_node_metrics: dict
-        An optional dictionary with keys corresponding to the identifiers in `node_keys`. The dictionary's `values` will
-        be unpacked to the corresponding nodes in the `networkX` graph. Defaults to None.
 
     Returns
     -------
-    MultiGraph
-        A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned with the data
-        overridden as described below. If no graph was provided, then a new graph will be generated.
-        `x`, `y`, `live`, `ghosted` node attributes will be copied from `node_data` to the graph nodes. `length`,
-        `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `edge_data`
-        to the graph edges. If a `dict_node_metrics` is provided, all data will be copied to the graph nodes based on
-        matching node identifiers.
+    nx_multigraph: MultiGraph
+        A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was
+        provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf`
+        to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be
+        copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf`
+        `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
 
     """
     logger.info("Populating node and edge map data to a networkX graph.")

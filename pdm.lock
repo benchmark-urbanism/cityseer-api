@@ -944,6 +944,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyogrio"
+version = "0.4.0"
+requires_python = ">=3.8"
+summary = "Vectorized spatial vector file format I/O using GDAL/OGR"
+dependencies = [
+    "certifi",
+    "numpy",
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.0.9"
 requires_python = ">=3.6.8"
@@ -1327,7 +1337,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:5b4abb95a84b72774857b45bff23a92f3de4c7b96f24101d783b2095ae8477cb"
+content_hash = "sha256:e4985b2b05bfa4805911ee61c3992d366c2db820760938491fce2bb9f03f3b26"
 
 [metadata.files]
 "aiofiles 0.8.0" = [
@@ -2241,6 +2251,18 @@ content_hash = "sha256:5b4abb95a84b72774857b45bff23a92f3de4c7b96f24101d783b2095a
 "pylint 2.14.3" = [
     {file = "pylint-2.14.3-py3-none-any.whl", hash = "sha256:6757a027e15816be23625b079ebc45464e4c9d9dde0c826d18beee53fe22a2e7"},
     {file = "pylint-2.14.3.tar.gz", hash = "sha256:4e1378f815c63e7e44590d0d339ed6435f5281d0a0cc357d29a86ea0365ef868"},
+]
+"pyogrio 0.4.0" = [
+    {file = "pyogrio-0.4.0-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:ec5e461ef5076ea89cf29d0933f9c278b67dd84bb371e5ed64c6c049bdfaa719"},
+    {file = "pyogrio-0.4.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f564ee5778520e643e351826c6f6b5f4421c11c977876722adbc79fd58317c8b"},
+    {file = "pyogrio-0.4.0-cp310-cp310-win_amd64.whl", hash = "sha256:1a8ab670cce03c259eac8d7f8b1042fa4bb61b525f8157b7a39fa87dbb562281"},
+    {file = "pyogrio-0.4.0-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:ecd68c47153b85598f72cec979a7fb595731d5caa2b6ff7d753c76838a8ceac0"},
+    {file = "pyogrio-0.4.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a8100b233d34ee3438100662487e5c084dcfadfa65de7cdab5206f180929c9d0"},
+    {file = "pyogrio-0.4.0-cp38-cp38-win_amd64.whl", hash = "sha256:96f6d3fc15ccf1a6799704a559636b7a4ca62ecbea6a93b2dc146fea5be55466"},
+    {file = "pyogrio-0.4.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:f87605c383b8ff11049792118f948388cfc80131b3724c0b9b649f0a7709400b"},
+    {file = "pyogrio-0.4.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:54e7f6136568b19977380211cdece9a3f2a0bd806e97e00f2466aacef0039186"},
+    {file = "pyogrio-0.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:0d205bed128ade326392e94c7fcc2d66f86b1ebd87a26928efb12bf01d7ec3cc"},
+    {file = "pyogrio-0.4.0.tar.gz", hash = "sha256:85480e687872a3e3b11b3e2147e8aa779e28f165c60e01b2102971c895b84b82"},
 ]
 "pyparsing 3.0.9" = [
     {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},

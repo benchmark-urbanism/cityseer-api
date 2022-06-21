@@ -46,7 +46,6 @@ def test_mock_data_gdf(primal_graph):
         if node_data["y"] > max_y:
             max_y = node_data["y"]
     data_gdf = mock.mock_data_gdf(primal_graph)
-    assert "data_key" in data_gdf.columns
     assert "geometry" in data_gdf.columns
     assert np.all(data_gdf.geometry.x >= min_x)
     assert np.all(data_gdf.geometry.x <= max_x)
@@ -75,7 +74,7 @@ def test_mock_numerical_data(primal_graph):
     for length in [50, 100]:
         for num_arrs in range(1, 3):
             numerical_gdf = mock.mock_numerical_data(primal_graph, length=length, num_arrs=num_arrs)
-            assert len(numerical_gdf.columns) == num_arrs + 2
+            assert len(numerical_gdf.columns) == num_arrs + 1
             for col_label in numerical_gdf.columns:
                 if col_label in ["data_key", "geometry"]:
                     continue
