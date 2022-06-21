@@ -39,6 +39,11 @@ const props = defineProps({
 const navTree = reactive([])
 let activeNavElems = []
 onMounted(() => {
+  useTimeoutFn(() => {
+    prepareSideBarNav()
+  }, 50)
+})
+const prepareSideBarNav = () => {
   const contentCol = document.getElementById('content-col')
   const headers = contentCol.querySelectorAll('h2') // h1?
   props.navPaths.forEach((path) => {
@@ -95,7 +100,7 @@ onMounted(() => {
   useTimeoutFn(() => {
     headingTargetsAnim()
   }, 100)
-})
+}
 const headingTargetsAnim = () => {
   nextTick(() => {
     anime({
