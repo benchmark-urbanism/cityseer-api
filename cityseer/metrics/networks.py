@@ -1,6 +1,56 @@
-# pylint: disable=too-many-lines
-"""
+r"""
 Cityseer network module for creating networks and calculating network centralities.
+
+There are two network centrality methods available depending on whether you're using a node-based or segment-based
+approach:
+
+- [`node_centrality`](#node-centrality)
+- [`segment_centrality`](#segment-centrality)
+
+These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
+all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
+computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+
+See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
+
+:::note
+The reasons for picking one approach over another are varied:
+
+- Node based centralities compute the measures relative to each reachable node within the threshold distances. For
+this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
+concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
+street intersections. In these cases, the network should first be cleaned using methods such as those available in
+the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide/#graph-cleaning) for examples/). If a
+network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
+can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
+the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
+of roadway intersections or a proliferation of walking paths in greenspaces;
+- Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
+together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
+distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
+impedances decrease below 1.
+- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based)
+and dual graphs (node only).
+- Measures should only be directly compared on the same topology because different topologies can otherwise affect
+the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
+on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
+can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
+four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
+This effect is amplified for denser regions of the network.
+- Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment
+lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
+the contribution of a single edge segment at a four-way intersection would be duplicated three times.
+- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic
+closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and
+improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired,
+through additional (manual) steps.
+- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
+such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
+intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the
+distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions
+may therefore be preferable when working at small thresholds on decomposed networks.
+:::
+
 """
 
 from __future__ import annotations
@@ -49,8 +99,7 @@ def distance_from_beta(beta: types.BetasType, min_threshold_wt: float = MIN_THRE
     Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
     :::note
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
-    invoking [`NetworkLayer`](#networklayer) or [`NetworkLayerFromNX`](#networklayerfromnx).
+    It is generally not necessary to utilise this function directly.
     :::
 
     Parameters
@@ -95,9 +144,9 @@ def distance_from_beta(beta: types.BetasType, min_threshold_wt: float = MIN_THRE
 
     ![Example beta decays](/images/betas.png)
 
-    [`NetworkLayer`](#networklayer) and [`NetworkLayerFromNX`](/metrics/networks/#networklayerfromnx) can be
-    invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this
-    function will be called in order to extrapolate the distance thresholds implicitly, using:
+    Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
+    the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly,
+    using:
 
     $$
     d_{max} = \frac{log(w_{min})}{-\beta}
@@ -160,8 +209,7 @@ def beta_from_distance(
     See [`distance_from_beta`](#distance-from-beta) for additional discussion.
 
     :::note
-    It is generally not necessary to utilise this function directly. It will be called internally, if necessary, when
-    invoking [`NetworkLayer`](#networklayer) or [`NetworkLayerFromNX`](#networklayerfromnx).
+    It is generally not necessary to utilise this function directly.
     :::
 
     Parameters
@@ -187,9 +235,9 @@ def beta_from_distance(
     print(betas)  # prints: array([0.01, 0.02])
     ```
 
-    [`NetworkLayer`](#networklayer) and [`NetworkLayerFromNX`](#networklayerfromnx) can be invoked with
-    either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will
-    be called in order to extrapolate the decay parameters implicitly, using:
+    Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
+    the `distances` parameter, then this function will be called in order to extrapolate the decay parameters
+    implicitly, using:
 
     $$
     \beta = -\frac{log(w_{min})}{d_{max}}
@@ -262,96 +310,6 @@ def avg_distance_for_beta(beta: types.BetasType, min_threshold_wt: float = MIN_T
     return avg_d.astype(np.float32)
 
 
-r"""
-Network layers wrap street network information and exposed associated methods.
-
-Network layers can be used for network centrality computations and provide the backbone for landuse and statistical
-aggregations. [`NetworkLayerFromNX`](#networklayerfromnx) should be used instead if converting from a
-`NetworkX` `MultiGraph` to a `NetworkLayer`.
-
-A `NetworkLayer` requires either a set of distances $d_{max}$ or equivalent exponential decay parameters
-$\beta$, but not both. The unprovided parameter will be calculated implicitly in order to keep weighted and
-unweighted metrics in lockstep. The `min_threshold_wt` parameter can be used to generate custom mappings from
-one to the other: see [`distance_from_beta`](#distance-from-beta) for more information. These distances and betas
-are used for any subsequent centrality and land-use calculations.
-
-```python
-from cityseer.metrics import networks
-from cityseer.tools import mock, graphs
-
-# prepare a mock graph
-G = mock.mock_graph()
-G = graphs.nx_simple_geoms(G)
-
-# if initialised with distances:
-# then betas for weighted metrics will be generated automatically
-cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-print(cc_netw.distances)  # prints: [200, 400, 800, 1600]
-print(cc_netw.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
-
-# if initialised with betas:
-# distances for non-weighted metrics will be generated automatically
-cc_netw = networks.NetworkLayerFromNX(G, betas=[0.02, 0.01, 0.005, 0.0025])
-print(cc_netw.distances)  # prints: [200, 400, 800, 1600]
-print(cc_netw.betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
-```
-
-There are two network centrality methods available depending on whether you're using a node-based or segment-based
-approach:
-
-- [`node_centrality`](#networklayer-node-centrality)
-- [`segment_centrality`](#networklayer-segment-centrality)
-
-These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
-all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
-computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
-
-See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
-
-:::note
-The reasons for picking one approach over another are varied:
-
-- Node based centralities compute the measures relative to each reachable node within the threshold distances. For
-this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
-concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
-street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide/#graph-cleaning) for examples/). If a
-network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
-can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
-the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
-of roadway intersections or a proliferation of walking paths in greenspaces;
-- Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
-together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
-distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
-impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based)
-and dual graphs (node only).
-- Measures should only be directly compared on the same topology because different topologies can otherwise affect
-the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
-on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
-can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
-four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
-This effect is amplified for denser regions of the network.
-- Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment
-lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
-the contribution of a single edge segment at a four-way intersection would be duplicated three times.
-- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic
-closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and
-improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired,
-through additional (manual) steps.
-- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
-such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
-intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the
-distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions
-may therefore be preferable when working at small thresholds on decomposed networks.
-:::
-
-The computed metrics will be written to a metrics state object which can be accessed according to the computed
-measures:
-
-"""
-
-
 def pair_distances_betas(
     distances: Optional[types.DistancesType] = None,
     betas: Optional[types.BetasType] = None,
@@ -362,25 +320,28 @@ def pair_distances_betas(
 
     Parameters
     ----------
-    distances: ndarray[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for centrality (and land-use)
-        calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the
-        `distances` parameter is not provided, then the `beta` parameter must be provided instead. Use a distance of
-        `np.inf` where no distance threshold should be enforced.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        provided, then the `distance` parameter must be provided instead. By default None.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
 
     Returns
     -------
-    distances: ndarray[int]
-        Array of distances paired to betas.
-    betas: ndarray[float]
-        Array of betas paired to distances.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
 
     Examples
     --------
@@ -431,11 +392,36 @@ def node_centrality(
         A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality
         measure `key` values in the table beneath. Each centrality measure will be computed for all distance
         thresholds $d_{max}$.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
     angular: bool
-        A boolean indicating whether to use shortest or simplest path heuristics, by default False
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances. By default False.
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
 
     Examples
     --------
@@ -539,11 +525,36 @@ def segment_centrality(
         A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality
         measure `key` values in the table beneath. Each centrality measure will be computed for all distance
         thresholds $d_{max}$.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
     angular: bool
-        A boolean indicating whether to use shortest or simplest path heuristics, by default False
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances. By default False.
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
 
     Examples
     --------

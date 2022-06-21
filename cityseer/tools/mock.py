@@ -281,8 +281,8 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
 
     Returns
     -------
-    dict
-        A dictionary where each entry consists of a distinct `data_key`, and corresponding `x` and `y`.
+    GeoDataFrame
+        A `GeoDataFrame` with data points for testing purposes.
 
     """
     np.random.seed(seed=random_seed)  # pylint: disable=no-member
@@ -309,6 +309,9 @@ def mock_landuse_categorical_data(
 
     Parameters
     ----------
+    nx_multigraph: MultiGraph
+        A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
+        network. The returned data will be within these extents.
     length: int
         The number of categorical elements to return in the array.
     num_classes: int
@@ -320,9 +323,9 @@ def mock_landuse_categorical_data(
 
     Returns
     -------
-    list[str]
-        A `list`containing categorical data elements. The number of elements will match the `length` parameter.
-        The categorical data will consist of randomly selected characters.
+    GeoDataFrame
+        A `GeoDataFrame` with a "categorical_landuses" data column for testing purposes. The number of rows will match
+        the `length` parameter. The categorical data will consist of randomly selected characters from `num_classes`.
 
     """
     np.random.seed(seed=random_seed)
@@ -356,6 +359,9 @@ def mock_numerical_data(
 
     Parameters
     ----------
+    nx_multigraph: MultiGraph
+        A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
+        network. The returned data will be within these extents.
     length: int
         The number of numerical elements to return in the array.
     val_min: int
@@ -371,11 +377,9 @@ def mock_numerical_data(
 
     Returns
     -------
-    ndarray[float]
-        A 2d `numpy` array containing numerical data elements. The first dimension corresponds to the number of data
-        arrays, and is set with the `num_arrs` parameter. The length of the second dimension will represents the number
-        of data elements and will match the `length` parameter. The numerical data will consist of randomly selected
-        integers.
+    GeoDataFrame
+        A `GeoDataFrame` with a "mock_numerical_x" data columns for testing purposes. The number of rows will match
+        the `length` parameter. The numer of numerical columns will match the `num_arrs` paramter.
 
     """
     np.random.seed(seed=random_seed)  # pylint: disable=no-member

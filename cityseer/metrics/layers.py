@@ -17,35 +17,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-"""
-DataLayer Class representing data samples.
-
-Categorical data, such as land-use classifications, and numerical data, such as valuations or census statistics,
-can be assigned to the network as a [`DataLayer`](/metrics/layers/#datalayer). A `DataLayer` represents the spatial
-locations of data points, and is used to calculate various mixed-use, land-use accessibility, and statistical
-measures. Importantly, these measures are computed directly over the street network and offer distance-weighted
-variants. The combination of these strategies makes `cityseer` more contextually sensitive than methods otherwise
-based on crow-flies aggregation methods that do not take the network structure and its affect on pedestrian
-walking distances into account.
-
-The coordinates of data points should correspond as precisely as possible to the location of the feature in space;
-or, in the case of buildings, should ideally correspond to the location of the building entrance.
-
-:::note
-Note that in many cases, the [`DataLayerFromDict`](#datalayerfromdict) class will provide a more convenient
-alternative for instantiating this class.
-:::
-
-"""
-
-
 def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: Union[int, float],
 ) -> tuple[structures.DataMap, gpd.GeoDataFrame]:
     """
-    Assign a GeoDataFrame to a [`NetworkStructure`](/structures#networkstructure).
+    Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures/#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
@@ -55,12 +33,21 @@ def assign_gdf_to_network(
     Parameters
     ----------
     data_gdf: GeoDataFrame
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe).
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
     network_structure: structures.NetworkStructure
-        A [`NetworkStructure`](/structures#networkstructure).
-    max_assign_dist: int
-        The maximum distance to consider when assigning respective data points to the nearest adjacent network
-        nodes.
+        A [`structures.NetworkStructure`](/structures/#networkstructure).
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+
+    Returns
+    -------
+    data_map: structures.DataMap
+        A [`structures.DataMap`](/structures/#datamap) instance.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
     Examples
     --------
@@ -134,7 +121,7 @@ def compute_landuses(
     land-use accessibility measures. These are computed simultaneously for any required combinations of measures
     (and distances). Situations requiring only a single measure can instead make use of the simplified
     [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and
-    [`DataLayer.compute_accessibilities`](#compute-accessibilities) methods.
+    [`compute_accessibilities`](#compute-accessibilities) methods.
 
     See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
     at the pedestrian scale.
@@ -142,75 +129,49 @@ def compute_landuses(
     The data is aggregated and computed over the street network, with the implication that mixed-use and land-use
     accessibility aggregations are generated from the same locations as for centrality computations, which can
     therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding
-    node indices in the same `NetworkLayer.metrics_state` dictionary used for centrality methods, and will be
-    categorised by the respective keys and parameters.
-
-    For example, if `hill` and `shannon` mixed-use keys; `shops` and `factories` accessibility keys are computed on
-    a `Network Layer` instantiated with 800m and 1600m distance thresholds, then the dictionary would assume the
-    following structure:
-
-    ```python
-    NetworkLayer.metrics_state.mixed_uses = {
-        # note that hill measures have q keys
-        'hill': {
-            # here, q=0
-            0: {
-                800: [...],
-                1600: [...]
-            },
-            # here, q=1
-            1: {
-                800: [...],
-                1600: [...]
-            }
-        },
-        # non-hill measures do not have q keys
-        'shannon': {
-            800: [...],
-            1600: [...]
-        }
-    }
-    # accessibility keys are computed in both weighted and unweighted forms
-    NetworkLayer.metrics_state.accessibility.weighted = {
-        'shops': {
-            800: [...],
-            1600: [...]
-        },
-        'factories': {
-            800: [...],
-            1600: [...]
-        }
-    }
-    NetworkLayer.metrics_state.accessibility.non_weighted = {
-        'shops': {
-            800: [...],
-            1600: [...]
-        },
-        'factories': {
-            800: [...],
-            1600: [...]
-        }
-    }
-    ```
+    node indices in the same `node_gdf` `GeoDataFrame` used for centrality methods, and which will display the
+    calculated metrics under correspondingly labelled columns.
 
     Parameters
     ----------
-    landuse_labels: tuple[str]
-        Land-use labels corresponding to the length and order of the data points. The labels should correspond to
-        descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
-        computing mixed-uses or land-use accessibilities.
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    landuse_column_label: str
+        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
+        contain "shop", "pub", "school", etc., landuse categories.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+        By default 400m.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     mixed_use_keys: tuple[str]
         Mixed-use metrics to compute, containing any combination of the `key` values from the following table, by
-        default None. See examples below for additional information.
-    accessibility_keys
+        default None. See examples below for additional information. By default None.
+    accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
         schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants. By default None.
+        `weighted` and `non_weighted` variants. By default None. By default None.
     cl_disparity_wt_matrix: ndarray[float]
         An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair
         of distinct land-uses. This parameter is only required if computing mixed-uses using
-        `hill_pairwise_disparity` or `raos_pairwise_disparity`.  The number and order of land-uses should match
-        those implicitly generated by [`encode_categorical`](#encode_categorical). By default None.
+        `hill_pairwise_disparity` or `raos_pairwise_disparity`.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored. By default None.
@@ -219,7 +180,14 @@ def compute_landuses(
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False
+        and distances. By default False.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
     Examples
     --------
@@ -276,53 +244,25 @@ def compute_landuses(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-
-    # generate the network layer
-    cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-
-    # prepare a mock data dictionary
-    data_dict = mock.mock_data_dict(G, random_seed=25)
-    # prepare some mock land-use classifications
-    landuses = mock.mock_categorical_data(len(data_dict), random_seed=25)
-
-    # generate a data layer
-    L = layers.DataLayerFromDict(data_dict)
-    # assign to the network
-    L.assign_to_network(cc_netw, max_dist=500)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    landuses_gdf = mock.mock_landuse_categorical_data(G)
+    print(landuses_gdf.head())
     # compute some metrics - here we'll use the full interface, see below for simplified interfaces
-    # FULL INTERFACE
-    # ==============
-    L.compute_landuses(landuse_labels=landuses,
-                        mixed_use_keys=['hill'],
-                        qs=[0, 1],
-                        accessibility_keys=['c', 'd', 'e'])
-    # note that the above measures can optionally be run individually using simplified interfaces, e.g.
-    # SIMPLIFIED INTERFACES
-    # =====================
-    # L.hill_diversity(landuses, qs=[0])
-    # L.compute_accessibilities(landuses, ['a', 'b'])
-
-    # let's prepare some keys for accessing the computational outputs
-    # distance idx: any of the distances with which the NetworkLayer was initialised
-    distance_idx = 200
-    # q index: any of the invoked q parameters
-    q_idx = 0
-    # a node idx
-    node_idx = 0
-
-    # the data is available at cc_netw.metrics_state
-    print(cc_netw.metrics_state.mixed_uses['hill'][q_idx][distance_idx][node_idx])
-    # prints: 4.0
-    print(cc_netw.metrics_state.accessibility.weighted['d'][distance_idx][node_idx])
-    # prints: 0.019174593
-    print(cc_netw.metrics_state.accessibility.non_weighted['d'][distance_idx][node_idx])
-    # prints: 1.0
+    nodes_gdf, landuses_gdf = layers.compute_landuses(
+        data_gdf=landuses_gdf,
+        landuse_column_label="categorical_landuses",
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+        mixed_use_keys=["hill"],
+        qs=[0, 1],
+        accessibility_keys=["c", "d", "e"],
+    )
+    print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
+    print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
+    print(nodes_gdf["cc_metric_d_800_non_weighted"])  # weighted landuse accessibility for landuse "d" at 800m
     ```
-
-    Note that the data can also be unpacked to a dictionary using
-    [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
-    graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
-
     :::warning
     Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
     has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
@@ -417,8 +357,7 @@ def compute_landuses(
     )
     if progress_proxy is not None:
         progress_proxy.close()
-    # write the results to the NetworkLayer's metrics dict
-    # keys will check for pre-existing, whereas qs and distance keys will overwrite
+    # write the results to the GeoDataFrame
     # unpack mixed use hill
     for mu_h_idx, mu_h_key in enumerate(mu_hill_keys):
         mu_h_label = mixed_uses_options[mu_h_key]
@@ -460,26 +399,82 @@ def hill_diversity(
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
+    r"""
     Compute hill diversity for the provided `landuse_labels` at the specified values of `q`.
 
-    See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+    See [`compute_landuses`](#compute-landuses) for additional information.
 
     Parameters
     ----------
-    landuse_labels: tuple[str]
-        Land-use labels corresponding to the length and order of the data points. The labels should correspond to
-        descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
-        computing mixed-uses or land-use accessibilities.
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    landuse_column_label: str
+        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
+        contain "shop", "pub", "school", etc., landuse categories.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+        By default 400m.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations, useful for situations with highly
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances. By default False.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
     Examples
     --------
-    The data key is `hill`, e.g.:
+    ```python
+    from cityseer.metrics import networks, layers
+    from cityseer.tools import mock, graphs
 
-    `NetworkLayer.metrics_state.mixed_uses['hill'][q_key][distance_key][node_idx]`
+    # prepare a mock graph
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    landuses_gdf = mock.mock_landuse_categorical_data(G)
+    print(landuses_gdf.head())
+    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+    nodes_gdf, landuses_gdf = layers.hill_diversity(
+        data_gdf=landuses_gdf,
+        landuse_column_label="categorical_landuses",
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+        qs=[0, 1],
+    )
+    print(nodes_gdf.columns)
+    print(nodes_gdf["cc_metric_hill_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
+    ```
 
     """
     return compute_landuses(
@@ -509,26 +504,82 @@ def hill_branch_wt_diversity(
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
+    r"""
     Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`.
 
-    See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+    See [`compute_landuses`](#compute-landuses) for additional information.
 
     Parameters
     ----------
-    landuse_labels: tuple[str]
-        Land-use labels corresponding to the length and order of the data points. The labels should correspond to
-        descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
-        computing mixed-uses or land-use accessibilities.
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    landuse_column_label: str
+        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
+        contain "shop", "pub", "school", etc., landuse categories.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+        By default 400m.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations, useful for situations with highly
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances. By default False.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
     Examples
     --------
-    The data key is `hill_branch_wt`, e.g.:
+    ```python
+    from cityseer.metrics import networks, layers
+    from cityseer.tools import mock, graphs
 
-    `NetworkLayer.metrics_state.mixed_uses['hill_branch_wt'][q_key][distance_key][node_idx]`
+    # prepare a mock graph
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    landuses_gdf = mock.mock_landuse_categorical_data(G)
+    print(landuses_gdf.head())
+    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+    nodes_gdf, landuses_gdf = layers.hill_branch_wt_diversity(
+        data_gdf=landuses_gdf,
+        landuse_column_label="categorical_landuses",
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+        qs=[0, 1],
+    )
+    print(nodes_gdf.columns)
+    print(nodes_gdf["cc_metric_hill_branch_wt_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
+    ```
 
     """
     return compute_landuses(
@@ -558,30 +609,83 @@ def compute_accessibilities(
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
+    r"""
     Compute land-use accessibilities for the specified land-use classification keys.
 
-    See [`DataLayer.compute_landuses`](#datalayer-compute-landuses) for additional information.
+    See [`compute_landuses`](#compute-landuses) for additional information.
 
     Parameters
     ----------
-    landuse_labels: tuple[str]
-        Land-use labels corresponding to the length and order of the data points. The labels should correspond to
-        descriptors from the land-use schema, such as "retail" or "commercial". This parameter is only required if
-        computing mixed-uses or land-use accessibilities.
-    accessibility_keys
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    landuse_column_label: str
+        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
+        contain "shop", "pub", "school", etc., landuse categories.
+    accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
         schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants. By default None.
+        `weighted` and `non_weighted` variants. By default None. By default None.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+        By default 400m.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations, useful for situations with highly
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances. By default False.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
     Examples
     --------
-    The data keys will correspond to the `accessibility_keys` specified, e.g. where computing `retail`
-    accessibility:
-
     ```python
-    NetworkLayer.metrics_state.accessibility.weighted['retail'][distance_key][node_idx]
-    NetworkLayer.metrics_state.accessibility.non_weighted['retail'][distance_key][node_idx]
+    from cityseer.metrics import networks, layers
+    from cityseer.tools import mock, graphs
+
+    # prepare a mock graph
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    landuses_gdf = mock.mock_landuse_categorical_data(G)
+    print(landuses_gdf.head())
+    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+        data_gdf=landuses_gdf,
+        landuse_column_label="categorical_landuses",
+        accessibility_keys=["a", "c"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+    )
+    print(nodes_gdf.columns)
+    print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
+    print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
     ```
 
     """
@@ -610,99 +714,60 @@ def compute_stats(
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """
+    r"""
     Compute stats.
 
     This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
-    aggregated and computed over the street network relative to the `Network Layer` nodes, with the implication
+    aggregated and computed over the street network relative to the network nodes, with the implication
     that statistical aggregations are generated from the same locations as for centrality computations, which can
-    therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding
-    node indices in the same `NetworkLayer.metrics_state` dictionary used for centrality methods, and will be
-    categorised by the respective keys and parameters.
-
-    For example, if a `valuations` stats key is computed on a `Network Layer` instantiated with 800m and 1600m
-    distance thresholds, then the dictionary would assume the following structure:
-
-    ```python
-    NetworkLayer.metrics_state.stats = {
-        # stats grouped by each stats key
-        'valuations': {
-            # each stat will have the following key-value pairs
-            'max': {
-                800: [...],
-                1600: [...]
-            },
-            'min': {
-                800: [...],
-                1600: [...]
-            },
-            'sum': {
-                800: [...],
-                1600: [...]
-            },
-            'sum_weighted': {
-                800: [...],
-                1600: [...]
-            },
-            'mean': {
-                800: [...],
-                1600: [...]
-            },
-            'mean_weighted': {
-                800: [...],
-                1600: [...]
-            },
-            'variance': {
-                800: [...],
-                1600: [...]
-            },
-            'variance_weighted': {
-                800: [...],
-                1600: [...]
-            }
-        }
-    }
-    ```
+    therefore be correlated or otherwise compared.
 
     Parameters
     ----------
-    stats_keys: str | tuple[str]
-        If computing a single stat: a `str` key describing the stats computed for the `stats_data` parameter.
-        If computing multiple stats: a `tuple` of keys. Computed stats will be stored under the supplied key. See
-        examples below.
-    stats_data: ndarray[int | float]
-        If computing a single stat: a 1d array of numerical data, where the length corresponds to the number of data
-        points in the `DataLayer`. If computing multiple stats keys: an array of numerical data, where the first
-        dimension corresponds to the number of keys in the `stats_keys` parameter and the second dimension
-        corresponds to number of data points in the `DataLayer`. e.g:
-        ```python
-        # if computing three keys for a DataLayer containg 5 data points
-        stats_keys = ['valuations', 'floors', 'occupants']
-        stats_data = [
-            [50000, 60000, 55000, 42000, 46000],  # valuations
-            [3, 3, 2, 3, 5],  # floors
-            [420, 300, 220, 250, 600]  # occupants
-        ]
-        ```
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    stats_column_labels: list[str]
+        The column labels corresponding to the columns in `data_gdf` from which to take numerical information.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+        By default 400m.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead. By default None.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead. By default None.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. By default zero.
-    angular
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+    angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances. By default False.
 
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+
     Examples
     --------
-    If computing three sets of stats data corresponding to stats_keys ['valuations', 'floors', 'occupants'], then
-    the computed data is arranged as follows:
-
-    ```python
-    NetworkLayer.NetworkLayer.metrics_state.stats['valuations'][stat_type][distance_key][node_idx]
-    NetworkLayer.NetworkLayer.metrics_state.stats['floors'][stat_type][distance_key][node_idx]
-    NetworkLayer.NetworkLayer.metrics_state.stats['occupants'][stat_type][distance_key][node_idx]
-    ```
-
     A worked example:
+
     ```python
     from cityseer.metrics import networks, layers
     from cityseer.tools import mock, graphs
@@ -710,39 +775,26 @@ def compute_stats(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
+    print(numerical_gdf.head())
 
-    # generate the network layer
-    cc_netw = networks.NetworkLayerFromNX(G, distances=[200, 400, 800, 1600])
-
-    # prepare a mock data dictionary
-    data_dict = mock.mock_data_dict(G, random_seed=25)
-    # let's prepare some numerical data
-    stats_data = mock.mock_numerical_data(len(data_dict), num_arrs=1, random_seed=25)
-
-    # generate a data layer
-    L = layers.DataLayerFromDict(data_dict)
-    # assign to the network
-    L.assign_to_network(cc_netw, max_dist=500)
-    # compute some metrics
-    L.compute_stats(stats_keys='mock_stat',
-                    stats_data=stats_data)
-    # let's prepare some keys for accessing the computational outputs
-    # distance idx: any of the distances with which the NetworkLayer was initialised
-    distance_idx = 200
-    # a node idx
-    node_idx = 0
-
-    # the data is available at cc_netw.metrics_state
-    print(cc_netw.metrics_state.stats['mock_stat']['mean_weighted'][distance_idx][node_idx])
-    # prints: 71.29311697979952
+    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+    nodes_gdf, numerical_gdf = layers.compute_stats(
+        data_gdf=numerical_gdf,
+        stats_column_labels=["mock_numerical_1"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+    )
+    print(nodes_gdf.columns)
+    print(nodes_gdf["cc_metric_mock_numerical_1_mean_weighted_400"])  # weighted form
+    print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])  # non-weighted form
     ```
 
-    Note that the data can also be unpacked to a dictionary using
-    [`NetworkLayer.metrics_to_dict`](/metrics/networks/#networklayer-metrics-to-dict), or transposed to a `networkX`
-    graph using [`NetworkLayer.to_nx_multigraph`](/metrics/networks/#networklayer-to-nx-multigraph).
-
     :::note
-    Per the above worked example, the following stat types will be available for each `stats_key` for each of the
+    The following stat types will be available for each `stats_key` for each of the
     computed distances:
     - `max` and `min`
     - `sum` and `sum_weighted`
