@@ -213,15 +213,8 @@ def plot_nx_primal_or_dual(  # noqa
         node_key: NodeKey
         node_data: NodeData
         for n_idx, (node_key, node_data) in enumerate(_graph.nodes(data=True)):
-            x: float = node_data["x"]
-            y: float = node_data["y"]
             # add to the pos dictionary regardless (otherwise nx.draw throws an error)
             pos[node_key] = (node_data["x"], node_data["y"])
-            # filter out nodes not within the extnets
-            if x_lim and (x < x_lim[0] or x > x_lim[1]):
-                continue
-            if y_lim and (y < y_lim[0] or y > y_lim[1]):
-                continue
             # add to the node list
             node_list.append(node_key)
             # and add to the node colour list if node colours are a list or tuple

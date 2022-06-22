@@ -483,22 +483,27 @@ class _EdgeInfo:
 
     @property
     def names(self):
+        """Returns a set of street names."""
         return tuple(set(self._names))
 
     @property
     def refs(self):
+        """Returns a set of refs - e.g. route numbers."""
         return tuple(set(self._refs))
 
     @property
     def highways(self):
+        """Returns a set of highway types - e.g. footway."""
         return tuple(set(self._highways))
 
     def __init__(self):
+        """Initialises a network information structure."""
         self._names = []
         self._refs = []
         self._highways = []
 
     def gather_edge_info(self, edge_data: dict[str, Any]):
+        """Gather edge data from provided edge_data."""
         # agg names, refs, highway attributes if present
         if "names" in edge_data:
             self._names += edge_data["names"]
@@ -510,6 +515,7 @@ class _EdgeInfo:
     def set_edge_info(
         self, nx_multigraph: nx.MultiGraph, start_node_key: NodeKey, end_node_key: NodeKey, edge_idx: int
     ):
+        """Set accumulated edge data to specified graph and edge."""
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
         nx_multigraph[start_node_key][end_node_key][edge_idx]["refs"] = self.refs
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways

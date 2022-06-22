@@ -478,6 +478,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>fetch_osm_response(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">geom_osm, </div>
+          <div class="yap func-sig-param">with_data=False, </div>
           <div class="yap func-sig-param">timeout=30, </div>
           <div class="yap func-sig-param">max_tries=3)</div>
         </div>
@@ -494,6 +495,15 @@ Fetch and parse an OSM response.
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A string representing a polygon for the request extents, formatting according to OSM conventions.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">with_data</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to include OSM data (e.g. street names) in the response. If not, then only the street network is returned. By default False.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -542,7 +552,8 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">lng, </div>
           <div class="yap func-sig-param">lat, </div>
-          <div class="yap func-sig-param">buffer)</div>
+          <div class="yap func-sig-param">buffer, </div>
+          <div class="yap func-sig-param">with_data=False)</div>
         </div>
       </div>
     </div>
@@ -575,6 +586,15 @@ The latitude argument for the request.
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The buffer distance.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">with_data</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to include OSM data (e.g. street names) in the response. If not, then only the street network is returned. By default False.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
