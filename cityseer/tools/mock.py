@@ -455,7 +455,9 @@ def mock_species_data(
         yield counts, probs
 
 
-def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> Optional[requests.Response]:
+def fetch_osm_response(
+    geom_osm: str, with_data: bool = False, timeout: int = 30, max_tries: int = 3
+) -> Optional[requests.Response]:
     """
     Fetch and parse an OSM response.
 
@@ -463,6 +465,9 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
     ----------
     geom_osm: str
         A string representing a polygon for the request extents, formatting according to OSM conventions.
+    with_data: bool
+        Whether to include OSM data (e.g. street names) in the response. If not, then only the street network is
+        returned. By default False.
     timeout: int
         An optional timeout, by default 30s
     max_tries: int
@@ -506,9 +511,11 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
       .filtered_set;
       >;
     );
-    /* return only basic info */
-    out skel qt;
     """
+    if with_data:
+        request += "out qt;"
+    else:
+        request += "out skel qt;"  # doesn't return tags
     osm_response: Optional[requests.Response] = None
     while max_tries:
         osm_response = requests.get(
@@ -529,7 +536,7 @@ def fetch_osm_response(geom_osm: str, timeout: int = 30, max_tries: int = 3) -> 
     return osm_response
 
 
-def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> MultiGraph:  # noqa
+def make_buffered_osm_graph(lng: float, lat: float, buffer: float, with_data: bool = False) -> MultiGraph:  # noqa
     """
 
     Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`
@@ -543,6 +550,9 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> MultiGraph
         The latitude argument for the request.
     buffer: float
         The buffer distance.
+    with_data: bool
+        Whether to include OSM data (e.g. street names) in the response. If not, then only the street network is
+        returned. By default False.
 
     Returns
     -------
@@ -565,7 +575,7 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float) -> MultiGraph
     # format for OSM query
     geom_osm = str.join(" ", [f"{lat} {lng}" for lat, lng in poly_wgs.exterior.coords])  # type: ignore
     # generate the query
-    osm_response = fetch_osm_response(geom_osm)
+    osm_response = fetch_osm_response(geom_osm, with_data=with_data)
     # build graph
     graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM

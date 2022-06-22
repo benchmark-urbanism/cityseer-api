@@ -96,7 +96,10 @@ def plot_nx_primal_or_dual(  # noqa
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     primal_edge_colour: str | float | ndarray
-        Primal edge colour as a `matplotlib` compatible colour string. Defaults to None.
+        Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order
+        and number of edges in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        method and should be formatted accordingly. Defaults to None.
     dual_node_size:  int
         The diameter for the dual graph's nodes.
     dual_node_colour: str | float | ndarray
@@ -105,7 +108,10 @@ def plot_nx_primal_or_dual(  # noqa
         [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
         method and should be formatted accordingly. Defaults to None.
     dual_edge_colour: str | float | ndarray
-        Dual edge colour as a `matplotlib` compatible colour string. Defaults to None.
+        Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order
+        and number of edges in the MultiGraph. The colours are passed to the underlying
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        method and should be formatted accordingly. Defaults to None.
     primal_edge_width: float
         Linewidths for the primal edge. Defaults to None.
     dual_edge_width: float
@@ -173,15 +179,19 @@ def plot_nx_primal_or_dual(  # noqa
             raise ValueError("Node sizes should be a positive integer.")
         if _node_colour is not None:
             if isinstance(_node_colour, np.ndarray) and len(_node_colour) != len(_graph):
-                raise ValueError("A list, tuple, or array of colours should match the number of nodes in the graph.")
+                raise ValueError(
+                    "A list, tuple, or array of node colours should match the number of nodes in the graph."
+                )
         else:
             if _is_primal:
                 _node_colour = COLOUR_MAP.secondary
             else:
                 _node_colour = COLOUR_MAP.info
         if _edge_colour is not None:
-            if not isinstance(_edge_colour, str):
-                raise ValueError("Edge colours should be a string representing a single colour.")
+            if isinstance(_edge_colour, np.ndarray) and len(_edge_colour) != len(_graph.edges()):
+                raise ValueError(
+                    "A list, tuple, or array of edge colours should match the number of edges in the graph."
+                )
         else:
             if _is_primal:
                 _edge_colour = "w"
