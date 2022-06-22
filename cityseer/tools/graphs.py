@@ -178,8 +178,18 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     for elem in osm_network_data["elements"]:
         if elem["type"] == "way":
             count = len(elem["nodes"])
-            for idx in range(count - 1):
-                nx_multigraph.add_edge(elem["nodes"][idx], elem["nodes"][idx + 1])
+            if "tags" in elem:
+                tags = elem["tags"]
+                name = tags["name"] if "name" in tags else None
+                ref = tags["ref"] if "ref" in tags else None
+                highway = tags["highway"] if "highway" in tags else None
+                for idx in range(count - 1):
+                    nx_multigraph.add_edge(
+                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], refs=[ref], highways=[highway]
+                    )
+            else:
+                for idx in range(count - 1):
+                    nx_multigraph.add_edge(elem["nodes"][idx], elem["nodes"][idx + 1])
 
     return nx_multigraph
 
@@ -465,6 +475,46 @@ def _weld_linestring_coords(
     return coords_a[:-1] + coords_b
 
 
+class _EdgeInfo:
+
+    _names: list[str]
+    _refs: list[str]
+    _highways: list[str]
+
+    @property
+    def names(self):
+        return tuple(set(self._names))
+
+    @property
+    def refs(self):
+        return tuple(set(self._refs))
+
+    @property
+    def highways(self):
+        return tuple(set(self._highways))
+
+    def __init__(self):
+        self._names = []
+        self._refs = []
+        self._highways = []
+
+    def gather_edge_info(self, edge_data: dict[str, Any]):
+        # agg names, refs, highway attributes if present
+        if "names" in edge_data:
+            self._names += edge_data["names"]
+        if "refs" in edge_data:
+            self._refs += edge_data["refs"]
+        if "highways" in edge_data:
+            self._highways += edge_data["highways"]
+
+    def set_edge_info(
+        self, nx_multigraph: nx.MultiGraph, start_node_key: NodeKey, end_node_key: NodeKey, edge_idx: int
+    ):
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["refs"] = self.refs
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
+
+
 def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
     """
     Remove nodes of degree=2.
@@ -543,14 +593,17 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             end_nd: Optional[NodeKey] = None
             drop_nodes: list[NodeKey] = []
             agg_geom: ListCoordsType = []
+            edge_info = _EdgeInfo()
             while True:
+                edge_data: EdgeData = nx_multigraph[trailing_nd][next_link_nd][0]
+                edge_info.gather_edge_info(edge_data)
                 # aggregate the geom
                 try:
                     # there is ordinarily a single edge from trailing to next
                     # however, there is an edge case where next is a dead-end with two edges linking back to trailing
                     # (i.e. where one of those edges is longer than the maximum length discrepancy for merging edges)
                     # in either case, use the first geom
-                    geom: geometry.LineString = nx_multigraph[trailing_nd][next_link_nd][0]["geom"]
+                    geom: geometry.LineString = edge_data["geom"]
                 except KeyError as err:
                     raise KeyError(f'Missing "geom" attribute for edge {trailing_nd}-{next_link_nd}') from err
                 if geom.type != "LineString":
@@ -614,7 +667,12 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                     f"Check that the adjacent LineStrings in the vicinity of {nd_key} are not corrupted."
                 )
             # add a new edge from anchor_nd to end_nd
-            g_multi_copy.add_edge(anchor_nd, end_nd, geom=new_geom)
+            edge_idx = g_multi_copy.add_edge(
+                anchor_nd,
+                end_nd,
+                geom=new_geom,
+            )
+            edge_info.set_edge_info(g_multi_copy, anchor_nd, end_nd, edge_idx)
             # drop the removed nodes, which will also implicitly drop the related edges
             g_multi_copy.remove_nodes_from(drop_nodes)
             removed_nodes.update(drop_nodes)
@@ -761,7 +819,14 @@ def _squash_adjacent(
                             )
                 if not dupe:
                     # add the new edge
-                    nx_multigraph.add_edge(new_nd_name, target_nd_key, geom=new_edge_geom)
+                    edge_idx = nx_multigraph.add_edge(
+                        new_nd_name,
+                        target_nd_key,
+                        geom=new_edge_geom,
+                    )
+                    edge_info = _EdgeInfo()
+                    edge_info.gather_edge_info(edge_data)
+                    edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
         # drop the node, this will also implicitly drop the old edges
         nx_multigraph.remove_node(nd_key)
 
@@ -810,6 +875,7 @@ def _merge_parallel_edges(
         elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
             # there are normally two edges, but sometimes three or possibly more
             edges_data: list[EdgeData] = nx_multigraph[start_nd_key][end_nd_key].values()
+            edge_info = _EdgeInfo()
             # find the shortest of the geoms
             edge_geoms = [edge["geom"] for edge in edges_data]
             edge_lens = [geom.length for geom in edge_geoms]
@@ -817,18 +883,21 @@ def _merge_parallel_edges(
             shortest_len = edge_lens.pop(shortest_idx)
             shortest_geom = edge_geoms.pop(shortest_idx)
             longer_geoms: list[geometry.LineString] = []
-            for edge_len, edge_geom in zip(edge_lens, edge_geoms):
+            for edge_len, edge_geom, edge_data in zip(edge_lens, edge_geoms, edges_data):
                 # retain distinct edges where they are substantially longer than the shortest geom
                 if edge_len > shortest_len * multi_edge_len_factor and edge_len > multi_edge_min_len:
-                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom)
+                    copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
+                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **copy_edge_data)
                 # otherwise, add to the list of longer geoms to be merged along with shortest
                 else:
+                    edge_info.gather_edge_info(edge_data)
                     longer_geoms.append(edge_geom)
             # otherwise, if not merging on a midline basis
             # or, if no other edges to process (in cases where longer geom has been retained per above)
             # then use the shortest geom
             if not merge_edges_by_midline or len(longer_geoms) == 0:
-                deduped_graph.add_edge(start_nd_key, end_nd_key, geom=shortest_geom)
+                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=shortest_geom)
+                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
             # otherwise weld the geoms, using the shortest as a yardstick
             else:
                 # iterate the coordinates along the shorter geom
@@ -850,7 +919,8 @@ def _merge_parallel_edges(
                 # generate the new mid-line geom
                 new_geom = geometry.LineString(new_coords)
                 # add to the graph
-                deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
+                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
+                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
 
     return deduped_graph
 
@@ -1229,8 +1299,10 @@ def nx_split_opposing_geoms(
             # if a node already exists at this location, add_node will return None
             if new_nd_name is None:
                 continue
-            _multi_graph.add_edge(start_nd_key, new_nd_name)
-            _multi_graph.add_edge(end_nd_key, new_nd_name)
+            edge_data: EdgeData = _multi_graph[start_nd_key][end_nd_key][edge_idx]
+            copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
+            _multi_graph.add_edge(start_nd_key, new_nd_name, **copy_edge_data)
+            _multi_graph.add_edge(end_nd_key, new_nd_name, **copy_edge_data)
             if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=config.ATOL, rtol=0,) or np.allclose(
                 s_nd_geom.coords,
                 new_edge_geom_a.coords[-1][:2],
@@ -1410,14 +1482,16 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
                     live = False
                 g_multi_copy.nodes[new_nd_name]["live"] = live
             # add the edge
-            g_multi_copy.add_edge(prior_node_id, new_nd_name, geom=line_segment)
+            copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
+            g_multi_copy.add_edge(prior_node_id, new_nd_name, geom=line_segment, **copy_edge_data)
             # increment the step and node id
             prior_node_id = new_nd_name
             step += step_size
         # set the last edge manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add edge
         line_segment = ops.substring(line_geom, step, line_geom.length)  # type: ignore
-        g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment)
+        copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
+        g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **copy_edge_data)
 
     return g_multi_copy
 
