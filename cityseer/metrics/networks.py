@@ -20,7 +20,7 @@ The reasons for picking one approach over another are varied:
 this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
 concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
 street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide/#graph-cleaning) for examples/). If a
+the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide#graph-cleaning) for examples/). If a
 network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
 can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
 the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
@@ -393,12 +393,12 @@ def node_centrality(
         measure `key` values in the table beneath. Each centrality measure will be computed for all distance
         thresholds $d_{max}$.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
@@ -526,12 +526,12 @@ def segment_centrality(
         measure `key` values in the table beneath. Each centrality measure will be computed for all distance
         thresholds $d_{max}$.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters

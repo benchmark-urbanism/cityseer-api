@@ -75,6 +75,7 @@ dev = [
   "tqdm-stubs>=0.2.0",
   "pyogrio>=0.4.0",
   "jupyterlab>=3.4.3",
+  "jupyter>=1.0.0",
 ]
 
 # [tool.pdm]
@@ -167,6 +168,7 @@ exclude = [
   "**/node_modules",
   "**/__pycache__",
   "**/__pypackages__",
+  "build",
   "demos",
   "docs",
   "**/temp/",

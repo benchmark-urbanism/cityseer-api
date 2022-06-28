@@ -16,7 +16,7 @@ The `Getting Started` guide from the [intro](/intro/).
 
 ## Graph Cleaning Guide
 
-`Graph Cleaning` as described in the [graph cleaning guide](/guide/#graph-cleaning).
+`Graph Cleaning` as described in the [graph cleaning guide](/guide#graph-cleaning).
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/graph_cleaning.ipynb" target="_blank">Github: graph_cleaning.ipynb</a>
 
@@ -24,7 +24,7 @@ The `Getting Started` guide from the [intro](/intro/).
 
 ## Importing OSM data with OSMnx
 
-An example of how to import OSM data as discussed in [OSM and NetworkX](/guide/#osm-and-networkx).
+An example of how to import OSM data as discussed in [OSM and NetworkX](/guide#osm-and-networkx).
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/osm_to_cityseer.ipynb" target="_blank">Github: osm_to_cityseer.ipynb</a>
 

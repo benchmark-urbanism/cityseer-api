@@ -23,7 +23,7 @@ def assign_gdf_to_network(
     max_netw_assign_dist: Union[int, float],
 ) -> tuple[structures.DataMap, gpd.GeoDataFrame]:
     """
-    Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures/#networkstructure).
+    Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
@@ -38,14 +38,14 @@ def assign_gdf_to_network(
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
     network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures/#networkstructure).
+        A [`structures.NetworkStructure`](/structures#networkstructure).
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 
     Returns
     -------
     data_map: structures.DataMap
-        A [`structures.DataMap`](/structures/#datamap) instance.
+        A [`structures.DataMap`](/structures#datamap) instance.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
@@ -64,7 +64,7 @@ def assign_gdf_to_network(
 
     :::note
     The precision of assignment improves on decomposed networks (see
-    [graphs.nx_decompose](/tools/graphs/#nx-decompose)), which offers the additional benefit of a more granular
+    [graphs.nx_decompose](/tools/graphs#nx-decompose)), which offers the additional benefit of a more granular
     representation of variations of metrics along street-fronts.
     :::
 
@@ -145,11 +145,11 @@ def compute_landuses(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
         By default 400m.
@@ -205,14 +205,14 @@ def compute_landuses(
     on the distances from the point of computation to the nearest example of a particular land-use. It therefore
     gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
     function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
-    [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+    [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
     | hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
     \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a
     pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
     examples of the pairwise distinct land-use combinations as routed through the point of computation.
     $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay.
     ($\beta$ is provided by the `Network Layer`, see
-    [`distance_from_beta`](/metrics/networks/#distance-from-beta).)|
+    [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
     | hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
     p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
     p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
@@ -417,11 +417,11 @@ def hill_diversity(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
         By default 400m.
@@ -522,11 +522,11 @@ def hill_branch_wt_diversity(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
         By default 400m.
@@ -631,11 +631,11 @@ def compute_accessibilities(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
         By default 400m.
@@ -734,11 +734,11 @@ def compute_stats(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     network_structure
-        A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
         By default 400m.

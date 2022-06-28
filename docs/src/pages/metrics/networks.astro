@@ -3,683 +3,858 @@ import { Markdown } from 'astro/components'
 import ArXivLink from '@src/components/ArXivLink.vue'
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
+
 <PageLayout>
 
-<div class="yap module">
-  <h1 class="yap module-title" id="cityseer-metrics-networks">
-    <a aria-hidden="true" href="#cityseer-metrics-networks" tabindex="-1">
-      <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-        <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-      </svg>
-    </a>cityseer.metrics.networks
-  </h1><Markdown is:raw>
-Cityseer network module for creating networks and calculating network centralities.
-
- There are two network centrality methods available depending on whether you're using a node-based or segment-based approach:
-
-- [`node_centrality`](#node-centrality)
-- [`segment_centrality`](#segment-centrality)
-
- These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
-
- See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
-
-:::note
-The reasons for picking one approach over another are varied:
-
-- Node based centralities compute the measures relative to each reachable node within the threshold distances. For
-this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
-concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
-street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide/#graph-cleaning) for examples/). If a
-network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
-can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
-the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
-of roadway intersections or a proliferation of walking paths in greenspaces;
-- Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
-together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
-distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
-impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based)
-and dual graphs (node only).
-- Measures should only be directly compared on the same topology because different topologies can otherwise affect
-the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
-on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
-can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
-four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
-This effect is amplified for denser regions of the network.
-- Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment
-lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
-the contribution of a single edge segment at a four-way intersection would be duplicated three times.
-- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic
-closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and
-improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired,
-through additional (manual) steps.
-- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
-such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
-intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the
-distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions
-may therefore be preferable when working at small thresholds on decomposed networks.
-:::
-</Markdown>
-  <section class="yap func">
-    <h2 class="yap func-title" id="distance-from-beta">
-      <a aria-hidden="true" href="#distance-from-beta" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+  <div class="yap module">
+    <h1 class="yap module-title" id="cityseer-metrics-networks">
+      <a aria-hidden="true" href="#cityseer-metrics-networks" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+          xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>distance_from_beta
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>distance_from_beta(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">beta, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
-:::note
-It is generally not necessary to utilise this function directly.
-:::
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-$\beta$ value/s to convert to distance thresholds $d_{max}$.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$, default of 0.01831563888873418.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">ndarray[float]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A numpy array of distance thresholds $d_{max}$.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks
-# a list of betas
-betas = [0.01, 0.02]
-# convert to distance thresholds
-d_max = networks.distance_from_beta(betas)
-print(d_max)
-# prints: array([400., 200.])
-```
+      </a>cityseer.metrics.networks
+    </h1>
+    <Markdown is:raw>
+      Cityseer network module for creating networks and calculating network centralities.
 
- Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+      There are two network centrality methods available depending on whether you're using a node-based or segment-based
+      approach:
 
-$$
-weight = exp(-\beta \cdot distance)
-$$
+      - [`node_centrality`](#node-centrality)
+      - [`segment_centrality`](#segment-centrality)
 
- The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+      These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
+      all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
+      computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
 
-![Example beta decays](/images/betas.png)
+      See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
 
- Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+      :::note
+      The reasons for picking one approach over another are varied:
 
-$$
-d_{max} = \frac{log(w_{min})}{-\beta}
-$$
-
- The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
-
-| $\beta$ | $d_{max}$ |
-|:-------:|:---------:|
-| 0.02 | 200m |
-| 0.01 | 400m |
-| 0.005 | 800m |
-| 0.0025 | 1600m |
-
-Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
-
-| $\beta$ | $w_{min}$ | $d_{max}$ |
-|:-------:|:---------:|:---------:|
-| 0.02 | 0.01 | 230m |
-| 0.01 | 0.01 | 461m |
-| 0.005 | 0.01 | 921m |
-| 0.0025 | 0.01 | 1842m |
-</Markdown>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="beta-from-distance">
-      <a aria-hidden="true" href="#beta-from-distance" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
+      - Node based centralities compute the measures relative to each reachable node within the threshold distances. For
+      this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
+      concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
+      street intersections. In these cases, the network should first be cleaned using methods such as those available in
+      the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide#graph-cleaning) for examples/). If a
+      network topology has varied intensities of nodes but the street segments are less spurious, then segmentised
+      methods
+      can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
+      the number of intervening nodes, however, are not immune from situations such as needlessly complex
+      representations
+      of roadway intersections or a proliferation of walking paths in greenspaces;
+      - Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
+      together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
+      distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
+      impedances decrease below 1.
+      - Note that `cityseer`'s implementation of simplest (angular) measures work on both primal (node or segment based)
+      and dual graphs (node only).
+      - Measures should only be directly compared on the same topology because different topologies can otherwise affect
+      the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
+      on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
+      can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
+      four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
+      This effect is amplified for denser regions of the network.
+      - Segmentised versions of centrality measures should not be computed on dual graph topologies because street
+      segment
+      lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
+      the contribution of a single edge segment at a four-way intersection would be duplicated three times.
+      - Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic
+      closeness or improved closeness should be used instead. Note that Global closeness ($\frac{nodes}{farness}$) and
+      improved closeness ($\frac{nodes}{farness / nodes}$) can be recovered from the available metrics, if so desired,
+      through additional (manual) steps.
+      - Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
+      such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
+      intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in
+      the
+      distributions of node-based centrality measures when working at very small distance thresholds. Segmentised
+      versions
+      may therefore be preferable when working at small thresholds on decomposed networks.
+      :::
+    </Markdown>
+    <section class="yap func">
+      <h2 class="yap func-title" id="distance-from-beta">
+        <a aria-hidden="true" href="#distance-from-beta" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
-        </svg>
-      </a>beta_from_distance
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>beta_from_distance(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">distance, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </svg>
+        </a>distance_from_beta
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>distance_from_beta(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">beta, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
-
-:::note
-It is generally not necessary to utilise this function directly.
-:::
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distance</div>
-          <div class="yap doc-str-elem-type">int | ndarray[int]</div>
+      <div class="yap">
+        <Markdown is:raw>
+          Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight
+          $w_{min}$.
+          :::note
+          It is generally not necessary to utilise this function directly.
+          :::
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">beta</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              $\beta$ value/s to convert to distance thresholds $d_{max}$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-$d_{max}$ value/s to convert to decay parameters $\beta$.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$, default of
+              0.01831563888873418.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">ndarray[float]</div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">betas</div>
+            <div class="yap doc-str-elem-type">ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A numpy array of distance thresholds $d_{max}$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A numpy array of decay parameters $\beta$.
-</Markdown></div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            ```python
+            from cityseer.metrics import networks
+            # a list of betas
+            betas = [0.01, 0.02]
+            # convert to distance thresholds
+            d_max = networks.distance_from_beta(betas)
+            print(d_max)
+            # prints: array([400., 200.])
+            ```
+
+            Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are
+            computed using a negative exponential decay function in the form of:
+
+            $$
+            weight = exp(-\beta \cdot distance)
+            $$
+
+            The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to
+            walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's
+            willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m
+            away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually
+            in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to
+            consider locations any farther away. The minimum weight at which this cutoff occurs is represented by
+            $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+
+            ![Example beta decays](/images/betas.png)
+
+            Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both.
+            If using the `betas` parameter, then this function will be called in order to extrapolate the distance
+            thresholds implicitly, using:
+
+            $$
+            d_{max} = \frac{log(w_{min})}{-\beta}
+            $$
+
+            The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$
+            walking thresholds, for example:
+
+            | $\beta$ | $d_{max}$ |
+            |:-------:|:---------:|
+            | 0.02 | 200m |
+            | 0.01 | 400m |
+            | 0.005 | 800m |
+            | 0.0025 | 1600m |
+
+            Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
+
+            | $\beta$ | $w_{min}$ | $d_{max}$ |
+            |:-------:|:---------:|:---------:|
+            | 0.02 | 0.01 | 230m |
+            | 0.01 | 0.01 | 461m |
+            | 0.005 | 0.01 | 921m |
+            | 0.0025 | 0.01 | 1842m |
+          </Markdown>
+        </div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks
-# a list of betas
-distances = [400, 200]
-# convert to betas
-betas = networks.beta_from_distance(distances)
-print(betas)  # prints: array([0.01, 0.02])
-```
-
- Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
-
-$$
-\beta = -\frac{log(w_{min})}{d_{max}}
-$$
-
- The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
-
-| $d_{max}$ | $\beta$ |
-|:---------:|:-------:|
-| 200m | 0.02 |
-| 400m | 0.01 |
-| 800m | 0.005 |
-| 1600m | 0.0025 |
-</Markdown>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="avg-distance-for-beta">
-      <a aria-hidden="true" href="#avg-distance-for-beta" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="beta-from-distance">
+        <a aria-hidden="true" href="#beta-from-distance" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
-        </svg>
-      </a>avg_distance_for_beta
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>avg_distance_for_beta(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">beta, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </svg>
+        </a>beta_from_distance
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>beta_from_distance(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">distance, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Calculate the mean distance for a given $\beta$ parameter.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+      <div class="yap">
+        <Markdown is:raw>
+          Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight
+          $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+
+          :::note
+          It is generally not necessary to utilise this function directly.
+          :::
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">distance</div>
+            <div class="yap doc-str-elem-type">int | ndarray[int]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              $d_{max}$ value/s to convert to decay parameters $\beta$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-$\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of
+              0.01831563888873418.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">ndarray[float]</div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name"></div>
+            <div class="yap doc-str-elem-type">ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A numpy array of decay parameters $\beta$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The average walking distance for a given $\beta$.
-</Markdown></div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            ```python
+            from cityseer.metrics import networks
+            # a list of betas
+            distances = [400, 200]
+            # convert to betas
+            betas = networks.beta_from_distance(distances)
+            print(betas) # prints: array([0.01, 0.02])
+            ```
+
+            Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both.
+            If using the `distances` parameter, then this function will be called in order to extrapolate the decay
+            parameters implicitly, using:
+
+            $$
+            \beta = -\frac{log(w_{min})}{d_{max}}
+            $$
+
+            The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$
+            parameters, for example:
+
+            | $d_{max}$ | $\beta$ |
+            |:---------:|:-------:|
+            | 200m | 0.02 |
+            | 400m | 0.01 |
+            | 800m | 0.005 |
+            | 1600m | 0.0025 |
+          </Markdown>
+        </div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks
-import numpy as np
-
-distances = np.array([100, 200, 400, 800, 1600])
-print('distances', distances)
-# distances [ 100  200  400  800 1600]
-
-betas = networks.beta_from_distance(distances)
-print('betas', betas)
-# betas [0.04   0.02   0.01   0.005  0.0025]
-
-print('avg', networks.avg_distance_for_beta(betas))
-# avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
-```
-
-</Markdown>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="pair-distances-betas">
-      <a aria-hidden="true" href="#pair-distances-betas" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="avg-distance-for-beta">
+        <a aria-hidden="true" href="#avg-distance-for-beta" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
-        </svg>
-      </a>pair_distances_betas
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>pair_distances_betas(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">distances, </div>
-          <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </svg>
+        </a>avg_distance_for_beta
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>avg_distance_for_beta(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">beta, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Pair distances and betas, where one or the other parameter is provided.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+      <div class="yap">
+        <Markdown is:raw>
+          Calculate the mean distance for a given $\beta$ parameter.
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">beta</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              $\beta$ representing a spatial impedance / distance decay for which to compute the average walking
+              distance.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of
+              0.01831563888873418.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name"></div>
+            <div class="yap doc-str-elem-type">ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The average walking distance for a given $\beta$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-:::note
-It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance`
-parameter values to `np.inf`. Note that this may substantially increase the computational time required for the
-completion of the algorithms on large networks.
-:::
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            ```python
+            from cityseer.metrics import networks
+            import numpy as np
 
-:::warning
-Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
-buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
-Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
-when calculating shortest paths and landuse accessibilities.
-:::
-</Markdown>
+            distances = np.array([100, 200, 400, 800, 1600])
+            print('distances', distances)
+            # distances [ 100 200 400 800 1600]
+
+            betas = networks.beta_from_distance(distances)
+            print('betas', betas)
+            # betas [0.04 0.02 0.01 0.005 0.0025]
+
+            print('avg', networks.avg_distance_for_beta(betas))
+            # avg [ 35.11949 70.23898 140.47797 280.95593 561.91187]
+            ```
+
+          </Markdown>
+        </div>
       </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="node-centrality">
-      <a aria-hidden="true" href="#node-centrality" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="pair-distances-betas">
+        <a aria-hidden="true" href="#pair-distances-betas" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
-        </svg>
-      </a>node_centrality
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>node_centrality(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">measures, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">distances, </div>
-          <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </svg>
+        </a>pair_distances_betas
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>pair_distances_betas(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">distances, </div>
+            <div class="yap func-sig-param">betas, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Compute node-based network centrality.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">measures</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
+      <div class="yap">
+        <Markdown is:raw>
+          Pair distances and betas, where one or the other parameter is provided.
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">distances</div>
+            <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+              parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is
+              not provided, then the `beta` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality measure `key` values in the table beneath. Each centrality measure will be computed for all distance thresholds $d_{max}$.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">None</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">betas</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+              `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is
+              not provided, then the `distance` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">None</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+              `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">distances</div>
+            <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+              parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is
+              not provided, then the `beta` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">betas</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+              `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is
+              not provided, then the `distance` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">angular</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            :::note
+            It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified
+            `distance`
+            parameter values to `np.inf`. Note that this may substantially increase the computational time required for
+            the
+            completion of the algorithms on large networks.
+            :::
 
-| key                   | formula | notes |
-| ----------------------| :------:| ----- |
-| node_density          | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-| node_farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-| node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
-| node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-| node_beta             | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |  # pylint: disable=line-too-long
-| node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |  # pylint: disable=line-too-long
-| node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |  # pylint: disable=line-too-long
-
- The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
-
-| key                      | formula | notes |
-| ------------------------ | :-----: | ----- |
-| node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |  # pylint: disable=line-too-long
-| node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance). |  # pylint: disable=line-too-long
-</Markdown>
+            :::warning
+            Networks should be buffered according to the largest distance threshold that will be used for analysis. This
+            protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within
+            these
+            buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
+            Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis
+            algorithms
+            when calculating shortest paths and landuse accessibilities.
+            :::
+          </Markdown>
+        </div>
       </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="segment-centrality">
-      <a aria-hidden="true" href="#segment-centrality" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="node-centrality">
+        <a aria-hidden="true" href="#node-centrality" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
-        </svg>
-      </a>segment_centrality
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>segment_centrality(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">measures, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">distances, </div>
-          <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False, </div>
-          <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </svg>
+        </a>node_centrality
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>node_centrality(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">measures, </div>
+            <div class="yap func-sig-param">network_structure, </div>
+            <div class="yap func-sig-param">nodes_gdf, </div>
+            <div class="yap func-sig-param">distances, </div>
+            <div class="yap func-sig-param">betas, </div>
+            <div class="yap func-sig-param">jitter_scale=0.0, </div>
+            <div class="yap func-sig-param">angular=False, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Compute segment-based network centrality.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">measures</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
+      <div class="yap">
+        <Markdown is:raw>
+          Compute node-based network centrality.
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">measures</div>
+            <div class="yap doc-str-elem-type">tuple[str]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality
+              measure `key` values in the table beneath. Each centrality measure will be computed for all distance
+              thresholds $d_{max}$.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality measure `key` values in the table beneath. Each centrality measure will be computed for all distance thresholds $d_{max}$.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">None</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">network_structure</div>
+            <div class="yap doc-str-elem-type">None</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+              [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures/#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">None</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_gdf</div>
+            <div class="yap doc-str-elem-type">None</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+              representing nodes. Best generated with the
+              [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+              calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs/#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">distances</div>
+            <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+              parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is
+              not provided, then the `beta` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">betas</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+              `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is
+              not provided, then the `distance` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">jitter_scale</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The scale of random jitter to add to shortest path calculations, useful for situations with highly
+              rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of
+              zero.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">angular</div>
-          <div class="yap doc-str-elem-type">bool</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">angular</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating
+              aggregations and distances. By default False.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_threshold_wt</div>
-          <div class="yap doc-str-elem-type">float</div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+              `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_gdf</div>
+            <div class="yap doc-str-elem-type">GeoDataFrame</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+            </Markdown>
+          </div>
         </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to the default value of `False`:
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to
+            the default value of `False`:
 
-| key                 | formula | notes |
-| ------------------- | :-----: |------ |
-| segment_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
-| segment_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
-| segment_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
-| segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+            | key | formula | notes |
+            | ----------------------| :------:| ----- |
+            | node_density | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
+            | node_farness | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
+            | node_cycles | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
+            | node_harmonic | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form of
+            closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
+            | node_beta | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index. This is a
+            spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$
+            parameter, which can be used to model the decay in walking tolerance as distances increase. | # pylint:
+            disable=line-too-long
+            | node_betweenness | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
+            shortest-paths traversing each node $i$. | # pylint: disable=line-too-long
+            | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ |
+            Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from
+            any $j$ to $k$ node pair passing through node $i$. | # pylint: disable=line-too-long
 
-The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`.
+            The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the
+            `angular` parameter is explicitly set to `True`:
 
-| key                       | formula | notes |
-| ------------------------- | :-----: | ----- |
-| segment_harmonic_hybrid   | $$\sum_{(a, b)}^{edges}\frac{d_{b} - d_{a}}{Z}$$ | Weights angular harmonic centrality by the lengths of the edges. See `node_harmonic_angular`. |
-| segment_betweeness_hybrid | | A continuous form of angular betweenness: Resembles `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
-</Markdown>
+            | key | formula | notes |
+            | ------------------------ | :-----: | ----- |
+            | node_harmonic_angular | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of
+            harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by
+            180 and added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. | # pylint:
+            disable=line-too-long
+            | node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version
+            of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path
+            heuristic (shortest angular distance). | # pylint: disable=line-too-long
+          </Markdown>
+        </div>
       </div>
-    </div>
-  </section>
-</div>
+    </section>
+    <section class="yap func">
+      <h2 class="yap func-title" id="segment-centrality">
+        <a aria-hidden="true" href="#segment-centrality" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px"
+            xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>segment_centrality
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>segment_centrality(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">measures, </div>
+            <div class="yap func-sig-param">network_structure, </div>
+            <div class="yap func-sig-param">nodes_gdf, </div>
+            <div class="yap func-sig-param">distances, </div>
+            <div class="yap func-sig-param">betas, </div>
+            <div class="yap func-sig-param">jitter_scale=0.0, </div>
+            <div class="yap func-sig-param">angular=False, </div>
+            <div class="yap func-sig-param">min_threshold_wt=0.01831563888873418)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap">
+        <Markdown is:raw>
+          Compute segment-based network centrality.
+        </Markdown>
+        <h3 class="yap">Parameters</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">measures</div>
+            <div class="yap doc-str-elem-type">tuple[str]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A tuple of centrality measures to compute. Centrality keys can be selected from the available centrality
+              measure `key` values in the table beneath. Each centrality measure will be computed for all distance
+              thresholds $d_{max}$.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">network_structure</div>
+            <div class="yap doc-str-elem-type">None</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+              [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_gdf</div>
+            <div class="yap doc-str-elem-type">None</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+              representing nodes. Best generated with the
+              [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+              calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">distances</div>
+            <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+              parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is
+              not provided, then the `beta` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">betas</div>
+            <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+              `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is
+              not provided, then the `distance` parameter must be provided instead. By default None.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">jitter_scale</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The scale of random jitter to add to shortest path calculations, useful for situations with highly
+              rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of
+              zero.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">angular</div>
+            <div class="yap doc-str-elem-type">bool</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating
+              aggregations and distances. By default False.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">min_threshold_wt</div>
+            <div class="yap doc-str-elem-type">float</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+              `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+            </Markdown>
+          </div>
+        </div>
+        <h3 class="yap">Returns</h3>
+        <div class="yap doc-str-elem-container">
+          <div class="yap doc-str-elem-def">
+            <div class="yap doc-str-elem-name">nodes_gdf</div>
+            <div class="yap doc-str-elem-type">GeoDataFrame</div>
+          </div>
+          <div class="yap doc-str-elem-desc">
+            <Markdown is:raw>
+              The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+            </Markdown>
+          </div>
+        </div>
+        <div class="yap doc-str-meta">
+          <h3 class="yap">Notes</h3>
+          <Markdown is:raw>
+            The following keys use the shortest-path heuristic, and are available when the `angular` parameter is set to
+            the default value of `False`:
+
+            | key | formula | notes |
+            | ------------------- | :-----: |------ |
+            | segment_density | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
+            | segment_harmonic | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of harmonic
+            closeness centrality applied to edge lengths. |
+            | segment_beta | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot
+            a)}{-\beta}$$ | A # pylint: disable=line-too-long continuous form of beta-weighted (gravity index)
+            centrality applied to edge lengths. |
+            | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges
+            situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+
+            The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the
+            `angular` parameter is explicitly set to `True`.
+
+            | key | formula | notes |
+            | ------------------------- | :-----: | ----- |
+            | segment_harmonic_hybrid | $$\sum_{(a, b)}^{edges}\frac{d_{b} - d_{a}}{Z}$$ | Weights angular harmonic
+            centrality by the lengths of the edges. See `node_harmonic_angular`. |
+            | segment_betweeness_hybrid | | A continuous form of angular betweenness: Resembles
+            `segment_harmonic_hybrid` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing
+            through $i$. |
+          </Markdown>
+        </div>
+      </div>
+    </section>
+  </div>
 </PageLayout>
-
