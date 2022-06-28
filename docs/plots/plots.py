@@ -17,7 +17,7 @@ plt.style.use(PLOT_RC_PATH)
 IMAGES_PATH = pathlib.Path(__file__).parent.parent / "public/images"
 print(f"images path: {IMAGES_PATH}")
 
-FORMAT = "png"
+FORMAT = "pdf"
 
 ###
 # INTRO PLOT

@@ -1054,7 +1054,7 @@ def nx_consolidate_nodes(
 
     Examples
     --------
-    See the guide on [graph cleaning](/guide/#graph-cleaning) for more information.
+    See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
 
     ![Example raw graph from OSM](/images/graph_cleaning_1.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
@@ -1714,7 +1714,7 @@ def network_structure_from_nx(
         A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used
         for the `GeoDataFrame` index.
     network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -1857,7 +1857,7 @@ def nx_from_network_structure(
         A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX`
         graph's node keys.
     network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures/#networkstructure) instance corresponding to the `nodes_gdf`
+        A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf`
         parameter.
     nx_multigraph: MultiGraph
         An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
@@ -1976,7 +1976,7 @@ def nx_from_osm_nx(
     """
     Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
 
-    See the [`OSMnx`](/guide/#osm-and-networkx) section of the guide for a more general discussion (and example) on
+    See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on
     workflows combining `OSMnx` with `cityseer`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge

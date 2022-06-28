@@ -134,7 +134,7 @@ def plot_nx_primal_or_dual(  # noqa
     Examples
     --------
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot/#plot-nx)
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot-nx)
     method instead.
 
     ```py
@@ -432,7 +432,7 @@ def plot_assignment(  # noqa
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
@@ -568,7 +568,7 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures/#networkstructure) instance.
+        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
     data_gdf: GeoDataFrame
         A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     poly: geometry.Polygon

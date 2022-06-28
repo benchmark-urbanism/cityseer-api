@@ -315,7 +315,7 @@ class NetworkStructure:
             The `y` coordinate for the added node.
         node_live: bool
             The `live` node attribute identifies nodes falling within the areal boundary of interest as opposed to those
-            that fall within the surrounding buffered area. See the [edge-rolloff](/guide/#edge-rolloff) section in the
+            that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in the
             guide.
 
         """
