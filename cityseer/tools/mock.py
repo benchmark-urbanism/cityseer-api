@@ -55,7 +55,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph = nx.MultiGraph()
+    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
 
     nodes = [
         (0, {"x": 700700, "y": 5719700}),

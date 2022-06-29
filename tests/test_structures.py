@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pytest
 
-from cityseer import structures
-from cityseer.algos import checks, data
-from cityseer.metrics import layers, networks
+from cityseer.metrics import layers
 from cityseer.tools import graphs, mock
 
 

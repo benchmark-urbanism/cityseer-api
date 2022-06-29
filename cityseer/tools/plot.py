@@ -258,7 +258,7 @@ def plot_nx_primal_or_dual(  # noqa
             )
             target_ax.add_collection(lines)
         # go ahead and plot: note that edge_list will be empty if plotting geoms
-        nx.draw(
+        nx.draw(  # type: ignore
             _graph,
             pos=pos,
             ax=target_ax,
@@ -478,7 +478,7 @@ def plot_assignment(  # noqa
     node_data: NodeData
     for node_key, node_data in nx_multigraph.nodes(data=True):
         pos[node_key] = (node_data["x"], node_data["y"])
-    nx.draw(
+    nx.draw(  # type: ignore
         nx_multigraph,
         pos,
         with_labels=node_labels,
