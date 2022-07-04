@@ -63,7 +63,7 @@ import numpy as np
 import numpy.typing as npt
 from numba_progress import ProgressBar
 
-from cityseer import config, structures, types
+from cityseer import cctypes, config, structures
 from cityseer.algos import centrality
 
 logging.basicConfig(level=logging.INFO)
@@ -77,7 +77,7 @@ MultiGraph = Any
 MIN_THRESH_WT = config.MIN_THRESH_WT
 
 
-def _cast_beta(beta: types.BetasType) -> npt.NDArray[np.float32]:
+def _cast_beta(beta: cctypes.BetasType) -> npt.NDArray[np.float32]:
     """Type checks and casts beta parameter to a numpy array of beta."""
     if beta is None:
         raise TypeError("Expected beta but encountered None value.")
@@ -94,7 +94,7 @@ def _cast_beta(beta: types.BetasType) -> npt.NDArray[np.float32]:
     return np.array(beta, dtype=np.float32)
 
 
-def distance_from_beta(beta: types.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.int_]:
+def distance_from_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.int_]:
     r"""
     Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
 
@@ -179,7 +179,7 @@ def distance_from_beta(beta: types.BetasType, min_threshold_wt: float = MIN_THRE
 
 
 def _cast_distance(
-    distance: types.DistancesType,
+    distance: cctypes.DistancesType,
 ) -> npt.NDArray[np.int_]:
     """Type checks and casts distance parameter to a numpy array of distance."""
     if distance is None:
@@ -200,7 +200,7 @@ def _cast_distance(
 
 
 def beta_from_distance(
-    distance: types.DistancesType,
+    distance: cctypes.DistancesType,
     min_threshold_wt: float = MIN_THRESH_WT,
 ) -> npt.NDArray[np.float32]:
     r"""
@@ -262,7 +262,7 @@ def beta_from_distance(
     return betas.astype(np.float32)
 
 
-def avg_distance_for_beta(beta: types.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.float32]:
+def avg_distance_for_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.float32]:
     r"""
     Calculate the mean distance for a given $\beta$ parameter.
 
@@ -311,8 +311,8 @@ def avg_distance_for_beta(beta: types.BetasType, min_threshold_wt: float = MIN_T
 
 
 def pair_distances_betas(
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     min_threshold_wt: float = MIN_THRESH_WT,
 ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.float32]]:
     r"""
@@ -377,8 +377,8 @@ def node_centrality(
     measures: Union[list[str], tuple[str]],
     network_structure: structures.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -510,8 +510,8 @@ def segment_centrality(
     measures: Union[list[str], tuple[str]],
     network_structure: structures.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
     min_threshold_wt: float = MIN_THRESH_WT,

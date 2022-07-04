@@ -5,11 +5,10 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from cityseer import config, types
+from cityseer import config
 from cityseer.algos import centrality
-from cityseer.metrics import layers, networks
-from cityseer.structures import NetworkStructure
-from cityseer.tools import graphs, mock
+from cityseer.metrics import networks
+from cityseer.tools import graphs
 
 
 def test_distance_from_beta():

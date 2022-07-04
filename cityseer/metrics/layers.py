@@ -9,7 +9,7 @@ import numpy.typing as npt
 from numba_progress import ProgressBar  # type: ignore
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
-from cityseer import config, structures, types
+from cityseer import cctypes, config, structures
 from cityseer.algos import data
 from cityseer.metrics import networks
 
@@ -105,12 +105,12 @@ def compute_landuses(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     mixed_use_keys: Optional[Union[list[str], tuple[str]]] = None,
     accessibility_keys: Optional[Union[list[str], tuple[str]]] = None,
     cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
-    qs: types.QsType = None,
+    qs: cctypes.QsType = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -393,9 +393,9 @@ def hill_diversity(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
-    qs: types.QsType = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
+    qs: cctypes.QsType = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -498,9 +498,9 @@ def hill_branch_wt_diversity(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
-    qs: types.QsType = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
+    qs: cctypes.QsType = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -604,8 +604,8 @@ def compute_accessibilities(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -709,8 +709,8 @@ def compute_stats(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[types.DistancesType] = None,
-    betas: Optional[types.BetasType] = None,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
