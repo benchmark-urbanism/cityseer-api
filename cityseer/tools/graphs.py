@@ -875,7 +875,7 @@ def _merge_parallel_edges(
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_data in tqdm(
+    for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True), disable=config.QUIET_MODE
     ):  # pylint: disable=line-too-long
         # if only one edge is associated with this node pair, then add
@@ -1426,7 +1426,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_data in tqdm(
+    for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True), disable=config.QUIET_MODE
     ):  # pylint: disable=line-too-long
         # test for x, y in start coordinates
@@ -1636,7 +1636,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
-    for start_nd_key, end_nd_key, edge_idx in tqdm(
+    for start_nd_key, end_nd_key, edge_idx in tqdm(  # type: ignore
         nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE
     ):
         # get the first and second half geoms
@@ -2056,7 +2056,7 @@ def nx_from_osm_nx(
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         nx_multidigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
         edge_data = cast(EdgeData, edge_data)  # type: ignore
