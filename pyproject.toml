@@ -61,7 +61,6 @@ dev = [
   "pytest>=7.1.1",
   "osmnx>=1.1.2",
   "momepy>=0.5.2",
-  "yapper>=0.3.0a18",
   "setuptools-scm>=6.4.2",
   "pylint>=2.13.7",
   "black>=22.3.0",
@@ -76,6 +75,7 @@ dev = [
   "pyogrio>=0.4.0",
   "jupyterlab>=3.4.3",
   "jupyter>=1.0.0",
+  "yapper>=0.3.4",
 ]
 
 # [tool.pdm]
