@@ -7,7 +7,7 @@ import numpy.typing as npt
 import pytest
 
 from cityseer.algos import checks
-from cityseer.metrics import layers, networks
+from cityseer.metrics import networks
 from cityseer.tools import mock
 
 
