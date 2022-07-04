@@ -1072,9 +1072,9 @@ def nx_consolidate_nodes(
     if min_node_group < 2:
         raise ValueError("The minimum node threshold should be set to at least two.")
     if neighbour_policy is not None and neighbour_policy not in ("direct", "indirect"):
-        raise ValueError('Neighbour policy should be one "direct", "indirect", else the default of "None"')
+        raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
     if crawl and buffer_dist > 25:
-        logger.warning("Be cautious with the buffer distance when using crawl.")
+        logger.warning("Be cautious with large buffer distances when using crawl!")
     logger.info("Consolidating nodes.")
     _multi_graph: MultiGraph = nx_multigraph.copy()
     # create a nodes STRtree
