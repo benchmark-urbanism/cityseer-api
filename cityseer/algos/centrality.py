@@ -18,7 +18,17 @@ def shortest_path_tree(
     max_dist: np.float32 = np.float32(np.inf),
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
-) -> structures.TreeMap:
+) -> tuple[
+    npt.NDArray[np.bool_],
+    npt.NDArray[np.int_],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.int_],
+    npt.NDArray[np.int_],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.bool_],
+]:
     """
     All shortest paths to max network distance from source node.
 
@@ -29,13 +39,23 @@ def shortest_path_tree(
     Predecessor map is based on impedance heuristic - which can be different from metres.
     Distance map in metres is used for defining max distances and computing equivalent distance measures.
     """
+    nodes_n = network_structure.nodes.count
+    edges_n = network_structure.edges.count
+    visited_nodes: npt.NDArray[np.bool_] = np.full(nodes_n, False, dtype=np.bool_)
+    preds: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
+    short_dist: npt.NDArray[np.float32] = np.full(nodes_n, np.inf, dtype=np.float32)
+    simpl_dist: npt.NDArray[np.float32] = np.full(nodes_n, np.inf, dtype=np.float32)
+    cycles: npt.NDArray[np.float32] = np.full(nodes_n, 0.0, dtype=np.float32)
+    origin_seg: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
+    last_seg: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
+    out_bearings: npt.NDArray[np.float32] = np.full(nodes_n, np.nan, dtype=np.float32)
+    visited_edges: npt.NDArray[np.bool_] = np.full(edges_n, False, dtype=np.bool_)
+
     if angular and not np.all(network_structure.edges.imp_factor == 1):
         raise ValueError("The distance impedance factor parameter must be set to 1 when using angular centralities.")
-    # prepare the arrays
-    tree_map: structures.TreeMap = structures.TreeMap(network_structure.nodes.count, network_structure.edges.count)
     # the starting node's impedance and distance will be zero
-    tree_map.simpl_dist[src_idx] = 0
-    tree_map.short_dist[src_idx] = 0
+    simpl_dist[src_idx] = 0
+    short_dist[src_idx] = 0
     # prep the active list and add the source index
     active: list[int] = List.empty_list(types.int64)
     active.append(src_idx)
@@ -46,9 +66,9 @@ def shortest_path_tree(
         min_imp = np.inf
         for nd_idx in active:
             if angular:
-                imp = tree_map.simpl_dist[nd_idx]
+                imp = simpl_dist[nd_idx]
             else:
-                imp = tree_map.short_dist[nd_idx]
+                imp = short_dist[nd_idx]
             if imp < min_imp:
                 min_imp = imp
                 min_nd_idx = nd_idx
@@ -57,7 +77,7 @@ def shortest_path_tree(
         # the currently processed node can now be removed from the active list and added to the processed list
         active.remove(active_nd_idx)
         # add to processed nodes
-        tree_map.visited_nodes[active_nd_idx] = True
+        visited_nodes[active_nd_idx] = True
         # iterate the node's neighbours
         for edge_idx in network_structure.node_edge_map[active_nd_idx]:
             # get the edge's properties
@@ -70,41 +90,41 @@ def shortest_path_tree(
             # don't follow self-loops
             if nb_nd_idx == active_nd_idx:
                 # add edge to active (used for segment methods)
-                tree_map.visited_edges[edge_idx] = True
+                visited_edges[edge_idx] = True
                 continue
             # don't visit predecessor nodes - otherwise successive nodes revisit out-edges to previous (neighbour) nodes
-            if nb_nd_idx == tree_map.preds[active_nd_idx]:
+            if nb_nd_idx == preds[active_nd_idx]:
                 continue
             # only add edge to active if the neighbour node has not been processed previously
             # i.e. single direction only
             # i.e. if neighbour node has been processed all out edges have already been explored
-            if not tree_map.visited_nodes[nb_nd_idx]:
-                tree_map.visited_edges[edge_idx] = True
+            if not visited_nodes[nb_nd_idx]:
+                visited_edges[edge_idx] = True
             if not angular:
                 # if edge has not been claimed AND the neighbouring node has already been discovered, then it is a cycle
                 # do before distance cutoff because this node and the neighbour can respectively be within max distance
                 # even if cumulative distance across this edge (via non-shortest path) exceeds distance
                 # in some cases all distances are run at once, so keep behaviour consistent by
                 # designating the farthest node (but via the shortest distance) as the cycle node
-                if not tree_map.preds[nb_nd_idx] == -1:
+                if not preds[nb_nd_idx] == -1:
                     # bump farther location
                     # prevents mismatching if cycle exceeds threshold in one direction or another
-                    if tree_map.short_dist[active_nd_idx] <= tree_map.short_dist[nb_nd_idx]:
-                        tree_map.cycles[nb_nd_idx] += 0.5
+                    if short_dist[active_nd_idx] <= short_dist[nb_nd_idx]:
+                        cycles[nb_nd_idx] += 0.5
                     else:
-                        tree_map.cycles[active_nd_idx] += 0.5
+                        cycles[active_nd_idx] += 0.5
             # impedance and distance is previous plus new
-            short_dist = tree_map.short_dist[active_nd_idx] + seg_len * seg_imp_fact
+            short_d = short_dist[active_nd_idx] + seg_len * seg_imp_fact
             # angular impedance include two parts:
             # A - turn from prior simplest-path route segment
             # B - angular change across current segment
             if active_nd_idx == src_idx:
                 turn = 0
             else:
-                turn = np.abs((seg_in_bear - tree_map.out_bearings[active_nd_idx] + 180) % 360 - 180)
-            simpl_dist = tree_map.simpl_dist[active_nd_idx] + turn + seg_ang
+                turn = np.abs((seg_in_bear - out_bearings[active_nd_idx] + 180) % 360 - 180)
+            simpl_d = simpl_dist[active_nd_idx] + turn + seg_ang
             # add the neighbour to active if undiscovered but only if less than max shortest path threshold
-            if tree_map.preds[nb_nd_idx] == -1 and short_dist <= max_dist:
+            if preds[nb_nd_idx] == -1 and short_d <= max_dist:
                 active.append(nb_nd_idx)
             # if impedance less than prior, update
             # this will also happen for the first nodes that overshoot the boundary
@@ -112,23 +132,23 @@ def shortest_path_tree(
             # jitter injects a small amount of stochasticity for rectlinear grids
             jitter = np.random.normal(loc=0, scale=jitter_scale)
             # shortest path heuristic differs for angular vs. not
-            if (angular and simpl_dist + jitter < tree_map.simpl_dist[nb_nd_idx]) or (
-                not angular and short_dist + jitter < tree_map.short_dist[nb_nd_idx]
+            if (angular and simpl_d + jitter < simpl_dist[nb_nd_idx]) or (
+                not angular and short_d + jitter < short_dist[nb_nd_idx]
             ):
-                tree_map.simpl_dist[nb_nd_idx] = simpl_dist
-                tree_map.short_dist[nb_nd_idx] = short_dist
-                tree_map.preds[nb_nd_idx] = active_nd_idx
-                tree_map.out_bearings[nb_nd_idx] = seg_out_bear
+                simpl_dist[nb_nd_idx] = simpl_d
+                short_dist[nb_nd_idx] = short_d
+                preds[nb_nd_idx] = active_nd_idx
+                out_bearings[nb_nd_idx] = seg_out_bear
                 # chain through origin segs - identifies which segment a particular shortest path originated from
                 if active_nd_idx == src_idx:
-                    tree_map.origin_seg[nb_nd_idx] = edge_idx
+                    origin_seg[nb_nd_idx] = edge_idx
                 else:
-                    tree_map.origin_seg[nb_nd_idx] = tree_map.origin_seg[active_nd_idx]
+                    origin_seg[nb_nd_idx] = origin_seg[active_nd_idx]
                 # keep track of last seg
-                tree_map.last_seg[nb_nd_idx] = edge_idx
+                last_seg[nb_nd_idx] = edge_idx
 
     # the returned active edges contain activated edges, but only in direction of shortest-path discovery
-    return tree_map
+    return visited_nodes, preds, short_dist, simpl_dist, cycles, origin_seg, last_seg, out_bearings, visited_edges
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -236,7 +256,7 @@ def _node_betweenness_beta(to_short_dist: np.float32, beta: np.float32) -> np.fl
     return np.float32(np.exp(-beta * to_short_dist))
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def local_node_centrality(
     network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.int_],
@@ -320,23 +340,32 @@ def local_node_centrality(
         # only compute for live nodes
         if not network_structure.nodes.live[src_idx]:
             continue
-        tree_map = shortest_path_tree(
+        (
+            visited_nodes,
+            preds,
+            short_dist,
+            simpl_dist,
+            cycles,
+            _origin_seg,
+            _last_seg,
+            _out_bearings,
+            _visited_edges,
+        ) = shortest_path_tree(
             network_structure,
             src_idx,
             max_dist=global_max_dist,
             jitter_scale=jitter_scale,
             angular=angular,
         )
-        visited_nodes: list[int] = np.where(tree_map.visited_nodes)[0]  # type: ignore
         # process each reachable node
-        for to_idx in visited_nodes:
+        for to_idx in np.where(visited_nodes)[0]:  # type: ignore
             # skip self node
             if to_idx == src_idx:
                 continue
             # unpack impedance and distance for to index
-            to_short_dist = tree_map.short_dist[to_idx]
-            to_simpl_dist = tree_map.simpl_dist[to_idx]
-            cycles = tree_map.cycles[to_idx]
+            to_short_dist = short_dist[to_idx]
+            to_simpl_dist = simpl_dist[to_idx]
+            n_cycles = cycles[to_idx]
             # do not proceed if no route available
             if np.isinf(to_short_dist):
                 continue
@@ -346,14 +375,16 @@ def local_node_centrality(
                     beta = betas[d_idx]
                     if to_short_dist <= dist_cutoff:
                         for m_idx, close_func in zip(close_idxs, close_funcs):
-                            shadow_arr[m_idx, d_idx, src_idx] += close_func(to_short_dist, to_simpl_dist, beta, cycles)
+                            shadow_arr[m_idx, d_idx, src_idx] += close_func(
+                                to_short_dist, to_simpl_dist, beta, n_cycles
+                            )
             # only process in one direction
             if to_idx < src_idx:
                 continue
             # calculate betweenness centralities
             if betw_funcs:
                 # only counting truly between vertices, not starting and ending verts
-                inter_idx = tree_map.preds[to_idx]
+                inter_idx = preds[to_idx]
                 while True:
                     # break out of while loop if the intermediary has reached the source node
                     if inter_idx == src_idx:
@@ -362,12 +393,12 @@ def local_node_centrality(
                     for d_idx, dist_cutoff in enumerate(distances):
                         beta = betas[d_idx]
                         # check threshold
-                        if tree_map.short_dist[to_idx] <= dist_cutoff:
+                        if short_dist[to_idx] <= dist_cutoff:
                             # iterate betweenness functions
                             for m_idx, betw_func in zip(betw_idxs, betw_funcs):
                                 shadow_arr[m_idx, d_idx, inter_idx] += betw_func(to_short_dist, beta)
                     # follow the chain
-                    inter_idx = tree_map.preds[inter_idx]
+                    inter_idx = preds[inter_idx]
         # reduce
         measures_data += shadow_arr
 
@@ -407,7 +438,7 @@ def _segment_beta(  # pylint: disable=unused-argument
     return np.float32((np.exp(-beta * m_imp) - np.exp(-beta * n_imp)) / -beta)
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def local_segment_centrality(
     network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.int_],
@@ -486,14 +517,23 @@ def local_segment_centrality(
         Predecessor map is based on impedance heuristic - i.e. angular vs not
         Shortest path distances in metres used for defining max distances regardless
         """
-        tree_map = shortest_path_tree(
+        (
+            visited_nodes,
+            preds,
+            short_dist,
+            simpl_dist,
+            _cycles,
+            origin_seg,
+            last_seg,
+            _out_bearings,
+            visited_edges,
+        ) = shortest_path_tree(
             network_structure,
             src_idx,
             max_dist=global_max_dist,
             jitter_scale=jitter_scale,
             angular=angular,
         )
-        visited_nodes: list[int] = np.where(tree_map.visited_nodes)[0]  # type: ignore
         """
         can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
         hence visiting all processed edges and extrapolating information
@@ -503,8 +543,7 @@ def local_segment_centrality(
         """
         # only build edge data if necessary
         if close_idxs:
-            visited_edges: list[int] = np.where(tree_map.visited_edges)[0]  # type: ignore
-            for edge_idx in visited_edges:
+            for edge_idx in np.where(visited_edges)[0]:  # type: ignore
                 # unpack the edge data
                 n_nd_idx = network_structure.edges.start[edge_idx]
                 m_nd_idx = network_structure.edges.end[edge_idx]
@@ -513,10 +552,10 @@ def local_segment_centrality(
                 seg_imp_fact = network_structure.edges.imp_factor[edge_idx]
                 seg_in_bear = network_structure.edges.in_bearing[edge_idx]
                 # go
-                n_simpl_dist = tree_map.simpl_dist[n_nd_idx]
-                m_simpl_dist = tree_map.simpl_dist[m_nd_idx]
-                n_short_dist = tree_map.simpl_dist[n_nd_idx]
-                m_short_dist = tree_map.simpl_dist[m_nd_idx]
+                n_simpl_dist = simpl_dist[n_nd_idx]
+                m_simpl_dist = simpl_dist[m_nd_idx]
+                n_short_dist = simpl_dist[n_nd_idx]
+                m_short_dist = simpl_dist[m_nd_idx]
                 # don't process unreachable segments
                 if np.isinf(n_short_dist) and np.isinf(m_short_dist):
                     continue
@@ -534,15 +573,15 @@ def local_segment_centrality(
                     """
                     # sort where a < b
                     if n_short_dist <= m_short_dist:
-                        a = tree_map.short_dist[n_nd_idx]
-                        a_imp = tree_map.short_dist[n_nd_idx]
-                        b = tree_map.short_dist[m_nd_idx]
-                        b_imp = tree_map.short_dist[m_nd_idx]
+                        a = short_dist[n_nd_idx]
+                        a_imp = short_dist[n_nd_idx]
+                        b = short_dist[m_nd_idx]
+                        b_imp = short_dist[m_nd_idx]
                     else:
-                        a = tree_map.short_dist[m_nd_idx]
-                        a_imp = tree_map.short_dist[m_nd_idx]
-                        b = tree_map.short_dist[n_nd_idx]
-                        b_imp = tree_map.short_dist[n_nd_idx]
+                        a = short_dist[m_nd_idx]
+                        a_imp = short_dist[m_nd_idx]
+                        b = short_dist[n_nd_idx]
+                        b_imp = short_dist[n_nd_idx]
                     # get the max distance along the segment: seg_len = (m - start_len) + (m - end_len)
                     # c and d variables can diverge per beneath
                     c = d = (seg_len + a + b) / 2
@@ -584,9 +623,9 @@ def local_segment_centrality(
                     # only a single case existing for angular version so no need for abstracted functions
                     # there are three scenarios:
                     # 1) e is the predecessor for f
-                    if n_nd_idx == src_idx or tree_map.preds[m_nd_idx] == n_nd_idx:  # pylint: disable=consider-using-in
-                        e = tree_map.short_dist[n_nd_idx]
-                        f = tree_map.short_dist[m_nd_idx]
+                    if n_nd_idx == src_idx or preds[m_nd_idx] == n_nd_idx:  # pylint: disable=consider-using-in
+                        e = short_dist[n_nd_idx]
+                        f = short_dist[m_nd_idx]
                         # if travelling via n, then m = n_imp + seg_ang
                         # calculations are based on segment length / angle
                         # i.e. need to decide whether to base angular change on entry vs exit impedance
@@ -595,10 +634,10 @@ def local_segment_centrality(
                         ang = m_simpl_dist - seg_ang / 2
                     # 2) f is the predecessor for e
                     elif (
-                        m_nd_idx == src_idx or tree_map.preds[n_nd_idx] == m_nd_idx  # pylint: disable=consider-using-in
+                        m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx  # pylint: disable=consider-using-in
                     ):  # pylint: disable=consider-using-in
-                        e = tree_map.short_dist[m_nd_idx]
-                        f = tree_map.short_dist[n_nd_idx]
+                        e = short_dist[m_nd_idx]
+                        f = short_dist[n_nd_idx]
                         ang = n_simpl_dist - seg_ang / 2  # per above
                     # 3) neither of the above
                     # get the approach angles for either side and compare to find the least inwards impedance
@@ -606,7 +645,7 @@ def local_segment_centrality(
                     else:
                         # get the out bearing from the predecessor and calculate the turn onto current seg's in bearing
                         # find n's predecessor
-                        n_pred_idx = int(tree_map.preds[n_nd_idx])
+                        n_pred_idx = int(preds[n_nd_idx])
                         # find the edge from n's predecessor to n
                         e_i = _find_edge_idx(network_structure, n_pred_idx, n_nd_idx)
                         # get the predecessor edge's outwards bearing at index 6
@@ -625,7 +664,7 @@ def local_segment_centrality(
                         # now that the opposing edge is known, we can fetch the inwards bearing at index 5 (not 6)
                         opp_in_bear = network_structure.edges.in_bearing[opp_i]
                         # find m's predecessor
-                        m_pred_idx = int(tree_map.preds[m_nd_idx])
+                        m_pred_idx = int(preds[m_nd_idx])
                         # we can now go ahead and find m's predecessor edge
                         e_i = _find_edge_idx(network_structure, m_pred_idx, m_nd_idx)
                         # get the predecessor edge's outwards bearing at index 6
@@ -638,16 +677,16 @@ def local_segment_centrality(
                         # select by shortest distance in event angular impedances are identical from either direction
                         if n_ang == m_ang:
                             if n_short_dist <= m_short_dist:
-                                e = tree_map.short_dist[n_nd_idx]
+                                e = short_dist[n_nd_idx]
                                 ang = n_ang
                             else:
-                                e = tree_map.short_dist[m_nd_idx]
+                                e = short_dist[m_nd_idx]
                                 ang = m_ang
                         elif n_ang < m_ang:
-                            e = tree_map.short_dist[n_nd_idx]
+                            e = short_dist[n_nd_idx]
                             ang = n_ang
                         else:
-                            e = tree_map.short_dist[m_nd_idx]
+                            e = short_dist[m_nd_idx]
                             ang = m_ang
                         # f is the entry distance plus segment length
                         f = e + seg_len
@@ -671,7 +710,7 @@ def local_segment_centrality(
                 out_nd_idx = network_structure.edges.end[edge_idx]
                 nb_nodes.append(out_nd_idx)
             # betweenness keys computed per to_idx
-            for to_idx in visited_nodes:
+            for to_idx in np.where(visited_nodes)[0]:  # type: ignore
                 # only process in one direction
                 if to_idx < src_idx:
                     continue
@@ -682,7 +721,7 @@ def local_segment_centrality(
                 if to_idx in nb_nodes:
                     continue
                 # distance - do not proceed if no route available
-                to_dist = tree_map.short_dist[to_idx]
+                to_dist = short_dist[to_idx]
                 if np.isinf(to_dist):
                     continue
                 """
@@ -696,9 +735,9 @@ def local_segment_centrality(
 
                 distance thresholds are computed using the innner as opposed to outer edges of the segments
                 """
-                origin_seg_idx = tree_map.origin_seg[to_idx]
+                origin_seg_idx = origin_seg[to_idx]
                 o_seg_len = network_structure.edges.length[origin_seg_idx]
-                last_seg_idx = tree_map.last_seg[to_idx]
+                last_seg_idx = last_seg[to_idx]
                 l_seg_len = network_structure.edges.length[last_seg_idx]
                 min_span = to_dist - o_seg_len - l_seg_len
                 # calculate traversal distances from opposing segments
@@ -707,7 +746,7 @@ def local_segment_centrality(
                 l_1 = min_span
                 l_2 = min_span + l_seg_len
                 # betweenness - only counting truly between vertices, not starting and ending verts
-                inter_idx = int(tree_map.preds[to_idx])
+                inter_idx = int(preds[to_idx])
                 while True:
                     # break out of while loop if the intermediary has reached the source node
                     if inter_idx == src_idx:
@@ -733,12 +772,12 @@ def local_segment_centrality(
                                         ) / -beta
                                     shadow_arr[m_idx, d_idx, inter_idx] += auc
                                 else:
-                                    bt_ang = 1 + tree_map.simpl_dist[to_idx] / 180
+                                    bt_ang = 1 + simpl_dist[to_idx] / 180
                                     pt_a = o_2 - o_1
                                     pt_b = l_2 - l_1
                                     shadow_arr[m_idx, d_idx, inter_idx] += (pt_a + pt_b) / bt_ang
                     # follow the chain
-                    inter_idx = int(tree_map.preds[inter_idx])
+                    inter_idx = int(preds[inter_idx])
 
         # reduction
         measures_data += shadow_arr

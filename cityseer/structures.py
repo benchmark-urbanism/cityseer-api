@@ -11,73 +11,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 from numba.core import types
-from numba.experimental import jitclass  # type: ignore
+from numba.experimental import jitclass, structref  # type: ignore
 from numba.typed import Dict, List
-
-tree_map_spec: list[tuple[str, Any]] = [
-    ("visited_nodes", types.bool_[:]),
-    ("preds", types.int_[:]),
-    ("short_dist", types.float32[:]),
-    ("simpl_dist", types.float32[:]),
-    ("cycles", types.float32[:]),
-    ("origin_seg", types.int_[:]),
-    ("last_seg", types.int_[:]),
-    ("out_bearings", types.float32[:]),
-    ("visited_edges", types.bool_[:]),
-]
-
-
-@jitclass(tree_map_spec)
-class TreeMap:
-    """
-    `TreeMap` class embodying shortest-path state derived from the `algos.shortest_path_tree` function.
-
-    Each attribute contains a `numpy` array with indices corresponding to the graph's node indices.
-
-    All array values are populated by the `algos.shortest_path_tree` algorithm relative to the currently selected
-    origin node.
-    """
-
-    visited_nodes: npt.NDArray[np.bool_]
-    """Whether nodes have been visited."""
-    preds: npt.NDArray[np.int_]
-    """Each node's immediate predecessor."""
-    short_dist: npt.NDArray[np.float32]
-    """The shortest distance to each node."""
-    simpl_dist: npt.NDArray[np.float32]
-    """The simplest path distance to each node."""
-    cycles: npt.NDArray[np.float32]
-    """The number of network cycles for a given node."""
-    origin_seg: npt.NDArray[np.int_]
-    """The first segment (edge) idx that has been traversed by the shortest path algorithm to reach the given node."""
-    last_seg: npt.NDArray[np.int_]
-    """The last segment (edge) idx that has been traversed by the shortest path algorithm to reach the given node."""
-    out_bearings: npt.NDArray[np.float32]
-    """The trailing outwards bearing for the given node."""
-    visited_edges: npt.NDArray[np.bool_]
-    """Whether edges have been visited."""
-
-    def __init__(self, nodes_n: int, edges_n: int):
-        """
-        Instance a `TreeMap`.
-
-        Parameters
-        ----------
-        nodes_n: int
-            The number of nodes this `TreeMap` instance should contain.
-        edges_n: int
-            The number of edges this `TreeMap` instance should contain.
-
-        """
-        self.visited_nodes: npt.NDArray[np.bool_] = np.full(nodes_n, False, dtype=np.bool_)
-        self.preds: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
-        self.short_dist: npt.NDArray[np.float32] = np.full(nodes_n, np.inf, dtype=np.float32)
-        self.simpl_dist: npt.NDArray[np.float32] = np.full(nodes_n, np.inf, dtype=np.float32)
-        self.cycles: npt.NDArray[np.float32] = np.full(nodes_n, 0.0, dtype=np.float32)
-        self.origin_seg: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
-        self.last_seg: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
-        self.out_bearings: npt.NDArray[np.float32] = np.full(nodes_n, np.nan, dtype=np.float32)
-        self.visited_edges: npt.NDArray[np.bool_] = np.full(edges_n, False, dtype=np.bool_)
 
 
 node_map_spec: list[tuple[str, Any]] = [
