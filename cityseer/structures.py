@@ -11,9 +11,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 from numba.core import types
-from numba.experimental import jitclass, structref  # type: ignore
+from numba.experimental import jitclass  # type: ignore
 from numba.typed import Dict, List
-
 
 node_map_spec: list[tuple[str, Any]] = [
     ("nodes_n", types.int_),
