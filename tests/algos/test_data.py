@@ -142,7 +142,7 @@ def test_aggregate_to_src_idx(primal_graph):
         for angular in [True, False]:
             for netw_src_idx in range(network_structure.nodes.count):
                 # aggregate to src...
-                (reachable_data, reachable_data_dist, _tree_map) = data.aggregate_to_src_idx(
+                reachable_data, reachable_data_dist = data.aggregate_to_src_idx(
                     netw_src_idx,
                     network_structure,
                     data_map,
@@ -151,7 +151,17 @@ def test_aggregate_to_src_idx(primal_graph):
                 )
                 # compare to manual checks on distances:
                 # get the network distances
-                tree_map = centrality.shortest_path_tree(
+                (
+                    _visited_nodes,
+                    _preds,
+                    short_dist,
+                    _simpl_dist,
+                    _cycles,
+                    _origin_seg,
+                    _last_seg,
+                    _out_bearings,
+                    _visited_edges,
+                ) = centrality.shortest_path_tree(
                     network_structure,
                     netw_src_idx,
                     max_dist=np.float32(max_dist),
@@ -172,14 +182,14 @@ def test_aggregate_to_src_idx(primal_graph):
                         # get the index for the assigned network node
                         netw_idx = data_map.nearest_assign[d_idx]
                         # if this node is within the cutoff distance:
-                        if tree_map.short_dist[netw_idx] < max_dist:
+                        if short_dist[netw_idx] < max_dist:
                             # get the distances from the data point to the assigned network node
                             d_d = np.hypot(
                                 data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
                                 data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
                             )
                             # and add it to the network distance path from the source to the assigned node
-                            n_d = tree_map.short_dist[netw_idx]
+                            n_d = short_dist[netw_idx]
                             nearest_dist = d_d + n_d
                     # also get the distance via the next nearest assigned index
                     next_nearest_dist = np.inf
@@ -188,14 +198,14 @@ def test_aggregate_to_src_idx(primal_graph):
                         # get the index for the assigned network node
                         netw_idx = data_map.next_nearest_assign[d_idx]
                         # if this node is within the radial cutoff distance:
-                        if tree_map.short_dist[netw_idx] < max_dist:
+                        if short_dist[netw_idx] < max_dist:
                             # get the distances from the data point to the assigned network node
                             d_d = np.hypot(
                                 data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
                                 data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
                             )
                             # and add it to the network distance path from the source to the assigned node
-                            n_d = tree_map.short_dist[netw_idx]
+                            n_d = short_dist[netw_idx]
                             next_nearest_dist = d_d + n_d
                     # now check distance integrity
                     if np.isinf(reachable_dist):
@@ -371,7 +381,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     # test against various distances
     for d_idx, (dist_cutoff, beta) in enumerate(zip(distances, betas)):
         for src_idx in range(len(primal_graph)):
-            reachable_data, reachable_data_dist, _tree_map = data.aggregate_to_src_idx(
+            reachable_data, reachable_data_dist = data.aggregate_to_src_idx(
                 src_idx, network_structure, data_map, dist_cutoff
             )
             # counts of each class type (array length per max unique classes - not just those within max distance)

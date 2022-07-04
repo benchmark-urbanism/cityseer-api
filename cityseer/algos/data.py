@@ -123,7 +123,7 @@ def _closest_intersections(
     return min_d, nearest_idx, next_nearest_idx
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=False)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def assign_to_network(
     data_map: structures.DataMap,
     network_structure: structures.NetworkStructure,
@@ -287,7 +287,7 @@ def aggregate_to_src_idx(
     max_dist: np.float32,
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
-) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.float32], structures.TreeMap]:
+) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.float32]]:
     """
     Aggregate data points relative to a src index.
 
@@ -300,7 +300,17 @@ def aggregate_to_src_idx(
     # NOTE -> use np.inf for max distance so as to explore all paths
     # In some cases the predecessor nodes will be within reach even if the closest node is not
     # Total distance is checked later
-    tree_map = centrality.shortest_path_tree(
+    (
+        _visited_nodes,
+        _preds,
+        short_dist,
+        _simpl_dist,
+        _cycles,
+        _origin_seg,
+        _last_seg,
+        _out_bearings,
+        _visited_edges,
+    ) = centrality.shortest_path_tree(
         network_structure,
         netw_src_idx,
         max_dist=max_dist,
@@ -316,7 +326,7 @@ def aggregate_to_src_idx(
         nearest_netw_idx = data_map.nearest_assign[data_idx]
         if nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
-            dist = tree_map.short_dist[nearest_netw_idx]
+            dist = short_dist[nearest_netw_idx]
             if dist < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(
@@ -332,7 +342,7 @@ def aggregate_to_src_idx(
         next_nearest_netw_idx = data_map.next_nearest_assign[data_idx]
         if next_nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
-            dist = tree_map.short_dist[next_nearest_netw_idx]
+            dist = short_dist[next_nearest_netw_idx]
             if dist < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(
@@ -347,10 +357,10 @@ def aggregate_to_src_idx(
                     reachable_data_dist[data_idx] = total_dist
 
     # note that some entries will be nan values if the max distance was exceeded
-    return reachable_data, reachable_data_dist, tree_map
+    return reachable_data, reachable_data_dist
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_landuses(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
@@ -455,7 +465,7 @@ def aggregate_landuses(
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
         # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_data, reachable_data_dist, _tree_map = aggregate_to_src_idx(
+        reachable_data, reachable_data_dist = aggregate_to_src_idx(
             netw_src_idx,
             network_structure,
             data_map,
@@ -545,7 +555,7 @@ def aggregate_landuses(
     )
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=False)
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_stats(
     network_structure: structures.NetworkStructure,
     data_map: structures.DataMap,
@@ -623,7 +633,7 @@ def aggregate_stats(
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
         # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
-        reachable_data, reachable_data_dist, _tree_map = aggregate_to_src_idx(
+        reachable_data, reachable_data_dist = aggregate_to_src_idx(
             netw_src_idx,
             network_structure,
             data_map,
