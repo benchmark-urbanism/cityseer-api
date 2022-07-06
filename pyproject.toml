@@ -71,12 +71,10 @@ dev = [
   "pyright>=1.1.246",
   "pandas-stubs>=1.2.0.58",
   "types-requests>=2.27.27",
-  "tqdm-stubs>=0.2.0",
   "pyogrio>=0.4.0",
   "jupyterlab>=3.4.3",
   "jupyter>=1.0.0",
-  "yapper>=0.3.4",
-]
+  "yapper>=0.3.4"]
 
 # [tool.pdm]
 # allow_prereleases = true

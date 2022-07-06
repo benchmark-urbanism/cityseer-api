@@ -1239,12 +1239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tqdm-stubs"
-version = "0.2.1"
-requires_python = ">=3.7,<4.0"
-summary = "Stub type files for tqdm"
-
-[[package]]
 name = "traitlets"
 version = "5.3.0"
 requires_python = ">=3.7"
@@ -1331,7 +1325,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
 lock_version = "3.1"
-content_hash = "sha256:740dfa244114ac6321ab85a29130f560a31bbf5372a683e909410588ad0c9cab"
+content_hash = "sha256:06e0db32f9b5beb8158381a4ae15cdd0fdbe3f6dffbf77d78a43450070db34cb"
 
 [metadata.files]
 "anyio 3.6.1" = [
@@ -2639,10 +2633,6 @@ content_hash = "sha256:740dfa244114ac6321ab85a29130f560a31bbf5372a683e909410588a
 "tqdm 4.64.0" = [
     {file = "tqdm-4.64.0-py2.py3-none-any.whl", hash = "sha256:74a2cdefe14d11442cedf3ba4e21a3b84ff9a2dbdc6cfae2c34addb2a14a5ea6"},
     {file = "tqdm-4.64.0.tar.gz", hash = "sha256:40be55d30e200777a307a7585aee69e4eabb46b4ec6a4b4a5f2d9f11e7d5408d"},
-]
-"tqdm-stubs 0.2.1" = [
-    {file = "tqdm_stubs-0.2.1-py3-none-any.whl", hash = "sha256:cb794e89042aac254a77a4322a16f18dfd1d0d2ebe5b39cc4d3e6513fed00251"},
-    {file = "tqdm-stubs-0.2.1.tar.gz", hash = "sha256:af7044737de561b2816b8b3fae1cb8af024ad0337311b9fc22d121cd3ab5c8e5"},
 ]
 "traitlets 5.3.0" = [
     {file = "traitlets-5.3.0-py3-none-any.whl", hash = "sha256:65fa18961659635933100db8ca120ef6220555286949774b9cfc106f941d1c7a"},
