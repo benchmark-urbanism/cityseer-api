@@ -456,7 +456,7 @@ def mock_species_data(
 
 
 def fetch_osm_response(
-    geom_osm: str, with_data: bool = False, timeout: int = 30, max_tries: int = 3
+    geom_osm: str, with_data: bool = False, timeout: int = 30, max_tries: int = 3, custom_request: str | None = None
 ) -> Optional[requests.Response]:
     """
     Fetch and parse an OSM response.
@@ -472,6 +472,9 @@ def fetch_osm_response(
         An optional timeout, by default 30s
     max_tries: int
         The number of attempts to fetch a response before raising, by default 3
+    custom_request: str
+        A custom OSM request, this must include a "geom_osm" string formatting key for inserting the geometry.
+        By default None.
 
     Returns
     -------
@@ -479,43 +482,51 @@ def fetch_osm_response(
         An OSM API response.
 
     """
-    request = f"""
-    /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
-    [out:json][timeout:{timeout}];
-    /* build spatial_set from highways based on extent */
-    way["highway"]
-      ["area"!="yes"]
-      ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|abandoned|platform|construction"]
-      ["service"!~"parking_aisle"]
-      (if:
-       /* don't fetch roads that don't have sidewalks */
-       (t["sidewalk"] != "none" && t["sidewalk"] != "no")
-       /* unless foot or bicycles permitted */
-       || t["foot"]!="no"
-       || (t["bicycle"]!="no" && t["bicycle"]!="unsuitable")
-      )
-      ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-      ["access"!~"private|customers"]
-      ["indoor"!="yes"]
-      (poly:"{geom_osm}") -> .spatial_set;
-    /* build union_set from spatial_set */
-    (
-      way.spatial_set["highway"];
-      way.spatial_set["foot"~"yes|designated"];
-      way.spatial_set["bicycle"~"yes|designated"];
-    ) -> .union_set;
-    /* filter union_set */
-    way.union_set -> .filtered_set;
-    /* union filtered_set ways with nodes via recursion */
-    (
-      .filtered_set;
-      >;
-    );
-    """
-    if with_data:
-        request += "out qt;"
+    if custom_request is not None:
+        if "geom_osm" not in custom_request:
+            raise ValueError(
+                'The provided custom_request does not contain a "geom_osm" formatting key, i.e. (poly:"{geom_osm}") '
+                "This key is required for interpolating the generated geometry into the request."
+            )
+        request = custom_request.format(timeout=timeout, geom_osm=geom_osm)
     else:
-        request += "out skel qt;"  # doesn't return tags
+        request = f"""
+        /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
+        [out:json][timeout:{timeout}];
+        /* build spatial_set from highways based on extent */
+        way["highway"]
+        ["area"!="yes"]
+        ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|abandoned|platform|construction"]
+        ["service"!~"parking_aisle"]
+        (if:
+        /* don't fetch roads that don't have sidewalks */
+        (t["sidewalk"] != "none" && t["sidewalk"] != "no")
+        /* unless foot or bicycles permitted */
+        || t["foot"]!="no"
+        || (t["bicycle"]!="no" && t["bicycle"]!="unsuitable")
+        )
+        ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+        ["access"!~"private|customers"]
+        ["indoor"!="yes"]
+        (poly:"{geom_osm}") -> .spatial_set;
+        /* build union_set from spatial_set */
+        (
+        way.spatial_set["highway"];
+        way.spatial_set["foot"~"yes|designated"];
+        way.spatial_set["bicycle"~"yes|designated"];
+        ) -> .union_set;
+        /* filter union_set */
+        way.union_set -> .filtered_set;
+        /* union filtered_set ways with nodes via recursion */
+        (
+        .filtered_set;
+        >;
+        );
+        """
+        if with_data:
+            request += "out qt;"
+        else:
+            request += "out skel qt;"  # doesn't return tags
     osm_response: Optional[requests.Response] = None
     while max_tries:
         osm_response = requests.get(
@@ -536,7 +547,9 @@ def fetch_osm_response(
     return osm_response
 
 
-def make_buffered_osm_graph(lng: float, lat: float, buffer: float, with_data: bool = False) -> MultiGraph:  # noqa
+def make_buffered_osm_graph(
+    lng: float, lat: float, buffer: float, with_data: bool = False, custom_request: str | None = None
+) -> MultiGraph:  # noqa
     """
 
     Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`
@@ -553,6 +566,8 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float, with_data: bo
     with_data: bool
         Whether to include OSM data (e.g. street names) in the response. If not, then only the street network is
         returned. By default False.
+    custom_request: str
+        A custom OSM request, this must include a "{geom_osm}" string formatting key for inserting the geometry.
 
     Returns
     -------
@@ -575,7 +590,7 @@ def make_buffered_osm_graph(lng: float, lat: float, buffer: float, with_data: bo
     # format for OSM query
     geom_osm = str.join(" ", [f"{lat} {lng}" for lat, lng in poly_wgs.exterior.coords])  # type: ignore
     # generate the query
-    osm_response = fetch_osm_response(geom_osm, with_data=with_data)
+    osm_response = fetch_osm_response(geom_osm, with_data=with_data, custom_request=custom_request)
     # build graph
     graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
