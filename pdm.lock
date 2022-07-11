@@ -820,7 +820,7 @@ dependencies = [
 
 [[package]]
 name = "pandas-stubs"
-version = "1.4.3.220703"
+version = "1.4.3.220710"
 requires_python = ">=3.8,<3.11"
 summary = "Type annotations for pandas"
 
@@ -979,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "pyright"
-version = "1.1.257"
+version = "1.1.258"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
@@ -2072,9 +2072,9 @@ content_hash = "sha256:06e0db32f9b5beb8158381a4ae15cdd0fdbe3f6dffbf77d78a4345007
     {file = "pandas-1.4.3-cp39-cp39-win_amd64.whl", hash = "sha256:721a3dd2f06ef942f83a819c0f3f6a648b2830b191a72bbe9451bcd49c3bd42e"},
     {file = "pandas-1.4.3.tar.gz", hash = "sha256:2ff7788468e75917574f080cd4681b27e1a7bf36461fe968b49a87b5a54d007c"},
 ]
-"pandas-stubs 1.4.3.220703" = [
-    {file = "pandas_stubs-1.4.3.220703-py3-none-any.whl", hash = "sha256:87614b2f6dd6e838609835c56da16e1ab3c357aae81e24910ec6fd5eea9005f0"},
-    {file = "pandas-stubs-1.4.3.220703.tar.gz", hash = "sha256:d52c2fbd38954eaddcfc12bed11150ccfb382f31828fa18e6aaa6ba3fee1e692"},
+"pandas-stubs 1.4.3.220710" = [
+    {file = "pandas_stubs-1.4.3.220710-py3-none-any.whl", hash = "sha256:90998e8477e7c28a9a2f84b6aa0a6cfca4ae3b98ed1a4484ece9f75da3f7395b"},
+    {file = "pandas-stubs-1.4.3.220710.tar.gz", hash = "sha256:57afeb068d56012ff9813e61ebdc36473fa225ff1258fc3e4783e524101f4ad0"},
 ]
 "pandocfilters 1.5.0" = [
     {file = "pandocfilters-1.5.0-py2.py3-none-any.whl", hash = "sha256:33aae3f25fd1a026079f5d27bdd52496f0e0803b3469282162bafdcbdf6ef14f"},
@@ -2307,9 +2307,9 @@ content_hash = "sha256:06e0db32f9b5beb8158381a4ae15cdd0fdbe3f6dffbf77d78a4345007
     {file = "pyproj-3.3.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:797ad5655d484feac14b0fbb4a4efeaac0cf780a223046e2465494c767fd1c3b"},
     {file = "pyproj-3.3.1.tar.gz", hash = "sha256:b3d8e14d91cc95fb3dbc03a9d0588ac58326803eefa5bbb0978d109de3304fbe"},
 ]
-"pyright 1.1.257" = [
-    {file = "pyright-1.1.257-py3-none-any.whl", hash = "sha256:e00b6601118f94554d62552605bebdd836d2e077552fdc578cecf4170fc25d9c"},
-    {file = "pyright-1.1.257.tar.gz", hash = "sha256:a0d566686292b49c2c578c0108cc31b6f228731c51a12b09242f9ff9fd1722e2"},
+"pyright 1.1.258" = [
+    {file = "pyright-1.1.258-py3-none-any.whl", hash = "sha256:2b40179a6fe70be75104500de2b2eb1e7b3ebd1ba130db96f4f1921fc98f37cd"},
+    {file = "pyright-1.1.258.tar.gz", hash = "sha256:9209bffb23421c82fd4aa6d4f8346e8bfeea897b38e604722652f01f7070ad68"},
 ]
 "pyrsistent 0.18.1" = [
     {file = "pyrsistent-0.18.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:df46c854f490f81210870e509818b729db4488e1f30f2a1ce1698b2295a878d1"},
