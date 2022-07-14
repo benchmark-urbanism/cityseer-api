@@ -7,13 +7,20 @@ import numpy.typing as npt
 from numba import njit, prange, types  # type: ignore
 from numba.typed import List  # type: ignore
 
-from cityseer import config, structures
+from cityseer import config
 from cityseer.algos import checks
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def shortest_path_tree(
-    network_structure: structures.NetworkStructure,
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
     src_idx: int,
     max_dist: np.float32 = np.float32(np.inf),
     jitter_scale: np.float32 = np.float32(0.0),
@@ -39,8 +46,8 @@ def shortest_path_tree(
     Predecessor map is based on impedance heuristic - which can be different from metres.
     Distance map in metres is used for defining max distances and computing equivalent distance measures.
     """
-    nodes_n = network_structure.nodes.count
-    edges_n = network_structure.edges.count
+    nodes_n = len(node_edge_map)
+    edges_n = edges_start_arr.shape[0]
     visited_nodes: npt.NDArray[np.bool_] = np.full(nodes_n, False, dtype=np.bool_)
     preds: npt.NDArray[np.int_] = np.full(nodes_n, -1, dtype=np.int_)
     short_dist: npt.NDArray[np.float32] = np.full(nodes_n, np.inf, dtype=np.float32)
@@ -51,7 +58,7 @@ def shortest_path_tree(
     out_bearings: npt.NDArray[np.float32] = np.full(nodes_n, np.nan, dtype=np.float32)
     visited_edges: npt.NDArray[np.bool_] = np.full(edges_n, False, dtype=np.bool_)
 
-    if angular and not np.all(network_structure.edges.imp_factor == 1):
+    if angular and not np.all(edges_imp_factor_arr == 1):
         raise ValueError("The distance impedance factor parameter must be set to 1 when using angular centralities.")
     # the starting node's impedance and distance will be zero
     simpl_dist[src_idx] = 0
@@ -79,14 +86,14 @@ def shortest_path_tree(
         # add to processed nodes
         visited_nodes[active_nd_idx] = True
         # iterate the node's neighbours
-        for edge_idx in network_structure.node_edge_map[active_nd_idx]:
+        for edge_idx in node_edge_map[active_nd_idx]:
             # get the edge's properties
-            nb_nd_idx = network_structure.edges.end[edge_idx]
-            seg_len = network_structure.edges.length[edge_idx]
-            seg_ang = network_structure.edges.angle_sum[edge_idx]
-            seg_imp_fact = network_structure.edges.imp_factor[edge_idx]
-            seg_in_bear = network_structure.edges.in_bearing[edge_idx]
-            seg_out_bear = network_structure.edges.out_bearing[edge_idx]
+            nb_nd_idx = edges_end_arr[edge_idx]
+            seg_len = edges_length_arr[edge_idx]
+            seg_ang = edges_angle_sum_arr[edge_idx]
+            seg_imp_fact = edges_imp_factor_arr[edge_idx]
+            seg_in_bear = edges_in_bearing_arr[edge_idx]
+            seg_out_bear = edges_out_bearing_arr[edge_idx]
             # don't follow self-loops
             if nb_nd_idx == active_nd_idx:
                 # add edge to active (used for segment methods)
@@ -152,14 +159,16 @@ def shortest_path_tree(
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
-def _find_edge_idx(network_structure: structures.NetworkStructure, start_nd_idx: int, end_nd_idx: int) -> int:
+def _find_edge_idx(
+    node_edge_map: dict[int, list[int]], edges_end_arr: npt.NDArray[np.int_], start_nd_idx: int, end_nd_idx: int
+) -> int:
     """
     Find the edge spanning the specified start / end node pair.
     """
     # iterate the start node's edges
-    for edge_idx in network_structure.node_edge_map[start_nd_idx]:
+    for edge_idx in node_edge_map[start_nd_idx]:
         # find the edge which has an out node matching the target node
-        if network_structure.edges.end[edge_idx] == end_nd_idx:
+        if edges_end_arr[edge_idx] == end_nd_idx:
             return int(edge_idx)
     return -1
 
@@ -258,10 +267,18 @@ def _node_betweenness_beta(to_short_dist: np.float32, beta: np.float32) -> np.fl
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def local_node_centrality(
-    network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     measure_keys: tuple[str],
+    nodes_live_arr: npt.NDArray[np.bool_],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy=None,  # type: ignore
@@ -269,8 +286,6 @@ def local_node_centrality(
     """
     Localised node centrality.
     """
-    # integrity checks
-    network_structure.validate()
     checks.check_distances_and_betas(distances, betas)
     # gather functions
     close_funcs: list[Any] = List.empty_list(node_close_func_proto)
@@ -326,19 +341,20 @@ def local_node_centrality(
                 Set angular=False if using shortest-path measures."""
                 )
     # prepare variables
+    n_n = nodes_live_arr.shape[0]
     d_n = len(distances)
     k_n = len(measure_keys)
-    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, n_n), 0.0, dtype=np.float32)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
-        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    for src_idx in prange(n_n):  # pylint: disable=not-an-iterable
+        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, n_n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not network_structure.nodes.live[src_idx]:
+        if not nodes_live_arr[src_idx]:
             continue
         (
             visited_nodes,
@@ -351,7 +367,14 @@ def local_node_centrality(
             _out_bearings,
             _visited_edges,
         ) = shortest_path_tree(
-            network_structure,
+            edges_start_arr,
+            edges_end_arr,
+            edges_length_arr,
+            edges_angle_sum_arr,
+            edges_imp_factor_arr,
+            edges_in_bearing_arr,
+            edges_out_bearing_arr,
+            node_edge_map,
             src_idx,
             max_dist=global_max_dist,
             jitter_scale=jitter_scale,
@@ -440,10 +463,18 @@ def _segment_beta(  # pylint: disable=unused-argument
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def local_segment_centrality(
-    network_structure: structures.NetworkStructure,
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     measure_keys: tuple[str],
+    nodes_live_arr: npt.NDArray[np.bool_],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy=None,  # type: ignore
@@ -453,7 +484,6 @@ def local_segment_centrality(
     """
     # integrity checks
     checks.check_distances_and_betas(distances, betas)
-    network_structure.validate()
     # gather functions
     close_funcs: list[Any] = List.empty_list(segment_func_proto)
     close_idxs: list[int] = []
@@ -498,19 +528,20 @@ def local_segment_centrality(
                 """
                 )
     # prepare variables
+    n_n = nodes_live_arr.shape[0]
     d_n = len(distances)
     k_n = len(measure_keys)
-    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    measures_data: npt.NDArray[np.float32] = np.full((k_n, d_n, n_n), 0.0, dtype=np.float32)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))
     # iterate through each vert and calculate the shortest path tree
-    for src_idx in prange(network_structure.nodes.count):  # pylint: disable=not-an-iterable
-        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, network_structure.nodes.count), 0.0, dtype=np.float32)
+    for src_idx in prange(n_n):  # pylint: disable=not-an-iterable
+        shadow_arr: npt.NDArray[np.float32] = np.full((k_n, d_n, n_n), 0.0, dtype=np.float32)
         # numba no object mode can only handle basic printing
         # note that progress bar adds a performance penalty
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not network_structure.nodes.live[src_idx]:
+        if not nodes_live_arr[src_idx]:
             continue
         """
         Shortest tree dijkstra
@@ -528,7 +559,14 @@ def local_segment_centrality(
             _out_bearings,
             visited_edges,
         ) = shortest_path_tree(
-            network_structure,
+            edges_start_arr,
+            edges_end_arr,
+            edges_length_arr,
+            edges_angle_sum_arr,
+            edges_imp_factor_arr,
+            edges_in_bearing_arr,
+            edges_out_bearing_arr,
+            node_edge_map,
             src_idx,
             max_dist=global_max_dist,
             jitter_scale=jitter_scale,
@@ -545,12 +583,12 @@ def local_segment_centrality(
         if close_idxs:
             for edge_idx in np.where(visited_edges)[0]:  # type: ignore
                 # unpack the edge data
-                n_nd_idx = network_structure.edges.start[edge_idx]
-                m_nd_idx = network_structure.edges.end[edge_idx]
-                seg_len = network_structure.edges.length[edge_idx]
-                seg_ang = network_structure.edges.angle_sum[edge_idx]
-                seg_imp_fact = network_structure.edges.imp_factor[edge_idx]
-                seg_in_bear = network_structure.edges.in_bearing[edge_idx]
+                n_nd_idx = edges_start_arr[edge_idx]
+                m_nd_idx = edges_end_arr[edge_idx]
+                seg_len = edges_length_arr[edge_idx]
+                seg_ang = edges_angle_sum_arr[edge_idx]
+                seg_imp_fact = edges_imp_factor_arr[edge_idx]
+                seg_in_bear = edges_in_bearing_arr[edge_idx]
                 # go
                 n_simpl_dist = simpl_dist[n_nd_idx]
                 m_simpl_dist = simpl_dist[m_nd_idx]
@@ -647,9 +685,9 @@ def local_segment_centrality(
                         # find n's predecessor
                         n_pred_idx = int(preds[n_nd_idx])
                         # find the edge from n's predecessor to n
-                        e_i = _find_edge_idx(network_structure, n_pred_idx, n_nd_idx)
+                        e_i = _find_edge_idx(node_edge_map, edges_end_arr, n_pred_idx, n_nd_idx)
                         # get the predecessor edge's outwards bearing at index 6
-                        n_pred_out_bear = network_structure.edges.out_bearing[e_i]
+                        n_pred_out_bear = edges_out_bearing_arr[e_i]
                         # calculating the turn into this segment from the predecessor's out bearing
                         n_turn_in = np.abs((seg_in_bear - n_pred_out_bear + 180) % 360 - 180)
                         # then add the turn-in to the aggregated impedance at n
@@ -660,15 +698,15 @@ def local_segment_centrality(
                         # per original n -> m edge destructuring: m is the node in the outwards bound direction
                         # i.e. need to first find the corresponding edge in the opposite m -> n direction of travel
                         # this gives the correct inwards bearing as if m were the entry point
-                        opp_i = _find_edge_idx(network_structure, m_nd_idx, n_nd_idx)
+                        opp_i = _find_edge_idx(node_edge_map, edges_end_arr, m_nd_idx, n_nd_idx)
                         # now that the opposing edge is known, we can fetch the inwards bearing at index 5 (not 6)
-                        opp_in_bear = network_structure.edges.in_bearing[opp_i]
+                        opp_in_bear = edges_in_bearing_arr[opp_i]
                         # find m's predecessor
                         m_pred_idx = int(preds[m_nd_idx])
                         # we can now go ahead and find m's predecessor edge
-                        e_i = _find_edge_idx(network_structure, m_pred_idx, m_nd_idx)
+                        e_i = _find_edge_idx(node_edge_map, edges_end_arr, m_pred_idx, m_nd_idx)
                         # get the predecessor edge's outwards bearing at index 6
-                        m_pred_out_bear = network_structure.edges.out_bearing[e_i]
+                        m_pred_out_bear = edges_out_bearing_arr[e_i]
                         # and calculate the turn-in from m's predecessor onto the m inwards bearing
                         m_turn_in = np.abs((opp_in_bear - m_pred_out_bear + 180) % 360 - 180)
                         # then add to aggregated impedance at m
@@ -706,8 +744,8 @@ def local_segment_centrality(
         if betw_idxs:
             # prepare a list of neighbouring nodes
             nb_nodes: list[int] = List.empty_list(types.int64)
-            for edge_idx in network_structure.node_edge_map[src_idx]:
-                out_nd_idx = network_structure.edges.end[edge_idx]
+            for edge_idx in node_edge_map[src_idx]:
+                out_nd_idx = edges_end_arr[edge_idx]
                 nb_nodes.append(out_nd_idx)
             # betweenness keys computed per to_idx
             for to_idx in np.where(visited_nodes)[0]:  # type: ignore
@@ -736,9 +774,9 @@ def local_segment_centrality(
                 distance thresholds are computed using the innner as opposed to outer edges of the segments
                 """
                 origin_seg_idx = origin_seg[to_idx]
-                o_seg_len = network_structure.edges.length[origin_seg_idx]
+                o_seg_len = edges_length_arr[origin_seg_idx]
                 last_seg_idx = last_seg[to_idx]
-                l_seg_len = network_structure.edges.length[last_seg_idx]
+                l_seg_len = edges_length_arr[last_seg_idx]
                 min_span = to_dist - o_seg_len - l_seg_len
                 # calculate traversal distances from opposing segments
                 o_1 = min_span
