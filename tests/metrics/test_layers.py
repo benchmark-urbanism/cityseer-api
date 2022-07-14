@@ -23,8 +23,14 @@ def test_assign_gdf_to_network(primal_graph):
     data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
     data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
     data.assign_to_network(
-        data_map,
-        network_structure,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.edges.end,
+        network_structure.node_edge_map,
         np.float32(400),
     )
     # cross check
@@ -95,8 +101,21 @@ def test_compute_landuses(primal_graph):
     lab_enc = LabelEncoder()
     encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
     mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(
-        network_structure,
-        data_map,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
         distances,
         betas,
         encoded_lu_labels,  # type: ignore
@@ -114,8 +133,21 @@ def test_compute_landuses(primal_graph):
             )
     # gini simpson
     mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(
-        network_structure,
-        data_map,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
         distances,
         betas,
         encoded_lu_labels,  # type: ignore
@@ -132,8 +164,21 @@ def test_compute_landuses(primal_graph):
         )
     # accessibilities
     mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(
-        network_structure,
-        data_map,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
         distances,
         betas,
         encoded_lu_labels,  # type: ignore
@@ -233,8 +278,21 @@ def test_compute_landuses(primal_graph):
                 )
                 # test against underlying method
                 (mu_data_hill, mu_data_other, ac_data, ac_data_wt,) = data.aggregate_landuses(
-                    network_structure,
-                    data_map,
+                    network_structure.nodes.xs,
+                    network_structure.nodes.ys,
+                    network_structure.nodes.live,
+                    network_structure.edges.start,
+                    network_structure.edges.end,
+                    network_structure.edges.length,
+                    network_structure.edges.angle_sum,
+                    network_structure.edges.imp_factor,
+                    network_structure.edges.in_bearing,
+                    network_structure.edges.out_bearing,
+                    network_structure.node_edge_map,
+                    data_map.xs,
+                    data_map.ys,
+                    data_map.nearest_assign,
+                    data_map.next_nearest_assign,
                     distances,
                     betas,
                     encoded_lu_labels,  # type: ignore
@@ -436,8 +494,21 @@ def test_compute_stats(primal_graph):
             stats_max,
             stats_min,
         ) = data.aggregate_stats(
-            network_structure,
-            data_map,
+            network_structure.nodes.xs,
+            network_structure.nodes.ys,
+            network_structure.nodes.live,
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
+            data_map.xs,
+            data_map.ys,
+            data_map.nearest_assign,
+            data_map.next_nearest_assign,
             distances,
             networks.beta_from_distance(distances),
             numerical_arrays=stats_arrays,

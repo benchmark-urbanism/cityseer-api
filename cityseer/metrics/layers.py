@@ -75,27 +75,41 @@ def assign_gdf_to_network(
     _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
 
     """
+    network_structure.validate()
     data_map = structures.DataMap(len(data_gdf))
     data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
     data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
+    data_map.validate(False)
     if "nearest_assign" not in data_gdf:
         if not config.QUIET_MODE:
             progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=len(data_gdf))
         else:
             progress_proxy = None
-        data.assign_to_network(
-            data_map,
-            network_structure,
+        data_map_nearest_arr, data_map_next_nearest_arr = data.assign_to_network(
+            data_map.xs,
+            data_map.ys,
+            data_map.nearest_assign,
+            data_map.next_nearest_assign,
+            network_structure.nodes.xs,
+            network_structure.nodes.ys,
+            network_structure.edges.end,
+            network_structure.node_edge_map,
             np.float32(max_netw_assign_dist),
             progress_proxy=progress_proxy,
         )
         if progress_proxy is not None:
             progress_proxy.close()
-        data_gdf["nearest_assign"] = data_map.nearest_assign
-        data_gdf["next_nearest_assign"] = data_map.next_nearest_assign
+        data_map.nearest_assign = data_map_nearest_arr
+        data_map.next_nearest_assign = data_map_next_nearest_arr
+        data_gdf["nearest_assign"] = data_map_nearest_arr
+        data_gdf["next_nearest_assign"] = data_map_next_nearest_arr
     else:
         data_map.nearest_assign = data_gdf["nearest_assign"].values.astype(np.int_)
         data_map.next_nearest_assign = data_gdf["next_nearest_assign"].values.astype(np.int_)
+    if np.all(data_map.nearest_assign == -1):
+        logger.warning("No assignments for nearest assigned direction.")
+    if np.all(data_map.next_nearest_assign == -1):
+        logger.warning("No assignments for nearest assigned direction.")
     return data_map, data_gdf
 
 
@@ -270,6 +284,7 @@ def compute_landuses(
     :::
 
     """
+    network_structure.validate()
     _distances, _betas = networks.pair_distances_betas(distances, betas)
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist)
     mixed_uses_options = [
@@ -341,8 +356,21 @@ def compute_landuses(
     # call the underlying method
     # pylint: disable=duplicate-code
     (mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt,) = data.aggregate_landuses(
-        network_structure,
-        data_map,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
         distances=_distances,
         betas=_betas,
         landuse_encodings=encoded_labels,
@@ -803,8 +831,10 @@ def compute_stats(
     :::
 
     """
+    network_structure.validate()
     _distances, _betas = networks.pair_distances_betas(distances, betas)
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist)
+    data_map.validate(True)
     # check keys
     if not isinstance(stats_column_labels, (str, list, tuple, np.ndarray)):
         raise TypeError("Stats keys should be a string else a list, tuple, or np.ndarray of strings.")
@@ -832,8 +862,21 @@ def compute_stats(
         stats_max,
         stats_min,
     ) = data.aggregate_stats(
-        network_structure,
-        data_map,
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
         distances=_distances,
         betas=_betas,
         numerical_arrays=stats_data_arrs,
