@@ -158,21 +158,6 @@ def shortest_path_tree(
     return visited_nodes, preds, short_dist, simpl_dist, cycles, origin_seg, last_seg, out_bearings, visited_edges
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
-def _find_edge_idx(
-    node_edge_map: dict[int, list[int]], edges_end_arr: npt.NDArray[np.int_], start_nd_idx: int, end_nd_idx: int
-) -> int:
-    """
-    Find the edge spanning the specified start / end node pair.
-    """
-    # iterate the start node's edges
-    for edge_idx in node_edge_map[start_nd_idx]:
-        # find the edge which has an out node matching the target node
-        if edges_end_arr[edge_idx] == end_nd_idx:
-            return int(edge_idx)
-    return -1
-
-
 node_close_func_proto = types.FunctionType(
     types.float32(types.float32, types.float32, types.float32, types.float32)  # type: ignore
 )
@@ -426,6 +411,21 @@ def local_node_centrality(
         measures_data += shadow_arr
 
     return measures_data
+
+
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def _find_edge_idx(
+    node_edge_map: dict[int, list[int]], edges_end_arr: npt.NDArray[np.int_], start_nd_idx: int, end_nd_idx: int
+) -> int:
+    """
+    Find the edge spanning the specified start / end node pair.
+    """
+    # iterate the start node's edges
+    for edge_idx in node_edge_map[start_nd_idx]:
+        # find the edge which has an out node matching the target node
+        if edges_end_arr[edge_idx] == end_nd_idx:
+            return int(edge_idx)
+    return -1
 
 
 segment_func_proto = types.FunctionType(
