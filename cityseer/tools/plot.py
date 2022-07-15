@@ -27,9 +27,6 @@ from cityseer.tools.graphs import NodeData, NodeKey
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-plt.tight_layout()
-
 # type hack until networkx supports type-hinting
 MultiGraph = Any
 
@@ -304,6 +301,7 @@ def plot_nx_primal_or_dual(  # noqa
     if y_lim:
         plt.ylim(*y_lim)
     if ax is None:
+        plt.tight_layout()
         if path is not None:
             plt.savefig(path, facecolor=COLOUR_MAP.background)
         else:
@@ -545,6 +543,7 @@ def plot_assignment(  # noqa
             p_y = network_structure.nodes.ys[next_nearest_netw_idx]
             plt.plot([p_x, data_x], [p_y, data_y], c="#888888", lw=0.5, ls="--")
 
+    plt.tight_layout()
     if path:
         plt.savefig(path, facecolor=COLOUR_MAP.background, dpi=150)
     else:
@@ -652,5 +651,6 @@ def plot_network_structure(
             if next_nearest_netw_idx != -1:
                 p_x, p_y = network_structure.nodes.x_y(next_nearest_netw_idx)
                 ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
+    plt.tight_layout()
     plt.gcf().set_facecolor(COLOUR_MAP.background)
     plt.show()

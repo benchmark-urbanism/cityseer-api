@@ -25,6 +25,10 @@ def test_local_centrality_time(primal_graph):
     8.19 for 10000 iters
     version with jitclasses and float32
     <7 for 10000 iters
+    without jitclasses again
+    5.2 for 10000 iters
+    without proto funcs (cacheing)
+    5.15
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
@@ -42,12 +46,43 @@ def test_local_centrality_time(primal_graph):
     # needs a large enough beta so that distance thresholds aren't encountered
     distances, betas = networks.pair_distances_betas(distances=[5000])
 
+    def shortest_path_tree_wrapper():
+        centrality.shortest_path_tree(
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
+            0,
+            max(distances),
+            angular=False,
+        )
+
+    # prime the function
+    shortest_path_tree_wrapper()
+    iters = 100000
+    # time and report
+    func_time = timeit.timeit(shortest_path_tree_wrapper, number=iters)
+    print(f"shortest_path_tree_wrapper: {func_time} for {iters} iterations")
+    assert func_time < 5
+
     def node_cent_wrapper():
         centrality.local_node_centrality(
-            network_structure,
             distances,
             betas,
             ("node_harmonic", "node_betweenness"),
+            network_structure.nodes.live,
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
             angular=False,
             progress_proxy=None,
         )
@@ -58,14 +93,22 @@ def test_local_centrality_time(primal_graph):
     # time and report
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 10
+    assert func_time < 7
 
     def segment_cent_wrapper():
         centrality.local_segment_centrality(
-            network_structure,
             distances,
             betas,
             ("segment_harmonic", "segment_betweenness"),
+            network_structure.nodes.live,
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
             angular=False,
             progress_proxy=None,
         )
@@ -76,7 +119,7 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f"segment_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 10
+    assert func_time < 9
 
 
 if __name__ == "__main__":

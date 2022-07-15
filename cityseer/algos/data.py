@@ -6,13 +6,17 @@ import numpy as np
 import numpy.typing as npt
 from numba import njit, prange  # type: ignore
 
-from cityseer import config, structures
+from cityseer import config
 from cityseer.algos import centrality, checks, diversity
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def find_nearest(
-    src_x: np.float32, src_y: np.float32, node_map: structures.NodeMap, max_dist: np.float32
+    src_x: np.float32,
+    src_y: np.float32,
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    max_dist: np.float32,
 ) -> tuple[int, np.float32, int]:
     """Find nearest index and distance from a given point."""
     min_idx = -1
@@ -20,8 +24,8 @@ def find_nearest(
     next_min_idx = -1
     next_min_dist = np.float32(np.inf)
     # filter by distance
-    for i in range(node_map.count):
-        dist = np.hypot(node_map.xs[i] - src_x, node_map.ys[i] - src_y)
+    for i in range(nodes_x_arr.shape[0]):
+        dist = np.hypot(nodes_x_arr[i] - src_x, nodes_y_arr[i] - src_y)
         if dist <= max_dist and dist < min_dist:
             next_min_idx = min_idx
             next_min_dist = min_dist
@@ -53,10 +57,14 @@ def _calculate_rotation_smallest(point_a: npt.NDArray[np.float32], point_b: npt.
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _road_distance(
-    network_structure: structures.NetworkStructure, d_coords: npt.NDArray[np.float32], netw_idx_a: int, netw_idx_b: int
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    d_coords: npt.NDArray[np.float32],
+    netw_idx_a: int,
+    netw_idx_b: int,
 ) -> tuple[np.float32, int, int]:
-    a_coords = network_structure.nodes.x_y(netw_idx_a)
-    b_coords = network_structure.nodes.x_y(netw_idx_b)
+    a_coords: npt.NDArray[np.float32] = np.array([nodes_x_arr[netw_idx_a], nodes_y_arr[netw_idx_a]])
+    b_coords: npt.NDArray[np.float32] = np.array([nodes_x_arr[netw_idx_b], nodes_y_arr[netw_idx_b]])
     # get the angles from either intersection node to the data point
     ang_a = _calculate_rotation_smallest(d_coords - a_coords, b_coords - a_coords)
     ang_b = _calculate_rotation_smallest(d_coords - b_coords, a_coords - b_coords)
@@ -91,7 +99,8 @@ def _road_distance(
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _closest_intersections(
-    network_structure: structures.NetworkStructure,
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
     d_coords: npt.NDArray[np.float32],
     predecessor_map: npt.NDArray[np.int_],
     end_node_idx: int,
@@ -102,13 +111,13 @@ def _closest_intersections(
     current_idx = end_node_idx
     next_idx = predecessor_map[end_node_idx]
     if len(predecessor_map) == 2:
-        return _road_distance(network_structure, d_coords, current_idx, next_idx)
+        return _road_distance(nodes_x_arr, nodes_y_arr, d_coords, current_idx, next_idx)
     nearest_idx = -1
     next_nearest_idx = -1
     min_d = np.float32(np.inf)
     first_pred = next_idx  # for finding end of loop
     while True:
-        height, n_idx, n_n_idx = _road_distance(network_structure, d_coords, current_idx, next_idx)
+        height, n_idx, n_n_idx = _road_distance(nodes_x_arr, nodes_y_arr, d_coords, current_idx, next_idx)
         if height < min_d:
             min_d = height
             nearest_idx = n_idx
@@ -125,11 +134,17 @@ def _closest_intersections(
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def assign_to_network(
-    data_map: structures.DataMap,
-    network_structure: structures.NetworkStructure,
+    data_map_x_arr: npt.NDArray[np.float32],
+    data_map_y_arr: npt.NDArray[np.float32],
+    data_map_nearest_arr: npt.NDArray[np.int_],
+    data_map_next_nearest_arr: npt.NDArray[np.int_],
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    edges_end_arr: npt.NDArray[np.int_],
+    node_edge_map: dict[int, list[int]],
     max_dist: np.float32,
     progress_proxy: Any = None,
-) -> structures.DataMap:
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
     """
     To save unnecessary computation - this is done once and written to the data map.
 
@@ -140,28 +155,27 @@ def assign_to_network(
     3B - if no enclosing cycle - simply use the closest node
     4 - find the neighbouring node that minimises the distance between the data point on "street-front"
     """
-    network_structure.validate()
-    data_map.validate(False)
-    for data_idx in prange(data_map.count):  # pylint: disable=not-an-iterable
+    for data_idx in prange(data_map_x_arr.shape[0]):  # pylint: disable=not-an-iterable
         if progress_proxy is not None:
             progress_proxy.update(1)
         # find the nearest and next nearest network nodes
-        src_x, src_y = data_map.x_y(data_idx)
-        min_idx, min_dist, next_min_idx = find_nearest(src_x, src_y, network_structure.nodes, max_dist)
+        src_x = data_map_x_arr[data_idx]
+        src_y = data_map_y_arr[data_idx]
+        min_idx, min_dist, next_min_idx = find_nearest(src_x, src_y, nodes_x_arr, nodes_y_arr, max_dist)
         # in some cases no network node will be within max_dist...
         if min_idx == -1:
             continue
         connected = False
         # check if min and next min are connected
-        for edge_idx in network_structure.node_edge_map[min_idx]:
-            nb_idx = network_structure.edges.end[edge_idx]
+        for edge_idx in node_edge_map[min_idx]:
+            nb_idx = edges_end_arr[edge_idx]
             if nb_idx == next_min_idx:
                 connected = True
                 break
         # if connected, then no need to circle the block
         if connected:
-            data_map.nearest_assign[data_idx] = min_idx
-            data_map.next_nearest_assign[data_idx] = next_min_idx
+            data_map_nearest_arr[data_idx] = min_idx
+            data_map_next_nearest_arr[data_idx] = next_min_idx
             continue
         # if not connected, find the nearest adjacent by edges
         # nearest is initially set for this nearest node, but if a nearer street-edge is found, it will be overriden
@@ -170,7 +184,7 @@ def assign_to_network(
         # set start node to nearest network node
         node_idx: int = min_idx
         # keep track of visited nodes
-        pred_map: npt.NDArray[np.int_] = np.full(network_structure.nodes.count, -1, dtype=np.int_)
+        pred_map: npt.NDArray[np.int_] = np.full(len(node_edge_map), -1, dtype=np.int_)
         # state
         reversing = False
         # keep track of previous indices
@@ -181,9 +195,9 @@ def assign_to_network(
             rotation = np.nan
             nb_idx = -1
             # iterate the edges
-            for edge_idx in network_structure.node_edge_map[node_idx]:
+            for edge_idx in node_edge_map[node_idx]:
                 # new idx from the edge's end node index
-                new_idx = network_structure.edges.end[edge_idx]
+                new_idx = edges_end_arr[edge_idx]
                 # don't follow self-loops
                 if new_idx == node_idx:
                     continue
@@ -192,16 +206,20 @@ def assign_to_network(
                     continue
                 # look for the new neighbour with the smallest rightwards (anti-clockwise arctan2) angle
                 # measure the angle relative to the data point for the first node
+                coords_new: npt.NDArray[np.float32] = np.array([nodes_x_arr[new_idx], nodes_y_arr[new_idx]])
+                coords_node: npt.NDArray[np.float32] = np.array([nodes_x_arr[node_idx], nodes_y_arr[node_idx]])
+                coords_prev: npt.NDArray[np.float32] = np.array([nodes_x_arr[prev_idx], nodes_y_arr[prev_idx]])
+                coords_data: npt.NDArray[np.float32] = np.array([data_map_x_arr[data_idx], data_map_y_arr[data_idx]])
                 if prev_idx == -1:
                     rot = _calculate_rotation(
-                        network_structure.nodes.x_y(new_idx) - network_structure.nodes.x_y(node_idx),
-                        data_map.x_y(data_idx) - network_structure.nodes.x_y(node_idx),
+                        coords_new - coords_node,
+                        coords_data - coords_node,
                     )
                 # else relative to the previous node
                 else:
                     rot = _calculate_rotation(
-                        network_structure.nodes.x_y(new_idx) - network_structure.nodes.x_y(node_idx),
-                        network_structure.nodes.x_y(prev_idx) - network_structure.nodes.x_y(node_idx),
+                        coords_new - coords_node,
+                        coords_prev - coords_node,
                     )
                 if reversing:
                     rot = 360 - rot
@@ -218,7 +236,10 @@ def assign_to_network(
                     # for isolated edges, the algorithm gets turned-around back to the starting node with nowhere to go
                     # nb_idx == -1, pred_map[node_idx] == -1
                     # in these cases, pass _closest_intersections the prev idx so that it has a predecessor to follow
-                    d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, prev_idx)
+                    coords_data: npt.NDArray[np.float32] = np.array(
+                        [data_map_x_arr[data_idx], data_map_y_arr[data_idx]]
+                    )
+                    d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, prev_idx)
                     if d < min_dist:
                         nearest_idx = n
                         next_nearest_idx = n_n
@@ -227,12 +248,13 @@ def assign_to_network(
                 nb_idx = pred_map[node_idx]
             # if the distance is exceeded, reset and attempt in the other direction
             dist = np.hypot(
-                network_structure.nodes.xs[nb_idx] - data_map.xs[data_idx],
-                network_structure.nodes.ys[nb_idx] - data_map.ys[data_idx],
+                nodes_x_arr[nb_idx] - data_map_x_arr[data_idx],
+                nodes_y_arr[nb_idx] - data_map_y_arr[data_idx],
             )
             if dist > max_dist:
                 pred_map[nb_idx] = node_idx
-                d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, nb_idx)
+                coords_data: npt.NDArray[np.float32] = np.array([data_map_x_arr[data_idx], data_map_y_arr[data_idx]])
+                d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
                 # if the distance to the street edge is less than the nearest node, or than the prior closest edge
                 if d < min_dist:
                     min_dist = d
@@ -257,7 +279,10 @@ def assign_to_network(
                     # (such routes are still able to recover the closest edge)
                     if nb_idx == min_idx:
                         pred_map[nb_idx] = node_idx
-                    d, n, n_n = _closest_intersections(network_structure, data_map.x_y(data_idx), pred_map, nb_idx)
+                    coords_data: npt.NDArray[np.float32] = np.array(
+                        [data_map_x_arr[data_idx], data_map_y_arr[data_idx]]
+                    )
+                    d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
                     if d < min_dist:
                         nearest_idx = n
                         next_nearest_idx = n_n
@@ -270,20 +295,32 @@ def assign_to_network(
         # print(f'[{data_idx}, {nearest}, {next_nearest}],')
         # set in the data map
         # no race condition in spite of direct indexing because each is set only once?
-        data_map.nearest_assign[data_idx] = nearest_idx
+        data_map_nearest_arr[data_idx] = nearest_idx
         # in some cases next nearest will be NaN
         # this is mostly in situations where it works to leave as NaN
         # e.g. access off dead-ends...
-        data_map.next_nearest_assign[data_idx] = next_nearest_idx
+        data_map_next_nearest_arr[data_idx] = next_nearest_idx
 
-    return data_map
+    return data_map_nearest_arr, data_map_next_nearest_arr
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def aggregate_to_src_idx(
     netw_src_idx: int,
-    network_structure: structures.NetworkStructure,
-    data_map: structures.DataMap,
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
+    data_map_x_arr: npt.NDArray[np.float32],
+    data_map_y_arr: npt.NDArray[np.float32],
+    data_map_nearest_arr: npt.NDArray[np.int_],
+    data_map_next_nearest_arr: npt.NDArray[np.int_],
     max_dist: np.float32,
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
@@ -311,27 +348,35 @@ def aggregate_to_src_idx(
         _out_bearings,
         _visited_edges,
     ) = centrality.shortest_path_tree(
-        network_structure,
+        edges_start_arr,
+        edges_end_arr,
+        edges_length_arr,
+        edges_angle_sum_arr,
+        edges_imp_factor_arr,
+        edges_in_bearing_arr,
+        edges_out_bearing_arr,
+        node_edge_map,
         netw_src_idx,
         max_dist=max_dist,
         jitter_scale=jitter_scale,
         angular=angular,
     )
     # arrays for writing the reachable data points and their distances
-    reachable_data: npt.NDArray[np.bool_] = np.full(data_map.count, False)
-    reachable_data_dist: npt.NDArray[np.float32] = np.full(data_map.count, np.inf)
+    d_n = len(data_map_x_arr)
+    reachable_data: npt.NDArray[np.bool_] = np.full(d_n, False)
+    reachable_data_dist: npt.NDArray[np.float32] = np.full(d_n, np.inf)
     # iterate the data points
-    for data_idx in range(data_map.count):
+    for data_idx in range(d_n):
         # find the primary assigned network index for the data point
-        nearest_netw_idx = data_map.nearest_assign[data_idx]
+        nearest_netw_idx = data_map_nearest_arr[data_idx]
         if nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
             dist = short_dist[nearest_netw_idx]
             if dist < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(
-                    data_map.xs[data_idx] - network_structure.nodes.xs[nearest_netw_idx],
-                    data_map.ys[data_idx] - network_structure.nodes.ys[nearest_netw_idx],
+                    data_map_x_arr[data_idx] - nodes_x_arr[nearest_netw_idx],
+                    data_map_y_arr[data_idx] - nodes_y_arr[nearest_netw_idx],
                 )
                 # only assign distance if within max distance
                 total_dist = dist + d_d
@@ -339,15 +384,15 @@ def aggregate_to_src_idx(
                     reachable_data[data_idx] = True
                     reachable_data_dist[data_idx] = total_dist
         # the next-nearest may offer a closer route depending on the direction the shortest path approaches from
-        next_nearest_netw_idx = data_map.next_nearest_assign[data_idx]
+        next_nearest_netw_idx = data_map_next_nearest_arr[data_idx]
         if next_nearest_netw_idx != -1:
             # if the assigned network node is within the threshold
             dist = short_dist[next_nearest_netw_idx]
             if dist < max_dist:
                 # get the distance from the data point to the network node
                 d_d = np.hypot(
-                    data_map.xs[data_idx] - network_structure.nodes.xs[next_nearest_netw_idx],
-                    data_map.ys[data_idx] - network_structure.nodes.ys[next_nearest_netw_idx],
+                    data_map_x_arr[data_idx] - nodes_x_arr[next_nearest_netw_idx],
+                    data_map_y_arr[data_idx] - nodes_y_arr[next_nearest_netw_idx],
                 )
                 # only assign distance if within max distance
                 # AND only if closer than other direction
@@ -362,8 +407,21 @@ def aggregate_to_src_idx(
 
 @njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_landuses(
-    network_structure: structures.NetworkStructure,
-    data_map: structures.DataMap,
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    nodes_live_arr: npt.NDArray[np.bool_],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
+    data_map_x_arr: npt.NDArray[np.float32],
+    data_map_y_arr: npt.NDArray[np.float32],
+    data_map_nearest_arr: npt.NDArray[np.int_],
+    data_map_next_nearest_arr: npt.NDArray[np.int_],
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     landuse_encodings: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
@@ -381,13 +439,11 @@ def aggregate_landuses(
     """
     Aggregate landuses.
     """
-    network_structure.validate()
-    data_map.validate()
     checks.check_distances_and_betas(distances, betas)
     # check landuse encodings
     if len(landuse_encodings) == 0:
         raise ValueError("Mixed use metrics or land-use accessibilities require an array of landuse labels.")
-    if len(landuse_encodings) != data_map.count:
+    if len(landuse_encodings) != data_map_x_arr.shape[0]:
         raise ValueError("The number of landuse encodings does not match the number of data points.")
     checks.check_categorical_data(landuse_encodings)
     # catch completely missing metrics
@@ -439,7 +495,7 @@ def aggregate_landuses(
         if key_idx == 2:  # raos pairwise
             disp_check(cl_disparity_wt_matrix)
     # establish variables
-    netw_n = network_structure.nodes.count
+    netw_n = len(node_edge_map)
     d_n = len(distances)
     q_n = len(qs)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))
@@ -459,7 +515,7 @@ def aggregate_landuses(
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not network_structure.nodes.live[netw_src_idx]:
+        if not nodes_live_arr[netw_src_idx]:
             continue
         # generate the reachable classes and their respective distances
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
@@ -467,8 +523,20 @@ def aggregate_landuses(
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
         reachable_data, reachable_data_dist = aggregate_to_src_idx(
             netw_src_idx,
-            network_structure,
-            data_map,
+            nodes_x_arr,
+            nodes_y_arr,
+            edges_start_arr,
+            edges_end_arr,
+            edges_length_arr,
+            edges_angle_sum_arr,
+            edges_imp_factor_arr,
+            edges_in_bearing_arr,
+            edges_out_bearing_arr,
+            node_edge_map,
+            data_map_x_arr,
+            data_map_y_arr,
+            data_map_nearest_arr,
+            data_map_next_nearest_arr,
             global_max_dist,
             jitter_scale=jitter_scale,
             angular=angular,
@@ -557,8 +625,21 @@ def aggregate_landuses(
 
 @njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_stats(
-    network_structure: structures.NetworkStructure,
-    data_map: structures.DataMap,
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    nodes_live_arr: npt.NDArray[np.bool_],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
+    data_map_x_arr: npt.NDArray[np.float32],
+    data_map_y_arr: npt.NDArray[np.float32],
+    data_map_nearest_arr: npt.NDArray[np.int_],
+    data_map_next_nearest_arr: npt.NDArray[np.int_],
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),
@@ -596,15 +677,13 @@ def aggregate_stats(
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     """
-    network_structure.validate()
-    data_map.validate(check_assigned=True)
     checks.check_distances_and_betas(distances, betas)
     # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan, dtype=np.float32))
-    if numerical_arrays.shape[1] != data_map.count:
+    if numerical_arrays.shape[1] != data_map_x_arr.shape[0]:
         raise ValueError("The length of the numerical data arrays do not match the length of the data map.")
     checks.check_numerical_data(numerical_arrays)
     # establish variables
-    netw_n = network_structure.nodes.count
+    netw_n = len(node_edge_map)
     d_n = len(distances)
     n_n = len(numerical_arrays)
     global_max_dist: np.float32 = np.float32(np.nanmax(distances))
@@ -627,7 +706,7 @@ def aggregate_stats(
         if progress_proxy is not None:
             progress_proxy.update(1)
         # only compute for live nodes
-        if not network_structure.nodes.live[netw_src_idx]:
+        if not nodes_live_arr[netw_src_idx]:
             continue
         # generate the reachable classes and their respective distances
         # these are non-unique - i.e. simply the class of each data point within the maximum distance
@@ -635,8 +714,20 @@ def aggregate_stats(
         # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
         reachable_data, reachable_data_dist = aggregate_to_src_idx(
             netw_src_idx,
-            network_structure,
-            data_map,
+            nodes_x_arr,
+            nodes_y_arr,
+            edges_start_arr,
+            edges_end_arr,
+            edges_length_arr,
+            edges_angle_sum_arr,
+            edges_imp_factor_arr,
+            edges_in_bearing_arr,
+            edges_out_bearing_arr,
+            node_edge_map,
+            data_map_x_arr,
+            data_map_y_arr,
+            data_map_nearest_arr,
+            data_map_next_nearest_arr,
             global_max_dist,
             jitter_scale=jitter_scale,
             angular=angular,

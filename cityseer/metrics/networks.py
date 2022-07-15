@@ -449,6 +449,7 @@ def node_centrality(
     | node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance). |  # pylint: disable=line-too-long
 
     """
+    network_structure.validate()
     _distances, _betas = pair_distances_betas(distances, betas, min_threshold_wt)
     # see centrality.local_centrality for integrity checks on closeness and betweenness keys
     # typos are caught below
@@ -486,10 +487,18 @@ def node_centrality(
     else:
         progress_proxy = None
     measures_data = centrality.local_node_centrality(
-        network_structure,
         _distances,
         _betas,
         measure_keys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
         progress_proxy=progress_proxy,
@@ -582,6 +591,7 @@ def segment_centrality(
     applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
     """
+    network_structure.validate()
     _distances, _betas = pair_distances_betas(distances, betas, min_threshold_wt)
     # see centrality.local_centrality for integrity checks on closeness and betweenness keys
     # typos are caught below
@@ -615,10 +625,18 @@ def segment_centrality(
     else:
         progress_proxy = None
     measures_data = centrality.local_segment_centrality(
-        network_structure,
         _distances,
         _betas,
         measure_keys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
         progress_proxy=progress_proxy,

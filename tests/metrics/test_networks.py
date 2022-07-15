@@ -111,10 +111,18 @@ def test_node_centrality(primal_graph):
     )
     # test against underlying method
     measures_data = centrality.local_node_centrality(
-        network_structure,
         distances,
         betas,
-        measure_keys=("node_density",),
+        ("node_density",),
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
     )
     for d_idx, d_key in enumerate(distances):
         data_key = config.prep_gdf_key(f"node_density_{d_key}")
@@ -129,10 +137,18 @@ def test_node_centrality(primal_graph):
         )
         # test against underlying method
         measures_data = centrality.local_node_centrality(
-            network_structure,
             distances,
             betas,
-            measure_keys=tuple(measure_keys),
+            tuple(measure_keys),
+            network_structure.nodes.live,
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
         )
         for m_idx, measure_name in enumerate(measure_keys):
             for d_idx, d_key in enumerate(distances):
@@ -203,10 +219,18 @@ def test_segment_centrality(primal_graph):
     )
     # test against underlying method
     measures_data = centrality.local_segment_centrality(
-        network_structure,
         distances,
         betas,
-        measure_keys=("segment_density",),
+        ("segment_density",),
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
     )
     for d_idx, d_key in enumerate(distances):
         data_key = config.prep_gdf_key(f"segment_density_{d_key}")
@@ -221,10 +245,18 @@ def test_segment_centrality(primal_graph):
         )
         # test against underlying method
         measures_data = centrality.local_segment_centrality(
-            network_structure,
             distances,
             betas,
-            measure_keys=tuple(measure_keys),
+            tuple(measure_keys),
+            network_structure.nodes.live,
+            network_structure.edges.start,
+            network_structure.edges.end,
+            network_structure.edges.length,
+            network_structure.edges.angle_sum,
+            network_structure.edges.imp_factor,
+            network_structure.edges.in_bearing,
+            network_structure.edges.out_bearing,
+            network_structure.node_edge_map,
         )
         for m_idx, measure_name in enumerate(measure_keys):
             for d_idx, d_key in enumerate(distances):
