@@ -9,7 +9,6 @@ from cityseer.metrics import networks
 from cityseer.tools import graphs
 
 
-#%%
 def test_local_centrality_time(primal_graph):
     """
     Keep in mind there are several extraneous variables:
@@ -28,6 +27,8 @@ def test_local_centrality_time(primal_graph):
     <7 for 10000 iters
     without jitclasses again
     5.2 for 10000 iters
+    without proto funcs (cacheing)
+    5.15
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
