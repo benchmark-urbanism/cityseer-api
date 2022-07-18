@@ -1408,6 +1408,135 @@ def nx_split_opposing_geoms(
     return deduped_graph
 
 
+def _align_linestring_coords(
+    linestring_coords: AnyCoordsType,
+    x_y: CoordsType,
+    reverse: bool = False,
+    tolerance: float = 0.5,
+) -> ListCoordsType:
+    """
+    Align a LineString's coordinate order to either start or end at a specified x_y coordinate within a given tolerance.
+
+    If reverse=False the coordinate order will be aligned to start from the given x_y coordinate.
+    If reverse=True the coordinate order will be aligned to end at the given x_y coordinate.
+
+    """
+    # check types
+    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
+        raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
+    linestring_coords = list(linestring_coords)
+    # the target indices depend on whether reversed or not
+    if not reverse:
+        xy_idx = 0
+        opposite_idx = -1
+    else:
+        xy_idx = -1
+        opposite_idx = 0
+    # flip if necessary
+    if np.allclose(x_y, linestring_coords[opposite_idx][:2], atol=tolerance, rtol=0):
+        return linestring_coords[::-1]
+    # if still not aligning, then there is an issue
+    if not np.allclose(x_y, linestring_coords[xy_idx][:2], atol=tolerance, rtol=0):
+        raise ValueError(f"Unable to align the LineString to starting point {x_y} given the tolerance of {tolerance}.")
+    # otherwise no flipping is required and the coordinates can simply be returned
+    return linestring_coords
+
+
+def _measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) -> float:
+    """Measures the angular bearing between two coordinate pairs"""
+    y_1, x_1 = xy_1[::-1]
+    y_2, x_2 = xy_2[::-1]
+    return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))  # type: ignore
+
+
+def _measure_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
+    """Measures angle between two segment bearings per indices"""
+    xy_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
+    xy_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
+    xy_3: npt.NDArray[np.float_] = np.array(linestring_coords[idx_c])[:2]
+    # arctan2 is y / x order
+    a_1: float = _measure_bearing(xy_2, xy_1)
+    a_2: float = _measure_bearing(xy_3, xy_2)
+    angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
+    # alternative
+    # A: npt.NDArray[np.float_] = xy_2 - xy_1  # type: ignore
+    # B: npt.NDArray[np.float_] = xy_3 - xy_2  # type: ignore
+    # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))  # type: ignore
+
+    return angle
+
+
+def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
+    """ """
+    angle_sum: float = 0
+    for c_idx in range(len(linestring_coords) - 2):
+        angle_sum += _measure_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
+
+    return angle_sum
+
+
+def nx_iron_edges(
+    nx_multigraph: MultiGraph, flatten_cumulative_angle: int = 20, flatten_end_angle: int = 30, tail_length: int = 2
+) -> MultiGraph:
+    """
+    Flattens edges where angular deviation is less than max_angle. Useful for post-processing step after graph cleaning.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    max_cumulative_angle: int
+        The maximum angle against which to iron edges. Edges with angular deviation less than max_angle will be
+        straightened.
+    max_end_angle: int
+        The maximum angle for edge ends. Edges with bent edge ends less than max_end_angle will be straightened.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph`.
+
+    """
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
+    ):
+        # cumulative
+        edge_coords: ListCoordsType = edge_data["geom"].coords
+        if len(edge_coords) < 3:
+            continue
+        edge_cumulative_angle: float = _measure_cumulative_angle(edge_coords)
+        if edge_cumulative_angle < flatten_cumulative_angle:
+            new_edge_geom = geometry.LineString([edge_coords[0], edge_coords[-1]])
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = new_edge_geom
+            continue
+        # start
+        edge_coords: ListCoordsType = edge_data["geom"].coords
+        angle_sum: float = 0
+        min_idx = 0
+        max_idx = min(len(edge_coords) - 2, tail_length)
+        if max_idx > 0:
+            for c_idx in range(min_idx, max_idx):
+                angle_sum += _measure_angle(edge_coords, c_idx, c_idx + 1, c_idx + 2)
+            if angle_sum < flatten_end_angle:
+                new_edge_geom = geometry.LineString([edge_coords[0], *edge_coords[max_idx:]])
+                g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = new_edge_geom
+        # end
+        edge_coords: ListCoordsType = edge_data["geom"].coords
+        angle_sum: float = 0
+        min_idx = max(-tail_length - 2, -len(edge_coords))
+        max_idx = -2
+        if min_idx < max_idx:
+            for c_idx in range(min_idx, max_idx):
+                angle_sum += _measure_angle(edge_coords, c_idx, c_idx + 1, c_idx + 2)
+            if angle_sum < flatten_end_angle:
+                new_edge_geom = geometry.LineString([*edge_coords[: min_idx + 1], edge_coords[-1]])
+                g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = new_edge_geom
+
+    return g_multi_copy
+
+
 def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     """
     Decomposes a graph so that no edge is longer than a set maximum.
@@ -1466,7 +1595,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True), disable=config.QUIET_MODE
-    ):  # pylint: disable=line-too-long
+    ):
         # test for x, y in start coordinates
         if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
@@ -1826,19 +1955,7 @@ def network_structure_from_nx(
                 # flip if facing backwards direction
                 line_geom_coords = _align_linestring_coords(line_geom.coords, (node_x, node_y))
                 # iterate the coordinates and calculate the angular change
-                angle_sum = 0
-                for c in range(len(line_geom_coords) - 2):
-                    x_1, y_1 = line_geom_coords[c][:2]
-                    x_2, y_2 = line_geom_coords[c + 1][:2]
-                    x_3, y_3 = line_geom_coords[c + 2][:2]
-                    # arctan2 is y / x order
-                    a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                    a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
-                    angle_sum += np.abs((a_2 - a_1 + 180) % 360 - 180)
-                    # alternative
-                    # A = np.array(merged_line.coords[c + 1]) - np.array(merged_line.coords[c])
-                    # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
-                    # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
+                angle_sum = _measure_cumulative_angle(line_geom_coords)
                 if not np.isfinite(angle_sum) or angle_sum < 0:
                     raise ValueError(
                         f"Angle sum {angle_sum} for edge {start_node_key}-{end_node_key} must be finite and positive."
@@ -1855,17 +1972,14 @@ def network_structure_from_nx(
                             " and positive or positive infinity."
                         )
                 # in bearing
-                x_1: float = line_geom_coords[0][0]
-                y_1: float = line_geom_coords[0][1]
-                x_2: float = line_geom_coords[1][0]
-                y_2: float = line_geom_coords[1][1]
-                in_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[0])
+                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
+                in_bearing: float = _measure_bearing(xy_1, xy_2)
                 # out bearing
-                x_1: float = line_geom_coords[-2][0]
-                y_1: float = line_geom_coords[-2][1]
-                x_2: float = line_geom_coords[-1][0]
-                y_2: float = line_geom_coords[-1][1]
-                out_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
+                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
+                out_bearing: float = _measure_bearing(xy_1, xy_2)
+                # set edge
                 network_structure.set_edge(
                     start_node_key, end_node_key, line_len, angle_sum, imp_factor, in_bearing, out_bearing
                 )
