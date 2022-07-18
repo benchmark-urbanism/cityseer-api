@@ -694,6 +694,7 @@ def _squash_adjacent(
     nx_multigraph: MultiGraph,
     node_group: list[NodeKey],
     cent_min_degree: Optional[int] = None,
+    cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
 ) -> MultiGraph:
     """
@@ -701,31 +702,34 @@ def _squash_adjacent(
 
     The new node can either be based on:
     - The centroid of all nodes;
-    - Else, all nodes of degree greater or equal to cent_min_degree;
-    - Else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the node with
-      the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+    - else, all nodes of degree greater or equal to cent_min_degree;
+    - and / else, all nodes with cumulative adjacent OSM street names or refs greater than cent_min_names;
+    - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
+      node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if cent_min_degree is not None and cent_min_degree < 1:
+    if cent_min_degree is not None and (not isinstance(cent_min_degree, int) or cent_min_degree < 1):
         raise ValueError("merge_node_min_degree should be a positive integer.")
+    if cent_min_names is not None and (not isinstance(cent_min_names, int) or cent_min_names < 1):
+        raise ValueError("cent_min_names should be a positive integer")
     if cent_min_len_factor is not None and not 1 >= cent_min_len_factor >= 0:
-        raise ValueError("cent_min_len_factor should be a decimal between 0 and 1.")
+        raise ValueError("cent_min_len_factor should be a float between 0 and 1.")
     # remove any node keys no longer in the graph
     node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
     # filter out nodes if using cent_min_degree or cent_min_len_factor
-    filtered_nodes: list[NodeKey] = []
+    centroid_nodes: list[NodeKey] = []
     if cent_min_degree is not None:
         for nd_key in node_group:
             if nx.degree(nx_multigraph, nd_key) >= cent_min_degree:  # type: ignore
-                filtered_nodes.append(nd_key)
+                centroid_nodes.append(nd_key)
     # else if merging on a longest adjacent edges basis
     if cent_min_len_factor is not None:
         # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
-        if filtered_nodes:
-            node_pool = filtered_nodes.copy()
-            filtered_nodes = []  # reset
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
         # else use the full original node group
         else:
             node_pool = node_group
@@ -746,15 +750,38 @@ def _squash_adjacent(
         agg_len: int
         for nd_key, agg_len in zip(node_pool, agg_lens):
             if agg_len >= max_len * cent_min_len_factor:
-                filtered_nodes.append(nd_key)
-    # otherwise, derive the centroid from all nodes
-    # this is also a fallback if no nodes selected via minimum degree basis
-    if not filtered_nodes:
-        filtered_nodes = node_group
-    # prepare the names and geoms for all points used for the new centroid
+                centroid_nodes.append(nd_key)
+    # prioritise
+    if cent_min_names is not None:
+        # if nodes are pre-filtered by edge degrees or lengths, then use the filtered nodes as a starting point
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
+        # else use the full original node group
+        else:
+            node_pool = node_group
+        # values to be filtered out if encountered
+        dodge_vals = set([None, "unclassified"])
+        # iter nodes, then iter edges
+        for nd_key in node_pool:
+            agg_keys: list[str] = []
+            for nb_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
+                for edge_data in nx_multigraph[nd_key][nb_key].values():  # type: ignore
+                    for valid_key in ["names", "refs"]:
+                        if valid_key in edge_data:
+                            val: str
+                            for val in edge_data[valid_key]:
+                                if val not in dodge_vals:
+                                    agg_keys.append(val)
+            if len(agg_keys) >= cent_min_names:
+                centroid_nodes.append(nd_key)
+    # fallback
+    if not centroid_nodes:
+        centroid_nodes = node_group
+    # prepare the names and geoms for filtered points to be used for the new centroid
     node_geoms = []
     coords_set: set[str] = set()
-    for nd_key in filtered_nodes:
+    for nd_key in centroid_nodes:
         x: float = nx_multigraph.nodes[nd_key]["x"]
         y: float = nx_multigraph.nodes[nd_key]["y"]
         # in rare cases opposing geom splitting can cause overlaying nodes
@@ -988,6 +1015,7 @@ def nx_consolidate_nodes(
     neighbour_policy: Optional[str] = None,
     crawl: bool = True,
     cent_min_degree: int = 3,
+    cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
     multi_edge_len_factor: float = 1.25,
@@ -1037,6 +1065,10 @@ def nx_consolidate_nodes(
     cent_min_degree: int
         The minimum node degree for a node to be considered when calculating the new centroid for the merged node
         cluster. Defaults to 3.
+    cent_min_names: int
+        The minimum number of cumulative street names or street references to be considered when calculating the new
+        centroid. Requires `names` and `refs` edge attributes containing lists of OSM street names or refs. Defaults to
+        None.
     cent_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
@@ -1152,7 +1184,13 @@ def nx_consolidate_nodes(
         # update removed nodes
         removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        _multi_graph = _squash_adjacent(_multi_graph, node_group, cent_min_degree, cent_min_len_factor)
+        _multi_graph = _squash_adjacent(
+            _multi_graph,
+            node_group,
+            cent_min_degree=cent_min_degree,
+            cent_min_names=cent_min_names,
+            cent_min_len_factor=cent_min_len_factor,
+        )
     # remove filler nodes
     deduped_graph = nx_remove_filler_nodes(_multi_graph)
     # remove any parallel edges that may have resulted from squashing nodes
