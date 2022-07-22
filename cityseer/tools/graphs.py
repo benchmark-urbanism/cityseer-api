@@ -694,6 +694,7 @@ def _squash_adjacent(
     nx_multigraph: MultiGraph,
     node_group: list[NodeKey],
     cent_min_degree: Optional[int] = None,
+    cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
 ) -> MultiGraph:
     """
@@ -701,31 +702,34 @@ def _squash_adjacent(
 
     The new node can either be based on:
     - The centroid of all nodes;
-    - Else, all nodes of degree greater or equal to cent_min_degree;
-    - Else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the node with
-      the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+    - else, all nodes of degree greater or equal to cent_min_degree;
+    - and / else, all nodes with cumulative adjacent OSM street names or refs greater than cent_min_names;
+    - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
+      node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if cent_min_degree is not None and cent_min_degree < 1:
+    if cent_min_degree is not None and (not isinstance(cent_min_degree, int) or cent_min_degree < 1):
         raise ValueError("merge_node_min_degree should be a positive integer.")
+    if cent_min_names is not None and (not isinstance(cent_min_names, int) or cent_min_names < 1):
+        raise ValueError("cent_min_names should be a positive integer")
     if cent_min_len_factor is not None and not 1 >= cent_min_len_factor >= 0:
-        raise ValueError("cent_min_len_factor should be a decimal between 0 and 1.")
+        raise ValueError("cent_min_len_factor should be a float between 0 and 1.")
     # remove any node keys no longer in the graph
     node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
     # filter out nodes if using cent_min_degree or cent_min_len_factor
-    filtered_nodes: list[NodeKey] = []
+    centroid_nodes: list[NodeKey] = []
     if cent_min_degree is not None:
         for nd_key in node_group:
             if nx.degree(nx_multigraph, nd_key) >= cent_min_degree:  # type: ignore
-                filtered_nodes.append(nd_key)
+                centroid_nodes.append(nd_key)
     # else if merging on a longest adjacent edges basis
     if cent_min_len_factor is not None:
         # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
-        if filtered_nodes:
-            node_pool = filtered_nodes.copy()
-            filtered_nodes = []  # reset
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
         # else use the full original node group
         else:
             node_pool = node_group
@@ -746,15 +750,38 @@ def _squash_adjacent(
         agg_len: int
         for nd_key, agg_len in zip(node_pool, agg_lens):
             if agg_len >= max_len * cent_min_len_factor:
-                filtered_nodes.append(nd_key)
-    # otherwise, derive the centroid from all nodes
-    # this is also a fallback if no nodes selected via minimum degree basis
-    if not filtered_nodes:
-        filtered_nodes = node_group
-    # prepare the names and geoms for all points used for the new centroid
+                centroid_nodes.append(nd_key)
+    # prioritise
+    if cent_min_names is not None:
+        # if nodes are pre-filtered by edge degrees or lengths, then use the filtered nodes as a starting point
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
+        # else use the full original node group
+        else:
+            node_pool = node_group
+        # values to be filtered out if encountered
+        dodge_vals = set([None, "unclassified"])
+        # iter nodes, then iter edges
+        for nd_key in node_pool:
+            agg_keys: list[str] = []
+            for nb_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
+                for edge_data in nx_multigraph[nd_key][nb_key].values():  # type: ignore
+                    for valid_key in ["names", "refs"]:
+                        if valid_key in edge_data:
+                            val: str
+                            for val in edge_data[valid_key]:
+                                if val not in dodge_vals:
+                                    agg_keys.append(val)
+            if len(agg_keys) >= cent_min_names:
+                centroid_nodes.append(nd_key)
+    # fallback
+    if not centroid_nodes:
+        centroid_nodes = node_group
+    # prepare the names and geoms for filtered points to be used for the new centroid
     node_geoms = []
     coords_set: set[str] = set()
-    for nd_key in filtered_nodes:
+    for nd_key in centroid_nodes:
         x: float = nx_multigraph.nodes[nd_key]["x"]
         y: float = nx_multigraph.nodes[nd_key]["y"]
         # in rare cases opposing geom splitting can cause overlaying nodes
@@ -988,6 +1015,7 @@ def nx_consolidate_nodes(
     neighbour_policy: Optional[str] = None,
     crawl: bool = True,
     cent_min_degree: int = 3,
+    cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
     multi_edge_len_factor: float = 1.25,
@@ -1037,6 +1065,10 @@ def nx_consolidate_nodes(
     cent_min_degree: int
         The minimum node degree for a node to be considered when calculating the new centroid for the merged node
         cluster. Defaults to 3.
+    cent_min_names: int
+        The minimum number of cumulative street names or street references to be considered when calculating the new
+        centroid. Requires `names` and `refs` edge attributes containing lists of OSM street names or refs. Defaults to
+        None.
     cent_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
@@ -1152,7 +1184,13 @@ def nx_consolidate_nodes(
         # update removed nodes
         removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        _multi_graph = _squash_adjacent(_multi_graph, node_group, cent_min_degree, cent_min_len_factor)
+        _multi_graph = _squash_adjacent(
+            _multi_graph,
+            node_group,
+            cent_min_degree=cent_min_degree,
+            cent_min_names=cent_min_names,
+            cent_min_len_factor=cent_min_len_factor,
+        )
     # remove filler nodes
     deduped_graph = nx_remove_filler_nodes(_multi_graph)
     # remove any parallel edges that may have resulted from squashing nodes
@@ -1370,6 +1408,85 @@ def nx_split_opposing_geoms(
     return deduped_graph
 
 
+def _measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) -> float:
+    """Measures the angular bearing between two coordinate pairs."""
+    y_1, x_1 = xy_1[::-1]
+    y_2, x_2 = xy_2[::-1]
+    return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))  # type: ignore
+
+
+def _measure_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
+    """Measures angle between two segment bearings per indices."""
+    coords_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
+    coords_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
+    coords_3: npt.NDArray[np.float_] = np.array(linestring_coords[idx_c])[:2]
+    # arctan2 is y / x order
+    a_1: float = _measure_bearing(coords_2, coords_1)
+    a_2: float = _measure_bearing(coords_3, coords_2)
+    angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
+    # alternative
+    # A: npt.NDArray[np.float_] = coords_2 - coords_1  # type: ignore
+    # B: npt.NDArray[np.float_] = coords_3 - coords_2  # type: ignore
+    # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))  # type: ignore
+
+    return angle
+
+
+def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
+    """Measures the cumulative angle along a LineString geom's coords."""
+    angle_sum: float = 0
+    for c_idx in range(len(linestring_coords) - 2):
+        angle_sum += _measure_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
+
+    return angle_sum
+
+
+def nx_iron_edge_ends(nx_multigraph: MultiGraph, flatten_tail_length: int = 25) -> MultiGraph:
+    """
+    Flattens edges where angular deviation is less than max_angle. Useful for post-processing step after graph cleaning.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    flatten_tail_length: int
+        The length within which to flatten segment ends.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph`.
+
+    """
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
+    ):
+        src_geom = edge_data["geom"]
+        if len(src_geom.coords) < 3:
+            continue
+        candidate_geom: Optional[geometry.LineString] = None
+        # flatten short segments
+        if src_geom.length < flatten_tail_length and not np.allclose(
+            # check that it isn't a looping segment where start and end are the same
+            src_geom.coords[0],
+            src_geom.coords[-1],
+            rtol=0,
+            atol=1,
+        ):
+            candidate_geom = geometry.LineString([src_geom.coords[0], src_geom.coords[-1]])
+        elif src_geom.length > flatten_tail_length * 2 + 1:
+            mid_seg: geometry.LineString = ops.substring(
+                src_geom, flatten_tail_length, src_geom.length - flatten_tail_length
+            )
+            candidate_geom = geometry.LineString([src_geom.coords[0], *mid_seg.coords, src_geom.coords[-1]])
+        if candidate_geom is not None:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = candidate_geom
+
+    return g_multi_copy
+
+
 def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     """
     Decomposes a graph so that no edge is longer than a set maximum.
@@ -1428,7 +1545,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True), disable=config.QUIET_MODE
-    ):  # pylint: disable=line-too-long
+    ):
         # test for x, y in start coordinates
         if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
@@ -1788,19 +1905,7 @@ def network_structure_from_nx(
                 # flip if facing backwards direction
                 line_geom_coords = _align_linestring_coords(line_geom.coords, (node_x, node_y))
                 # iterate the coordinates and calculate the angular change
-                angle_sum = 0
-                for c in range(len(line_geom_coords) - 2):
-                    x_1, y_1 = line_geom_coords[c][:2]
-                    x_2, y_2 = line_geom_coords[c + 1][:2]
-                    x_3, y_3 = line_geom_coords[c + 2][:2]
-                    # arctan2 is y / x order
-                    a_1 = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
-                    a_2 = np.rad2deg(np.arctan2(y_3 - y_2, x_3 - x_2))
-                    angle_sum += np.abs((a_2 - a_1 + 180) % 360 - 180)
-                    # alternative
-                    # A = np.array(merged_line.coords[c + 1]) - np.array(merged_line.coords[c])
-                    # B = np.array(merged_line.coords[c + 2]) - np.array(merged_line.coords[c + 1])
-                    # angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
+                angle_sum = _measure_cumulative_angle(line_geom_coords)
                 if not np.isfinite(angle_sum) or angle_sum < 0:
                     raise ValueError(
                         f"Angle sum {angle_sum} for edge {start_node_key}-{end_node_key} must be finite and positive."
@@ -1817,17 +1922,14 @@ def network_structure_from_nx(
                             " and positive or positive infinity."
                         )
                 # in bearing
-                x_1: float = line_geom_coords[0][0]
-                y_1: float = line_geom_coords[0][1]
-                x_2: float = line_geom_coords[1][0]
-                y_2: float = line_geom_coords[1][1]
-                in_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[0])
+                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
+                in_bearing: float = _measure_bearing(xy_1, xy_2)
                 # out bearing
-                x_1: float = line_geom_coords[-2][0]
-                y_1: float = line_geom_coords[-2][1]
-                x_2: float = line_geom_coords[-1][0]
-                y_2: float = line_geom_coords[-1][1]
-                out_bearing: float = np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
+                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
+                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
+                out_bearing: float = _measure_bearing(xy_1, xy_2)
+                # set edge
                 network_structure.set_edge(
                     start_node_key, end_node_key, line_len, angle_sum, imp_factor, in_bearing, out_bearing
                 )
