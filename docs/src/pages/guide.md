@@ -50,24 +50,27 @@ This example will make use of OSM data downloaded from the [OSM API](https://wik
 from shapely import geometry
 import utm
 
-from cityseer.tools import graphs, plot, mock
+from cityseer.tools import graphs, plot, osm
 
 # Let's download data within a 1,250m buffer around London Soho:
 lng, lat = -0.13396079424572427, 51.51371088849723
-G_utm = mock.make_buffered_osm_graph(lng, lat, 1250)
+buffer = 1250
+# creates a WGS shapely polygon
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(
+    lng, lat, buffer
+)
+# use a WGS shapely polygon to download information from OSM
+# this version will not simplify
+G_raw = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
+# whereas this version does simplify
+G_utm = osm.osm_graph_from_poly_wgs(
+    poly_wgs, simplify=True, remove_parallel=True, iron_edges=True
+)
 
-# As an alternative, you can use OSMnx to download data. Set simplify to False:
-# e.g.: OSMnx_multi_di_graph = ox.graph_from_point((lat, lng), dist=1250, simplify=False)
-# Then convert to a cityseer compatible MultiGraph:
-# e.g.: G_utm = graphs.nx_from_osm_nx(OSMnx_multi_di_graph, tolerance=10)
-
-# select extents for plotting
+# select extents for clipping the plotting extents
 easting, northing = utm.from_latlon(lat, lng)[:2]
-# buffer
 buff = geometry.Point(easting, northing).buffer(1000)
-# extract extents
 min_x, min_y, max_x, max_y = buff.bounds
-
 
 # reusable plot function
 def simple_plot(_G, plot_geoms=True):
@@ -76,20 +79,22 @@ def simple_plot(_G, plot_geoms=True):
         _G,
         labels=False,
         plot_geoms=plot_geoms,
-        node_size=15,
-        edge_width=2,
+        node_size=3,
+        edge_width=1,
         x_lim=(min_x, max_x),
         y_lim=(min_y, max_y),
-        figsize=(20, 20),
-        dpi=200,
+        figsize=(6, 6),
+        dpi=150,
     )
-
-
-simple_plot(G_utm, plot_geoms=False)
 ```
 
-![The raw graph from OSM](/images/graph_cleaning_1.png)
+![The raw graph from OSM](/images/graph_cleaning_1a.png)
 _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
+
+![The automatically cleaned graph from OSM](/images/graph_cleaning_1b.png)
+_The automatically cleaned OSM street network for Soho, London. © OpenStreetMap contributors._
+
+The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/osm/#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
 
 ### Deducing the network topology
 
@@ -106,7 +111,7 @@ At this stage, the raw OSM graph is going to look a bit messy. Note how that nod
 ```py
 # the raw osm nodes denote the road geometries by the placement of nodes
 # the first step generates explicit LineStrings geometries for each street edge
-G = graphs.nx_simple_geoms(G_utm)
+G = graphs.nx_simple_geoms(G_raw)
 # We'll now strip the "filler-nodes" from the graph
 # the associated geometries will be welded into continuous LineStrings
 # the new LineStrings will be assigned to the newly consolidated topological links
@@ -133,7 +138,9 @@ In this case, we're trying to get rid of parallel road segments so we'll do this
 Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) function. The arguments passed to the parameters allow for a number of different strategies, such as whether to 'crawl'; minimum and maximum numbers of nodes to consider for consolidation; and to set the policies according to which nodes and edges are consolidated. These are explained more fully in the documentation. In this case, we're accepting the defaults except for explicitly setting the buffer distance and bumping the minimum size of node groups to be considered for consolidation from 2 to 3.
 
 ```py
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
+G1 = graphs.nx_consolidate_nodes(
+    G, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+)
 simple_plot(G1)
 ```
 
@@ -152,15 +159,28 @@ simple_plot(G2)
 ![Splitting opposing geoms](/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
-In the final step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
+In the next step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
 
 ```py
-G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
+G3 = graphs.nx_consolidate_nodes(
+    G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
+)
+G3 = graphs.nx_remove_filler_nodes(G3)
 simple_plot(G3)
 ```
 
 ![Final step of node consolidation](/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
+
+Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning. This is a tradeoff between reducing artefacts introduced by automated cleaning vs. retaining as much of the original network geometry as possible.
+
+```py
+G4 = graphs.nx_iron_edge_ends(G3)
+simple_plot(G4)
+```
+
+![Ironing the edges](/images/graph_cleaning_6.png)
+_After edge straightening._
 
 :::note
 
@@ -177,37 +197,37 @@ The above recipe should be enough to get you started, but there are innumerable 
 
 `cityseer` is intended to be data-source agnostic, and is predominately used in concert with `Postgres/PostGIS` databases or with `OSM` data. `OSM` queries can be used to populate `cityseer` graphs directly, else [`OSMnx`](https://osmnx.readthedocs.io/) can be used to gather `OSM` data which can then be converted into `cityseer` graphs, an example of which is provided in the code snippet beneath.
 
-`cityseer` uses `networkX` primarily as an in-out and graph preparation tool for end-user ease of use, not as a means for algorithmic analysis. It avoids `networkX` for algorithmic analysis for two reasons. First, the algorithms employed in `cityseer` are intended for localised (windowed) graph analysis specifically within an urban analysis context: they use explicit distance thresholds; engage unique variants of centrality measures; handle cases such as simplest-path heuristics and segmentised forms of analysis; and extend these algorithms to handle the derivation of land-use accessibilities, mixed-uses, and statistical aggregations using similarly windowed and network-distance-weighted methods. Second, `networkX` scales very poorly to larger graphs, and can become unusable for large cities or big distance thresholds.
+`cityseer` uses `networkX` primarily as an in-out and graph preparation tool for end-user ease of use, not as a means for algorithmic analysis. It avoids `networkX` for algorithmic analysis for two reasons. First, the algorithms employed in `cityseer` are intended for localised (windowed) graph analysis specifically within an urban analysis context: they use explicit distance thresholds; engage unique variants of centrality measures; handle cases such as simplest-path heuristics and segmentised forms of analysis; and extend these algorithms to handle the derivation of land-use accessibilities, mixed-uses, and statistical aggregations using similarly windowed and network-distance-weighted methods. Second, `networkX` scales very poorly to larger graphs, and can become unusable for large cities or large distance thresholds.
 
 The following points may be helpful when using `OSMnx` and `cityseer` together:
 
-- Whereas some basic `OSM` ingestion and conversion functions are included in the `cityseer` [`tools.mock`](/tools/mock/) module, these are primarily intended for internal code development. If used directly, these assume that the end-user will have some direct knowledge of how these APIs work and how to manipulate the recipes and conversion functions for specific situations. i.e. unless you want to roll-your-own OSM queries, it is best to stick with `OSMnx` for purposes of ingesting `OSM` networks.
 - `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method. In doing so, keep the following in mind:
   - `OSMnx` uses `networkX` `multiDiGraph` graph structures that use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` is only concerned with pedestrian networks and therefore uses `networkX` `MultiGraphs` on the premise that pedestrian networks are not ordinarily directional. When using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method, be cognisant that all directional information will be discarded.
-  - `cityseer` graph simplification and consolidation workflows will give subtly different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
+  - `cityseer` graph simplification and consolidation workflows will give different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
 - `cityseer` uses internal validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing graph manipulation outside of `cityseer` before conversion, the conversion function may complain of disconnected geometries. In these cases, you may need to relax the tolerance parameter used for error checking upon conversion to a `cityseer` `MultiGraph`, in which case geometries disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
-- For graph cleaning and simplification: `cityseer` is oriented less towards automation and ease-of-use and more towards explicit and intentional use of potentially varied processing steps. This entails a tradeoff, whereas some recipes are provided as a starting point (see [`Graph Cleaning`](/guide#graph-cleaning)), you may find yourself needing to do more up-front experimentation and fine-tuning, but with more flexibility in how these methods are applied for a given network topology: e.g. steps can be included or omitted, used in different sequences, or iteratively repeated. Some of these methods, particularly [`tools.graphs.nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes), may have severable tunable parameters which can have markedly different outcomes. This philosophy is by design, and if you want a simplified method that you can easily repeat, you'll need to configure and wrap your preferred sequence of steps in a utility function.
 
 The below example is available as a Jupyter Notebook on the [`Examples`](/examples/) page.
 
 ```py
-from cityseer import tools
 import osmnx as ox
 from shapely import geometry
 import utm
 
-# centre-point
+from cityseer.tools import graphs, plot, osm
+
+# centrepoint
 lng, lat = -0.13396079424572427, 51.51371088849723
 
 # select extents for plotting
 easting, northing = utm.from_latlon(lat, lng)[:2]
-buff = geometry.Point(easting, northing).buffer(1000)
-min_x, min_y, max_x, max_y = buff.bounds
+buffer_dist = 1250
+buffer_poly = geometry.Point(easting, northing).buffer(1000)
+min_x, min_y, max_x, max_y = buffer_poly.bounds
 
 # reusable plot function
 def simple_plot(_G):
     # plot using the selected extents
-    tools.plot.plot_nx(
+    plot.plot_nx(
         _G,
         labels=False,
         plot_geoms=True,
@@ -222,7 +242,7 @@ def simple_plot(_G):
 
 # Let's use OSMnx to fetch an OSM graph
 # We'll use the same raw network for both workflows (hence simplify=False)
-multi_di_graph_raw = ox.graph_from_point((lat, lng), dist=1250, simplify=False)
+multi_di_graph_raw = ox.graph_from_point((lat, lng), dist=buffer_dist, simplify=False)
 
 # Workflow 1: Using OSMnx to prepare the graph
 # ============================================
@@ -231,29 +251,33 @@ multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = tools.graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
+multi_graph_cons = graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
 simple_plot(multi_graph_cons)
 
-# WORKFLOW 2: Using cityseer to prepare the graph
-# ===============================================
-# let's convert the OSMnx graph to a cityseer compatible `multiGraph`
-G_raw = tools.graphs.nx_from_osm_nx(multi_di_graph_raw)
-# convert to UTM
-G = tools.graphs.nx_wgs_to_utm(G_raw)
-# infer geoms
-G = tools.graphs.nx_simple_geoms(G)
-# remove degree=2 nodes
-G = tools.graphs.nx_remove_filler_nodes(G)
-# remove dangling nodes
-G = tools.graphs.nx_remove_dangling_nodes(G, despine=10)
-# repeat degree=2 removal to remove orphaned nodes due to despining
-G = tools.graphs.nx_remove_filler_nodes(G)
-# let's consolidate the nodes
-G1 = tools.graphs.nx_consolidate_nodes(G, buffer_dist=10, min_node_group=3)
-# and we'll try to remove as many parallel roadways as possible
-G2 = tools.graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = tools.graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4)
-simple_plot(G3)
+# WORKFLOW 2: Using cityseer to manually clean an OSMnx graph
+# ===========================================================
+G_raw = graphs.nx_from_osm_nx(multi_di_graph_raw)
+G = graphs.nx_wgs_to_utm(G_raw)
+G = graphs.nx_simple_geoms(G)
+G = graphs.nx_remove_filler_nodes(G)
+G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
+G = graphs.nx_remove_filler_nodes(G)
+G1 = graphs.nx_consolidate_nodes(
+    G, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+)
+G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
+G3 = graphs.nx_consolidate_nodes(
+    G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
+)
+G3 = graphs.nx_remove_filler_nodes(G3)
+G4 = graphs.nx_iron_edge_ends(G3, flatten_tail_length=25)
+simple_plot(G4)
+
+# WORKFLOW 3: Using cityseer to download and automatically simplify the graph
+# ===========================================================================
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(lng, lat, buffer_dist)
+G_utm = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+simple_plot(G_utm)
 ```
 
 ![Example OSMnx simplification and consolidation](/images/osmnx_simplification.png)
@@ -261,6 +285,9 @@ _An example `OSMnx` simplification and consolidation workflow._
 
 ![Example OSMnx to cityseer workflow](/images/osmnx_cityseer_simplification.png)
 _An example `OSMnx` to `cityseer` conversion followed by simplification and consolidation workflow in `cityseer`._
+
+![Example cityseer only workflow](/images/cityseer_only_simplification.png)
+_An example where OSM data is retrieved with `cityseer` with automatic simplification._
 
 ## Optimised packages
 
