@@ -38,9 +38,9 @@ Good sources of street network data, such as the Ordnance Survey's [OS Open Road
 - The network has been simplified to its essential structure: i.e. unnecessarily complex representations of intersections, on-ramps, divided roadways, etc., have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. Simplified forms of network representation contrast those focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)): these introduce unnecessary complexity serving to hinder rather than help shortest-path algorithms in the sense used by pedestrian centrality measures.
 - The topology of the network is kept distinct from the geometry of the streets. Often-times, as can be seen with [Open Street Map](https://www.openstreetmap.org), additional nodes are added to streets to represent geometric twists and turns along a roadway. These additional nodes cause topological distortions that impact network centrality measures.
 
-When a high-quality source is available, it may be best not to attempt additional clean-up unless there is a particular reason. On the other hand, many indispensable sources of network information, particularly Open Street Map data, can be particularly messy for network analysis purposes.
+When a high-quality source is available, it is best not to attempt additional clean-up unless there is a particular reason. On the other hand, many indispensable sources of network information, particularly Open Street Map data, can be particularly messy for network analysis purposes.
 
-`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible.
+`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which may otherwise confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible.
 
 ### Downloading data
 
@@ -172,7 +172,7 @@ simple_plot(G3)
 ![Final step of node consolidation](/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
-Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning. This is a tradeoff between reducing artefacts introduced by automated cleaning vs. retaining as much of the original network geometry as possible.
+Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning, which will sometimes bend the ends of edge segments to the locations of new centroids. This involves a tradeoff and should be used conservatively, if at all.
 
 ```py
 G4 = graphs.nx_iron_edge_ends(G3)
