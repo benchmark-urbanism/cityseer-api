@@ -911,7 +911,9 @@ def _merge_parallel_edges(
         # otherwise, add if not already added from another (parallel) edge
         elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
             # there are normally max two edges, but sometimes three or more
-            edges_data: list[EdgeData] = nx_multigraph[start_nd_key][end_nd_key].values()
+            edges_data: list[EdgeData] = []
+            for edge_data in nx_multigraph.get_edge_data(start_nd_key, end_nd_key).values():  # type: ignore
+                edges_data.append(edge_data)
             edge_info = _EdgeInfo()
             # find the shortest of the geoms
             edge_geoms = [edge["geom"] for edge in edges_data]
