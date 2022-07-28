@@ -904,14 +904,16 @@ def _merge_parallel_edges(
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True), disable=config.QUIET_MODE
-    ):  # pylint: disable=line-too-long
+    ):
         # if only one edge is associated with this node pair, then add
         if nx_multigraph.number_of_edges(start_nd_key, end_nd_key) == 1:
             deduped_graph.add_edge(start_nd_key, end_nd_key, **edge_data)
         # otherwise, add if not already added from another (parallel) edge
         elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
-            # there are normally two edges, but sometimes three or possibly more
-            edges_data: list[EdgeData] = nx_multigraph[start_nd_key][end_nd_key].values()
+            # there are normally max two edges, but sometimes three or more
+            edges_data: list[EdgeData] = []
+            for edge_data in nx_multigraph.get_edge_data(start_nd_key, end_nd_key).values():  # type: ignore
+                edges_data.append(edge_data)
             edge_info = _EdgeInfo()
             # find the shortest of the geoms
             edge_geoms = [edge["geom"] for edge in edges_data]
@@ -919,12 +921,16 @@ def _merge_parallel_edges(
             shortest_idx = edge_lens.index(min(edge_lens))
             shortest_len = edge_lens.pop(shortest_idx)
             shortest_geom = edge_geoms.pop(shortest_idx)
+            shortest_data = edges_data.pop(shortest_idx)
+            # start by gathering shortest's data
+            edge_info.gather_edge_info(shortest_data)
+            # process longer geoms
             longer_geoms: list[geometry.LineString] = []
             for edge_len, edge_geom, edge_data in zip(edge_lens, edge_geoms, edges_data):
                 # retain distinct edges where they are substantially longer than the shortest geom
                 if edge_len > shortest_len * multi_edge_len_factor and edge_len > multi_edge_min_len:
-                    copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
-                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **copy_edge_data)
+                    edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **edge_data_copy)
                 # otherwise, add to the list of longer geoms to be merged along with shortest
                 else:
                     edge_info.gather_edge_info(edge_data)
@@ -1348,9 +1354,9 @@ def nx_split_opposing_geoms(
             if new_nd_name is None:
                 continue
             edge_data: EdgeData = _multi_graph[start_nd_key][end_nd_key][edge_idx]
-            copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
-            _multi_graph.add_edge(start_nd_key, new_nd_name, **copy_edge_data)
-            _multi_graph.add_edge(end_nd_key, new_nd_name, **copy_edge_data)
+            edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+            _multi_graph.add_edge(start_nd_key, new_nd_name, **edge_data_copy)
+            _multi_graph.add_edge(end_nd_key, new_nd_name, **edge_data_copy)
             if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=config.ATOL, rtol=0,) or np.allclose(
                 s_nd_geom.coords,
                 new_edge_geom_a.coords[-1][:2],
@@ -1609,16 +1615,16 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
                     live = False
                 g_multi_copy.nodes[new_nd_name]["live"] = live
             # add the edge
-            copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
-            g_multi_copy.add_edge(prior_node_id, new_nd_name, geom=line_segment, **copy_edge_data)
+            edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+            g_multi_copy.add_edge(prior_node_id, new_nd_name, geom=line_segment, **edge_data_copy)
             # increment the step and node id
             prior_node_id = new_nd_name
             step += step_size
         # set the last edge manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add edge
         line_segment = ops.substring(line_geom, step, line_geom.length)  # type: ignore
-        copy_edge_data = {k: v for k, v in edge_data.items() if k != "geom"}
-        g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **copy_edge_data)
+        edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+        g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **edge_data_copy)
 
     return g_multi_copy
 
