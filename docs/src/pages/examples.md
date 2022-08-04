@@ -18,7 +18,7 @@ The `Getting Started` guide from the [intro](/intro/).
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/graph_cleaning.ipynb" target="_blank">Github: graph_cleaning.ipynb</a>
 
-## Importing OSM data with OSMnx
+## Importing OSM data
 
 An example of how to import OSM data as discussed in [OSM and NetworkX](/guide#osm-and-networkx).
 
@@ -26,9 +26,13 @@ An example of how to import OSM data as discussed in [OSM and NetworkX](/guide#o
 
 ## Centralities for Inner London
 
-An example workflow computing network centralities for London.
+An example workflow computing network centralities for London using Ordnance Survey Open Roads data:
 
-<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_centrality.ipynb" target="_blank">Github: london_centrality.ipynb</a>
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_os_open.ipynb" target="_blank">Github: centrality_os_open.ipynb</a>
+
+An example workflow computing network centralities for London using OSM data:
+
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_osm.ipynb" target="_blank">Github: centrality_osm.ipynb</a>
 
 ## Accessibility to Pubs for Inner London
 
