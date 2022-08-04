@@ -26,6 +26,7 @@ def plot_scatter(
     s_exp: float = 1,
     cmap_key: str = "Reds",
     rasterized: bool = True,
+    face_colour: str = "white",
 ):
     """ """
     # get extents relative to centre and ax size
@@ -60,7 +61,7 @@ def plot_scatter(
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_aspect(1)
-    ax.set_facecolor("white")
+    ax.set_facecolor(face_colour)
 
     return im
 

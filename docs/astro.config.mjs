@@ -124,4 +124,7 @@ export default defineConfig({
     }),
     sitemap(),
   ],
+  legacy: {
+    astroFlavoredMarkdown: true,
+  }
 })

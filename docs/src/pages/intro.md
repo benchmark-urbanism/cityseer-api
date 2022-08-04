@@ -1,7 +1,5 @@
 ---
 layout: '@src/layouts/PageLayout.astro'
-setup: |
-  const max = 'max'
 ---
 
 # Getting Started

@@ -1,6 +1,5 @@
 ---
 import { Markdown } from 'astro/components'
-import ArXivLink from '@src/components/ArXivLink.vue'
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -221,6 +220,185 @@ A `networkX` `MultiGraph` with disconnected components optionally removed, and d
       </div>
     </div>
   </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="snap-linestring-startpoint">
+      <a aria-hidden="true" href="#snap-linestring-startpoint" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>snap_linestring_startpoint
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>snap_linestring_startpoint(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">linestring_coords, </div>
+          <div class="yap func-sig-param">x_y)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Snaps a LineString's start-point coordinate to a specified x_y coordinate.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">linestring_coords</div>
+          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list, tuple, or numpy array of x, y coordinate tuples.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">x_y</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of floats representing the target x, y coordinates against which to align the linestring start point.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">linestring_coords</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list of linestring coords aligned to the specified starting point.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="snap-linestring-endpoint">
+      <a aria-hidden="true" href="#snap-linestring-endpoint" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>snap_linestring_endpoint
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>snap_linestring_endpoint(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">linestring_coords, </div>
+          <div class="yap func-sig-param">x_y)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Snaps a LineString's end-point coordinate to a specified x_y coordinate.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">linestring_coords</div>
+          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list, tuple, or numpy array of x, y coordinate tuples.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">x_y</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of floats representing the target x, y coordinates against which to align the linestring end point.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">linestring_coords</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list of linestring coords aligned to the specified ending point.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="align-linestring-coords">
+      <a aria-hidden="true" href="#align-linestring-coords" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>align_linestring_coords
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>align_linestring_coords(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">linestring_coords, </div>
+          <div class="yap func-sig-param">x_y, </div>
+          <div class="yap func-sig-param">reverse=False, </div>
+          <div class="yap func-sig-param">tolerance=0.5)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Align a LineString's coordinate order to either start or end at a specified x_y coordinate within a given tolerance.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">linestring_coords</div>
+          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list, tuple, or numpy array of x, y coordinate tuples.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">x_y</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">reverse</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True the coordinate order will be aligned to end at the given x_y coordinate. False by default.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">tolerance</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">linestring_coords</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list of linestring coords aligned to the specified endpoint.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
   <section class="yap class">
     <h2 class="yap class-title" id="edgeinfo">
       <a aria-hidden="true" href="#edgeinfo" tabindex="-1">
@@ -367,6 +545,82 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="merge-parallel-edges">
+      <a aria-hidden="true" href="#merge-parallel-edges" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>merge_parallel_edges
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>merge_parallel_edges(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">merge_edges_by_midline, </div>
+          <div class="yap func-sig-param">multi_edge_len_factor, </div>
+          <div class="yap func-sig-param">multi_edge_min_len)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Check a MultiGraph for duplicate edges; which, if found, will be merged. The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
+- An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+- Else, the shortest edge, with longer edges discarded;
+- Note that substantially longer parallel edges are retained, instead of discarded, if they exceed `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">merge_edges_by_midline</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be retained as the new geometry and the longer edges will be discarded. Defaults to True.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">multi_edge_len_factor</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">multi_edge_min_len</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+See `multi_edge_len_factor`. Defaults to 100.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with consolidated nodes.
 </Markdown></div>
       </div>
     </div>
@@ -962,84 +1216,6 @@ An optional `networkX` graph to use as a backbone for unpacking the data. The nu
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf` `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="nx-from-osm-nx">
-      <a aria-hidden="true" href="#nx-from-osm-nx" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_from_osm_nx
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_from_osm_nx(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multidigraph, </div>
-          <div class="yap func-sig-param">node_attributes, </div>
-          <div class="yap func-sig-param">edge_attributes, </div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
-
- `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
-
- Note that `OSMnx` `geometry` attributes only exist for simplified edges: if a `geometry` edge attribute is not found, then a simple (straight) `shapely` `LineString` geometry will be inferred from the respective start and end nodes.
-
- Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, i.e. to avoid situations where attributes may fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the `node_attributes` parameter or edge attribute keys per the `edge_attributes` parameter.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multidigraph</div>
-          <div class="yap doc-str-elem-type">MultiDiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attributes, with optional `geometry` edge attributes containing `LineString` geoms (for simplified edges).
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">node_attributes</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">edge_attributes</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">tolerance</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if within the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attribute.
 </Markdown></div>
       </div>
     </div>
