@@ -8,7 +8,7 @@ from matplotlib import colors
 from shapely import geometry
 
 from cityseer.metrics import layers, networks  # pylint: disable=import-error
-from cityseer.tools import graphs, mock, osm, plot  # pylint: disable=import-error
+from cityseer.tools import graphs, io, mock, plot  # pylint: disable=import-error
 
 PLOT_RC_PATH = pathlib.Path(__file__).parent / "matplotlibrc"
 print(f"matplotlibrc path: {PLOT_RC_PATH}")
@@ -100,9 +100,9 @@ plot.plot_nx_primal_or_dual(
 # graph cleanup examples
 lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(lng, lat, buffer)
-graph_raw = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
-graph_utm = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer)
+graph_raw = io.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
+graph_utm = io.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
 # plot buffer
 easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(750)
@@ -340,12 +340,12 @@ multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
+multi_graph_cons = io.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
 simple_plot(multi_graph_cons, f"{IMAGES_PATH}/osmnx_simplification.{FORMAT}")
 
 # WORKFLOW 2: Using cityseer to manually clean an OSMnx graph
 # ===========================================================
-G_raw = graphs.nx_from_osm_nx(multi_di_graph_raw)
+G_raw = io.nx_from_osm_nx(multi_di_graph_raw)
 G = graphs.nx_wgs_to_utm(G_raw)
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_remove_filler_nodes(G)
@@ -362,6 +362,6 @@ simple_plot(G3, f"{IMAGES_PATH}/osmnx_cityseer_simplification.{FORMAT}")
 
 # WORKFLOW 3: Using cityseer to download and automatically simplify the graph
 # ===========================================================================
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(lng, lat, buffer_dist)
-G_utm = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer_dist)
+G_utm = io.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
 simple_plot(G_utm, f"{IMAGES_PATH}/cityseer_only_simplification.{FORMAT}")

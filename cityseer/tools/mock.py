@@ -325,7 +325,7 @@ def mock_landuse_categorical_data(
 
     """
     np.random.seed(seed=random_seed)
-    random_class_str = string.ascii_lowercase
+    random_class_str: list[str] = list(string.ascii_lowercase)
     if num_classes > len(random_class_str):
         raise ValueError(
             f"The requested {num_classes} classes exceeds max available categorical classes of {len(random_class_str)}"

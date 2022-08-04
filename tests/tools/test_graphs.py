@@ -1184,8 +1184,3 @@ def test_nx_from_network_structure(primal_graph):
             network_structure,
             nx_multigraph=corrupt_primal_graph,
         )
-
-
-def test_nx_from_osm_nx():
-    # TODO: not yet implemented.
-    pass
