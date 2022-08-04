@@ -238,8 +238,7 @@ omit = [
 package_root_relative_path = './'
 intro_template = """
 ---
-import { Markdown } from 'astro/components'
-import ArXivLink from '@src/components/ArXivLink.vue'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
