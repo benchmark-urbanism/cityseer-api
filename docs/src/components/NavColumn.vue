@@ -23,7 +23,7 @@ nav#nav-tree
 
 <script setup>
 import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
-import anime from 'animejs/lib/anime.es.js'
+import anime from 'animejs/lib/anime.js'
 import { nextTick, onMounted, reactive } from 'vue'
 
 const props = defineProps({
@@ -46,8 +46,13 @@ onMounted(() => {
 const prepareSideBarNav = () => {
   const contentCol = document.getElementById('content-col')
   const headers = contentCol.querySelectorAll('h2') // h1?
+  // enforce trailing slash
+  let currentPath = props.currentPath
+  if (currentPath.slice(-1) !== '/') {
+    currentPath = `${currentPath}/`
+  }
   props.navPaths.forEach((path) => {
-    const isActive = path === props.currentPath
+    const isActive = path === currentPath
     const headerInfo = []
     if (isActive) {
       headers.forEach((header) => {
