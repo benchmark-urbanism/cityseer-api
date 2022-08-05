@@ -23,7 +23,7 @@ nav#nav-tree
 
 <script setup>
 import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
-import anime from 'animejs/lib/anime.es'
+import anime from 'animejs/lib/anime.es.js'
 import { nextTick, onMounted, reactive } from 'vue'
 
 const props = defineProps({

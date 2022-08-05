@@ -1,5 +1,5 @@
 ---
-import { Markdown } from 'astro/components'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -210,7 +210,7 @@ A shapely Polygon representing the extents for which to fetch the OSM network. M
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional custom OSM request. None by default. If provided, this must include a &quot;geom_osm&quot; string formatting key for inserting the geometry passed to the OSM API query. See the discussion below.
+An optional custom OSM request. None by default. If provided, this must include a "geom_osm" string formatting key for inserting the geometry passed to the OSM API query. See the discussion below.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -262,13 +262,13 @@ The default OSM request will attempt to find all walkable routes. It will ignore
 custom_request = f'''
 [out:json];
 (
-way[&quot;highway&quot;]
-[&quot;area&quot;!=&quot;yes&quot;]
-[&quot;highway&quot;!~&quot;footway|pedestrian|steps|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction&quot;]
-(poly:&quot;{geom_osm}&quot;);
+way["highway"]
+["area"!="yes"]
+["highway"!~"footway|pedestrian|steps|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction"]
+(poly:"{geom_osm}");
 );
 out body;
-&gt;;
+>;
 out qt;
 '''
 ```
