@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '3.4.2'
+version = '3.4.3'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.8, <3.11"
@@ -238,8 +238,7 @@ omit = [
 package_root_relative_path = './'
 intro_template = """
 ---
-import { Markdown } from 'astro/components'
-import ArXivLink from '@src/components/ArXivLink.vue'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -249,10 +248,11 @@ outro_template = """
 """
 module_map = [
   { module = "cityseer.structures", py = "cityseer/structures.py", astro = "docs/src/pages/structures.astro" },
-  { module = "cityseer.metrics.layers", py = "cityseer/metrics/layers.py", astro = "docs/src/pages/metrics/layers.astro" },
+  { module = "cityseer.metrics.observe", py = "cityseer/metrics/observe.py", astro = "docs/src/pages/metrics/observe.astro" },
   { module = "cityseer.metrics.networks", py = "cityseer/metrics/networks.py", astro = "docs/src/pages/metrics/networks.astro" },
+  { module = "cityseer.metrics.layers", py = "cityseer/metrics/layers.py", astro = "docs/src/pages/metrics/layers.astro" },
   { module = "cityseer.tools.graphs", py = "cityseer/tools/graphs.py", astro = "docs/src/pages/tools/graphs.astro" },
-  { module = "cityseer.tools.osm", py = "cityseer/tools/osm.py", astro = "docs/src/pages/tools/osm.astro" },
+  { module = "cityseer.tools.io", py = "cityseer/tools/io.py", astro = "docs/src/pages/tools/io.astro" },
   { module = "cityseer.tools.plot", py = "cityseer/tools/plot.py", astro = "docs/src/pages/tools/plot.astro" },
   { module = "cityseer.tools.mock", py = "cityseer/tools/mock.py", astro = "docs/src/pages/tools/mock.astro" },
 ]

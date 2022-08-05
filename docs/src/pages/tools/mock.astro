@@ -1,6 +1,5 @@
 ---
-import { Markdown } from 'astro/components'
-import ArXivLink from '@src/components/ArXivLink.vue'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -275,7 +274,7 @@ An optional random seed, by default None
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `GeoDataFrame` with a &quot;categorical_landuses&quot; data column for testing purposes. The number of rows will match the `length` parameter. The categorical data will consist of randomly selected characters from `num_classes`.
+A `GeoDataFrame` with a "categorical_landuses" data column for testing purposes. The number of rows will match the `length` parameter. The categorical data will consist of randomly selected characters from `num_classes`.
 </Markdown></div>
       </div>
     </div>
@@ -378,7 +377,7 @@ An optional random seed, by default None
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `GeoDataFrame` with a &quot;mock_numerical_x&quot; data columns for testing purposes. The number of rows will match the `length` parameter. The numer of numerical columns will match the `num_arrs` paramter.
+A `GeoDataFrame` with a "mock_numerical_x" data columns for testing purposes. The number of rows will match the `length` parameter. The numer of numerical columns will match the `num_arrs` paramter.
 </Markdown></div>
       </div>
     </div>
@@ -402,7 +401,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Generate a series of randomly generated counts and corresponding probabilities. This function is used for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species &quot;classes&quot; with probabilities computed accordingly.
+Generate a series of randomly generated counts and corresponding probabilities. This function is used for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">

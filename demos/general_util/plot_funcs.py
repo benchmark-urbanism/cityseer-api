@@ -1,120 +1,74 @@
-from pathlib import Path
+from __future__ import annotations
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from matplotlib.colors import LinearSegmentedColormap
+from shapely import geometry
 from sklearn.preprocessing import minmax_scale
+from tqdm import tqdm
 
 template_cmap = LinearSegmentedColormap.from_list("reds", ["#FAFAFA", "#9a0007", "#ff6659", "#d32f2f"])
 
 
-def plt_setup():
-    """Flush previous matplotlib invocations."""
-    plt.close("all")
-    plt.cla()
-    plt.clf()
-    mpl.rcdefaults()  # resets seaborn
-    mpl_rc_path = Path(Path.cwd() / "./matplotlib.rc")
-    mpl.rc_file(mpl_rc_path)
-
-
-def _dynamic_view_extent(fig, ax, km_per_inch: float, centre: tuple):
-    bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    width, height = bbox.width, bbox.height
-    width_m = width * km_per_inch * 1000
-    height_m = height * km_per_inch * 1000
-    x_left = centre[0] - width_m / 2
-    x_right = centre[0] + width_m / 2
-    y_bottom = centre[1] - height_m / 2
-    y_top = centre[1] + height_m / 2
-
-    return x_left, x_right, y_bottom, y_top
-
-
-def _view_idx(xs, ys, x_left, x_right, y_bottom, y_top):
-    select = xs > x_left
-    select = np.logical_and(select, xs < x_right)
-    select = np.logical_and(select, ys > y_bottom)
-    select = np.logical_and(select, ys < y_top)
-    select_idx = np.where(select)[0]
-
-    return select_idx
-
-
-def _prepare_v(vals):
-    # don't reshape distribution: emphasise larger values if necessary using exponential
-    # i.e. amplify existing distribution rather than using a reshaped normal or uniform distribution
-    # clip out outliers
-    vals = np.clip(vals, np.nanpercentile(vals, 0.1), np.nanpercentile(vals, 99.9))
-    # scale colours to [0, 1]
-    vals = minmax_scale(vals, feature_range=(0, 1))
-    return vals
-
-
 def plot_scatter(
-    fig,
-    ax,
-    xs,
-    ys,
-    vals=None,
-    bbox_extents: tuple[int, int, int, int] = None,
-    centre: tuple[int, int] = (532000, 183000),
-    km_per_inch=4,
-    s_min=0,
-    s_max=0.6,
-    c_exp=1,
-    s_exp=1,
-    cmap=None,
-    rasterized=True,
-    **kwargs,
+    ax: plt.Axes,
+    xs: npt.NDArray[np.float_],
+    ys: npt.NDArray[np.float_],
+    vals: npt.NDArray[np.float32],
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    c_min: float = 0,
+    c_max: float = 1,
+    c_exp: float = 1,
+    s_min: float = 0,
+    s_max: float = 1,
+    s_exp: float = 1,
+    cmap_key: str = "Reds",
+    rasterized: bool = True,
+    face_colour: str = "white",
 ):
     """ """
-    if vals is not None and vals.ndim == 2:
-        raise ValueError("Please pass a single dimensional array")
-    if cmap is None:
-        cmap = template_cmap
     # get extents relative to centre and ax size
-    if bbox_extents:
-        print("Found bbox extents, ignoring centre")
-        y_bottom, x_left, y_top, x_rightpl = bbox_extents
-    else:
-        x_left, x_right, y_bottom, y_top = _dynamic_view_extent(fig, ax, km_per_inch, centre=centre)
-    select_idx = _view_idx(xs, ys, x_left, x_right, y_bottom, y_top)
-    if "c" in kwargs and isinstance(kwargs["c"], (list, tuple, np.ndarray)):
-        c = np.array(kwargs["c"])
-        kwargs["c"] = c[select_idx]
-    elif "c" in kwargs and isinstance(kwargs["c"], str):
-        pass
-    elif vals is not None:
-        v = _prepare_v(vals)
-        # apply exponential - still [0, 1]
-        c = v**c_exp
-        kwargs["c"] = c[select_idx]
-    if "s" in kwargs and isinstance(kwargs["c"], (list, tuple, np.ndarray)):
-        s = np.array(kwargs["c"])
-        kwargs["s"] = s[select_idx]
-    elif vals is not None:
-        v = _prepare_v(vals)
-        s = v**s_exp
-        # rescale s to [s_min, s_max]
-        s = minmax_scale(s, feature_range=(s_min, s_max))
-        kwargs["s"] = s[select_idx]
+    min_x, min_y, max_x, max_y = bbox_extents
+    # filter
+    select = xs > min_x
+    select = np.logical_and(select, xs < max_x)
+    select = np.logical_and(select, ys > min_y)
+    select = np.logical_and(select, ys < max_y)
+    select_idx = np.where(select)[0]
+    # remove any extreme outliers
+    v = np.clip(vals, np.nanpercentile(vals, 0.1), np.nanpercentile(vals, 99.9))
+    # shape if wanted
+    c = v**c_exp
+    c: npt.NDArray[np.float_] = minmax_scale(c, feature_range=(c_min, c_max))
+    s = v**s_exp
+    s: npt.NDArray[np.float_] = minmax_scale(s, feature_range=(s_min, s_max))
+    # plot
     im = ax.scatter(
-        xs[select_idx], ys[select_idx], linewidths=0, edgecolors="none", cmap=cmap, rasterized=rasterized, **kwargs
+        xs[select_idx],
+        ys[select_idx],
+        c=c[select_idx],
+        s=s[select_idx],
+        linewidths=0,
+        edgecolors="none",
+        cmap=plt.get_cmap(cmap_key),
+        rasterized=rasterized,
     )
-    ax.set_xlim(left=x_left, right=x_right)
-    ax.set_ylim(bottom=y_bottom, top=y_top)
+    # limits
+    ax.set_xlim(left=min_x, right=max_x)
+    ax.set_ylim(bottom=min_y, top=max_y)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_aspect(1)
+    ax.set_facecolor(face_colour)
+
     return im
 
 
 def plot_heatmap(
     heatmap_ax,
-    heatmap: npt.NDArray[np.float32] = None,
+    heatmap: npt.NDArray[np.float32] | None = None,
     row_labels: list = None,
     col_labels: list = None,
     set_row_labels: bool = True,
@@ -184,3 +138,40 @@ def plot_heatmap(
                     fontsize=grid_fontsize,
                 )
     return im
+
+
+def plot_nx_edges(
+    ax: plt.Axes,
+    nx_multigraph: nx.MultiGraph,
+    edge_metrics_key: str,
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    colour: str = "#ef1a33",
+    rasterized: bool = True,
+):
+    """ """
+    min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
+    # extract data for shaping
+    edge_vals: list[str] = []
+    edge_geoms: list[geometry.LineString] = []
+    for _, _, edge_data in tqdm(nx_multigraph.edges(data=True)):  # type: ignore
+        edge_vals.append(edge_data[edge_metrics_key])  # type: ignore
+        edge_geoms.append(edge_data["geom"])  # type: ignore
+    edge_vals_arr: npt.NDArray[np.float_] = np.array(edge_vals)
+    edge_vals_arr = np.clip(edge_vals_arr, np.nanpercentile(edge_vals_arr, 0.1), np.nanpercentile(edge_vals_arr, 99.9))
+    # plot using geoms
+    n_edges = edge_vals_arr.shape[0]
+    for idx in tqdm(range(n_edges)):
+        xs = np.array(edge_geoms[idx].coords.xy[0])
+        ys = np.array(edge_geoms[idx].coords.xy[1])
+        if np.any(xs < min_x) or np.any(xs > max_x):
+            continue
+        if np.any(ys < min_y) or np.any(ys > max_y):
+            continue
+        # normalise val
+        edge_val = edge_vals_arr[idx]
+        norm_val = (edge_val - edge_vals_arr.min()) / (edge_vals_arr.max() - edge_vals_arr.min())
+        val_shape = norm_val * 0.95 + 0.05
+        ax.plot(xs, ys, linewidth=val_shape, color=colour, rasterized=rasterized)
+    ax.axis("off")
+    plt.xlim(min_x, max_x)
+    plt.ylim(min_y, max_y)
