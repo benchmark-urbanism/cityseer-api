@@ -1316,7 +1316,7 @@ summary = "Module for decorators, wrappers and monkey patching."
 
 [[package]]
 name = "yapper"
-version = "0.3.4"
+version = "0.3.5"
 requires_python = ">=3.8,<4.0"
 summary = "Parser for converting python docstrings to .astro files for the Astro static site generator."
 dependencies = [
@@ -2754,9 +2754,9 @@ content_hash = "sha256:0fa61d545097a60d058498b3ce980b0e4fa9d3bd5f6f6d2412cfe3e76
     {url = "https://files.pythonhosted.org/packages/f9/3c/110e52b9da396a4ef3a0521552a1af9c7875a762361f48678c1ac272fd7e/wrapt-1.14.1-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:34aa51c45f28ba7f12accd624225e2b1e5a3a45206aa191f6f9aac931d9d56fe"},
     {url = "https://files.pythonhosted.org/packages/fd/70/8a133c88a394394dd57159083b86a564247399440b63f2da0ad727593570/wrapt-1.14.1-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:257fd78c513e0fb5cdbe058c27a0624c9884e735bbd131935fd49e9fe719d310"},
 ]
-"yapper 0.3.4" = [
-    {url = "https://files.pythonhosted.org/packages/dc/88/ce73e045dd50fa967d5f3f1c58f17da19d598a14fa38375a4e41db0b477e/yapper-0.3.4.tar.gz", hash = "sha256:041cdaa45d6a60167a7760f9c775e3462c6a51097cd1944e4a30004e67aef462"},
-    {url = "https://files.pythonhosted.org/packages/ee/b3/d65930e236c067c05be227c38349cd1e4ca5f49e3227cb4ba3e2a1326e39/yapper-0.3.4-py3-none-any.whl", hash = "sha256:65ee32f0279bbbad7282dde66bd2abf332d5ef66dab45c36c2c70316c29b7b25"},
+"yapper 0.3.5" = [
+    {url = "https://files.pythonhosted.org/packages/45/48/e92c9cbaaa8041b2e75e4957889df7761e79c71ea1ccbb18aea3e526fc62/yapper-0.3.5.tar.gz", hash = "sha256:bd2e87d9e42d26329d82eaa795874ff5151dd82db6ed1129ce388d70d23fe8cb"},
+    {url = "https://files.pythonhosted.org/packages/65/7d/0e432fa2b11147ca7380fd216e5f37932f9505fcad432c27e37c85c7006c/yapper-0.3.5-py3-none-any.whl", hash = "sha256:322736a899c3b262ae59f01775691571cd870cdb114fade5d45f4029a43b619a"},
 ]
 "zipp 3.8.1" = [
     {url = "https://files.pythonhosted.org/packages/3b/e3/fb79a1ea5f3a7e9745f688855d3c673f2ef7921639a380ec76f7d4d83a85/zipp-3.8.1.tar.gz", hash = "sha256:05b45f1ee8f807d0cc928485ca40a07cb491cf092ff587c0df9cb1fd154848d2"},

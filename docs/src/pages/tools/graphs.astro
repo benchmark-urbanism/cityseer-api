@@ -1,5 +1,5 @@
 ---
-import { Markdown } from 'astro/components'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -37,7 +37,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Generate straight-line geometries for each edge. Prepares &quot;simple&quot; straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to the edge `geom` attribute.
+Generate straight-line geometries for each edge. Prepares "simple" straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to the edge `geom` attribute.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -730,7 +730,7 @@ An optional maximum cumulative degree to consider a valid node group for consoli
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether all nodes within the buffer distance are merged, or only &quot;direct&quot; or &quot;indirect&quot; neighbours. Defaults to None.
+Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">

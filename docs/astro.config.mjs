@@ -1,3 +1,4 @@
+import mdx from '@astrojs/mdx'
 import sitemap from '@astrojs/sitemap'
 import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
@@ -123,8 +124,6 @@ export default defineConfig({
       },
     }),
     sitemap(),
+    mdx(),
   ],
-  legacy: {
-    astroFlavoredMarkdown: true,
-  }
 })

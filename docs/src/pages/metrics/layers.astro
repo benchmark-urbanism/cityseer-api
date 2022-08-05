@@ -1,5 +1,5 @@
 ---
-import { Markdown } from 'astro/components'
+import Markdown from '@astrojs/markdown-component';
 import PageLayout from '@src/layouts/PageLayout.astro'
 ---
 <PageLayout>
@@ -163,7 +163,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -226,7 +226,7 @@ Mixed-use metrics to compute, containing any combination of the `key` values fro
           <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;retail&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -316,17 +316,17 @@ print(landuses_gdf.head())
 # compute some metrics - here we'll use the full interface, see below for simplified interfaces
 nodes_gdf, landuses_gdf = layers.compute_landuses(
     data_gdf=landuses_gdf,
-    landuse_column_label=&quot;categorical_landuses&quot;,
+    landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
-    mixed_use_keys=[&quot;hill&quot;],
+    mixed_use_keys=["hill"],
     qs=[0, 1],
-    accessibility_keys=[&quot;c&quot;, &quot;d&quot;, &quot;e&quot;],
+    accessibility_keys=["c", "d", "e"],
 )
 print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
-print(nodes_gdf[&quot;cc_metric_hill_q0_800&quot;])  # access accordingly, e.g. hill diversity at q=0 and 800m
-print(nodes_gdf[&quot;cc_metric_d_800_non_weighted&quot;])  # weighted landuse accessibility for landuse &quot;d&quot; at 800m
+print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
+print(nodes_gdf["cc_metric_d_800_non_weighted"])  # weighted landuse accessibility for landuse "d" at 800m
 ```
 
 :::warning
@@ -384,7 +384,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -494,14 +494,14 @@ print(landuses_gdf.head())
 # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, landuses_gdf = layers.hill_diversity(
     data_gdf=landuses_gdf,
-    landuse_column_label=&quot;categorical_landuses&quot;,
+    landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
     qs=[0, 1],
 )
 print(nodes_gdf.columns)
-print(nodes_gdf[&quot;cc_metric_hill_q1_400&quot;])  # e.g. distance weighted hill at q=1 and 400m
+print(nodes_gdf["cc_metric_hill_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
 ```
 
 </Markdown>
@@ -554,7 +554,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -664,14 +664,14 @@ print(landuses_gdf.head())
 # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, landuses_gdf = layers.hill_branch_wt_diversity(
     data_gdf=landuses_gdf,
-    landuse_column_label=&quot;categorical_landuses&quot;,
+    landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
     qs=[0, 1],
 )
 print(nodes_gdf.columns)
-print(nodes_gdf[&quot;cc_metric_hill_branch_wt_q1_400&quot;])  # e.g. distance weighted hill at q=1 and 400m
+print(nodes_gdf["cc_metric_hill_branch_wt_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
 ```
 
 </Markdown>
@@ -724,7 +724,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -733,7 +733,7 @@ The column label from which to take landuse categories, e.g. a column labelled &
           <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;retail&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -834,15 +834,15 @@ print(landuses_gdf.head())
 # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, landuses_gdf = layers.compute_accessibilities(
     data_gdf=landuses_gdf,
-    landuse_column_label=&quot;categorical_landuses&quot;,
-    accessibility_keys=[&quot;a&quot;, &quot;c&quot;],
+    landuse_column_label="categorical_landuses",
+    accessibility_keys=["a", "c"],
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-print(nodes_gdf[&quot;cc_metric_c_400_weighted&quot;])  # weighted form
-print(nodes_gdf[&quot;cc_metric_c_400_non_weighted&quot;])  # non-weighted form
+print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
+print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
 ```
 
 </Markdown>
@@ -998,14 +998,14 @@ print(numerical_gdf.head())
 # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, numerical_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
-    stats_column_labels=[&quot;mock_numerical_1&quot;],
+    stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-print(nodes_gdf[&quot;cc_metric_mock_numerical_1_mean_weighted_400&quot;])  # weighted form
-print(nodes_gdf[&quot;cc_metric_mock_numerical_1_sum_200&quot;])  # non-weighted form
+print(nodes_gdf["cc_metric_mock_numerical_1_mean_weighted_400"])  # weighted form
+print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])  # non-weighted form
 ```
 
 
