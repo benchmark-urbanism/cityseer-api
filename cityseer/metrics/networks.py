@@ -1,5 +1,5 @@
 r"""
-Cityseer network module for creating networks and calculating network centralities.
+Cityseer networks module for calculating network centralities using optimised JIT compiled functions.
 
 There are two network centrality methods available depending on whether you're using a node-based or segment-based
 approach:

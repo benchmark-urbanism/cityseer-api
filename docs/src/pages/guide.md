@@ -50,20 +50,20 @@ This example will make use of OSM data downloaded from the [OSM API](https://wik
 from shapely import geometry
 import utm
 
-from cityseer.tools import graphs, plot, osm
+from cityseer.tools import graphs, plot, io
 
 # Let's download data within a 1,250m buffer around London Soho:
 lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
 # creates a WGS shapely polygon
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(
     lng, lat, buffer
 )
 # use a WGS shapely polygon to download information from OSM
 # this version will not simplify
-G_raw = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
+G_raw = io.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
 # whereas this version does simplify
-G_utm = osm.osm_graph_from_poly_wgs(
+G_utm = io.osm_graph_from_poly_wgs(
     poly_wgs, simplify=True, remove_parallel=True, iron_edges=True
 )
 
@@ -94,7 +94,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![The automatically cleaned graph from OSM](/images/graph_cleaning_1b.png)
 _The automatically cleaned OSM street network for Soho, London. © OpenStreetMap contributors._
 
-The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/osm/#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
+The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/io/#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
 
 ### Deducing the network topology
 
@@ -201,8 +201,8 @@ The above recipe should be enough to get you started, but there are innumerable 
 
 The following points may be helpful when using `OSMnx` and `cityseer` together:
 
-- `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method. In doing so, keep the following in mind:
-  - `OSMnx` uses `networkX` `multiDiGraph` graph structures that use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` is only concerned with pedestrian networks and therefore uses `networkX` `MultiGraphs` on the premise that pedestrian networks are not ordinarily directional. When using the [`tools.graphs.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method, be cognisant that all directional information will be discarded.
+- `OSMnx` prepared graphs can be converted to `cityseer` compatible graphs by using the [`tools.io.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method. In doing so, keep the following in mind:
+  - `OSMnx` uses `networkX` `multiDiGraph` graph structures that use directional edges. As such, it can be used for understanding vehicular routing, i.e. where one-way routes can have a major impact on the available shortest-routes. `cityseer` is only concerned with pedestrian networks and therefore uses `networkX` `MultiGraphs` on the premise that pedestrian networks are not ordinarily directional. When using the [`tools.io.nx_from_osm_nx`](/tools/graphs#nx-from-osm-nx) method, be cognisant that all directional information will be discarded.
   - `cityseer` graph simplification and consolidation workflows will give different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
 - `cityseer` uses internal validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing graph manipulation outside of `cityseer` before conversion, the conversion function may complain of disconnected geometries. In these cases, you may need to relax the tolerance parameter used for error checking upon conversion to a `cityseer` `MultiGraph`, in which case geometries disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
 
@@ -213,7 +213,7 @@ import osmnx as ox
 from shapely import geometry
 import utm
 
-from cityseer.tools import graphs, plot, osm
+from cityseer.tools import graphs, plot, io
 
 # centrepoint
 lng, lat = -0.13396079424572427, 51.51371088849723
@@ -251,12 +251,12 @@ multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
 multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
 multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
 # let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = graphs.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
+multi_graph_cons = io.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
 simple_plot(multi_graph_cons)
 
 # WORKFLOW 2: Using cityseer to manually clean an OSMnx graph
 # ===========================================================
-G_raw = graphs.nx_from_osm_nx(multi_di_graph_raw)
+G_raw = io.nx_from_osm_nx(multi_di_graph_raw)
 G = graphs.nx_wgs_to_utm(G_raw)
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_remove_filler_nodes(G)
@@ -275,8 +275,8 @@ simple_plot(G4)
 
 # WORKFLOW 3: Using cityseer to download and automatically simplify the graph
 # ===========================================================================
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = osm.buffered_point_poly(lng, lat, buffer_dist)
-G_utm = osm.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer_dist)
+G_utm = io.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
 simple_plot(G_utm)
 ```
 

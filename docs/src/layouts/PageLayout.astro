@@ -8,15 +8,16 @@ import StripeTitle from '@src/components/StripeTitle.astro'
 import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 import '@src/styles/yapper.css'
 
-const currentPath = Astro.canonicalURL.pathname
+const currentPath = Astro.url.pathname
 const navPaths = [
   '/intro/',
   '/guide/',
   '/examples/',
+  '/metrics/observe/',
   '/metrics/networks/',
   '/metrics/layers/',
+  '/tools/io/',
   '/tools/graphs/',
-  '/tools/osm/',
   '/tools/plot/',
   '/tools/mock/',
   '/structures/',
@@ -34,7 +35,7 @@ const navPaths = [
         <a href='/' title='home' class='hover:scale-105 transition-all object-contain'>
           <img src={logoURL} alt='logo' class='w-full h-full max-w-xs py-10 px-4' />
         </a>
-        <NavColumn client:load {navPaths} {currentPath} />
+        <NavColumn client:only='vue' {navPaths} {currentPath} />
         <div class='flex-grow'></div>
         <div class='self-start px-8 py-2'>
           <RepoLink />
