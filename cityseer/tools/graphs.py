@@ -1033,7 +1033,8 @@ def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     """
     Create a nodes-based STRtree spatial index.
     """
-    point_geoms = []
+    node_geoms = []
+    node_lookups = []
     nd_key: NodeKey
     node_data: NodeData
     for nd_key, node_data in nx_multigraph.nodes(data=True):  # type: ignore
@@ -1046,30 +1047,30 @@ def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
         y: float = node_data["y"]  # type: ignore
         point_geom = geometry.Point(x, y)
-        point_geom.nd_key = nd_key
-        point_geom.degree = nx.degree(nx_multigraph, nd_key)  # type: ignore
-        point_geoms.append(point_geom)
-    return strtree.STRtree(point_geoms)
+        node_geoms.append(point_geom)
+        node_lookups.append({"nd_key": nd_key, "nd_degree": nx.degree(nx_multigraph, nd_key)})
+
+    return strtree.STRtree(node_geoms, node_lookups)
 
 
 def _create_edges_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     """
     Create an edges-based STRtree spatial index.
     """
-    lines = []
+    edge_geoms = []
+    edge_lookups = []
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):
         if "geom" not in edge_data:  # type: ignore
             raise KeyError('Encountered edge missing "geom" attribute.')
         linestring = edge_data["geom"]  # type: ignore
-        linestring.start_nd_key = start_nd_key
-        linestring.end_nd_key = end_nd_key
-        linestring.edge_idx = edge_idx
-        lines.append(linestring)
-    return strtree.STRtree(lines)
+        edge_geoms.append(linestring)
+        edge_lookups.append({"start_nd_key": start_nd_key, "end_nd_key": end_nd_key, "edge_idx": edge_idx})
+
+    return strtree.STRtree(edge_geoms, edge_lookups)
 
 
 def nx_consolidate_nodes(
@@ -1192,11 +1193,14 @@ def nx_consolidate_nodes(
         # keep track of which nodes have been processed as part of recursion
         processed_nodes.append(nd_key)
         # get all other nodes within buffer distance - the self-node and previously processed nodes are also returned
-        js = nodes_tree.query(geometry.Point(x, y).buffer(buffer_dist))
+        j_hits: list[dict[str, Any]] = nodes_tree.query_items(geometry.Point(x, y).buffer(buffer_dist))  # type: ignore
         # review each node within the buffer
-        for j in js:
-            j_nd_key: NodeKey = j.nd_key  # type: ignore
-            if j_nd_key in removed_nodes or j_nd_key in processed_nodes or j.degree < min_node_degree:  # type: ignore
+        j_nd_key: NodeKey
+        j_nd_degree: float
+        for j_hit in j_hits:
+            j_nd_key = j_hit["nd_key"]
+            j_nd_degree = j_hit["nd_degree"]
+            if j_nd_key in removed_nodes or j_nd_key in processed_nodes or j_nd_degree < min_node_degree:
                 continue
             # check neighbour policy
             if neighbour_policy is not None:
@@ -1349,12 +1353,15 @@ def nx_split_opposing_geoms(
         # furthermore, successive iterations may remove old edges, so keep track of removed parent vs new child edges
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
         # spatial query from point returns all buffers with buffer_dist
-        edge_geoms: list[geometry.LineString] = edges_tree.query(n_point.buffer(buffer_dist))  # type: ignore
+        edge_hits: list[dict[str, Any]] = edges_tree.query_items(n_point.buffer(buffer_dist))  # type: ignore
         # extract the start node, end node, geom
-        edges: list[EdgeMapping] = [
-            (edge_geom.start_nd_key, edge_geom.end_nd_key, edge_geom.edge_idx, edge_geom)  # type: ignore
-            for edge_geom in edge_geoms  # pylint: disable=line-too-long
-        ]
+        edges: list[EdgeMapping] = []
+        for edge_hit in edge_hits:
+            start_nd_key = edge_hit["start_nd_key"]
+            end_nd_key = edge_hit["end_nd_key"]
+            edge_idx = edge_hit["edge_idx"]
+            edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+            edges.append((start_nd_key, end_nd_key, edge_idx, edge_geom))
         # check against removed edges
         current_edges: list[EdgeMapping] = []
         for start_nd_key, end_nd_key, edge_idx, edge_geom in edges:
