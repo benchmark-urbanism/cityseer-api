@@ -12,6 +12,7 @@ import logging
 from typing import Any, Optional, Union
 
 import geopandas as gpd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -19,7 +20,8 @@ import numpy.typing as npt
 from matplotlib import colors
 from matplotlib.collections import LineCollection
 from shapely import geometry
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
+from tqdm import tqdm
 
 from cityseer import structures
 from cityseer.tools.graphs import NodeData, NodeKey
@@ -117,16 +119,14 @@ def plot_nx_primal_or_dual(  # noqa
         Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to
         represent edges. Defaults to True.
     x_lim: tuple[float, float]
-        A tuple or list with the minimum and maxium `x` extents to be plotted.
-        Defaults to None.
+        A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
     y_lim: tuple[float, float]
-        A tuple or list with the minimum and maxium `y` extents to be plotted.
-        Defaults to None.
+        A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
     ax: plt.Axes
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     kwargs
-        `kwargs` which will be passed to the `matplotlib` figure parameters. If
-        provided, these will override the default figure size or dpi parameters.
+        `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the
+        default figure size or dpi parameters.
 
     Examples
     --------
@@ -654,3 +654,197 @@ def plot_network_structure(
     plt.tight_layout()
     plt.gcf().set_facecolor(COLOUR_MAP.background)
     plt.show()
+
+
+def plot_scatter(
+    ax: plt.Axes,
+    xs: npt.NDArray[np.float_],
+    ys: npt.NDArray[np.float_],
+    vals: npt.NDArray[np.float32],
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    perc_range: tuple[float, float] = (0.01, 99.99),
+    cmap_key: str = "viridis",
+    shape_exp: float = 1,
+    s_min: float = 0.1,
+    s_max: float = 1,
+    rasterized: bool = True,
+    face_colour: str = "#111",
+) -> Any:
+    """
+    Convenience plotting function for plotting outputs from examples in demo notebooks.
+
+    Parameters
+    ----------
+    ax: plt.Axes
+        A 'matplotlib' `Ax` to which to plot.
+    xs: ndarray[float]
+        A numpy array of floats representing the `x` coordinates for points to plot.
+    ys: ndarray[float]
+        A numpy array of floats representing the `y` coordinates for points to plot.
+    vals: ndarray[float]
+        A numpy array of floats representing the data values for the provided points.
+    bbox_extents: tuple[int, int, int, int]
+        A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
+    perc_range: tuple[float, float]
+        A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
+        By default `(0.01, 99.99)`.
+    cmap_key: str
+        A `matplotlib` colour map key.
+    shape_exp: float
+        A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the
+        values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
+        By default 1.
+    s_min: float
+        A float representing the minimum size for a plotted point. By default 0.1.
+    s_max: float
+        A float representing the maximum size for a plotted point. By default 1.
+    rasterized: bool
+        Whether or not to rasterise the output. Recommended for plots with a large number of points.
+    face_colour: str
+        A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
+
+    """
+    # get extents relative to centre and ax size
+    min_x, min_y, max_x, max_y = bbox_extents
+    # filter
+    select = xs > min_x
+    select = np.logical_and(select, xs < max_x)
+    select = np.logical_and(select, ys > min_y)
+    select = np.logical_and(select, ys < max_y)
+    select_idx = np.where(select)[0]
+    # remove any extreme outliers
+    v_min: float = np.nanpercentile(vals, perc_range[0])  # type: ignore
+    v_max: float = np.nanpercentile(vals, perc_range[1])  # type: ignore
+    v_shape = np.clip(vals, v_min, v_max)
+    # shape if requested
+    v_shape = v_shape**shape_exp
+    # normalise
+    c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
+    colours: npt.NDArray[np.float_] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (s_min, s_max))
+    # plot
+    img: Any = ax.scatter(
+        xs[select_idx],
+        ys[select_idx],
+        c=colours[select_idx],
+        s=sizes[select_idx],
+        linewidths=0,
+        edgecolors="none",
+        cmap=plt.get_cmap(cmap_key),
+        rasterized=rasterized,
+    )
+    # limits
+    ax.set_xlim(left=min_x, right=max_x)
+    ax.set_ylim(bottom=min_y, top=max_y)
+    ax.set_xticks([])  # type: ignore
+    ax.set_yticks([])  # type: ignore
+    ax.set_aspect(1)
+    ax.set_facecolor(face_colour)
+    ax.axis("off")
+
+    return img
+
+
+def plot_nx_edges(
+    ax: plt.Axes,
+    nx_multigraph: nx.MultiGraph,
+    edge_metrics_key: str,
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    perc_range: tuple[float, float] = (0.01, 99.99),
+    cmap_key: str = "viridis",
+    shape_exp: float = 1,
+    lw_min: float = 0.1,
+    lw_max: float = 1,
+    rasterized: bool = True,
+    face_colour: str = "#111",
+):
+    """
+    Convenience plotting function for plotting edge outputs from examples in demo notebooks.
+
+    Parameters
+    ----------
+    ax: plt.Axes
+        A 'matplotlib' `Ax` to which to plot.
+    nx_multigraph: MultiGraph
+        A `NetworkX` MultiGraph.
+    edge_metrics_key: str
+        An edge key for the provided `nx_multigraph`. Plotted values will be retrieved from this edge key.
+    bbox_extents: tuple[int, int, int, int]
+        A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
+    perc_range: tuple[float, float]
+        A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
+        By default `(0.01, 99.99)`.
+    cmap_key: str
+        A `matplotlib` colour map key.
+    shape_exp: float
+        A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the
+        values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
+        By default 1.
+    lw_min: float
+        A float representing the minimum line width for a plotted edge. By default 0.1.
+    lw_max: float
+        A float representing the maximum line width for a plotted edge. By default 1.
+    cmap_key: str
+        A `matplotlib` colour map key.
+    rasterized: bool
+        Whether or not to rasterise the output. Recommended for plots with a large number of edges.
+    face_colour: str
+        A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
+
+    """
+    min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
+    cmap = plt.get_cmap(cmap_key)
+    # extract data for shaping
+    vals: list[str] = []
+    edge_geoms: list[geometry.LineString] = []
+    logger.info("Extracting edge geometries")
+    for _, _, edge_data in tqdm(nx_multigraph.edges(data=True)):  # type: ignore
+        vals.append(edge_data[edge_metrics_key])  # type: ignore
+        edge_geoms.append(edge_data["geom"])  # type: ignore
+    vals_arr: npt.NDArray[np.float_] = np.array(vals)
+    # remove any extreme outliers
+    v_min: float = np.nanpercentile(vals_arr, perc_range[0])  # type: ignore
+    v_max: float = np.nanpercentile(vals_arr, perc_range[1])  # type: ignore
+    v_shape = np.clip(vals_arr, v_min, v_max)
+    # shape if requested
+    v_shape = v_shape**shape_exp
+    # normalise
+    c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
+    colours: npt.NDArray[np.float_] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))
+    # sort so that larger lines plot over smaller lines
+    sort_idx: npt.NDArray[np.int_] = np.argsort(colours)
+    # plot using geoms
+    logger.info("Generating plot")
+    plot_geoms = []
+    plot_colours = []
+    plot_lws = []
+    for idx in tqdm(sort_idx):
+        xs = np.array(edge_geoms[idx].coords.xy[0])
+        ys = np.array(edge_geoms[idx].coords.xy[1])
+        if np.any(xs < min_x) or np.any(xs > max_x):
+            continue
+        if np.any(ys < min_y) or np.any(ys > max_y):
+            continue
+        plot_geoms.append(tuple(zip(xs, ys)))
+        plot_colours.append(cmap(colours[idx]))  # type: ignore
+        plot_lws.append(sizes[idx])
+    lines = LineCollection(
+        plot_geoms,
+        colors=plot_colours,  # type: ignore
+        linewidths=plot_lws,  # type: ignore
+        rasterized=rasterized,
+    )
+    ax.add_collection(lines)
+
+    ax.set_xlim(left=min_x, right=max_x)
+    ax.set_ylim(bottom=min_y, top=max_y)
+    ax.set_xticks([])  # type: ignore
+    ax.set_yticks([])  # type: ignore
+    ax.set_aspect(1)
+    ax.set_facecolor(face_colour)
+
+    # colorbar
+    col_bar_mappable = plt.cm.ScalarMappable(norm=c_norm, cmap=cmap)  # type: ignore
+    fig: Any = ax.get_figure()
+    fig.colorbar(col_bar_mappable, ax=ax, location="right", fraction=0.04, shrink=0.6, aspect=50, pad=0.01)

@@ -1,69 +1,8 @@
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
-import numpy.typing as npt
-from matplotlib.colors import LinearSegmentedColormap
-from shapely import geometry
-from sklearn.preprocessing import minmax_scale
-from tqdm import tqdm
 
 template_cmap = LinearSegmentedColormap.from_list("reds", ["#FAFAFA", "#9a0007", "#ff6659", "#d32f2f"])
-
-
-def plot_scatter(
-    ax: plt.Axes,
-    xs: npt.NDArray[np.float_],
-    ys: npt.NDArray[np.float_],
-    vals: npt.NDArray[np.float32],
-    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
-    c_min: float = 0,
-    c_max: float = 1,
-    c_exp: float = 1,
-    s_min: float = 0,
-    s_max: float = 1,
-    s_exp: float = 1,
-    cmap_key: str = "Reds",
-    rasterized: bool = True,
-    face_colour: str = "white",
-):
-    """ """
-    # get extents relative to centre and ax size
-    min_x, min_y, max_x, max_y = bbox_extents
-    # filter
-    select = xs > min_x
-    select = np.logical_and(select, xs < max_x)
-    select = np.logical_and(select, ys > min_y)
-    select = np.logical_and(select, ys < max_y)
-    select_idx = np.where(select)[0]
-    # remove any extreme outliers
-    v = np.clip(vals, np.nanpercentile(vals, 0.1), np.nanpercentile(vals, 99.9))
-    # shape if wanted
-    c = v**c_exp
-    c: npt.NDArray[np.float_] = minmax_scale(c, feature_range=(c_min, c_max))
-    s = v**s_exp
-    s: npt.NDArray[np.float_] = minmax_scale(s, feature_range=(s_min, s_max))
-    # plot
-    im = ax.scatter(
-        xs[select_idx],
-        ys[select_idx],
-        c=c[select_idx],
-        s=s[select_idx],
-        linewidths=0,
-        edgecolors="none",
-        cmap=plt.get_cmap(cmap_key),
-        rasterized=rasterized,
-    )
-    # limits
-    ax.set_xlim(left=min_x, right=max_x)
-    ax.set_ylim(bottom=min_y, top=max_y)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_aspect(1)
-    ax.set_facecolor(face_colour)
-
-    return im
 
 
 def plot_heatmap(
@@ -138,40 +77,3 @@ def plot_heatmap(
                     fontsize=grid_fontsize,
                 )
     return im
-
-
-def plot_nx_edges(
-    ax: plt.Axes,
-    nx_multigraph: nx.MultiGraph,
-    edge_metrics_key: str,
-    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
-    colour: str = "#ef1a33",
-    rasterized: bool = True,
-):
-    """ """
-    min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
-    # extract data for shaping
-    edge_vals: list[str] = []
-    edge_geoms: list[geometry.LineString] = []
-    for _, _, edge_data in tqdm(nx_multigraph.edges(data=True)):  # type: ignore
-        edge_vals.append(edge_data[edge_metrics_key])  # type: ignore
-        edge_geoms.append(edge_data["geom"])  # type: ignore
-    edge_vals_arr: npt.NDArray[np.float_] = np.array(edge_vals)
-    edge_vals_arr = np.clip(edge_vals_arr, np.nanpercentile(edge_vals_arr, 0.1), np.nanpercentile(edge_vals_arr, 99.9))
-    # plot using geoms
-    n_edges = edge_vals_arr.shape[0]
-    for idx in tqdm(range(n_edges)):
-        xs = np.array(edge_geoms[idx].coords.xy[0])
-        ys = np.array(edge_geoms[idx].coords.xy[1])
-        if np.any(xs < min_x) or np.any(xs > max_x):
-            continue
-        if np.any(ys < min_y) or np.any(ys > max_y):
-            continue
-        # normalise val
-        edge_val = edge_vals_arr[idx]
-        norm_val = (edge_val - edge_vals_arr.min()) / (edge_vals_arr.max() - edge_vals_arr.min())
-        val_shape = norm_val * 0.95 + 0.05
-        ax.plot(xs, ys, linewidth=val_shape, color=colour, rasterized=rasterized)
-    ax.axis("off")
-    plt.xlim(min_x, max_x)
-    plt.ylim(min_y, max_y)
