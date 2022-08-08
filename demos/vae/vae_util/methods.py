@@ -3,7 +3,6 @@
 - Calculates UDR entangling metric and saves to data files
 """
 import json
-from multiprocessing.sharedctypes import Value
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +10,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, quantile_transform
 
 from demos.general_util import plot_funcs, theme_setup
-from demos.vae.vae_util import udr, vae_model
+from demos.vae.vae_util import vae_model
 
 
 def process_latents_vae():
