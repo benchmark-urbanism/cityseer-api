@@ -102,9 +102,9 @@ def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph
         if f"{target_key}_agg" in nx_multi_copy[a_nd_key][b_nd_key][edge_idx]:
             current_agg_len: float = nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_length"]
             if agg_len > current_agg_len:
-                nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_length"] = agg_len
+                nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_length"] = agg_len / 1000
         else:
-            nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_length"] = agg_len
+            nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_length"] = agg_len / 1000
         # counts
         agg_count = len(agg_edge_lengths)
         if f"{target_key}_agg_count" in nx_multi_copy[a_nd_key][b_nd_key][edge_idx]:
