@@ -669,7 +669,7 @@ def plot_scatter(
     s_max: float = 1,
     rasterized: bool = True,
     face_colour: str = "#111",
-):
+) -> Any:
     """
     Convenience plotting function for plotting outputs from examples in demo notebooks.
 
@@ -720,14 +720,14 @@ def plot_scatter(
     v_shape = v_shape**shape_exp
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
-    c: npt.NDArray[np.float_] = c_norm(v_shape)
-    s: npt.NDArray[np.float_] = minmax_scale(c, (s_min, s_max))
+    colours: npt.NDArray[np.float_] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (s_min, s_max))
     # plot
-    im = ax.scatter(
+    img: Any = ax.scatter(
         xs[select_idx],
         ys[select_idx],
-        c=c[select_idx],
-        s=s[select_idx],
+        c=colours[select_idx],
+        s=sizes[select_idx],
         linewidths=0,
         edgecolors="none",
         cmap=plt.get_cmap(cmap_key),
@@ -736,13 +736,13 @@ def plot_scatter(
     # limits
     ax.set_xlim(left=min_x, right=max_x)
     ax.set_ylim(bottom=min_y, top=max_y)
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax.set_xticks([])  # type: ignore
+    ax.set_yticks([])  # type: ignore
     ax.set_aspect(1)
     ax.set_facecolor(face_colour)
     ax.axis("off")
 
-    return im
+    return img
 
 
 def plot_nx_edges(
@@ -810,10 +810,10 @@ def plot_nx_edges(
     v_shape = v_shape**shape_exp
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
-    c: npt.NDArray[np.float_] = c_norm(v_shape)
-    s: npt.NDArray[np.float_] = minmax_scale(c, (lw_min, lw_max))
+    colours: npt.NDArray[np.float_] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))
     # sort so that larger lines plot over smaller lines
-    sort_idx: npt.NDArray[np.int_] = np.argsort(c)
+    sort_idx: npt.NDArray[np.int_] = np.argsort(colours)
     # plot using geoms
     logger.info("Generating plot")
     plot_geoms = []
@@ -827,23 +827,24 @@ def plot_nx_edges(
         if np.any(ys < min_y) or np.any(ys > max_y):
             continue
         plot_geoms.append(tuple(zip(xs, ys)))
-        plot_colours.append(cmap(c[idx]))
-        plot_lws.append(s[idx])
+        plot_colours.append(cmap(colours[idx]))  # type: ignore
+        plot_lws.append(sizes[idx])
     lines = LineCollection(
         plot_geoms,
         colors=plot_colours,  # type: ignore
         linewidths=plot_lws,  # type: ignore
+        rasterized=rasterized,
     )
     ax.add_collection(lines)
 
     ax.set_xlim(left=min_x, right=max_x)
     ax.set_ylim(bottom=min_y, top=max_y)
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax.set_xticks([])  # type: ignore
+    ax.set_yticks([])  # type: ignore
     ax.set_aspect(1)
     ax.set_facecolor(face_colour)
 
     # colorbar
     col_bar_mappable = plt.cm.ScalarMappable(norm=c_norm, cmap=cmap)  # type: ignore
-    fig = ax.get_figure()
+    fig: Any = ax.get_figure()
     fig.colorbar(col_bar_mappable, ax=ax, location="right", fraction=0.04, shrink=0.6, aspect=50, pad=0.01)
