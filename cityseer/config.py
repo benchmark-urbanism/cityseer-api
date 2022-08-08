@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import os
 
+import numpy as np
+
+
+np.seterr(invalid="ignore")
+
 
 def prep_gdf_key(key: str) -> str:
     """Format a column label for GeoPandas."""
