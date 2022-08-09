@@ -78,7 +78,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
 
     :::note
     This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-    osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
+    [`osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
     builds a graph automatically.
     :::
 
