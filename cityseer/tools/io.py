@@ -76,6 +76,12 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
     """
     Fetches an OSM response.
 
+    :::note
+    This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
+    osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
+    builds a graph automatically.
+    :::
+
     Parameters
     ----------
     osm_request: str
@@ -121,8 +127,9 @@ def osm_graph_from_poly_wgs(
 ) -> MultiGraph:  # noqa
     """
 
-    Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat`
-    parameter.
+    Prepares a `networkX` `MultiGraph` from an OSM request for the specified shapely polygon. This function will
+    retrieve the OSM response and will automatically unpack this into a `networkX` graph. Simplification will be applied
+    by default, but can be disabled.
 
     Parameters
     ----------
@@ -369,8 +376,8 @@ def nx_from_open_roads(
     open_roads_path: str | Path
         A valid relative filepath from which to load the OS Open Roads dataset.
     target_bbox: tuple[int]
-        A tuple of integers or floats representing the bounding box extents for which to load the dataset. Set to
-        `None` for no bounding box. By default None.
+        A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
+        dataset. Set to `None` for no bounding box. By default None.
 
     Returns
     -------
