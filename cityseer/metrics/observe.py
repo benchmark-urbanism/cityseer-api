@@ -10,8 +10,10 @@ from typing import Any
 
 import networkx as nx
 from tqdm import tqdm
+import numpy as np
+import numpy.typing as npt
 
-from cityseer.tools.graphs import EdgeData, NodeKey
+from cityseer.tools import graphs
 
 
 def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph:
@@ -20,27 +22,82 @@ def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph
     """
     nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
 
-    def _clean_vals(vals: list[str]) -> set[str]:
-        clean_vals: list[str] = []
-        for val in vals:
-            # highways category has residential, service, etc.
-            if val not in [None, "residential", "service", "footway"]:
-                clean_vals.append(val)
-        return set(clean_vals)
-
-    def _intersect_vals(vals_a: list[str], vals_b: list[str]) -> bool:
-        """Find set overlaps between values for set A and set B."""
-        clean_vals_a = _clean_vals(vals_a)
-        clean_vals_b = _clean_vals(vals_b)
-        itx = clean_vals_a.intersection(clean_vals_b)
-        return len(itx) > 0
+    # clean values and save as sets
+    available_targets = ["names", "refs", "highways"]
+    ignore_vals = set(
+        [
+            # street name cleaning
+            "street",
+            "way",
+            "st",
+            "ave",
+            "avenue",
+            "highway",
+            "drive",
+            "gardens",
+            "lane",
+            "close",
+            "gate",
+            "the",
+            "road",
+            "court",
+            "mews",
+            "crescent",
+            "place",
+            "grove",
+            "bridge",
+            "walk",
+            "of",
+            "park",
+            "hill",
+            "square",
+            "passage",
+            "wharf",
+            "row",
+            "terrace",
+            "harbour",
+            "junction",
+            "end",
+            "rise",
+            "upper",
+            "lower",
+            "quays",
+            "mall",
+            "yard",
+            "approach",
+            # highway cleaning
+            "local",
+            "unnumbered",
+            "minor",
+            "access",
+        ]
+    )
+    for target in available_targets:
+        start_nd_key: graphs.NodeKey
+        end_nd_key: graphs.NodeKey
+        edge_idx: int
+        edge_data: graphs.EdgeData
+        for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(nx_multi_copy.edges(data=True, keys=True)):  # type: ignore
+            if target not in edge_data:
+                nx_multi_copy[start_nd_key][end_nd_key][edge_idx][target] = None
+            elif edge_data[target] is not None:
+                vals = edge_data[target]
+                # cleaned: set[str] = set()
+                # NOTE: deep cleaning seems to work against intention
+                # for v in vals:
+                #     v = v.lower()
+                #     vs = v.split(" ")
+                #     cleaned.update(vs)
+                # cleaned.difference_update(ignore_vals)
+                vals = [v.lower() for v in vals]
+                nx_multi_copy[start_nd_key][end_nd_key][edge_idx][f"{target}_clean"] = vals
 
     def _recurse_edges(
         _nx_multigraph: nx.MultiGraph,
         _target_key: str,
-        _target_vals: list[str],
-        _a_nd_key: NodeKey,
-        _b_nd_key: NodeKey,
+        _target_vals: set[str],
+        _a_nd_key: graphs.NodeKey,
+        _b_nd_key: graphs.NodeKey,
         _edge_idx: int,
         agg_edge_lengths: list[float],
         visited_edges: list[str],
@@ -50,18 +107,18 @@ def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph
         if edge_key in visited_edges:
             return
         visited_edges.append(edge_key)
-        nested_edge_data: EdgeData = _nx_multigraph[_a_nd_key][_b_nd_key][_edge_idx]
+        nested_edge_data: graphs.EdgeData = _nx_multigraph[_a_nd_key][_b_nd_key][_edge_idx]
         if _target_key not in nested_edge_data:
-            return
-        nested_target_vals: list[str] = nested_edge_data[_target_key]
-        if not _intersect_vals(_target_vals, nested_target_vals):
+            raise ValueError(f"Missing target key of {_target_key}")
+        nested_target_vals: set[str] = nested_edge_data[_target_key]
+        if not set(_target_vals).intersection(set(nested_target_vals)):
             return
         agg_edge_lengths.append(nested_edge_data["geom"].length)
         # find all neighbouring edge pairs
-        a_nb_pairs: list[tuple[NodeKey, NodeKey]] = [
+        a_nb_pairs: list[tuple[graphs.NodeKey, graphs.NodeKey]] = [
             (_a_nd_key, ann) for ann in nx.neighbors(_nx_multigraph, _a_nd_key) if ann != _b_nd_key  # type: ignore
         ]
-        b_nb_pairs: list[tuple[NodeKey, NodeKey]] = [
+        b_nb_pairs: list[tuple[graphs.NodeKey, graphs.NodeKey]] = [
             (_b_nd_key, bnn) for bnn in nx.neighbors(_nx_multigraph, _b_nd_key) if bnn != _a_nd_key  # type: ignore
         ]
         for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
@@ -78,19 +135,21 @@ def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph
                     visited_edges,
                 )
 
-    if method in ["names", "refs", "highways"]:
-        target_key: str = method
+    if method in available_targets:
+        target_key: str = f"{method}_clean"
     else:
         raise ValueError(f"Method of {method} is not recognised.")
 
     # iter edges
-    edge_data: dict[str, Any]
-    a_nd_key: NodeKey
-    b_nd_key: NodeKey
+    a_nd_key: graphs.NodeKey
+    b_nd_key: graphs.NodeKey
     edge_idx: int
+    edge_data: dict[str, Any]
+    edge_counts: list[int] = []
+    edge_names: list[str] = []
     for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(nx_multi_copy.edges(keys=True, data=True)):  # type: ignore
         if target_key not in edge_data:
-            nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg"] = None  # type: ignore
+            raise ValueError(f"Missing target key of {target_key}")
         target_vals = edge_data[target_key]
         agg_edge_lengths: list[float] = []
         visited_edges: list[str] = []
@@ -113,5 +172,23 @@ def route_continuity(nx_multigraph: nx.MultiGraph, method: str) -> nx.MultiGraph
                 nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_count"] = agg_count
         else:
             nx_multi_copy[a_nd_key][b_nd_key][edge_idx][f"{target_key}_agg_count"] = agg_count
+        # reporting
+        edge_counts.append(agg_count)
+        edge_names.append(target_vals)
+
+    arg_sorted: npt.NDArray[np.uint] = np.argsort(np.array(edge_counts))[::-1]
+    names_dict: dict[str, list[int]] = {}
+    counter = 0
+    for arg_idx in arg_sorted:
+        if counter > 100:
+            break
+        name = str.join(", ", edge_names[arg_idx])
+        count = edge_counts[arg_idx]
+        if name not in names_dict:
+            names_dict[name] = [count]
+            counter += 1
+        else:
+            names_dict[name].append(count)
+    print(names_dict)
 
     return nx_multi_copy
