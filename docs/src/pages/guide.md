@@ -94,7 +94,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![The automatically cleaned graph from OSM](/images/graph_cleaning_1b.png)
 _The automatically cleaned OSM street network for Soho, London. © OpenStreetMap contributors._
 
-The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/io/#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
+The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/io#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
 
 ### Deducing the network topology
 

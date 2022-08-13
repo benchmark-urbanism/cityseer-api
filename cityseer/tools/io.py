@@ -440,6 +440,6 @@ def nx_from_open_roads(
     logger.info(f"Dropped {n_dropped} edges where not both start and end nodes were present.")
     logger.info("Running basic graph cleaning")
     g_multi = graphs.nx_remove_filler_nodes(g_multi)
-    g_multi = graphs.merge_parallel_edges(g_multi, True, 1.5, 100)
+    g_multi = graphs.merge_parallel_edges(g_multi, True, 10)
 
     return g_multi
