@@ -661,7 +661,7 @@ def plot_scatter(
     xs: npt.NDArray[np.float_],
     ys: npt.NDArray[np.float_],
     vals: npt.NDArray[np.float32],
-    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
     perc_range: tuple[float, float] = (0.01, 99.99),
     cmap_key: str = "viridis",
     shape_exp: float = 1,
@@ -749,7 +749,7 @@ def plot_nx_edges(
     ax: plt.Axes,
     nx_multigraph: nx.MultiGraph,
     edge_metrics_key: str,
-    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
+    bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
     perc_range: tuple[float, float] = (0.01, 99.99),
     cmap_key: str = "viridis",
     shape_exp: float = 1,
@@ -809,7 +809,7 @@ def plot_nx_edges(
     # shape if requested
     v_shape = v_shape**shape_exp
     # normalise
-    c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
+    c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
     colours: npt.NDArray[np.float_] = c_norm(v_shape)
     sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))
     # sort so that larger lines plot over smaller lines

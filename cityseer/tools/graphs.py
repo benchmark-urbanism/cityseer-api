@@ -185,7 +185,7 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
                 highway = tags["highway"] if "highway" in tags else None
                 for idx in range(count - 1):
                     nx_multigraph.add_edge(
-                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], refs=[ref], highways=[highway]
+                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], routes=[ref], highways=[highway]
                     )
             else:
                 for idx in range(count - 1):
@@ -527,8 +527,8 @@ class _EdgeInfo:
         return tuple(set(self._names))
 
     @property
-    def refs(self):
-        """Returns a set of refs - e.g. route numbers."""
+    def routes(self):
+        """Returns a set of routes - e.g. route numbers."""
         return tuple(set(self._refs))
 
     @property
@@ -544,11 +544,11 @@ class _EdgeInfo:
 
     def gather_edge_info(self, edge_data: dict[str, Any]):
         """Gather edge data from provided edge_data."""
-        # agg names, refs, highway attributes if present
+        # agg names, routes, highway attributes if present
         if "names" in edge_data:
             self._names += edge_data["names"]
-        if "refs" in edge_data:
-            self._refs += edge_data["refs"]
+        if "routes" in edge_data:
+            self._refs += edge_data["routes"]
         if "highways" in edge_data:
             self._highways += edge_data["highways"]
 
@@ -561,7 +561,7 @@ class _EdgeInfo:
     ):
         """Set accumulated edge data to specified graph and edge."""
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["refs"] = self.refs
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
 
 
@@ -743,7 +743,7 @@ def _squash_adjacent(
     The new node can either be based on:
     - The centroid of all nodes;
     - else, all nodes of degree greater or equal to cent_min_degree;
-    - and / else, all nodes with cumulative adjacent OSM street names or refs greater than cent_min_names;
+    - and / else, all nodes with cumulative adjacent OSM street names or routes greater than cent_min_names;
     - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
       node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
 
@@ -807,7 +807,7 @@ def _squash_adjacent(
             agg_keys: list[str] = []
             for nb_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
                 for edge_data in nx_multigraph[nd_key][nb_key].values():  # type: ignore
-                    for valid_key in ["names", "refs"]:
+                    for valid_key in ["names", "routes"]:
                         if valid_key in edge_data:
                             val: str
                             for val in edge_data[valid_key]:
@@ -1123,8 +1123,8 @@ def nx_consolidate_nodes(
         cluster. Defaults to 3.
     cent_min_names: int
         The minimum number of cumulative street names or street references to be considered when calculating the new
-        centroid. Requires `names` and `refs` edge attributes containing lists of OSM street names or refs. Defaults to
-        None.
+        centroid. Requires `names` and `routes` edge attributes containing lists of OSM street names or route
+        identifiers. Defaults to None.
     cent_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
@@ -1506,8 +1506,8 @@ def nx_iron_edges(nx_multigraph: MultiGraph, min_straightness_ratio: float = 0.9
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
     min_straightness_ratio: float
-        Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio of
-        the distance from the start to the end point of the edge divided by the full length of the geom.
+        Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio
+        of the distance from the start to the end point of the edge divided by the full length of the geom.
 
     Returns
     -------
