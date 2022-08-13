@@ -410,20 +410,20 @@ def nx_from_open_roads(
                 name: str | None = props[name_key]
                 if name is not None:
                     names.add(name)
-            refs: set[str] = set()
+            routes: set[str] = set()
             for ref_key in ["roadClassificationNumber"]:
                 ref: str | None = props[ref_key]
                 if ref is not None:
-                    refs.add(ref)
+                    routes.add(ref)
             highways: set[str] = set()
             for highway_key in ["roadFunction", "roadClassification"]:  # 'formOfWay'
                 highway: str = props[highway_key]
                 if highway is not None:
                     highways.add(highway)
             if props["trunkRoad"]:
-                highways.add("IsTrunk")
+                highways.add("Trunk Road")
             if props["primaryRoute"]:
-                highways.add("IsPrimary")
+                highways.add("Primary Road")
             # filter out unwanted highway tags
             highways.difference_update({"Not Classified", "Unclassified", "Unknown", "Restricted Local Access Road"})
             # create the geometry
@@ -433,7 +433,9 @@ def nx_from_open_roads(
             if start_nd not in g_multi or end_nd not in g_multi:
                 n_dropped += 1
                 continue
-            g_multi.add_edge(start_nd, end_nd, names=list(names), refs=list(refs), highways=list(highways), geom=geom)
+            g_multi.add_edge(
+                start_nd, end_nd, names=list(names), routes=list(routes), highways=list(highways), geom=geom
+            )
 
     logger.info(f"Nodes: {g_multi.number_of_nodes()}")
     logger.info(f"Edges: {g_multi.number_of_edges()}")

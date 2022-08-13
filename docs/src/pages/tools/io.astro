@@ -128,6 +128,11 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     </div>
     <div class="yap"><Markdown is:raw>
 Fetches an OSM response.
+:::note
+This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
+[`osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
+builds a graph automatically.
+:::
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -192,7 +197,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Prepares a `networkX` `MultiGraph` from an OSM request for a buffered region around a given `lng` and `lat` parameter.
+Prepares a `networkX` `MultiGraph` from an OSM request for the specified shapely polygon. This function will retrieve the OSM response and will automatically unpack this into a `networkX` graph. Simplification will be applied by default, but can be disabled.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -393,7 +398,7 @@ A valid relative filepath from which to load the OS Open Roads dataset.
           <div class="yap doc-str-elem-type">tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of integers or floats representing the bounding box extents for which to load the dataset. Set to `None` for no bounding box. By default None.
+A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the dataset. Set to `None` for no bounding box. By default None.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>

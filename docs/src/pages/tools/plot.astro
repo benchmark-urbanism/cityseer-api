@@ -638,6 +638,289 @@ An optional polygon. Defaults to None.
       </div>
     </div>
   </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="plot-scatter">
+      <a aria-hidden="true" href="#plot-scatter" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>plot_scatter
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>plot_scatter(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">ax, </div>
+          <div class="yap func-sig-param">xs, </div>
+          <div class="yap func-sig-param">ys, </div>
+          <div class="yap func-sig-param">vals, </div>
+          <div class="yap func-sig-param">bbox_extents, </div>
+          <div class="yap func-sig-param">perc_range=viridis, </div>
+          <div class="yap func-sig-param">cmap_key=1, </div>
+          <div class="yap func-sig-param">shape_exp=0.1, </div>
+          <div class="yap func-sig-param">s_min=1, </div>
+          <div class="yap func-sig-param">s_max=True, </div>
+          <div class="yap func-sig-param">rasterized=#111, </div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Convenience plotting function for plotting outputs from examples in demo notebooks.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">ax</div>
+          <div class="yap doc-str-elem-type">plt.Axes</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A 'matplotlib' `Ax` to which to plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">xs</div>
+          <div class="yap doc-str-elem-type">ndarray[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A numpy array of floats representing the `x` coordinates for points to plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">ys</div>
+          <div class="yap doc-str-elem-type">ndarray[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A numpy array of floats representing the `y` coordinates for points to plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">vals</div>
+          <div class="yap doc-str-elem-type">ndarray[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A numpy array of floats representing the data values for the provided points.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">bbox_extents</div>
+          <div class="yap doc-str-elem-type">tuple[int, int, int, int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">perc_range</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data. By default `(0.01, 99.99)`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">cmap_key</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `matplotlib` colour map key.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">shape_exp</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly. By default 1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">s_min</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing the minimum size for a plotted point. By default 0.1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">s_max</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing the maximum size for a plotted point. By default 1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">rasterized</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether or not to rasterise the output. Recommended for plots with a large number of points.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">face_colour</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="plot-nx-edges">
+      <a aria-hidden="true" href="#plot-nx-edges" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>plot_nx_edges
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>plot_nx_edges(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">ax, </div>
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">edge_metrics_key, </div>
+          <div class="yap func-sig-param">bbox_extents, </div>
+          <div class="yap func-sig-param">perc_range=viridis, </div>
+          <div class="yap func-sig-param">cmap_key=1, </div>
+          <div class="yap func-sig-param">shape_exp=0.1, </div>
+          <div class="yap func-sig-param">lw_min=1, </div>
+          <div class="yap func-sig-param">lw_max=True, </div>
+          <div class="yap func-sig-param">rasterized=#111, </div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Convenience plotting function for plotting edge outputs from examples in demo notebooks.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">ax</div>
+          <div class="yap doc-str-elem-type">plt.Axes</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A 'matplotlib' `Ax` to which to plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `NetworkX` MultiGraph.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">edge_metrics_key</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An edge key for the provided `nx_multigraph`. Plotted values will be retrieved from this edge key.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">bbox_extents</div>
+          <div class="yap doc-str-elem-type">tuple[int, int, int, int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">perc_range</div>
+          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data. By default `(0.01, 99.99)`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">cmap_key</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `matplotlib` colour map key.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">shape_exp</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly. By default 1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">lw_min</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing the minimum line width for a plotted edge. By default 0.1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">lw_max</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A float representing the maximum line width for a plotted edge. By default 1.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">cmap_key</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `matplotlib` colour map key.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">rasterized</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether or not to rasterise the output. Recommended for plots with a large number of edges.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">face_colour</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
+</Markdown></div>
+      </div>
+    </div>
+  </section>
 </div>
 </PageLayout>
 

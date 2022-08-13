@@ -419,7 +419,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
-        <div class="yap class-prop-def-name">refs</div>
+        <div class="yap class-prop-def-name">routes</div>
         <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
@@ -565,16 +565,16 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">merge_edges_by_midline, </div>
-          <div class="yap func-sig-param">multi_edge_len_factor, </div>
-          <div class="yap func-sig-param">multi_edge_min_len)</div>
+          <div class="yap func-sig-param">contains_buffer_dist)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Check a MultiGraph for duplicate edges; which, if found, will be merged. The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
+Check a MultiGraph for duplicate edges; which, if found, will be merged. The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
+
+ When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded;
-- Note that substantially longer parallel edges are retained, instead of discarded, if they exceed `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+- Else, the shortest edge is retained, with longer edges discarded.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -597,20 +597,11 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_len_factor</div>
+          <div class="yap doc-str-elem-name">contains_buffer_dist</div>
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_min_len</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-See `multi_edge_len_factor`. Defaults to 100.
+The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -646,13 +637,12 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">min_cumulative_degree, </div>
           <div class="yap func-sig-param">max_cumulative_degree, </div>
           <div class="yap func-sig-param">neighbour_policy, </div>
-          <div class="yap func-sig-param">crawl=True, </div>
+          <div class="yap func-sig-param">crawl=False, </div>
           <div class="yap func-sig-param">cent_min_degree=3, </div>
           <div class="yap func-sig-param">cent_min_names, </div>
           <div class="yap func-sig-param">cent_min_len_factor, </div>
           <div class="yap func-sig-param">merge_edges_by_midline=True, </div>
-          <div class="yap func-sig-param">multi_edge_len_factor=1.25, </div>
-          <div class="yap func-sig-param">multi_edge_min_len=100)</div>
+          <div class="yap func-sig-param">contains_buffer_dist=20)</div>
         </div>
       </div>
     </div>
@@ -664,10 +654,9 @@ Consolidates nodes if they are within a buffer distance of each other. Several p
 - Else, all nodes of degree greater or equal to `cent_min_degree`;
 - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node with the greatest aggregate length for adjacent edges.
 
- The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
+ The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded;
-- Note that substantially longer parallel edges are retained, instead of discarded, if they exceed `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+- Else, the shortest edge, with longer edges discarded; See [`merge_parallel_edges`](#merge-parallel-edges) for more information.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -757,7 +746,7 @@ The minimum node degree for a node to be considered when calculating the new cen
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The minimum number of cumulative street names or street references to be considered when calculating the new centroid. Requires `names` and `refs` edge attributes containing lists of OSM street names or refs. Defaults to None.
+The minimum number of cumulative street names or street references to be considered when calculating the new centroid. Requires `names` and `routes` edge attributes containing lists of OSM street names or route identifiers. Defaults to None.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -780,20 +769,11 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_len_factor</div>
+          <div class="yap doc-str-elem-name">contains_buffer_dist</div>
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_min_len</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-See `multi_edge_len_factor`. Defaults to 100.
+The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -834,13 +814,16 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">nx_multigraph, </div>
           <div class="yap func-sig-param">buffer_dist=10, </div>
           <div class="yap func-sig-param">merge_edges_by_midline=True, </div>
-          <div class="yap func-sig-param">multi_edge_len_factor=1.25, </div>
-          <div class="yap func-sig-param">multi_edge_min_len=100)</div>
+          <div class="yap func-sig-param">contains_buffer_dist=20)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
 Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx-consolidate-nodes`](#nx-consolidate-nodes).
+
+ The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
+- An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+- Else, the shortest edge, with longer edges discarded; See [`merge_parallel_edges`](#merge-parallel-edges) for more information.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -872,20 +855,11 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_len_factor</div>
+          <div class="yap doc-str-elem-name">contains_buffer_dist</div>
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is retained as separate if exceeding the `multi_edge_len_factor` as a factor of the shortest length but with the exception that (longer) edges still shorter than `multi_edge_min_len` are removed regardless. Defaults to 1.5.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">multi_edge_min_len</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-See `multi_edge_len_factor`. Defaults to 100.
+The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -901,8 +875,8 @@ A `networkX` `MultiGraph` with consolidated nodes.
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="nx-iron-edge-ends">
-      <a aria-hidden="true" href="#nx-iron-edge-ends" tabindex="-1">
+    <h2 class="yap func-title" id="nx-iron-edges">
+      <a aria-hidden="true" href="#nx-iron-edges" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
@@ -915,12 +889,12 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>nx_iron_edges(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">flatten_tail_length=25)</div>
+          <div class="yap func-sig-param">min_straightness_ratio=0.975)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Flattens edges where angular deviation is less than max_angle. Useful for post-processing step after graph cleaning.
+Flattens edges straighter than `min_straightness_ratio`.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -934,11 +908,11 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">flatten_tail_length</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-name">min_straightness_ratio</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The length within which to flatten segment ends.
+Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio of the distance from the start to the end point of the edge divided by the full length of the geom.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
