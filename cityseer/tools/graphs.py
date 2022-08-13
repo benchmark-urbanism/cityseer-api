@@ -1071,12 +1071,12 @@ def nx_consolidate_nodes(
     min_cumulative_degree: Optional[int] = None,
     max_cumulative_degree: Optional[int] = None,
     neighbour_policy: Optional[str] = None,
-    crawl: bool = True,
+    crawl: bool = False,
     cent_min_degree: int = 3,
     cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 10,
+    contains_buffer_dist: float = 20,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -1258,7 +1258,7 @@ def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 10,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 10,
+    contains_buffer_dist: float = 20,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
@@ -1496,17 +1496,18 @@ def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
     return angle_sum
 
 
-def nx_iron_edge_ends(nx_multigraph: MultiGraph, flatten_tail_length: int = 25) -> MultiGraph:
+def nx_iron_edges(nx_multigraph: MultiGraph, min_straightness_ratio: float = 0.975) -> MultiGraph:
     """
-    Flattens edges where angular deviation is less than max_angle. Useful for post-processing step after graph cleaning.
+    Flattens edges straighter than `min_straightness_ratio`.
 
     Parameters
     ----------
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    flatten_tail_length: int
-        The length within which to flatten segment ends.
+    min_straightness_ratio: float
+        Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio of
+        the distance from the start to the end point of the edge divided by the full length of the geom.
 
     Returns
     -------
@@ -1518,26 +1519,23 @@ def nx_iron_edge_ends(nx_multigraph: MultiGraph, flatten_tail_length: int = 25) 
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
-        src_geom = edge_data["geom"]
-        if len(src_geom.coords) < 3:
+        edge_geom = edge_data["geom"]
+        # nothing to be done if there are no intermediate coords
+        if len(edge_geom.coords) < 3:
             continue
-        candidate_geom: Optional[geometry.LineString] = None
-        # flatten short segments
-        if src_geom.length < flatten_tail_length and not np.allclose(
-            # check that it isn't a looping segment where start and end are the same
-            src_geom.coords[0],
-            src_geom.coords[-1],
+        # check that it isn't a looping segment where start and end are the same
+        if np.allclose(
+            edge_geom.coords[0],
+            edge_geom.coords[-1],
             rtol=0,
             atol=1,
         ):
-            candidate_geom = geometry.LineString([src_geom.coords[0], src_geom.coords[-1]])
-        elif src_geom.length > flatten_tail_length * 2 + 1:
-            mid_seg: geometry.LineString = ops.substring(
-                src_geom, flatten_tail_length, src_geom.length - flatten_tail_length
-            )
-            candidate_geom = geometry.LineString([src_geom.coords[0], *mid_seg.coords, src_geom.coords[-1]])
-        if candidate_geom is not None:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = candidate_geom
+            continue
+        # take the straightness ratio of crow edge vs. full edge
+        start_pt = geometry.Point(edge_geom.coords[0])
+        end_pt = geometry.Point(edge_geom.coords[-1])
+        if start_pt.distance(end_pt) / edge_geom.length > min_straightness_ratio:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
 
     return g_multi_copy
 

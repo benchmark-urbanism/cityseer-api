@@ -223,7 +223,7 @@ def osm_graph_from_poly_wgs(
         graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=20, remove_disconnected=True)
         graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
         graph_utm = graphs.nx_consolidate_nodes(
-            graph_utm, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+            graph_utm, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
         )
 
         if remove_parallel:
@@ -234,7 +234,7 @@ def osm_graph_from_poly_wgs(
             graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
 
         if iron_edges:
-            graph_utm = graphs.nx_iron_edge_ends(graph_utm)
+            graph_utm = graphs.nx_iron_edges(graph_utm)
 
     return graph_utm
 
