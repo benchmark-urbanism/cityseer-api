@@ -757,6 +757,7 @@ def plot_nx_edges(
     lw_max: float = 1,
     rasterized: bool = True,
     face_colour: str = "#111",
+    invert_plot_order: bool = False,
 ):
     """
     Convenience plotting function for plotting edge outputs from examples in demo notebooks.
@@ -790,6 +791,8 @@ def plot_nx_edges(
         Whether or not to rasterise the output. Recommended for plots with a large number of edges.
     face_colour: str
         A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
+    invert_plot_order: bool
+        Whether to invert the plot order, e.g. if using an inverse colour map.
 
     """
     min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
@@ -814,6 +817,8 @@ def plot_nx_edges(
     sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.NDArray[np.int_] = np.argsort(colours)
+    if invert_plot_order:
+        sort_idx = sort_idx[::-1]
     # plot using geoms
     logger.info("Generating plot")
     plot_geoms = []
