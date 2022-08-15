@@ -280,6 +280,9 @@ def hybrid_street_continuity(
     """
     Compute the street continuity for a given graph using a hybridisation of routes and names continuity.
 
+    Hybrid continuity merges route continuity and street continuity information where a route overlaps a street. Street
+    continuities are only merged where overlapping a single route continuity.
+
     Parameters
     ----------
     nx_multigraph: MultiGraph
