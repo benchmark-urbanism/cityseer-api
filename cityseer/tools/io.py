@@ -425,7 +425,16 @@ def nx_from_open_roads(
             if props["primaryRoute"]:
                 highways.add("Primary Road")
             # filter out unwanted highway tags
-            highways.difference_update({"Not Classified", "Unclassified", "Unknown", "Restricted Local Access Road"})
+            highways.difference_update(
+                {
+                    "Not Classified",
+                    "Unclassified",
+                    "Unknown",
+                    "Restricted Local Access Road",
+                    "Local Road",
+                    "Classified Unnumbered",
+                }
+            )
             # create the geometry
             geom = geometry.LineString(edge_data["geometry"]["coordinates"])  # type: ignore
             geom = geom.simplify(5)
