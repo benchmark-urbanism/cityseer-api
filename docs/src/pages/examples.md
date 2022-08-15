@@ -8,7 +8,7 @@ The following `Jupyter` notebooks provide some examples of how this package can 
 
 ## Getting Started Guide
 
-The `Getting Started` guide from the [intro](/intro/).
+The `Getting Started` guide from the [intro](/intro).
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/getting_started.ipynb" target="_blank">Github: getting_started.ipynb</a>
 
