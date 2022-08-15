@@ -39,3 +39,13 @@ An example workflow computing network centralities for London using OSM data:
 An example workflow computing landuse acccessibility to pubs in London.
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_pubs.ipynb" target="_blank">Github: london_pubs.ipynb</a>
+
+## Street Network continuity
+
+An example workflow computing street network continuities for street names, route identifiers, and highway types using OS Open:
+
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/continuity/open_roads_continuity.ipynb" target="_blank">Github: open_roads_continuity.ipynb</a>
+
+An example workflow computing street network continuities for street names, route identifiers, and highway types using OSM data:
+
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/continuity/osm_continuity.ipynb" target="_blank">Github: osm_continuity.ipynb</a>
