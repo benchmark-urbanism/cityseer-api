@@ -18,13 +18,14 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from matplotlib import colors
+from matplotlib.patches import Patch
 from matplotlib.collections import LineCollection
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
 from tqdm import tqdm
 
 from cityseer import structures
-from cityseer.tools.graphs import NodeData, NodeKey
+from cityseer.tools.graphs import NodeData, NodeKey, EdgeData
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -755,6 +756,9 @@ def plot_nx_edges(
     shape_exp: float = 1,
     lw_min: float = 0.1,
     lw_max: float = 1,
+    edge_label_key: Optional[str] = None,
+    colour_by_categorical: bool = False,
+    max_n_categorical: int = 10,
     rasterized: bool = True,
     face_colour: str = "#111",
     invert_plot_order: bool = False,
@@ -785,8 +789,12 @@ def plot_nx_edges(
         A float representing the minimum line width for a plotted edge. By default 0.1.
     lw_max: float
         A float representing the maximum line width for a plotted edge. By default 1.
-    cmap_key: str
-        A `matplotlib` colour map key.
+    edge_label_key: str
+        A key for retrieving categorical labels from edges. By default None.
+    colour_by_categorical: bool
+        Whether to plot colours by categorical. This requires an `edge_label_key` parameter. By default None.
+    max_n_categorical: int
+        The number of categorical values (sorted in decreasing order) to plot. By default 10.
     rasterized: bool
         Whether or not to rasterise the output. Recommended for plots with a large number of edges.
     face_colour: str
@@ -800,10 +808,31 @@ def plot_nx_edges(
     # extract data for shaping
     vals: list[str] = []
     edge_geoms: list[geometry.LineString] = []
+    labels_info: dict[str, dict[str, Any]] = {}
     logger.info("Extracting edge geometries")
-    for _, _, edge_data in tqdm(nx_multigraph.edges(data=True)):  # type: ignore
+    edge_data: EdgeData
+    for idx, (_, _, edge_data) in tqdm(enumerate(nx_multigraph.edges(data=True))):  # type: ignore
         vals.append(edge_data[edge_metrics_key])  # type: ignore
         edge_geoms.append(edge_data["geom"])  # type: ignore
+        # if label key provided
+        if edge_label_key is not None:
+            label_val: str = edge_data[edge_label_key]
+            if label_val is None or label_val.lower() in [
+                "",
+                " ",
+                "not classified",
+                "unclassified",
+                "service",
+                "residential",
+                "unknown",
+                "local road",
+            ]:
+                label_val = "other"
+            if label_val not in labels_info:
+                labels_info[label_val] = {"count": 1, "idxs": []}
+            else:
+                labels_info[label_val]["count"] += 1
+                labels_info[label_val]["idxs"].append(idx)
     vals_arr: npt.NDArray[np.float_] = np.array(vals)
     # remove any extreme outliers
     v_min: float = np.nanpercentile(vals_arr, perc_range[0])  # type: ignore
@@ -821,26 +850,80 @@ def plot_nx_edges(
         sort_idx = sort_idx[::-1]
     # plot using geoms
     logger.info("Generating plot")
-    plot_geoms = []
-    plot_colours = []
-    plot_lws = []
-    for idx in tqdm(sort_idx):
-        xs = np.array(edge_geoms[idx].coords.xy[0])
-        ys = np.array(edge_geoms[idx].coords.xy[1])
-        if np.any(xs < min_x) or np.any(xs > max_x):
-            continue
-        if np.any(ys < min_y) or np.any(ys > max_y):
-            continue
-        plot_geoms.append(tuple(zip(xs, ys)))
-        plot_colours.append(cmap(colours[idx]))  # type: ignore
-        plot_lws.append(sizes[idx])
-    lines = LineCollection(
-        plot_geoms,
-        colors=plot_colours,  # type: ignore
-        linewidths=plot_lws,  # type: ignore
-        rasterized=rasterized,
-    )
-    ax.add_collection(lines)
+    if not colour_by_categorical:
+        plot_geoms = []
+        plot_colours = []
+        plot_lws = []
+        for idx in tqdm(sort_idx):
+            xs = np.array(edge_geoms[idx].coords.xy[0])
+            ys = np.array(edge_geoms[idx].coords.xy[1])
+            if np.any(xs < min_x) or np.any(xs > max_x):
+                continue
+            if np.any(ys < min_y) or np.any(ys > max_y):
+                continue
+            plot_geoms.append(tuple(zip(xs, ys)))
+            plot_colours.append(cmap(colours[idx]))  # type: ignore
+            plot_lws.append(sizes[idx])
+        lines = LineCollection(
+            plot_geoms,
+            colors=plot_colours,  # type: ignore
+            linewidths=plot_lws,  # type: ignore
+            rasterized=rasterized,
+            alpha=0.9,
+        )
+        ax.add_collection(lines)
+    else:
+        plot_handles = []
+        plot_geoms = []
+        plot_colours = []
+        plot_lws = []
+        # extract sorted counts by decreasing order
+        labels_info = {k: v for (k, v) in sorted(labels_info.items(), key=lambda item: item[1]["count"], reverse=True)}
+        label_keys = [k for k in labels_info.keys() if k != "other"]
+        label_counts = [v["count"] for k, v in labels_info.items() if k != "other"]
+        # clip by maximum categoricals
+        if len(label_keys) > max_n_categorical:
+            label_keys = label_keys[:max_n_categorical]
+            label_counts = label_counts[:max_n_categorical]
+        # sort by increasing
+        label_keys.reverse()
+        label_counts.reverse()
+        # iterate label info
+        for label_key in tqdm(["other"] + label_keys):
+            if label_key not in labels_info:
+                continue
+            # if label count not clipped
+            label_info = labels_info[label_key]
+            label_count = label_info["count"]
+            label_idxs = label_info["idxs"]
+            if label_count in label_counts:
+                item_wt = (label_counts.index(label_count)) / (max_n_categorical - 1)
+                item_c = cmap(item_wt)
+                s_range = lw_max - lw_min
+                item_lw = lw_min + item_wt * s_range
+                plot_handles.append(Patch(facecolor=item_c, edgecolor=item_c, label=label_key))
+            else:
+                item_c = "#444"
+                item_lw = lw_min
+            for idx in label_idxs:
+                xs = np.array(edge_geoms[idx].coords.xy[0])
+                ys = np.array(edge_geoms[idx].coords.xy[1])
+                if np.any(xs < min_x) or np.any(xs > max_x):
+                    continue
+                if np.any(ys < min_y) or np.any(ys > max_y):
+                    continue
+                plot_geoms.append(tuple(zip(xs, ys)))
+                plot_colours.append(item_c)  # type: ignore
+                plot_lws.append(item_lw)
+        lines = LineCollection(
+            plot_geoms,
+            colors=plot_colours,  # type: ignore
+            linewidths=plot_lws,  # type: ignore
+            rasterized=rasterized,
+            alpha=0.9,
+        )
+        ax.add_collection(lines)
+        ax.legend(handles=plot_handles)
 
     ax.set_xlim(left=min_x, right=max_x)
     ax.set_ylim(bottom=min_y, top=max_y)
@@ -848,8 +931,3 @@ def plot_nx_edges(
     ax.set_yticks([])  # type: ignore
     ax.set_aspect(1)
     ax.set_facecolor(face_colour)
-
-    # colorbar
-    col_bar_mappable = plt.cm.ScalarMappable(norm=c_norm, cmap=cmap)  # type: ignore
-    fig: Any = ax.get_figure()
-    fig.colorbar(col_bar_mappable, ax=ax, location="right", fraction=0.04, shrink=0.6, aspect=50, pad=0.01)
