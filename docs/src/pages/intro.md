@@ -24,7 +24,7 @@ Code tests are run against `python 3.9`, though the code base will generally be 
 
 ## Notebooks
 
-The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebooks which can be accessed via the [`Examples`](/examples/) page.
+The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebooks which can be accessed via the [`Examples`](/examples) page.
 
 ## Quickstart
 
@@ -47,7 +47,7 @@ _An example graph._
 
 ## Graph Preparation
 
-The [`tools.graphs`](/tools/graphs/) module contains a collection of convenience functions for the preparation and conversion of `networkX` `MultiGraphs`, i.e. undirected graphs allowing for parallel edges. The [`tools.graphs`](/tools/graphs/) module is designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the graph's edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
+The [`tools.graphs`](/tools/graphs) module contains a collection of convenience functions for the preparation and conversion of `networkX` `MultiGraphs`, i.e. undirected graphs allowing for parallel edges. The [`tools.graphs`](/tools/graphs) module is designed to work with raw `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries that have been assigned to the graph's edge (link) `geom` attributes. The benefit to this approach is that the geometry of the network is decoupled from the topology: the topology is consequently free from distortions which would otherwise confound centrality and other metrics.
 
 There are generally two scenarios when creating a street network graph:
 

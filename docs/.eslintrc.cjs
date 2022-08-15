@@ -3,7 +3,11 @@ module.exports = {
   env: {
     node: true,
   },
-  extends: ['plugin:prettier/recommended', 'plugin:vue/vue3-recommended'],
+  extends: [
+    'plugin:prettier/recommended',
+    'plugin:vue/vue3-recommended',
+    'plugin:astro/recommended',
+  ],
   plugins: ['simple-import-sort'],
   rules: {
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
@@ -11,4 +15,11 @@ module.exports = {
     'vue/multi-word-component-names': 'off',
     'simple-import-sort/imports': 'error',
   },
+  overrides: [
+    {
+      files: ['*.astro'],
+      parser: 'astro-eslint-parser',
+      rules: {},
+    },
+  ],
 }
