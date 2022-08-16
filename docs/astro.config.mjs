@@ -1,4 +1,5 @@
 import mdx from '@astrojs/mdx'
+import prefetch from '@astrojs/prefetch'
 import sitemap from '@astrojs/sitemap'
 import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
@@ -39,7 +40,8 @@ export default defineConfig({
   outDir: './dist',
   site: 'https://cityseer.benchmarkurbanism.com/',
   base: '/',
-  trailingSlash: 'always',
+  // firebase hosting is set to false
+  trailingSlash: 'never',
   build: {
     format: 'directory',
   },
@@ -124,6 +126,7 @@ export default defineConfig({
       },
     }),
     sitemap(),
+    prefetch(),
     mdx(),
   ],
 })

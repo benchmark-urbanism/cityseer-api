@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "jupyterlab"
-version = "3.4.4"
+version = "3.4.5"
 requires_python = ">=3.7"
 summary = "JupyterLab computational environment"
 dependencies = [
@@ -565,7 +565,7 @@ summary = "Safely add untrusted strings to HTML/XML markup."
 
 [[package]]
 name = "matplotlib"
-version = "3.5.2"
+version = "3.5.3"
 requires_python = ">=3.7"
 summary = "Python plotting package"
 dependencies = [
@@ -1715,9 +1715,9 @@ content_hash = "sha256:0fa61d545097a60d058498b3ce980b0e4fa9d3bd5f6f6d2412cfe3e76
     {url = "https://files.pythonhosted.org/packages/36/6c/fe8c416a9f1a64b9296918e9096b68da81fc50e5fefba8077841c22d6691/jupyter_server-1.18.1-py3-none-any.whl", hash = "sha256:022759b09c96a4e2feb95de59ce4283e04e17782efe197b91d23a47521609b77"},
     {url = "https://files.pythonhosted.org/packages/5b/6e/01af30a3e12d2f8eda1405ca8710442f1e7d05d30f8abbfca3b1f0375ce0/jupyter_server-1.18.1.tar.gz", hash = "sha256:2b72fc595bccae292260aad8157a0ead8da2c703ec6ae1bb7b36dbad0e267ea7"},
 ]
-"jupyterlab 3.4.4" = [
-    {url = "https://files.pythonhosted.org/packages/34/d2/8ddc51ba1a4d1b40d667da29dc85d445428d2502b3842194d2d1a7522fd3/jupyterlab-3.4.4.tar.gz", hash = "sha256:5a2a0fdd22bd8628ad45b618e3520387c32a4818e3af112dbad1f649304dfc20"},
-    {url = "https://files.pythonhosted.org/packages/a4/76/8d9adc583f71b62b4906eb1f997900edcc9e41d9da6de2cdf596ca97cda6/jupyterlab-3.4.4-py3-none-any.whl", hash = "sha256:2c12a0c995bf5d49b0a17e833aaf6417c6d6a4721dfd4742a5f22f4e48661146"},
+"jupyterlab 3.4.5" = [
+    {url = "https://files.pythonhosted.org/packages/49/33/13c1dde73c26f992afe05a856c2ebb8292a111f24fca8ca85930109e0848/jupyterlab-3.4.5-py3-none-any.whl", hash = "sha256:3181d60518e6101b9e43f6da231aa4be812a59d81ddcc8fe680dd33066fddae6"},
+    {url = "https://files.pythonhosted.org/packages/cb/2f/9690846049f14996645445b2b79b8c5ecebf77b088b3251c10a33b4f88cb/jupyterlab-3.4.5.tar.gz", hash = "sha256:472f6b7996c75f6991592483c26d9fe205a59a71ccbce15842400155dc64f59b"},
 ]
 "jupyterlab-pygments 0.2.2" = [
     {url = "https://files.pythonhosted.org/packages/69/8e/8ae01f052013ee578b297499d16fcfafb892927d8e41c1a0054d2f99a569/jupyterlab_pygments-0.2.2.tar.gz", hash = "sha256:7405d7fde60819d905a9fa8ce89e4cd830e318cdad22a0030f7a901da705585d"},
@@ -1895,42 +1895,42 @@ content_hash = "sha256:0fa61d545097a60d058498b3ce980b0e4fa9d3bd5f6f6d2412cfe3e76
     {url = "https://files.pythonhosted.org/packages/fd/f4/524d2e8f5a3727cf309c2b7df7c732038375322df1376c9e9ef3aa92fcaf/MarkupSafe-2.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4b9fe39a2ccc108a4accc2676e77da025ce383c108593d65cc909add5c3bd601"},
     {url = "https://files.pythonhosted.org/packages/ff/3a/42262a3aa6415befee33b275b31afbcef4f7f8d2f4380061b226c692ee2a/MarkupSafe-2.1.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a49907dd8420c5685cfa064a1335b6754b74541bbb3706c259c02ed65b644b3e"},
 ]
-"matplotlib 3.5.2" = [
-    {url = "https://files.pythonhosted.org/packages/00/eb/4c2d7824c1ea12693303d1e7e8f495c8c3350181b662e06e3e569b69d76d/matplotlib-3.5.2-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c87973ddec10812bddc6c286b88fdd654a666080fbe846a1f7a3b4ba7b11ab78"},
-    {url = "https://files.pythonhosted.org/packages/03/70/57c4847a43f9b9be01222776d2aeba1a0e48e8526e511edb2826dc7ae6f8/matplotlib-3.5.2-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:7f409716119fa39b03da3d9602bd9b41142fab7a0568758cd136cd80b1bf36c8"},
-    {url = "https://files.pythonhosted.org/packages/0a/75/7411b92878a8eb7b14330814a921d1b19a974f1a699e1d7096b38efd6776/matplotlib-3.5.2-cp37-cp37m-win32.whl", hash = "sha256:a91426ae910819383d337ba0dc7971c7cefdaa38599868476d94389a329e599b"},
-    {url = "https://files.pythonhosted.org/packages/17/cb/83784d0aeef468bf3193fb7aa1957d0c4e8e6ee8ba249024ceeffc58b5ff/matplotlib-3.5.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4a05f2b37222319753a5d43c0a4fd97ed4ff15ab502113e3f2625c26728040cf"},
-    {url = "https://files.pythonhosted.org/packages/18/c7/35b4515da4b84cefcd8234233fd2015afd003278ed6a810ae0f03ec6c496/matplotlib-3.5.2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:ee175a571e692fc8ae8e41ac353c0e07259113f4cb063b0ec769eff9717e84bb"},
-    {url = "https://files.pythonhosted.org/packages/1d/3c/cba248e93a42252c5a8d2322335fd643d8836e5d1cf6bea432a4149ec783/matplotlib-3.5.2-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:751d3815b555dcd6187ad35b21736dc12ce6925fc3fa363bbc6dc0f86f16484f"},
-    {url = "https://files.pythonhosted.org/packages/23/d7/be130e12d82e7b27f379e563669751feca432fe34eeb85ad9c6eee4c3a22/matplotlib-3.5.2-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e2b696699386766ef171a259d72b203a3c75d99d03ec383b97fc2054f52e15cf"},
-    {url = "https://files.pythonhosted.org/packages/29/3c/740cdccfa4e22a84fc3d8f7f13ed632691c9a90969a0ea37fe92ad6f2c98/matplotlib-3.5.2-cp38-cp38-macosx_10_9_universal2.whl", hash = "sha256:ebc27ad11df3c1661f4677a7762e57a8a91dd41b466c3605e90717c9a5f90c82"},
-    {url = "https://files.pythonhosted.org/packages/2a/0d/bebf456dd3b5bb4ecd78cb1e78636f38716384529d083ed78327ba49ec83/matplotlib-3.5.2-cp38-cp38-win_amd64.whl", hash = "sha256:75c406c527a3aa07638689586343f4b344fcc7ab1f79c396699eb550cd2b91f7"},
-    {url = "https://files.pythonhosted.org/packages/2f/be/7d6e073a3eb740ebeba43a69f5de2b141fea50b801e24e0ae024ac94d4ac/matplotlib-3.5.2.tar.gz", hash = "sha256:48cf850ce14fa18067f2d9e0d646763681948487a8080ec0af2686468b4607a2"},
-    {url = "https://files.pythonhosted.org/packages/35/be/2d87d517ef2c3be82ea3323e268928a12b979d9d609057e3580197e1c979/matplotlib-3.5.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ea75df8e567743207e2b479ba3d8843537be1c146d4b1e3e395319a4e1a77fe9"},
-    {url = "https://files.pythonhosted.org/packages/36/e2/15a8569383085c22fc9b6e3066c887f7420a91f01aaf010e09e10191f8e6/matplotlib-3.5.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:364e6bca34edc10a96aa3b1d7cd76eb2eea19a4097198c1b19e89bee47ed5781"},
-    {url = "https://files.pythonhosted.org/packages/3a/40/a638be5b2a7be1c37657c211e908f249e5b504c10e749b9107b19fd9ff2c/matplotlib-3.5.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:3d8e129af95b156b41cb3be0d9a7512cc6d73e2b2109f82108f566dbabdbf377"},
-    {url = "https://files.pythonhosted.org/packages/42/18/50a124008e624830fb8e2a5384802ba99ee0443994ebdee8f548c3732039/matplotlib-3.5.2-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:b8d3f4e71e26307e8c120b72c16671d70c5cd08ae412355c11254aa8254fb87f"},
-    {url = "https://files.pythonhosted.org/packages/43/64/1d949d0fab5b83071290a46c93de28cbd8ff15a75b533d6c134012c61e4d/matplotlib-3.5.2-cp39-cp39-win_amd64.whl", hash = "sha256:c772264631e5ae61f0bd41313bbe48e1b9bcc95b974033e1118c9caa1a84d5c6"},
-    {url = "https://files.pythonhosted.org/packages/62/13/d18a3fd0f34af637926a6a072709ca843ee5cc3e2cda3c799a3d4de56f1a/matplotlib-3.5.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5844cea45d804174bf0fac219b4ab50774e504bef477fc10f8f730ce2d623441"},
-    {url = "https://files.pythonhosted.org/packages/67/31/8ef33af33c7baec10517a0e9e5d054433d5429599ed60bba85ed7144ea44/matplotlib-3.5.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:49a5938ed6ef9dda560f26ea930a2baae11ea99e1c2080c8714341ecfda72a89"},
-    {url = "https://files.pythonhosted.org/packages/67/4e/5959c5822f0694e4c2beb93f9ee34b8ec49052fc79d88f8842d9ded72f02/matplotlib-3.5.2-cp310-cp310-win_amd64.whl", hash = "sha256:b4fedaa5a9aa9ce14001541812849ed1713112651295fdddd640ea6620e6cf98"},
-    {url = "https://files.pythonhosted.org/packages/7f/86/982067578d28fc48ad1dd7da360435b8c18239060edd7a12f70271562cf3/matplotlib-3.5.2-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:24173c23d1bcbaed5bf47b8785d27933a1ac26a5d772200a0f3e0e38f471b001"},
-    {url = "https://files.pythonhosted.org/packages/83/56/8080af16635d10a6876bab52ee9ab0c25b410bb1080aba12c12bb4be68eb/matplotlib-3.5.2-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2e8bda1088b941ead50caabd682601bece983cadb2283cafff56e8fcddbf7d7f"},
-    {url = "https://files.pythonhosted.org/packages/89/fb/bb45f98582b0c046ccced1cbef3e286f0021fdf70d1b994d5fdd1a325956/matplotlib-3.5.2-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:2a0967d4156adbd0d46db06bc1a877f0370bce28d10206a5071f9ecd6dc60b79"},
-    {url = "https://files.pythonhosted.org/packages/8e/2c/2e98d7eddec1ac993026930e95917825cbb42d9c7dbb933d0b986b473d8e/matplotlib-3.5.2-cp310-cp310-win32.whl", hash = "sha256:9776e1a10636ee5f06ca8efe0122c6de57ffe7e8c843e0fb6e001e9d9256ec95"},
-    {url = "https://files.pythonhosted.org/packages/af/95/66d06ccfdeaaca61614aeecf7030f489c45eb4aaef04a9f65c0c12c9589e/matplotlib-3.5.2-cp38-cp38-win32.whl", hash = "sha256:b6c63cd01cad0ea8704f1fd586e9dc5777ccedcd42f63cbbaa3eae8dd41172a1"},
-    {url = "https://files.pythonhosted.org/packages/b3/5b/c1b57349d1d4e13623a268d582e71aac84981a3b029036b093cf73500d58/matplotlib-3.5.2-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:44c6436868186564450df8fd2fc20ed9daaef5caad699aa04069e87099f9b5a8"},
-    {url = "https://files.pythonhosted.org/packages/b7/21/ad86b69d2afb2d42c5a0bf454d8b547bab07e7393921af160b9c002cb70c/matplotlib-3.5.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:03bbb3f5f78836855e127b5dab228d99551ad0642918ccbf3067fcd52ac7ac5e"},
-    {url = "https://files.pythonhosted.org/packages/bb/ee/59a884d5ee3c0fbf47c0e449daf87388809dafb48152c045873235851355/matplotlib-3.5.2-cp37-cp37m-win_amd64.whl", hash = "sha256:c4b82c2ae6d305fcbeb0eb9c93df2602ebd2f174f6e8c8a5d92f9445baa0c1d3"},
-    {url = "https://files.pythonhosted.org/packages/bd/53/5fd2fb5e3b26460d80cd237ca6b390bd967c3cf6019407d4dcafba9c5afb/matplotlib-3.5.2-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:9480842d5aadb6e754f0b8f4ebeb73065ac8be1855baa93cd082e46e770591e9"},
-    {url = "https://files.pythonhosted.org/packages/c0/f0/2ef5d732f45edc9fa70fc85737a0cd79df443f8e8ca0bfd1f7668cd02b4f/matplotlib-3.5.2-cp39-cp39-win32.whl", hash = "sha256:ee0b8e586ac07f83bb2950717e66cb305e2859baf6f00a9c39cc576e0ce9629c"},
-    {url = "https://files.pythonhosted.org/packages/d1/7d/821222d0533051fcb7caf116457fa790ed0f84ac9c3902436f89662744c2/matplotlib-3.5.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5a32ea6e12e80dedaca2d4795d9ed40f97bfa56e6011e14f31502fdd528b9c89"},
-    {url = "https://files.pythonhosted.org/packages/df/e7/0ad4aad00d6d0314aaf97526a54a34d385f898ebb7915d112431fff452ff/matplotlib-3.5.2-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:6c623b355d605a81c661546af7f24414165a8a2022cddbe7380a31a4170fa2e9"},
-    {url = "https://files.pythonhosted.org/packages/e1/81/0a73fe71098683a1f73243f18f419464ec109acae16811bf29c5d0dc173e/matplotlib-3.5.2-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:7d7705022df2c42bb02937a2a824f4ec3cca915700dd80dc23916af47ff05f1a"},
-    {url = "https://files.pythonhosted.org/packages/e4/55/332178f2ce970855154874b66595baf123155891307a84c8d6886f0bd6bd/matplotlib-3.5.2-pp37-pypy37_pp73-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:31fbc2af27ebb820763f077ec7adc79b5a031c2f3f7af446bd7909674cd59460"},
-    {url = "https://files.pythonhosted.org/packages/f4/4d/9b62279224557e9a3b9d11f69e572996c3ccb1ee7444b5173f15ecb2cbc4/matplotlib-3.5.2-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:4fa28ca76ac5c2b2d54bc058b3dad8e22ee85d26d1ee1b116a6fd4d2277b6a04"},
-    {url = "https://files.pythonhosted.org/packages/f7/6b/5301bfdd311e0be74235cbcf0f104a4d3507e10002b9807e87341ebac0a8/matplotlib-3.5.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:77157be0fc4469cbfb901270c205e7d8adb3607af23cef8bd11419600647ceed"},
-    {url = "https://files.pythonhosted.org/packages/fd/b6/52cb6ddd11462c0c86e53d9fe092074f9c106d61204851815b0c1e5879f1/matplotlib-3.5.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:4a44cdfdb9d1b2f18b1e7d315eb3843abb097869cd1ef89cfce6a488cd1b5182"},
+"matplotlib 3.5.3" = [
+    {url = "https://files.pythonhosted.org/packages/02/81/e8276ec6ca005b3b2bfaaad0ea47dbb3a0e389ec8ab87d08e3ccbe4b2742/matplotlib-3.5.3.tar.gz", hash = "sha256:339cac48b80ddbc8bfd05daae0a3a73414651a8596904c2a881cfd1edb65f26c"},
+    {url = "https://files.pythonhosted.org/packages/0a/0e/17a2f293bf37f3ba92600cb2f6bf4a7fd21e96d2101531ddab7e157776ab/matplotlib-3.5.3-cp37-cp37m-win32.whl", hash = "sha256:35a8ad4dddebd51f94c5d24bec689ec0ec66173bf614374a1244c6241c1595e0"},
+    {url = "https://files.pythonhosted.org/packages/29/a1/5a02f43ecc29738867f461df5749fb5ac7fa4c701aed911287266f4e6dfe/matplotlib-3.5.3-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:99482b83ebf4eb6d5fc6813d7aacdefdd480f0d9c0b52dcf9f1cc3b2c4b3361a"},
+    {url = "https://files.pythonhosted.org/packages/2d/19/dc36a8cfa795ceda35b823b3dd13c64258b4ae84a35acd9998efd58d347c/matplotlib-3.5.3-cp38-cp38-win32.whl", hash = "sha256:874df7505ba820e0400e7091199decf3ff1fde0583652120c50cd60d5820ca9a"},
+    {url = "https://files.pythonhosted.org/packages/2d/4a/3262e792d1db92939f820c8fae5ac298b201769e12bb11c89de33ac7bae2/matplotlib-3.5.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:cd45a6f3e93a780185f70f05cf2a383daed13c3489233faad83e81720f7ede24"},
+    {url = "https://files.pythonhosted.org/packages/3d/4e/da8fa069f42ea32858a556b1979c587071d5e82a2b38bf86c24a41c4ec63/matplotlib-3.5.3-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:3b4fa56159dc3c7f9250df88f653f085068bcd32dcd38e479bba58909254af7f"},
+    {url = "https://files.pythonhosted.org/packages/40/24/a79cbea0d0b6ca64011bfc30cd18069885308e1f1e65772dfc3a15752221/matplotlib-3.5.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6fe807e8a22620b4cd95cfbc795ba310dc80151d43b037257250faf0bfcd82bc"},
+    {url = "https://files.pythonhosted.org/packages/41/6a/b9b170360c408c1cf1515b608fccd7e3e1f4e0b378f6713c2a552a4dab8c/matplotlib-3.5.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:6ea6aef5c4338e58d8d376068e28f80a24f54e69f09479d1c90b7172bad9f25b"},
+    {url = "https://files.pythonhosted.org/packages/60/f6/81c99d3413c18b4810256ac5bca0401c0804e69ea98b448e2c644b745bbb/matplotlib-3.5.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:a206a1b762b39398efea838f528b3a6d60cdb26fe9d58b48265787e29cd1d693"},
+    {url = "https://files.pythonhosted.org/packages/61/1a/584f2e77e2f88239d66314dab14839a199424319df242c783b84ae23ae41/matplotlib-3.5.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d62880e1f60e5a30a2a8484432bcb3a5056969dc97258d7326ad465feb7ae069"},
+    {url = "https://files.pythonhosted.org/packages/66/c4/70c5d5a4c45a5f642f3609b8b87ef18233e38e08081169a76d19988fe83f/matplotlib-3.5.3-pp37-pypy37_pp73-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:f814504e459c68118bf2246a530ed953ebd18213dc20e3da524174d84ed010b2"},
+    {url = "https://files.pythonhosted.org/packages/69/2a/6cf748ea590bcdc8a35fc9eff57505cae78f4c15035010c10cbe8bb3fae9/matplotlib-3.5.3-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f3840c280ebc87a48488a46f760ea1c0c0c83fcf7abbe2e6baf99d033fd35fd8"},
+    {url = "https://files.pythonhosted.org/packages/7b/10/70a26ba757ebab35cc8016502ec14c4e51b939a1c62aff5c9b9731417ad1/matplotlib-3.5.3-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9ab29589cef03bc88acfa3a1490359000c18186fc30374d8aa77d33cc4a51a4a"},
+    {url = "https://files.pythonhosted.org/packages/7f/88/bedb044b6df42c5e68d71df6f4ca9283c98cc4c563af4655d0128a210dfe/matplotlib-3.5.3-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:73dd93dc35c85dece610cca8358003bf0760d7986f70b223e2306b4ea6d1406b"},
+    {url = "https://files.pythonhosted.org/packages/83/5c/0424da282a8deb4daa6aa530be3f66c9fe8b6eb8236400b06babb6461a99/matplotlib-3.5.3-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:1e64ac9be9da6bfff0a732e62116484b93b02a0b4d4b19934fb4f8e7ad26ad6a"},
+    {url = "https://files.pythonhosted.org/packages/90/81/b73cb7d615a70a01bd349b8e85a7648c51f3a6346695354c1ce569db6d8f/matplotlib-3.5.3-cp310-cp310-win_amd64.whl", hash = "sha256:2e6d184ebe291b9e8f7e78bbab7987d269c38ea3e062eace1fe7d898042ef804"},
+    {url = "https://files.pythonhosted.org/packages/9e/c8/0cdbaeea02ba50bc9390d9d38d809391d9a477fd571e6e3d8b1f8cfe0a2c/matplotlib-3.5.3-cp39-cp39-win32.whl", hash = "sha256:879c7e5fce4939c6aa04581dfe08d57eb6102a71f2e202e3314d5fbc072fd5a0"},
+    {url = "https://files.pythonhosted.org/packages/a5/0c/e1d675e4f20ddc72497d422344317c227ecdd9e2bd95f4a1c53eeb2cd8e0/matplotlib-3.5.3-cp38-cp38-win_amd64.whl", hash = "sha256:b28de401d928890187c589036857a270a032961411934bdac4cf12dde3d43094"},
+    {url = "https://files.pythonhosted.org/packages/a7/57/c9b314e3c1fe451017e62b9d485c107db1f7b4fed70dc2e13c7acdc57137/matplotlib-3.5.3-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:b428076a55fb1c084c76cb93e68006f27d247169f056412607c5c88828d08f88"},
+    {url = "https://files.pythonhosted.org/packages/a8/6e/0ee4fdc167173d29d45d2296ed0a1f00ccbe7410a2d10d696970eb0312a0/matplotlib-3.5.3-cp39-cp39-win_amd64.whl", hash = "sha256:ab8d26f07fe64f6f6736d635cce7bfd7f625320490ed5bfc347f2cdb4fae0e56"},
+    {url = "https://files.pythonhosted.org/packages/ad/62/7b662284352867a86acfb636761ba351723fc3a235efd8397578d903413d/matplotlib-3.5.3-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:94ff86af56a3869a4ae26a9637a849effd7643858a1a04dd5ee50e9ab75069a7"},
+    {url = "https://files.pythonhosted.org/packages/b4/d1/398124bc31d31b57a8a660be90bf5498b703f636c4a33a7180e7e59c3deb/matplotlib-3.5.3-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:839d47b8ead7ad9669aaacdbc03f29656dc21f0d41a6fea2d473d856c39c8b1c"},
+    {url = "https://files.pythonhosted.org/packages/b6/7b/fd9dc05a486bf3d5a32da454b100269e5afaff3a477f319d6ceefa48e167/matplotlib-3.5.3-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:3211ba82b9f1518d346f6309df137b50c3dc4421b4ed4815d1d7eadc617f45a1"},
+    {url = "https://files.pythonhosted.org/packages/bf/f6/d0206285a0fc5ef590b5fe940a231cebbe49375c6edd8fd04eaf0489e83c/matplotlib-3.5.3-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:57f1b4e69f438a99bb64d7f2c340db1b096b41ebaa515cf61ea72624279220ce"},
+    {url = "https://files.pythonhosted.org/packages/c9/99/81f70f1c7a5f61997faacd7756faac6f41d1bda514cb0e29bd4b0d817ff1/matplotlib-3.5.3-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:2886cc009f40e2984c083687251821f305d811d38e3df8ded414265e4583f0c5"},
+    {url = "https://files.pythonhosted.org/packages/cc/00/cdffb0622cbf31a8a33428f77f8fe22a1509a8be417f40089174c19639f8/matplotlib-3.5.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:bf618a825deb6205f015df6dfe6167a5d9b351203b03fab82043ae1d30f16511"},
+    {url = "https://files.pythonhosted.org/packages/d6/d3/cda19d3864fff82d83604841c0f972cfa7bbd9c759595c854202ad3e97fa/matplotlib-3.5.3-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0bcdfcb0f976e1bac6721d7d457c17be23cf7501f977b6a38f9d38a3762841f7"},
+    {url = "https://files.pythonhosted.org/packages/dd/3e/15aefbbc4e7c9a4a16700f83e1a69020087c88935c447980e9aeabf67262/matplotlib-3.5.3-cp38-cp38-macosx_10_9_universal2.whl", hash = "sha256:22227c976ad4dc8c5a5057540421f0d8708c6560744ad2ad638d48e2984e1dbc"},
+    {url = "https://files.pythonhosted.org/packages/df/3f/6093a23565d0f50ce433f56223fcc34af6c912cd4331dc582ba29d9b5a17/matplotlib-3.5.3-cp37-cp37m-win_amd64.whl", hash = "sha256:43e9d3fa077bf0cc95ded13d331d2156f9973dce17c6f0c8b49ccd57af94dbd9"},
+    {url = "https://files.pythonhosted.org/packages/e1/9c/8330c19f49359b0729cb1b4cbc6a45d29bb2a7526f8318f4e59050e89574/matplotlib-3.5.3-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:9befa5954cdbc085e37d974ff6053da269474177921dd61facdad8023c4aeb51"},
+    {url = "https://files.pythonhosted.org/packages/e5/ca/3ed0e1de9df496392a4c9d75b0c78f82fe5758c66bb875903cf7a9402f0b/matplotlib-3.5.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c995f7d9568f18b5db131ab124c64e51b6820a92d10246d4f2b3f3a66698a15b"},
+    {url = "https://files.pythonhosted.org/packages/e8/f7/12fdec2c9cdd06a406f1ba4f08b5fe94bbefc800a4c6e5fa3feda0dc1d16/matplotlib-3.5.3-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:dacddf5bfcec60e3f26ec5c0ae3d0274853a258b6c3fc5ef2f06a8eb23e042be"},
+    {url = "https://files.pythonhosted.org/packages/ec/13/78e0de82272ee6a24e5cf13469234accfc07cf08638477e8c516573b2a3e/matplotlib-3.5.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:5c096363b206a3caf43773abebdbb5a23ea13faef71d701b21a9c27fdcef72f4"},
+    {url = "https://files.pythonhosted.org/packages/fd/1c/5c3c71e38a408f2034ae08db6b71e7d1010f9461ab05d8b30b136a77b3e1/matplotlib-3.5.3-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:d2484b350bf3d32cae43f85dcfc89b3ed7bd2bcd781ef351f93eb6fb2cc483f9"},
+    {url = "https://files.pythonhosted.org/packages/fd/7e/ecd6784f82baa01ef7859f8093be02b0913bda487b5bdc4da23c14041f9c/matplotlib-3.5.3-cp310-cp310-win32.whl", hash = "sha256:6bb93a0492d68461bd458eba878f52fdc8ac7bdb6c4acdfe43dba684787838c2"},
 ]
 "matplotlib-inline 0.1.3" = [
     {url = "https://files.pythonhosted.org/packages/0f/98/838f4c57f7b2679eec038ad0abefd1acaeec35e635d4d7af215acd7d1bd2/matplotlib-inline-0.1.3.tar.gz", hash = "sha256:a04bfba22e0d1395479f866853ec1ee28eea1485c1d69a6faf00dc3e24ff34ee"},
