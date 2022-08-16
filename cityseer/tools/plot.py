@@ -18,14 +18,14 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from matplotlib import colors
-from matplotlib.patches import Patch
 from matplotlib.collections import LineCollection
+from matplotlib.patches import Patch
 from shapely import geometry
 from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
 from tqdm import tqdm
 
 from cityseer import structures
-from cityseer.tools.graphs import NodeData, NodeKey, EdgeData
+from cityseer.tools.graphs import EdgeData, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -878,7 +878,7 @@ def plot_nx_edges(
         plot_colours = []
         plot_lws = []
         # extract sorted counts by decreasing order
-        labels_info = {k: v for (k, v) in sorted(labels_info.items(), key=lambda item: item[1]["count"], reverse=True)}
+        labels_info = dict(sorted(labels_info.items(), key=lambda item: item[1]["count"], reverse=True))
         label_keys = [k for k in labels_info.keys() if k != "other"]
         label_counts = [v["count"] for k, v in labels_info.items() if k != "other"]
         # clip by maximum categoricals
@@ -898,10 +898,10 @@ def plot_nx_edges(
             label_idxs = label_info["idxs"]
             if label_count in label_counts:
                 item_wt = (label_counts.index(label_count)) / (max_n_categorical - 1)
-                item_c = cmap(item_wt)
+                item_c = cmap(item_wt)  # type: ignore
                 s_range = lw_max - lw_min
                 item_lw = lw_min + item_wt * s_range
-                plot_handles.append(Patch(facecolor=item_c, edgecolor=item_c, label=label_key))
+                plot_handles.append(Patch(facecolor=item_c, edgecolor=item_c, label=label_key))  # type: ignore
             else:
                 item_c = "#444"
                 item_lw = lw_min
