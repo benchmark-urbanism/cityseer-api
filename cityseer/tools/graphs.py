@@ -185,7 +185,7 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
                 highway = tags["highway"] if "highway" in tags else None
                 for idx in range(count - 1):
                     nx_multigraph.add_edge(
-                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], refs=[ref], highways=[highway]
+                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], routes=[ref], highways=[highway]
                     )
             else:
                 for idx in range(count - 1):
@@ -527,8 +527,8 @@ class _EdgeInfo:
         return tuple(set(self._names))
 
     @property
-    def refs(self):
-        """Returns a set of refs - e.g. route numbers."""
+    def routes(self):
+        """Returns a set of routes - e.g. route numbers."""
         return tuple(set(self._refs))
 
     @property
@@ -544,11 +544,11 @@ class _EdgeInfo:
 
     def gather_edge_info(self, edge_data: dict[str, Any]):
         """Gather edge data from provided edge_data."""
-        # agg names, refs, highway attributes if present
+        # agg names, routes, highway attributes if present
         if "names" in edge_data:
             self._names += edge_data["names"]
-        if "refs" in edge_data:
-            self._refs += edge_data["refs"]
+        if "routes" in edge_data:
+            self._refs += edge_data["routes"]
         if "highways" in edge_data:
             self._highways += edge_data["highways"]
 
@@ -561,7 +561,7 @@ class _EdgeInfo:
     ):
         """Set accumulated edge data to specified graph and edge."""
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["refs"] = self.refs
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
 
 
@@ -743,7 +743,7 @@ def _squash_adjacent(
     The new node can either be based on:
     - The centroid of all nodes;
     - else, all nodes of degree greater or equal to cent_min_degree;
-    - and / else, all nodes with cumulative adjacent OSM street names or refs greater than cent_min_names;
+    - and / else, all nodes with cumulative adjacent OSM street names or routes greater than cent_min_names;
     - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
       node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
 
@@ -807,7 +807,7 @@ def _squash_adjacent(
             agg_keys: list[str] = []
             for nb_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
                 for edge_data in nx_multigraph[nd_key][nb_key].values():  # type: ignore
-                    for valid_key in ["names", "refs"]:
+                    for valid_key in ["names", "routes"]:
                         if valid_key in edge_data:
                             val: str
                             for val in edge_data[valid_key]:
@@ -913,18 +913,18 @@ def _squash_adjacent(
 def merge_parallel_edges(
     nx_multigraph: MultiGraph,
     merge_edges_by_midline: bool,
-    multi_edge_len_factor: float,
-    multi_edge_min_len: float,
+    contains_buffer_dist: float,
 ) -> MultiGraph:
     """
     Check a MultiGraph for duplicate edges; which, if found, will be merged.
 
-    The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
-    are replaced by a single new edge, with the new geometry selected from either:
+    The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an
+    adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
+
+    When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from
+    either:
     - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-    - Else, the shortest edge, with longer edges discarded;
-    - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed
-      `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+    - Else, the shortest edge is retained, with longer edges discarded.
 
     Parameters
     ----------
@@ -934,12 +934,8 @@ def merge_parallel_edges(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    multi_edge_len_factor: float
-        In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is
-        retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the
-        exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
-    multi_edge_min_len: float
-        See `multi_edge_len_factor`. Defaults to 100.
+    contains_buffer_dist: float
+        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 
     Returns
     -------
@@ -949,13 +945,8 @@ def merge_parallel_edges(
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if multi_edge_len_factor <= 1:
-        raise TypeError("multi_edge_len_factor should be a factor greater than 1. ")
-    if multi_edge_len_factor < 1.25:
-        logger.warning(
-            "Merging by midline and setting multi_edge_len_factor too low (e.g. lower than 1.25) may "
-            "result in an undesirable number of relatively similar parallel edges."
-        )
+    if contains_buffer_dist <= 1:
+        raise TypeError("contains_buffer_dist should be greater than 1. ")
     # don't use copy() - add nodes only
     deduped_graph: MultiGraph = nx.MultiGraph()  # type: ignore
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
@@ -980,22 +971,21 @@ def merge_parallel_edges(
             edge_geoms = [edge["geom"] for edge in edges_data]
             edge_lens = [geom.length for geom in edge_geoms]
             shortest_idx = edge_lens.index(min(edge_lens))
-            shortest_len = edge_lens.pop(shortest_idx)
             shortest_geom = edge_geoms.pop(shortest_idx)
             shortest_data = edges_data.pop(shortest_idx)
             # start by gathering shortest's data
             edge_info.gather_edge_info(shortest_data)
             # process longer geoms
             longer_geoms: list[geometry.LineString] = []
-            for edge_len, edge_geom, edge_data in zip(edge_lens, edge_geoms, edges_data):
-                # retain distinct edges where they are substantially longer than the shortest geom
-                if edge_len > shortest_len * multi_edge_len_factor and edge_len > multi_edge_min_len:
-                    edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
-                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **edge_data_copy)
-                # otherwise, add to the list of longer geoms to be merged along with shortest
-                else:
+            for edge_geom, edge_data in zip(edge_geoms, edges_data):
+                # discard distinct edges where the buffer of the shorter contains the longer
+                is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
+                if is_contained:
                     edge_info.gather_edge_info(edge_data)
                     longer_geoms.append(edge_geom)
+                else:
+                    edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **edge_data_copy)
             # otherwise, if not merging on a midline basis
             # or, if no other edges to process (in cases where longer geom has been retained per above)
             # then use the shortest geom
@@ -1081,13 +1071,12 @@ def nx_consolidate_nodes(
     min_cumulative_degree: Optional[int] = None,
     max_cumulative_degree: Optional[int] = None,
     neighbour_policy: Optional[str] = None,
-    crawl: bool = True,
+    crawl: bool = False,
     cent_min_degree: int = 3,
     cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
-    multi_edge_len_factor: float = 1.25,
-    multi_edge_min_len: float = 100,
+    contains_buffer_dist: float = 20,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -1102,12 +1091,11 @@ def nx_consolidate_nodes(
     - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
       with the greatest aggregate length for adjacent edges.
 
-    The merging of nodes creates parallel edges which may start and end at a shared node on either side. These edges
-    are replaced by a single new edge, with the new geometry selected from either:
+    The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
+    by a single new edge, with the new geometry selected from either:
     - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
     - Else, the shortest edge, with longer edges discarded;
-    - Note that substantially longer parallel edges are retained, instead of discarded, if they exceed
-      `multi_edge_len_factor` and are longer than `multi_edge_min_len`.
+    See [`merge_parallel_edges`](#merge-parallel-edges) for more information.
 
     Parameters
     ----------
@@ -1135,8 +1123,8 @@ def nx_consolidate_nodes(
         cluster. Defaults to 3.
     cent_min_names: int
         The minimum number of cumulative street names or street references to be considered when calculating the new
-        centroid. Requires `names` and `refs` edge attributes containing lists of OSM street names or refs. Defaults to
-        None.
+        centroid. Requires `names` and `routes` edge attributes containing lists of OSM street names or route
+        identifiers. Defaults to None.
     cent_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
@@ -1144,12 +1132,8 @@ def nx_consolidate_nodes(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    multi_edge_len_factor: float
-        In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is
-        retained as separate if exceeding the multi_edge_len_factor as a factor of the shortest length but with the
-        exception that (longer) edges still shorter than multi_edge_min_len are removed regardless. Defaults to 1.5.
-    multi_edge_min_len: float
-        See `multi_edge_len_factor`. Defaults to 100.
+    contains_buffer_dist: float
+        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 
     Returns
     -------
@@ -1265,9 +1249,7 @@ def nx_consolidate_nodes(
     # remove filler nodes
     deduped_graph = nx_remove_filler_nodes(_multi_graph)
     # remove any parallel edges that may have resulted from squashing nodes
-    deduped_graph = merge_parallel_edges(
-        deduped_graph, merge_edges_by_midline, multi_edge_len_factor, multi_edge_min_len
-    )
+    deduped_graph = merge_parallel_edges(deduped_graph, merge_edges_by_midline, contains_buffer_dist)
 
     return deduped_graph
 
@@ -1276,14 +1258,19 @@ def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 10,
     merge_edges_by_midline: bool = True,
-    multi_edge_len_factor: float = 1.25,
-    multi_edge_min_len: float = 100,
+    contains_buffer_dist: float = 20,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
 
     This facilitates merging parallel roadways through subsequent use of
     [`nx-consolidate-nodes`](#nx-consolidate-nodes).
+
+    The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
+        by a single new edge, with the new geometry selected from either:
+        - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+        - Else, the shortest edge, with longer edges discarded;
+    See [`merge_parallel_edges`](#merge-parallel-edges) for more information.
 
     Parameters
     ----------
@@ -1295,12 +1282,8 @@ def nx_split_opposing_geoms(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    multi_edge_len_factor: float
-        In cases where one line is significantly longer than another (e.g. crescent streets) then the longer edge is
-        retained as separate if exceeding the `multi_edge_len_factor` as a factor of the shortest length but with the
-        exception that (longer) edges still shorter than `multi_edge_min_len` are removed regardless. Defaults to 1.5.
-    multi_edge_min_len: float
-        See `multi_edge_len_factor`. Defaults to 100.
+    contains_buffer_dist: float
+        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 
     Returns
     -------
@@ -1475,9 +1458,7 @@ def nx_split_opposing_geoms(
             if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
                 _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
     # squashing nodes can result in edge duplicates
-    deduped_graph = merge_parallel_edges(
-        _multi_graph, merge_edges_by_midline, multi_edge_len_factor, multi_edge_min_len
-    )
+    deduped_graph = merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
 
     return deduped_graph
 
@@ -1515,17 +1496,18 @@ def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
     return angle_sum
 
 
-def nx_iron_edge_ends(nx_multigraph: MultiGraph, flatten_tail_length: int = 25) -> MultiGraph:
+def nx_iron_edges(nx_multigraph: MultiGraph, min_straightness_ratio: float = 0.975) -> MultiGraph:
     """
-    Flattens edges where angular deviation is less than max_angle. Useful for post-processing step after graph cleaning.
+    Flattens edges straighter than `min_straightness_ratio`.
 
     Parameters
     ----------
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    flatten_tail_length: int
-        The length within which to flatten segment ends.
+    min_straightness_ratio: float
+        Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio
+        of the distance from the start to the end point of the edge divided by the full length of the geom.
 
     Returns
     -------
@@ -1537,26 +1519,23 @@ def nx_iron_edge_ends(nx_multigraph: MultiGraph, flatten_tail_length: int = 25) 
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
-        src_geom = edge_data["geom"]
-        if len(src_geom.coords) < 3:
+        edge_geom = edge_data["geom"]
+        # nothing to be done if there are no intermediate coords
+        if len(edge_geom.coords) < 3:
             continue
-        candidate_geom: Optional[geometry.LineString] = None
-        # flatten short segments
-        if src_geom.length < flatten_tail_length and not np.allclose(
-            # check that it isn't a looping segment where start and end are the same
-            src_geom.coords[0],
-            src_geom.coords[-1],
+        # check that it isn't a looping segment where start and end are the same
+        if np.allclose(
+            edge_geom.coords[0],
+            edge_geom.coords[-1],
             rtol=0,
             atol=1,
         ):
-            candidate_geom = geometry.LineString([src_geom.coords[0], src_geom.coords[-1]])
-        elif src_geom.length > flatten_tail_length * 2 + 1:
-            mid_seg: geometry.LineString = ops.substring(
-                src_geom, flatten_tail_length, src_geom.length - flatten_tail_length
-            )
-            candidate_geom = geometry.LineString([src_geom.coords[0], *mid_seg.coords, src_geom.coords[-1]])
-        if candidate_geom is not None:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = candidate_geom
+            continue
+        # take the straightness ratio of crow edge vs. full edge
+        start_pt = geometry.Point(edge_geom.coords[0])
+        end_pt = geometry.Point(edge_geom.coords[-1])
+        if start_pt.distance(end_pt) / edge_geom.length > min_straightness_ratio:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
 
     return g_multi_copy
 

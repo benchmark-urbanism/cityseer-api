@@ -46,10 +46,10 @@ onMounted(() => {
 const prepareSideBarNav = () => {
   const contentCol = document.getElementById('content-col')
   const headers = contentCol.querySelectorAll('h2') // h1?
-  // enforce trailing slash
+  // enforce no trailing slash
   let currentPath = props.currentPath
-  if (currentPath.slice(-1) !== '/') {
-    currentPath = `${currentPath}/`
+  if (currentPath.slice(-1) === '/') {
+    currentPath = currentPath.slice(0, -1)
   }
   props.navPaths.forEach((path) => {
     const isActive = path === currentPath

@@ -78,7 +78,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
 
     :::note
     This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-    osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
+    [`osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
     builds a graph automatically.
     :::
 
@@ -223,7 +223,7 @@ def osm_graph_from_poly_wgs(
         graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=20, remove_disconnected=True)
         graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
         graph_utm = graphs.nx_consolidate_nodes(
-            graph_utm, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+            graph_utm, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
         )
 
         if remove_parallel:
@@ -234,7 +234,7 @@ def osm_graph_from_poly_wgs(
             graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
 
         if iron_edges:
-            graph_utm = graphs.nx_iron_edge_ends(graph_utm)
+            graph_utm = graphs.nx_iron_edges(graph_utm)
 
     return graph_utm
 
@@ -410,22 +410,31 @@ def nx_from_open_roads(
                 name: str | None = props[name_key]
                 if name is not None:
                     names.add(name)
-            refs: set[str] = set()
+            routes: set[str] = set()
             for ref_key in ["roadClassificationNumber"]:
                 ref: str | None = props[ref_key]
                 if ref is not None:
-                    refs.add(ref)
+                    routes.add(ref)
             highways: set[str] = set()
             for highway_key in ["roadFunction", "roadClassification"]:  # 'formOfWay'
                 highway: str = props[highway_key]
                 if highway is not None:
                     highways.add(highway)
             if props["trunkRoad"]:
-                highways.add("IsTrunk")
+                highways.add("Trunk Road")
             if props["primaryRoute"]:
-                highways.add("IsPrimary")
+                highways.add("Primary Road")
             # filter out unwanted highway tags
-            highways.difference_update({"Not Classified", "Unclassified", "Unknown", "Restricted Local Access Road"})
+            highways.difference_update(
+                {
+                    "Not Classified",
+                    "Unclassified",
+                    "Unknown",
+                    "Restricted Local Access Road",
+                    "Local Road",
+                    "Classified Unnumbered",
+                }
+            )
             # create the geometry
             geom = geometry.LineString(edge_data["geometry"]["coordinates"])  # type: ignore
             geom = geom.simplify(5)
@@ -433,13 +442,15 @@ def nx_from_open_roads(
             if start_nd not in g_multi or end_nd not in g_multi:
                 n_dropped += 1
                 continue
-            g_multi.add_edge(start_nd, end_nd, names=list(names), refs=list(refs), highways=list(highways), geom=geom)
+            g_multi.add_edge(
+                start_nd, end_nd, names=list(names), routes=list(routes), highways=list(highways), geom=geom
+            )
 
     logger.info(f"Nodes: {g_multi.number_of_nodes()}")
     logger.info(f"Edges: {g_multi.number_of_edges()}")
     logger.info(f"Dropped {n_dropped} edges where not both start and end nodes were present.")
     logger.info("Running basic graph cleaning")
     g_multi = graphs.nx_remove_filler_nodes(g_multi)
-    g_multi = graphs.merge_parallel_edges(g_multi, True, 1.5, 100)
+    g_multi = graphs.merge_parallel_edges(g_multi, True, 10)
 
     return g_multi

@@ -20,7 +20,7 @@ The reasons for picking one approach over another are varied:
 this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
 concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
 street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs/) module (see the [graph cleaning guide](/guide#graph-cleaning) for examples/). If a
+the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide#graph-cleaning) for examples). If a
 network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
 can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
 the number of intervening nodes, however, are not immune from situations such as needlessly complex representations

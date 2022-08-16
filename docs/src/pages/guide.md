@@ -94,7 +94,7 @@ _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap con
 ![The automatically cleaned graph from OSM](/images/graph_cleaning_1b.png)
 _The automatically cleaned OSM street network for Soho, London. © OpenStreetMap contributors._
 
-The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/io/#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
+The automated graph cleaning provided by [osm_graph_from_poly_wgs](/tools/io#osm-graph-from-poly-wgs) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
 
 ### Deducing the network topology
 
@@ -139,7 +139,7 @@ Step 1: An initial pass to cleanup complex intersections will be performed with 
 
 ```py
 G1 = graphs.nx_consolidate_nodes(
-    G, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+    G, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
 )
 simple_plot(G1)
 ```
@@ -172,10 +172,10 @@ simple_plot(G3)
 ![Final step of node consolidation](/images/graph_cleaning_5.png)
 _After the final step of node consolidation._
 
-Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning, which will sometimes bend the ends of edge segments to the locations of new centroids. This involves a tradeoff and should be used conservatively, if at all.
+Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning, which will sometimes bend the ends of edge segments to the locations of new centroids.
 
 ```py
-G4 = graphs.nx_iron_edge_ends(G3)
+G4 = graphs.nx_iron_edges(G3)
 simple_plot(G4)
 ```
 
@@ -263,14 +263,14 @@ G = graphs.nx_remove_filler_nodes(G)
 G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
 G = graphs.nx_remove_filler_nodes(G)
 G1 = graphs.nx_consolidate_nodes(
-    G, crawl=True, buffer_dist=10, min_node_group=3, cent_min_degree=4, cent_min_names=4
+    G, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
 )
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
 G3 = graphs.nx_consolidate_nodes(
     G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
 )
 G3 = graphs.nx_remove_filler_nodes(G3)
-G4 = graphs.nx_iron_edge_ends(G3, flatten_tail_length=25)
+G4 = graphs.nx_iron_edges(G3)
 simple_plot(G4)
 
 # WORKFLOW 3: Using cityseer to download and automatically simplify the graph
