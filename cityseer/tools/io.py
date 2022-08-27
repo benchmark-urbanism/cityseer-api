@@ -127,6 +127,7 @@ def osm_graph_from_poly(
     simplify: bool = True,
     remove_parallel: bool = True,
     iron_edges: bool = True,
+    remove_disconnected: bool = True,
 ) -> MultiGraph:  # noqa
     """
 
@@ -156,6 +157,8 @@ def osm_graph_from_poly(
     iron_edges: bool
         Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from
         segment kinks from merging `LineStrings`. Only has an effect if `simplify` is `True`.
+    remove_disconnected: bool
+        Whether to remove disconnected components from the network. True by default.
 
     Returns
     -------
@@ -235,7 +238,7 @@ def osm_graph_from_poly(
     if simplify:
         graph_crs = graphs.nx_simple_geoms(graph_crs)
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=20, remove_disconnected=True)
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=20, remove_disconnected=remove_disconnected)
         graph_crs = graphs.nx_consolidate_nodes(
             graph_crs, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4
         )
