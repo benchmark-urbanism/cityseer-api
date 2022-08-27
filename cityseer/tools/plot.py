@@ -254,7 +254,7 @@ def plot_nx_primal_or_dual(  # noqa
                 linewidths=_edge_width,  # type: ignore
                 linestyles=_edge_style,  # type: ignore
             )
-            target_ax.add_collection(lines)
+            target_ax.add_collection(lines)  # type: ignore
         # go ahead and plot: note that edge_list will be empty if plotting geoms
         nx.draw(  # type: ignore
             _graph,
@@ -868,8 +868,8 @@ def plot_nx_edges(
             plot_geoms,
             colors=plot_colours,  # type: ignore
             linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,
-            alpha=0.9,
+            rasterized=rasterized,  # type: ignore
+            alpha=0.9,  # type: ignore
         )
         ax.add_collection(lines)
     else:
@@ -919,8 +919,8 @@ def plot_nx_edges(
             plot_geoms,
             colors=plot_colours,  # type: ignore
             linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,
-            alpha=0.9,
+            rasterized=rasterized,  # type: ignore
+            alpha=0.9,  # type: ignore
         )
         ax.add_collection(lines)
         ax.legend(handles=plot_handles)

@@ -7,7 +7,6 @@ import pytest
 from shapely import geometry, ops
 
 from cityseer import config
-from cityseer.algos import checks
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
@@ -73,6 +72,11 @@ def test_add_node(diamond_graph):
 
 # TODO:
 def test_nx_from_osm():
+    pass
+
+
+# TODO: currently tested via test_nx_wgs_to_utm which calls nx_wgs_to_epsg internally
+def nx_wgs_to_epsg():
     pass
 
 
