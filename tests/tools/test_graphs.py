@@ -214,12 +214,10 @@ def make_messy_graph(G):
 
 def test_nx_remove_dangling_nodes(primal_graph):
     G_messy = make_messy_graph(primal_graph)
-
     # no despining or disconnected components removal
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False, cleanup_filler_nodes=False)
     assert G_post.nodes == G_messy.nodes
     assert G_post.edges == G_messy.edges
-
     # check that all single neighbour nodes have been removed if geom less than despine distance
     G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=False)
     for n in G_messy.nodes():
@@ -229,10 +227,9 @@ def test_nx_remove_dangling_nodes(primal_graph):
                 assert (n, nb) not in G_post.edges
             else:
                 assert (n, nb) in G_post.edges
-
     # check that disconnected components are removed
     # this behaviour changed in networkx 2.4
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True, cleanup_filler_nodes=False)
     pre_components = list(nx.algorithms.components.connected_components(G_messy))
     post_components = list(nx.algorithms.components.connected_components(G_post))
     assert len(pre_components) != 1
