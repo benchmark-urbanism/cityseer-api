@@ -730,6 +730,9 @@ def nx_remove_dangling_nodes(
     remove_disconnected: bool
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
+    cleanup_filler_nodes: bool
+        Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed.
+        If cleanup_filler_nodes is `True` then these will be removed. By default True.
 
     Returns
     -------
@@ -1078,7 +1081,6 @@ def merge_parallel_edges(
     nx_multigraph: MultiGraph,
     merge_edges_by_midline: bool,
     contains_buffer_dist: int,
-    # min_retainable_length: int,
 ) -> MultiGraph:
     """
     Check a MultiGraph for duplicate edges; which, if found, will be merged.
@@ -1101,8 +1103,6 @@ def merge_parallel_edges(
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
-    min_retainable_length: int
-        The least length an
 
     Returns
     -------

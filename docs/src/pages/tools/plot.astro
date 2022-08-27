@@ -802,7 +802,10 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">cmap_key=1, </div>
           <div class="yap func-sig-param">shape_exp=0.1, </div>
           <div class="yap func-sig-param">lw_min=1, </div>
-          <div class="yap func-sig-param">lw_max=True, </div>
+          <div class="yap func-sig-param">lw_max, </div>
+          <div class="yap func-sig-param">edge_label_key=False, </div>
+          <div class="yap func-sig-param">colour_by_categorical=10, </div>
+          <div class="yap func-sig-param">max_n_categorical=True, </div>
           <div class="yap func-sig-param">rasterized=#111, </div>
           <div class="yap func-sig-param">face_colour=False, </div>
         </div>
@@ -895,11 +898,29 @@ A float representing the maximum line width for a plotted edge. By default 1.
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">cmap_key</div>
+          <div class="yap doc-str-elem-name">edge_label_key</div>
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `matplotlib` colour map key.
+A key for retrieving categorical labels from edges. By default None.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">colour_by_categorical</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to plot colours by categorical. This requires an `edge_label_key` parameter. By default None.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_n_categorical</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of categorical values (sorted in decreasing order) to plot. By default 10.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
