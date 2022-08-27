@@ -40,6 +40,241 @@ AnyCoordsType = Union[list[CoordsType], npt.NDArray[np.float_], coords.Coordinat
 ListCoordsType = list[CoordsType]
 
 
+def _snap_linestring_idx(
+    linestring_coords: AnyCoordsType,
+    idx: int,
+    x_y: CoordsType,
+) -> ListCoordsType:
+    """
+    Snaps a LineString's coordinate at the specified index to the provided x_y coordinate.
+    """
+    # check types
+    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
+        raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
+    list_linestring_coords: ListCoordsType = list(linestring_coords)
+    # check that the index is either 0 or -1
+    if idx not in [0, -1]:
+        raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
+    # handle 3D
+    coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
+    coord[:2] = x_y
+    list_linestring_coords[idx] = tuple(coord)
+
+    return list_linestring_coords
+
+
+def snap_linestring_startpoint(
+    linestring_coords: AnyCoordsType,
+    x_y: CoordsType,
+) -> ListCoordsType:
+    """
+    Snaps a LineString's start-point coordinate to a specified x_y coordinate.
+
+    Parameters
+    ----------
+    linestring_coords: tuple | list | np.ndarray
+        A list, tuple, or numpy array of x, y coordinate tuples.
+    x_y: tuple[float, float]
+        A tuple of floats representing the target x, y coordinates against which to align the linestring start point.
+
+    Returns
+    -------
+    linestring_coords
+        A list of linestring coords aligned to the specified starting point.
+
+    """
+    return _snap_linestring_idx(linestring_coords, 0, x_y)
+
+
+def snap_linestring_endpoint(
+    linestring_coords: AnyCoordsType,
+    x_y: CoordsType,
+) -> ListCoordsType:
+    """
+    Snaps a LineString's end-point coordinate to a specified x_y coordinate.
+
+    Parameters
+    ----------
+    linestring_coords: tuple | list | np.ndarray
+        A list, tuple, or numpy array of x, y coordinate tuples.
+    x_y: tuple[float, float]
+        A tuple of floats representing the target x, y coordinates against which to align the linestring end point.
+
+    Returns
+    -------
+    linestring_coords
+        A list of linestring coords aligned to the specified ending point.
+
+    """
+    return _snap_linestring_idx(linestring_coords, -1, x_y)
+
+
+def align_linestring_coords(
+    linestring_coords: AnyCoordsType,
+    x_y: CoordsType,
+    reverse: bool = False,
+    tolerance: float = 0.5,
+) -> ListCoordsType:
+    """
+    Align a LineString's coordinate order to either start or end at a specified x_y coordinate within a given tolerance.
+
+    Parameters
+    ----------
+    linestring_coords: tuple | list | np.ndarray
+        A list, tuple, or numpy array of x, y coordinate tuples.
+    x_y: tuple[float, float]
+        A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
+    reverse: bool
+        If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True
+        the coordinate order will be aligned to end at the given x_y coordinate. False by default.
+    tolerance: float
+        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
+
+    Returns
+    -------
+    linestring_coords
+        A list of linestring coords aligned to the specified endpoint.
+
+    """
+    # check types
+    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
+        raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
+    linestring_coords = list(linestring_coords)
+    # the target indices depend on whether reversed or not
+    if not reverse:
+        xy_idx = 0
+        opposite_idx = -1
+    else:
+        xy_idx = -1
+        opposite_idx = 0
+    # flip if necessary
+    if np.allclose(x_y, linestring_coords[opposite_idx][:2], atol=tolerance, rtol=0):
+        return linestring_coords[::-1]
+    # if still not aligning, then there is an issue
+    if not np.allclose(x_y, linestring_coords[xy_idx][:2], atol=tolerance, rtol=0):
+        raise ValueError(f"Unable to align the LineString to starting point {x_y} given the tolerance of {tolerance}.")
+    # otherwise no flipping is required and the coordinates can simply be returned
+    return linestring_coords
+
+
+def _weld_linestring_coords(
+    linestring_coords_a: AnyCoordsType,
+    linestring_coords_b: AnyCoordsType,
+    force_xy: Optional[CoordsType] = None,
+    tolerance: float = config.ATOL,
+) -> ListCoordsType:
+    """
+    Welds two linestrings.
+
+    Finds a matching start / end point combination and merges the coordinates accordingly. If the optional force_xy is
+    provided then the weld will be performed at the x_y end of the LineStrings. The force_xy parameter is useful for
+    looping geometries or overlapping geometries where it can happen that welding works from either of the two ends,
+    thus potentially mis-aligning the start point unless explicit.
+
+    """
+    # check types
+    for line_coords in [linestring_coords_a, linestring_coords_b]:
+        if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):
+            raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
+    linestring_coords_a = list(linestring_coords_a)
+    linestring_coords_b = list(linestring_coords_b)
+    # if both lists are empty, raise
+    if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
+        raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
+    # if one of the lists is empty, return only the other
+    if not linestring_coords_b:
+        return linestring_coords_a
+    if not linestring_coords_a:
+        return linestring_coords_b
+    # match the directionality of the linestrings
+    # if override_xy is provided, then make sure that the sides with the specified x_y are merged
+    # this is useful for looping components or overlapping components
+    # i.e. where both the start and end points match an endpoint on the opposite line
+    # in this case it is necessary to know which is the inner side of the weld and which is the outer endpoint
+    if force_xy:
+        if not np.allclose(linestring_coords_a[-1][:2], force_xy, atol=tolerance, rtol=0):
+            coords_a = align_linestring_coords(linestring_coords_a, force_xy, reverse=True)
+        else:
+            coords_a = linestring_coords_a
+        if not np.allclose(linestring_coords_b[0][:2], force_xy, atol=tolerance, rtol=0):
+            coords_b = align_linestring_coords(linestring_coords_b, force_xy, reverse=False)
+        else:
+            coords_b = linestring_coords_b
+    # case A: the linestring_b has to be flipped to start from x, y
+    elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+        anchor_xy = linestring_coords_a[-1][:2]
+        coords_a = linestring_coords_a
+        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)
+    # case B: linestring_a has to be flipped to end at x, y
+    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
+        anchor_xy = linestring_coords_a[0][:2]
+        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)
+        coords_b = linestring_coords_b
+    # case C: merge in the b -> a order (saves flipping both)
+    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+        coords_a = linestring_coords_b
+        coords_b = linestring_coords_a
+    # case D: no further alignment is necessary
+    else:
+        coords_a = linestring_coords_a
+        coords_b = linestring_coords_b
+    # double check weld
+    if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
+        raise ValueError(f"Unable to weld LineString geometries with the given tolerance of {tolerance}.")
+    # drop the duplicate interleaving coordinate
+    return coords_a[:-1] + coords_b
+
+
+class _EdgeInfo:
+
+    _names: list[str]
+    _refs: list[str]
+    _highways: list[str]
+
+    @property
+    def names(self):
+        """Returns a set of street names."""
+        return tuple(set(self._names))
+
+    @property
+    def routes(self):
+        """Returns a set of routes - e.g. route numbers."""
+        return tuple(set(self._refs))
+
+    @property
+    def highways(self):
+        """Returns a set of highway types - e.g. footway."""
+        return tuple(set(self._highways))
+
+    def __init__(self):
+        """Initialises a network information structure."""
+        self._names = []
+        self._refs = []
+        self._highways = []
+
+    def gather_edge_info(self, edge_data: dict[str, Any]):
+        """Gather edge data from provided edge_data."""
+        # agg names, routes, highway attributes if present
+        if "names" in edge_data:
+            self._names += edge_data["names"]
+        if "routes" in edge_data:
+            self._refs += edge_data["routes"]
+        if "highways" in edge_data:
+            self._highways += edge_data["highways"]
+
+    def set_edge_info(
+        self,
+        nx_multigraph: nx.MultiGraph,
+        start_node_key: NodeKey,
+        end_node_key: NodeKey,
+        edge_idx: int,
+    ):
+        """Set accumulated edge data to specified graph and edge."""
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
+
+
 def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 2) -> MultiGraph:
     """
     Inferring geometries from node to node.
@@ -310,295 +545,6 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
     return nx_wgs_to_epsg(nx_multigraph, target_epsg)
 
 
-def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph,
-    despine: Optional[float] = None,
-    remove_disconnected: bool = True,
-) -> MultiGraph:
-    """
-    Remove disconnected components and optionally removes short dead-end street stubs.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    despine: bool
-        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
-        Defaults to None.
-    remove_disconnected: bool
-        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
-        returned. Defaults to True.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
-         the `despine` parameter distance.
-
-    """
-    logger.info("Removing dangling nodes.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    if remove_disconnected:
-        # finds connected components - this behaviour changed with networkx v2.4
-        connected_components: list[list[NodeKey]] = list(
-            nx.algorithms.components.connected_components(g_multi_copy)  # type: ignore
-        )
-        # sort by largest component
-        g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
-        # make a copy of the graph using the largest component
-        g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
-    if despine is not None and despine > 0:
-        remove_nodes = []
-        nd_key: NodeKey
-        for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
-            if nx.degree(g_multi_copy, nd_key) == 1:
-                # only a single neighbour, so index-in directly and update at key = 0
-                nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
-                if g_multi_copy[nd_key][nb_nd_key][0]["geom"].length <= despine:
-                    remove_nodes.append(nd_key)
-        g_multi_copy.remove_nodes_from(remove_nodes)
-    # cleanup leftover fillers
-    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
-
-    return g_multi_copy
-
-
-def _snap_linestring_idx(
-    linestring_coords: AnyCoordsType,
-    idx: int,
-    x_y: CoordsType,
-) -> ListCoordsType:
-    """
-    Snaps a LineString's coordinate at the specified index to the provided x_y coordinate.
-    """
-    # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
-        raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    list_linestring_coords: ListCoordsType = list(linestring_coords)
-    # check that the index is either 0 or -1
-    if idx not in [0, -1]:
-        raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
-    # handle 3D
-    coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
-    coord[:2] = x_y
-    list_linestring_coords[idx] = tuple(coord)
-
-    return list_linestring_coords
-
-
-def snap_linestring_startpoint(
-    linestring_coords: AnyCoordsType,
-    x_y: CoordsType,
-) -> ListCoordsType:
-    """
-    Snaps a LineString's start-point coordinate to a specified x_y coordinate.
-
-    Parameters
-    ----------
-    linestring_coords: tuple | list | np.ndarray
-        A list, tuple, or numpy array of x, y coordinate tuples.
-    x_y: tuple[float, float]
-        A tuple of floats representing the target x, y coordinates against which to align the linestring start point.
-
-    Returns
-    -------
-    linestring_coords
-        A list of linestring coords aligned to the specified starting point.
-
-    """
-    return _snap_linestring_idx(linestring_coords, 0, x_y)
-
-
-def snap_linestring_endpoint(
-    linestring_coords: AnyCoordsType,
-    x_y: CoordsType,
-) -> ListCoordsType:
-    """
-    Snaps a LineString's end-point coordinate to a specified x_y coordinate.
-
-    Parameters
-    ----------
-    linestring_coords: tuple | list | np.ndarray
-        A list, tuple, or numpy array of x, y coordinate tuples.
-    x_y: tuple[float, float]
-        A tuple of floats representing the target x, y coordinates against which to align the linestring end point.
-
-    Returns
-    -------
-    linestring_coords
-        A list of linestring coords aligned to the specified ending point.
-
-    """
-    return _snap_linestring_idx(linestring_coords, -1, x_y)
-
-
-def align_linestring_coords(
-    linestring_coords: AnyCoordsType,
-    x_y: CoordsType,
-    reverse: bool = False,
-    tolerance: float = 0.5,
-) -> ListCoordsType:
-    """
-    Align a LineString's coordinate order to either start or end at a specified x_y coordinate within a given tolerance.
-
-    Parameters
-    ----------
-    linestring_coords: tuple | list | np.ndarray
-        A list, tuple, or numpy array of x, y coordinate tuples.
-    x_y: tuple[float, float]
-        A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
-    reverse: bool
-        If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True
-        the coordinate order will be aligned to end at the given x_y coordinate. False by default.
-    tolerance: float
-        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
-
-    Returns
-    -------
-    linestring_coords
-        A list of linestring coords aligned to the specified endpoint.
-
-    """
-    # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
-        raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords = list(linestring_coords)
-    # the target indices depend on whether reversed or not
-    if not reverse:
-        xy_idx = 0
-        opposite_idx = -1
-    else:
-        xy_idx = -1
-        opposite_idx = 0
-    # flip if necessary
-    if np.allclose(x_y, linestring_coords[opposite_idx][:2], atol=tolerance, rtol=0):
-        return linestring_coords[::-1]
-    # if still not aligning, then there is an issue
-    if not np.allclose(x_y, linestring_coords[xy_idx][:2], atol=tolerance, rtol=0):
-        raise ValueError(f"Unable to align the LineString to starting point {x_y} given the tolerance of {tolerance}.")
-    # otherwise no flipping is required and the coordinates can simply be returned
-    return linestring_coords
-
-
-def _weld_linestring_coords(
-    linestring_coords_a: AnyCoordsType,
-    linestring_coords_b: AnyCoordsType,
-    force_xy: Optional[CoordsType] = None,
-    tolerance: float = config.ATOL,
-) -> ListCoordsType:
-    """
-    Welds two linestrings.
-
-    Finds a matching start / end point combination and merges the coordinates accordingly. If the optional force_xy is
-    provided then the weld will be performed at the x_y end of the LineStrings. The force_xy parameter is useful for
-    looping geometries or overlapping geometries where it can happen that welding works from either of the two ends,
-    thus potentially mis-aligning the start point unless explicit.
-
-    """
-    # check types
-    for line_coords in [linestring_coords_a, linestring_coords_b]:
-        if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):
-            raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords_a = list(linestring_coords_a)
-    linestring_coords_b = list(linestring_coords_b)
-    # if both lists are empty, raise
-    if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
-        raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
-    # if one of the lists is empty, return only the other
-    if not linestring_coords_b:
-        return linestring_coords_a
-    if not linestring_coords_a:
-        return linestring_coords_b
-    # match the directionality of the linestrings
-    # if override_xy is provided, then make sure that the sides with the specified x_y are merged
-    # this is useful for looping components or overlapping components
-    # i.e. where both the start and end points match an endpoint on the opposite line
-    # in this case it is necessary to know which is the inner side of the weld and which is the outer endpoint
-    if force_xy:
-        if not np.allclose(linestring_coords_a[-1][:2], force_xy, atol=tolerance, rtol=0):
-            coords_a = align_linestring_coords(linestring_coords_a, force_xy, reverse=True)
-        else:
-            coords_a = linestring_coords_a
-        if not np.allclose(linestring_coords_b[0][:2], force_xy, atol=tolerance, rtol=0):
-            coords_b = align_linestring_coords(linestring_coords_b, force_xy, reverse=False)
-        else:
-            coords_b = linestring_coords_b
-    # case A: the linestring_b has to be flipped to start from x, y
-    elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[-1][:2]
-        coords_a = linestring_coords_a
-        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)
-    # case B: linestring_a has to be flipped to end at x, y
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[0][:2]
-        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)
-        coords_b = linestring_coords_b
-    # case C: merge in the b -> a order (saves flipping both)
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
-        coords_a = linestring_coords_b
-        coords_b = linestring_coords_a
-    # case D: no further alignment is necessary
-    else:
-        coords_a = linestring_coords_a
-        coords_b = linestring_coords_b
-    # double check weld
-    if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
-        raise ValueError(f"Unable to weld LineString geometries with the given tolerance of {tolerance}.")
-    # drop the duplicate interleaving coordinate
-    return coords_a[:-1] + coords_b
-
-
-class _EdgeInfo:
-
-    _names: list[str]
-    _refs: list[str]
-    _highways: list[str]
-
-    @property
-    def names(self):
-        """Returns a set of street names."""
-        return tuple(set(self._names))
-
-    @property
-    def routes(self):
-        """Returns a set of routes - e.g. route numbers."""
-        return tuple(set(self._refs))
-
-    @property
-    def highways(self):
-        """Returns a set of highway types - e.g. footway."""
-        return tuple(set(self._highways))
-
-    def __init__(self):
-        """Initialises a network information structure."""
-        self._names = []
-        self._refs = []
-        self._highways = []
-
-    def gather_edge_info(self, edge_data: dict[str, Any]):
-        """Gather edge data from provided edge_data."""
-        # agg names, routes, highway attributes if present
-        if "names" in edge_data:
-            self._names += edge_data["names"]
-        if "routes" in edge_data:
-            self._refs += edge_data["routes"]
-        if "highways" in edge_data:
-            self._highways += edge_data["highways"]
-
-    def set_edge_info(
-        self,
-        nx_multigraph: nx.MultiGraph,
-        start_node_key: NodeKey,
-        end_node_key: NodeKey,
-        edge_idx: int,
-    ):
-        """Set accumulated edge data to specified graph and edge."""
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
-
-
 def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
     """
     Remove nodes of degree=2.
@@ -760,6 +706,189 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             # drop the removed nodes, which will also implicitly drop the related edges
             g_multi_copy.remove_nodes_from(drop_nodes)
             removed_nodes.update(drop_nodes)
+
+    return g_multi_copy
+
+
+def nx_remove_dangling_nodes(
+    nx_multigraph: MultiGraph,
+    despine: Optional[float] = None,
+    remove_disconnected: bool = True,
+    cleanup_filler_nodes: bool = True,
+) -> MultiGraph:
+    """
+    Remove disconnected components and optionally removes short dead-end street stubs.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    despine: bool
+        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
+        Defaults to None.
+    remove_disconnected: bool
+        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
+        returned. Defaults to True.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
+         the `despine` parameter distance.
+
+    """
+    logger.info("Removing dangling nodes.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    if remove_disconnected:
+        # finds connected components - this behaviour changed with networkx v2.4
+        connected_components: list[list[NodeKey]] = list(
+            nx.algorithms.components.connected_components(g_multi_copy)  # type: ignore
+        )
+        # sort by largest component
+        g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
+        # make a copy of the graph using the largest component
+        g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
+    # remove dangleres
+    if despine is not None and despine > 0:
+        remove_nodes = []
+        nd_key: NodeKey
+        for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
+            if nx.degree(g_multi_copy, nd_key) == 1:
+                # only a single neighbour, so index-in directly and update at key = 0
+                nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
+                if g_multi_copy[nd_key][nb_nd_key][0]["geom"].length <= despine:
+                    remove_nodes.append(nd_key)
+        g_multi_copy.remove_nodes_from(remove_nodes)
+    # cleanup leftover fillers
+    if cleanup_filler_nodes:
+        g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+
+    return g_multi_copy
+
+
+def nx_iron_edges(
+    nx_multigraph: MultiGraph,
+    simplify: bool = True,
+    simplify_dist: int = 2,
+    straighten: bool = True,
+    min_straightness_ratio: float = 0.975,
+    remove_wonky: bool = True,
+    max_wonky_ratio: float = 0.7,
+    wonky_dist_buffer: int = 50,
+) -> MultiGraph:
+    """
+    Flattens edges straighter than `min_straightness_ratio`.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    simplify: bool
+        Whether to simplify the street geometries per `simplify_dist`. By default True.
+    simplify_dist: int
+        Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
+        Default of 2.
+    straighten: bool
+        Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its
+        length is greater than `min_straightness_ratio`. By default True.
+    min_straightness_ratio: float
+        Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be
+        flattened.
+    remove_wonky: bool
+        Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation
+        processes. By default True.
+    max_wonky_ratio: float
+        Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky
+        edges. By default 0.7.
+    wonky_dist_buffer: int
+        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints. By
+        default 50.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph`.
+
+    """
+    if not simplify and not straighten and not remove_wonky:
+        raise ValueError("Please select at least one option via simplify, straighten, or remove_wonky parameters.")
+    if straighten and remove_wonky and min_straightness_ratio < max_wonky_ratio:
+        raise ValueError("The min_straightness_ratio parameter should be greater than max_wonky_ratio.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
+    ):
+        edge_geom = edge_data["geom"]
+        # for all changes - write over edge_geom and also update in place
+        if simplify:
+            edge_geom = edge_geom.simplify(simplify_dist)
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+        if not straighten and not remove_wonky:
+            continue
+        # check that it isn't a looping segment where start and end are the same
+        if np.allclose(
+            edge_geom.coords[0],
+            edge_geom.coords[-1],
+            rtol=0,
+            atol=1,
+        ):
+            continue
+        # take the straightness ratio of crow edge vs. full edge
+        start_pt = geometry.Point(edge_geom.coords[0])
+        end_pt = geometry.Point(edge_geom.coords[-1])
+        straightness_ratio: float = start_pt.distance(end_pt) / edge_geom.length
+        if straighten and straightness_ratio > min_straightness_ratio:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
+        elif remove_wonky and straightness_ratio < max_wonky_ratio:
+            search_dist = min(wonky_dist_buffer, int(np.floor(edge_geom.length)))
+            # increment along length and look for backtracking
+            lag_dist = 0
+            backtracking = False
+            for step in range(5, search_dist, 5):
+                loc: geometry.Point = ops.substring(edge_geom, step, step)  # type: ignore
+                # increment distance if increasing
+                current_dist: float = start_pt.distance(loc)
+                # detect inwards backtrack
+                if current_dist < lag_dist:
+                    backtracking = True
+                    lag_dist = current_dist
+                else:
+                    # if not yet backtracking, bump lag_dist distance
+                    if not backtracking:
+                        lag_dist = current_dist
+                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
+                    else:
+                        # snip subsegment
+                        sub_seg: geometry.LineString = ops.substring(edge_geom, step, edge_geom.length)  # type: ignore
+                        # overwrite edge_geom (for reverse)
+                        edge_geom = geometry.LineString([start_pt, *sub_seg.coords])
+                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+                        break
+            # reverse direction
+            lag_dist = 0
+            backtracking = False
+            for step in range(5, search_dist, 5):
+                loc: geometry.Point = ops.substring(edge_geom, -step, -step)  # type: ignore
+                # increment distance if increasing
+                current_dist: float = end_pt.distance(loc)
+                # detect inwards backtrack
+                if current_dist < lag_dist:
+                    backtracking = True
+                    lag_dist = current_dist
+                else:
+                    # if not yet backtracking, bump lag_dist distance
+                    if not backtracking:
+                        lag_dist = current_dist
+                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
+                    else:
+                        # snip subsegment
+                        sub_seg = ops.substring(edge_geom, 0, edge_geom.length - step)  # type: ignore
+                        # overwrite edge_geom (for reverse)
+                        edge_geom = geometry.LineString([*sub_seg.coords, end_pt])
+                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+                        break
 
     return g_multi_copy
 
@@ -1532,132 +1661,6 @@ def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
         angle_sum += _measure_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
 
     return angle_sum
-
-
-def nx_iron_edges(
-    nx_multigraph: MultiGraph,
-    simplify: bool = True,
-    simplify_dist: int = 2,
-    straighten: bool = True,
-    min_straightness_ratio: float = 0.975,
-    remove_wonky: bool = True,
-    max_wonky_ratio: float = 0.7,
-    wonky_dist_buffer: int = 50,
-) -> MultiGraph:
-    """
-    Flattens edges straighter than `min_straightness_ratio`.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    simplify: bool
-        Whether to simplify the street geometries per `simplify_dist`. By default True.
-    simplify_dist: int
-        Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
-        Default of 2.
-    straighten: bool
-        Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its
-        length is greater than `min_straightness_ratio`. By default True.
-    min_straightness_ratio: float
-        Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be
-        flattened.
-    remove_wonky: bool
-        Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation
-        processes. By default True.
-    max_wonky_ratio: float
-        Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky
-        edges. By default 0.7.
-    wonky_dist_buffer: int
-        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints. By
-        default 50.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph`.
-
-    """
-    if not simplify and not straighten and not remove_wonky:
-        raise ValueError("Please select at least one option via simplify, straighten, or remove_wonky parameters.")
-    if straighten and remove_wonky and min_straightness_ratio < max_wonky_ratio:
-        raise ValueError("The min_straightness_ratio parameter should be greater than max_wonky_ratio.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
-        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
-    ):
-        edge_geom = edge_data["geom"]
-        # for all changes - write over edge_geom and also update in place
-        if simplify:
-            edge_geom = edge_geom.simplify(simplify_dist)
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-        if not straighten and not remove_wonky:
-            continue
-        # check that it isn't a looping segment where start and end are the same
-        if np.allclose(
-            edge_geom.coords[0],
-            edge_geom.coords[-1],
-            rtol=0,
-            atol=1,
-        ):
-            continue
-        # take the straightness ratio of crow edge vs. full edge
-        start_pt = geometry.Point(edge_geom.coords[0])
-        end_pt = geometry.Point(edge_geom.coords[-1])
-        straightness_ratio: float = start_pt.distance(end_pt) / edge_geom.length
-        if straighten and straightness_ratio > min_straightness_ratio:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
-        elif remove_wonky and straightness_ratio < max_wonky_ratio:
-            search_dist = min(wonky_dist_buffer, int(np.floor(edge_geom.length)))
-            # increment along length and look for backtracking
-            lag_dist = 0
-            backtracking = False
-            for step in range(5, search_dist, 5):
-                loc: geometry.Point = ops.substring(edge_geom, step, step)  # type: ignore
-                # increment distance if increasing
-                current_dist: float = start_pt.distance(loc)
-                # detect inwards backtrack
-                if current_dist < lag_dist:
-                    backtracking = True
-                    lag_dist = current_dist
-                else:
-                    # if not yet backtracking, bump lag_dist distance
-                    if not backtracking:
-                        lag_dist = current_dist
-                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
-                    else:
-                        # snip subsegment
-                        sub_seg: geometry.LineString = ops.substring(edge_geom, step, edge_geom.length)  # type: ignore
-                        # overwrite edge_geom (for reverse)
-                        edge_geom = geometry.LineString([start_pt, *sub_seg.coords])
-                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-                        break
-            # reverse direction
-            lag_dist = 0
-            backtracking = False
-            for step in range(5, search_dist, 5):
-                loc: geometry.Point = ops.substring(edge_geom, -step, -step)  # type: ignore
-                # increment distance if increasing
-                current_dist: float = end_pt.distance(loc)
-                # detect inwards backtrack
-                if current_dist < lag_dist:
-                    backtracking = True
-                    lag_dist = current_dist
-                else:
-                    # if not yet backtracking, bump lag_dist distance
-                    if not backtracking:
-                        lag_dist = current_dist
-                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
-                    else:
-                        # snip subsegment
-                        sub_seg = ops.substring(edge_geom, 0, edge_geom.length - step)  # type: ignore
-                        # overwrite edge_geom (for reverse)
-                        edge_geom = geometry.LineString([*sub_seg.coords, end_pt])
-                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-                        break
-
-    return g_multi_copy
 
 
 def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
