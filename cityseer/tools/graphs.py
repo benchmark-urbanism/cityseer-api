@@ -770,6 +770,120 @@ def nx_remove_dangling_nodes(
     return g_multi_copy
 
 
+def merge_parallel_edges(
+    nx_multigraph: MultiGraph,
+    merge_edges_by_midline: bool,
+    contains_buffer_dist: int,
+) -> MultiGraph:
+    """
+    Check a MultiGraph for duplicate edges; which, if found, will be merged.
+
+    The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an
+    adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
+
+    When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from
+    either:
+    - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+    - Else, the shortest edge is retained, with longer edges discarded.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    merge_edges_by_midline: bool
+        Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
+        retained as the new geometry and the longer edges will be discarded. Defaults to True.
+    contains_buffer_dist: int
+        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with consolidated nodes.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
+    if contains_buffer_dist < 1:
+        raise TypeError("contains_buffer_dist should be greater or equal to 1. ")
+    # don't use copy() - add nodes only
+    deduped_graph: MultiGraph = nx.MultiGraph()
+    deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
+    # iter the edges
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    edge_data: EdgeData
+    for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
+        nx_multigraph.edges(data=True), disable=config.QUIET_MODE
+    ):
+        # if only one edge is associated with this node pair, then add
+        if nx_multigraph.number_of_edges(start_nd_key, end_nd_key) == 1:
+            deduped_graph.add_edge(start_nd_key, end_nd_key, **edge_data)
+        # otherwise, add if not already added from another (parallel) edge
+        elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
+            # there are normally max two edges, but sometimes three or more
+            edges_data: list[EdgeData] = []
+            for edge_data in nx_multigraph.get_edge_data(start_nd_key, end_nd_key).values():  # type: ignore
+                edges_data.append(edge_data)
+            edge_info = _EdgeInfo()
+            # find the shortest of the geoms
+            edge_geoms = [edge["geom"] for edge in edges_data]
+            edge_lens = [geom.length for geom in edge_geoms]
+            shortest_idx = edge_lens.index(min(edge_lens))
+            shortest_geom = edge_geoms.pop(shortest_idx)
+            shortest_data = edges_data.pop(shortest_idx)
+            # start by gathering shortest's data
+            edge_info.gather_edge_info(shortest_data)
+            # process longer geoms
+            longer_geoms: list[geometry.LineString] = []
+            for edge_geom, edge_data in zip(edge_geoms, edges_data):
+                # discard distinct edges where the buffer of the shorter contains the longer
+                is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
+                if is_contained:
+                    edge_info.gather_edge_info(edge_data)
+                    longer_geoms.append(edge_geom)
+                else:
+                    edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
+                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **edge_data_copy)
+            # otherwise, if not merging on a midline basis
+            # or, if no other edges to process (in cases where longer geom has been retained per above)
+            # then use the shortest geom
+            if not merge_edges_by_midline or len(longer_geoms) == 0:
+                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=shortest_geom)
+                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
+            # otherwise weld the geoms, using the shortest as a yardstick
+            else:
+                # iterate the coordinates along the shorter geom
+                new_coords = []
+                for coord in shortest_geom.coords:
+                    # from the current short_geom coordinate
+                    short_point = geometry.Point(coord)
+                    # find the nearest points on the longer geoms
+                    multi_coords = [short_point]
+                    for longer_geom in longer_geoms:
+                        # get the nearest point on the longer geom
+                        # returns a tuple of nearest geom for respective input geoms
+                        longer_point = ops.nearest_points(short_point, longer_geom)[-1]
+                        # only use for new coord centroid if not the starting or end point
+                        lg_start_point = geometry.Point(longer_geom.coords[0])
+                        lg_end_point = geometry.Point(longer_geom.coords[-1])
+                        if lg_start_point.distance(longer_point) < 1 or lg_end_point.distance(longer_point) < 1:
+                            continue
+                        # aggregate
+                        multi_coords.append(longer_point)
+                    # create a midpoint between the geoms and add to the new coordinate array
+                    mid_point = geometry.MultiPoint(multi_coords).centroid
+                    new_coords.append(mid_point)
+                # generate the new mid-line geom
+                new_geom = geometry.LineString(new_coords)
+                # add to the graph
+                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
+                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
+
+    return deduped_graph
+
+
 def nx_iron_edges(
     nx_multigraph: MultiGraph,
     simplify: bool = True,
@@ -892,6 +1006,8 @@ def nx_iron_edges(
                         edge_geom = geometry.LineString([*sub_seg.coords, end_pt])
                         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
                         break
+    # straightening parallel edges can create duplicates
+    g_multi_copy = merge_parallel_edges(g_multi_copy, False, 1)
 
     return g_multi_copy
 
@@ -1075,120 +1191,6 @@ def _squash_adjacent(
         nx_multigraph.remove_node(nd_key)
 
     return nx_multigraph
-
-
-def merge_parallel_edges(
-    nx_multigraph: MultiGraph,
-    merge_edges_by_midline: bool,
-    contains_buffer_dist: int,
-) -> MultiGraph:
-    """
-    Check a MultiGraph for duplicate edges; which, if found, will be merged.
-
-    The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an
-    adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
-
-    When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from
-    either:
-    - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-    - Else, the shortest edge is retained, with longer edges discarded.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    merge_edges_by_midline: bool
-        Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
-        retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    contains_buffer_dist: int
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph` with consolidated nodes.
-
-    """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if contains_buffer_dist <= 1:
-        raise TypeError("contains_buffer_dist should be greater than 1. ")
-    # don't use copy() - add nodes only
-    deduped_graph: MultiGraph = nx.MultiGraph()
-    deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
-    # iter the edges
-    start_nd_key: NodeKey
-    end_nd_key: NodeKey
-    edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_data in tqdm(  # type: ignore
-        nx_multigraph.edges(data=True), disable=config.QUIET_MODE
-    ):
-        # if only one edge is associated with this node pair, then add
-        if nx_multigraph.number_of_edges(start_nd_key, end_nd_key) == 1:
-            deduped_graph.add_edge(start_nd_key, end_nd_key, **edge_data)
-        # otherwise, add if not already added from another (parallel) edge
-        elif not deduped_graph.has_edge(start_nd_key, end_nd_key):
-            # there are normally max two edges, but sometimes three or more
-            edges_data: list[EdgeData] = []
-            for edge_data in nx_multigraph.get_edge_data(start_nd_key, end_nd_key).values():  # type: ignore
-                edges_data.append(edge_data)
-            edge_info = _EdgeInfo()
-            # find the shortest of the geoms
-            edge_geoms = [edge["geom"] for edge in edges_data]
-            edge_lens = [geom.length for geom in edge_geoms]
-            shortest_idx = edge_lens.index(min(edge_lens))
-            shortest_geom = edge_geoms.pop(shortest_idx)
-            shortest_data = edges_data.pop(shortest_idx)
-            # start by gathering shortest's data
-            edge_info.gather_edge_info(shortest_data)
-            # process longer geoms
-            longer_geoms: list[geometry.LineString] = []
-            for edge_geom, edge_data in zip(edge_geoms, edges_data):
-                # discard distinct edges where the buffer of the shorter contains the longer
-                is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
-                if is_contained:
-                    edge_info.gather_edge_info(edge_data)
-                    longer_geoms.append(edge_geom)
-                else:
-                    edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
-                    deduped_graph.add_edge(start_nd_key, end_nd_key, geom=edge_geom, **edge_data_copy)
-            # otherwise, if not merging on a midline basis
-            # or, if no other edges to process (in cases where longer geom has been retained per above)
-            # then use the shortest geom
-            if not merge_edges_by_midline or len(longer_geoms) == 0:
-                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=shortest_geom)
-                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
-            # otherwise weld the geoms, using the shortest as a yardstick
-            else:
-                # iterate the coordinates along the shorter geom
-                new_coords = []
-                for coord in shortest_geom.coords:
-                    # from the current short_geom coordinate
-                    short_point = geometry.Point(coord)
-                    # find the nearest points on the longer geoms
-                    multi_coords = [short_point]
-                    for longer_geom in longer_geoms:
-                        # get the nearest point on the longer geom
-                        # returns a tuple of nearest geom for respective input geoms
-                        longer_point = ops.nearest_points(short_point, longer_geom)[-1]
-                        # only use for new coord centroid if not the starting or end point
-                        lg_start_point = geometry.Point(longer_geom.coords[0])
-                        lg_end_point = geometry.Point(longer_geom.coords[-1])
-                        if lg_start_point.distance(longer_point) < 1 or lg_end_point.distance(longer_point) < 1:
-                            continue
-                        # aggregate
-                        multi_coords.append(longer_point)
-                    # create a midpoint between the geoms and add to the new coordinate array
-                    mid_point = geometry.MultiPoint(multi_coords).centroid
-                    new_coords.append(mid_point)
-                # generate the new mid-line geom
-                new_geom = geometry.LineString(new_coords)
-                # add to the graph
-                edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
-                edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
-
-    return deduped_graph
 
 
 def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
