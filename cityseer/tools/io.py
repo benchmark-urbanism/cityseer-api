@@ -153,12 +153,12 @@ def osm_graph_from_poly(
     simplify: bool
         Whether to automatically simplify the OSM graph. True by default. Set to False for manual cleaning.
     remove_parallel: bool
-        Whether to remove parallel roadway segments. True by default. Only has an effect if `simplify` is `True`.
+        Ignored if simplify is False. Whether to remove parallel roadway segments. True by default.
     iron_edges: bool
-        Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from
-        segment kinks from merging `LineStrings`. Only has an effect if `simplify` is `True`.
+        Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the
+        number of artefacts from segment kinks from merging `LineStrings`.
     remove_disconnected: bool
-        Whether to remove disconnected components from the network. True by default.
+        Ignored if simplify is False.  Whether to remove disconnected components from the network. True by default.
 
     Returns
     -------
