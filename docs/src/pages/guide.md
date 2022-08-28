@@ -63,9 +63,7 @@ poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly
 # this version will not simplify
 G_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
 # whereas this version does simplify
-G_utm = io.osm_graph_from_poly(
-    poly_wgs, simplify=True, remove_parallel=True, iron_edges=True
-)
+G_utm = io.osm_graph_from_poly(poly_wgs)
 
 # select extents for clipping the plotting extents
 easting, northing = utm.from_latlon(lat, lng)[:2]
@@ -120,7 +118,7 @@ G = graphs.nx_remove_filler_nodes(G)
 # these are often found at entrances to buildings or parking lots
 # The removed_disconnected flag will removed isolated network components
 # i.e. disconnected portions of network that are not joined to the main street network
-G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
+G = graphs.nx_remove_dangling_nodes(G, despine=20)
 simple_plot(G)
 ```
 
