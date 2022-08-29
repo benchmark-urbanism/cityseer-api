@@ -889,7 +889,7 @@ def nx_iron_edges(
     simplify: bool = True,
     simplify_dist: int = 2,
     straighten: bool = True,
-    min_straightness_ratio: float = 0.975,
+    min_straightness_ratio: float = 0.9975,
     remove_wonky: bool = True,
     max_wonky_ratio: float = 0.7,
     wonky_dist_buffer: int = 50,
