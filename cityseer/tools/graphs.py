@@ -455,6 +455,8 @@ def nx_wgs_to_epsg(nx_multigraph: MultiGraph, epsg_code: int) -> MultiGraph:
          `geom` attributes are present, these will also be converted.
 
     """
+    # TODO: consider adding both in and out EPSG for full flexibility
+    # TODO: add check that out EPSG code is projected per is_projected()
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Converting networkX graph from WGS to EPSG code {epsg_code}.")
