@@ -166,35 +166,34 @@ def compute_landuses(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-        By default 400m.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     mixed_use_keys: tuple[str]
-        Mixed-use metrics to compute, containing any combination of the `key` values from the following table, by
-        default None. See examples below for additional information. By default None.
+        Mixed-use metrics to compute, containing any combination of the `key` values from the following table.
+        See examples below for additional information.
     accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
         schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants. By default None. By default None.
+        `weighted` and `non_weighted` variants.
     cl_disparity_wt_matrix: ndarray[float]
         An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair
         of distinct land-uses. This parameter is only required if computing mixed-uses using
         `hill_pairwise_disparity` or `raos_pairwise_disparity`.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+        the Hill diversity mixed-use measures and is otherwise ignored.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
 
     Returns
     -------
@@ -452,24 +451,23 @@ def hill_diversity(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-        By default 400m.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+        the Hill diversity mixed-use measures and is otherwise ignored.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
 
     Returns
     -------
@@ -557,24 +555,23 @@ def hill_branch_wt_diversity(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-        By default 400m.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+        the Hill diversity mixed-use measures and is otherwise ignored.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
 
     Returns
     -------
@@ -655,7 +652,7 @@ def compute_accessibilities(
     accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
         schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants. By default None. By default None.
+        `weighted` and `non_weighted` variants.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
@@ -666,21 +663,20 @@ def compute_accessibilities(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-        By default 400m.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
 
     Returns
     -------
@@ -769,21 +765,20 @@ def compute_stats(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-        By default 400m.
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
 
     Returns
     -------

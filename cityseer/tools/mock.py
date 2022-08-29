@@ -32,7 +32,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     ----------
     wgs84_coords: bool
         If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/4326) geographic coordinates
-        instead of a projected cartesion coordinate system. By default False
+        instead of a projected cartesion coordinate system.
 
     Returns
     -------
@@ -271,9 +271,9 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
         A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
         network. The returned data will be within these extents.
     length: int
-        The number of data elements to return in the dictionary, by default 50.
+        The number of data elements to return in the dictionary.
     random_seed: int
-        An optional random seed, by default None.
+        An optional random seed.
 
     Returns
     -------
@@ -313,9 +313,9 @@ def mock_landuse_categorical_data(
     num_classes: int
         The maximum number of unique classes to return in the randomly assigned categorical data. The classes are
         randomly generated from a pool of unique class labels of length `num_classes`. The number of returned unique
-        classes will be less than or equal to `num_classes`. By default 10
+        classes will be less than or equal to `num_classes`.
     random_seed: int
-        An optional random seed, by default None
+        An optional random seed.
 
     Returns
     -------
@@ -369,7 +369,7 @@ def mock_numerical_data(
     floating_pt: int
         The floating point precision
     random_seed: int
-        An optional random seed, by default None
+        An optional random seed.
 
     Returns
     -------
@@ -402,7 +402,7 @@ def mock_species_data(
     Parameters
     ----------
     random_seed: int
-        An optional random seed, by default None
+        An optional random seed.
 
     Yields
     ------

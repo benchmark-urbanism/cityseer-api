@@ -159,7 +159,7 @@ Timeout duration for API call in seconds.
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The number of attempts to fetch a response before raising, by default 3
+The number of attempts to fetch a response before raising.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -194,7 +194,8 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">custom_request, </div>
           <div class="yap func-sig-param">simplify=True, </div>
           <div class="yap func-sig-param">remove_parallel=True, </div>
-          <div class="yap func-sig-param">iron_edges=True)</div>
+          <div class="yap func-sig-param">iron_edges=True, </div>
+          <div class="yap func-sig-param">remove_disconnected=True)</div>
         </div>
       </div>
     </div>
@@ -217,7 +218,7 @@ A shapely Polygon representing the extents for which to fetch the OSM network.
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid. By default 4326.
+An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -235,7 +236,7 @@ An optional integer representing a valid EPSG code for the generated network ret
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional custom OSM request. None by default. If provided, this must include a "geom_osm" string formatting key for inserting the geometry passed to the OSM API query. See the discussion below.
+An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting the geometry passed to the OSM API query. See the discussion below.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -244,7 +245,7 @@ An optional custom OSM request. None by default. If provided, this must include 
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to automatically simplify the OSM graph. True by default. Set to False for manual cleaning.
+Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -253,7 +254,7 @@ Whether to automatically simplify the OSM graph. True by default. Set to False f
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to remove parallel roadway segments. True by default. Only has an effect if `simplify` is `True`.
+Ignored if simplify is False. Whether to remove parallel roadway segments.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -262,7 +263,16 @@ Whether to remove parallel roadway segments. True by default. Only has an effect
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from segment kinks from merging `LineStrings`. Only has an effect if `simplify` is `True`.
+Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from segment kinks from merging `LineStrings`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">remove_disconnected</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Ignored if simplify is False.  Whether to remove disconnected components from the network.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -418,7 +428,7 @@ A valid relative filepath from which to load the OS Open Roads dataset.
           <div class="yap doc-str-elem-type">tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the dataset. Set to `None` for no bounding box. By default None.
+A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the dataset. Set to `None` for no bounding box.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>

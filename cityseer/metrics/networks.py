@@ -107,8 +107,7 @@ def distance_from_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_TH
     beta: float | ndarray[float]
         $\beta$ value/s to convert to distance thresholds $d_{max}$.
     min_threshold_wt: float
-        An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$, default of
-        0.01831563888873418.
+        An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.
 
     Returns
     -------
@@ -217,7 +216,7 @@ def beta_from_distance(
     distance: int | ndarray[int]
         $d_{max}$ value/s to convert to decay parameters $\beta$.
     min_threshold_wt: float
-        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
+        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
@@ -271,7 +270,7 @@ def avg_distance_for_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN
     beta: float | ndarray[float]
         $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
     min_threshold_wt: float
-        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$, default of 0.01831563888873418.
+        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
@@ -323,11 +322,11 @@ def pair_distances_betas(
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
@@ -337,11 +336,11 @@ def pair_distances_betas(
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
 
     Examples
     --------
@@ -403,17 +402,17 @@ def node_centrality(
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
@@ -545,17 +544,17 @@ def segment_centrality(
     distances: list[int] | tuple[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead. By default None.
+        then the `beta` parameter must be provided instead.
     betas: float | ndarray[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead. By default None.
+        provided, then the `distance` parameter must be provided instead.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances. By default False.
+        and distances.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.

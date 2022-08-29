@@ -91,7 +91,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
-        The number of attempts to fetch a response before raising, by default 3
+        The number of attempts to fetch a response before raising.
 
     Returns
     -------
@@ -141,24 +141,23 @@ def osm_graph_from_poly(
         A shapely Polygon representing the extents for which to fetch the OSM network.
     poly_epsg_code: int
         An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
-        using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid. By default 4326.
+        using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
     out_epsg_code: int
-        An optional integer representing a valid EPSG code for the generated network returned from this function. By
-        default None. If this parameter is provided, then the network will be converted to the specified EPSG coordinate
-        reference system. If not provided, then OSM network will be projected into a local UTM coordinate reference
-        system.
+        An optional integer representing a valid EPSG code for the generated network returned from this function. If
+        this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
+        system. If not provided, then OSM network will be projected into a local UTM coordinate reference system.
     custom_request: str
-        An optional custom OSM request. None by default. If provided, this must include a "geom_osm" string formatting
-        key for inserting the geometry passed to the OSM API query. See the discussion below.
+        An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
+        the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
-        Whether to automatically simplify the OSM graph. True by default. Set to False for manual cleaning.
+        Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
     remove_parallel: bool
-        Ignored if simplify is False. Whether to remove parallel roadway segments. True by default.
+        Ignored if simplify is False. Whether to remove parallel roadway segments.
     iron_edges: bool
         Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the
         number of artefacts from segment kinks from merging `LineStrings`.
     remove_disconnected: bool
-        Ignored if simplify is False.  Whether to remove disconnected components from the network. True by default.
+        Ignored if simplify is False.  Whether to remove disconnected components from the network.
 
     Returns
     -------
@@ -391,7 +390,7 @@ def nx_from_open_roads(
         A valid relative filepath from which to load the OS Open Roads dataset.
     target_bbox: tuple[int]
         A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
-        dataset. Set to `None` for no bounding box. By default None.
+        dataset. Set to `None` for no bounding box.
 
     Returns
     -------
