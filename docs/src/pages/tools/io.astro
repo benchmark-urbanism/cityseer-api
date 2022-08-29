@@ -175,6 +175,25 @@ An OSM API response.
     </div>
   </section>
   <section class="yap func">
+    <h2 class="yap func-title" id="osm-graph-from-poly-wgs">
+      <a aria-hidden="true" href="#osm-graph-from-poly-wgs" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>osm_graph_from_poly_wgs
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>osm_graph_from_poly_wgs()</span>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead.
+</Markdown></div>
+  </section>
+  <section class="yap func">
     <h2 class="yap func-title" id="osm-graph-from-poly">
       <a aria-hidden="true" href="#osm-graph-from-poly" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -190,7 +209,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">poly_geom, </div>
           <div class="yap func-sig-param">poly_epsg_code=4326, </div>
-          <div class="yap func-sig-param">out_epsg_code, </div>
+          <div class="yap func-sig-param">to_epsg_code, </div>
           <div class="yap func-sig-param">custom_request, </div>
           <div class="yap func-sig-param">simplify=True, </div>
           <div class="yap func-sig-param">remove_parallel=True, </div>
@@ -223,11 +242,11 @@ An integer representing a valid EPSG code for the provided polygon. For example,
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">out_epsg_code</div>
+          <div class="yap doc-str-elem-name">to_epsg_code</div>
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional integer representing a valid EPSG code for the generated network returned from this function. If this parameter is provided, then the network will be converted to the specified EPSG coordinate reference system. If not provided, then OSM network will be projected into a local UTM coordinate reference system.
+An optional integer representing a valid EPSG code for the generated network returned from this function. If this parameter is provided, then the network will be converted to the specified EPSG coordinate reference system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">

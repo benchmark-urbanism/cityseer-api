@@ -121,14 +121,14 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
 
 
 def osm_graph_from_poly_wgs() -> None:
-    """This method is deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead."""
+    """Deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead."""
     raise DeprecationWarning("This method is deprecated. Please use osm_graph_from_poly instead.")
 
 
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
-    out_epsg_code: Optional[int] = None,
+    to_epsg_code: Optional[int] = None,
     custom_request: Optional[str] = None,
     simplify: bool = True,
     remove_parallel: bool = True,
@@ -148,7 +148,7 @@ def osm_graph_from_poly(
     poly_epsg_code: int
         An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
         using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
-    out_epsg_code: int
+    to_epsg_code: int
         An optional integer representing a valid EPSG code for the generated network returned from this function. If
         this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
         system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
@@ -235,8 +235,8 @@ def osm_graph_from_poly(
     # build graph
     graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
-    if out_epsg_code is not None:
-        graph_crs = graphs.nx_wgs_to_epsg(graph_wgs, epsg_code=out_epsg_code)
+    if to_epsg_code is not None:
+        graph_crs = graphs.nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
     else:
         graph_crs = graphs.nx_wgs_to_utm(graph_wgs)
     # simplify
