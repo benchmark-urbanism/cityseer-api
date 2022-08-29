@@ -112,9 +112,10 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
         max_tries -= 1
-
-    if osm_response is None or not osm_response.status_code == 200:
-        raise requests.RequestException("Unsuccessful OSM API request.")
+    if osm_response is None:
+        raise requests.RequestException("None response. Unsuccessful OSM API request.")
+    if not osm_response.status_code == 200:
+        osm_response.raise_for_status()
 
     return osm_response
 
