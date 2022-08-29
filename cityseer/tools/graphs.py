@@ -126,9 +126,9 @@ def align_linestring_coords(
         A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
     reverse: bool
         If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True
-        the coordinate order will be aligned to end at the given x_y coordinate. False by default.
+        the coordinate order will be aligned to end at the given x_y coordinate.
     tolerance: float
-        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
+        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords.
 
     Returns
     -------
@@ -287,7 +287,7 @@ def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 2) -> MultiG
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes.
     simplify_dist: int
-        Simplification distance to use for simplifying the linestring geometries. Default of 2.
+        Simplification distance to use for simplifying the linestring geometries.
 
     Returns
     -------
@@ -518,7 +518,7 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
         attributes containing `LineString` geoms to be converted.
     force_zone_number: int
         An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-        UTM zones may introduce substantial distortions in the results. By Default None.
+        UTM zones may introduce substantial distortions in the results.
 
     Returns
     -------
@@ -732,7 +732,7 @@ def nx_remove_dangling_nodes(
         returned. Defaults to True.
     cleanup_filler_nodes: bool
         Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed.
-        If cleanup_filler_nodes is `True` then these will be removed. By default True.
+        If cleanup_filler_nodes is `True` then these will be removed.
 
     Returns
     -------
@@ -903,25 +903,23 @@ def nx_iron_edges(
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
     simplify: bool
-        Whether to simplify the street geometries per `simplify_dist`. By default True.
+        Whether to simplify the street geometries per `simplify_dist`.
     simplify_dist: int
         Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
-        Default of 2.
     straighten: bool
         Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its
-        length is greater than `min_straightness_ratio`. By default True.
+        length is greater than `min_straightness_ratio`.
     min_straightness_ratio: float
         Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be
         flattened.
     remove_wonky: bool
         Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation
-        processes. By default True.
+        processes.
     max_wonky_ratio: float
         Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky
-        edges. By default 0.7.
+        edges.
     wonky_dist_buffer: int
-        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints. By
-        default 50.
+        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints.
 
     Returns
     -------
