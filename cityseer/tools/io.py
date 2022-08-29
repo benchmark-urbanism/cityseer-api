@@ -120,6 +120,11 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
     return osm_response
 
 
+def osm_graph_from_poly_wgs() -> None:
+    """This method is deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead."""
+    raise DeprecationWarning("This method is deprecated. Please use osm_graph_from_poly instead.")
+
+
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
