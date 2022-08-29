@@ -431,37 +431,40 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     return nx_multigraph
 
 
-def nx_wgs_to_epsg(nx_multigraph: MultiGraph, epsg_code: int) -> MultiGraph:
+def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_code: int) -> MultiGraph:
     """
-    Convert a graph from WGS84 geographic coordinates to specified EPSG coordinate reference system.
+    Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS.
 
-    Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
-    specified coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also
-    be converted.
+    The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString`
+    geometries will also be converted.
 
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
-        attributes containing `LineString` geoms to be converted.
-    epsg_code: int
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional
+        `geom` edge attributes containing `LineString` geoms to be converted.
+    from_epsg_code: int
+        An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For
+        example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
+    to_epsg_code: int
         An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For
-        example, [27700](https://epsg.io/27700) if using the British National Grid.
+        example, [27700](https://epsg.io/27700) if converting to British National Grid.
 
     Returns
     -------
     MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
-         `geom` attributes are present, these will also be converted.
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate
+        system. Edge `geom` attributes will also be converted if found.
 
     """
-    # TODO: consider adding both in and out EPSG for full flexibility
-    # TODO: add check that out EPSG code is projected per is_projected()
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    logger.info(f"Converting networkX graph from WGS to EPSG code {epsg_code}.")
+    logger.info(f"Converting networkX graph from EPSG code {from_epsg_code} to EPSG code {to_epsg_code}.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    transformer = Transformer.from_crs(4326, epsg_code, always_xy=True)
+    test_crs = CRS.from_epsg(to_epsg_code)
+    if not test_crs.is_projected:
+        raise ValueError("The to_epsg_code parameter must be for a projected CRS")
+    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
@@ -469,16 +472,13 @@ def nx_wgs_to_epsg(nx_multigraph: MultiGraph, epsg_code: int) -> MultiGraph:
         # x coordinate
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        lng: float = node_data["x"]
+        x: float = node_data["x"]
         # y coordinate
         if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        lat: float = node_data["y"]
-        # check for unintentional use of conversion
-        if abs(lng) > 180 or abs(lat) > 90:
-            raise ValueError(f"x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.")
+        y: float = node_data["y"]
         # be cognisant of parameter and return order, using always_xy for transformer
-        easting, northing = transformer.transform(lng, lat)  # pylint: disable=unpacking-non-sequence
+        easting, northing = transformer.transform(x, y)  # pylint: disable=unpacking-non-sequence
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
@@ -496,7 +496,7 @@ def nx_wgs_to_epsg(nx_multigraph: MultiGraph, epsg_code: int) -> MultiGraph:
             line_geom: geometry.LineString = edge_data["geom"]
             if line_geom.type != "LineString":
                 raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
-            edge_coords = [transformer.transform(lng, lat) for lng, lat in line_geom.coords]
+            edge_coords = [transformer.transform(x, y) for x, y in line_geom.coords]
             # write back to edge
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
 
@@ -544,7 +544,7 @@ def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = 
     target_epsg = crs.to_epsg()
     if not isinstance(target_epsg, int):
         raise ValueError("Unable to extract an EPSG code from the provided network.")
-    return nx_wgs_to_epsg(nx_multigraph, target_epsg)
+    return nx_epsg_conversion(nx_multigraph, 4326, target_epsg)
 
 
 def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:

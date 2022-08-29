@@ -75,8 +75,8 @@ def test_nx_from_osm():
     pass
 
 
-# TODO: currently tested via test_nx_wgs_to_utm which calls nx_wgs_to_epsg internally
-def nx_wgs_to_epsg():
+# TODO: currently tested via test_nx_wgs_to_utm which calls nx_epsg_conversion internally
+def nx_epsg_conversion():
     pass
 
 
