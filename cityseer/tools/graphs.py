@@ -386,9 +386,11 @@ def _add_node(
     x: float,
     y: float,
     live: Optional[bool] = None,
-) -> Optional[str]:
+) -> tuple[str, bool]:
     """
     Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
+
+    Returns new name and is_dupe
     """
     # suggest a name based on the given names
     if len(nodes_names) == 1:
@@ -416,7 +418,7 @@ def _add_node(
                     f"Proposed new node {new_nd_name} would overlay a node that already exists "
                     f"at the same coordinates. Skipping."
                 )
-                return None
+                return new_nd_name, True  # is_dupe
             # otherwise, bump the appended node number
             new_nd_name = f"{target_name}§v{append}"
             append += 1
@@ -432,7 +434,7 @@ def _add_node(
     if live is not None:
         attributes["live"] = live
     nx_multigraph.add_node(new_nd_name, **attributes)
-    return new_nd_name
+    return new_nd_name, False  # is_dupe
 
 
 def nx_from_osm(osm_json: str) -> MultiGraph:
@@ -1126,7 +1128,7 @@ def _squash_adjacent(
         dodge_vals = set([None, "unclassified"])
         # iter nodes, then iter edges
         for nd_key in node_pool:
-            agg_keys: list[str] = []
+            agg_keys: set[str] = set()
             nb_key: NodeKey
             for nb_key in nx.neighbors(nx_multigraph, nd_key):
                 for edge_data in nx_multigraph[nd_key][nb_key].values():
@@ -1135,7 +1137,7 @@ def _squash_adjacent(
                             val: str
                             for val in edge_data[valid_key]:
                                 if val not in dodge_vals:
-                                    agg_keys.append(val)
+                                    agg_keys.add(val)
             if len(agg_keys) >= cent_min_names:
                 centroid_nodes.append(nd_key)
     # fallback
@@ -1156,11 +1158,15 @@ def _squash_adjacent(
         node_geoms.append(geometry.Point(x, y))
     # set the new centroid from the centroid of the node group's Multipoint:
     new_cent: geometry.Point = geometry.MultiPoint(node_geoms).centroid  # type: ignore
-    # now that the centroid is known, go ahead and merge the _node_group
-    # add the new node
-    new_nd_name = _add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)  # pylint: disable=no-member
-    if new_nd_name is None:
-        raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
+    # now that the centroid is known, add the new node
+    new_nd_name, is_dupe = _add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)  # pylint: disable=no-member
+    if is_dupe:
+        # an edge case: if the potential duplicate was one of the node group then it doesn't need adding
+        if new_nd_name in node_group:
+            # but remove from the node group since it doesn't need to be removed and replumbed
+            node_group.remove(new_nd_name)
+        else:
+            raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
     # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
     for nd_key in node_group:
         # iterate the node's existing neighbours
@@ -1610,11 +1616,11 @@ def nx_split_opposing_geoms(
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
-            new_nd_name = _add_node(
+            new_nd_name, is_dupe = _add_node(
                 _multi_graph, [start_nd_key, nd_key, end_nd_key], x=nearest_point.x, y=nearest_point.y
             )
-            # if a node already exists at this location, add_node will return None
-            if new_nd_name is None:
+            # continue if a node already exists at this location
+            if is_dupe:
                 continue
             edge_data: EdgeData = _multi_graph[start_nd_key][end_nd_key][edge_idx]
             edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
@@ -1808,8 +1814,8 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
             # add the new node and edge
-            new_nd_name = _add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
-            if new_nd_name is None:
+            new_nd_name, is_dupe = _add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
+            if is_dupe:
                 raise ValueError(
                     f"Attempted to add a duplicate node. "
                     f"Check for existence of duplicate edges in the vicinity of {start_nd_key}-{end_nd_key}."
