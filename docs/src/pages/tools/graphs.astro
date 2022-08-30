@@ -19,208 +19,6 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
  Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 </Markdown>
   <section class="yap func">
-    <h2 class="yap func-title" id="nx-simple-geoms">
-      <a aria-hidden="true" href="#nx-simple-geoms" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_simple_geoms
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_simple_geoms(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multigraph)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Generate straight-line geometries for each edge. Prepares "simple" straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to the edge `geom` attribute.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` with `x` and `y` node attributes.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge `geom` attributes.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="nx-from-osm">
-      <a aria-hidden="true" href="#nx-from-osm" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_from_osm
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_from_osm(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">osm_json)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">osm_json</div>
-          <div class="yap doc-str-elem-type">str</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), consisting of `nodes` and `ways`.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="nx-wgs-to-utm">
-      <a aria-hidden="true" href="#nx-wgs-to-utm" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_wgs_to_utm
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_wgs_to_utm(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">force_zone_number)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">force_zone_number</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results. By Default None.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge `geom` attributes are present, these will also be converted.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="nx-remove-dangling-nodes">
-      <a aria-hidden="true" href="#nx-remove-dangling-nodes" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_remove_dangling_nodes
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_remove_dangling_nodes(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">despine, </div>
-          <div class="yap func-sig-param">remove_disconnected=True)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Remove disconnected components and optionally removes short dead-end street stubs.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">despine</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">remove_disconnected</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to remove disconnected components. If set to `True`, only the largest connected component will be returned. Defaults to True.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
     <h2 class="yap func-title" id="snap-linestring-startpoint">
       <a aria-hidden="true" href="#snap-linestring-startpoint" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -375,7 +173,7 @@ A tuple of floats representing the target x, y coordinates against which to alig
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True the coordinate order will be aligned to end at the given x_y coordinate. False by default.
+If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True the coordinate order will be aligned to end at the given x_y coordinate.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -384,7 +182,7 @@ If reverse=False the coordinate order will be aligned to start from the given x_
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
+Distance tolerance in metres for matching the x_y coordinate to the linestring_coords.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -500,6 +298,218 @@ Set accumulated edge data to specified graph and edge.
     </section>
   </section>
   <section class="yap func">
+    <h2 class="yap func-title" id="nx-simple-geoms">
+      <a aria-hidden="true" href="#nx-simple-geoms" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_simple_geoms
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_simple_geoms(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">simplify_dist=2)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Inferring geometries from node to node. Infers straight-lined geometries connecting the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to each edge's `geom` attribute.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `x` and `y` node attributes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">simplify_dist</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Simplification distance to use for simplifying the linestring geometries.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `shapely` [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge `geom` attributes.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="nx-from-osm">
+      <a aria-hidden="true" href="#nx-from-osm" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_from_osm
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_from_osm(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">osm_json)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">osm_json</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), consisting of `nodes` and `ways`.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="nx-epsg-conversion">
+      <a aria-hidden="true" href="#nx-epsg-conversion" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_epsg_conversion
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_epsg_conversion(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">from_epsg_code, </div>
+          <div class="yap func-sig-param">to_epsg_code)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS. The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">from_epsg_code</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">to_epsg_code</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For example, [27700](https://epsg.io/27700) if converting to British National Grid.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate system. Edge `geom` attributes will also be converted if found.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="nx-wgs-to-utm">
+      <a aria-hidden="true" href="#nx-wgs-to-utm" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_wgs_to_utm
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_wgs_to_utm(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">force_zone_number)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">force_zone_number</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge `geom` attributes are present, these will also be converted.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
     <h2 class="yap func-title" id="nx-remove-filler-nodes">
       <a aria-hidden="true" href="#nx-remove-filler-nodes" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -545,6 +555,79 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="nx-remove-dangling-nodes">
+      <a aria-hidden="true" href="#nx-remove-dangling-nodes" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_remove_dangling_nodes
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_remove_dangling_nodes(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">despine, </div>
+          <div class="yap func-sig-param">remove_disconnected=True, </div>
+          <div class="yap func-sig-param">cleanup_filler_nodes=True)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Remove disconnected components and optionally removes short dead-end street stubs.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">despine</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">remove_disconnected</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to remove disconnected components. If set to `True`, only the largest connected component will be returned. Defaults to True.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">cleanup_filler_nodes</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed. If cleanup_filler_nodes is `True` then these will be removed.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than the `despine` parameter distance.
 </Markdown></div>
       </div>
     </div>
@@ -598,7 +681,7 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">contains_buffer_dist</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
@@ -612,6 +695,119 @@ The buffer distance to consider when checking if parallel edges are sufficiently
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="nx-iron-edges">
+      <a aria-hidden="true" href="#nx-iron-edges" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>nx_iron_edges
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>nx_iron_edges(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">nx_multigraph, </div>
+          <div class="yap func-sig-param">simplify=True, </div>
+          <div class="yap func-sig-param">simplify_dist=2, </div>
+          <div class="yap func-sig-param">straighten=True, </div>
+          <div class="yap func-sig-param">min_straightness_ratio=0.9975, </div>
+          <div class="yap func-sig-param">remove_wonky=True, </div>
+          <div class="yap func-sig-param">max_wonky_ratio=0.7, </div>
+          <div class="yap func-sig-param">wonky_dist_buffer=50)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Flattens edges straighter than `min_straightness_ratio`.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nx_multigraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">simplify</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to simplify the street geometries per `simplify_dist`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">simplify_dist</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">straighten</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its length is greater than `min_straightness_ratio`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_straightness_ratio</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be flattened.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">remove_wonky</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation processes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_wonky_ratio</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky edges.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">wonky_dist_buffer</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">MultiGraph</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `networkX` `MultiGraph`.
 </Markdown></div>
       </div>
     </div>
@@ -770,7 +966,7 @@ Whether to merge parallel edges by an imaginary centreline. If set to False, the
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">contains_buffer_dist</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
@@ -870,59 +1066,6 @@ The buffer distance to consider when checking if parallel edges are sufficiently
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` with consolidated nodes.
-</Markdown></div>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="nx-iron-edges">
-      <a aria-hidden="true" href="#nx-iron-edges" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>nx_iron_edges
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>nx_iron_edges(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">min_straightness_ratio=0.975)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Flattens edges straighter than `min_straightness_ratio`.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">min_straightness_ratio</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio of the distance from the start to the end point of the edge divided by the full length of the geom.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` `MultiGraph`.
 </Markdown></div>
       </div>
     </div>

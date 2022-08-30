@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import utm
+from pyproj import CRS, Transformer  # type: ignore
 from shapely import coords, geometry, ops, strtree
 from tqdm import tqdm
 
@@ -37,297 +38,6 @@ EdgeMapping = tuple[NodeKey, NodeKey, int, geometry.LineString]
 CoordsType = Union[tuple[float, float], tuple[float, float, float]]
 AnyCoordsType = Union[list[CoordsType], npt.NDArray[np.float_], coords.CoordinateSequence]
 ListCoordsType = list[CoordsType]
-
-
-def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
-    """
-    Generate straight-line geometries for each edge.
-
-    Prepares "simple" straight-lined geometries spanning the `x` and `y` coordinates of each node-pair. The resultant
-    edge geometry will be stored to the edge `geom` attribute.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph` with `shapely`
-        [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge
-        `geom` attributes.
-
-    """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
-    logger.info("Generating simple (straight) edge geometries.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-
-    def _process_node(nd_key: NodeKey):
-        # x coordinate
-        if "x" not in g_multi_copy.nodes[nd_key]:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x: float = g_multi_copy.nodes[nd_key]["x"]
-        # y coordinate
-        if "y" not in g_multi_copy.nodes[nd_key]:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y: float = g_multi_copy.nodes[nd_key]["y"]
-
-        return x, y
-
-    # unpack coordinates and build simple edge geoms
-    remove_edges: list[tuple[NodeKey, NodeKey, int]] = []
-    start_nd_key: NodeKey
-    end_nd_key: NodeKey
-    edge_idx: int
-    for start_nd_key, end_nd_key, edge_idx in tqdm(
-        g_multi_copy.edges(keys=True), disable=config.QUIET_MODE
-    ):  # pylint: disable=line-too-long
-        s_x, s_y = _process_node(start_nd_key)
-        e_x, e_y = _process_node(end_nd_key)
-        seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        if start_nd_key == end_nd_key and seg.length == 0:
-            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
-        else:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg
-    for start_nd_key, end_nd_key, edge_idx in remove_edges:
-        logger.warning(f"Found zero length looped edge for node {start_nd_key}, removing from graph.")
-        g_multi_copy.remove_edge(start_nd_key, end_nd_key, key=edge_idx)
-
-    return g_multi_copy
-
-
-def _add_node(
-    nx_multigraph: MultiGraph,
-    nodes_names: list[NodeKey],
-    x: float,
-    y: float,
-    live: Optional[bool] = None,
-) -> Optional[str]:
-    """
-    Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
-    """
-    # suggest a name based on the given names
-    if len(nodes_names) == 1:
-        new_nd_name = str(nodes_names[0])
-    # if concatenating existing nodes, suggest a name based on a combination of existing names
-    else:
-        names = []
-        for name in nodes_names:
-            name = str(name)
-            if len(name) > 10:
-                name = f"{name[:5]}|{name[-5:]}"
-            names.append(name)
-        new_nd_name = "±".join(names)
-    # first check whether the node already exists
-    append = 2
-    target_name = new_nd_name
-    dupe = False
-    while True:
-        if f"{new_nd_name}" in nx_multigraph:
-            dupe = True
-            # if the coordinates also match, then it is probable that the same node is being re-added...
-            nd_data: dict[str, float] = nx_multigraph.nodes[f"{new_nd_name}"]
-            if nd_data["x"] == x and nd_data["y"] == y:
-                logger.debug(
-                    f"Proposed new node {new_nd_name} would overlay a node that already exists "
-                    f"at the same coordinates. Skipping."
-                )
-                return None
-            # otherwise, warn and bump the appended node number
-            new_nd_name = f"{target_name}§v{append}"
-            append += 1
-        else:
-            if dupe:
-                logger.debug(
-                    f"A node of the same name already exists in the graph, "
-                    f"adding this node as {new_nd_name} instead."
-                )
-            break
-    # add
-    attributes = {"x": x, "y": y}
-    if live is not None:
-        attributes["live"] = live
-    nx_multigraph.add_node(new_nd_name, **attributes)
-    return new_nd_name
-
-
-def nx_from_osm(osm_json: str) -> MultiGraph:
-    """
-    Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
-
-    Parameters
-    ----------
-    osm_json: str
-        A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
-        consisting of `nodes` and `ways`.
-
-    Returns
-    -------
-    MultiGraph
-        A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
-        coordinates.
-
-    """
-    osm_network_data = json.loads(osm_json)
-    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
-    for elem in osm_network_data["elements"]:
-        if elem["type"] == "node":
-            nx_multigraph.add_node(elem["id"], x=elem["lon"], y=elem["lat"])
-    for elem in osm_network_data["elements"]:
-        if elem["type"] == "way":
-            count = len(elem["nodes"])
-            if "tags" in elem:
-                tags = elem["tags"]
-                name = tags["name"] if "name" in tags else None
-                ref = tags["ref"] if "ref" in tags else None
-                highway = tags["highway"] if "highway" in tags else None
-                for idx in range(count - 1):
-                    nx_multigraph.add_edge(
-                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], routes=[ref], highways=[highway]
-                    )
-            else:
-                for idx in range(count - 1):
-                    nx_multigraph.add_edge(elem["nodes"][idx], elem["nodes"][idx + 1])
-
-    return nx_multigraph
-
-
-def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = None) -> MultiGraph:
-    """
-    Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
-
-    Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
-    local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
-    will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
-    other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
-    a UTM boundary.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
-        attributes containing `LineString` geoms to be converted.
-    force_zone_number: int
-        An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-        UTM zones may introduce substantial distortions in the results. By Default None.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
-         `geom` attributes are present, these will also be converted.
-
-    """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
-    logger.info("Converting networkX graph from WGS to UTM.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    utm_zone_number = None
-    utm_zone_letter = None
-    if force_zone_number is not None:
-        utm_zone_number = force_zone_number
-    logger.info("Processing node x, y coordinates.")
-    nd_key: NodeKey
-    node_data: NodeData
-    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
-        # x coordinate
-        if "x" not in node_data:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        lng: float = node_data["x"]
-        # y coordinate
-        if "y" not in node_data:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        lat: float = node_data["y"]
-        # check for unintentional use of conversion
-        if abs(lng) > 180 or abs(lat) > 90:
-            raise ValueError(f"x, y coordinates {lng}, {lat} exceed WGS bounds. Please check your coordinate system.")
-        # to avoid issues across UTM boundaries, use the first point to set (and subsequently force) the UTM zone
-        if utm_zone_number is None:
-            utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
-        # be cognisant of parameter and return order
-        # returns in easting, northing order
-        easting, northing = utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2]
-        # write back to graph
-        g_multi_copy.nodes[nd_key]["x"] = easting
-        g_multi_copy.nodes[nd_key]["y"] = northing
-    logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
-    # if line geom property provided, then convert as well
-    logger.info("Processing edge geom coordinates, if present.")
-    start_nd_key: NodeKey
-    end_nd_key: NodeKey
-    edge_idx: int
-    edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
-        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
-    ):
-        # check if geom present - optional step
-        if "geom" in edge_data:
-            line_geom: geometry.LineString = edge_data["geom"]
-            if line_geom.type != "LineString":
-                raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
-            # be cognisant of parameter and return order
-            # returns in easting, northing order
-            utm_coords = [
-                utm.from_latlon(lat, lng, force_zone_number=utm_zone_number)[:2] for lng, lat in line_geom.coords
-            ]
-            # write back to edge
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(utm_coords)
-
-    return g_multi_copy
-
-
-def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph,
-    despine: Optional[float] = None,
-    remove_disconnected: bool = True,
-) -> MultiGraph:
-    """
-    Remove disconnected components and optionally removes short dead-end street stubs.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    despine: bool
-        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
-        Defaults to None.
-    remove_disconnected: bool
-        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
-        returned. Defaults to True.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
-         the `despine` parameter distance.
-
-    """
-    logger.info("Removing dangling nodes.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    if remove_disconnected:
-        # finds connected components - this behaviour changed with networkx v2.4
-        connected_components: list[list[NodeKey]] = list(
-            nx.algorithms.components.connected_components(g_multi_copy)  # type: ignore
-        )  # pylint: disable=line-too-long
-        # sort by largest component
-        g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
-        # make a copy of the graph using the largest component
-        g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))  # type: ignore
-    if despine is not None and despine > 0:
-        remove_nodes = []
-        nd_key: NodeKey
-        for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
-            if nx.degree(g_multi_copy, nd_key) == 1:  # type: ignore
-                # only a single neighbour, so index-in directly and update at key = 0
-                nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]  # type: ignore
-                if g_multi_copy[nd_key][nb_nd_key][0]["geom"].length <= despine:
-                    remove_nodes.append(nd_key)
-        g_multi_copy.remove_nodes_from(remove_nodes)
-
-    return g_multi_copy
 
 
 def _snap_linestring_idx(
@@ -416,9 +126,9 @@ def align_linestring_coords(
         A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
     reverse: bool
         If reverse=False the coordinate order will be aligned to start from the given x_y coordinate. If reverse=True
-        the coordinate order will be aligned to end at the given x_y coordinate. False by default.
+        the coordinate order will be aligned to end at the given x_y coordinate.
     tolerance: float
-        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords. By default 0.5.
+        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords.
 
     Returns
     -------
@@ -430,20 +140,65 @@ def align_linestring_coords(
     if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
         raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
     linestring_coords = list(linestring_coords)
+    a_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
+    b_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     # the target indices depend on whether reversed or not
     if not reverse:
-        xy_idx = 0
-        opposite_idx = -1
+        if a_dist > b_dist:
+            linestring_coords = linestring_coords[::-1]
+        tol_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
     else:
-        xy_idx = -1
-        opposite_idx = 0
-    # flip if necessary
-    if np.allclose(x_y, linestring_coords[opposite_idx][:2], atol=tolerance, rtol=0):
-        return linestring_coords[::-1]
-    # if still not aligning, then there is an issue
-    if not np.allclose(x_y, linestring_coords[xy_idx][:2], atol=tolerance, rtol=0):
-        raise ValueError(f"Unable to align the LineString to starting point {x_y} given the tolerance of {tolerance}.")
+        if a_dist < b_dist:
+            linestring_coords = linestring_coords[::-1]
+        tol_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
+    if tol_dist > tolerance:
+        raise ValueError(f"Closest side of edge geom is {tol_dist} from node, exceeding tolerance of {tolerance}.")
     # otherwise no flipping is required and the coordinates can simply be returned
+    return linestring_coords
+
+
+def _snap_linestring_endpoints(
+    nx_multigraph: nx.MultiGraph,
+    start_nd_key: NodeKey,
+    end_nd_key: NodeKey,
+    linestring_coords: ListCoordsType,
+    tolerance: float = 0.5,
+) -> ListCoordsType:
+    """
+    Snaps edge geom coordinate sequence to the nodes on either side.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes and edge `geom` attributes.
+    start_nd_key: NodeKey
+        A node key corresponding to the edge's start node.
+    end_nd_key: NodeKey
+        A node key corresponding to the edge's end node.
+    linestring_coords: tuple | list | np.ndarray
+        A list, tuple, or numpy array of x, y coordinate tuples.
+    tolerance: float
+        Distance tolerance in metres for matching the x_y coordinate to the linestring_coords.
+
+    Returns
+    -------
+    linestring_coords
+        A list of linestring coords aligned to the specified ending point.
+
+    """
+    # unpack node data
+    start_nd_data: NodeData = nx_multigraph.nodes[start_nd_key]
+    s_xy = (start_nd_data["x"], start_nd_data["y"])
+    end_nd_data: NodeData = nx_multigraph.nodes[end_nd_key]
+    e_xy = (end_nd_data["x"], end_nd_data["y"])
+    # align and snap edge geom
+    linestring_coords = align_linestring_coords(linestring_coords, s_xy, tolerance=tolerance)
+    if not np.allclose(linestring_coords[0], s_xy, atol=tolerance, rtol=0):
+        raise ValueError("Linestring geometry does not match starting node coordinates.")
+    if not np.allclose(linestring_coords[-1], e_xy, atol=tolerance, rtol=0):
+        raise ValueError("Linestring geometry does not match ending node coordinates.")
+    linestring_coords = snap_linestring_startpoint(linestring_coords, s_xy)
+    linestring_coords = snap_linestring_endpoint(linestring_coords, e_xy)
     return linestring_coords
 
 
@@ -451,7 +206,7 @@ def _weld_linestring_coords(
     linestring_coords_a: AnyCoordsType,
     linestring_coords_b: AnyCoordsType,
     force_xy: Optional[CoordsType] = None,
-    tolerance: float = config.ATOL,
+    tolerance: float = 0.01,
 ) -> ListCoordsType:
     """
     Welds two linestrings.
@@ -554,7 +309,7 @@ class _EdgeInfo:
 
     def set_edge_info(
         self,
-        nx_multigraph: nx.MultiGraph,  # type: ignore
+        nx_multigraph: nx.MultiGraph,
         start_node_key: NodeKey,
         end_node_key: NodeKey,
         edge_idx: int,
@@ -563,6 +318,283 @@ class _EdgeInfo:
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
         nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
+
+
+def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 2) -> MultiGraph:
+    """
+    Inferring geometries from node to node.
+
+    Infers straight-lined geometries connecting the `x` and `y` coordinates of each node-pair. The resultant edge
+    geometry will be stored to each edge's `geom` attribute.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes.
+    simplify_dist: int
+        Simplification distance to use for simplifying the linestring geometries.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with `shapely`
+        [`Linestring`](https://shapely.readthedocs.io/en/latest/manual.html#linestrings) geometries assigned to the edge
+        `geom` attributes.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info("Generating interpolated edge geometries.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+
+    def _process_node(nd_key: NodeKey):
+        # x coordinate
+        if "x" not in g_multi_copy.nodes[nd_key]:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
+        x: float = g_multi_copy.nodes[nd_key]["x"]
+        # y coordinate
+        if "y" not in g_multi_copy.nodes[nd_key]:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
+        y: float = g_multi_copy.nodes[nd_key]["y"]
+
+        return x, y
+
+    # unpack coordinates and build simple edge geoms
+    remove_edges: list[tuple[NodeKey, NodeKey, int]] = []
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    edge_idx: int
+    for start_nd_key, end_nd_key, edge_idx in tqdm(g_multi_copy.edges(keys=True), disable=config.QUIET_MODE):
+        s_x, s_y = _process_node(start_nd_key)
+        e_x, e_y = _process_node(end_nd_key)
+        seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        seg = seg.simplify(simplify_dist)
+        if start_nd_key == end_nd_key and seg.length == 0:
+            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
+        else:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg
+    for start_nd_key, end_nd_key, edge_idx in remove_edges:
+        logger.warning(f"Found zero length looped edge for node {start_nd_key}, removing from graph.")
+        g_multi_copy.remove_edge(start_nd_key, end_nd_key, key=edge_idx)
+
+    return g_multi_copy
+
+
+def _add_node(
+    nx_multigraph: MultiGraph,
+    nodes_names: list[NodeKey],
+    x: float,
+    y: float,
+    live: Optional[bool] = None,
+) -> tuple[str, bool]:
+    """
+    Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
+
+    Returns new name and is_dupe
+    """
+    # suggest a name based on the given names
+    if len(nodes_names) == 1:
+        new_nd_name = str(nodes_names[0])
+    # if concatenating existing nodes, suggest a name based on a combination of existing names
+    else:
+        names = []
+        for name in nodes_names:
+            name = str(name)
+            if len(name) > 10:
+                name = f"{name[:5]}|{name[-5:]}"
+            names.append(name)
+        new_nd_name = "±".join(names)
+    # first check whether the node already exists
+    append = 2
+    target_name = new_nd_name
+    dupe = False
+    while True:
+        if f"{new_nd_name}" in nx_multigraph:
+            dupe = True
+            # if the coordinates also match, then it is probable that the same node is being re-added...
+            nd_data: dict[str, float] = nx_multigraph.nodes[f"{new_nd_name}"]
+            if nd_data["x"] == x and nd_data["y"] == y:
+                logger.debug(
+                    f"Proposed new node {new_nd_name} would overlay a node that already exists "
+                    f"at the same coordinates. Skipping."
+                )
+                return new_nd_name, True  # is_dupe
+            # otherwise, bump the appended node number
+            new_nd_name = f"{target_name}§v{append}"
+            append += 1
+        else:
+            if dupe:
+                logger.debug(
+                    f"A node of the same name already exists in the graph, "
+                    f"adding this node as {new_nd_name} instead."
+                )
+            break
+    # add
+    attributes = {"x": x, "y": y}
+    if live is not None:
+        attributes["live"] = live
+    nx_multigraph.add_node(new_nd_name, **attributes)
+    return new_nd_name, False  # is_dupe
+
+
+def nx_from_osm(osm_json: str) -> MultiGraph:
+    """
+    Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+
+    Parameters
+    ----------
+    osm_json: str
+        A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
+        consisting of `nodes` and `ways`.
+
+    Returns
+    -------
+    MultiGraph
+        A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
+        coordinates.
+
+    """
+    osm_network_data = json.loads(osm_json)
+    nx_multigraph: MultiGraph = nx.MultiGraph()
+    for elem in osm_network_data["elements"]:
+        if elem["type"] == "node":
+            nx_multigraph.add_node(elem["id"], x=elem["lon"], y=elem["lat"])
+    for elem in osm_network_data["elements"]:
+        if elem["type"] == "way":
+            count = len(elem["nodes"])
+            if "tags" in elem:
+                tags = elem["tags"]
+                name = tags["name"] if "name" in tags else None
+                ref = tags["ref"] if "ref" in tags else None
+                highway = tags["highway"] if "highway" in tags else None
+                for idx in range(count - 1):
+                    nx_multigraph.add_edge(
+                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], routes=[ref], highways=[highway]
+                    )
+            else:
+                for idx in range(count - 1):
+                    nx_multigraph.add_edge(elem["nodes"][idx], elem["nodes"][idx + 1])
+
+    return nx_multigraph
+
+
+def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_code: int) -> MultiGraph:
+    """
+    Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS.
+
+    The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString`
+    geometries will also be converted.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional
+        `geom` edge attributes containing `LineString` geoms to be converted.
+    from_epsg_code: int
+        An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For
+        example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
+    to_epsg_code: int
+        An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For
+        example, [27700](https://epsg.io/27700) if converting to British National Grid.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate
+        system. Edge `geom` attributes will also be converted if found.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info(f"Converting networkX graph from EPSG code {from_epsg_code} to EPSG code {to_epsg_code}.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    test_crs = CRS.from_epsg(to_epsg_code)
+    if not test_crs.is_projected:
+        raise ValueError("The to_epsg_code parameter must be for a projected CRS")
+    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+    logger.info("Processing node x, y coordinates.")
+    nd_key: NodeKey
+    node_data: NodeData
+    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        # x coordinate
+        if "x" not in node_data:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
+        x: float = node_data["x"]
+        # y coordinate
+        if "y" not in node_data:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
+        y: float = node_data["y"]
+        # be cognisant of parameter and return order, using always_xy for transformer
+        easting, northing = transformer.transform(x, y)  # pylint: disable=unpacking-non-sequence
+        # write back to graph
+        g_multi_copy.nodes[nd_key]["x"] = easting
+        g_multi_copy.nodes[nd_key]["y"] = northing
+    # if line geom property provided, then convert as well
+    logger.info("Processing edge geom coordinates, if present.")
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    edge_idx: int
+    edge_data: EdgeData
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
+    ):
+        # check if geom present - optional step
+        if "geom" in edge_data:
+            line_geom: geometry.LineString = edge_data["geom"]
+            if line_geom.type != "LineString":
+                raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
+            # convert
+            edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
+            # snap ends
+            edge_coords = _snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
+            # write back to edge
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
+
+    return g_multi_copy
+
+
+def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = None) -> MultiGraph:
+    """
+    Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
+
+    Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
+    local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
+    will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
+    other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
+    a UTM boundary.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
+        attributes containing `LineString` geoms to be converted.
+    force_zone_number: int
+        An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
+        UTM zones may introduce substantial distortions in the results.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
+         `geom` attributes are present, these will also be converted.
+
+    """
+    # sample the first node for UTM
+    utm_zone_number = force_zone_number
+    nd_key = list(nx_multigraph.nodes())[0]
+    lng = nx_multigraph.nodes[nd_key]["x"]
+    lat = nx_multigraph.nodes[nd_key]["y"]
+    is_north = lat >= 0
+    is_south = lat < 0
+    utm_zone_number, _utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
+    if force_zone_number is not None:
+        utm_zone_number = force_zone_number
+    # or dictionary
+    crs = CRS.from_dict({"proj": "utm", "zone": utm_zone_number, "north": is_north, "south": is_south})
+    target_epsg = crs.to_epsg()
+    if not isinstance(target_epsg, int):
+        raise ValueError("Unable to extract an EPSG code from the provided network.")
+    return nx_epsg_conversion(nx_multigraph, 4326, target_epsg)
 
 
 def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
@@ -594,7 +626,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
         edge with associated `geom` attributes spliced together.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Removing filler nodes.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
@@ -606,7 +638,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
         if nd_key in removed_nodes:
             continue
         # proceed if a "simple" node is discovered, i.e. degree = 2
-        if nx.degree(nx_multigraph, nd_key) == 2:  # type: ignore
+        if nx.degree(nx_multigraph, nd_key) == 2:
             # pick the first neighbour and follow the chain until a non-simple node is encountered
             # this will become the starting point of the chain of simple nodes to be consolidated
             nbs: list[NodeKey] = list(nx.neighbors(nx_multigraph, nd_key))  # type: ignore
@@ -623,7 +655,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             while anchor_nd is None:
                 # follow the chain of neighbours and break once a non-simple node is found
                 # catch disconnected looping components by checking for re-encountering start-node
-                if nx.degree(nx_multigraph, nb_nd_key) != 2 or nb_nd_key == nd_key:  # type: ignore
+                if nx.degree(nx_multigraph, nb_nd_key) != 2 or nb_nd_key == nd_key:
                     anchor_nd = nb_nd_key
                     break
                 # probe neighbours in one-direction only - i.e. don't backtrack
@@ -662,15 +694,13 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                 # looped roadways or overlapping edges such as stairways don't know which sides of two segments to join
                 # i.e. in these cases the edges can sometimes be matched from one of two possible configurations
                 # since the x_y join is known for all cases it is used here regardless
-                override_xy: CoordsType = (
-                    cast(float, nx_multigraph.nodes[trailing_nd]["x"]),
-                    cast(float, nx_multigraph.nodes[trailing_nd]["y"]),
-                )
+                trailing_nd_data: NodeData = nx_multigraph.nodes[trailing_nd]
+                override_xy = (trailing_nd_data["x"], trailing_nd_data["y"])
                 # weld
                 agg_geom = _weld_linestring_coords(agg_geom, geom.coords, force_xy=override_xy)
                 # if the next node has a degree other than 2, then break
                 # for circular components, break if the next node matches the start node
-                if nx.degree(nx_multigraph, next_link_nd) != 2 or next_link_nd == anchor_nd:  # type: ignore
+                if nx.degree(nx_multigraph, next_link_nd) != 2 or next_link_nd == anchor_nd:
                     end_nd = next_link_nd
                     break
                 # otherwise, follow the chain
@@ -693,22 +723,8 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                     else:
                         trailing_nd = next_link_nd
                         next_link_nd = nb_a
-            # double-check that the geom's endpoints match within tolerance
-            # then snap to remove any potential side-effects from minor tolerance issues
-            s_xy: CoordsType = (
-                cast(float, nx_multigraph.nodes[anchor_nd]["x"]),
-                cast(float, nx_multigraph.nodes[anchor_nd]["y"]),
-            )
-            if not np.allclose(agg_geom[0], s_xy, atol=config.ATOL, rtol=config.RTOL):
-                raise ValueError("New Linestring geometry does not match starting node coordinates.")
-            agg_geom = snap_linestring_startpoint(agg_geom, s_xy)
-            e_xy: CoordsType = (
-                cast(float, nx_multigraph.nodes[end_nd]["x"]),
-                cast(float, nx_multigraph.nodes[end_nd]["y"]),
-            )
-            if not np.allclose(agg_geom[-1], e_xy, atol=config.ATOL, rtol=config.RTOL):
-                raise ValueError("New Linestring geometry does not match ending node coordinates.")
-            agg_geom = snap_linestring_endpoint(agg_geom, e_xy)
+            # checks and snapping
+            agg_geom = _snap_linestring_endpoints(g_multi_copy, anchor_nd, end_nd, agg_geom)
             # create a new linestring
             new_geom = geometry.LineString(agg_geom)
             if new_geom.type != "LineString":
@@ -730,190 +746,70 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_multi_copy
 
 
-def _squash_adjacent(
+def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
-    node_group: list[NodeKey],
-    cent_min_degree: Optional[int] = None,
-    cent_min_names: Optional[int] = None,
-    cent_min_len_factor: Optional[float] = None,
+    despine: Optional[float] = None,
+    remove_disconnected: bool = True,
+    cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
     """
-    Squash nodes from a specified node group down to a new node.
+    Remove disconnected components and optionally removes short dead-end street stubs.
 
-    The new node can either be based on:
-    - The centroid of all nodes;
-    - else, all nodes of degree greater or equal to cent_min_degree;
-    - and / else, all nodes with cumulative adjacent OSM street names or routes greater than cent_min_names;
-    - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
-      node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    despine: bool
+        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
+        Defaults to None.
+    remove_disconnected: bool
+        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
+        returned. Defaults to True.
+    cleanup_filler_nodes: bool
+        Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed.
+        If cleanup_filler_nodes is `True` then these will be removed.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with disconnected components optionally removed, and dead-ends removed where less than
+         the `despine` parameter distance.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
-        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if cent_min_degree is not None and (not isinstance(cent_min_degree, int) or cent_min_degree < 1):
-        raise ValueError("merge_node_min_degree should be a positive integer.")
-    if cent_min_names is not None and (not isinstance(cent_min_names, int) or cent_min_names < 1):
-        raise ValueError("cent_min_names should be a positive integer")
-    if cent_min_len_factor is not None and not 1 >= cent_min_len_factor >= 0:
-        raise ValueError("cent_min_len_factor should be a float between 0 and 1.")
-    # remove any node keys no longer in the graph
-    node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
-    # filter out nodes if using cent_min_degree or cent_min_len_factor
-    centroid_nodes: list[NodeKey] = []
-    if cent_min_degree is not None:
-        for nd_key in node_group:
-            if nx.degree(nx_multigraph, nd_key) >= cent_min_degree:  # type: ignore
-                centroid_nodes.append(nd_key)
-    # else if merging on a longest adjacent edges basis
-    if cent_min_len_factor is not None:
-        # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
-        if centroid_nodes:
-            node_pool = centroid_nodes.copy()
-            centroid_nodes = []  # reset
-        # else use the full original node group
-        else:
-            node_pool = node_group
-        agg_lens: list[int] = []
-        for nd_key in node_pool:
-            agg_len = 0
-            # iterate each node's neighbours, aggregating neighbouring edge lengths along the way
-            nb_nd_key: NodeKey
-            for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
-                nb_edge_data: EdgeData
-                for nb_edge_data in nx_multigraph[nd_key][nb_nd_key].values():
-                    agg_len += nb_edge_data["geom"].length
-            agg_lens.append(agg_len)
-        # find the longest
-        max_len: int = max(agg_lens)
-        # select all nodes with an agg_len within a small tolerance of longest
+    logger.info("Removing dangling nodes.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    if remove_disconnected:
+        # finds connected components - this behaviour changed with networkx v2.4
+        connected_components: list[list[NodeKey]] = list(
+            nx.algorithms.components.connected_components(g_multi_copy)  # type: ignore
+        )
+        # sort by largest component
+        g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
+        # make a copy of the graph using the largest component
+        g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
+    # remove dangleres
+    if despine is not None and despine > 0:
+        remove_nodes = []
         nd_key: NodeKey
-        agg_len: int
-        for nd_key, agg_len in zip(node_pool, agg_lens):
-            if agg_len >= max_len * cent_min_len_factor:
-                centroid_nodes.append(nd_key)
-    # prioritise
-    if cent_min_names is not None:
-        # if nodes are pre-filtered by edge degrees or lengths, then use the filtered nodes as a starting point
-        if centroid_nodes:
-            node_pool = centroid_nodes.copy()
-            centroid_nodes = []  # reset
-        # else use the full original node group
-        else:
-            node_pool = node_group
-        # values to be filtered out if encountered
-        dodge_vals = set([None, "unclassified"])
-        # iter nodes, then iter edges
-        for nd_key in node_pool:
-            agg_keys: list[str] = []
-            for nb_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
-                for edge_data in nx_multigraph[nd_key][nb_key].values():  # type: ignore
-                    for valid_key in ["names", "routes"]:
-                        if valid_key in edge_data:
-                            val: str
-                            for val in edge_data[valid_key]:
-                                if val not in dodge_vals:
-                                    agg_keys.append(val)
-            if len(agg_keys) >= cent_min_names:
-                centroid_nodes.append(nd_key)
-    # fallback
-    if not centroid_nodes:
-        centroid_nodes = node_group
-    # prepare the names and geoms for filtered points to be used for the new centroid
-    node_geoms = []
-    coords_set: set[str] = set()
-    for nd_key in centroid_nodes:
-        x: float = nx_multigraph.nodes[nd_key]["x"]
-        y: float = nx_multigraph.nodes[nd_key]["y"]
-        # in rare cases opposing geom splitting can cause overlaying nodes
-        # these can swing the gravity of multipoint centroids so screen these out
-        xy_key: str = f"{round(x)}-{round(y)}"
-        if xy_key in coords_set:
-            continue
-        coords_set.add(xy_key)
-        node_geoms.append(geometry.Point(x, y))
-    # set the new centroid from the centroid of the node group's Multipoint:
-    c: geometry.Point = geometry.MultiPoint(node_geoms).centroid  # type: ignore
-    # now that the centroid is known, go ahead and merge the _node_group
-    # add the new node
-    new_nd_name = _add_node(nx_multigraph, node_group, x=c.x, y=c.y)  # pylint: disable=no-member
-    if new_nd_name is None:
-        raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
-    # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
-    for nd_key in node_group:
-        # iterate the node's existing neighbours
-        for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):  # type: ignore
-            # if a neighbour is also going to be dropped, then no need to create new between edges
-            # an exception exists when a geom is looped, in which case the neighbour is also the current node
-            if nb_nd_key in node_group and nb_nd_key != nd_key:
-                continue
-            # MultiGraph - so iter edges
-            edge_data: EdgeData
-            for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
-                if "geom" not in edge_data:
-                    raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
-                line_geom: geometry.LineString = edge_data["geom"]
-                if line_geom.type != "LineString":
-                    raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.type} geometry "
-                        f"for edge {nd_key}-{nb_nd_key}."
-                    )
-                # orient the LineString so that the starting point matches the node's x_y
-                s_xy: CoordsType = (
-                    cast(float, nx_multigraph.nodes[nd_key]["x"]),
-                    cast(float, nx_multigraph.nodes[nd_key]["y"]),
-                )
-                line_coords = align_linestring_coords(line_geom.coords, s_xy)
-                # update geom starting point to new parent node's coordinates
-                line_coords = snap_linestring_startpoint(line_coords, (c.x, c.y))  # pylint: disable=no-member
-                # if self-loop, then the end also needs updating
-                if nd_key == nb_nd_key:
-                    line_coords = snap_linestring_endpoint(line_coords, (c.x, c.y))  # pylint: disable=no-member
-                    target_nd_key = new_nd_name
-                else:
-                    target_nd_key = nb_nd_key
-                # build the new geom
-                new_edge_geom = geometry.LineString(line_coords)
-                # check that a duplicate is not being added
-                dupe = False
-                if nx_multigraph.has_edge(new_nd_name, target_nd_key):
-                    # only add parallel edges if substantially different from any existing edges
-                    n_edges: int = nx_multigraph.number_of_edges(new_nd_name, target_nd_key)  # type: ignore
-                    for edge_idx in range(n_edges):
-                        exist_geom: geometry.LineString = nx_multigraph[new_nd_name][target_nd_key][edge_idx]["geom"]
-                        # don't add if the edges have the same number of coords and the coords are similar
-                        # 5m x and y tolerance across all coordinates
-                        if len(new_edge_geom.coords) == len(exist_geom.coords) and np.allclose(
-                            new_edge_geom.coords,
-                            exist_geom.coords,
-                            atol=5,
-                            rtol=0,
-                        ):
-                            dupe = True
-                            logger.debug(
-                                f"Not adding edge {new_nd_name} to {target_nd_key}: a similar edge already exists. "
-                                f"Length: {new_edge_geom.length} vs. {exist_geom.length}. "
-                                f"Num coords: {len(new_edge_geom.coords)} vs. {len(exist_geom.coords)}."
-                            )
-                if not dupe:
-                    # add the new edge
-                    edge_idx = nx_multigraph.add_edge(
-                        new_nd_name,
-                        target_nd_key,
-                        geom=new_edge_geom,
-                    )
-                    edge_info = _EdgeInfo()
-                    edge_info.gather_edge_info(edge_data)
-                    edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
-        # drop the node, this will also implicitly drop the old edges
-        nx_multigraph.remove_node(nd_key)
+        for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
+            if nx.degree(g_multi_copy, nd_key) == 1:
+                # only a single neighbour, so index-in directly and update at key = 0
+                nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
+                if g_multi_copy[nd_key][nb_nd_key][0]["geom"].length <= despine:
+                    remove_nodes.append(nd_key)
+        g_multi_copy.remove_nodes_from(remove_nodes)
+    # cleanup leftover fillers
+    if cleanup_filler_nodes:
+        g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
 
-    return nx_multigraph
+    return g_multi_copy
 
 
 def merge_parallel_edges(
     nx_multigraph: MultiGraph,
     merge_edges_by_midline: bool,
-    contains_buffer_dist: float,
+    contains_buffer_dist: int,
 ) -> MultiGraph:
     """
     Check a MultiGraph for duplicate edges; which, if found, will be merged.
@@ -934,7 +830,7 @@ def merge_parallel_edges(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    contains_buffer_dist: float
+    contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 
     Returns
@@ -943,12 +839,13 @@ def merge_parallel_edges(
         A `networkX` `MultiGraph` with consolidated nodes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if contains_buffer_dist <= 1:
-        raise TypeError("contains_buffer_dist should be greater than 1. ")
+    if contains_buffer_dist < 1:
+        raise TypeError("contains_buffer_dist should be greater or equal to 1. ")
+    logger.info(f"Merging parallel edges within buffer of {contains_buffer_dist}.")
     # don't use copy() - add nodes only
-    deduped_graph: MultiGraph = nx.MultiGraph()  # type: ignore
+    deduped_graph: MultiGraph = nx.MultiGraph()
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
     # iter the edges
     start_nd_key: NodeKey
@@ -995,6 +892,7 @@ def merge_parallel_edges(
             # otherwise weld the geoms, using the shortest as a yardstick
             else:
                 # iterate the coordinates along the shorter geom
+                # starting and endpoint geoms already match
                 new_coords = []
                 for coord in shortest_geom.coords:
                     # from the current short_geom coordinate
@@ -1005,18 +903,342 @@ def merge_parallel_edges(
                         # get the nearest point on the longer geom
                         # returns a tuple of nearest geom for respective input geoms
                         longer_point = ops.nearest_points(short_point, longer_geom)[-1]
+                        # only use for new coord centroid if not the starting or end point
+                        lg_start_point = geometry.Point(longer_geom.coords[0])
+                        lg_end_point = geometry.Point(longer_geom.coords[-1])
+                        if lg_start_point.distance(longer_point) < 1 or lg_end_point.distance(longer_point) < 1:
+                            continue
                         # aggregate
                         multi_coords.append(longer_point)
                     # create a midpoint between the geoms and add to the new coordinate array
-                    mid_point = geometry.MultiPoint(multi_coords).centroid
-                    new_coords.append(mid_point)
+                    mid_point: geometry.Point = geometry.MultiPoint(multi_coords).centroid  # type: ignore
+                    new_coords.append((mid_point.x, mid_point.y))  # pylint: disable=no-member
                 # generate the new mid-line geom
+                new_coords = _snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
                 new_geom = geometry.LineString(new_coords)
                 # add to the graph
                 edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
                 edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
 
     return deduped_graph
+
+
+def nx_iron_edges(
+    nx_multigraph: MultiGraph,
+    simplify: bool = True,
+    simplify_dist: int = 2,
+    straighten: bool = True,
+    min_straightness_ratio: float = 0.9975,
+    remove_wonky: bool = True,
+    max_wonky_ratio: float = 0.7,
+    wonky_dist_buffer: int = 50,
+) -> MultiGraph:
+    """
+    Flattens edges straighter than `min_straightness_ratio`.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    simplify: bool
+        Whether to simplify the street geometries per `simplify_dist`.
+    simplify_dist: int
+        Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
+    straighten: bool
+        Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its
+        length is greater than `min_straightness_ratio`.
+    min_straightness_ratio: float
+        Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be
+        flattened.
+    remove_wonky: bool
+        Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation
+        processes.
+    max_wonky_ratio: float
+        Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky
+        edges.
+    wonky_dist_buffer: int
+        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph`.
+
+    """
+    if not simplify and not straighten and not remove_wonky:
+        raise ValueError("Please select at least one option via simplify, straighten, or remove_wonky parameters.")
+    if straighten and remove_wonky and min_straightness_ratio < max_wonky_ratio:
+        raise ValueError("The min_straightness_ratio parameter should be greater than max_wonky_ratio.")
+    logger.info("Ironing edges.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
+    ):
+        edge_geom = edge_data["geom"]
+        # for all changes - write over edge_geom and also update in place
+        if simplify:
+            edge_geom = edge_geom.simplify(simplify_dist)
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+        if not straighten and not remove_wonky:
+            continue
+        # check that it isn't a looping segment where start and end are the same
+        if np.allclose(
+            edge_geom.coords[0],
+            edge_geom.coords[-1],
+            rtol=0,
+            atol=1,
+        ):
+            continue
+        # first align the geom
+        edge_geom = geometry.LineString(
+            _snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_geom.coords)
+        )
+        # take the straightness ratio of crow edge vs. full edge
+        start_pt = geometry.Point(edge_geom.coords[0])
+        end_pt = geometry.Point(edge_geom.coords[-1])
+        straightness_ratio: float = start_pt.distance(end_pt) / edge_geom.length
+        if straighten and straightness_ratio > min_straightness_ratio:
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
+        elif remove_wonky and straightness_ratio < max_wonky_ratio:
+            search_dist = min(wonky_dist_buffer, int(np.floor(edge_geom.length)))  # type: ignore
+            # increment along length and look for backtracking
+            lag_dist = 0
+            backtracking = False
+            for step in range(5, search_dist, 5):
+                loc: geometry.Point = ops.substring(edge_geom, step, step)  # type: ignore
+                # increment distance if increasing
+                current_dist: float = start_pt.distance(loc)
+                # detect inwards backtrack
+                if current_dist < lag_dist:
+                    backtracking = True
+                    lag_dist = current_dist
+                else:
+                    # if not yet backtracking, bump lag_dist distance
+                    if not backtracking:
+                        lag_dist = current_dist
+                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
+                    else:
+                        # snip subsegment
+                        sub_seg: geometry.LineString = ops.substring(edge_geom, step, edge_geom.length)  # type: ignore
+                        # overwrite edge_geom (for reverse)
+                        edge_geom = geometry.LineString([start_pt, *sub_seg.coords])
+                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+                        break
+            # reverse direction
+            lag_dist = 0
+            backtracking = False
+            for step in range(5, search_dist, 5):
+                loc: geometry.Point = ops.substring(edge_geom, -step, -step)  # type: ignore
+                # increment distance if increasing
+                current_dist: float = end_pt.distance(loc)
+                # detect inwards backtrack
+                if current_dist < lag_dist:
+                    backtracking = True
+                    lag_dist = current_dist
+                else:
+                    # if not yet backtracking, bump lag_dist distance
+                    if not backtracking:
+                        lag_dist = current_dist
+                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
+                    else:
+                        # snip subsegment
+                        sub_seg = ops.substring(edge_geom, 0, edge_geom.length - step)  # type: ignore
+                        # overwrite edge_geom (for reverse)
+                        edge_geom = geometry.LineString([*sub_seg.coords, end_pt])
+                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+                        break
+    # straightening parallel edges can create duplicates
+    g_multi_copy = merge_parallel_edges(g_multi_copy, False, 1)
+
+    return g_multi_copy
+
+
+def _squash_adjacent(
+    nx_multigraph: MultiGraph,
+    node_group: list[NodeKey],
+    cent_min_degree: Optional[int] = None,
+    cent_min_names: Optional[int] = None,
+    cent_min_len_factor: Optional[float] = None,
+) -> MultiGraph:
+    """
+    Squash nodes from a specified node group down to a new node.
+
+    The new node can either be based on:
+    - The centroid of all nodes;
+    - else, all nodes of degree greater or equal to cent_min_degree;
+    - and / else, all nodes with cumulative adjacent OSM street names or routes greater than cent_min_names;
+    - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
+      node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
+    if cent_min_degree is not None and (not isinstance(cent_min_degree, int) or cent_min_degree < 1):
+        raise ValueError("merge_node_min_degree should be a positive integer.")
+    if cent_min_names is not None and (not isinstance(cent_min_names, int) or cent_min_names < 1):
+        raise ValueError("cent_min_names should be a positive integer")
+    if cent_min_len_factor is not None and not 1 >= cent_min_len_factor >= 0:
+        raise ValueError("cent_min_len_factor should be a float between 0 and 1.")
+    # remove any node keys no longer in the graph
+    node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
+    # filter out nodes if using cent_min_degree or cent_min_len_factor
+    centroid_nodes: list[NodeKey] = []
+    if cent_min_degree is not None:
+        for nd_key in node_group:
+            if nx.degree(nx_multigraph, nd_key) >= cent_min_degree:  # type: ignore
+                centroid_nodes.append(nd_key)
+    # else if merging on a longest adjacent edges basis
+    if cent_min_len_factor is not None:
+        # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
+        # else use the full original node group
+        else:
+            node_pool = node_group
+        agg_lens: list[int] = []
+        for nd_key in node_pool:
+            agg_len = 0
+            # iterate each node's neighbours, aggregating neighbouring edge lengths along the way
+            nb_nd_key: NodeKey
+            for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+                nb_edge_data: EdgeData
+                for nb_edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                    agg_len += nb_edge_data["geom"].length
+            agg_lens.append(agg_len)
+        # find the longest
+        max_len: int = max(agg_lens)
+        # select all nodes with an agg_len within a small tolerance of longest
+        nd_key: NodeKey
+        agg_len: int
+        for nd_key, agg_len in zip(node_pool, agg_lens):
+            if agg_len >= max_len * cent_min_len_factor:
+                centroid_nodes.append(nd_key)
+    # prioritise
+    if cent_min_names is not None:
+        # if nodes are pre-filtered by edge degrees or lengths, then use the filtered nodes as a starting point
+        if centroid_nodes:
+            node_pool = centroid_nodes.copy()
+            centroid_nodes = []  # reset
+        # else use the full original node group
+        else:
+            node_pool = node_group
+        # values to be filtered out if encountered
+        dodge_vals = set([None, "unclassified"])
+        # iter nodes, then iter edges
+        for nd_key in node_pool:
+            agg_keys: set[str] = set()
+            nb_key: NodeKey
+            for nb_key in nx.neighbors(nx_multigraph, nd_key):
+                for edge_data in nx_multigraph[nd_key][nb_key].values():
+                    for valid_key in ["names", "routes"]:
+                        if valid_key in edge_data:
+                            val: str
+                            for val in edge_data[valid_key]:
+                                if val not in dodge_vals:
+                                    agg_keys.add(val)
+            if len(agg_keys) >= cent_min_names:
+                centroid_nodes.append(nd_key)
+    # fallback
+    if not centroid_nodes:
+        centroid_nodes = node_group
+    # prepare the names and geoms for filtered points to be used for the new centroid
+    node_geoms = []
+    coords_set: set[str] = set()
+    for nd_key in centroid_nodes:
+        x: float = nx_multigraph.nodes[nd_key]["x"]
+        y: float = nx_multigraph.nodes[nd_key]["y"]
+        # in rare cases opposing geom splitting can cause overlaying nodes
+        # these can swing the gravity of multipoint centroids so screen these out
+        xy_key: str = f"{round(x)}-{round(y)}"
+        if xy_key in coords_set:
+            continue
+        coords_set.add(xy_key)
+        node_geoms.append(geometry.Point(x, y))
+    # set the new centroid from the centroid of the node group's Multipoint:
+    new_cent: geometry.Point = geometry.MultiPoint(node_geoms).centroid  # type: ignore
+    # now that the centroid is known, add the new node
+    new_nd_name, is_dupe = _add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)  # pylint: disable=no-member
+    if is_dupe:
+        # an edge case: if the potential duplicate was one of the node group then it doesn't need adding
+        if new_nd_name in node_group:
+            # but remove from the node group since it doesn't need to be removed and replumbed
+            node_group.remove(new_nd_name)
+        else:
+            raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
+    # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
+    for nd_key in node_group:
+        # iterate the node's existing neighbours
+        for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+            # if a neighbour is also going to be dropped, then no need to create new between edges
+            # an exception exists when a geom is looped, in which case the neighbour is also the current node
+            if nb_nd_key in node_group and nb_nd_key != nd_key:
+                continue
+            # MultiGraph - so iter edges
+            edge_data: EdgeData
+            for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                if "geom" not in edge_data:
+                    raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
+                line_geom: geometry.LineString = edge_data["geom"]
+                if line_geom.type != "LineString":
+                    raise TypeError(
+                        f"Expecting LineString geometry but found {line_geom.type} geometry "
+                        f"for edge {nd_key}-{nb_nd_key}."
+                    )
+                # orient the LineString so that the geom starts from the node's x_y
+                nd_data: NodeData = nx_multigraph.nodes[nd_key]
+                nd_xy = (nd_data["x"], nd_data["y"])
+                line_coords = align_linestring_coords(line_geom.coords, nd_xy)
+                # update geom starting point to new parent node's coordinates
+                line_coords = snap_linestring_startpoint(
+                    line_coords, (new_cent.x, new_cent.y)  # pylint: disable=no-member
+                )
+                # if self-loop, then the end also needs updating to the new centroid
+                if nd_key == nb_nd_key:
+                    line_coords = snap_linestring_endpoint(
+                        line_coords, (new_cent.x, new_cent.y)  # pylint: disable=no-member
+                    )
+                    target_nd_key = new_nd_name
+                else:
+                    target_nd_key = nb_nd_key
+                # build the new geom
+                new_edge_geom = geometry.LineString(line_coords)
+                # check that a duplicate is not being added
+                dupe = False
+                if nx_multigraph.has_edge(new_nd_name, target_nd_key):
+                    # only add parallel edges if substantially different from any existing edges
+                    n_edges: int = nx_multigraph.number_of_edges(new_nd_name, target_nd_key)  # type: ignore
+                    for edge_idx in range(n_edges):
+                        exist_geom: geometry.LineString = nx_multigraph[new_nd_name][target_nd_key][edge_idx]["geom"]
+                        # don't add if the edges have the same number of coords and the coords are similar
+                        # 5m x and y tolerance across all coordinates
+                        if len(new_edge_geom.coords) == len(exist_geom.coords) and np.allclose(
+                            new_edge_geom.coords,
+                            exist_geom.coords,
+                            atol=5,
+                            rtol=0,
+                        ):
+                            dupe = True
+                            logger.debug(
+                                f"Not adding edge {new_nd_name} to {target_nd_key}: a similar edge already exists. "
+                                f"Length: {new_edge_geom.length} vs. {exist_geom.length}. "
+                                f"Num coords: {len(new_edge_geom.coords)} vs. {len(exist_geom.coords)}."
+                            )
+                if not dupe:
+                    # add the new edge
+                    edge_idx = nx_multigraph.add_edge(
+                        new_nd_name,
+                        target_nd_key,
+                        geom=new_edge_geom,
+                    )
+                    edge_info = _EdgeInfo()
+                    edge_info.gather_edge_info(edge_data)
+                    edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
+        # drop the node, this will also implicitly drop the old edges
+        nx_multigraph.remove_node(nd_key)
+
+    return nx_multigraph
 
 
 def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
@@ -1027,15 +1249,16 @@ def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     node_lookups = []
     nd_key: NodeKey
     node_data: NodeData
-    for nd_key, node_data in nx_multigraph.nodes(data=True):  # type: ignore
+    logger.info("Creating nodes STR tree")
+    for nd_key, node_data in tqdm(nx_multigraph.nodes(data=True)):
         # x coordinate
-        if "x" not in node_data:  # type: ignore
+        if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x: float = node_data["x"]  # type: ignore
+        x: float = node_data["x"]
         # y coordinate
-        if "y" not in node_data:  # type: ignore
+        if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y: float = node_data["y"]  # type: ignore
+        y: float = node_data["y"]
         point_geom = geometry.Point(x, y)
         node_geoms.append(point_geom)
         node_lookups.append({"nd_key": nd_key, "nd_degree": nx.degree(nx_multigraph, nd_key)})
@@ -1053,10 +1276,11 @@ def _create_edges_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):
-        if "geom" not in edge_data:  # type: ignore
+    logger.info("Creating edges STR tree.")
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(nx_multigraph.edges(keys=True, data=True)):
+        if "geom" not in edge_data:
             raise KeyError('Encountered edge missing "geom" attribute.')
-        linestring = edge_data["geom"]  # type: ignore
+        linestring = edge_data["geom"]
         edge_geoms.append(linestring)
         edge_lookups.append({"start_nd_key": start_nd_key, "end_nd_key": end_nd_key, "edge_idx": edge_idx})
 
@@ -1076,7 +1300,7 @@ def nx_consolidate_nodes(
     cent_min_names: Optional[int] = None,
     cent_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 20,
+    contains_buffer_dist: int = 20,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -1132,7 +1356,7 @@ def nx_consolidate_nodes(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    contains_buffer_dist: float
+    contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
 
     Returns
@@ -1151,7 +1375,7 @@ def nx_consolidate_nodes(
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     if min_node_group < 2:
         raise ValueError("The minimum node threshold should be set to at least two.")
@@ -1159,10 +1383,11 @@ def nx_consolidate_nodes(
         raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
     if crawl and buffer_dist > 25:
         logger.warning("Be cautious with large buffer distances when using crawl!")
-    logger.info("Consolidating nodes.")
     _multi_graph: MultiGraph = nx_multigraph.copy()
     # create a nodes STRtree
     nodes_tree = _create_nodes_strtree(_multi_graph)
+    # iter
+    logger.info("Consolidating nodes.")
     # keep track of removed nodes
     removed_nodes: set[NodeKey] = set()
 
@@ -1189,7 +1414,7 @@ def nx_consolidate_nodes(
             # check neighbour policy
             if neighbour_policy is not None:
                 # use the original graph prior to in-place modifications
-                neighbours: list[NodeKey] = nx.neighbors(nx_multigraph, nd_key)  # type: ignore
+                neighbours: list[NodeKey] = nx.neighbors(nx_multigraph, nd_key)
                 if neighbour_policy == "indirect" and j_nd_key in neighbours:
                     continue
                 if neighbour_policy == "direct" and j_nd_key not in neighbours:
@@ -1246,12 +1471,14 @@ def nx_consolidate_nodes(
             cent_min_names=cent_min_names,
             cent_min_len_factor=cent_min_len_factor,
         )
-    # remove filler nodes
-    deduped_graph = nx_remove_filler_nodes(_multi_graph)
-    # remove any parallel edges that may have resulted from squashing nodes
-    deduped_graph = merge_parallel_edges(deduped_graph, merge_edges_by_midline, contains_buffer_dist)
+    # remove new filler nodes
+    _multi_graph = nx_remove_filler_nodes(_multi_graph)
+    # remove wonky endings from consolidation process
+    _multi_graph = nx_iron_edges(_multi_graph, straighten=False, simplify=False)
+    # remove parallel edges resulting from squashing nodes
+    _multi_graph = merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
 
-    return deduped_graph
+    return _multi_graph
 
 
 def nx_split_opposing_geoms(
@@ -1318,18 +1545,19 @@ def nx_split_opposing_geoms(
             for child_s, child_e, child_k, child_geom in edge_children[edge_key]:
                 recurse_child_keys(child_s, child_e, child_k, child_geom, current_edges)
 
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    logger.info("Splitting opposing edges.")
     _multi_graph: MultiGraph = nx_multigraph.copy()
     # create an edges STRtree (nodes and edges)
     edges_tree = _create_edges_strtree(_multi_graph)
+    # iter
+    logger.info("Splitting opposing edges.")
     # iterate origin graph (else node structure changes in place)
     nd_key: NodeKey
     nd_data: NodeData
     for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
         # don't split opposing geoms from nodes of degree 1
-        if nx.degree(_multi_graph, nd_key) < 2:  # type: ignore
+        if nx.degree(_multi_graph, nd_key) < 2:
             continue
         # get all other edges within the buffer distance
         # the spatial index using bounding boxes, so further filtering is required (see further down)
@@ -1350,7 +1578,7 @@ def nx_split_opposing_geoms(
         for start_nd_key, end_nd_key, edge_idx, edge_geom in edges:
             recurse_child_keys(start_nd_key, end_nd_key, edge_idx, edge_geom, current_edges)
         # get neighbouring nodes from new graph
-        neighbours: list[NodeKey] = list(_multi_graph.neighbors(nd_key))  # type: ignore
+        neighbours: list[NodeKey] = list(_multi_graph.neighbors(nd_key))
         # abort if only direct neighbours
         if len(current_edges) <= len(neighbours):
             continue
@@ -1371,17 +1599,7 @@ def nx_split_opposing_geoms(
         n_geom = geometry.Point(nd_data["x"], nd_data["y"])
         # iter gapped edges
         for start_nd_key, end_nd_key, edge_idx, edge_geom in gapped_edges:
-            # see if start node is within buffer distance already
-            s_nd_data: NodeData = _multi_graph.nodes[start_nd_key]
-            s_nd_geom = geometry.Point(s_nd_data["x"], s_nd_data["y"])
-            if s_nd_geom.distance(n_geom) <= buffer_dist:
-                continue
-            # likewise for end node
-            e_nd_data: NodeData = _multi_graph.nodes[end_nd_key]
-            e_nd_geom = geometry.Point(e_nd_data["x"], e_nd_data["y"])
-            if e_nd_geom.distance(n_geom) <= buffer_dist:
-                continue
-            # otherwise, project a point and split the opposing geom
+            # project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
             nearest_point = ops.nearest_points(n_geom, edge_geom)[-1]
@@ -1398,16 +1616,19 @@ def nx_split_opposing_geoms(
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
-            new_nd_name = _add_node(
+            new_nd_name, is_dupe = _add_node(
                 _multi_graph, [start_nd_key, nd_key, end_nd_key], x=nearest_point.x, y=nearest_point.y
             )
-            # if a node already exists at this location, add_node will return None
-            if new_nd_name is None:
+            # continue if a node already exists at this location
+            if is_dupe:
                 continue
             edge_data: EdgeData = _multi_graph[start_nd_key][end_nd_key][edge_idx]
             edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
             _multi_graph.add_edge(start_nd_key, new_nd_name, **edge_data_copy)
             _multi_graph.add_edge(end_nd_key, new_nd_name, **edge_data_copy)
+            # get starting geom for orientation
+            s_nd_data: NodeData = _multi_graph.nodes[start_nd_key]
+            s_nd_geom = geometry.Point(s_nd_data["x"], s_nd_data["y"])
             if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=config.ATOL, rtol=0,) or np.allclose(
                 s_nd_geom.coords,
                 new_edge_geom_a.coords[-1][:2],
@@ -1458,7 +1679,7 @@ def nx_split_opposing_geoms(
             if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
                 _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
     # squashing nodes can result in edge duplicates
-    deduped_graph = merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
+    deduped_graph = merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)  # type: ignore
 
     return deduped_graph
 
@@ -1467,7 +1688,7 @@ def _measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_])
     """Measures the angular bearing between two coordinate pairs."""
     y_1, x_1 = xy_1[::-1]
     y_2, x_2 = xy_2[::-1]
-    return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))  # type: ignore
+    return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
 
 
 def _measure_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
@@ -1480,9 +1701,9 @@ def _measure_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, id
     a_2: float = _measure_bearing(coords_3, coords_2)
     angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
     # alternative
-    # A: npt.NDArray[np.float_] = coords_2 - coords_1  # type: ignore
-    # B: npt.NDArray[np.float_] = coords_3 - coords_2  # type: ignore
-    # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))  # type: ignore
+    # A: npt.NDArray[np.float_] = coords_2 - coords_1
+    # B: npt.NDArray[np.float_] = coords_3 - coords_2
+    # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
 
     return angle
 
@@ -1494,50 +1715,6 @@ def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
         angle_sum += _measure_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
 
     return angle_sum
-
-
-def nx_iron_edges(nx_multigraph: MultiGraph, min_straightness_ratio: float = 0.975) -> MultiGraph:
-    """
-    Flattens edges straighter than `min_straightness_ratio`.
-
-    Parameters
-    ----------
-    nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
-    min_straightness_ratio: float
-        Edges with straightness greater than `min_straightness_ratio` will be flattened. This is calculated as the ratio
-        of the distance from the start to the end point of the edge divided by the full length of the geom.
-
-    Returns
-    -------
-    MultiGraph
-        A `networkX` `MultiGraph`.
-
-    """
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
-    ):
-        edge_geom = edge_data["geom"]
-        # nothing to be done if there are no intermediate coords
-        if len(edge_geom.coords) < 3:
-            continue
-        # check that it isn't a looping segment where start and end are the same
-        if np.allclose(
-            edge_geom.coords[0],
-            edge_geom.coords[-1],
-            rtol=0,
-            atol=1,
-        ):
-            continue
-        # take the straightness ratio of crow edge vs. full edge
-        start_pt = geometry.Point(edge_geom.coords[0])
-        end_pt = geometry.Point(edge_geom.coords[-1])
-        if start_pt.distance(end_pt) / edge_geom.length > min_straightness_ratio:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
-
-    return g_multi_copy
 
 
 def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
@@ -1588,7 +1765,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     _Example graph after decomposition._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
@@ -1605,10 +1782,6 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         # test for x, y in end coordinates
         if "x" not in nx_multigraph.nodes[end_nd_key] or "y" not in nx_multigraph.nodes[end_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {end_nd_key}.')
-        s_x: float = nx_multigraph.nodes[start_nd_key]["x"]
-        s_y: float = nx_multigraph.nodes[start_nd_key]["y"]
-        e_x: float = nx_multigraph.nodes[end_nd_key]["x"]
-        e_y: float = nx_multigraph.nodes[end_nd_key]["y"]
         # test for geom
         if "geom" not in edge_data:
             raise KeyError(
@@ -1619,16 +1792,10 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         line_geom: geometry.LineString = edge_data["geom"]
         if line_geom.type != "LineString":
             raise TypeError(
-                f"Expecting LineString geometry but found {line_geom.type} geometry for "
-                f"edge {start_nd_key}-{end_nd_key}."
+                f"Expected LineString geometry but found {line_geom.type} for edge {start_nd_key}-{end_nd_key}."
             )
         # check geom coordinates directionality - flip if facing backwards direction
-        line_geom_coords = align_linestring_coords(line_geom.coords, (s_x, s_y))
-        # double check that coordinates now face the forwards direction
-        if not np.allclose((s_x, s_y), line_geom_coords[0][:2], atol=config.ATOL, rtol=config.RTOL) or not np.allclose(
-            (e_x, e_y), line_geom_coords[-1][:2], atol=config.ATOL, rtol=config.RTOL
-        ):
-            raise ValueError(f"Edge geometry endpoint coordinate mismatch for edge {start_nd_key}-{end_nd_key}")
+        line_geom_coords = _snap_linestring_endpoints(nx_multigraph, start_nd_key, end_nd_key, line_geom.coords)
         line_geom: geometry.LineString = geometry.LineString(line_geom_coords)
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -1643,12 +1810,12 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if cuts = 1
         for _ in range(cuts - 1):
             # create the split LineString geom for measuring the new length
-            line_segment: geometry.LineString = ops.substring(line_geom, step, step + step_size)
+            line_segment: geometry.LineString = ops.substring(line_geom, step, step + step_size)  # type: ignore
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
             # add the new node and edge
-            new_nd_name = _add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
-            if new_nd_name is None:
+            new_nd_name, is_dupe = _add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
+            if is_dupe:
                 raise ValueError(
                     f"Attempted to add a duplicate node. "
                     f"Check for existence of duplicate edges in the vicinity of {start_nd_key}-{end_nd_key}."
@@ -1723,10 +1890,10 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting graph to dual.")
-    g_dual: MultiGraph = nx.MultiGraph()  # type: ignore
+    g_dual: MultiGraph = nx.MultiGraph()
 
     def get_half_geoms(nx_multigraph_ref: MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):
         """
@@ -1740,12 +1907,10 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         # test for y coordinates
         if "x" not in nx_multigraph_ref.nodes[b_node] or "y" not in nx_multigraph_ref.nodes[b_node]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
-        a_xy: CoordsType = cast(
-            CoordsType, (nx_multigraph_ref.nodes[a_node]["x"], nx_multigraph_ref.nodes[a_node]["y"])
-        )
-        b_xy: CoordsType = cast(
-            CoordsType, (nx_multigraph_ref.nodes[b_node]["x"], nx_multigraph_ref.nodes[b_node]["y"])
-        )
+        a_node_data: NodeData = nx_multigraph_ref.nodes[a_node]
+        a_xy = (a_node_data["x"], a_node_data["y"])
+        b_node_data: NodeData = nx_multigraph_ref.nodes[b_node]
+        b_xy = (b_node_data["x"], b_node_data["y"])
         # test for geom
         if "geom" not in edge_data:
             raise KeyError(
@@ -1765,7 +1930,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         a_half_geom: geometry.LineString = ops.substring(line_geom, 0, line_geom.length / 2)  # type: ignore
         b_half_geom: geometry.LineString = ops.substring(
             line_geom, line_geom.length / 2, line_geom.length  # type: ignore
-        )  # pylint: disable=line-too-long
+        )
         # check that nothing odd happened with new midpoint
         if not np.allclose(
             a_half_geom.coords[-1][:2],
@@ -1825,7 +1990,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         for n_side, half_geom in zip([start_nd_key, end_nd_key], [s_half_geom, e_half_geom]):
             # add the spoke edges on the dual
             nb_nd_key: NodeKey
-            for nb_nd_key in nx.neighbors(nx_multigraph, n_side):  # type: ignore
+            for nb_nd_key in nx.neighbors(nx_multigraph, n_side):
                 # don't follow neighbour back to current edge combo
                 if nb_nd_key in [start_nd_key, end_nd_key]:
                     continue
@@ -1836,9 +2001,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                 if g_dual.has_edge(hub_node_dual, spoke_node_dual):
                     continue
                 # get the near and far half geoms
-                spoke_half_geom, _discard_geom = get_half_geoms(
-                    nx_multigraph, n_side, nb_nd_key, edge_idx
-                )  # pylint: disable=line-too-long
+                spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)
                 # nodes will be added if not already present (i.e. from first direction processed)
                 if spoke_node_dual not in g_dual:
                     x, y = spoke_half_geom.coords[-1][:2]
@@ -1846,7 +2009,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                     # add and set live property if present in parent graph
                     set_live(start_nd_key, end_nd_key, spoke_node_dual)
                 # weld the lines
-                merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])
+                merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])  # type: ignore
                 if merged_line.type != "LineString":
                     raise TypeError(
                         f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
@@ -1891,7 +2054,7 @@ def network_structure_from_nx(
         A [`structures.NetworkStructure`](/structures#networkstructure) instance.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):  # type: ignore
+    if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
@@ -1902,7 +2065,7 @@ def network_structure_from_nx(
         # writing node identifier to 'labels' in case conversion to integers method interferes with order
         g_multi_copy.nodes[nd_key]["label"] = nd_key
         nb_nd_key: NodeKey
-        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):  # type: ignore
+        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):
             total_out_degrees += g_multi_copy.number_of_edges(nd_key, nb_nd_key)
     # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
     g_multi_copy = nx.convert_node_labels_to_integers(g_multi_copy, 0)
@@ -1992,9 +2155,8 @@ def network_structure_from_nx(
         "live": network_structure.nodes.live,
         "geometry": gpd.points_from_xy(network_structure.nodes.xs, network_structure.nodes.ys),
     }
-    nodes_gdf = gpd.GeoDataFrame(data, crs=crs)  # type: ignore
-    nodes_gdf = nodes_gdf.set_index("node_key")
-    nodes_gdf = cast(gpd.GeoDataFrame, nodes_gdf)
+    nodes_gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(data, crs=crs)  # type: ignore
+    nodes_gdf = nodes_gdf.set_index("node_key")  # type: ignore
 
     return nodes_gdf, network_structure
 
@@ -2048,7 +2210,7 @@ def nx_from_network_structure(
                 )
     else:
         logger.info("No existing graph found, creating new nx multigraph.")
-        g_multi_copy: MultiGraph = nx.MultiGraph()  # type: ignore
+        g_multi_copy: MultiGraph = nx.MultiGraph()
         g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
     # after above so that errors caught first
     network_structure.validate()
@@ -2059,11 +2221,11 @@ def nx_from_network_structure(
         g_multi_copy.nodes[nd_key]["live"] = nd_data.live
     logger.info("Unpacking edge data.")
     for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):  # type: ignore
-        start_nd_idx: NodeKey = network_structure.edges.start[edge_idx]  # type: ignore
-        end_nd_idx: NodeKey = network_structure.edges.end[edge_idx]  # type: ignore
-        length: float = network_structure.edges.length[edge_idx]  # type: ignore
-        angle_sum: float = network_structure.edges.angle_sum[edge_idx]  # type: ignore
-        imp_factor: float = network_structure.edges.imp_factor[edge_idx]  # type: ignore
+        start_nd_idx: NodeKey = network_structure.edges.start[edge_idx]
+        end_nd_idx: NodeKey = network_structure.edges.end[edge_idx]
+        length: float = network_structure.edges.length[edge_idx]
+        angle_sum: float = network_structure.edges.angle_sum[edge_idx]
+        imp_factor: float = network_structure.edges.imp_factor[edge_idx]
         # find corresponding node keys
         start_nd_key: NodeKey = nodes_gdf.index[start_nd_idx]  # type: ignore
         end_nd_key: NodeKey = nodes_gdf.index[end_nd_idx]  # type: ignore

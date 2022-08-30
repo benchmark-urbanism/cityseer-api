@@ -254,7 +254,7 @@ def plot_nx_primal_or_dual(  # noqa
                 linewidths=_edge_width,  # type: ignore
                 linestyles=_edge_style,  # type: ignore
             )
-            target_ax.add_collection(lines)
+            target_ax.add_collection(lines)  # type: ignore
         # go ahead and plot: note that edge_list will be empty if plotting geoms
         nx.draw(  # type: ignore
             _graph,
@@ -688,17 +688,15 @@ def plot_scatter(
         A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
     perc_range: tuple[float, float]
         A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
-        By default `(0.01, 99.99)`.
     cmap_key: str
         A `matplotlib` colour map key.
     shape_exp: float
         A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the
         values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
-        By default 1.
     s_min: float
-        A float representing the minimum size for a plotted point. By default 0.1.
+        A float representing the minimum size for a plotted point.
     s_max: float
-        A float representing the maximum size for a plotted point. By default 1.
+        A float representing the maximum size for a plotted point.
     rasterized: bool
         Whether or not to rasterise the output. Recommended for plots with a large number of points.
     face_colour: str
@@ -778,23 +776,21 @@ def plot_nx_edges(
         A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
     perc_range: tuple[float, float]
         A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
-        By default `(0.01, 99.99)`.
     cmap_key: str
         A `matplotlib` colour map key.
     shape_exp: float
         A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the
         values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
-        By default 1.
     lw_min: float
-        A float representing the minimum line width for a plotted edge. By default 0.1.
+        A float representing the minimum line width for a plotted edge.
     lw_max: float
-        A float representing the maximum line width for a plotted edge. By default 1.
+        A float representing the maximum line width for a plotted edge.
     edge_label_key: str
-        A key for retrieving categorical labels from edges. By default None.
+        A key for retrieving categorical labels from edges.
     colour_by_categorical: bool
-        Whether to plot colours by categorical. This requires an `edge_label_key` parameter. By default None.
+        Whether to plot colours by categorical. This requires an `edge_label_key` parameter.
     max_n_categorical: int
-        The number of categorical values (sorted in decreasing order) to plot. By default 10.
+        The number of categorical values (sorted in decreasing order) to plot.
     rasterized: bool
         Whether or not to rasterise the output. Recommended for plots with a large number of edges.
     face_colour: str
@@ -868,8 +864,8 @@ def plot_nx_edges(
             plot_geoms,
             colors=plot_colours,  # type: ignore
             linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,
-            alpha=0.9,
+            rasterized=rasterized,  # type: ignore
+            alpha=0.9,  # type: ignore
         )
         ax.add_collection(lines)
     else:
@@ -919,8 +915,8 @@ def plot_nx_edges(
             plot_geoms,
             colors=plot_colours,  # type: ignore
             linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,
-            alpha=0.9,
+            rasterized=rasterized,  # type: ignore
+            alpha=0.9,  # type: ignore
         )
         ax.add_collection(lines)
         ax.legend(handles=plot_handles)

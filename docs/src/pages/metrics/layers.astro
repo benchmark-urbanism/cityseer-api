@@ -190,7 +190,7 @@ A [`structures.NetworkStructure`](/structures#networkstructure). Best generated 
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes. By default 400m.
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -199,7 +199,7 @@ The maximum distance to consider when assigning respective data points to the ne
           <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -208,7 +208,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
           <div class="yap doc-str-elem-type">float | ndarray[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -217,7 +217,7 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
           <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Mixed-use metrics to compute, containing any combination of the `key` values from the following table, by default None. See examples below for additional information. By default None.
+Mixed-use metrics to compute, containing any combination of the `key` values from the following table. See examples below for additional information.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -226,7 +226,7 @@ Mixed-use metrics to compute, containing any combination of the `key` values fro
           <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -244,7 +244,7 @@ An optional pairwise `NxN` disparity matrix numerically describing the degree of
           <div class="yap doc-str-elem-type">tuple[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -253,7 +253,7 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -262,7 +262,7 @@ The scale of random jitter to add to shortest path calculations, useful for situ
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -411,7 +411,7 @@ A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated w
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes. By default 400m.
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -420,7 +420,7 @@ The maximum distance to consider when assigning respective data points to the ne
           <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -429,7 +429,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
           <div class="yap doc-str-elem-type">float | ndarray[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -438,7 +438,7 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
           <div class="yap doc-str-elem-type">tuple[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -447,7 +447,7 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -456,7 +456,7 @@ The scale of random jitter to add to shortest path calculations, useful for situ
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -581,7 +581,7 @@ A [`structures.NetworkStructure`](/structures#networkstructure). Best generated 
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes. By default 400m.
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -590,7 +590,7 @@ The maximum distance to consider when assigning respective data points to the ne
           <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -599,7 +599,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
           <div class="yap doc-str-elem-type">float | ndarray[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -608,7 +608,7 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
           <div class="yap doc-str-elem-type">tuple[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored. By default None.
+The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -617,7 +617,7 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -626,7 +626,7 @@ The scale of random jitter to add to shortest path calculations, useful for situ
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -733,7 +733,7 @@ The column label from which to take landuse categories, e.g. a column labelled "
           <div class="yap doc-str-elem-type">tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants. By default None. By default None.
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -760,7 +760,7 @@ A [`structures.NetworkStructure`](/structures#networkstructure). Best generated 
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes. By default 400m.
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -769,7 +769,7 @@ The maximum distance to consider when assigning respective data points to the ne
           <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -778,7 +778,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
           <div class="yap doc-str-elem-type">float | ndarray[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -787,7 +787,7 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -796,7 +796,7 @@ The scale of random jitter to add to shortest path calculations, useful for situ
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -921,7 +921,7 @@ A [`structures.NetworkStructure`](/structures#networkstructure). Best generated 
           <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes. By default 400m.
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -930,7 +930,7 @@ The maximum distance to consider when assigning respective data points to the ne
           <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead. By default None.
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -939,7 +939,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
           <div class="yap doc-str-elem-type">float | ndarray[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead. By default None.
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -948,7 +948,7 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`. Default of zero.
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -957,7 +957,7 @@ The scale of random jitter to add to shortest path calculations, useful for situ
           <div class="yap doc-str-elem-type">bool</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances. By default False.
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>

@@ -12,6 +12,7 @@ import networkx as nx
 import numpy as np
 import requests
 import utm
+from pyproj import Transformer
 from shapely import geometry
 from tqdm import tqdm
 
@@ -32,7 +33,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     Buffer a point and return a `shapely` Polygon in WGS and UTM coordinates.
 
     This function can be used to prepare a `poly_wgs` `Polygon` for passing to
-    [`osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs).
+    [`osm_graph_from_poly()`](#osm-graph-from-poly).
 
     Parameters
     ----------
@@ -63,11 +64,11 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     poly_utm: geometry.Polygon = pnt.buffer(buffer)  # type: ignore
     # convert back to WGS
     # the polygon is too big for the OSM server, so have to use convex hull then later prune
-    geom = [
-        utm.to_latlon(east, north, utm_zone_number, utm_zone_letter)  # type: ignore
-        for east, north in poly_utm.convex_hull.exterior.coords  # type: ignore # pylint: disable=no-member
-    ]
-    poly_wgs = geometry.Polygon(geom)
+    coords = []
+    for easting, northing in poly_utm.convex_hull.exterior.coords:  # type: ignore  # pylint: disable=no-member
+        lat, lng = utm.to_latlon(easting, northing, utm_zone_number, utm_zone_letter)  # type: ignore
+        coords.append((lng, lat))
+    poly_wgs = geometry.Polygon(coords)
 
     return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter
 
@@ -78,7 +79,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
 
     :::note
     This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-    [`osm_graph_from_poly_wgs()`](#osm_graph_from_poly_wgs), which would call this method on your behalf and then
+    [`osm_graph_from_poly()`](#osm-graph-from-poly), which would call this method on your behalf and then
     builds a graph automatically.
     :::
 
@@ -90,7 +91,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
-        The number of attempts to fetch a response before raising, by default 3
+        The number of attempts to fetch a response before raising.
 
     Returns
     -------
@@ -111,19 +112,28 @@ def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
         max_tries -= 1
-
-    if osm_response is None or not osm_response.status_code == 200:
-        raise requests.RequestException("Unsuccessful OSM API request.")
+    if osm_response is None:
+        raise requests.RequestException("None response. Unsuccessful OSM API request.")
+    if not osm_response.status_code == 200:
+        osm_response.raise_for_status()
 
     return osm_response
 
 
-def osm_graph_from_poly_wgs(
-    poly_wgs: geometry.Polygon,
+def osm_graph_from_poly_wgs() -> None:
+    """Deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead."""
+    raise DeprecationWarning("This method is deprecated. Please use osm_graph_from_poly instead.")
+
+
+def osm_graph_from_poly(
+    poly_geom: geometry.Polygon,
+    poly_epsg_code: int = 4326,
+    to_epsg_code: Optional[int] = None,
     custom_request: Optional[str] = None,
     simplify: bool = True,
     remove_parallel: bool = True,
     iron_edges: bool = True,
+    remove_disconnected: bool = True,
 ) -> MultiGraph:  # noqa
     """
 
@@ -133,19 +143,27 @@ def osm_graph_from_poly_wgs(
 
     Parameters
     ----------
-    poly_wgs: shapely.Polygon
-        A shapely Polygon representing the extents for which to fetch the OSM network. Must be in WGS (EPSG 4326)
-        coordinates.
+    poly_geom: shapely.Polygon
+        A shapely Polygon representing the extents for which to fetch the OSM network.
+    poly_epsg_code: int
+        An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
+        using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
+    to_epsg_code: int
+        An optional integer representing a valid EPSG code for the generated network returned from this function. If
+        this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
+        system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
     custom_request: str
-        An optional custom OSM request. None by default. If provided, this must include a "geom_osm" string formatting
-        key for inserting the geometry passed to the OSM API query. See the discussion below.
+        An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
+        the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
-        Whether to automatically simplify the OSM graph. True by default. Set to False for manual cleaning.
+        Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
     remove_parallel: bool
-        Whether to remove parallel roadway segments. True by default. Only has an effect if `simplify` is `True`.
+        Ignored if simplify is False. Whether to remove parallel roadway segments.
     iron_edges: bool
-        Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from
-        segment kinks from merging `LineStrings`. Only has an effect if `simplify` is `True`.
+        Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the
+        number of artefacts from segment kinks from merging `LineStrings`.
+    remove_disconnected: bool
+        Ignored if simplify is False.  Whether to remove disconnected components from the network.
 
     Returns
     -------
@@ -184,7 +202,9 @@ def osm_graph_from_poly_wgs(
 
     """
     # format for OSM query
-    geom_osm = str.join(" ", [f"{lat} {lng}" for lat, lng in poly_wgs.exterior.coords])  # type: ignore
+    in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
+    coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]  # type: ignore
+    geom_osm = str.join(" ", [f"{lat} {lng}" for lng, lat in coords])
     if custom_request is not None:
         if "geom_osm" not in custom_request:
             raise ValueError(
@@ -215,28 +235,27 @@ def osm_graph_from_poly_wgs(
     # build graph
     graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
-    graph_utm = graphs.nx_wgs_to_utm(graph_wgs)
+    if to_epsg_code is not None:
+        graph_crs = graphs.nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
+    else:
+        graph_crs = graphs.nx_wgs_to_utm(graph_wgs)
     # simplify
     if simplify:
-        graph_utm = graphs.nx_simple_geoms(graph_utm)
-        graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
-        graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=20, remove_disconnected=True)
-        graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
-        graph_utm = graphs.nx_consolidate_nodes(
-            graph_utm, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
+        graph_crs = graphs.nx_simple_geoms(graph_crs)
+        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=20, remove_disconnected=remove_disconnected)
+        graph_crs = graphs.nx_consolidate_nodes(
+            graph_crs, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4
         )
-
         if remove_parallel:
-            graph_utm = graphs.nx_split_opposing_geoms(graph_utm, buffer_dist=15)
-            graph_utm = graphs.nx_consolidate_nodes(
-                graph_utm, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
+            graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
+            graph_crs = graphs.nx_consolidate_nodes(
+                graph_crs, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
             )
-            graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
-
         if iron_edges:
-            graph_utm = graphs.nx_iron_edges(graph_utm)
+            graph_crs = graphs.nx_iron_edges(graph_crs)
 
-    return graph_utm
+    return graph_crs
 
 
 def nx_from_osm_nx(
@@ -377,7 +396,7 @@ def nx_from_open_roads(
         A valid relative filepath from which to load the OS Open Roads dataset.
     target_bbox: tuple[int]
         A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
-        dataset. Set to `None` for no bounding box. By default None.
+        dataset. Set to `None` for no bounding box.
 
     Returns
     -------
