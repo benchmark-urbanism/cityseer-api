@@ -7,7 +7,6 @@ import pytest
 from shapely import geometry, ops
 
 from cityseer import config
-from cityseer.algos import checks
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
@@ -43,29 +42,33 @@ def test_nx_simple_geoms():
 
 
 def test_add_node(diamond_graph):
-    new_name = graphs._add_node(diamond_graph, [0, 1], 50, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 50, 50)
+    assert is_dupe is False
     assert new_name == "0±1"
     assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1"]
     assert diamond_graph.nodes["0±1"] == {"x": 50, "y": 50}
 
     # same name and coordinates should return None
-    response = graphs._add_node(diamond_graph, [0, 1], 50, 50)
-    assert response is None
+    response, is_dupe = graphs._add_node(diamond_graph, [0, 1], 50, 50)
+    assert is_dupe is True
 
     # same name and different coordinates should return v2
-    new_name = graphs._add_node(diamond_graph, [0, 1], 40, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 40, 50)
+    assert is_dupe is False
     assert new_name == "0±1§v2"
     assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2"]
     assert diamond_graph.nodes["0±1§v2"] == {"x": 40, "y": 50}
 
     # likewise v3
-    new_name = graphs._add_node(diamond_graph, [0, 1], 30, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 30, 50)
+    assert is_dupe is False
     assert new_name == "0±1§v3"
     assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2", "0±1§v3"]
     assert diamond_graph.nodes["0±1§v3"] == {"x": 30, "y": 50}
 
     # and names should concatenate over old merges
-    new_name = graphs._add_node(diamond_graph, [0, "0±1"], 60, 30)
+    new_name, is_dupe = graphs._add_node(diamond_graph, [0, "0±1"], 60, 30)
+    assert is_dupe is False
     assert new_name == "0±0±1"
     assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2", "0±1§v3", "0±0±1"]
     assert diamond_graph.nodes["0±0±1"] == {"x": 60, "y": 30}
@@ -73,6 +76,11 @@ def test_add_node(diamond_graph):
 
 # TODO:
 def test_nx_from_osm():
+    pass
+
+
+# TODO: currently tested via test_nx_wgs_to_utm which calls nx_epsg_conversion internally
+def nx_epsg_conversion():
     pass
 
 
@@ -210,12 +218,10 @@ def make_messy_graph(G):
 
 def test_nx_remove_dangling_nodes(primal_graph):
     G_messy = make_messy_graph(primal_graph)
-
     # no despining or disconnected components removal
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False, cleanup_filler_nodes=False)
     assert G_post.nodes == G_messy.nodes
     assert G_post.edges == G_messy.edges
-
     # check that all single neighbour nodes have been removed if geom less than despine distance
     G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=False)
     for n in G_messy.nodes():
@@ -225,10 +231,9 @@ def test_nx_remove_dangling_nodes(primal_graph):
                 assert (n, nb) not in G_post.edges
             else:
                 assert (n, nb) in G_post.edges
-
     # check that disconnected components are removed
     # this behaviour changed in networkx 2.4
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True, cleanup_filler_nodes=False)
     pre_components = list(nx.algorithms.components.connected_components(G_messy))
     post_components = list(nx.algorithms.components.connected_components(G_post))
     assert len(pre_components) != 1
@@ -246,13 +251,11 @@ def test_nx_remove_dangling_nodes(primal_graph):
 def test_nx_remove_filler_nodes(primal_graph):
     # test that redundant intersections are removed, i.e. where degree == 2
     G_messy = make_messy_graph(primal_graph)
-
     # from cityseer.tools import plot
-    # plot.plot_nx(G_messy, labels=True, node_size=80)
-
+    # plot.plot_nx(G_messy, labels=True, plot_geoms=True, node_size=80)
     # simplify and test
     G_simplified = graphs.nx_remove_filler_nodes(G_messy)
-    # plot.plot_nx(G_simplified, labels=True, node_size=80)
+    # plot.plot_nx(G_simplified, labels=True, plot_geoms=True, node_size=80)
     # check that the simplified version matches the original un-messified version
     # but note the simplified version will have the disconnected loop of 52-53-54-55 now condensed to only #52
     g_nodes = set(primal_graph.nodes)
@@ -286,7 +289,6 @@ def test_nx_remove_filler_nodes(primal_graph):
     for n, d in G_simplified.nodes(data=True):
         assert "x" in d
         assert "y" in d
-
     # lollipop test - where a looping component (all nodes == degree 2) suspends off a node with degree > 2
     G_lollipop = nx.MultiGraph()
     nodes = [
@@ -303,8 +305,10 @@ def test_nx_remove_filler_nodes(primal_graph):
     G_lollipop = graphs.nx_simple_geoms(G_lollipop)
     # flip some geometry
     G_lollipop[2][5][0]["geom"] = geometry.LineString(G_lollipop[2][5][0]["geom"].coords[::-1])
+    # plot.plot_nx(G_lollipop, labels=True, plot_geoms=True, node_size=80)
     # simplify
     G_lollipop_simpl = graphs.nx_remove_filler_nodes(G_lollipop)
+    # plot.plot_nx(G_lollipop_simpl, labels=True, plot_geoms=True, node_size=80)
     # check integrity of graph
     assert nx.number_of_nodes(G_lollipop_simpl) == 2
     assert nx.number_of_edges(G_lollipop_simpl) == 2
@@ -320,9 +324,11 @@ def test_nx_remove_filler_nodes(primal_graph):
     assert G_lollipop_simpl[1][2][0]["geom"].coords[-1] == G_lollipop_simpl[2][2][0]["geom"].coords[0]
     # start and end point of lollipop should match
     assert G_lollipop_simpl[2][2][0]["geom"].coords[0] == G_lollipop_simpl[2][2][0]["geom"].coords[-1]
-    # manually check welded geom
-    assert G_lollipop_simpl[2][2][0]["geom"].wkt == "LINESTRING (400 650, 500 550, 400 450, 300 550, 400 650)"
-
+    # manually check welded geom - either direction of winding is OK
+    assert G_lollipop_simpl[2][2][0]["geom"].wkt in [
+        "LINESTRING (400 650, 500 550, 400 450, 300 550, 400 650)",
+        "LINESTRING (400 650, 300 550, 400 450, 500 550, 400 650)",
+    ]
     # stairway test - where overlapping edges (all nodes == degree 2) have overlapping coordinates in 2D space
     G_stairway = nx.MultiGraph()
     nodes = [
@@ -359,8 +365,10 @@ def test_nx_remove_filler_nodes(primal_graph):
     G_stairway["5-down"]["2-mid"][0]["geom"] = geometry.LineString(
         G_stairway["5-down"]["2-mid"][0]["geom"].coords[::-1]
     )
+    # plot.plot_nx(G_stairway, labels=True, plot_geoms=True, node_size=80)
     # simplify
     G_stairway_simpl = graphs.nx_remove_filler_nodes(G_stairway)
+    # plot.plot_nx(G_stairway_simpl, labels=True, plot_geoms=True, node_size=80)
     # check integrity of graph
     assert nx.number_of_nodes(G_stairway_simpl) == 2
     assert nx.number_of_edges(G_stairway_simpl) == 1
@@ -372,11 +380,11 @@ def test_nx_remove_filler_nodes(primal_graph):
     for s, e, d in G_stairway_simpl.edges(data=True):
         after_len += d["geom"].length
     assert before_len == after_len
-    assert (
-        G_stairway_simpl["1-down"]["1-up"][0]["geom"].wkt
-        == "LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)"
-    )
-
+    # either direction is OK
+    assert G_stairway_simpl["1-down"]["1-up"][0]["geom"].wkt in [
+        "LINESTRING (400 750, 400 650, 500 550, 400 450, 300 550, 400 650, 500 550, 400 450, 300 550, 400 650, 400 750)",
+        "LINESTRING (400 750, 400 650, 300 550, 400 450, 500 550, 400 650, 300 550, 400 450, 500 550, 400 650, 400 750)",
+    ]
     # check that missing geoms throw an error
     G_k = G_messy.copy()
     for i, (s, e, k) in enumerate(G_k.edges(keys=True)):
@@ -384,14 +392,12 @@ def test_nx_remove_filler_nodes(primal_graph):
             del G_k[s][e][k]["geom"]
     with pytest.raises(KeyError):
         graphs.nx_remove_filler_nodes(G_k)
-
     # check that non-LineString geoms throw an error
     G_k = G_messy.copy()
     for s, e, k in G_k.edges(keys=True):
         G_k[s][e][k]["geom"] = geometry.Point([G_k.nodes[s]["x"], G_k.nodes[s]["y"]])
     with pytest.raises(TypeError):
         graphs.nx_remove_filler_nodes(G_k)
-
     # catch non-touching LineStrings
     G_corr = G_messy.copy()
     for s, e, k in G_corr.edges(keys=True):

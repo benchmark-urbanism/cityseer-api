@@ -721,7 +721,7 @@ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping 
           <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data. By default `(0.01, 99.99)`.
+A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -739,7 +739,7 @@ A `matplotlib` colour map key.
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly. By default 1.
+A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -748,7 +748,7 @@ A float representing an exponential for reshaping the values distribution. Defau
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing the minimum size for a plotted point. By default 0.1.
+A float representing the minimum size for a plotted point.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -757,7 +757,7 @@ A float representing the minimum size for a plotted point. By default 0.1.
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing the maximum size for a plotted point. By default 1.
+A float representing the maximum size for a plotted point.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -802,7 +802,10 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">cmap_key=1, </div>
           <div class="yap func-sig-param">shape_exp=0.1, </div>
           <div class="yap func-sig-param">lw_min=1, </div>
-          <div class="yap func-sig-param">lw_max=True, </div>
+          <div class="yap func-sig-param">lw_max, </div>
+          <div class="yap func-sig-param">edge_label_key=False, </div>
+          <div class="yap func-sig-param">colour_by_categorical=10, </div>
+          <div class="yap func-sig-param">max_n_categorical=True, </div>
           <div class="yap func-sig-param">rasterized=#111, </div>
           <div class="yap func-sig-param">face_colour=False, </div>
         </div>
@@ -854,7 +857,7 @@ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping 
           <div class="yap doc-str-elem-type">tuple[float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data. By default `(0.01, 99.99)`.
+A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -872,7 +875,7 @@ A `matplotlib` colour map key.
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly. By default 1.
+A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -881,7 +884,7 @@ A float representing an exponential for reshaping the values distribution. Defau
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing the minimum line width for a plotted edge. By default 0.1.
+A float representing the minimum line width for a plotted edge.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -890,16 +893,34 @@ A float representing the minimum line width for a plotted edge. By default 0.1.
           <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A float representing the maximum line width for a plotted edge. By default 1.
+A float representing the maximum line width for a plotted edge.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">cmap_key</div>
+          <div class="yap doc-str-elem-name">edge_label_key</div>
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `matplotlib` colour map key.
+A key for retrieving categorical labels from edges.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">colour_by_categorical</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to plot colours by categorical. This requires an `edge_label_key` parameter.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_n_categorical</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of categorical values (sorted in decreasing order) to plot.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">

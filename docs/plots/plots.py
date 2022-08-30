@@ -101,8 +101,8 @@ plot.plot_nx_primal_or_dual(
 lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
 poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer)
-graph_raw = io.osm_graph_from_poly_wgs(poly_wgs, simplify=False)
-graph_utm = io.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+graph_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
+graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
 # plot buffer
 easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(750)
@@ -131,11 +131,10 @@ simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_1b.{FORMAT}")
 graph_utm = graphs.nx_simple_geoms(graph_raw)
 graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
 graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=20, remove_disconnected=True)
-graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
 simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_2.{FORMAT}")
 # first pass of consolidation
 graph_utm = graphs.nx_consolidate_nodes(
-    graph_utm, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4
+    graph_utm, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4
 )
 simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_3.{FORMAT}")
 # split opposing line geoms to facilitate parallel merging
@@ -145,7 +144,6 @@ simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_4.{FORMAT}")
 graph_utm = graphs.nx_consolidate_nodes(
     graph_utm, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
 )
-graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
 simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_5.{FORMAT}")
 # iron edges
 graph_utm = graphs.nx_iron_edges(graph_utm)
@@ -350,18 +348,16 @@ G = graphs.nx_wgs_to_utm(G_raw)
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_remove_filler_nodes(G)
 G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
-G = graphs.nx_remove_filler_nodes(G)
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True, min_node_group=3, cent_min_degree=4, cent_min_names=4)
+G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4)
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
 G3 = graphs.nx_consolidate_nodes(
     G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
 )
-G3 = graphs.nx_remove_filler_nodes(G3)
 G4 = graphs.nx_iron_edges(G3)
 simple_plot(G3, f"{IMAGES_PATH}/osmnx_cityseer_simplification.{FORMAT}")
 
 # WORKFLOW 3: Using cityseer to download and automatically simplify the graph
 # ===========================================================================
 poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer_dist)
-G_utm = io.osm_graph_from_poly_wgs(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+G_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
 simple_plot(G_utm, f"{IMAGES_PATH}/cityseer_only_simplification.{FORMAT}")
