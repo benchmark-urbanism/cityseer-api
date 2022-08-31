@@ -239,7 +239,6 @@ def test_aggregate_to_src_idx(primal_graph):
                             assert reachable_dist == next_nearest_dist
 
 
-# TODO: pickling error re: cache and NodeMap
 def test_aggregate_landuses_signatures(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
@@ -434,9 +433,37 @@ def test_aggregate_landuses_signatures(primal_graph):
                 mixed_use_other_keys=np.array(o_key),
                 cl_disparity_wt_matrix=mock_matrix[:-1],
             )
+        # check that problematic beta_wt_clip values are caught
+        for beta_wt_clip in [-1, np.nan, 2]:
+            with pytest.raises(ValueError):
+                data.aggregate_landuses(
+                    network_structure.nodes.xs,
+                    network_structure.nodes.ys,
+                    network_structure.nodes.live,
+                    network_structure.edges.start,
+                    network_structure.edges.end,
+                    network_structure.edges.length,
+                    network_structure.edges.angle_sum,
+                    network_structure.edges.imp_factor,
+                    network_structure.edges.in_bearing,
+                    network_structure.edges.out_bearing,
+                    network_structure.node_edge_map,
+                    data_map.xs,
+                    data_map.ys,
+                    data_map.nearest_assign,
+                    data_map.next_nearest_assign,
+                    distances,
+                    betas,
+                    landuse_encodings=encoded_labels,
+                    qs=qs,
+                    mixed_use_hill_keys=np.array(h_key),
+                    mixed_use_other_keys=np.array(o_key),
+                    cl_disparity_wt_matrix=mock_matrix[:-1],
+                    beta_wt_clip=beta_wt_clip,
+                )
 
 
-def test_aggregate_landuses_categorical_components(primal_graph):
+def test_aggregate_landuses(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
@@ -721,7 +748,7 @@ def test_aggregate_landuses_categorical_components(primal_graph):
     assert not np.allclose(ac_wt_dual, ac_wt_dual_sidestep, atol=config.ATOL, rtol=config.RTOL)
 
 
-def test_local_aggregator_numerical_components(primal_graph):
+def test_aggregate_stats(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)

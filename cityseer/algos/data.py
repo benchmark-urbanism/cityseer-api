@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -432,9 +432,10 @@ def aggregate_landuses(
     cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
         np.full((0, 0), np.nan), dtype=np.float32
     ),  # pylint: disable=line-too-long
+    beta_wt_clip: np.float32 = np.float32(1.0),
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
-    progress_proxy: Any = None,
+    progress_proxy: Optional[Any] = None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.int_], npt.NDArray[np.float32]]:
     """
     Aggregate landuses.
@@ -494,6 +495,9 @@ def aggregate_landuses(
     for key_idx in mixed_use_other_keys:
         if key_idx == 2:  # raos pairwise
             disp_check(cl_disparity_wt_matrix)
+    # check that beta_wt_clip is between 0 and 1 if provided
+    if beta_wt_clip < 0 or beta_wt_clip > 1:
+        raise ValueError("The value specified beta_wt_clip must be between 0 and 1.")
     # establish variables
     netw_n = len(node_edge_map)
     d_n = len(distances)
@@ -556,6 +560,8 @@ def aggregate_landuses(
             cl_code = int(landuse_encodings[int(data_idx)])
             # iterate the distance dimensions
             for d_idx, (d, b) in enumerate(zip(distances, betas)):
+                # clip - only has an effect if less than 1
+                b = min(beta_wt_clip, b)
                 # increment class counts at respective distances if the distance is less than current d
                 if data_dist <= d:
                     classes_counts[d_idx, cl_code] += 1
@@ -574,6 +580,8 @@ def aggregate_landuses(
         for d_idx, b in enumerate(betas):
             cl_counts = classes_counts[d_idx]
             cl_nearest = classes_nearest[d_idx]
+            # clip - only has an effect if less than 1
+            b = min(beta_wt_clip, b)
             # mu keys determine which metrics to compute
             # don't confuse with indices
             # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys

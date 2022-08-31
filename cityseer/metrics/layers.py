@@ -124,7 +124,8 @@ def compute_landuses(
     mixed_use_keys: Optional[Union[list[str], tuple[str]]] = None,
     accessibility_keys: Optional[Union[list[str], tuple[str]]] = None,
     cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
-    qs: cctypes.QsType = None,
+    qs: Optional[cctypes.QsType] = None,
+    beta_wt_clip: float = 1.0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -188,6 +189,11 @@ def compute_landuses(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
+    beta_wt_clip: float
+        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
+        clipping. Specifying `beta_wt_clip` lower than 1 provides a spatial tolerance for datasets where the positional
+        accuracy of datapoints is not exact. For background, see
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -378,6 +384,7 @@ def compute_landuses(
         mixed_use_other_keys=np.array(mu_other_keys, dtype=np.int_),
         accessibility_keys=np.array(acc_keys, dtype=np.int_),
         cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
+        beta_wt_clip=np.float32(beta_wt_clip),
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
         progress_proxy=progress_proxy,
@@ -423,6 +430,7 @@ def hill_diversity(
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
     qs: cctypes.QsType = None,
+    beta_wt_clip: float = 1.0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -462,6 +470,11 @@ def hill_diversity(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
+    beta_wt_clip: float
+        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
+        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
+        accuracy of datapoints is not exact. For background, see
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -513,6 +526,7 @@ def hill_diversity(
         betas=betas,
         mixed_use_keys=["hill"],
         qs=qs,
+        beta_wt_clip=beta_wt_clip,
         jitter_scale=jitter_scale,
         angular=angular,
     )
@@ -527,6 +541,7 @@ def hill_branch_wt_diversity(
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
     qs: cctypes.QsType = None,
+    beta_wt_clip: float = 1.0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -566,6 +581,11 @@ def hill_branch_wt_diversity(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
+    beta_wt_clip: float
+        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
+        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
+        accuracy of datapoints is not exact. For background, see
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -617,6 +637,7 @@ def hill_branch_wt_diversity(
         betas=betas,
         mixed_use_keys=["hill_branch_wt"],
         qs=qs,
+        beta_wt_clip=beta_wt_clip,
         jitter_scale=jitter_scale,
         angular=angular,
     )
@@ -631,6 +652,7 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
+    beta_wt_clip: float = 1.0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -671,6 +693,11 @@ def compute_accessibilities(
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
+    beta_wt_clip: float
+        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
+        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
+        accuracy of datapoints is not exact. For background, see
+        [`distance_from_beta`](/metrics/networks#distance-from-beta).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -722,6 +749,7 @@ def compute_accessibilities(
         distances=distances,
         betas=betas,
         accessibility_keys=accessibility_keys,
+        beta_wt_clip=beta_wt_clip,
         jitter_scale=jitter_scale,
         angular=angular,
     )
