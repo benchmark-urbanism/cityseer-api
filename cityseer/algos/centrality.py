@@ -6,7 +6,7 @@ from numba import njit, prange, types  # type: ignore
 from numba.typed import List
 
 from cityseer import config
-from cityseer.algos import checks
+from cityseer.algos import common
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -177,7 +177,7 @@ def local_node_centrality(
     """
     Localised node centrality.
     """
-    checks.check_distances_and_betas(distances, betas)
+    common.check_distances_and_betas(distances, betas)
     # gather functions
     close_short_keys: list[str] = []
     close_short_idxs: list[int] = []
@@ -378,7 +378,7 @@ def local_segment_centrality(
     Localised segment centrality.
     """
     # integrity checks
-    checks.check_distances_and_betas(distances, betas)
+    common.check_distances_and_betas(distances, betas)
     # gather keys - classes with only a single variant don't need list of keys
     close_short_keys: list[str] = []
     close_short_idxs: list[int] = []

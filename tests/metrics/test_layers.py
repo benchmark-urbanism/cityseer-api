@@ -98,6 +98,7 @@ def test_compute_landuses(primal_graph):
     # test against manual implementation over underlying method
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
     distances, betas = networks.pair_distances_betas(betas=raw_betas)
+    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
     lab_enc = LabelEncoder()
     encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
     mu_data_hill, mu_data_other, ac_data, ac_data_wt = data.aggregate_landuses(
@@ -118,6 +119,7 @@ def test_compute_landuses(primal_graph):
         data_map.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         encoded_lu_labels,  # type: ignore
         qs=qs,
         mixed_use_hill_keys=np.array([1]),
@@ -150,6 +152,7 @@ def test_compute_landuses(primal_graph):
         data_map.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         encoded_lu_labels,  # type: ignore
         qs=qs,
         mixed_use_other_keys=np.array([1]),
@@ -181,6 +184,7 @@ def test_compute_landuses(primal_graph):
         data_map.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         encoded_lu_labels,  # type: ignore
         qs=qs,
         accessibility_keys=np.array([lab_enc.classes_.tolist().index("c")]),
@@ -295,6 +299,7 @@ def test_compute_landuses(primal_graph):
                     data_map.next_nearest_assign,
                     distances,
                     betas,
+                    max_curve_wts,
                     encoded_lu_labels,  # type: ignore
                     qs=qs,
                     mixed_use_hill_keys=mu_h_keys,
