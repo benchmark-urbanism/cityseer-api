@@ -7,7 +7,7 @@ import numpy.typing as npt
 from numba import njit, prange  # type: ignore
 
 from cityseer import config
-from cityseer.algos import centrality, checks, diversity
+from cityseer.algos import centrality, common, diversity
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -239,8 +239,8 @@ def assign_to_network(
                     coords_data: npt.NDArray[np.float32] = np.array(
                         [data_map_x_arr[data_idx], data_map_y_arr[data_idx]]
                     )
-                    d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, prev_idx)
-                    if d < min_dist:
+                    dist, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, prev_idx)
+                    if dist < min_dist:
                         nearest_idx = n
                         next_nearest_idx = n_n
                     break
@@ -254,10 +254,10 @@ def assign_to_network(
             if dist > max_dist:
                 pred_map[nb_idx] = node_idx
                 coords_data: npt.NDArray[np.float32] = np.array([data_map_x_arr[data_idx], data_map_y_arr[data_idx]])
-                d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
+                dist, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
                 # if the distance to the street edge is less than the nearest node, or than the prior closest edge
-                if d < min_dist:
-                    min_dist = d
+                if dist < min_dist:
+                    min_dist = dist
                     nearest_idx = n
                     next_nearest_idx = n_n
                 # reverse and try in opposite direction
@@ -282,8 +282,8 @@ def assign_to_network(
                     coords_data: npt.NDArray[np.float32] = np.array(
                         [data_map_x_arr[data_idx], data_map_y_arr[data_idx]]
                     )
-                    d, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
-                    if d < min_dist:
+                    dist, n, n_n = _closest_intersections(nodes_x_arr, nodes_y_arr, coords_data, pred_map, nb_idx)
+                    if dist < min_dist:
                         nearest_idx = n
                         next_nearest_idx = n_n
                     break
@@ -424,6 +424,7 @@ def aggregate_landuses(
     data_map_next_nearest_arr: npt.NDArray[np.int_],
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
+    max_curve_wts: npt.NDArray[np.float32],
     landuse_encodings: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     qs: npt.NDArray[np.float32] = np.array([], dtype=np.float32),
     mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
@@ -432,7 +433,6 @@ def aggregate_landuses(
     cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
         np.full((0, 0), np.nan), dtype=np.float32
     ),  # pylint: disable=line-too-long
-    beta_wt_clip: np.float32 = np.float32(1.0),
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Optional[Any] = None,
@@ -440,13 +440,13 @@ def aggregate_landuses(
     """
     Aggregate landuses.
     """
-    checks.check_distances_and_betas(distances, betas)
+    common.check_distances_and_betas(distances, betas)
     # check landuse encodings
     if len(landuse_encodings) == 0:
         raise ValueError("Mixed use metrics or land-use accessibilities require an array of landuse labels.")
     if len(landuse_encodings) != data_map_x_arr.shape[0]:
         raise ValueError("The number of landuse encodings does not match the number of data points.")
-    checks.check_categorical_data(landuse_encodings)
+    common.check_categorical_data(landuse_encodings)
     # catch completely missing metrics
     if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
         raise ValueError("No metrics specified, please specify at least one metric to compute.")
@@ -496,8 +496,10 @@ def aggregate_landuses(
         if key_idx == 2:  # raos pairwise
             disp_check(cl_disparity_wt_matrix)
     # check that beta_wt_clip is between 0 and 1 if provided
-    if beta_wt_clip < 0 or beta_wt_clip > 1:
-        raise ValueError("The value specified beta_wt_clip must be between 0 and 1.")
+    if np.any(max_curve_wts < 0) or np.any(max_curve_wts > 1) or max_curve_wts.shape != distances.shape:
+        raise ValueError(
+            "max_curve_wts should be between 0 and 1 and should be of the same length as the distances / betas params."
+        )
     # establish variables
     netw_n = len(node_edge_map)
     d_n = len(distances)
@@ -559,11 +561,9 @@ def aggregate_landuses(
             # all class codes were encoded to sequential integers - these correspond to the array indices
             cl_code = int(landuse_encodings[int(data_idx)])
             # iterate the distance dimensions
-            for d_idx, (d, b) in enumerate(zip(distances, betas)):
-                # clip - only has an effect if less than 1
-                b = min(beta_wt_clip, b)
-                # increment class counts at respective distances if the distance is less than current d
-                if data_dist <= d:
+            for d_idx, (dist, beta, max_wt) in enumerate(zip(distances, betas, max_curve_wts)):
+                # increment class counts at respective distances if the distance is less than current dist
+                if data_dist <= dist:
                     classes_counts[d_idx, cl_code] += 1
                     # if distance is nearer, update the nearest distance array too
                     if data_dist < classes_nearest[d_idx, cl_code]:
@@ -572,16 +572,16 @@ def aggregate_landuses(
                     for ac_idx, ac_code in enumerate(accessibility_keys):
                         if ac_code == cl_code:
                             accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
-                            accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
+                            accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += common.clipped_beta_wt(
+                                beta, max_wt, data_dist
+                            )
                             # if a match was found, then no need to check others
                             break
         # mixed uses can be calculated now that the local class counts are aggregated
         # iterate the distances and betas
-        for d_idx, b in enumerate(betas):
+        for d_idx, (beta, max_wt) in enumerate(zip(betas, max_curve_wts)):
             cl_counts = classes_counts[d_idx]
             cl_nearest = classes_nearest[d_idx]
-            # clip - only has an effect if less than 1
-            b = min(beta_wt_clip, b)
             # mu keys determine which metrics to compute
             # don't confuse with indices
             # previously used dynamic indices in data structures - but obtuse if irregularly ordered keys
@@ -592,11 +592,11 @@ def aggregate_landuses(
                     elif mu_hill_key == 1:
                         mixed_use_hill_data[
                             1, q_idx, d_idx, netw_src_idx
-                        ] = diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        ] = diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, q_key, beta, max_wt)
                     elif mu_hill_key == 2:
                         mixed_use_hill_data[
                             2, q_idx, d_idx, netw_src_idx
-                        ] = diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q=q_key, beta=b)
+                        ] = diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, q_key, beta, max_wt)
                     # land-use classification disparity hill diversity
                     # the wt matrix can be used without mapping because cl_counts is based on all classes
                     # regardless of whether they are reachable
@@ -685,11 +685,11 @@ def aggregate_stats(
     2 - assigned network index - nearest
     3 - assigned network index - next-nearest
     """
-    checks.check_distances_and_betas(distances, betas)
+    common.check_distances_and_betas(distances, betas)
     # when passing an empty 2d array to numba, use: np.array(np.full((0, 0), np.nan, dtype=np.float32))
     if numerical_arrays.shape[1] != data_map_x_arr.shape[0]:
         raise ValueError("The length of the numerical data arrays do not match the length of the data map.")
-    checks.check_numerical_data(numerical_arrays)
+    common.check_numerical_data(numerical_arrays)
     # establish variables
     netw_n = len(node_edge_map)
     d_n = len(distances)
@@ -755,14 +755,14 @@ def aggregate_stats(
                 if np.isnan(num):
                     continue
                 # iterate the distance dimensions
-                for d_idx, (d, b) in enumerate(zip(distances, betas)):
-                    # increment mean aggregations at respective distances if the distance is less than current d
-                    if data_dist <= d:
+                for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
+                    # increment mean aggregations at respective distances if the distance is less than current dist
+                    if data_dist <= dist:
                         # aggregate
                         stats_sum[num_idx, d_idx, netw_src_idx] += num
                         stats_count[num_idx, d_idx, netw_src_idx] += 1
-                        stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(-b * data_dist)
-                        stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(-b * data_dist)
+                        stats_sum_wt[num_idx, d_idx, netw_src_idx] += num * np.exp(-beta * data_dist)
+                        stats_count_wt[num_idx, d_idx, netw_src_idx] += np.exp(-beta * data_dist)
                         # max
                         if np.isnan(stats_max[num_idx, d_idx, netw_src_idx]):
                             stats_max[num_idx, d_idx, netw_src_idx] = num
@@ -800,9 +800,9 @@ def aggregate_stats(
                 if np.isnan(num):
                     continue
                 # iterate the distance dimensions
-                for d_idx, (d, b) in enumerate(zip(distances, betas)):
-                    # increment variance aggregations at respective distances if the distance is less than current d
-                    if data_dist <= d:
+                for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
+                    # increment variance aggregations at respective distances if the distance is less than current dist
+                    if data_dist <= dist:
                         # aggregate
                         if np.isnan(stats_variance[num_idx, d_idx, netw_src_idx]):
                             stats_variance[num_idx, d_idx, netw_src_idx] = np.square(
@@ -810,14 +810,14 @@ def aggregate_stats(
                             )
                             stats_variance_wt[num_idx, d_idx, netw_src_idx] = np.square(
                                 num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
-                            ) * np.exp(-b * data_dist)
+                            ) * np.exp(-beta * data_dist)
                         else:
                             stats_variance[num_idx, d_idx, netw_src_idx] += np.square(
                                 num - stats_mean[num_idx, d_idx, netw_src_idx]
                             )
                             stats_variance_wt[num_idx, d_idx, netw_src_idx] += np.square(
                                 num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
-                            ) * np.exp(-b * data_dist)
+                            ) * np.exp(-beta * data_dist)
         # finalise variance calculations
         for num_idx in range(n_n):
             for d_idx in range(d_n):

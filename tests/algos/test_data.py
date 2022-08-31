@@ -249,6 +249,7 @@ def test_aggregate_landuses_signatures(primal_graph):
     # set parameters
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025])
     distances = networks.distance_from_beta(betas)
+    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
     qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
     # check that empty land_use encodings are caught
     with pytest.raises(ValueError):
@@ -270,6 +271,7 @@ def test_aggregate_landuses_signatures(primal_graph):
             data_map.next_nearest_assign,
             distances,
             betas,
+            max_curve_wts,
             mixed_use_hill_keys=np.array([0], dtype=np.int_),
         )
     # check that unequal land_use encodings vs data map lengths are caught
@@ -292,6 +294,7 @@ def test_aggregate_landuses_signatures(primal_graph):
             data_map.next_nearest_assign,
             distances,
             betas,
+            max_curve_wts,
             landuse_encodings=encoded_labels[:-1],
             mixed_use_other_keys=np.array([0]),
         )
@@ -315,6 +318,7 @@ def test_aggregate_landuses_signatures(primal_graph):
             data_map.next_nearest_assign,
             distances,
             betas,
+            max_curve_wts,
             landuse_encodings=encoded_labels,
         )
     # check that missing qs flags
@@ -337,6 +341,7 @@ def test_aggregate_landuses_signatures(primal_graph):
             data_map.next_nearest_assign,
             distances,
             betas,
+            max_curve_wts,
             mixed_use_hill_keys=np.array([0]),
             landuse_encodings=encoded_labels,
         )
@@ -374,6 +379,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                 data_map.next_nearest_assign,
                 distances,
                 betas,
+                max_curve_wts,
                 encoded_labels,
                 qs=qs,
                 mixed_use_hill_keys=np.array(mu_h_key),
@@ -401,6 +407,7 @@ def test_aggregate_landuses_signatures(primal_graph):
                 data_map.next_nearest_assign,
                 distances,
                 betas,
+                max_curve_wts,
                 landuse_encodings=encoded_labels,
                 qs=qs,
                 mixed_use_hill_keys=np.array(h_key),
@@ -427,40 +434,13 @@ def test_aggregate_landuses_signatures(primal_graph):
                 data_map.next_nearest_assign,
                 distances,
                 betas,
+                max_curve_wts,
                 landuse_encodings=encoded_labels,
                 qs=qs,
                 mixed_use_hill_keys=np.array(h_key),
                 mixed_use_other_keys=np.array(o_key),
                 cl_disparity_wt_matrix=mock_matrix[:-1],
             )
-        # check that problematic beta_wt_clip values are caught
-        for beta_wt_clip in [-1, np.nan, 2]:
-            with pytest.raises(ValueError):
-                data.aggregate_landuses(
-                    network_structure.nodes.xs,
-                    network_structure.nodes.ys,
-                    network_structure.nodes.live,
-                    network_structure.edges.start,
-                    network_structure.edges.end,
-                    network_structure.edges.length,
-                    network_structure.edges.angle_sum,
-                    network_structure.edges.imp_factor,
-                    network_structure.edges.in_bearing,
-                    network_structure.edges.out_bearing,
-                    network_structure.node_edge_map,
-                    data_map.xs,
-                    data_map.ys,
-                    data_map.nearest_assign,
-                    data_map.next_nearest_assign,
-                    distances,
-                    betas,
-                    landuse_encodings=encoded_labels,
-                    qs=qs,
-                    mixed_use_hill_keys=np.array(h_key),
-                    mixed_use_other_keys=np.array(o_key),
-                    cl_disparity_wt_matrix=mock_matrix[:-1],
-                    beta_wt_clip=beta_wt_clip,
-                )
 
 
 def test_aggregate_landuses(primal_graph):
@@ -473,6 +453,7 @@ def test_aggregate_landuses(primal_graph):
     # set parameters
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
+    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
     qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
     mock_matrix: npt.NDArray[np.float32] = np.full((len(lab_enc.classes_), len(lab_enc.classes_)), 1)
     # set the keys - add shuffling to be sure various orders work
@@ -501,6 +482,7 @@ def test_aggregate_landuses(primal_graph):
         data_map.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         landuse_encodings=encoded_labels,
         qs=qs,
         mixed_use_hill_keys=hill_keys,
@@ -706,6 +688,7 @@ def test_aggregate_landuses(primal_graph):
         data_map_dual.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         encoded_labels_dual,
         qs=qs,
         mixed_use_hill_keys=hill_keys,
@@ -733,6 +716,7 @@ def test_aggregate_landuses(primal_graph):
         data_map_dual.next_nearest_assign,
         distances,
         betas,
+        max_curve_wts,
         encoded_labels_dual,
         qs=qs,
         mixed_use_hill_keys=hill_keys,

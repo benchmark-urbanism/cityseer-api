@@ -125,7 +125,7 @@ def compute_landuses(
     accessibility_keys: Optional[Union[list[str], tuple[str]]] = None,
     cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
     qs: Optional[cctypes.QsType] = None,
-    beta_wt_clip: float = 1.0,
+    spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -189,11 +189,11 @@ def compute_landuses(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
-    beta_wt_clip: float
-        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
-        clipping. Specifying `beta_wt_clip` lower than 1 provides a spatial tolerance for datasets where the positional
-        accuracy of datapoints is not exact. For background, see
-        [`distance_from_beta`](/metrics/networks#distance-from-beta).
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -358,6 +358,8 @@ def compute_landuses(
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
         progress_proxy = None
+    # determine max impedance weights
+    max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying method
     # pylint: disable=duplicate-code
     (mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt,) = data.aggregate_landuses(
@@ -378,13 +380,13 @@ def compute_landuses(
         data_map.next_nearest_assign,
         distances=_distances,
         betas=_betas,
+        max_curve_wts=max_curve_wts,
         landuse_encodings=encoded_labels,
         qs=np.array(qs, dtype=np.float32),
         mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.int_),
         mixed_use_other_keys=np.array(mu_other_keys, dtype=np.int_),
         accessibility_keys=np.array(acc_keys, dtype=np.int_),
         cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
-        beta_wt_clip=np.float32(beta_wt_clip),
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
         progress_proxy=progress_proxy,
@@ -430,7 +432,7 @@ def hill_diversity(
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
     qs: cctypes.QsType = None,
-    beta_wt_clip: float = 1.0,
+    spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -470,11 +472,11 @@ def hill_diversity(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
-    beta_wt_clip: float
-        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
-        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
-        accuracy of datapoints is not exact. For background, see
-        [`distance_from_beta`](/metrics/networks#distance-from-beta).
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -526,7 +528,7 @@ def hill_diversity(
         betas=betas,
         mixed_use_keys=["hill"],
         qs=qs,
-        beta_wt_clip=beta_wt_clip,
+        spatial_tolerance=spatial_tolerance,
         jitter_scale=jitter_scale,
         angular=angular,
     )
@@ -541,7 +543,7 @@ def hill_branch_wt_diversity(
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
     qs: cctypes.QsType = None,
-    beta_wt_clip: float = 1.0,
+    spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -581,11 +583,11 @@ def hill_branch_wt_diversity(
     qs: tuple[float]
         The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
         the Hill diversity mixed-use measures and is otherwise ignored.
-    beta_wt_clip: float
-        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
-        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
-        accuracy of datapoints is not exact. For background, see
-        [`distance_from_beta`](/metrics/networks#distance-from-beta).
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -637,7 +639,7 @@ def hill_branch_wt_diversity(
         betas=betas,
         mixed_use_keys=["hill_branch_wt"],
         qs=qs,
-        beta_wt_clip=beta_wt_clip,
+        spatial_tolerance=spatial_tolerance,
         jitter_scale=jitter_scale,
         angular=angular,
     )
@@ -652,7 +654,7 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
-    beta_wt_clip: float = 1.0,
+    spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -693,11 +695,11 @@ def compute_accessibilities(
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
-    beta_wt_clip: float
-        A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no
-        clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional
-        accuracy of datapoints is not exact. For background, see
-        [`distance_from_beta`](/metrics/networks#distance-from-beta).
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -749,7 +751,7 @@ def compute_accessibilities(
         distances=distances,
         betas=betas,
         accessibility_keys=accessibility_keys,
-        beta_wt_clip=beta_wt_clip,
+        spatial_tolerance=spatial_tolerance,
         jitter_scale=jitter_scale,
         angular=angular,
     )

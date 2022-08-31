@@ -135,7 +135,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">accessibility_keys, </div>
           <div class="yap func-sig-param">cl_disparity_wt_matrix, </div>
           <div class="yap func-sig-param">qs, </div>
-          <div class="yap func-sig-param">beta_wt_clip=1.0, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -250,11 +250,11 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta_wt_clip</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no clipping. Specifying `beta_wt_clip` lower than 1 provides a spatial tolerance for datasets where the positional accuracy of datapoints is not exact. For background, see [`distance_from_beta`](/metrics/networks#distance-from-beta).
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -370,7 +370,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
           <div class="yap func-sig-param">qs, </div>
-          <div class="yap func-sig-param">beta_wt_clip=1.0, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -454,11 +454,11 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta_wt_clip</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional accuracy of datapoints is not exact. For background, see [`distance_from_beta`](/metrics/networks#distance-from-beta).
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -550,7 +550,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
           <div class="yap func-sig-param">qs, </div>
-          <div class="yap func-sig-param">beta_wt_clip=1.0, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -634,11 +634,11 @@ The values of `q` for which to compute Hill diversity. This parameter is only re
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta_wt_clip</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional accuracy of datapoints is not exact. For background, see [`distance_from_beta`](/metrics/networks#distance-from-beta).
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -730,7 +730,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">beta_wt_clip=1.0, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -814,11 +814,11 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">beta_wt_clip</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A value between 0 and 1 for clipping weights computed from $\beta$ values. The default of 1 provides no clipping. `beta_wt_clip` values lower than 1 provide a spatial tolerance for datasets where the positional accuracy of datapoints is not exact. For background, see [`distance_from_beta`](/metrics/networks#distance-from-beta).
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
