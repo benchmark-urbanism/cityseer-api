@@ -2028,7 +2028,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
-    crs: str,
+    crs: str | int,
 ) -> tuple[gpd.GeoDataFrame, structures.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
@@ -2041,7 +2041,7 @@ def network_structure_from_nx(
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    crs: str
+    crs: str | int
         CRS for initialising the returned structures. This is used for initialising the GeoPandas
         [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
 
