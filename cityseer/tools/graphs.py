@@ -2028,7 +2028,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
-    crs: str | int,
+    crs: Union[str, int],
 ) -> tuple[gpd.GeoDataFrame, structures.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.

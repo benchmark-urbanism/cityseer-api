@@ -406,7 +406,143 @@ def aggregate_to_src_idx(
 
 
 @njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
-def aggregate_landuses(
+def accessibility(
+    nodes_x_arr: npt.NDArray[np.float32],
+    nodes_y_arr: npt.NDArray[np.float32],
+    nodes_live_arr: npt.NDArray[np.bool_],
+    edges_start_arr: npt.NDArray[np.int_],
+    edges_end_arr: npt.NDArray[np.int_],
+    edges_length_arr: npt.NDArray[np.float32],
+    edges_angle_sum_arr: npt.NDArray[np.float32],
+    edges_imp_factor_arr: npt.NDArray[np.float32],
+    edges_in_bearing_arr: npt.NDArray[np.float32],
+    edges_out_bearing_arr: npt.NDArray[np.float32],
+    node_edge_map: dict[int, list[int]],
+    data_map_x_arr: npt.NDArray[np.float32],
+    data_map_y_arr: npt.NDArray[np.float32],
+    data_map_nearest_arr: npt.NDArray[np.int_],
+    data_map_next_nearest_arr: npt.NDArray[np.int_],
+    data_key_arr: npt.NDArray[np.int_],
+    distances: npt.NDArray[np.int_],
+    betas: npt.NDArray[np.float32],
+    max_curve_wts: npt.NDArray[np.float32],
+    landuse_encodings: npt.NDArray[np.int_],
+    accessibility_keys: npt.NDArray[np.int_],
+    jitter_scale: np.float32 = np.float32(0.0),
+    angular: bool = False,
+    progress_proxy: Optional[Any] = None,
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.float32]]:
+    """
+    Aggregate landuses.
+    """
+    common.check_distances_and_betas(distances, betas)
+    # check landuse encodings
+    if len(landuse_encodings) == 0:
+        raise ValueError("Mixed use metrics require an array of landuse labels.")
+    if len(landuse_encodings) != data_map_x_arr.shape[0]:
+        raise ValueError("The number of landuse encodings does not match the number of data points.")
+    if len(accessibility_keys) == 0:
+        raise ValueError("Please specify at least one landuse key.")
+    common.check_categorical_data(landuse_encodings)
+    max_ac_key: int = np.nanmax(landuse_encodings)
+    if np.nanmin(accessibility_keys) < 0 or np.max(accessibility_keys) > max_ac_key:
+        raise ValueError("Negative or out of range accessibility key encountered. Keys must match class encodings.")
+    for i_idx, i_key in enumerate(accessibility_keys):
+        for j_idx, j_key in enumerate(accessibility_keys):
+            if j_idx > i_idx:
+                if i_key == j_key:
+                    raise ValueError("Duplicate accessibility key.")
+    # check that beta_wt_clip is between 0 and 1 if provided
+    if np.any(max_curve_wts < 0) or np.any(max_curve_wts > 1) or max_curve_wts.shape != distances.shape:
+        raise ValueError(
+            "max_curve_wts should be between 0 and 1 and should be of the same length as the distances / betas params."
+        )
+    # establish variables
+    netw_n = len(node_edge_map)
+    d_n = len(distances)
+    global_max_dist: np.float32 = np.float32(np.nanmax(distances))
+    # setup data structures
+    accessibility_data: npt.NDArray[np.int_] = np.full((len(accessibility_keys), d_n, netw_n), 0, dtype=np.int_)  # int
+    accessibility_data_wt: npt.NDArray[np.float32] = np.full(
+        (len(accessibility_keys), d_n, netw_n), 0.0, dtype=np.float32
+    )
+    # iterate through each vert and aggregate
+    # parallelise over n nodes:
+    # each distance or stat array index is therefore only touched by one thread at a time
+    # i.e. no need to use inner array deductions as with centralities
+    for netw_src_idx in prange(netw_n):  # pylint: disable=not-an-iterable
+        if progress_proxy is not None:
+            progress_proxy.update(1)
+        # only compute for live nodes
+        if not nodes_live_arr[netw_src_idx]:
+            continue
+        # generate the reachable classes and their respective distances
+        # these are non-unique - i.e. simply the class of each data point within the maximum distance
+        # the aggregate_to_src_idx method will choose the closer direction of approach to a data point
+        # from the nearest or next-nearest network node (calculated once globally, prior to local_landuses method)
+        reachable_data, reachable_data_dist = aggregate_to_src_idx(
+            netw_src_idx,
+            nodes_x_arr,
+            nodes_y_arr,
+            edges_start_arr,
+            edges_end_arr,
+            edges_length_arr,
+            edges_angle_sum_arr,
+            edges_imp_factor_arr,
+            edges_in_bearing_arr,
+            edges_out_bearing_arr,
+            node_edge_map,
+            data_map_x_arr,
+            data_map_y_arr,
+            data_map_nearest_arr,
+            data_map_next_nearest_arr,
+            global_max_dist,
+            jitter_scale=jitter_scale,
+            angular=angular,
+        )
+        # LANDUSES
+        # iterate the reachable indices and related distances
+        # sort by increasing distance re: deduplication via data keys
+        dist_inc_idx: npt.NDArray[np.int_] = np.argsort(reachable_data_dist)
+        data_key_dupes: set[int] = set()
+        for data_idx in dist_inc_idx:
+            reachable = reachable_data[data_idx]
+            data_dist = reachable_data_dist[data_idx]
+            # some indices will be NaN if beyond max threshold distance - so check for infinity
+            # this happens when within radial max distance, but beyond network max distance
+            if not reachable:
+                continue
+            # check for duplicate instances
+            data_key = data_key_arr[data_idx]
+            if data_key != -1:
+                if data_key in data_key_dupes:
+                    continue
+            data_key_claimed = False
+            # get the class category in integer form
+            # all class codes were encoded to sequential integers - these correspond to the array indices
+            cl_code = int(landuse_encodings[int(data_idx)])
+            # iterate the distance dimensions
+            for d_idx, (dist, beta, max_wt) in enumerate(zip(distances, betas, max_curve_wts)):
+                # increment class counts at respective distances if the distance is less than current dist
+                if data_dist <= dist:
+                    # if within distance, and if in accessibility keys, then aggregate accessibility too
+                    for ac_idx, ac_code in enumerate(accessibility_keys):
+                        if ac_code == cl_code:
+                            data_key_claimed = True
+                            accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
+                            accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += common.clipped_beta_wt(
+                                beta, max_wt, data_dist
+                            )
+                            # if a match was found, then no need to check others
+                            break
+            if data_key_claimed:
+                data_key_dupes.add(data_key)
+
+    return accessibility_data, accessibility_data_wt
+
+
+@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+def mixed_uses(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
     nodes_live_arr: npt.NDArray[np.bool_],
@@ -429,14 +565,13 @@ def aggregate_landuses(
     qs: npt.NDArray[np.float32] = np.array([], dtype=np.float32),
     mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     mixed_use_other_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
-    accessibility_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
         np.full((0, 0), np.nan), dtype=np.float32
     ),  # pylint: disable=line-too-long
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Optional[Any] = None,
-) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.int_], npt.NDArray[np.float32]]:
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """
     Aggregate landuses.
     """
@@ -448,8 +583,8 @@ def aggregate_landuses(
         raise ValueError("The number of landuse encodings does not match the number of data points.")
     common.check_categorical_data(landuse_encodings)
     # catch completely missing metrics
-    if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0 and len(accessibility_keys) == 0:
-        raise ValueError("No metrics specified, please specify at least one metric to compute.")
+    if len(mixed_use_hill_keys) == 0 and len(mixed_use_other_keys) == 0:
+        raise ValueError("Please specify at least one mixed use metric to compute.")
     # catch missing qs
     if len(mixed_use_hill_keys) != 0 and len(qs) == 0:
         raise ValueError("Hill diversity measures require that at least one value of q is specified.")
@@ -461,10 +596,6 @@ def aggregate_landuses(
     if len(mixed_use_other_keys) != 0:
         if np.nanmin(mixed_use_other_keys) < 0 or np.max(mixed_use_other_keys) > 2:
             raise ValueError('Mixed-use "other" keys out of range of 0:3.')
-    if len(accessibility_keys) != 0:
-        max_ac_key: int = np.nanmax(landuse_encodings)
-        if np.nanmin(accessibility_keys) < 0 or np.max(accessibility_keys) > max_ac_key:
-            raise ValueError("Negative or out of range accessibility key encountered. Keys must match class encodings.")
     for i_idx, i_key in enumerate(mixed_use_hill_keys):
         for j_idx, j_key in enumerate(mixed_use_hill_keys):
             if j_idx > i_idx:
@@ -475,11 +606,6 @@ def aggregate_landuses(
             if j_idx > i_idx:
                 if i_key == j_key:
                     raise ValueError('Duplicate mixed-use "other" key.')
-    for i_idx, i_key in enumerate(accessibility_keys):
-        for j_idx, j_key in enumerate(accessibility_keys):
-            if j_idx > i_idx:
-                if i_key == j_key:
-                    raise ValueError("Duplicate accessibility key.")
 
     def disp_check(disp_matrix):  # type: ignore # numba can't handle nested function with type annotation
         # the length of the disparity matrix vis-a-vis unique landuses is tested in underlying diversity functions
@@ -509,10 +635,6 @@ def aggregate_landuses(
     # hill mixed uses are structured separately to take values of q into account
     mixed_use_hill_data: npt.NDArray[np.float32] = np.full((4, q_n, d_n, netw_n), 0.0, dtype=np.float32)  # 4 dim
     mixed_use_other_data: npt.NDArray[np.float32] = np.full((3, d_n, netw_n), 0.0, dtype=np.float32)  # 3 dim
-    accessibility_data: npt.NDArray[np.int_] = np.full((len(accessibility_keys), d_n, netw_n), 0, dtype=np.int_)  # int
-    accessibility_data_wt: npt.NDArray[np.float32] = np.full(
-        (len(accessibility_keys), d_n, netw_n), 0.0, dtype=np.float32
-    )
     # iterate through each vert and aggregate
     # parallelise over n nodes:
     # each distance or stat array index is therefore only touched by one thread at a time
@@ -568,15 +690,6 @@ def aggregate_landuses(
                     # if distance is nearer, update the nearest distance array too
                     if data_dist < classes_nearest[d_idx, cl_code]:
                         classes_nearest[d_idx, cl_code] = data_dist
-                    # if within distance, and if in accessibility keys, then aggregate accessibility too
-                    for ac_idx, ac_code in enumerate(accessibility_keys):
-                        if ac_code == cl_code:
-                            accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
-                            accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += common.clipped_beta_wt(
-                                beta, max_wt, data_dist
-                            )
-                            # if a match was found, then no need to check others
-                            break
         # mixed uses can be calculated now that the local class counts are aggregated
         # iterate the distances and betas
         for d_idx, (beta, max_wt) in enumerate(zip(betas, max_curve_wts)):
@@ -623,12 +736,7 @@ def aggregate_landuses(
     for idx, mu_oth_key in enumerate(mixed_use_other_keys):
         mu_other_k_int[idx] = mu_oth_key
 
-    return (
-        mixed_use_hill_data[mu_hill_k_int],
-        mixed_use_other_data[mu_other_k_int],
-        accessibility_data,
-        accessibility_data_wt,
-    )
+    return mixed_use_hill_data[mu_hill_k_int], mixed_use_other_data[mu_other_k_int]
 
 
 @njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
@@ -648,6 +756,7 @@ def aggregate_stats(
     data_map_y_arr: npt.NDArray[np.float32],
     data_map_nearest_arr: npt.NDArray[np.int_],
     data_map_next_nearest_arr: npt.NDArray[np.int_],
+    data_key_arr: npt.NDArray[np.int_],
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],
     numerical_arrays: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan, dtype=np.float32)),
@@ -743,11 +852,22 @@ def aggregate_stats(
         # IDW
         # the order of the loops matters because the nested aggregations happen per distance per numerical array
         # iterate the reachable indices and related distances
-        for data_idx, (reachable, data_dist) in enumerate(zip(reachable_data, reachable_data_dist)):
+        # sort by increasing distance re: deduplication via data keys
+        dist_inc_idx: npt.NDArray[np.int_] = np.argsort(reachable_data_dist)
+        data_key_dupes: set[int] = set()
+        for data_idx in dist_inc_idx:
+            reachable = reachable_data[data_idx]
+            data_dist = reachable_data_dist[data_idx]
             # some indices will be NaN if beyond max threshold distance - so check for infinity
             # this happens when within radial max distance, but beyond network max distance
             if not reachable:
                 continue
+            # check for duplicate instances
+            data_key = data_key_arr[data_idx]
+            if data_key != -1:
+                if data_key in data_key_dupes:
+                    continue
+            data_key_claimed = False
             # iterate the numerical arrays dimension
             for num_idx in range(n_n):
                 # some values will be NaN
@@ -758,6 +878,7 @@ def aggregate_stats(
                 for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
                     # increment mean aggregations at respective distances if the distance is less than current dist
                     if data_dist <= dist:
+                        data_key_claimed = True
                         # aggregate
                         stats_sum[num_idx, d_idx, netw_src_idx] += num
                         stats_count[num_idx, d_idx, netw_src_idx] += 1
@@ -773,6 +894,8 @@ def aggregate_stats(
                             stats_min[num_idx, d_idx, netw_src_idx] = num
                         elif num < stats_min[num_idx, d_idx, netw_src_idx]:
                             stats_min[num_idx, d_idx, netw_src_idx] = num
+            if data_key_claimed:
+                data_key_dupes.add(data_key)
         # finalise mean calculations - this is happening for a single netw_src_idx, so fairly fast
         for num_idx in range(n_n):
             for d_idx in range(d_n):
@@ -788,11 +911,22 @@ def aggregate_stats(
         # calculate variances - counts are already computed per above
         # weighted version is IDW by division through equivalently weighted counts above
         # iterate the reachable indices and related distances
-        for data_idx, (reachable, data_dist) in enumerate(zip(reachable_data, reachable_data_dist)):
+        # sort by increasing distance re: deduplication via data keys
+        dist_inc_idx: npt.NDArray[np.int_] = np.argsort(reachable_data_dist)
+        data_key_dupes: set[int] = set()
+        for data_idx in dist_inc_idx:
+            reachable = reachable_data[data_idx]
+            data_dist = reachable_data_dist[data_idx]
             # some indices will be NaN if beyond max threshold distance - so check for infinity
             # this happens when within radial max distance, but beyond network max distance
             if not reachable:
                 continue
+            # check for duplicate instances
+            data_key = data_key_arr[data_idx]
+            if data_key != -1:
+                if data_key in data_key_dupes:
+                    continue
+            data_key_claimed = False
             # iterate the numerical arrays dimension
             for num_idx in range(n_n):
                 # some values will be NaN
@@ -803,6 +937,7 @@ def aggregate_stats(
                 for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
                     # increment variance aggregations at respective distances if the distance is less than current dist
                     if data_dist <= dist:
+                        data_key_claimed = True
                         # aggregate
                         if np.isnan(stats_variance[num_idx, d_idx, netw_src_idx]):
                             stats_variance[num_idx, d_idx, netw_src_idx] = np.square(
@@ -818,6 +953,8 @@ def aggregate_stats(
                             stats_variance_wt[num_idx, d_idx, netw_src_idx] += np.square(
                                 num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
                             ) * np.exp(-beta * data_dist)
+            if data_key_claimed:
+                data_key_dupes.add(data_key)
         # finalise variance calculations
         for num_idx in range(n_n):
             for d_idx in range(d_n):
