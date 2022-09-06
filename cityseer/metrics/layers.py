@@ -21,6 +21,7 @@ def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: Union[int, float],
+    data_key_col: Optional[str] = None,
 ) -> tuple[structures.DataMap, gpd.GeoDataFrame]:
     """
     Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
@@ -41,6 +42,11 @@ def assign_gdf_to_network(
         A [`structures.NetworkStructure`](/structures#networkstructure).
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+    data_key_col: str
+        An optional column name for data point keys. This is used for deduplicating points representing a shared source
+        of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
+        nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
+        `data_key`.
 
     Returns
     -------
@@ -79,6 +85,9 @@ def assign_gdf_to_network(
     data_map = structures.DataMap(len(data_gdf))
     data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
     data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
+    if data_key_col is not None:
+        lab_enc = LabelEncoder()
+        data_map.data_key = lab_enc.fit_transform(data_gdf[data_key_col])  # type: ignore
     data_map.validate(False)
     if "nearest_assign" not in data_gdf:
         if not config.QUIET_MODE:
@@ -113,16 +122,203 @@ def assign_gdf_to_network(
     return data_map, data_gdf
 
 
-def compute_landuses(
+def compute_landuses():
+    """
+    Please use the compute_accessibilities or compute_mixed_uses functions instead.
+    """
+    raise DeprecationWarning(
+        "The compute_landuses method has been deprecated. Please use the compute_accessibilities or compute_mixed_uses "
+        "functions instead."
+    )
+
+
+def compute_accessibilities(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
+    accessibility_keys: Union[list[str], tuple[str]],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
-    mixed_use_keys: Optional[Union[list[str], tuple[str]]] = None,
-    accessibility_keys: Optional[Union[list[str], tuple[str]]] = None,
+    data_key_col: Optional[str] = None,
+    spatial_tolerance: int = 0,
+    jitter_scale: float = 0.0,
+    angular: bool = False,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    r"""
+    Compute land-use accessibilities for the specified land-use classification keys.
+
+    See [`compute_landuses`](#compute-landuses) for additional information.
+
+    Parameters
+    ----------
+    data_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing data points. The coordinates of data points should correspond as precisely as possible to the
+        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
+        building entrance.
+    landuse_column_label: str
+        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
+        contain "shop", "pub", "school", etc., landuse categories.
+    accessibility_keys: tuple[str]
+        Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
+        schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
+        `weighted` and `non_weighted` variants.
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+    network_structure
+        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+    distances: list[int] | tuple[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead.
+    betas: float | ndarray[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distance` parameter must be provided instead.
+    data_key_col: str
+        An optional column name for data point keys. This is used for deduplicating points representing a shared source
+        of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
+        nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
+        `data_key`.
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations, useful for situations with highly
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+    data_gdf: GeoDataFrame
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+
+    Examples
+    --------
+    ```python
+    from cityseer.metrics import networks, layers
+    from cityseer.tools import mock, graphs
+
+    # prepare a mock graph
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    print(nodes_gdf.head())
+    landuses_gdf = mock.mock_landuse_categorical_data(G)
+    print(landuses_gdf.head())
+    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+        data_gdf=landuses_gdf,
+        landuse_column_label="categorical_landuses",
+        accessibility_keys=["a", "c"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[200, 400, 800],
+    )
+    print(nodes_gdf.columns)
+    print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
+    print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
+    ```
+
+    """
+    network_structure.validate()
+    _distances, _betas = networks.pair_distances_betas(distances, betas)
+    data_map, data_gdf = assign_gdf_to_network(
+        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_key_col=data_key_col
+    )
+    # remember, most checks on parameter integrity occur in underlying method
+    # so, don't duplicate here
+    if landuse_column_label not in data_gdf.columns:
+        raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
+    # get the landuse encodings
+    lab_enc = LabelEncoder()
+    encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf[landuse_column_label])  # type: ignore
+    data_gdf[f"{landuse_column_label}_encoded"] = encoded_labels  # type: ignore
+    # figure out the corresponding indices for the landuse classes that are present in the dataset
+    # these indices are passed as keys which will be matched against the integer landuse encodings
+    acc_keys: list[int] = []
+    if accessibility_keys is not None:
+        for ac_label in accessibility_keys:
+            if ac_label not in lab_enc.classes_:
+                logger.warning(f"No instances of accessibility label: {ac_label} present in the data.")
+            else:
+                acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
+        if not config.QUIET_MODE:
+            logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+    if not config.QUIET_MODE:
+        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
+    else:
+        progress_proxy = None
+    # determine max impedance weights
+    max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
+    # call the underlying method
+    # pylint: disable=duplicate-code
+    accessibility_data, accessibility_data_wt = data.accessibility(
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
+        data_map.data_key,
+        distances=_distances,
+        betas=_betas,
+        max_curve_wts=max_curve_wts,
+        landuse_encodings=encoded_labels,
+        accessibility_keys=np.array(acc_keys, dtype=np.int_),
+        jitter_scale=np.float32(jitter_scale),
+        angular=angular,
+        progress_proxy=progress_proxy,
+    )
+    if progress_proxy is not None:
+        progress_proxy.close()
+    # unpack accessibility data
+    for ac_idx, ac_code in enumerate(acc_keys):
+        ac_label: str = lab_enc.inverse_transform(ac_code)[0]  # type: ignore
+        # non-weighted
+        for d_idx, d_key in enumerate(_distances):
+            ac_nw_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_non_weighted")
+            nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]
+        # weighted
+        for d_idx, d_key in enumerate(_distances):
+            ac_wt_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_weighted")
+            nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]
+
+    return nodes_gdf, data_gdf
+
+
+def compute_mixed_uses(
+    data_gdf: gpd.GeoDataFrame,
+    landuse_column_label: str,
+    mixed_use_keys: Union[list[str], tuple[str]],
+    nodes_gdf: gpd.GeoDataFrame,
+    network_structure: structures.NetworkStructure,
+    max_netw_assign_dist: int = 400,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
     cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
     qs: Optional[cctypes.QsType] = None,
     spatial_tolerance: int = 0,
@@ -178,10 +374,6 @@ def compute_landuses(
     mixed_use_keys: tuple[str]
         Mixed-use metrics to compute, containing any combination of the `key` values from the following table.
         See examples below for additional information.
-    accessibility_keys: tuple[str]
-        Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
-        schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants.
     cl_disparity_wt_matrix: ndarray[float]
         An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair
         of distinct land-uses. This parameter is only required if computing mixed-uses using
@@ -268,7 +460,7 @@ def compute_landuses(
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
     # compute some metrics - here we'll use the full interface, see below for simplified interfaces
-    nodes_gdf, landuses_gdf = layers.compute_landuses(
+    nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         nodes_gdf=nodes_gdf,
@@ -276,11 +468,9 @@ def compute_landuses(
         distances=[200, 400, 800],
         mixed_use_keys=["hill"],
         qs=[0, 1],
-        accessibility_keys=["c", "d", "e"],
     )
     print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
     print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
-    print(nodes_gdf["cc_metric_d_800_non_weighted"])  # weighted landuse accessibility for landuse "d" at 800m
     ```
     :::warning
     Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
@@ -343,17 +533,6 @@ def compute_landuses(
                 mu_other_keys.append(idx - 4)
         if not config.QUIET_MODE:
             logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
-    # figure out the corresponding indices for the landuse classes that are present in the dataset
-    # these indices are passed as keys which will be matched against the integer landuse encodings
-    acc_keys: list[int] = []
-    if accessibility_keys is not None:
-        for ac_label in accessibility_keys:
-            if ac_label not in lab_enc.classes_:
-                logger.warning(f"No instances of accessibility label: {ac_label} present in the data.")
-            else:
-                acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
-        if not config.QUIET_MODE:
-            logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
     if not config.QUIET_MODE:
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
@@ -362,7 +541,7 @@ def compute_landuses(
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying method
     # pylint: disable=duplicate-code
-    (mixed_use_hill_data, mixed_use_other_data, accessibility_data, accessibility_data_wt,) = data.aggregate_landuses(
+    mixed_use_hill_data, mixed_use_other_data = data.mixed_uses(
         network_structure.nodes.xs,
         network_structure.nodes.ys,
         network_structure.nodes.live,
@@ -385,7 +564,6 @@ def compute_landuses(
         qs=np.array(qs, dtype=np.float32),
         mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.int_),
         mixed_use_other_keys=np.array(mu_other_keys, dtype=np.int_),
-        accessibility_keys=np.array(acc_keys, dtype=np.int_),
         cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
@@ -408,17 +586,6 @@ def compute_landuses(
         for d_idx, d_key in enumerate(_distances):
             mu_o_data_key = config.prep_gdf_key(f"{mu_o_label}_{d_key}")
             nodes_gdf[mu_o_data_key] = mixed_use_other_data[mu_o_idx][d_idx]
-    # unpack accessibility data
-    for ac_idx, ac_code in enumerate(acc_keys):
-        ac_label: str = lab_enc.inverse_transform(ac_code)[0]  # type: ignore
-        # non-weighted
-        for d_idx, d_key in enumerate(_distances):
-            ac_nw_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_non_weighted")
-            nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]
-        # weighted
-        for d_idx, d_key in enumerate(_distances):
-            ac_wt_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_weighted")
-            nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]
 
     return nodes_gdf, data_gdf
 
@@ -518,15 +685,15 @@ def hill_diversity(
     ```
 
     """
-    return compute_landuses(
+    return compute_mixed_uses(
         data_gdf,
         landuse_column_label,
+        ["hill"],
         nodes_gdf,
         network_structure,
         max_netw_assign_dist=max_netw_assign_dist,
         distances=distances,
         betas=betas,
-        mixed_use_keys=["hill"],
         qs=qs,
         spatial_tolerance=spatial_tolerance,
         jitter_scale=jitter_scale,
@@ -629,128 +796,16 @@ def hill_branch_wt_diversity(
     ```
 
     """
-    return compute_landuses(
+    return compute_mixed_uses(
         data_gdf,
         landuse_column_label,
+        ["hill_branch_wt"],
         nodes_gdf,
         network_structure,
         max_netw_assign_dist=max_netw_assign_dist,
         distances=distances,
         betas=betas,
-        mixed_use_keys=["hill_branch_wt"],
         qs=qs,
-        spatial_tolerance=spatial_tolerance,
-        jitter_scale=jitter_scale,
-        angular=angular,
-    )
-
-
-def compute_accessibilities(
-    data_gdf: gpd.GeoDataFrame,
-    landuse_column_label: str,
-    accessibility_keys: Union[list[str], tuple[str]],
-    nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
-    max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    spatial_tolerance: int = 0,
-    jitter_scale: float = 0.0,
-    angular: bool = False,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    r"""
-    Compute land-use accessibilities for the specified land-use classification keys.
-
-    See [`compute_landuses`](#compute-landuses) for additional information.
-
-    Parameters
-    ----------
-    data_gdf: GeoDataFrame
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing data points. The coordinates of data points should correspond as precisely as possible to the
-        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
-        building entrance.
-    landuse_column_label: str
-        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
-        contain "shop", "pub", "school", etc., landuse categories.
-    accessibility_keys: tuple[str]
-        Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
-        schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
-        `weighted` and `non_weighted` variants.
-    nodes_gdf
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
-    network_structure
-        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
-    max_netw_assign_dist: int
-        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-    angular: bool
-        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances.
-
-    Returns
-    -------
-    nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
-
-    # prepare a mock graph
-    G = mock.mock_graph()
-    G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-    print(nodes_gdf.head())
-    landuses_gdf = mock.mock_landuse_categorical_data(G)
-    print(landuses_gdf.head())
-    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
-        data_gdf=landuses_gdf,
-        landuse_column_label="categorical_landuses",
-        accessibility_keys=["a", "c"],
-        nodes_gdf=nodes_gdf,
-        network_structure=network_structure,
-        distances=[200, 400, 800],
-    )
-    print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
-    print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
-    ```
-
-    """
-    return compute_landuses(
-        data_gdf,
-        landuse_column_label,
-        nodes_gdf,
-        network_structure,
-        max_netw_assign_dist=max_netw_assign_dist,
-        distances=distances,
-        betas=betas,
-        accessibility_keys=accessibility_keys,
         spatial_tolerance=spatial_tolerance,
         jitter_scale=jitter_scale,
         angular=angular,
@@ -765,6 +820,7 @@ def compute_stats(
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
+    data_key_col: Optional[str] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -803,6 +859,11 @@ def compute_stats(
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
+    data_key_col: str
+        An optional column name for data point keys. This is used for deduplicating points representing a shared source
+        of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
+        nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
+        `data_key`.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -858,7 +919,9 @@ def compute_stats(
     """
     network_structure.validate()
     _distances, _betas = networks.pair_distances_betas(distances, betas)
-    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist)
+    data_map, data_gdf = assign_gdf_to_network(
+        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_key_col=data_key_col
+    )
     data_map.validate(True)
     # check keys
     if not isinstance(stats_column_labels, (str, list, tuple, np.ndarray)):
@@ -902,6 +965,7 @@ def compute_stats(
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
+        data_map.data_key,
         distances=_distances,
         betas=_betas,
         numerical_arrays=stats_data_arrs,

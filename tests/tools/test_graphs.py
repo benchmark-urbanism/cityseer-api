@@ -1101,25 +1101,15 @@ def test_nx_from_network_structure(primal_graph):
         measures=["node_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
-    nodes_gdf, data_gdf = layers.compute_landuses(
+    nodes_gdf, data_gdf = layers.compute_accessibilities(
         data_gdf,
         landuse_column_label="categorical_landuses",
+        accessibility_keys=["a", "c"],
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[500, 1000],
-        mixed_use_keys=["hill", "shannon"],
-        accessibility_keys=["a", "c"],
-        qs=[0, 1],
     )
     column_labels: list[str] = [
-        "cc_metric_node_harmonic_500",
-        "cc_metric_node_harmonic_1000",
-        "cc_metric_hill_q0_500",
-        "cc_metric_hill_q0_1000",
-        "cc_metric_hill_q1_500",
-        "cc_metric_hill_q1_1000",
-        "cc_metric_shannon_500",
-        "cc_metric_shannon_1000",
         "cc_metric_a_500_non_weighted",
         "cc_metric_a_1000_non_weighted",
         "cc_metric_a_500_weighted",

@@ -74,9 +74,9 @@ def test_mock_numerical_data(primal_graph):
     for length in [50, 100]:
         for num_arrs in range(1, 3):
             numerical_gdf = mock.mock_numerical_data(primal_graph, length=length, num_arrs=num_arrs)
-            assert len(numerical_gdf.columns) == num_arrs + 1
+            assert len(numerical_gdf.columns) == num_arrs + 2
             for col_label in numerical_gdf.columns:
-                if col_label in ["data_key", "geometry"]:
+                if col_label in ["uid", "geometry"]:
                     continue
                 assert np.all(numerical_gdf[col_label] >= 0)
                 assert np.all(numerical_gdf[col_label] <= 100000)
