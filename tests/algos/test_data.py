@@ -243,7 +243,7 @@ def test_accessibility(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_key_col="data_key")
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_id_col="data_id")
     lab_enc = LabelEncoder()
     encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
     # set parameters
@@ -274,7 +274,7 @@ def test_accessibility(primal_graph):
                 data_map.ys,
                 data_map.nearest_assign,
                 data_map.next_nearest_assign,
-                data_map.data_key,
+                data_map.data_id,
                 distances,
                 betas,
                 max_curve_wts,
@@ -298,7 +298,7 @@ def test_accessibility(primal_graph):
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        data_map.data_id,
         distances,
         betas,
         max_curve_wts,
@@ -416,7 +416,7 @@ def test_accessibility(primal_graph):
         data_map_dual.ys,
         data_map_dual.nearest_assign,
         data_map_dual.next_nearest_assign,
-        data_map_dual.data_key,
+        data_map_dual.data_id,
         distances,
         betas,
         max_curve_wts,
@@ -441,7 +441,7 @@ def test_accessibility(primal_graph):
         data_map_dual.ys,
         data_map_dual.nearest_assign,
         data_map_dual.next_nearest_assign,
-        data_map_dual.data_key,
+        data_map_dual.data_id,
         distances,
         betas,
         max_curve_wts,
@@ -923,7 +923,7 @@ def test_aggregate_stats(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_key_col="data_key")
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_id_col="data_id")
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_gdf)
@@ -959,7 +959,7 @@ def test_aggregate_stats(primal_graph):
         data_map.nearest_assign,
         data_map.next_nearest_assign,
         # replace datakey with -1 array - i.e. no unique datapoint keys
-        np.full(data_map.data_key.shape[0], -1, dtype=np.int_),
+        np.full(data_map.data_id.shape[0], -1, dtype=np.int_),
         distances,
         betas,
         numerical_arrays=mock_num_arr,
@@ -1106,7 +1106,7 @@ def test_aggregate_stats(primal_graph):
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        data_map.data_id,
         distances,
         betas,
         numerical_arrays=mock_num_arr,

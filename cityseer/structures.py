@@ -345,7 +345,7 @@ data_map_spec: list[tuple[str, Any]] = [
     ("ys", types.float32[:]),
     ("nearest_assign", types.int_[:]),
     ("next_nearest_assign", types.int_[:]),
-    ("data_key", types.int_[:]),
+    ("data_id", types.int_[:]),
 ]
 
 
@@ -365,7 +365,7 @@ class DataMap:
     """Nearest assigned network node index."""
     next_nearest_assign: npt.NDArray[np.int_]
     """Next-nearest assigned network node index."""
-    data_key: npt.NDArray[np.int_]
+    data_id: npt.NDArray[np.int_]
     """Optional data key for deduplicating aggregations"""
 
     # Alternative to length dunder - which is not yet supported by jitclass.
@@ -390,9 +390,9 @@ class DataMap:
         self.ys = np.full(data_n, np.nan, dtype=np.float32)
         self.nearest_assign = np.full(data_n, -1, dtype=np.int_)
         self.next_nearest_assign = np.full(data_n, -1, dtype=np.int_)
-        self.data_key = np.full(data_n, -1, dtype=np.int_)
+        self.data_id = np.full(data_n, -1, dtype=np.int_)
 
-    def set_data_point(self, data_idx: int, data_x: np.float32, data_y: np.float32, data_key: Optional[np.int_] = None):
+    def set_data_point(self, data_idx: int, data_x: np.float32, data_y: np.float32, data_id: Optional[np.int_] = None):
         """
         Add a data point.
 
@@ -404,7 +404,7 @@ class DataMap:
             The x coordinate for the added node.
         data_y: np.float32
             The y coordinate for the added node.
-        data_key: np.int_ | None
+        data_id: np.int_ | None
             An optional key for each datapoint. Used for deduplication.
 
         """
@@ -412,12 +412,12 @@ class DataMap:
             raise ValueError(f'Expecting float or int for "data_x" but encountered {type(data_x)}')
         if not isinstance(data_y, (float, int)):
             raise ValueError(f'Expecting float or int for "data_y" but encountered {type(data_y)}')
-        if not isinstance(data_key, (int)):
-            raise ValueError(f'Expecting int for "data_key" but encountered {type(data_key)}')
+        if not isinstance(data_id, (int)):
+            raise ValueError(f'Expecting int for "data_id" but encountered {type(data_id)}')
         self.xs[data_idx] = data_x
         self.ys[data_idx] = data_y
-        if data_key is not None:
-            self.data_key[data_idx] = data_key
+        if data_id is not None:
+            self.data_id[data_idx] = data_id
 
     def x_y(self, data_idx: int) -> npt.NDArray[np.float32]:
         """
@@ -469,5 +469,5 @@ class DataMap:
                     "for the given max_dist parameter passed to assign_to_network."
                 )
         # either all or no data keys should be set
-        if not (np.all(self.data_key == -1) or np.all(self.data_key != -1)):
+        if not (np.all(self.data_id == -1) or np.all(self.data_id != -1)):
             raise ValueError("Either all or none of the data keys should be set.")
