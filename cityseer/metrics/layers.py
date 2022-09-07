@@ -21,7 +21,7 @@ def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: Union[int, float],
-    data_key_col: Optional[str] = None,
+    data_id_col: Optional[str] = None,
 ) -> tuple[structures.DataMap, gpd.GeoDataFrame]:
     """
     Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
@@ -42,11 +42,11 @@ def assign_gdf_to_network(
         A [`structures.NetworkStructure`](/structures#networkstructure).
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    data_key_col: str
+    data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
-        `data_key`.
+        datapoint identifier.
 
     Returns
     -------
@@ -85,9 +85,9 @@ def assign_gdf_to_network(
     data_map = structures.DataMap(len(data_gdf))
     data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
     data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
-    if data_key_col is not None:
+    if data_id_col is not None:
         lab_enc = LabelEncoder()
-        data_map.data_key = lab_enc.fit_transform(data_gdf[data_key_col])  # type: ignore
+        data_map.data_id = lab_enc.fit_transform(data_gdf[data_id_col])  # type: ignore
     data_map.validate(False)
     if "nearest_assign" not in data_gdf:
         if not config.QUIET_MODE:
@@ -141,7 +141,7 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
-    data_key_col: Optional[str] = None,
+    data_id_col: Optional[str] = None,
     spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
@@ -183,11 +183,11 @@ def compute_accessibilities(
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
-    data_key_col: str
+    data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
-        `data_key`.
+        datapoint identifier.
     spatial_tolerance: int
         Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
@@ -238,7 +238,7 @@ def compute_accessibilities(
     network_structure.validate()
     _distances, _betas = networks.pair_distances_betas(distances, betas)
     data_map, data_gdf = assign_gdf_to_network(
-        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_key_col=data_key_col
+        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_id_col=data_id_col
     )
     # remember, most checks on parameter integrity occur in underlying method
     # so, don't duplicate here
@@ -283,7 +283,7 @@ def compute_accessibilities(
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        data_map.data_id,
         distances=_distances,
         betas=_betas,
         max_curve_wts=max_curve_wts,
@@ -820,7 +820,7 @@ def compute_stats(
     max_netw_assign_dist: int = 400,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
-    data_key_col: Optional[str] = None,
+    data_id_col: Optional[str] = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -859,11 +859,11 @@ def compute_stats(
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
-    data_key_col: str
+    data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
-        `data_key`.
+        datapoint identifier.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
@@ -920,7 +920,7 @@ def compute_stats(
     network_structure.validate()
     _distances, _betas = networks.pair_distances_betas(distances, betas)
     data_map, data_gdf = assign_gdf_to_network(
-        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_key_col=data_key_col
+        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_id_col=data_id_col
     )
     data_map.validate(True)
     # check keys
@@ -965,7 +965,7 @@ def compute_stats(
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        data_map.data_id,
         distances=_distances,
         betas=_betas,
         numerical_arrays=stats_data_arrs,

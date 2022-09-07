@@ -17,7 +17,7 @@ from cityseer.tools import graphs, mock
 def test_assign_gdf_to_network(primal_graph):
     _nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_data_gdf(primal_graph)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_key_col="data_key")
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
     # generate manual data map
     man_data_map = structures.DataMap(len(data_gdf))
     man_data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
@@ -72,11 +72,11 @@ def test_assign_gdf_to_network(primal_graph):
         rtol=config.RTOL,
     )
     # check data keys - should not be -1
-    assert np.all(data_map.data_key != -1)
+    assert np.all(data_map.data_id != -1)
     # this time - should be -1
     data_map_no_keys, _data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    assert np.all(data_map_no_keys.data_key == -1)
-    # if not passing data_key_col then all should be -1
+    assert np.all(data_map_no_keys.data_id == -1)
+    # if not passing data_id_col then all should be -1
     # repeat
     # this time, already populated GDF will be passed through
     # data map will be populated from GDF
@@ -143,7 +143,7 @@ def test_compute_accessibilities(primal_graph):
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        data_map.data_id,
         distances,
         betas,
         max_curve_wts,
@@ -226,7 +226,7 @@ def test_compute_accessibilities(primal_graph):
             data_map.ys,
             data_map.nearest_assign,
             data_map.next_nearest_assign,
-            data_map.data_key,
+            data_map.data_id,
             distances,
             betas,
             max_curve_wts,
@@ -577,7 +577,7 @@ def test_compute_stats(primal_graph):
             data_map.ys,
             data_map.nearest_assign,
             data_map.next_nearest_assign,
-            data_map.data_key,
+            data_map.data_id,
             distances,
             networks.beta_from_distance(distances),
             numerical_arrays=stats_arrays,

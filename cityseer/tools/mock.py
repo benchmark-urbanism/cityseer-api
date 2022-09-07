@@ -290,13 +290,13 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
         {
             "uid": np.arange(length),
             "geometry": gpd.points_from_xy(xs, ys),
-            "data_key": np.arange(length),
+            "data_id: np.arange(length),
         }
     )
     data_gpd = data_gpd.set_index("uid")
-    # last 5 datapoints are a cluster of nodes where the nodes share the same data_key for deduplication checks
+    # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
-        data_gpd.loc[loc_idx, "data_key"] = length - 5
+        data_gpd.loc[loc_idx, "data_id"] = length - 5
         data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
     data_gpd = cast(gpd.GeoDataFrame, data_gpd)
     return data_gpd
