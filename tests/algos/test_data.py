@@ -243,15 +243,17 @@ def test_accessibility(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500)
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_key_col="data_key")
     lab_enc = LabelEncoder()
     encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
     # set parameters
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
     max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
+    # all datapoints and types are completely unique except for the last five - which all point to the same source
+    ac_dupe_check_key: int = lab_enc.transform(["z"])[0]  # type: ignore
     # set the keys - add shuffling to be sure various orders work
-    ac_keys: npt.NDArray[np.int_] = np.array([1, 2, 5])
+    ac_keys = np.array([1, 2, 5, ac_dupe_check_key])
     np.random.shuffle(ac_keys)
     # check that problematic keys are caught
     for ac_key in [[-1], [max(encoded_labels) + 1], [1, 1]]:
@@ -308,15 +310,17 @@ def test_accessibility(primal_graph):
     ac_1_nw = ac_data[np.where(ac_keys == 1)][0]
     ac_2_nw = ac_data[np.where(ac_keys == 2)][0]
     ac_5_nw = ac_data[np.where(ac_keys == 5)][0]
+    ac_dupe_nw = ac_data[np.where(ac_keys == ac_dupe_check_key)][0]
     # access weighted
     ac_1_w = ac_data_wt[np.where(ac_keys == 1)][0]
     ac_2_w = ac_data_wt[np.where(ac_keys == 2)][0]
     ac_5_w = ac_data_wt[np.where(ac_keys == 5)][0]
+    ac_dupe_w = ac_data_wt[np.where(ac_keys == ac_dupe_check_key)][0]
     # test manual metrics against all nodes
-    mu_max_unique = len(lab_enc.classes_)
+    mu_max_unique = len(lab_enc.classes_)  # type: ignore
     # test against various distances
     for d_idx, (dist_cutoff, beta) in enumerate(zip(distances, betas)):
-        for src_idx in range(len(primal_graph)):
+        for src_idx in range(len(primal_graph)):  # type: ignore
             reachable_data, reachable_data_dist = data.aggregate_to_src_idx(
                 src_idx,
                 network_structure.nodes.xs,
@@ -375,6 +379,13 @@ def test_accessibility(primal_graph):
             assert np.isclose(ac_1_w[d_idx, src_idx], a_1_w, rtol=config.RTOL, atol=config.ATOL)
             assert np.isclose(ac_2_w[d_idx, src_idx], a_2_w, rtol=config.RTOL, atol=config.ATOL)
             assert np.isclose(ac_5_w[d_idx, src_idx], a_5_w, rtol=config.RTOL, atol=config.ATOL)
+    # there should be five duplicates in source encoded labels
+    assert len(np.where(encoded_labels == 10)[0]) == 5
+    # deduplication means dedupes are max 1
+    assert np.max(ac_dupe_nw) == 1
+    assert np.min(ac_dupe_nw) == 0
+    # weighted
+    assert np.all(ac_dupe_w <= 1)
 
     # check that angular is passed-through
     # actual angular tests happen in test_shortest_path_tree()
@@ -911,24 +922,24 @@ def test_mixed_uses(primal_graph):
 def test_aggregate_stats(primal_graph):
     # generate node and edge maps
     _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500)
+    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2, random_seed=13)
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500, data_key_col="data_key")
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_gdf)
     # set parameters - use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     betas: npt.NDArray[np.float32] = np.array([0.00125])
     distances = networks.distance_from_beta(betas)
-    mock_numerical = mock.mock_numerical_data(primal_graph, len(data_gdf), num_arrs=2, random_seed=0)
-    mock_num_arr = mock_numerical[["mock_numerical_1", "mock_numerical_2"]].values.T
-    # compute
+    mock_num_arr = data_gdf[["mock_numerical_1", "mock_numerical_2"]].values.T
+    # compute - first do with no deduplication so that direct comparisons can be made to numpy methods
+    # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
     (
         stats_sum,
-        _stats_sum_wt,
+        stats_sum_wt,
         stats_mean,
-        _stats_mean_wt,
+        stats_mean_wt,
         stats_variance,
-        _stats_variance_wt,
+        stats_variance_wt,
         stats_max,
         stats_min,
     ) = data.aggregate_stats(
@@ -947,7 +958,8 @@ def test_aggregate_stats(primal_graph):
         data_map.ys,
         data_map.nearest_assign,
         data_map.next_nearest_assign,
-        data_map.data_key,
+        # replace datakey with -1 array - i.e. no unique datapoint keys
+        np.full(data_map.data_key.shape[0], -1, dtype=np.int_),
         distances,
         betas,
         numerical_arrays=mock_num_arr,
@@ -1067,3 +1079,52 @@ def test_aggregate_stats(primal_graph):
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
+    # do deduplication - the stats should now be lower on average
+    # the last five datapoints are pointing to the same source
+    (
+        stats_sum_no_dupe,
+        stats_sum_wt_no_dupe,
+        stats_mean_no_dupe,
+        stats_mean_wt_no_dupe,
+        stats_variance_no_dupe,
+        stats_variance_wt_no_dupe,
+        stats_max_no_dupe,
+        stats_min_no_dupe,
+    ) = data.aggregate_stats(
+        network_structure.nodes.xs,
+        network_structure.nodes.ys,
+        network_structure.nodes.live,
+        network_structure.edges.start,
+        network_structure.edges.end,
+        network_structure.edges.length,
+        network_structure.edges.angle_sum,
+        network_structure.edges.imp_factor,
+        network_structure.edges.in_bearing,
+        network_structure.edges.out_bearing,
+        network_structure.node_edge_map,
+        data_map.xs,
+        data_map.ys,
+        data_map.nearest_assign,
+        data_map.next_nearest_assign,
+        data_map.data_key,
+        distances,
+        betas,
+        numerical_arrays=mock_num_arr,
+        angular=False,
+    )
+    # min and max should be the same
+    assert np.allclose(stats_max, stats_max_no_dupe, rtol=config.RTOL, atol=config.ATOL, equal_nan=True)
+    assert np.allclose(stats_min, stats_min_no_dupe, rtol=config.RTOL, atol=config.ATOL, equal_nan=True)
+    # sum should be lower when deduplicated
+    assert np.all(stats_sum >= stats_sum_no_dupe)
+    assert np.all(stats_sum_wt >= stats_sum_wt_no_dupe)
+    # mean and variance should also be diminished
+    assert np.all(stats_mean[~np.isnan(stats_mean)] >= stats_mean_no_dupe[~np.isnan(stats_mean_no_dupe)])
+    assert np.all(stats_mean_wt[~np.isnan(stats_mean_wt)] >= stats_mean_wt_no_dupe[~np.isnan(stats_mean_wt_no_dupe)])
+    assert np.all(
+        stats_variance[~np.isnan(stats_variance)] >= stats_variance_no_dupe[~np.isnan(stats_variance_no_dupe)]
+    )
+    assert np.all(
+        stats_variance_wt[~np.isnan(stats_variance_wt)]
+        >= stats_variance_wt_no_dupe[~np.isnan(stats_variance_wt_no_dupe)]
+    )

@@ -500,9 +500,9 @@ def accessibility(
             jitter_scale=jitter_scale,
             angular=angular,
         )
-        # LANDUSES
         # iterate the reachable indices and related distances
         # sort by increasing distance re: deduplication via data keys
+        # because these are sorted, no need to deduplicate by respective distance thresholds
         dist_inc_idx: npt.NDArray[np.int_] = np.argsort(reachable_data_dist)
         data_key_dupes: set[int] = set()
         for data_idx in dist_inc_idx:
@@ -517,7 +517,6 @@ def accessibility(
             if data_key != -1:
                 if data_key in data_key_dupes:
                     continue
-            data_key_claimed = False
             # get the class category in integer form
             # all class codes were encoded to sequential integers - these correspond to the array indices
             cl_code = int(landuse_encodings[int(data_idx)])
@@ -528,15 +527,13 @@ def accessibility(
                     # if within distance, and if in accessibility keys, then aggregate accessibility too
                     for ac_idx, ac_code in enumerate(accessibility_keys):
                         if ac_code == cl_code:
-                            data_key_claimed = True
+                            data_key_dupes.add(data_key)
                             accessibility_data[ac_idx, d_idx, netw_src_idx] += 1
                             accessibility_data_wt[ac_idx, d_idx, netw_src_idx] += common.clipped_beta_wt(
                                 beta, max_wt, data_dist
                             )
                             # if a match was found, then no need to check others
                             break
-            if data_key_claimed:
-                data_key_dupes.add(data_key)
 
     return accessibility_data, accessibility_data_wt
 
@@ -853,6 +850,7 @@ def aggregate_stats(
         # the order of the loops matters because the nested aggregations happen per distance per numerical array
         # iterate the reachable indices and related distances
         # sort by increasing distance re: deduplication via data keys
+        # because these are sorted, no need to deduplicate by respective distance thresholds
         dist_inc_idx: npt.NDArray[np.int_] = np.argsort(reachable_data_dist)
         data_key_dupes: set[int] = set()
         for data_idx in dist_inc_idx:
@@ -867,7 +865,6 @@ def aggregate_stats(
             if data_key != -1:
                 if data_key in data_key_dupes:
                     continue
-            data_key_claimed = False
             # iterate the numerical arrays dimension
             for num_idx in range(n_n):
                 # some values will be NaN
@@ -878,7 +875,7 @@ def aggregate_stats(
                 for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
                     # increment mean aggregations at respective distances if the distance is less than current dist
                     if data_dist <= dist:
-                        data_key_claimed = True
+                        data_key_dupes.add(data_key)
                         # aggregate
                         stats_sum[num_idx, d_idx, netw_src_idx] += num
                         stats_count[num_idx, d_idx, netw_src_idx] += 1
@@ -894,8 +891,6 @@ def aggregate_stats(
                             stats_min[num_idx, d_idx, netw_src_idx] = num
                         elif num < stats_min[num_idx, d_idx, netw_src_idx]:
                             stats_min[num_idx, d_idx, netw_src_idx] = num
-            if data_key_claimed:
-                data_key_dupes.add(data_key)
         # finalise mean calculations - this is happening for a single netw_src_idx, so fairly fast
         for num_idx in range(n_n):
             for d_idx in range(d_n):
@@ -926,7 +921,6 @@ def aggregate_stats(
             if data_key != -1:
                 if data_key in data_key_dupes:
                     continue
-            data_key_claimed = False
             # iterate the numerical arrays dimension
             for num_idx in range(n_n):
                 # some values will be NaN
@@ -937,7 +931,7 @@ def aggregate_stats(
                 for d_idx, (dist, beta) in enumerate(zip(distances, betas)):
                     # increment variance aggregations at respective distances if the distance is less than current dist
                     if data_dist <= dist:
-                        data_key_claimed = True
+                        data_key_dupes.add(data_key)
                         # aggregate
                         if np.isnan(stats_variance[num_idx, d_idx, netw_src_idx]):
                             stats_variance[num_idx, d_idx, netw_src_idx] = np.square(
@@ -953,8 +947,6 @@ def aggregate_stats(
                             stats_variance_wt[num_idx, d_idx, netw_src_idx] += np.square(
                                 num - stats_mean_wt[num_idx, d_idx, netw_src_idx]
                             ) * np.exp(-beta * data_dist)
-            if data_key_claimed:
-                data_key_dupes.add(data_key)
         # finalise variance calculations
         for num_idx in range(n_n):
             for d_idx in range(d_n):
