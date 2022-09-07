@@ -380,7 +380,7 @@ def test_accessibility(primal_graph):
             assert np.isclose(ac_2_w[d_idx, src_idx], a_2_w, rtol=config.RTOL, atol=config.ATOL)
             assert np.isclose(ac_5_w[d_idx, src_idx], a_5_w, rtol=config.RTOL, atol=config.ATOL)
     # there should be five duplicates in source encoded labels
-    assert len(np.where(encoded_labels == 10)[0]) == 5
+    assert len(np.where(encoded_labels == ac_dupe_check_key)[0]) == 5
     # deduplication means dedupes are max 1
     assert np.max(ac_dupe_nw) == 1
     assert np.min(ac_dupe_nw) == 0

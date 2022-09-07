@@ -290,7 +290,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
         {
             "uid": np.arange(length),
             "geometry": gpd.points_from_xy(xs, ys),
-            "data_id: np.arange(length),
+            "data_id": np.arange(length),
         }
     )
     data_gpd = data_gpd.set_index("uid")
