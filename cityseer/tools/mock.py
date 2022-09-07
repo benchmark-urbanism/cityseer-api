@@ -336,7 +336,7 @@ def mock_landuse_categorical_data(
             f"The requested {num_classes} classes exceeds max available categorical classes of {len(random_class_str)}"
         )
     data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
-    random_class_str = random_class_str[:num_classes]
+    random_class_str = random_class_str[: num_classes - 1]
     cl_codes: list[str] = []
     for idx in range(len(data_gpd)):
         # set last 5 items to z - to correspond to deduplication checks
