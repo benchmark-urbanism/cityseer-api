@@ -254,7 +254,7 @@ def compute_accessibilities(
     if accessibility_keys is not None:
         for ac_label in accessibility_keys:
             if ac_label not in lab_enc.classes_:
-                logger.warning(f"No instances of accessibility label: {ac_label} present in the data.")
+                logger.warning(f"No instances of accessibility label '{ac_label}' in the data.")
             else:
                 acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
         if not config.QUIET_MODE:
