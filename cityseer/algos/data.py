@@ -444,7 +444,7 @@ def accessibility(
     if len(accessibility_keys) == 0:
         raise ValueError("Please specify at least one landuse key.")
     common.check_categorical_data(landuse_encodings)
-    max_ac_key: int = np.nanmax(landuse_encodings)
+    max_ac_key: np.int_ = np.nanmax(landuse_encodings)
     if np.nanmin(accessibility_keys) < 0 or np.max(accessibility_keys) > max_ac_key:
         raise ValueError("Negative or out of range accessibility key encountered. Keys must match class encodings.")
     for i_idx, i_key in enumerate(accessibility_keys):
