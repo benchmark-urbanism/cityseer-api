@@ -121,7 +121,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>fetch_osm_network(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">osm_request, </div>
-          <div class="yap func-sig-param">timeout=30, </div>
+          <div class="yap func-sig-param">timeout=300, </div>
           <div class="yap func-sig-param">max_tries=3)</div>
         </div>
       </div>
@@ -214,7 +214,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">simplify=True, </div>
           <div class="yap func-sig-param">remove_parallel=True, </div>
           <div class="yap func-sig-param">iron_edges=True, </div>
-          <div class="yap func-sig-param">remove_disconnected=True)</div>
+          <div class="yap func-sig-param">remove_disconnected=True, </div>
+          <div class="yap func-sig-param">timeout=300, </div>
+          <div class="yap func-sig-param">max_tries=3)</div>
         </div>
       </div>
     </div>
@@ -292,6 +294,24 @@ Ignored if simplify is False.  Whether to straighten the ends of street segments
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Ignored if simplify is False.  Whether to remove disconnected components from the network.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">timeout</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Timeout duration for API call in seconds.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_tries</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The number of attempts to fetch a response before raising.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
