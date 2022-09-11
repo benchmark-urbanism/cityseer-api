@@ -127,8 +127,8 @@ def compute_landuses():
     Please use the compute_accessibilities or compute_mixed_uses functions instead.
     """
     raise DeprecationWarning(
-        "The compute_landuses function has been deprecated. Please use the compute_accessibilities or compute_mixed_uses "
-        "functions instead."
+        "The compute_landuses function has been deprecated. Please use the compute_accessibilities or "
+        "compute_mixed_uses functions instead."
     )
 
 
