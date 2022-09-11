@@ -306,8 +306,8 @@ def compute_accessibilities(
                 nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]  # non-weighted
                 nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]  # weighted
             else:
-                nodes_gdf[ac_nw_data_key] = 0.0
-                nodes_gdf[ac_wt_data_key] = 0.0
+                nodes_gdf[ac_nw_data_key] = int(0)
+                nodes_gdf[ac_wt_data_key] = float(0.0)
 
     return nodes_gdf, data_gdf
 
