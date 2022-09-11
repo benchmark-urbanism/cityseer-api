@@ -127,7 +127,7 @@ def compute_landuses():
     Please use the compute_accessibilities or compute_mixed_uses functions instead.
     """
     raise DeprecationWarning(
-        "The compute_landuses method has been deprecated. Please use the compute_accessibilities or compute_mixed_uses "
+        "The compute_landuses function has been deprecated. Please use the compute_accessibilities or compute_mixed_uses "
         "functions instead."
     )
 
@@ -168,11 +168,11 @@ def compute_accessibilities(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int] | tuple[int]
@@ -240,7 +240,7 @@ def compute_accessibilities(
     data_map, data_gdf = assign_gdf_to_network(
         data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_id_col=data_id_col
     )
-    # remember, most checks on parameter integrity occur in underlying method
+    # remember, most checks on parameter integrity occur in underlying function
     # so, don't duplicate here
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
@@ -251,21 +251,20 @@ def compute_accessibilities(
     # figure out the corresponding indices for the landuse classes that are present in the dataset
     # these indices are passed as keys which will be matched against the integer landuse encodings
     acc_keys: list[int] = []
-    if accessibility_keys is not None:
-        for ac_label in accessibility_keys:
-            if ac_label not in lab_enc.classes_:
-                logger.warning(f"No instances of accessibility label '{ac_label}' in the data.")
-            else:
-                acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
-        if not config.QUIET_MODE:
-            logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+    for ac_label in accessibility_keys:
+        if ac_label not in lab_enc.classes_:
+            logger.warning(f"No instances of accessibility label '{ac_label}' in the data.")
+        else:
+            acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
+    if not config.QUIET_MODE:
+        logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
     if not config.QUIET_MODE:
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
         progress_proxy = None
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
-    # call the underlying method
+    # call the underlying function
     # pylint: disable=duplicate-code
     accessibility_data, accessibility_data_wt = data.accessibility(
         network_structure.nodes.xs,
@@ -296,16 +295,19 @@ def compute_accessibilities(
     if progress_proxy is not None:
         progress_proxy.close()
     # unpack accessibility data
-    for ac_idx, ac_code in enumerate(acc_keys):
-        ac_label: str = lab_enc.inverse_transform(ac_code)[0]  # type: ignore
-        # non-weighted
+    for ac_label in accessibility_keys:
         for d_idx, d_key in enumerate(_distances):
             ac_nw_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_non_weighted")
-            nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]
-        # weighted
-        for d_idx, d_key in enumerate(_distances):
             ac_wt_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_weighted")
-            nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]
+            # sometimes target classes are not present in data
+            if ac_label in lab_enc.classes_:
+                ac_code: int = lab_enc.transform([ac_label])  # type: ignore
+                ac_idx: int = acc_keys.index(ac_code)
+                nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]  # non-weighted
+                nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]  # weighted
+            else:
+                nodes_gdf[ac_nw_data_key] = 0.0
+                nodes_gdf[ac_wt_data_key] = 0.0
 
     return nodes_gdf, data_gdf
 
@@ -328,11 +330,11 @@ def compute_mixed_uses(
     r"""
     Compute landuse metrics.
 
-    This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
+    This function wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
     land-use accessibility measures. These are computed simultaneously for any required combinations of measures
     (and distances). Situations requiring only a single measure can instead make use of the simplified
     [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and
-    [`compute_accessibilities`](#compute-accessibilities) methods.
+    [`compute_accessibilities`](#compute-accessibilities) functions.
 
     See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
     at the pedestrian scale.
@@ -356,11 +358,11 @@ def compute_mixed_uses(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int] | tuple[int]
@@ -491,7 +493,7 @@ def compute_mixed_uses(
         "gini_simpson",
         "raos_pairwise_disparity",
     ]
-    # remember, most checks on parameter integrity occur in underlying method
+    # remember, most checks on parameter integrity occur in underlying function
     # so, don't duplicate here
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
@@ -539,7 +541,7 @@ def compute_mixed_uses(
         progress_proxy = None
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
-    # call the underlying method
+    # call the underlying function
     # pylint: disable=duplicate-code
     mixed_use_hill_data, mixed_use_other_data = data.mixed_uses(
         network_structure.nodes.xs,
@@ -621,11 +623,11 @@ def hill_diversity(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) function. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int] | tuple[int]
@@ -732,11 +734,11 @@ def hill_branch_wt_diversity(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int] | tuple[int]
@@ -827,7 +829,7 @@ def compute_stats(
     r"""
     Compute stats.
 
-    This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is
+    This function wraps the underlying `numba` optimised functions for computing statistical measures. The data is
     aggregated and computed over the street network relative to the network nodes, with the implication
     that statistical aggregations are generated from the same locations as for centrality computations, which can
     therefore be correlated or otherwise compared.
@@ -844,11 +846,11 @@ def compute_stats(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int] | tuple[int]
@@ -934,7 +936,7 @@ def compute_stats(
         if col_label not in data_gdf.columns:
             raise ValueError(f"Column label {col_label} not found in provided GeoDataFrame.")
     stats_data_arrs: npt.NDArray[np.float32] = data_gdf[stats_column_labels].values.T  # type: ignore
-    # call the underlying method
+    # call the underlying function
     if not config.QUIET_MODE:
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
