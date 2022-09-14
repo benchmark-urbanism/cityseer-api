@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '3.6.0b7'
+version = '3.6.0b8'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.8, <3.11"
@@ -43,11 +43,12 @@ dependencies = [
   "scikit-learn>=1.0.2",
   "tqdm>=4.63.1",
   "utm>=0.7.0",
-  "shapely>=1.8.2",
-  "numba>=0.55.2",
-  "numpy>=1.22.4",
+  "shapely==1.8.4",
+  "numba>=0.56.2",
+  "numpy>=1.23.3",
   "numba-progress>=0.0.3",
-  "geopandas>=0.10.2",
+  "geopandas>=0.11.1",
+  "pygeos>=0.13",
 ]
 
 [project.urls]
