@@ -64,3 +64,15 @@ def check_distances_and_betas(distances: npt.NDArray[np.int_], betas: npt.NDArra
                     "Inconsistent threshold minimums, indicating that the relationship between the betas and distances "
                     "is not consistent for all distance / beta pairs."
                 )
+
+
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+def clipped_beta_wt(
+    beta: np.float32,
+    max_curve_wt: np.float32,
+    data_dist: np.int_,
+) -> np.float32:
+    """Calculates negative exponential clipped to the max_curve_wt parameter."""
+    raw_wt = np.exp(-beta * data_dist)
+    clipped_wt = min(raw_wt, max_curve_wt) / max_curve_wt
+    return clipped_wt

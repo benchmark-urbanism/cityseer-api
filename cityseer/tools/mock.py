@@ -15,6 +15,7 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import utm
+from shapely import geometry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -263,7 +264,7 @@ def get_graph_extents(
 
 def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int = 0) -> gpd.GeoDataFrame:
     """
-    Generate a dictionary containing mock data for testing or experimentation purposes.
+    Generate a `GeoDataFrame` containing mock data for testing or experimentation purposes.
 
     Parameters
     ----------
@@ -271,7 +272,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
         A `NetworkX` graph with `x` and `y` attributes. This is used in order to determine the spatial extents of the
         network. The returned data will be within these extents.
     length: int
-        The number of data elements to return in the dictionary.
+        The number of data elements to return in the `GeoDataFrame`.
     random_seed: int
         An optional random seed.
 
@@ -287,13 +288,17 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     ys = np.random.uniform(min_y, max_y, length)
     data_gpd = gpd.GeoDataFrame(
         {
-            "data_key": np.arange(length),
+            "uid": np.arange(length),
             "geometry": gpd.points_from_xy(xs, ys),
+            "data_id": np.arange(length),
         }
     )
-    data_gpd = data_gpd.set_index("data_key")
+    data_gpd = data_gpd.set_index("uid")
+    # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
+    for idx, loc_idx in enumerate(range(length - 5, length)):
+        data_gpd.loc[loc_idx, "data_id"] = length - 5
+        data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
     data_gpd = cast(gpd.GeoDataFrame, data_gpd)
-
     return data_gpd
 
 
@@ -330,12 +335,16 @@ def mock_landuse_categorical_data(
         raise ValueError(
             f"The requested {num_classes} classes exceeds max available categorical classes of {len(random_class_str)}"
         )
-    random_class_str = random_class_str[:num_classes]
-    cl_codes: list[str] = []
-    for _ in range(length):
-        random_idx = int(np.random.randint(0, len(random_class_str)))
-        cl_codes.append(random_class_str[random_idx])
     data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
+    random_class_str = random_class_str[: num_classes - 1]
+    cl_codes: list[str] = []
+    for idx in range(len(data_gpd)):
+        # set last 5 items to z - to correspond to deduplication checks
+        if idx >= length - 5:
+            cl_codes.append("z")
+        else:
+            class_key = int(np.random.randint(0, len(random_class_str)))
+            cl_codes.append(random_class_str[class_key])
     data_gpd["categorical_landuses"] = cl_codes
 
     return data_gpd
@@ -385,6 +394,9 @@ def mock_numerical_data(
             np.random.randint(val_min, high=val_max, size=length), dtype=np.float32
         )
         num_arr /= 10**floating_pt
+        # set last five items to max - this is for duplicate checking
+        num_max = np.nanmax(num_arr)
+        num_arr[-5:] = num_max
         data_gpd[f"mock_numerical_{idx}"] = num_arr
     return data_gpd
 

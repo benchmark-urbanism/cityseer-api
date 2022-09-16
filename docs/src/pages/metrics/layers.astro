@@ -30,7 +30,8 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">data_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">max_netw_assign_dist)</div>
+          <div class="yap func-sig-param">max_netw_assign_dist, </div>
+          <div class="yap func-sig-param">data_id_col)</div>
         </div>
       </div>
     </div>
@@ -63,6 +64,15 @@ A [`structures.NetworkStructure`](/structures#networkstructure).
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_id_col</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -122,26 +132,236 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>compute_landuses(</span>
+        <span>compute_landuses()</span>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Please use the compute_accessibilities or compute_mixed_uses functions instead.
+</Markdown></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="compute-accessibilities">
+      <a aria-hidden="true" href="#compute-accessibilities" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>compute_accessibilities
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>compute_accessibilities(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">data_gdf, </div>
           <div class="yap func-sig-param">landuse_column_label, </div>
+          <div class="yap func-sig-param">accessibility_keys, </div>
           <div class="yap func-sig-param">nodes_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
           <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">mixed_use_keys, </div>
-          <div class="yap func-sig-param">accessibility_keys, </div>
-          <div class="yap func-sig-param">cl_disparity_wt_matrix, </div>
-          <div class="yap func-sig-param">qs, </div>
+          <div class="yap func-sig-param">data_id_col, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute landuse metrics. This method wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances). Situations requiring only a single measure can instead make use of the simplified [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and [`compute_accessibilities`](#compute-accessibilities) methods.
+Compute land-use accessibilities for the specified land-use classification keys. See [`compute_landuses`](#compute-landuses) for additional information.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">landuse_column_label</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">accessibility_keys</div>
+          <div class="yap doc-str-elem-type">tuple[str]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nodes_gdf</div>
+          <div class="yap doc-str-elem-type">None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">network_structure</div>
+          <div class="yap doc-str-elem-type">None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_netw_assign_dist</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distances</div>
+          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">betas</div>
+          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_id_col</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">jitter_scale</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">angular</div>
+          <div class="yap doc-str-elem-type">bool</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">nodes_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-meta">
+        <h3 class="yap">Notes</h3><Markdown is:raw>
+```python
+from cityseer.metrics import networks, layers
+from cityseer.tools import mock, graphs
+
+# prepare a mock graph
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+print(nodes_gdf.head())
+landuses_gdf = mock.mock_landuse_categorical_data(G)
+print(landuses_gdf.head())
+# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
+nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+    data_gdf=landuses_gdf,
+    landuse_column_label="categorical_landuses",
+    accessibility_keys=["a", "c"],
+    nodes_gdf=nodes_gdf,
+    network_structure=network_structure,
+    distances=[200, 400, 800],
+)
+print(nodes_gdf.columns)
+print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
+print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
+```
+
+</Markdown>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="compute-mixed-uses">
+      <a aria-hidden="true" href="#compute-mixed-uses" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>compute_mixed_uses
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>compute_mixed_uses(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">data_gdf, </div>
+          <div class="yap func-sig-param">landuse_column_label, </div>
+          <div class="yap func-sig-param">mixed_use_keys, </div>
+          <div class="yap func-sig-param">nodes_gdf, </div>
+          <div class="yap func-sig-param">network_structure, </div>
+          <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
+          <div class="yap func-sig-param">distances, </div>
+          <div class="yap func-sig-param">betas, </div>
+          <div class="yap func-sig-param">cl_disparity_wt_matrix, </div>
+          <div class="yap func-sig-param">qs, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
+          <div class="yap func-sig-param">jitter_scale=0.0, </div>
+          <div class="yap func-sig-param">angular=False)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Compute landuse metrics. This function wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances). Situations requiring only a single measure can instead make use of the simplified [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and [`compute_accessibilities`](#compute-accessibilities) functions.
 
  See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
 
@@ -172,7 +392,7 @@ The column label from which to take landuse categories, e.g. a column labelled "
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -181,7 +401,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -222,15 +442,6 @@ Mixed-use metrics to compute, containing any combination of the `key` values fro
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">accessibility_keys</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">cl_disparity_wt_matrix</div>
           <div class="yap doc-str-elem-type">ndarray[float]</div>
         </div>
@@ -245,6 +456,15 @@ An optional pairwise `NxN` disparity matrix numerically describing the degree of
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -314,7 +534,7 @@ print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
 # compute some metrics - here we'll use the full interface, see below for simplified interfaces
-nodes_gdf, landuses_gdf = layers.compute_landuses(
+nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
     data_gdf=landuses_gdf,
     landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
@@ -322,11 +542,9 @@ nodes_gdf, landuses_gdf = layers.compute_landuses(
     distances=[200, 400, 800],
     mixed_use_keys=["hill"],
     qs=[0, 1],
-    accessibility_keys=["c", "d", "e"],
 )
 print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
 print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
-print(nodes_gdf["cc_metric_d_800_non_weighted"])  # weighted landuse accessibility for landuse "d" at 800m
 ```
 
 :::warning
@@ -360,6 +578,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
           <div class="yap func-sig-param">qs, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -393,7 +612,7 @@ The column label from which to take landuse categories, e.g. a column labelled "
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -402,7 +621,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -439,6 +658,15 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -530,6 +758,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
           <div class="yap func-sig-param">qs, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
@@ -563,7 +792,7 @@ The column label from which to take landuse categories, e.g. a column labelled "
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -572,7 +801,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -609,6 +838,15 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -679,177 +917,6 @@ print(nodes_gdf["cc_metric_hill_branch_wt_q1_400"])  # e.g. distance weighted hi
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="compute-accessibilities">
-      <a aria-hidden="true" href="#compute-accessibilities" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>compute_accessibilities
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>compute_accessibilities(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">data_gdf, </div>
-          <div class="yap func-sig-param">landuse_column_label, </div>
-          <div class="yap func-sig-param">accessibility_keys, </div>
-          <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
-          <div class="yap func-sig-param">distances, </div>
-          <div class="yap func-sig-param">betas, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Compute land-use accessibilities for the specified land-use classification keys. See [`compute_landuses`](#compute-landuses) for additional information.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">landuse_column_label</div>
-          <div class="yap doc-str-elem-type">str</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">accessibility_keys</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">None</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">None</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">max_netw_assign_dist</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">list[int] | tuple[int]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">float | ndarray[float]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">angular</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks, layers
-from cityseer.tools import mock, graphs
-
-# prepare a mock graph
-G = mock.mock_graph()
-G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-print(nodes_gdf.head())
-landuses_gdf = mock.mock_landuse_categorical_data(G)
-print(landuses_gdf.head())
-# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-nodes_gdf, landuses_gdf = layers.compute_accessibilities(
-    data_gdf=landuses_gdf,
-    landuse_column_label="categorical_landuses",
-    accessibility_keys=["a", "c"],
-    nodes_gdf=nodes_gdf,
-    network_structure=network_structure,
-    distances=[200, 400, 800],
-)
-print(nodes_gdf.columns)
-print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
-print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
-```
-
-</Markdown>
-      </div>
-    </div>
-  </section>
-  <section class="yap func">
     <h2 class="yap func-title" id="compute-stats">
       <a aria-hidden="true" href="#compute-stats" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -870,13 +937,14 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
           <div class="yap func-sig-param">distances, </div>
           <div class="yap func-sig-param">betas, </div>
+          <div class="yap func-sig-param">data_id_col, </div>
           <div class="yap func-sig-param">jitter_scale=0.0, </div>
           <div class="yap func-sig-param">angular=False)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute stats. This method wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
+Compute stats. This function wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -903,7 +971,7 @@ The column labels corresponding to the columns in `data_gdf` from which to take 
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -912,7 +980,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -940,6 +1008,15 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">data_id_col</div>
+          <div class="yap doc-str-elem-type">str</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">

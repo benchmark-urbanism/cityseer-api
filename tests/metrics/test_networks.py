@@ -89,6 +89,23 @@ def test_pair_distances_betas():
     assert np.allclose(_distances, raw_distances, atol=config.ATOL, rtol=config.RTOL)
 
 
+def test_clip_weights_curve():
+    raw_distances = [400, 800, 1600]
+    distances, betas = networks.pair_distances_betas(distances=raw_distances)
+    # should be 1 if dist buffer is zero
+    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
+    assert np.allclose([1, 1, 1], max_curve_wts, atol=config.ATOL, rtol=config.RTOL)
+    # check for a random distance
+    max_curve_wts = networks.clip_weights_curve(distances, betas, 50)
+    assert np.allclose([0.60653067, 0.7788008, 0.8824969], max_curve_wts, atol=config.ATOL, rtol=config.RTOL)
+    # should raise if buffer_distance is less than zero
+    with pytest.raises(ValueError):
+        max_curve_wts = networks.clip_weights_curve(distances, betas, -1)
+    # should raise if buffer_distance is greater than distances
+    with pytest.raises(ValueError):
+        max_curve_wts = networks.clip_weights_curve(distances, betas, 401)
+
+
 def test_node_centrality(primal_graph):
     """
     Underlying methods also tested via test_networks.test_network_centralities

@@ -60,9 +60,9 @@ def test_mock_landuse_categorical_data(primal_graph):
     # i.e. situations do exist where the number of classes will be less than the max permitted
     # use large enough max to reduce likelihood of this triggering issue for test
     assert len(set(categorical_gdf.categorical_landuses)) == 10
-    for c in categorical_gdf.categorical_landuses:
-        assert isinstance(c, str)
-        assert c in string.ascii_lowercase
+    for cat in categorical_gdf.categorical_landuses:
+        assert isinstance(cat, str)
+        assert cat in string.ascii_lowercase or cat == "z"
     categorical_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50, num_classes=3)
     assert len(set(categorical_gdf.categorical_landuses)) == 3
     # test that an error is raised when requesting more than available max classes per asii_lowercase
@@ -74,9 +74,9 @@ def test_mock_numerical_data(primal_graph):
     for length in [50, 100]:
         for num_arrs in range(1, 3):
             numerical_gdf = mock.mock_numerical_data(primal_graph, length=length, num_arrs=num_arrs)
-            assert len(numerical_gdf.columns) == num_arrs + 1
+            assert len(numerical_gdf.columns) == num_arrs + 2
             for col_label in numerical_gdf.columns:
-                if col_label in ["data_key", "geometry"]:
+                if col_label in ["uid", "geometry"]:
                     continue
                 assert np.all(numerical_gdf[col_label] >= 0)
                 assert np.all(numerical_gdf[col_label] <= 100000)

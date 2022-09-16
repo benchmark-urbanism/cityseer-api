@@ -73,7 +73,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter
 
 
-def fetch_osm_network(osm_request: str, timeout: int = 30, max_tries: int = 3) -> Optional[requests.Response]:
+def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> Optional[requests.Response]:
     """
     Fetches an OSM response.
 
@@ -134,6 +134,8 @@ def osm_graph_from_poly(
     remove_parallel: bool = True,
     iron_edges: bool = True,
     remove_disconnected: bool = True,
+    timeout: int = 300,
+    max_tries: int = 3,
 ) -> MultiGraph:  # noqa
     """
 
@@ -164,6 +166,10 @@ def osm_graph_from_poly(
         number of artefacts from segment kinks from merging `LineStrings`.
     remove_disconnected: bool
         Ignored if simplify is False.  Whether to remove disconnected components from the network.
+    timeout: int
+        Timeout duration for API call in seconds.
+    max_tries: int
+        The number of attempts to fetch a response before raising.
 
     Returns
     -------
@@ -231,7 +237,7 @@ def osm_graph_from_poly(
         out qt;
         """
     # generate the query
-    osm_response = fetch_osm_network(request)
+    osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
     # build graph
     graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
