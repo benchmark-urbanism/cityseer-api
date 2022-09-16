@@ -64,7 +64,7 @@ import numpy.typing as npt
 from numba_progress import ProgressBar
 
 from cityseer import cctypes, config, structures
-from cityseer.algos import centrality
+from cityseer.algos import centrality, common
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -333,7 +333,7 @@ def pair_distances_betas(
 
     Returns
     -------
-    distances: list[int] | tuple[int]
+    distances: int | ndarray[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
         then the `beta` parameter must be provided instead.
@@ -344,12 +344,6 @@ def pair_distances_betas(
 
     Examples
     --------
-    :::note
-    It is possible to represent unlimited $d_{max}$ distance thresholds by setting one of the specified `distance`
-    parameter values to `np.inf`. Note that this may substantially increase the computational time required for the
-    completion of the algorithms on large networks.
-    :::
-
     :::warning
     Networks should be buffered according to the largest distance threshold that will be used for analysis. This
     protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
@@ -369,6 +363,60 @@ def pair_distances_betas(
     else:
         raise ValueError("Please provide either a distance/s or beta/s, but not both.")
     return _distances, _betas
+
+
+def clip_weights_curve(
+    distances: npt.NDArray[np.int_],
+    betas: npt.NDArray[np.float32],
+    spatial_tolerance: int = 0,
+) -> npt.NDArray[np.float32]:
+    r"""
+    Calculate the upper bounds for clipping weights produced by spatial impedance functions.
+
+    Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the
+    `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights
+    derived for spatial impedance functions are flattened and normalised. This functionality is only intended for
+    situations where the location of datapoints is uncertain for a given spatial tolerance.
+
+    :::warning
+    Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
+    threshold clipped by 100m, then substantial distortion is introduced by the process of clipping and normalising the
+    distance decay curve. More generally, smaller distance thresholds should generally be avoided for situations where
+    datapoints are not located with high spatial precision.
+    :::
+
+    Parameters
+    ----------
+    distances: ndarray[int]
+        An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
+    betas: ndarray[float32]
+        An array of $\beta$ to be used for the exponential decay function for weighted metrics.
+    spatial_tolerance: int
+        The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
+
+    Returns
+    -------
+    max_curve_wts: ndarray[float]
+        An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
+
+    """
+    # if distances, check the types and generate the betas
+    common.check_distances_and_betas(distances, betas)
+    max_curve_wts = []
+    for dist, beta in zip(distances, betas):
+        if spatial_tolerance < 0:
+            raise ValueError("Clipping distance cannot be less than zero.")
+        if spatial_tolerance > dist:
+            raise ValueError("Clipping distance cannot be greater than the given distance threshold.")
+        max_curve_wt = np.exp(-beta * spatial_tolerance)
+        if max_curve_wt < 0.75:
+            logger.warning(
+                f"spatial_tolerance {spatial_tolerance}m would clip weights for beta {beta} at {max_curve_wt:%}. "
+                "Consider decreasing the spatial_tolerance or using larger distance thresholds / smaller betas."
+            )
+        max_curve_wts.append(max_curve_wt)
+
+    return np.array(max_curve_wts).astype(np.float32)
 
 
 # provides access to the underlying centrality.local_centrality method

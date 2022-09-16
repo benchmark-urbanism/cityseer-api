@@ -5,6 +5,7 @@ import numpy.typing as npt
 from numba import njit  # type: ignore
 
 from cityseer import config
+from cityseer.algos import common
 
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
@@ -49,7 +50,11 @@ def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.floa
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_branch_distance_wt(
-    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+    class_counts: npt.NDArray[np.int_],
+    class_distances: npt.NDArray[np.float32],
+    q: np.float32,
+    beta: np.float32,
+    max_curve_wt: np.float32 = np.float32(1.0),
 ) -> np.float32:
     """
     Compute Hill diversity weighted by branch distances.
@@ -80,7 +85,7 @@ def hill_diversity_branch_distance_wt(
     for class_count, class_dist in zip(class_counts, class_distances):
         if class_count:
             proportion = class_count / num
-            wt = np.exp(-beta * class_dist)
+            wt = common.clipped_beta_wt(beta, max_curve_wt, class_dist)
             agg_t += wt * proportion
     # hill number defined in the limit as the exponential of information entropy
     if q == 1:
@@ -89,7 +94,7 @@ def hill_diversity_branch_distance_wt(
         for class_count, class_dist in zip(class_counts, class_distances):
             if class_count:
                 proportion = class_count / num
-                wt = np.exp(-beta * class_dist)
+                wt = common.clipped_beta_wt(beta, max_curve_wt, class_dist)
                 div_branch_wt_lim += wt * proportion / agg_t * np.log(proportion / agg_t)  # sum entropy
         # return exponent of entropy
         div_branch_wt_lim = np.exp(-div_branch_wt_lim)
@@ -100,7 +105,7 @@ def hill_diversity_branch_distance_wt(
     for class_count, class_dist in zip(class_counts, class_distances):
         if class_count:
             a = class_count / num
-            wt = np.exp(-beta * class_dist)
+            wt = common.clipped_beta_wt(beta, max_curve_wt, class_dist)
             div_branch_wt += wt * (a / agg_t) ** q  # sum
     # once summed, apply q
     div_branch_wt = div_branch_wt ** (1 / (1 - q))
@@ -109,7 +114,11 @@ def hill_diversity_branch_distance_wt(
 
 @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_pairwise_distance_wt(
-    class_counts: npt.NDArray[np.int_], class_distances: npt.NDArray[np.float32], q: np.float32, beta: np.float32
+    class_counts: npt.NDArray[np.int_],
+    class_distances: npt.NDArray[np.float32],
+    q: np.float32,
+    beta: np.float32,
+    max_curve_wt: np.float32 = np.float32(1.0),
 ) -> np.float32:
     """
     Compute Hill diversity weighted by pairwise distances.
@@ -152,7 +161,7 @@ def hill_diversity_pairwise_distance_wt(
             if not class_count_j:
                 continue
             a_j = class_count_j / num
-            wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+            wt = common.clipped_beta_wt(beta, max_curve_wt, (class_distances[i] + class_distances[j]))
             # pairwise distances
             agg_q += wt * a_i * a_j
     # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
@@ -173,7 +182,7 @@ def hill_diversity_pairwise_distance_wt(
                     continue
                 a_j = class_count_j / num
                 # pairwise distances
-                wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+                wt = common.clipped_beta_wt(beta, max_curve_wt, (class_distances[i] + class_distances[j]))
                 div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
         # once summed
         div_pw_wt_lim = np.exp(-div_pw_wt_lim)
@@ -192,7 +201,7 @@ def hill_diversity_pairwise_distance_wt(
                 continue
             a_j = class_count_j / num
             # pairwise distances
-            wt = np.exp(-beta * (class_distances[i] + class_distances[j]))
+            wt = common.clipped_beta_wt(beta, max_curve_wt, (class_distances[i] + class_distances[j]))
             div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
     div_pw_wt = div_pw_wt ** (1 / (1 - q))
     return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
