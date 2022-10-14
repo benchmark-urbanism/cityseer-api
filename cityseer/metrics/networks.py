@@ -400,7 +400,7 @@ def clip_weights_curve(
         An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
 
     """
-    # if distances, check the types and generate the betas
+    # check that distances and betas are in lockstep
     common.check_distances_and_betas(distances, betas)
     max_curve_wts = []
     for dist, beta in zip(distances, betas):
