@@ -619,7 +619,7 @@ def plot_network_structure(
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.nodes.count):
-        ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)
+        ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)  # type: ignore
     if data_gdf is not None:
         # plot parents on ax1
         ax1.scatter(
@@ -729,7 +729,7 @@ def plot_scatter(
         s=sizes[select_idx],
         linewidths=0,
         edgecolors="none",
-        cmap=plt.get_cmap(cmap_key),
+        cmap=plt.get_cmap(cmap_key),  # type: ignore
         rasterized=rasterized,
     )
     # limits
@@ -800,7 +800,7 @@ def plot_nx_edges(
 
     """
     min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
-    cmap = plt.get_cmap(cmap_key)
+    cmap = plt.get_cmap(cmap_key)  # type: ignore
     # extract data for shaping
     vals: list[str] = []
     edge_geoms: list[geometry.LineString] = []
@@ -850,6 +850,7 @@ def plot_nx_edges(
         plot_geoms = []
         plot_colours = []
         plot_lws = []
+        idx: int
         for idx in tqdm(sort_idx):
             xs = np.array(edge_geoms[idx].coords.xy[0])
             ys = np.array(edge_geoms[idx].coords.xy[1])
@@ -867,7 +868,7 @@ def plot_nx_edges(
             rasterized=rasterized,  # type: ignore
             alpha=0.9,  # type: ignore
         )
-        ax.add_collection(lines)
+        ax.add_collection(lines)  # type: ignore
     else:
         plot_handles = []
         plot_geoms = []

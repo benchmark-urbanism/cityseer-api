@@ -2,47 +2,60 @@
   & .module {
     @apply m-3 py-3;
   }
+
   & .module-title,
   .func-title,
   .module-title {
     @apply pl-2 font-mono text-xl font-semibold;
   }
+
   & .class {
     @apply my-8 border-l-3 border-t-1 border-theme pl-2;
   }
+
   & .func {
     @apply my-4 border-l border-mid-grey bg-dark-grey p-1;
   }
+
   & .func-sig-content {
     @apply mb-2 flex items-start border-t-2 border-theme bg-darker-grey p-3 font-mono;
   }
+
   & .func-sig {
     @apply flex items-start text-sm;
   }
+
   & .func-sig-params {
     white-space: pre-wrap;
     @apply flex flex-wrap;
   }
+
   & .func-sig-param {
   }
+
   & .doc-str-meta {
   }
+
   & .doc-str-elem-container,
   .class-prop-elem-container {
     @apply flex items-start border-t border-mid-grey bg-darker-grey py-1;
   }
+
   & .doc-str-elem-def,
   .class-prop-def {
     @apply flex min-w-[170px] max-w-[230px] flex-col py-1;
   }
+
   & .doc-str-elem-name,
   .class-prop-def-name {
     @apply px-1 text-xs font-semibold;
   }
+
   & .doc-str-elem-type,
   .class-prop-def-type {
     @apply px-1 text-xs font-light;
   }
+
   & .doc-str-elem-desc,
   .class-prop-def-desc {
     @apply flex w-full flex-col;

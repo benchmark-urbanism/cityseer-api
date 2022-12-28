@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '3.6.0'
+version = '3.6.2b1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.8, <3.11"
@@ -43,11 +43,11 @@ dependencies = [
   "scikit-learn>=1.0.2",
   "tqdm>=4.63.1",
   "utm>=0.7.0",
-  "shapely==1.8.4",
+  "shapely>=1.8",
   "numba>=0.56.2",
   "numpy>=1.23.3",
   "numba-progress>=0.0.3",
-  "geopandas>=0.11.1",
+  "geopandas>=0.12.2",
   "pygeos>=0.13",
 ]
 
@@ -89,9 +89,9 @@ dev = [
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
 build_docs = { shell = "pdm run docstyle && pdm run yapper" }
-docs_dev = { shell = "pdm run build_docs && pnpm --prefix ./docs dev" }
-docs_build = { shell = "pdm run build_docs && pnpm --prefix ./docs build" }
-docs_preview = { shell = "pdm run build_docs && pnpm --prefix ./docs preview" }
+docs_dev = { shell = "pdm run build_docs && npm run dev --prefix docs" }
+docs_build = { shell = "pdm run build_docs && npm run build --prefix docs" }
+docs_preview = { shell = "pdm run build_docs && npm run preview --prefix docs" }
 formatting = { shell = "black --config=pyproject.toml ./ && isort --settings-file=pyproject.toml ./" }
 typechecks = "pyright ."
 linting = "pylint --rcfile=pyproject.toml ./cityseer"
@@ -102,8 +102,12 @@ coverage_report = { shell = "coverage report --show-missing --skip-empty && cove
 build_project = { shell = "pdm run formatting && pdm run linting && pdm run typechecks && pdm run tests && pdm build" }
 
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["pdm-pep517"]
+build-backend = "pdm.pep517.api"
+
+[tool.pdm.build]
+package-dir = "cityseer"
+includes = ["cityseer"]
 
 [tool.black]
 line-length = 120
