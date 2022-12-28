@@ -364,7 +364,9 @@ def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 2) -> MultiG
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
-    for start_nd_key, end_nd_key, edge_idx in tqdm(g_multi_copy.edges(keys=True), disable=config.QUIET_MODE):
+    for start_nd_key, end_nd_key, edge_idx in tqdm(  # type: ignore
+        g_multi_copy.edges(keys=True), disable=config.QUIET_MODE
+    ):
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
@@ -515,7 +517,7 @@ def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_c
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
-    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
         # x coordinate
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
@@ -535,7 +537,7 @@ def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_c
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
         # check if geom present - optional step
@@ -972,13 +974,15 @@ def nx_iron_edges(
         raise ValueError("The min_straightness_ratio parameter should be greater than max_wonky_ratio.")
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
-        edge_geom = edge_data["geom"]
+        edge_geom: geometry.LineString = edge_data["geom"]
         # for all changes - write over edge_geom and also update in place
         if simplify:
-            edge_geom = edge_geom.simplify(simplify_dist)
+            edge_geom = edge_geom.simplify(simplify_dist)  # type: ignore
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
         if not straighten and not remove_wonky:
             continue
@@ -1250,7 +1254,7 @@ def _create_nodes_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     nd_key: NodeKey
     node_data: NodeData
     logger.info("Creating nodes STR tree")
-    for nd_key, node_data in tqdm(nx_multigraph.nodes(data=True)):
+    for nd_key, node_data in tqdm(nx_multigraph.nodes(data=True)):  # type: ignore
         # x coordinate
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
@@ -1277,7 +1281,9 @@ def _create_edges_strtree(nx_multigraph: MultiGraph) -> strtree.STRtree:
     edge_idx: int
     edge_data: EdgeData
     logger.info("Creating edges STR tree.")
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(nx_multigraph.edges(keys=True, data=True)):
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+        nx_multigraph.edges(keys=True, data=True)
+    ):
         if "geom" not in edge_data:
             raise KeyError('Encountered edge missing "geom" attribute.')
         linestring = edge_data["geom"]
@@ -2078,7 +2084,7 @@ def network_structure_from_nx(
     # NOTE: node keys have been converted to int - so use int directly for jitclass
     start_node_key: int
     node_data: NodeData
-    for start_node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+    for start_node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
         # don't cast label to string otherwise correspondence between original and round-trip graph indices is lost
         node_keys.append(node_data["label"])
         if "x" not in node_data:

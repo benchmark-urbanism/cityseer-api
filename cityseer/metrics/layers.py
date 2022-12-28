@@ -970,7 +970,7 @@ def compute_stats(
         data_map.data_id,
         distances=_distances,
         betas=_betas,
-        numerical_arrays=stats_data_arrs,
+        numerical_arrays=stats_data_arrs,  # type: ignore
         jitter_scale=np.float32(jitter_scale),
         angular=angular,
         progress_proxy=progress_proxy,
