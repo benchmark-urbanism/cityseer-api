@@ -3,8 +3,11 @@
     @apply m-3 py-3;
   }
 
-  & .module-title,
-  .func-title,
+  & p {
+    @apply px-1;
+  }
+
+  & .func-title,
   .module-title {
     @apply pl-2 font-mono text-xl font-semibold;
   }
@@ -58,10 +61,10 @@
 
   & .doc-str-elem-desc,
   .class-prop-def-desc {
-    @apply flex w-full flex-col;
+    @apply flex w-full flex-col text-xs font-light;
 
     & p {
-      @apply text-xs;
+      @apply text-xs font-light;
     }
   }
 }
