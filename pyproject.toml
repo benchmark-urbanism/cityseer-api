@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '3.6.2b2'
+version = '3.6.2b3'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.8, <3.11"
@@ -104,7 +104,8 @@ build-backend = "pdm.pep517.api"
 
 [tool.pdm.build]
 package-dir = "cityseer"
-includes = ["cityseer"]
+includes = ["LICENSE.txt", "README.md", "cityseer/", ]
+source-includes = ["cityseer/"]
 
 [tool.black]
 line-length = 120
