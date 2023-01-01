@@ -37,7 +37,7 @@ classifiers = [
 ]
 dependencies = [
     "matplotlib>=3.5.1",
-    "networkx>=3.0rc1",
+    "networkx>=2.8.8",
     "pyproj>=3.3.0",
     "requests>=2.27.1",
     "scikit-learn>=1.0.2",
@@ -84,18 +84,18 @@ dev = [
     "pytest>=7.2.0",
     "osmnx>=1.2.2",
     "momepy>=0.5.4",
-    "pylint>=3.0.0a5",
+    "pylint>=2.15.9",
     "isort>=5.11.4",
     "pydocstyle>=6.1.1",
     "jupyter-black>=0.3.3",
     "coverage>=7.0.1",
     "pandas-stubs>=1.5.2.221213",
     "types-requests>=2.28.11.7",
-    "jupyterlab>=4.0.0a31",
+    "jupyterlab>=3.5.2",
     "jupyter>=1.0.0",
     "pyright>=1.1.286",
     "yapper>=0.4.0",
-    "black>=23.1a1",
+    "black>=22.12.0",
 ]
 
 [build-system]
