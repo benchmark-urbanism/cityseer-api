@@ -6,6 +6,16 @@ import vue from '@astrojs/vue'
 import { defineConfig } from 'astro/config'
 import { h, s } from 'hastscript'
 import { visit } from 'unist-util-visit'
+import rehypeCitation from 'rehype-citation'
+import remarkGfm from 'remark-gfm'
+import rehypeSlug from 'rehype-slug'
+import remarkEmoji from 'remark-emoji'
+import remarkAllyEmoji from '@fec/remark-a11y-emoji'
+import remarkSmartypants from 'remark-smartypants'
+import remarkMath from 'remark-math'
+import remarkDirective from 'remark-directive'
+import rehypeKatex from 'rehype-katex'
+import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 
 function admonitionRemarkPlugin() {
   return (tree) => {
@@ -54,29 +64,29 @@ export default defineConfig({
       wrap: true,
     },
     remarkPlugins: [
-      'remark-gfm',
-      'remark-emoji',
-      '@fec/remark-a11y-emoji',
+      remarkGfm,
+      remarkEmoji,
+      remarkAllyEmoji,
       [
-        'remark-smartypants',
+        remarkSmartypants,
         {
           dashes: 'oldschool',
         },
       ],
-      'remark-math',
-      'remark-directive',
+      remarkMath,
+      remarkDirective,
       admonitionRemarkPlugin,
     ],
     rehypePlugins: [
-      'rehype-slug',
+      rehypeSlug,
       [
-        'rehype-katex',
+        rehypeKatex,
         {
           output: 'htmlAndMathml',
         },
       ],
       [
-        'rehype-autolink-headings',
+        rehypeAutolinkHeadings,
         {
           test: ['h1', 'h2', 'h3'],
           behavior: 'prepend',
@@ -107,7 +117,7 @@ export default defineConfig({
         },
       ],
       [
-        'rehype-citation',
+        rehypeCitation, // ESM, import manually else doesn't seem to work
         {
           bibliography: './src/assets/bib/mendeley.bib',
           csl: 'harvard1',

@@ -8,9 +8,11 @@
   html {
     scroll-behavior: smooth;
   }
+
   body {
     @apply bg-darker-grey text-lighter-grey;
   }
+
   h1,
   h2,
   h3,
@@ -93,16 +95,20 @@
     & th {
       @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-semibold;
     }
+
     & td {
       @apply border-t-1 border-l-1 border-r-1 border-mid-grey px-2 py-1 font-normal;
     }
+
     & tr {
       @apply p-0.5;
     }
+
     & tr td:first-child,
     & tr th:first-child {
       @apply border-l-0;
     }
+
     & tr td:last-child,
     & tr th:last-child {
       @apply border-r-0;
@@ -164,6 +170,7 @@
     }
   }
 }
+
 .heading-icon {
   @apply mr-2;
 
@@ -171,24 +178,30 @@
     fill: #d33130;
   }
 }
+
 /* for citations */
 .references {
   @apply my-4 border-t border-mid-grey py-2;
 }
+
 .csl-entry {
   @apply py-1 text-xs font-light text-light-grey;
 }
+
 .quote {
   @apply ml-10;
 }
+
 /* for markdown admonitions / boxes */
 
 .box,
 blockquote {
   @apply my-3 rounded border bg-dark-grey px-2;
+
   & p {
     @apply text-xs;
   }
+
   &.note {
     @apply border-mid-grey;
   }
@@ -200,6 +213,7 @@ blockquote {
 
 .katex {
   @apply text-sm;
+
   & .newline {
     @apply py-1;
   }

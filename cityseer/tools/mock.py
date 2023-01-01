@@ -345,7 +345,7 @@ def mock_landuse_categorical_data(
         else:
             class_key = int(np.random.randint(0, len(random_class_str)))
             cl_codes.append(random_class_str[class_key])
-    data_gpd["categorical_landuses"] = cl_codes
+    data_gpd["categorical_landuses"] = cl_codes  # pylint: disable=unsupported-assignment-operation
 
     return data_gpd
 
@@ -397,7 +397,7 @@ def mock_numerical_data(
         # set last five items to max - this is for duplicate checking
         num_max = np.nanmax(num_arr)
         num_arr[-5:] = num_max
-        data_gpd[f"mock_numerical_{idx}"] = num_arr
+        data_gpd[f"mock_numerical_{idx}"] = num_arr  # pylint: disable=unsupported-assignment-operation
     return data_gpd
 
 

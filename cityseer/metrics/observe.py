@@ -95,7 +95,8 @@ class StreetContinuityReport:
         for n, arg_idx in enumerate(np.argsort(lengths)[::-1]):  # type: ignore
             if n == n_items:
                 break
-            logger.info(f"Length: {round(lengths[arg_idx] / 1000, 2)}km - {item_keys[arg_idx]}")
+            len_idx: float = lengths[arg_idx]
+            logger.info(f"Length: {round(len_idx / 1000, 2)}km - {item_keys[arg_idx]}")
 
 
 def _continuity_report_to_nx(
@@ -110,8 +111,8 @@ def _continuity_report_to_nx(
     route_keys = list(continuity_report.entries.keys())
     route_counts: list[float] = [v.count for v in continuity_report.entries.values()]
     for arg_idx in np.argsort(route_counts):  # type: ignore
-        route_key = route_keys[arg_idx]
-        continuity_entry = continuity_report.entries[route_key]
+        route_key: str = route_keys[arg_idx]
+        continuity_entry: ContinuityEntry = continuity_report.entries[route_key]
         for hb_start_nd_key, hb_end_nd_key, hb_edge_idx in continuity_entry.edges.values():
             nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][label_edge_key] = route_key
             nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][count_edge_key] = continuity_entry.count
@@ -215,7 +216,7 @@ def street_continuity(
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 
-    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
+    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
     # check intended method keys
     available_targets = ["names", "routes", "highways"]
     if method not in available_targets:
@@ -248,7 +249,7 @@ def street_continuity(
                     method_report.scaffold_entry(entry_name=match_target)
                     visited_edges: set[str] = set()
                     _recurse_edges(
-                        nx_multi_copy,
+                        nx_multi_copy,  # type: ignore
                         method,
                         match_target,
                         a_nd_key,
@@ -267,7 +268,7 @@ def street_continuity(
                 )
     # copy to networkx input graph
     nx_multi_copy = _continuity_report_to_nx(
-        edge_key=method, nx_multigraph=nx_multi_copy, continuity_report=method_report
+        edge_key=method, nx_multigraph=nx_multi_copy, continuity_report=method_report  # type: ignore
     )
 
     return nx_multi_copy, method_report
@@ -313,8 +314,8 @@ def hybrid_street_continuity(
     route_keys = list(routes_continuity_report.entries.keys())
     route_lengths: list[float] = [v.length for v in routes_continuity_report.entries.values()]
     for arg_idx in np.argsort(route_lengths)[::-1]:  # type: ignore
-        route_key = route_keys[arg_idx]
-        routes_continuity_entry = routes_continuity_report.entries[route_key]
+        route_key: str = route_keys[arg_idx]
+        routes_continuity_entry: ContinuityEntry = routes_continuity_report.entries[route_key]
         # iterate the edges associated with an entry
         for rt_start_nd_key, rt_end_nd_key, rt_edge_idx in routes_continuity_entry.edges.values():
             # get associated street names

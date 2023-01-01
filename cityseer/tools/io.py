@@ -389,9 +389,12 @@ def nx_from_osm_nx(
     return g_multi
 
 
+BboxType = Union[tuple[int, int, int, int], tuple[float, float, float, float]]
+
+
 def nx_from_open_roads(
     open_roads_path: Union[str, Path],
-    target_bbox: Optional[Union[tuple[int, int, int, int], tuple[float, float, float, float]]] = None,
+    target_bbox: Optional[BboxType] = None,
 ) -> nx.MultiGraph:
     """
     Generates a `networkX` `MultiGraph` from an OS Open Roads dataset.

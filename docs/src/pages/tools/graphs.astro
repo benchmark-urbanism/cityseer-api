@@ -44,7 +44,7 @@ Snaps a LineString's start-point coordinate to a specified x_y coordinate.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">linestring_coords</div>
-          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+          <div class="yap doc-str-elem-type">AnyCoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A list, tuple, or numpy array of x, y coordinate tuples.
@@ -53,7 +53,7 @@ A list, tuple, or numpy array of x, y coordinate tuples.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_y</div>
-          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+          <div class="yap doc-str-elem-type">CoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple of floats representing the target x, y coordinates against which to align the linestring start point.
@@ -97,7 +97,7 @@ Snaps a LineString's end-point coordinate to a specified x_y coordinate.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">linestring_coords</div>
-          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+          <div class="yap doc-str-elem-type">AnyCoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A list, tuple, or numpy array of x, y coordinate tuples.
@@ -106,7 +106,7 @@ A list, tuple, or numpy array of x, y coordinate tuples.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_y</div>
-          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+          <div class="yap doc-str-elem-type">CoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple of floats representing the target x, y coordinates against which to align the linestring end point.
@@ -152,7 +152,7 @@ Align a LineString's coordinate order to either start or end at a specified x_y 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">linestring_coords</div>
-          <div class="yap doc-str-elem-type">tuple | list | np.ndarray</div>
+          <div class="yap doc-str-elem-type">AnyCoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A list, tuple, or numpy array of x, y coordinate tuples.
@@ -161,7 +161,7 @@ A list, tuple, or numpy array of x, y coordinate tuples.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_y</div>
-          <div class="yap doc-str-elem-type">tuple[float, float]</div>
+          <div class="yap doc-str-elem-type">CoordsType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple of floats representing the target x, y coordinates against which to align the linestring coords.
@@ -213,21 +213,21 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap class-prop-def-name">names</div>
         <div class="yap class-prop-def-type"></div>
       </div>
-      <div class="yap class-prop-def-desc"></div>
+      <div class="yap class-prop-def-desc">Returns a set of street names.</div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">routes</div>
         <div class="yap class-prop-def-type"></div>
       </div>
-      <div class="yap class-prop-def-desc"></div>
+      <div class="yap class-prop-def-desc">Returns a set of routes - e.g. route numbers.</div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">highways</div>
         <div class="yap class-prop-def-type"></div>
       </div>
-      <div class="yap class-prop-def-desc"></div>
+      <div class="yap class-prop-def-desc">Returns a set of highway types - e.g. footway.</div>
     </div>
     <h3 class="yap">Methods</h3>
     <section class="yap func">
@@ -317,7 +317,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Inferring geometries from node to node. Infers straight-lined geometries connecting the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to each edge's `geom` attribute.
+Inferring geometries from node to node.
+
+ Infers straight-lined geometries connecting the `x` and `y` coordinates of each node-pair. The resultant edge geometry will be stored to each edge's `geom` attribute.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -414,7 +416,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS. The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS.
+
+ The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -471,12 +475,14 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>nx_wgs_to_utm(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">force_zone_number)</div>
+          <div class="yap func-sig-param">force_zone_number=None)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
+Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
+
+ Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -528,7 +534,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Remove nodes of degree=2. Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
+Remove nodes of degree=2.
+
+ Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
 
 :::note
 Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
@@ -574,7 +582,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>nx_remove_dangling_nodes(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multigraph, </div>
-          <div class="yap func-sig-param">despine, </div>
+          <div class="yap func-sig-param">despine=None, </div>
           <div class="yap func-sig-param">remove_disconnected=True, </div>
           <div class="yap func-sig-param">cleanup_filler_nodes=True)</div>
         </div>
@@ -596,7 +604,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">despine</div>
-          <div class="yap doc-str-elem-type">bool</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.
@@ -653,7 +661,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Check a MultiGraph for duplicate edges; which, if found, will be merged. The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
+Check a MultiGraph for duplicate edges; which, if found, will be merged.
+
+ The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
 
  When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
@@ -830,20 +840,22 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">buffer_dist=5, </div>
           <div class="yap func-sig-param">min_node_group=2, </div>
           <div class="yap func-sig-param">min_node_degree=1, </div>
-          <div class="yap func-sig-param">min_cumulative_degree, </div>
-          <div class="yap func-sig-param">max_cumulative_degree, </div>
-          <div class="yap func-sig-param">neighbour_policy, </div>
+          <div class="yap func-sig-param">min_cumulative_degree=None, </div>
+          <div class="yap func-sig-param">max_cumulative_degree=None, </div>
+          <div class="yap func-sig-param">neighbour_policy=None, </div>
           <div class="yap func-sig-param">crawl=False, </div>
           <div class="yap func-sig-param">cent_min_degree=3, </div>
-          <div class="yap func-sig-param">cent_min_names, </div>
-          <div class="yap func-sig-param">cent_min_len_factor, </div>
+          <div class="yap func-sig-param">cent_min_names=None, </div>
+          <div class="yap func-sig-param">cent_min_len_factor=None, </div>
           <div class="yap func-sig-param">merge_edges_by_midline=True, </div>
           <div class="yap func-sig-param">contains_buffer_dist=20)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
+Consolidates nodes if they are within a buffer distance of each other.
+
+ Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
 
  Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
 - The centroid of the node group;
@@ -982,15 +994,13 @@ The buffer distance to consider when checking if parallel edges are sufficiently
 A `networkX` `MultiGraph` with consolidated nodes.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
 
 ![Example raw graph from OSM](/images/graph_cleaning_1.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
 ![Example cleaned graph](/images/graph_cleaning_5.png) _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 </Markdown>
-      </div>
     </div>
   </section>
   <section class="yap func">
@@ -1015,7 +1025,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx-consolidate-nodes`](#nx-consolidate-nodes).
+Split edges opposite nodes on parallel edge segments if within a buffer distance.
+
+ This facilitates merging parallel roadways through subsequent use of [`nx-consolidate-nodes`](#nx-consolidate-nodes).
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
@@ -1034,7 +1046,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">buffer_dist</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-type">float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The buffer distance to be used for splitting nearby nodes. Defaults to 5.
@@ -1090,7 +1102,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
+Decomposes a graph so that no edge is longer than a set maximum.
+
+ Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
 
 :::note
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
@@ -1107,16 +1121,9 @@ unnecessarily for subsequent analysis. For larger-scale urban analysis, it is ge
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.
 </Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">decompose_max</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum length threshold for decomposed edges.
-</Markdown></div>
-      </div>
+      </div><Markdown is:raw>
+decompose_max: float The maximum length threshold for decomposed edges.
+</Markdown>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
@@ -1127,8 +1134,7 @@ The maximum length threshold for decomposed edges.
 A decomposed `networkX` graph with no edge longer than the `decompose_max` parameter. If `live` node attributes were provided, then the `live` attribute for child-nodes will be set to `True` if either or both parent nodes were `live`. Otherwise, all nodes wil be set to `live=True`. The `length` and `imp_factor` edge attributes will be set to match the lengths of the new edges.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 ```python
 from cityseer.tools import mock, graphs, plot
 
@@ -1143,7 +1149,6 @@ plot.plot_nx(G_decomposed)
 
 ![Example decomposed graph](/images/graph_decomposed.png) _Example graph after decomposition._
 </Markdown>
-      </div>
     </div>
   </section>
   <section class="yap func">
@@ -1165,7 +1170,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Convert a primal graph representation to the dual representation. Primal graphs represent intersections as nodes and streets as edges. This method will invert this representation so that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
+Convert a primal graph representation to the dual representation.
+
+ Primal graphs represent intersections as nodes and streets as edges. This method will invert this representation so that edges are converted to nodes and intersections become edges. Primal edge `geom` attributes will be welded to adjacent edges and split into the new dual edge `geom` attributes.
 
 :::note
 Note that a `MultiGraph` is useful for primal but not for dual, so the output `MultiGraph` will have single edges.
@@ -1193,8 +1200,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
 A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be added, corresponding to the node identifier of the primal graph.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 ```python
 from cityseer.tools import graphs, mock, plot
 
@@ -1209,7 +1215,6 @@ plot.plot_nx_primal_or_dual(G_simple,
 
 ![Example dual graph](/images/graph_dual.png) _Dual graph (blue) overlaid on the source primal graph (red)._
 </Markdown>
-      </div>
     </div>
   </section>
   <section class="yap func">
@@ -1232,7 +1237,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
+Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+
+ Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -1247,7 +1254,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">crs</div>
-          <div class="yap doc-str-elem-type">str | int</div>
+          <div class="yap doc-str-elem-type">str|int</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
@@ -1266,7 +1273,7 @@ A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
+          <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A [`structures.NetworkStructure`](/structures#networkstructure) instance.
@@ -1290,12 +1297,14 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nodes_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">nx_multigraph)</div>
+          <div class="yap func-sig-param">nx_multigraph=None)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Write `cityseer` data graph maps back to a `networkX` `MultiGraph`. This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `nx_multigraph` parameter.
+Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
+
+ This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `nx_multigraph` parameter.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -1310,7 +1319,7 @@ A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">structures.NetworkStructure</div>
+          <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf` parameter.

@@ -59,8 +59,7 @@ If set to `True`, the `x` and `y` attributes will be in [WGS84](https://epsg.io/
 A `NetworkX` `MultiGraph` with `x` and `y` node attributes.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 ```python
 from cityseer.tools import mock, plot
 nx_multigraph = mock.mock_graph()
@@ -70,7 +69,6 @@ plot.plot_nx(nx_multigraph)
 
 ![Example graph](/images/graph_example.png) _Mock graph._
 </Markdown>
-      </div>
     </div>
   </section>
   <section class="yap func">
@@ -401,7 +399,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Generate a series of randomly generated counts and corresponding probabilities. This function is used for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
+Generate a series of randomly generated counts and corresponding probabilities.
+
+ This function is used for testing diversity measures. The data is generated in varying lengths from randomly assigned integers between 1 and 10. Matching integers are then collapsed into species "classes" with probabilities computed accordingly.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -413,7 +413,7 @@ Generate a series of randomly generated counts and corresponding probabilities. 
 An optional random seed.
 </Markdown></div>
       </div>
-      <h3 class="yap">Returns</h3>
+      <h3 class="yap">Yields</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">counts</div>
@@ -432,8 +432,7 @@ The number of members for each species class.
 The probability of encountering the respective species classes.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 ```python
 from cityseer.tools import mock
 
@@ -459,7 +458,6 @@ for counts, probs in mock.mock_species_data():
 ```
 
 </Markdown>
-      </div>
     </div>
   </section>
 </div>

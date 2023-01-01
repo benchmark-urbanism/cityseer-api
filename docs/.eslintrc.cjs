@@ -1,19 +1,32 @@
+/* eslint-env node */
+require('@rushstack/eslint-patch/modern-module-resolution')
+
 module.exports = {
   root: true,
   env: {
     node: true,
   },
   extends: [
-    'plugin:prettier/recommended',
-    'plugin:vue/vue3-recommended',
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:vue/vue3-recommended', // eslint-plugin-vue
     'plugin:astro/recommended',
+    // last - to turn of clashes with prettier
+    'prettier', // eslint-config-prettier
   ],
-  plugins: ['simple-import-sort'],
+  // for parsing vue <template>
+  parser: 'vue-eslint-parser',
+  // for parsing <script>
+  parserOptions: {
+    parser: '@typescript-eslint/parser',
+    sourceType: 'module',
+  },
+  // sorting imports and tailwind plugin
+  plugins: ['simple-import-sort', 'tailwindcss', '@typescript-eslint'],
+  // rules for enabling import sorting errors
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'vue/multi-word-component-names': 'off',
     'simple-import-sort/imports': 'error',
+    'simple-import-sort/exports': 'error',
   },
   overrides: [
     {
