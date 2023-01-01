@@ -3,22 +3,23 @@
 nav#nav-tree
   // navigation tree
   div(v-for='nav in navTree').flex.flex-col.items-end
-    a.nav-link(
-      :key='nav.path'
+    a(
+      :class='{ "nav-link-active": nav.active }',
+      :href='nav.path',
+      :key='nav.path',
       :title='nav.path'
-      :href='nav.path'
-      :class='{ "nav-link-active": nav.active }'
-    ) {{ nav.path }}
+    ).nav-link {{ nav.path }}
     // when active, each entry has a nested-tree to H2 headers
     div(
+      @click='headingTargetsAnim()'
       v-show='nav.headerInfo.length'
-      @click='headingTargetsAnim()').flex.flex-col.items-end.py-2
-      a.nested-link(
-        v-for='header in nav.headerInfo'
+    ).flex.flex-col.items-end.py-2
+      a(
+        :href='header.targetPath',
+        :id='header.headerId',
         :title='header.title'
-        :href='header.targetPath'
-        :id='header.headerId'
-      ) {{ header.title }}
+        v-for='header in nav.headerInfo'
+      ).nested-link {{ header.title }}
 </template>
 
 <script setup>

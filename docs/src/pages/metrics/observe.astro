@@ -36,28 +36,28 @@ State management for an individual street continuity entry.
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">entry_name</div>
-        <div class="yap class-prop-def-type">str</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">count</div>
-        <div class="yap class-prop-def-type">int</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">length</div>
-        <div class="yap class-prop-def-type">float</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">edges</div>
-        <div class="yap class-prop-def-type">dict</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
@@ -152,14 +152,14 @@ State management for a collection of street continuity metrics.
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">method</div>
-        <div class="yap class-prop-def-type">str</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">entries</div>
-        <div class="yap class-prop-def-type">dict</div>
+        <div class="yap class-prop-def-type"></div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
@@ -273,7 +273,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute the street continuity for a given graph. This requires a graph with `names`, `routes`, or `highways` edge keys corresponding to the selected `method` parameter. These keys are available if importing an OSM network with [`osm_graph_from_poly`](/tools/io#osm-graph-from-poly) or if importing OS Open Roads data with [nx_from_open_roads](/tools/io#nx-from-open-roads).
+Compute the street continuity for a given graph.
+
+ This requires a graph with `names`, `routes`, or `highways` edge keys corresponding to the selected `method` parameter. These keys are available if importing an OSM network with [`osm_graph_from_poly`](/tools/io#osm-graph-from-poly) or if importing OS Open Roads data with [nx_from_open_roads](/tools/io#nx-from-open-roads).
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -288,7 +290,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">method</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str|tuple[str|str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The type of continuity metric to compute, where available options are "names", "routes", or "highways".
@@ -334,7 +336,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute the street continuity for a given graph using a hybridisation of routes and names continuity. Hybrid continuity merges route continuity and street continuity information where a route overlaps a street continuity.
+Compute the street continuity for a given graph using a hybridisation of routes and names continuity.
+
+ Hybrid continuity merges route continuity and street continuity information where a route overlaps a street continuity.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">

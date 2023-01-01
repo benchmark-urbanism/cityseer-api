@@ -42,7 +42,6 @@ def test_hill_diversity():
 def test_hill_diversity_branch_distance_wt():
     # test against hill diversity by setting all weights = 1
     for counts, probs in mock.mock_species_data():
-
         non_weights = np.full(len(counts), 1)
         non_beta = -0
         for q in [0, 1, 2]:
@@ -66,7 +65,6 @@ def test_hill_diversity_branch_distance_wt():
 
 def test_hill_diversity_pairwise_distance_wt():
     for counts, probs in mock.mock_species_data():
-
         non_weights = np.full(len(counts), 1)
         non_beta = -0
         for q in [0, 1, 2]:
@@ -86,7 +84,6 @@ def test_hill_diversity_pairwise_distance_wt():
 
 def test_hill_diversity_pairwise_matrix_wt():
     for counts, probs in mock.mock_species_data():
-
         non_matrix = np.full((len(counts), len(counts)), 1)
 
         for q in [0, 1, 2]:

@@ -22,7 +22,7 @@ Issues: <https://github.com/benchmark-urbanism/cityseer-api/issues>
 
 Questions: <https://github.com/benchmark-urbanism/cityseer-api/discussions>
 
-Cite as: [The cityseer Python package for pedestrian-scale network-based urban analysis](https://arxiv.org/abs/2106.15314)
+Cite as: [The cityseer Python package for pedestrian-scale network-based urban analysis](https://journals.sagepub.com/doi/full/10.1177/23998083221133827)
 
 The `cityseer-api` `Python` package addresses a range of issues specific to computational workflows for urban analytics from an urbanist's point of view and contributes a combination of techniques to support developments in this field:
 

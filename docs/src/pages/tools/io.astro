@@ -37,7 +37,9 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Buffer a point and return a `shapely` Polygon in WGS and UTM coordinates. This function can be used to prepare a `poly_wgs` `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly).
+Buffer a point and return a `shapely` Polygon in WGS and UTM coordinates.
+
+ This function can be used to prepare a `poly_wgs` `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly).
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -128,6 +130,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
     </div>
     <div class="yap"><Markdown is:raw>
 Fetches an OSM response.
+
 :::note
 This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
 [`osm_graph_from_poly()`](#osm-graph-from-poly), which would call this method on your behalf and then
@@ -166,7 +169,7 @@ The number of attempts to fetch a response before raising.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name"></div>
-          <div class="yap doc-str-elem-type">requests.Response</div>
+          <div class="yap doc-str-elem-type">Response</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An OSM API response.
@@ -209,8 +212,8 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">poly_geom, </div>
           <div class="yap func-sig-param">poly_epsg_code=4326, </div>
-          <div class="yap func-sig-param">to_epsg_code, </div>
-          <div class="yap func-sig-param">custom_request, </div>
+          <div class="yap func-sig-param">to_epsg_code=None, </div>
+          <div class="yap func-sig-param">custom_request=None, </div>
           <div class="yap func-sig-param">simplify=True, </div>
           <div class="yap func-sig-param">remove_parallel=True, </div>
           <div class="yap func-sig-param">iron_edges=True, </div>
@@ -227,7 +230,7 @@ Prepares a `networkX` `MultiGraph` from an OSM request for the specified shapely
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">poly_geom</div>
-          <div class="yap doc-str-elem-type">shapely.Polygon</div>
+          <div class="yap doc-str-elem-type">Polygon</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A shapely Polygon representing the extents for which to fetch the OSM network.
@@ -324,8 +327,7 @@ The number of attempts to fetch a response before raising.
 A `networkX` `MultiGraph` with `x` and `y` node attributes that have been converted to UTM. The network will be simplified if the `simplify` parameter is `True`.
 </Markdown></div>
       </div>
-      <div class="yap doc-str-meta">
-        <h3 class="yap">Notes</h3><Markdown is:raw>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
 The default OSM request will attempt to find all walkable routes. It will ignore motorways and will try to work with pedestrianised routes and walkways.
 
  If you wish to provide your own OSM request, then provide a valid OSM API request as a string. The string must contain a `{geom_osm}` string formatting key. This allows for the geometry parameter passed to the OSM API to be injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use street name and highway reference information for cleaning purposes. See [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
@@ -348,7 +350,6 @@ out qt;
 ```
 
 </Markdown>
-      </div>
     </div>
   </section>
   <section class="yap func">
@@ -366,13 +367,16 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>nx_from_osm_nx(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nx_multidigraph, </div>
-          <div class="yap func-sig-param">node_attributes, </div>
-          <div class="yap func-sig-param">edge_attributes, </div>
+          <div class="yap func-sig-param">node_attributes=None, </div>
+          <div class="yap func-sig-param">edge_attributes=None, </div>
+          <div class="yap func-sig-param">tolerance=config.ATOL)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
+
+ See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
@@ -393,7 +397,7 @@ A `OSMnx` derived `networkX` `MultiDiGraph` containing `x` and `y` node attribut
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_attributes</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
+          <div class="yap doc-str-elem-type">list[str]|tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Optional node attributes to copy to the new MultiGraph. (In addition to the default `x` and `y` attributes.)
@@ -402,7 +406,7 @@ Optional node attributes to copy to the new MultiGraph. (In addition to the defa
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_attributes</div>
-          <div class="yap doc-str-elem-type">tuple[str]</div>
+          <div class="yap doc-str-elem-type">list[str]|tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Optional edge attributes to copy to the new MultiGraph. (In addition to the optional `geometry` attribute.)
@@ -444,7 +448,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>nx_from_open_roads(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">open_roads_path, </div>
-          <div class="yap func-sig-param">target_bbox)</div>
+          <div class="yap func-sig-param">target_bbox=None)</div>
         </div>
       </div>
     </div>
@@ -455,7 +459,7 @@ Generates a `networkX` `MultiGraph` from an OS Open Roads dataset.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">open_roads_path</div>
-          <div class="yap doc-str-elem-type">str | Path</div>
+          <div class="yap doc-str-elem-type">str|Path</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A valid relative filepath from which to load the OS Open Roads dataset.
@@ -464,7 +468,7 @@ A valid relative filepath from which to load the OS Open Roads dataset.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">target_bbox</div>
-          <div class="yap doc-str-elem-type">tuple[int]</div>
+          <div class="yap doc-str-elem-type">BboxType</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the dataset. Set to `None` for no bounding box.
