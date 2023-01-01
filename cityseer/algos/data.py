@@ -405,7 +405,7 @@ def aggregate_to_src_idx(
     return reachable_data, reachable_data_dist
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def accessibility(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -538,7 +538,7 @@ def accessibility(
     return accessibility_data, accessibility_data_wt
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def mixed_uses(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -736,7 +736,7 @@ def mixed_uses(
     return mixed_use_hill_data[mu_hill_k_int], mixed_use_other_data[mu_other_k_int]
 
 
-@njit(cache=False, fastmath=config.FASTMATH, nogil=True, parallel=True)
+@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_stats(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
