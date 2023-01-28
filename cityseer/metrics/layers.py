@@ -252,7 +252,7 @@ def compute_accessibilities(
     # these indices are passed as keys which will be matched against the integer landuse encodings
     acc_keys: list[int] = []
     for ac_label in accessibility_keys:
-        if ac_label not in lab_enc.classes_:
+        if ac_label not in lab_enc.classes_:  # type: ignore
             logger.warning(f"No instances of accessibility label '{ac_label}' in the data.")
         else:
             acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
@@ -300,7 +300,7 @@ def compute_accessibilities(
             ac_nw_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_non_weighted")
             ac_wt_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_weighted")
             # sometimes target classes are not present in data
-            if ac_label in lab_enc.classes_:
+            if ac_label in lab_enc.classes_:  # type: ignore
                 ac_code: int = lab_enc.transform([ac_label])  # type: ignore
                 ac_idx: int = acc_keys.index(ac_code)
                 nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]  # non-weighted

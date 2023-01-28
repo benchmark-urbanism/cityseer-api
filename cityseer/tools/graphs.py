@@ -1634,12 +1634,7 @@ def nx_split_opposing_geoms(
             # get starting geom for orientation
             s_nd_data: NodeData = _multi_graph.nodes[start_nd_key]
             s_nd_geom = geometry.Point(s_nd_data["x"], s_nd_data["y"])
-            if np.allclose(
-                s_nd_geom.coords,
-                new_edge_geom_a.coords[0][:2],
-                atol=config.ATOL,
-                rtol=0,
-            ) or np.allclose(
+            if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=config.ATOL, rtol=0,) or np.allclose(
                 s_nd_geom.coords,
                 new_edge_geom_a.coords[-1][:2],
                 atol=config.ATOL,
