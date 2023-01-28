@@ -88,10 +88,10 @@ class NodeMap:
             raise ValueError("Zero length NodeMap")
         if len(self.ys) != self.count or len(self.live) != self.count:
             raise ValueError("X, Y and 'live' arrays are not the same length")
-        if not np.all(np.isfinite(self.xs)) or not np.all(self.xs >= 0):
-            raise ValueError("Missing or invalid start x data encountered.")
-        if not np.all(np.isfinite(self.ys)) or not np.all(self.ys >= 0):
-            raise ValueError("Missing or invalid start y data encountered.")
+        if not np.all(np.isfinite(self.xs)):
+            raise ValueError("Non finite x coordinate encountered.")
+        if not np.all(np.isfinite(self.ys)):
+            raise ValueError("Non finite y coordinate encountered.")
         if np.all(~self.live):
             raise ValueError("NodeMap has no live nodes.")
 
