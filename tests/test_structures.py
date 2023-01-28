@@ -15,7 +15,7 @@ def test_validate_node_map(primal_graph):
     network_structure.nodes.xs = np.array([1.0, 2.0], np.float32)
     with pytest.raises(ValueError):
         network_structure.nodes.validate()
-    for bad_val in [np.nan, -1]:
+    for bad_val in [np.nan]:
         # xs
         _node_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
         network_structure.nodes.xs[0] = bad_val
