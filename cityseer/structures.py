@@ -416,7 +416,7 @@ class DataMap:
             raise ValueError(f'Expecting int for "data_id" but encountered {type(data_id)}')
         self.xs[data_idx] = data_x
         self.ys[data_idx] = data_y
-        if data_id is not None:
+        if data_id:
             self.data_id[data_idx] = data_id
 
     def x_y(self, data_idx: int) -> npt.NDArray[np.float32]:

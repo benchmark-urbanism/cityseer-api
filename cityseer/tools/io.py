@@ -65,7 +65,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     # convert back to WGS
     # the polygon is too big for the OSM server, so have to use convex hull then later prune
     coords = []
-    for easting, northing in poly_utm.convex_hull.exterior.coords:  # type: ignore  # pylint: disable=no-member
+    for easting, northing in poly_utm.convex_hull.exterior.coords:  # type: ignore
         lat, lng = utm.to_latlon(easting, northing, utm_zone_number, utm_zone_letter)  # type: ignore
         coords.append((lng, lat))
     poly_wgs = geometry.Polygon(coords)
@@ -99,7 +99,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         An OSM API response.
 
     """
-    osm_response: Optional[requests.Response] = None
+    osm_response: Optional[requests.Response] | None = None
     while max_tries:
         osm_response = requests.get(
             "https://overpass-api.de/api/interpreter",
@@ -107,7 +107,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
             params={"data": osm_request},
         )
         # break if OK response
-        if osm_response is not None and osm_response.status_code == 200:
+        if osm_response is not None and osm_response.status_code == 200:  # type: ignore
             break
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
@@ -445,7 +445,7 @@ def nx_from_open_roads(
                     routes.add(ref)
             highways: set[str] = set()
             for highway_key in ["roadFunction", "roadClassification"]:  # 'formOfWay'
-                highway: str = props[highway_key]
+                highway: str | None = props[highway_key]
                 if highway is not None:
                     highways.add(highway)
             if props["trunkRoad"]:
@@ -465,7 +465,7 @@ def nx_from_open_roads(
             )
             # create the geometry
             geom = geometry.LineString(edge_data["geometry"]["coordinates"])  # type: ignore
-            geom = geom.simplify(5)
+            geom: geometry.LineString = geom.simplify(5)
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
                 n_dropped += 1
