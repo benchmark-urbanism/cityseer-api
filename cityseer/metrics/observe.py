@@ -150,7 +150,7 @@ def _recurse_edges(
     nested_edge_data: graphs.EdgeData = _nx_multigraph[_a_nd_key][_b_nd_key][_edge_idx]
     if _method not in nested_edge_data:
         raise ValueError(f"Missing target key of {_method}")
-    nested_match_targets: list[str] = nested_edge_data[_method]
+    nested_match_targets: list[str | None] = nested_edge_data[_method]
     nested_match_targets = [nmt.lower() for nmt in nested_match_targets if nmt is not None]
     # bail if this edge info (e.g. street name) doesn't intersect with the previous
     if not _match_target.lower() in nested_match_targets:
@@ -235,7 +235,7 @@ def street_continuity(
         if method not in edge_data:
             raise ValueError(f"Could not find {method} in edge data for edge: {a_nd_key} - {b_nd_key} idx: {edge_idx}")
         # get target values, e.g. street names
-        match_targets: list[str] = edge_data[method]
+        match_targets: list[str | None] = edge_data[method]
         match_targets = [mt.lower() for mt in match_targets if mt is not None]
         # can be multiple values, e.g. route numbers per edge, so explore individually
         for match_target in match_targets:

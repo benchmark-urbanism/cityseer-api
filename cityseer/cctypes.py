@@ -9,7 +9,7 @@ DistancesType = Union[
     int, float, list[Union[int, float]], tuple[Union[int, float]], npt.NDArray[Union[np.int_, np.float32]]
 ]
 BetasType = Union[float, list[float], tuple[float], npt.NDArray[np.float32]]
-QsType = Union[  # pylint: disable=invalid-name
+QsType = Union[
     int,
     float,
     Union[list[int], list[float]],

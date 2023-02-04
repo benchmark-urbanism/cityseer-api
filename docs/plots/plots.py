@@ -7,8 +7,8 @@ import utm
 from matplotlib import colors
 from shapely import geometry
 
-from cityseer.metrics import layers, networks  # pylint: disable=import-error
-from cityseer.tools import graphs, io, mock, plot  # pylint: disable=import-error
+from cityseer.metrics import layers, networks
+from cityseer.tools import graphs, io, mock, plot
 
 PLOT_RC_PATH = pathlib.Path(__file__).parent / "matplotlibrc"
 print(f"matplotlibrc path: {PLOT_RC_PATH}")
