@@ -362,9 +362,9 @@ def nx_from_osm_nx(
         else:
             line_geom = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         # check for LineString validity
-        if line_geom.type != "LineString":
+        if line_geom.geom_type != "LineString":
             raise TypeError(
-                f"Expecting LineString geometry but found {line_geom.type} geometry for "
+                f"Expecting LineString geometry but found {line_geom.geom_type} geometry for "
                 f"edge {start_nd_key}-{end_nd_key}."
             )
         # orient LineString

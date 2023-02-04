@@ -615,8 +615,8 @@ def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_c
         # check if geom present - optional step
         if "geom" in edge_data:
             line_geom: geometry.LineString = edge_data["geom"]
-            if line_geom.type != "LineString":
-                raise TypeError(f"Expecting LineString geometry but found {line_geom.type} geometry.")
+            if line_geom.geom_type != "LineString":
+                raise TypeError(f"Expecting LineString geometry but found {line_geom.geom_type} geometry.")
             # convert
             edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]  # type: ignore
             # snap ends
@@ -762,8 +762,8 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                     geom: geometry.LineString = edge_data["geom"]
                 except KeyError as err:
                     raise KeyError(f'Missing "geom" attribute for edge {trailing_nd}-{next_link_nd}') from err
-                if geom.type != "LineString":
-                    raise TypeError(f"Expecting LineString geometry but found {geom.type} geometry.")
+                if geom.geom_type != "LineString":
+                    raise TypeError(f"Expecting LineString geometry but found {geom.geom_type} geometry.")
                 # welds can be done automatically, but there are edge cases, e.g.:
                 # looped roadways or overlapping edges such as stairways don't know which sides of two segments to join
                 # i.e. in these cases the edges can sometimes be matched from one of two possible configurations
@@ -801,9 +801,9 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             agg_geom = _snap_linestring_endpoints(g_multi_copy, anchor_nd, end_nd, agg_geom)
             # create a new linestring
             new_geom = geometry.LineString(agg_geom)
-            if new_geom.type != "LineString":
+            if new_geom.geom_type != "LineString":
                 raise TypeError(
-                    f'Found {new_geom.type} geometry instead of "LineString" for new geom {new_geom.wkt}.'
+                    f'Found {new_geom.geom_type} geometry instead of "LineString" for new geom {new_geom.wkt}.'
                     f"Check that the adjacent LineStrings in the vicinity of {nd_key} are not corrupted."
                 )
             # add a new edge from anchor_nd to end_nd
@@ -1257,9 +1257,9 @@ def _squash_adjacent(
                 if "geom" not in edge_data:
                     raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
                 line_geom: geometry.LineString = edge_data["geom"]
-                if line_geom.type != "LineString":
+                if line_geom.geom_type != "LineString":
                     raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.type} geometry "
+                        f"Expecting LineString geometry but found {line_geom.geom_type} geometry "
                         f"for edge {nd_key}-{nb_nd_key}."
                     )
                 # orient the LineString so that the geom starts from the node's x_y
@@ -1705,12 +1705,7 @@ def nx_split_opposing_geoms(
             # get starting geom for orientation
             s_nd_data: NodeData = _multi_graph.nodes[start_nd_key]
             s_nd_geom = geometry.Point(s_nd_data["x"], s_nd_data["y"])
-            if np.allclose(
-                s_nd_geom.coords,
-                new_edge_geom_a.coords[0][:2],
-                atol=config.ATOL,
-                rtol=0,
-            ) or np.allclose(
+            if np.allclose(s_nd_geom.coords, new_edge_geom_a.coords[0][:2], atol=config.ATOL, rtol=0,) or np.allclose(
                 s_nd_geom.coords,
                 new_edge_geom_a.coords[-1][:2],
                 atol=config.ATOL,
@@ -1871,9 +1866,9 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             )
         # get edge geometry
         line_geom: geometry.LineString = edge_data["geom"]
-        if line_geom.type != "LineString":
+        if line_geom.geom_type != "LineString":
             raise TypeError(
-                f"Expected LineString geometry but found {line_geom.type} for edge {start_nd_key}-{end_nd_key}."
+                f"Expected LineString geometry but found {line_geom.geom_type} for edge {start_nd_key}-{end_nd_key}."
             )
         # check geom coordinates directionality - flip if facing backwards direction
         line_geom_coords = _snap_linestring_endpoints(
@@ -2004,9 +1999,9 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
             )
         # get edge geometry
         line_geom = edge_data["geom"]
-        if line_geom.type != "LineString":
+        if line_geom.geom_type != "LineString":
             raise TypeError(
-                f"Expecting LineString geometry but found {line_geom.type} geometry for edge {a_node}-{b_node}."
+                f"Expecting LineString geometry but found {line_geom.geom_type} geometry for edge {a_node}-{b_node}."
             )
         # align geom coordinates to start from A side
         line_geom_coords = align_linestring_coords(line_geom.coords, a_xy)
@@ -2093,9 +2088,9 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                     set_live(start_nd_key, end_nd_key, spoke_node_dual)
                 # weld the lines
                 merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])  # type: ignore
-                if merged_line.type != "LineString":
+                if merged_line.geom_type != "LineString":
                     raise TypeError(
-                        f'Found {merged_line.type} geometry instead of "LineString" for new geom {merged_line.wkt}. '
+                        f'Found {merged_line.geom_type} instead of "LineString" for new geom {merged_line.wkt}. '
                         f"Check that the LineStrings for {start_nd_key}-{end_nd_key} and {n_side}-{nb_nd_key} touch."
                     )
                 # add the dual edge
@@ -2189,9 +2184,9 @@ def network_structure_from_nx(
                         "automatically through the nx_simple_geoms() method."
                     )
                 line_geom = nx_edge_data["geom"]
-                if line_geom.type != "LineString":
+                if line_geom.geom_type != "LineString":
                     raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.type} geom for edge "
+                        f"Expecting LineString geometry but found {line_geom.geom_type} geom for edge "
                         f"{start_node_key}-{end_node_key}."
                     )
                 # cannot have zero or negative length - division by zero
