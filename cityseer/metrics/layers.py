@@ -265,7 +265,6 @@ def compute_accessibilities(
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying function
-    # pylint: disable=duplicate-code
     accessibility_data, accessibility_data_wt = data.accessibility(
         network_structure.nodes.xs,
         network_structure.nodes.ys,
@@ -524,17 +523,16 @@ def compute_mixed_uses(
     # extrapolate the requested mixed use measures
     mu_hill_keys: list[int] = []
     mu_other_keys: list[int] = []
-    if mixed_use_keys is not None:
-        for mu in mixed_use_keys:
-            if mu not in mixed_uses_options:
-                raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
-            idx = mixed_uses_options.index(mu)
-            if idx < 4:
-                mu_hill_keys.append(idx)
-            else:
-                mu_other_keys.append(idx - 4)
-        if not config.QUIET_MODE:
-            logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
+    for mu in mixed_use_keys:
+        if mu not in mixed_uses_options:
+            raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
+        idx = mixed_uses_options.index(mu)
+        if idx < 4:
+            mu_hill_keys.append(idx)
+        else:
+            mu_other_keys.append(idx - 4)
+    if not config.QUIET_MODE:
+        logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
     if not config.QUIET_MODE:
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
@@ -542,7 +540,6 @@ def compute_mixed_uses(
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying function
-    # pylint: disable=duplicate-code
     mixed_use_hill_data, mixed_use_other_data = data.mixed_uses(
         network_structure.nodes.xs,
         network_structure.nodes.ys,
@@ -941,7 +938,6 @@ def compute_stats(
         progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
     else:
         progress_proxy = None
-    # pylint: disable=duplicate-code
     (
         stats_sum,
         stats_sum_wt,

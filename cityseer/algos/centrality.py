@@ -587,9 +587,7 @@ def local_segment_centrality(
                         # i.e. exit impedance minus half segment impedance
                         ang = m_simpl_dist - seg_ang / 2
                     # 2) f is the predecessor for e
-                    elif (
-                        m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx  # pylint: disable=consider-using-in
-                    ):  # pylint: disable=consider-using-in
+                    elif m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx:  # pylint: disable=consider-using-in
                         e = short_dist[m_nd_idx]
                         f = short_dist[n_nd_idx]
                         ang = n_simpl_dist - seg_ang / 2  # per above

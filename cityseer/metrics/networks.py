@@ -79,8 +79,6 @@ MIN_THRESH_WT = config.MIN_THRESH_WT
 
 def _cast_beta(beta: cctypes.BetasType) -> npt.NDArray[np.float32]:
     """Type checks and casts beta parameter to a numpy array of beta."""
-    if beta is None:
-        raise TypeError("Expected beta but encountered None value.")
     if not isinstance(beta, (list, tuple, np.ndarray)):
         beta = [beta]
     if len(beta) == 0:
@@ -181,8 +179,6 @@ def _cast_distance(
     distance: cctypes.DistancesType,
 ) -> npt.NDArray[np.int_]:
     """Type checks and casts distance parameter to a numpy array of distance."""
-    if distance is None:
-        raise TypeError("Expected distance but encountered None value.")
     # cast to list form
     if isinstance(distance, (int, float)):
         distance = [distance]
@@ -483,17 +479,26 @@ def node_centrality(
     | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
     | node_beta             | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
-    This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |  # pylint: disable=line-too-long
-    | node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |  # pylint: disable=line-too-long
-    | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |  # pylint: disable=line-too-long
+    This is a spatial impedance metric differentiated from other closeness centralities by the use of an
+    explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
+    increase. |
+    | node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
+    shortest-paths traversing each node $i$. |
+    | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a
+    spatial impedance decay function to betweenness centrality. $d$ represents the full distance from
+    any $j$ to $k$ node pair passing through node $i$. |
 
     The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular`
     parameter is explicitly set to `True`:
 
     | key                      | formula | notes |
     | ------------------------ | :-----: | ----- |
-    | node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |  # pylint: disable=line-too-long
-    | node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance). |  # pylint: disable=line-too-long
+    | node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of
+    harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and
+    added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |
+    | node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of
+    betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic
+    (shortest angular distance). |
 
     """
     network_structure.validate()
@@ -502,7 +507,6 @@ def node_centrality(
     # typos are caught below
     if not angular:
         heuristic = "shortest (non-angular)"
-        # pylint: disable=duplicate-code
         options: tuple[str, ...] = (
             "node_density",
             "node_farness",
@@ -515,7 +519,7 @@ def node_centrality(
     else:
         heuristic = "simplest (angular)"
         options = ("node_harmonic_angular", "node_betweenness_angular")
-    if measures is None:
+    if not measures:
         raise ValueError("Please select at least one measure to compute.")
     prep_measure_keys: list[str] = []
     for measure in measures:
@@ -653,7 +657,7 @@ def segment_centrality(
     else:
         heuristic = "simplest (angular)"
         options = ("segment_harmonic_hybrid", "segment_betweeness_hybrid")
-    if measures is None:
+    if not measures:
         raise ValueError("Please select at least one measure to compute.")
     prep_measure_keys: list[str] = []
     for measure in measures:

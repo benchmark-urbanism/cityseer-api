@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 MultiGraph = Any
 
 
-class ColourMap:  # pylint: disable=too-few-public-methods
+class ColourMap:
     """Specifies global colour presets."""
 
     primary: str = "#0091ea"
@@ -620,38 +620,37 @@ def plot_network_structure(
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.nodes.count):
         ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)  # type: ignore
-    if data_gdf is not None:
-        # plot parents on ax1
-        ax1.scatter(
-            x=data_gdf.geometry.x,
-            y=data_gdf.geometry.y,
-            color=COLOUR_MAP.secondary,
-            edgecolor=COLOUR_MAP.warning,
-            alpha=0.9,
-            lw=0.5,
-        )
-        ax2.scatter(
-            x=data_gdf.geometry.x,
-            y=data_gdf.geometry.y,
-            color=COLOUR_MAP.secondary,
-            edgecolor=COLOUR_MAP.warning,
-            alpha=0.9,
-            lw=0.5,
-        )
-        for data_idx, data_row in data_gdf.iterrows():  # type: ignore
-            data_x: float = data_row.geometry.x
-            data_y: float = data_row.geometry.y
-            nearest_netw_idx: int = data_row.nearest_assign
-            next_nearest_netw_idx: int = data_row.next_nearest_assign
-            ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
-            # if the data points have been assigned network indices
-            if nearest_netw_idx != -1:
-                # plot lines to parents for easier viz
-                p_x, p_y = network_structure.nodes.x_y(nearest_netw_idx)
-                ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.warning, lw=0.75, ls="-")
-            if next_nearest_netw_idx != -1:
-                p_x, p_y = network_structure.nodes.x_y(next_nearest_netw_idx)
-                ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
+    # plot parents on ax1
+    ax1.scatter(
+        x=data_gdf.geometry.x,
+        y=data_gdf.geometry.y,
+        color=COLOUR_MAP.secondary,
+        edgecolor=COLOUR_MAP.warning,
+        alpha=0.9,
+        lw=0.5,
+    )
+    ax2.scatter(
+        x=data_gdf.geometry.x,
+        y=data_gdf.geometry.y,
+        color=COLOUR_MAP.secondary,
+        edgecolor=COLOUR_MAP.warning,
+        alpha=0.9,
+        lw=0.5,
+    )
+    for data_idx, data_row in data_gdf.iterrows():  # type: ignore
+        data_x: float = data_row.geometry.x
+        data_y: float = data_row.geometry.y
+        nearest_netw_idx: int = data_row.nearest_assign
+        next_nearest_netw_idx: int = data_row.next_nearest_assign
+        ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
+        # if the data points have been assigned network indices
+        if nearest_netw_idx != -1:
+            # plot lines to parents for easier viz
+            p_x, p_y = network_structure.nodes.x_y(nearest_netw_idx)
+            ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.warning, lw=0.75, ls="-")
+        if next_nearest_netw_idx != -1:
+            p_x, p_y = network_structure.nodes.x_y(next_nearest_netw_idx)
+            ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
     plt.tight_layout()
     plt.gcf().set_facecolor(COLOUR_MAP.background)
     plt.show()
@@ -812,7 +811,7 @@ def plot_nx_edges(
         edge_geoms.append(edge_data["geom"])  # type: ignore
         # if label key provided
         if edge_label_key is not None:
-            label_val: str = edge_data[edge_label_key]
+            label_val: str | None = edge_data[edge_label_key]
             if label_val is None or label_val.lower() in [
                 "",
                 " ",
