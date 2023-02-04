@@ -282,7 +282,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
         A `GeoDataFrame` with data points for testing purposes.
 
     """
-    np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)
     min_x, min_y, max_x, max_y = get_graph_extents(nx_multigraph)
     xs = np.random.uniform(min_x, max_x, length)
     ys = np.random.uniform(min_y, max_y, length)
@@ -387,7 +387,7 @@ def mock_numerical_data(
         the `length` parameter. The numer of numerical columns will match the `num_arrs` paramter.
 
     """
-    np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)
     data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
     for idx in range(1, num_arrs + 1):  # type: ignore
         num_arr: npt.NDArray[np.float32] = np.array(
@@ -450,10 +450,10 @@ def mock_species_data(
     ```
 
     """
-    np.random.seed(seed=random_seed)  # pylint: disable=no-member
+    np.random.seed(seed=random_seed)
 
     for n in range(1, 50, 5):
-        data = np.random.randint(1, 10, n)  # pylint: disable=no-member
+        data = np.random.randint(1, 10, n)
         unique: npt.NDArray[np.int_] = np.unique(data)
         counts: npt.NDArray[np.int_] = np.zeros_like(unique, dtype=np.int_)
         for idx, uniq in enumerate(unique):

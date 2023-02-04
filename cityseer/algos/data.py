@@ -562,9 +562,7 @@ def mixed_uses(
     qs: npt.NDArray[np.float32] = np.array([], dtype=np.float32),
     mixed_use_hill_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
     mixed_use_other_keys: npt.NDArray[np.int_] = np.array([], dtype=np.int_),
-    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(
-        np.full((0, 0), np.nan), dtype=np.float32
-    ),  # pylint: disable=line-too-long
+    cl_disparity_wt_matrix: npt.NDArray[np.float32] = np.array(np.full((0, 0), np.nan), dtype=np.float32),
     jitter_scale: np.float32 = np.float32(0.0),
     angular: bool = False,
     progress_proxy: Optional[Any] = None,
@@ -960,7 +958,6 @@ def aggregate_stats(
                     stats_count_wt[num_idx, d_idx, netw_src_idx],
                 )
 
-    # pylint: disable=duplicate-code
     return (
         stats_sum,
         stats_sum_wt,

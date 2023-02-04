@@ -593,16 +593,16 @@ The following keys use the shortest-path heuristic, and are available when the `
 | node_farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
 | node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
 | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-| node_beta             | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |  # pylint: disable=line-too-long
-| node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |  # pylint: disable=line-too-long
-| node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |  # pylint: disable=line-too-long
+| node_beta             | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |
+| node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |
+| node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
 
- The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
+The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 | key                      | formula | notes |
 | ------------------------ | :-----: | ----- |
-| node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |  # pylint: disable=line-too-long
-| node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance). |  # pylint: disable=line-too-long
+| node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |
+| node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic (shortest angular distance). |
 </Markdown>
     </div>
   </section>
@@ -724,7 +724,7 @@ The following keys use the shortest-path heuristic, and are available when the `
 | ------------------- | :-----: |------ |
 | segment_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
 | segment_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
-| segment_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
+| segment_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
 The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`.
