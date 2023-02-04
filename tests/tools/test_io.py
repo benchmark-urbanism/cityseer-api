@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import pytest
 from pyproj import CRS, Transformer
 
 from cityseer.tools import io, plot
@@ -68,6 +69,11 @@ def test_osm_graph_from_poly():
         bng_easting, bng_northing = transformer.transform(utm_nd_data["x"], utm_nd_data["y"])
         assert np.isclose(bng_nd_data["x"], bng_easting)
         assert np.isclose(bng_nd_data["y"], bng_northing)
+    # check that non-integer EPSG codes are caught
+    with pytest.raises(TypeError):
+        network_to_bng = io.osm_graph_from_poly(poly_wgs, to_epsg_code="27700")
+    with pytest.raises(TypeError):
+        network_to_bng = io.osm_graph_from_poly(poly_wgs, poly_epsg_code="27700")
 
 
 def test_nx_from_osm_nx():
