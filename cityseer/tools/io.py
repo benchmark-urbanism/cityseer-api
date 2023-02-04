@@ -207,6 +207,10 @@ def osm_graph_from_poly(
     ```
 
     """
+    if poly_epsg_code is not None and not isinstance(poly_epsg_code, int):
+        raise TypeError('Please provide "poly_epsg_code" parameter as int')
+    if to_epsg_code is not None and not isinstance(to_epsg_code, int):
+        raise TypeError('Please provide "to_epsg_code" parameter as int')
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]  # type: ignore

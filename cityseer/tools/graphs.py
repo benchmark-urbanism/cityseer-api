@@ -1322,7 +1322,7 @@ def _create_nodes_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, l
     nd_key: NodeKey
     node_data: NodeData
     logger.info("Creating nodes STR tree")
-    for nd_key, node_data in tqdm(nx_multigraph.nodes(data=True)):  # type: ignore
+    for nd_key, node_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
         # x coordinate
         if "x" not in node_data:
             raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
@@ -1350,7 +1350,7 @@ def _create_edges_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, l
     edge_data: EdgeData
     logger.info("Creating edges STR tree.")
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multigraph.edges(keys=True, data=True)
+        nx_multigraph.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
         if "geom" not in edge_data:
             raise KeyError('Encountered edge missing "geom" attribute.')
