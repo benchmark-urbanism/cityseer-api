@@ -4,6 +4,11 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
 """
+# workaround until networkx adopts types
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+# pyright: reportGeneralTypeIssues=false
+
 from __future__ import annotations
 
 import json
@@ -28,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 # define types
-# type hack until networkx supports type-hinting
 MultiGraph = Any
 MultiDiGraph = Any
 # coords can be 2d or 3d

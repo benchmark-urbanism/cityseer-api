@@ -863,14 +863,6 @@ requires_python = ">=3.8"
 summary = "Python package for creating and manipulating graphs and networks"
 
 [[package]]
-name = "networkx-stubs"
-version = "0.0.1"
-summary = "Typing stubs for NetworkX"
-dependencies = [
-    "networkx",
-]
-
-[[package]]
 name = "nodeenv"
 version = "1.7.0"
 requires_python = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*"
@@ -1194,7 +1186,7 @@ summary = "Python for Window Extensions"
 name = "pywinpty"
 version = "2.0.10"
 requires_python = ">=3.7"
-summary = "Pseudo terminal support for Windows from Python."
+summary = ""
 
 [[package]]
 name = "pyyaml"
@@ -1531,9 +1523,8 @@ requires_python = ">=3.7"
 summary = "Backport of pathlib-compatible object wrapper for zip files"
 
 [metadata]
-lock_version = "4.2"
-groups = ["default", "dev"]
-content_hash = "sha256:b6a4f4ad25c4edf80b8d5c9bdd6e9fe1a4818c75fab67d9b82700295ba7ea415"
+lock_version = "4.1"
+content_hash = "sha256:b3b2f36217f10f2031b378f49ab4df0c6472f84bd370fb60138c7523620bc042"
 
 [metadata.files]
 "aiofiles 22.1.0" = [
@@ -2418,10 +2409,6 @@ content_hash = "sha256:b6a4f4ad25c4edf80b8d5c9bdd6e9fe1a4818c75fab67d9b82700295b
 "networkx 3.1" = [
     {url = "https://files.pythonhosted.org/packages/a8/05/9d4f9b78ead6b2661d6e8ea772e111fc4a9fbd866ad0c81906c11206b55e/networkx-3.1-py3-none-any.whl", hash = "sha256:4f33f68cb2afcf86f28a45f43efc27a9386b535d567d2127f8f61d51dec58d36"},
     {url = "https://files.pythonhosted.org/packages/fd/a1/47b974da1a73f063c158a1f4cc33ed0abf7c04f98a19050e80c533c31f0c/networkx-3.1.tar.gz", hash = "sha256:de346335408f84de0eada6ff9fafafff9bcda11f0a0dfaa931133debb146ab61"},
-]
-"networkx-stubs 0.0.1" = [
-    {url = "https://files.pythonhosted.org/packages/a9/d6/66a8bcc3724e0909e865672f5f2d3d89a46e900e43bf0296d51b90b604a0/networkx-stubs-0.0.1.tar.gz", hash = "sha256:1751cbc87898328f89d79476ec6363174c05f9e48592f0953cc1077188717a21"},
-    {url = "https://files.pythonhosted.org/packages/d1/d4/ba87f68af1ab26392dc64ef7ba7ee261bb2ab1df9a9cca1695b4454b8a16/networkx_stubs-0.0.1-py3-none-any.whl", hash = "sha256:ce58dff9b9dcbfdf895d0fce20fa8a73f2e82e581004596b7552086b5bb91366"},
 ]
 "nodeenv 1.7.0" = [
     {url = "https://files.pythonhosted.org/packages/96/a8/d3b5baead78adadacb99e7281b3e842126da825cf53df61688cfc8b8ff91/nodeenv-1.7.0-py2.py3-none-any.whl", hash = "sha256:27083a7b96a25f2f5e1d8cb4b6317ee8aeda3bdd121394e5ac54e498028a042e"},

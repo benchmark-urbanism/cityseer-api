@@ -95,7 +95,6 @@ dev = [
     "pyright>=1.1.286",
     "yapper>=0.4.0",
     "black>=22.12.0",
-    "networkx-stubs>=0.0.1",
 ]
 
 [build-system]
