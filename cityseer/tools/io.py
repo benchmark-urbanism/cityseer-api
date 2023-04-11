@@ -1,6 +1,8 @@
 """
 Functions for fetching and cleaning OSM data.
 """
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
 from __future__ import annotations
 
 import logging
@@ -207,7 +209,7 @@ def osm_graph_from_poly(
     ```
 
     """
-    if poly_epsg_code is not None and not isinstance(poly_epsg_code, int):
+    if poly_epsg_code is not None and not isinstance(poly_epsg_code, int):  # type: ignore
         raise TypeError('Please provide "poly_epsg_code" parameter as int')
     if to_epsg_code is not None and not isinstance(to_epsg_code, int):
         raise TypeError('Please provide "to_epsg_code" parameter as int')

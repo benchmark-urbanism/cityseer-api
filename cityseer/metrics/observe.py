@@ -6,6 +6,10 @@ centrality methods (which do require further computational optimisation due to t
 in the [`networks`](/metrics/networks) module.
 
 """
+# workaround until networkx adopts types
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 import copy

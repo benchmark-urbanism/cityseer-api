@@ -6,6 +6,9 @@ Custom behaviour can be achieved by directly manipulating the underlying [`Netwo
 of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 See the demos section for examples.
 """
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 import logging
