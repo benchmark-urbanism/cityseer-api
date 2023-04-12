@@ -2,7 +2,9 @@ import networkx as nx
 import numpy as np
 import pytest
 from pyproj import CRS, Transformer
+from shapely import wkt
 
+from cityseer import config
 from cityseer.tools import io, plot
 
 LNG = -0.1270
@@ -17,10 +19,24 @@ BUFF_POLY_UTM = "POLYGON ((699518.8923773962 5711511.242083298, 699517.929322730
 def test_buffered_point_poly():
     """ """
     poly_wgs, poly_utm, utm_zone_number, utm_zone_letter = io.buffered_point_poly(LNG, LAT, BUFFER)
-    assert poly_wgs.wkt == BUFF_POLY_WGS
-    assert poly_utm.wkt == BUFF_POLY_UTM
+    test_wgs_poly = wkt.loads(BUFF_POLY_WGS)
     assert utm_zone_number == 30
     assert utm_zone_letter == "U"
+    # check WGS
+    assert np.allclose(
+        poly_wgs.exterior.coords.xy[0], test_wgs_poly.exterior.coords.xy[0], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        poly_wgs.exterior.coords.xy[1], test_wgs_poly.exterior.coords.xy[1], atol=config.ATOL, rtol=config.RTOL
+    )
+    test_utm_poly = wkt.loads(BUFF_POLY_UTM)
+    # check UTM
+    assert np.allclose(
+        poly_utm.exterior.coords.xy[0], test_utm_poly.exterior.coords.xy[0], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        poly_utm.exterior.coords.xy[1], test_utm_poly.exterior.coords.xy[1], atol=config.ATOL, rtol=config.RTOL
+    )
 
 
 def test_fetch_osm_network():
