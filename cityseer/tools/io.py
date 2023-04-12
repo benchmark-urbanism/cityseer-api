@@ -1,6 +1,8 @@
 """
 Functions for fetching and cleaning OSM data.
 """
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
 from __future__ import annotations
 
 import logging
@@ -207,6 +209,10 @@ def osm_graph_from_poly(
     ```
 
     """
+    if poly_epsg_code is not None and not isinstance(poly_epsg_code, int):  # type: ignore
+        raise TypeError('Please provide "poly_epsg_code" parameter as int')
+    if to_epsg_code is not None and not isinstance(to_epsg_code, int):
+        raise TypeError('Please provide "to_epsg_code" parameter as int')
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]  # type: ignore
@@ -362,9 +368,9 @@ def nx_from_osm_nx(
         else:
             line_geom = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         # check for LineString validity
-        if line_geom.type != "LineString":
+        if line_geom.geom_type != "LineString":
             raise TypeError(
-                f"Expecting LineString geometry but found {line_geom.type} geometry for "
+                f"Expecting LineString geometry but found {line_geom.geom_type} geometry for "
                 f"edge {start_nd_key}-{end_nd_key}."
             )
         # orient LineString

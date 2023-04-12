@@ -6,6 +6,10 @@ centrality methods (which do require further computational optimisation due to t
 in the [`networks`](/metrics/networks) module.
 
 """
+# workaround until networkx adopts types
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 import copy
@@ -16,6 +20,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
+from cityseer import config
 from cityseer.tools import graphs
 
 logging.basicConfig(level=logging.INFO)
@@ -230,7 +235,9 @@ def street_continuity(
     b_nd_key: graphs.NodeKey
     edge_idx: int
     edge_data: dict[str, Any]
-    for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(nx_multi_copy.edges(keys=True, data=True)):  # type: ignore
+    for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE  # type: ignore
+    ):
         # raise if the key doesn't exist
         if method not in edge_data:
             raise ValueError(f"Could not find {method} in edge data for edge: {a_nd_key} - {b_nd_key} idx: {edge_idx}")
