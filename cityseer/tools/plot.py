@@ -855,7 +855,7 @@ def plot_nx_edges(
         plot_colours = []
         plot_lws = []
         idx: int
-        for idx in tqdm(sort_idx, disabled=config.QUIET_MODE):
+        for idx in tqdm(sort_idx, disable=config.QUIET_MODE):
             xs = np.array(edge_geoms[idx].coords.xy[0])
             ys = np.array(edge_geoms[idx].coords.xy[1])
             if np.any(xs < min_x) or np.any(xs > max_x):
@@ -890,7 +890,7 @@ def plot_nx_edges(
         label_keys.reverse()
         label_counts.reverse()
         # iterate label info
-        for label_key in tqdm(["other"] + label_keys, disabled=config.QUIET_MODE):
+        for label_key in tqdm(["other"] + label_keys, disable=config.QUIET_MODE):
             if label_key not in labels_info:
                 continue
             # if label count not clipped
