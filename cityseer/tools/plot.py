@@ -6,6 +6,9 @@ Custom behaviour can be achieved by directly manipulating the underlying [`Netwo
 of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 See the demos section for examples.
 """
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +27,7 @@ from shapely import geometry
 from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
 from tqdm import tqdm
 
-from cityseer import structures
+from cityseer import config, structures
 from cityseer.tools.graphs import EdgeData, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
@@ -806,7 +809,9 @@ def plot_nx_edges(
     labels_info: dict[str, dict[str, Any]] = {}
     logger.info("Extracting edge geometries")
     edge_data: EdgeData
-    for idx, (_, _, edge_data) in tqdm(enumerate(nx_multigraph.edges(data=True))):  # type: ignore
+    for idx, (_, _, edge_data) in tqdm(  # type: ignore
+        enumerate(nx_multigraph.edges(data=True)), disable=config.QUIET_MODE  # type: ignore
+    ):
         vals.append(edge_data[edge_metrics_key])  # type: ignore
         edge_geoms.append(edge_data["geom"])  # type: ignore
         # if label key provided
@@ -850,7 +855,7 @@ def plot_nx_edges(
         plot_colours = []
         plot_lws = []
         idx: int
-        for idx in tqdm(sort_idx):
+        for idx in tqdm(sort_idx, disable=config.QUIET_MODE):
             xs = np.array(edge_geoms[idx].coords.xy[0])
             ys = np.array(edge_geoms[idx].coords.xy[1])
             if np.any(xs < min_x) or np.any(xs > max_x):
@@ -885,7 +890,7 @@ def plot_nx_edges(
         label_keys.reverse()
         label_counts.reverse()
         # iterate label info
-        for label_key in tqdm(["other"] + label_keys):
+        for label_key in tqdm(["other"] + label_keys, disable=config.QUIET_MODE):
             if label_key not in labels_info:
                 continue
             # if label count not clipped
