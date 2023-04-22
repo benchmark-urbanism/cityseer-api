@@ -8,7 +8,7 @@ cityseer/_version.py
 **/temp/**
 
 # pdm
-.pdm.toml
+.pdm-python
 __pypackages__/
 
 # Dev
