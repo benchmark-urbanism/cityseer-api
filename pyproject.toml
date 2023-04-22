@@ -95,6 +95,7 @@ dev = [
     "pyright>=1.1.286",
     "yapper>=0.4.0",
     "black>=22.12.0",
+    "maturin>=0.14.17",
 ]
 
 [build-system]
