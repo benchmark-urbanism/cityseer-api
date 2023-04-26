@@ -1,16 +1,15 @@
-use petgraph::visit::Data;
 use pyo3::prelude::*;
-use std::collections::{HashMap};
 
 #[pyclass]
+#[derive(Clone)]
 pub struct DataEntry {
     #[pyo3(get)]
     x: i32,
     #[pyo3(get)]
     y: i32,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     nearest_assign: i32,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     next_nearest_assign: i32,
 }
 #[pymethods]
@@ -36,19 +35,31 @@ impl DataEntry {
 #[pyclass]
 pub struct DataMap {
     #[pyo3(get)]
-    entries: HashMap<i32, DataEntry>
+    entries: Vec<DataEntry>
 }
 #[pymethods]
 impl DataMap {
     #[new]
     fn new() -> DataMap {
         DataMap {
-            entries: HashMap::new()
+            entries: Vec::new()
         }
     }
-    fn insert(&mut self, k: i32, x: i32, y: i32) {
+    fn insert(&mut self, x: i32, y: i32) {
         let entry = DataEntry::new(x, y);
-        self.entries.insert(k, entry);
+        self.entries.push(entry);
+    }
+    fn set_nearest_assign(&mut self, idx: usize, assign_idx: i32) {
+        let entry = self.entries.get_mut(idx);
+        if entry.is_some() {
+            entry.unwrap().nearest_assign = assign_idx;
+        }
+    }
+    fn set_next_nearest_assign(&mut self, idx: usize, assign_idx: i32) {
+        let entry = self.entries.get_mut(idx);
+        if entry.is_some() {
+            entry.unwrap().next_nearest_assign = assign_idx;
+        }
     }
     fn len(&self) -> usize {
         self.entries.len()
