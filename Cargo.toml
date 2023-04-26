@@ -1,6 +1,7 @@
 [package]
 name = "cityseer"
 version = "0.1.0" # pyproject overrides this value
+edition = "2021"
 
 [lib]
 # The name of the native library. This is the name which will be used in Python to import the
@@ -15,7 +16,8 @@ name = "cityseer"
 crate-type = ["cdylib"]
 
 [package.metadata.maturin]
-name = "cityseer._internal"
+name = "cityseer.rustalgos"
 
 [dependencies]
-pyo3 = { version = "0.16.4", features = ["extension-module"] }
+petgraph = "0.6.3"
+pyo3 = "0.18.3"

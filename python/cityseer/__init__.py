@@ -1,7 +1,6 @@
 import os
 
-from cityseer import algos, config, metrics, structures, tools
-from cityseer._internal import rustalgos
+from cityseer import algos, config, metrics, rustalgos, structures, tools
 
 __all__ = ["algos", "metrics", "tools", "config", "structures", "rustalgos"]
 
