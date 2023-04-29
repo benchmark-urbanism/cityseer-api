@@ -26,7 +26,7 @@ from shapely.errors import GeometryTypeError
 from shapely.geometry import LineString
 from tqdm import tqdm
 
-from cityseer import config, structures
+from cityseer import config, rustalgos, structures
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 MultiGraph = Any
 MultiDiGraph = Any
 # coords can be 2d or 3d
-NodeKey = Union[int, str]
+NodeKey = str
 NodeData = dict[str, Any]
 EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
 EdgeData = dict[str, Any]
@@ -2116,7 +2116,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
     crs: Union[str, int],
-) -> tuple[gpd.GeoDataFrame, structures.NetworkStructure]:
+) -> tuple[gpd.GeoDataFrame, rustalgos.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
 
@@ -2145,47 +2145,38 @@ def network_structure_from_nx(
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    # accumulate degrees
-    total_out_degrees = 0
-    nd_key: NodeKey
-    for nd_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
-        # writing node identifier to 'labels' in case conversion to integers method interferes with order
-        g_multi_copy.nodes[nd_key]["label"] = nd_key
-        nb_nd_key: NodeKey
-        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):
-            total_out_degrees += g_multi_copy.number_of_edges(nd_key, nb_nd_key)
-    # convert the nodes to sequential - this permits implicit indices with benefits to speed and structure
-    g_multi_copy = nx.convert_node_labels_to_integers(g_multi_copy, 0)
     # prepare the network structure
-    node_keys: list[NodeKey] = []
-    nodes_n: int = g_multi_copy.number_of_nodes()
-    edges_n: int = total_out_degrees
-    network_structure: structures.NetworkStructure = structures.NetworkStructure(nodes_n, edges_n)
+    network_structure = rustalgos.NetworkStructure()
     # generate the network information
-    # NOTE: node keys have been converted to int - so use int directly for jitclass
-    start_node_key: int
+    agg_node_data: dict[str, tuple[int, float, float, bool]] = {}
     node_data: NodeData
-    for start_node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
-        # don't cast label to string otherwise correspondence between original and round-trip graph indices is lost
-        node_keys.append(node_data["label"])
+    # set nodes
+    for node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
+        # node_key must be string
+        if not isinstance(node_key, str):
+            raise TypeError(f"Node key must be of type string but encountered {type(node_key)}")
         if "x" not in node_data:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {start_node_key}.')
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {node_key}.')
         node_x: float = node_data["x"]
         if "y" not in node_data:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {start_node_key}.')
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {node_key}.')
         node_y: float = node_data["y"]
         is_live: bool = True
         if "live" in node_data:
             is_live = bool(node_data["live"])
         # set node
-        network_structure.set_node(start_node_key, node_x, node_y, is_live)
+        node_idx = network_structure.add_node(node_key, node_x, node_y, is_live)
+        agg_node_data[node_key] = (node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
+    # set edges
+    for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):  # type: ignore
         # build edges
+        start_node_idx, start_node_x, start_node_y, _, _ = agg_node_data[start_node_key]
         end_node_key: int
         for end_node_key in g_multi_copy.neighbors(start_node_key):
+            end_node_idx, _, _, _, _ = agg_node_data[end_node_key]
             # add the new edge index to the node's out edges
-            _nx_edge_idx: int
             nx_edge_data: EdgeData
-            for _nx_edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
+            for nx_edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
                 if not "geom" in nx_edge_data:
                     raise KeyError(
                         f"No edge geom found for edge {start_node_key}-{end_node_key}: Please add an edge 'geom' "
@@ -2206,7 +2197,7 @@ def network_structure_from_nx(
                     )
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
-                line_geom_coords = align_linestring_coords(line_geom.coords, (node_x, node_y))
+                line_geom_coords = align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
                 # iterate the coordinates and calculate the angular change
                 angle_sum = _measure_cumulative_angle(line_geom_coords)
                 if not np.isfinite(angle_sum) or angle_sum < 0:
@@ -2233,18 +2224,26 @@ def network_structure_from_nx(
                 xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
                 out_bearing: float = _measure_bearing(xy_1, xy_2)
                 # set edge
-                network_structure.set_edge(
-                    start_node_key, end_node_key, line_len, angle_sum, imp_factor, in_bearing, out_bearing
+                network_structure.add_edge(
+                    start_node_idx,
+                    end_node_idx,
+                    nx_edge_idx,
+                    start_node_key,
+                    end_node_key,
+                    line_len,
+                    angle_sum,
+                    imp_factor,
+                    in_bearing,
+                    out_bearing,
                 )
     # create geopandas for node keys and data state
-    data = {
-        "node_key": node_keys,
-        "live": network_structure.nodes.live,
-        "geometry": gpd.points_from_xy(network_structure.nodes.xs, network_structure.nodes.ys),
-    }
-    nodes_gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(data, crs=crs)  # type: ignore
-    nodes_gdf = nodes_gdf.set_index("node_key")  # type: ignore
-
+    nodes_gdf = gpd.GeoDataFrame.from_dict(
+        agg_node_data,
+        orient="index",
+        columns=["node_idx", "x", "y", "live", "geom"],
+        geometry="geom",
+        crs=crs,
+    )
     return nodes_gdf, network_structure
 
 

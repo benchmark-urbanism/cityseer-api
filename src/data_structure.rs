@@ -19,8 +19,8 @@ impl DataEntry {
         DataEntry {
             x,
             y,
-            nearest_assign:-1,
-            next_nearest_assign:-1,
+            nearest_assign: -1,
+            next_nearest_assign: -1,
         }
     }
     fn xy(&self) -> (i32, i32) {
@@ -31,18 +31,17 @@ impl DataEntry {
     }
 }
 
-
 #[pyclass]
 pub struct DataMap {
     #[pyo3(get)]
-    entries: Vec<DataEntry>
+    entries: Vec<DataEntry>,
 }
 #[pymethods]
 impl DataMap {
     #[new]
     fn new() -> DataMap {
         DataMap {
-            entries: Vec::new()
+            entries: Vec::new(),
         }
     }
     fn insert(&mut self, x: i32, y: i32) {
@@ -70,7 +69,7 @@ impl DataMap {
     fn all_assigned(&self) -> bool {
         for item_entry in self.entries.iter() {
             if item_entry.is_assigned() == false {
-                return false
+                return false;
             }
         }
         true
@@ -78,7 +77,7 @@ impl DataMap {
     fn none_assigned(&self) -> bool {
         for item_entry in self.entries.iter() {
             if item_entry.is_assigned() {
-                return false
+                return false;
             }
         }
         true

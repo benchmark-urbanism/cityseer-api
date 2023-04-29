@@ -75,12 +75,12 @@ def diamond_graph() -> nx.MultiGraph:
     G_diamond = nx.MultiGraph()
     G_diamond.add_nodes_from(
         [
-            (0, {"x": 0, "y": -86.60254}),
-            (1, {"x": -50, "y": 0}),
-            (2, {"x": 50, "y": 0}),
-            (3, {"x": 0, "y": 86.60254}),
+            ("0", {"x": 0, "y": -86.60254}),
+            ("1", {"x": -50, "y": 0}),
+            ("2", {"x": 50, "y": 0}),
+            ("3", {"x": 0, "y": 86.60254}),
         ]
     )
-    G_diamond.add_edges_from([(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)])
+    G_diamond.add_edges_from([("0", "1"), ("0", "2"), ("1", "2"), ("1", "3"), ("2", "3")])
     G_diamond = graphs.nx_simple_geoms(G_diamond)
     return G_diamond

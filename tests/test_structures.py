@@ -4,79 +4,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from cityseer import rustalgos
 from cityseer.metrics import layers
 from cityseer.tools import graphs, mock
 
 
-def test_validate_node_map(primal_graph):
-    _node_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    network_structure.nodes.validate()
-    # equal array lengths
-    network_structure.nodes.xs = np.array([1.0, 2.0], np.float32)
-    with pytest.raises(ValueError):
-        network_structure.nodes.validate()
-    for bad_val in [np.nan]:
-        # xs
-        _node_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.nodes.xs[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.nodes.validate()
-        # ys
-        _node_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.nodes.xs[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.nodes.validate()
-    # all dead
-    _node_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    network_structure.nodes.live[:] = False
-    with pytest.raises(ValueError):
-        network_structure.nodes.validate()
-
-
-def test_validate_edge_map(primal_graph):
-    _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    network_structure.edges.validate()
-    # equal array lengths
-    network_structure.edges.start = np.array([1, 1], dtype=np.int_)
-    with pytest.raises(ValueError):
-        network_structure.edges.validate()
-    # catch problematic edge map values
-    for bad_val in [-1]:
-        # missing start node
-        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.edges.start[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.validate()
-        # missing end node
-        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.edges.end[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.validate()
-        # invalid length
-        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.edges.length[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.validate()
-        # invalid angle_sum
-        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.edges.angle_sum[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.validate()
-        # invalid imp_factor
-        _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        network_structure.edges.imp_factor[0] = bad_val
-        with pytest.raises(ValueError):
-            network_structure.validate()
-
-
 def test_check_network_structure(primal_graph):
-    # corrupted node to edge maps
+    # TODO: raise exceptions from rust
     _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     network_structure.validate()
-    # corrupt
-    network_structure.edges.start[0] = network_structure.edges.start[0] + 1
-    with pytest.raises(ValueError):
-        network_structure.validate()
 
 
 def test_check_data_map(primal_graph):
