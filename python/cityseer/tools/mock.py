@@ -111,9 +111,10 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
         ("50", {"x": 700700, "y": 5720100}),
         ("51", {"x": 700700, "y": 5719900}),
         # disconnected looping component
+        # don't make exactly diamond shaped to remove ambiguity about shortest path route
         ("52", {"x": 700400, "y": 5719650}),
-        ("53", {"x": 700500, "y": 5719550}),
-        ("54", {"x": 700400, "y": 5719450}),
+        ("53", {"x": 700550, "y": 5719550}),
+        ("54", {"x": 700410, "y": 5719450}),
         ("55", {"x": 700300, "y": 5719550}),
         # add a parallel edge
         ("56", {"x": 701300, "y": 5719110}),

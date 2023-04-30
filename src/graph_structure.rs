@@ -1,9 +1,14 @@
+use atomic_float::AtomicF32;
 use core::panic;
+use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::prelude::*;
-use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use petgraph::Direction;
 use pyo3::prelude::*;
+use rand::thread_rng;
+use rand_distr::{Distribution, Normal};
+use rayon::prelude::*;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[pyclass]
 #[derive(Clone)]
@@ -57,15 +62,61 @@ impl EdgePayload {
     }
 }
 #[pyclass]
+#[derive(Clone)]
+pub struct NodeVisit {
+    #[pyo3(get)]
+    visited: bool,
+    #[pyo3(get)]
+    pred: Option<usize>,
+    #[pyo3(get)]
+    short_dist: f32,
+    #[pyo3(get)]
+    simpl_dist: f32,
+    #[pyo3(get)]
+    cycles: f32,
+    #[pyo3(get)]
+    origin_seg: Option<usize>,
+    #[pyo3(get)]
+    last_seg: Option<usize>,
+    #[pyo3(get)]
+    out_bearing: f32,
+}
+#[pymethods]
+impl NodeVisit {
+    #[new]
+    fn new() -> Self {
+        Self {
+            visited: false,
+            pred: None,
+            short_dist: f32::INFINITY,
+            simpl_dist: f32::INFINITY,
+            cycles: 0.0,
+            origin_seg: None,
+            last_seg: None,
+            out_bearing: f32::NAN,
+        }
+    }
+}
+#[pyclass]
+#[derive(Clone)]
+pub struct EdgeVisit {
+    #[pyo3(get)]
+    start_nd_idx: usize,
+    #[pyo3(get)]
+    end_nd_idx: usize,
+    #[pyo3(get)]
+    edge_idx: usize,
+}
+#[pyclass]
 pub struct NetworkStructure {
-    graph: StableDiGraph<NodePayload, EdgePayload>,
+    graph: DiGraph<NodePayload, EdgePayload>,
 }
 #[pymethods]
 impl NetworkStructure {
     #[new]
     fn new() -> Self {
         Self {
-            graph: StableDiGraph::<NodePayload, EdgePayload>::default(),
+            graph: DiGraph::<NodePayload, EdgePayload>::default(),
         }
     }
     fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool) -> usize {
@@ -86,8 +137,8 @@ impl NetworkStructure {
     }
     fn add_edge(
         &mut self,
-        node_idx_a: usize,
-        node_idx_b: usize,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
         edge_idx: usize,
         start_nd_key: String,
         end_nd_key: String,
@@ -97,8 +148,8 @@ impl NetworkStructure {
         in_bearing: f32,
         out_bearing: f32,
     ) -> usize {
-        let _node_idx_a = NodeIndex::new(node_idx_a.try_into().unwrap());
-        let _node_idx_b = NodeIndex::new(node_idx_b.try_into().unwrap());
+        let _node_idx_a = NodeIndex::new(start_nd_idx.try_into().unwrap());
+        let _node_idx_b = NodeIndex::new(end_nd_idx.try_into().unwrap());
         let new_edge_idx = self.graph.add_edge(
             _node_idx_a,
             _node_idx_b,
@@ -115,10 +166,10 @@ impl NetworkStructure {
         );
         new_edge_idx.index().try_into().unwrap()
     }
-    fn get_edge_payload(&self, node_idx_a: usize, node_idx_b: usize) -> Option<EdgePayload> {
+    fn get_edge_payload(&self, start_nd_idx: usize, end_nd_idx: usize) -> Option<EdgePayload> {
         let edge_idx = self.graph.find_edge(
-            NodeIndex::new(node_idx_a.try_into().unwrap()),
-            NodeIndex::new(node_idx_b.try_into().unwrap()),
+            NodeIndex::new(start_nd_idx.try_into().unwrap()),
+            NodeIndex::new(end_nd_idx.try_into().unwrap()),
         );
         if edge_idx.is_some() {
             Some(self.graph.edge_weight(edge_idx.unwrap())?.clone())
@@ -174,12 +225,12 @@ impl NetworkStructure {
     fn shortest_path_tree(
         &self,
         src_idx: usize,
-        max_dist: f32,
+        max_dist: u32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
-    ) {
+    ) -> (HashMap<usize, NodeVisit>, HashMap<usize, EdgeVisit>) {
         // setup
-        let jitter = jitter_scale.unwrap_or(0.0);
+        let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         // hashmap of visited nodes
         let mut tree_map: HashMap<usize, NodeVisit> = HashMap::new();
@@ -200,15 +251,14 @@ impl NetworkStructure {
         while active.len() > 0 {
             // find the next active node with the smallest impedance
             let mut min_nd_idx: Option<usize> = None;
-            let mut min_imp = f32::INFINITY;
+            let mut min_imp: f32 = f32::INFINITY;
             for nd_idx in active.iter() {
                 let nd_visit_state = tree_map.get(&nd_idx).unwrap();
-                let mut imp = f32::NAN;
-                if angular {
-                    imp = nd_visit_state.simpl_dist
+                let imp = if angular {
+                    nd_visit_state.simpl_dist
                 } else {
-                    imp = nd_visit_state.short_dist
-                }
+                    nd_visit_state.short_dist
+                };
                 if imp < min_imp {
                     min_imp = imp;
                     min_nd_idx = Some(*nd_idx);
@@ -222,6 +272,8 @@ impl NetworkStructure {
             if let Some(entry) = tree_map.get_mut(&active_nd_idx.index()) {
                 entry.visited = true;
             }
+            // clone for convenience - prevents conflicts with hashmap refs to neighbouring node
+            let active_node_clone = tree_map.get(&active_nd_idx.index()).cloned().unwrap();
             // visit neighbours
             for nb_nd_idx in self
                 .graph
@@ -237,7 +289,6 @@ impl NetworkStructure {
                         edge_map.insert(
                             edge_idx.index(),
                             EdgeVisit {
-                                visited: true,
                                 start_nd_idx: active_nd_idx.index(),
                                 end_nd_idx: nb_nd_idx.index(),
                                 edge_idx: edge_payload.edge_idx,
@@ -249,22 +300,24 @@ impl NetworkStructure {
                     don't visit predecessor nodes
                     otherwise successive nodes revisit out-edges to previous (neighbour) nodes
                     */
-                    if nb_nd_idx.index() == tree_map[&active_nd_idx.index()].pred.unwrap() {
-                        continue;
+                    if !active_node_clone.pred.is_none() {
+                        if nb_nd_idx.index() == active_node_clone.pred.unwrap() {
+                            continue;
+                        }
                     }
                     // insert the neighbour into the tree map if it doesn't exist yet
-                    let nb_visit_state = tree_map
+                    let nb_node_clone = tree_map
                         .entry(nb_nd_idx.index())
-                        .or_insert(NodeVisit::new());
+                        .or_insert(NodeVisit::new())
+                        .clone();
                     /*
                     only add edge to active if the neighbour node has not been processed previously
                     i.e. single direction only - if a neighbour node has been processed it has already been explored
                     */
-                    if !nb_visit_state.visited {
+                    if !nb_node_clone.visited {
                         edge_map.insert(
                             edge_idx.index(),
                             EdgeVisit {
-                                visited: true,
                                 start_nd_idx: active_nd_idx.index(),
                                 end_nd_idx: nb_nd_idx.index(),
                                 edge_idx: edge_payload.edge_idx,
@@ -280,47 +333,169 @@ impl NetworkStructure {
                         so keep behaviour consistent by designating the farthest node (but via the shortest distance)
                         as the cycle node
                         */
-                        if nb_visit_state.visited {
-                            if !nb_visit_state.preds.is_none() {}
+                        if !nb_node_clone.pred.is_none() {
+                            if active_node_clone.short_dist <= nb_node_clone.short_dist {
+                                if let Some(nb_node_ref) = tree_map.get_mut(&nb_nd_idx.index()) {
+                                    nb_node_ref.cycles += 0.5;
+                                }
+                            } else {
+                                if let Some(active_node_ref) =
+                                    tree_map.get_mut(&active_nd_idx.index())
+                                {
+                                    active_node_ref.cycles += 0.5;
+                                }
+                            }
+                        }
+                    }
+                    // impedance and distance is previous plus new
+                    let short_dist: f32 = active_node_clone.short_dist
+                        + edge_payload.length * edge_payload.imp_factor;
+                    /*
+                    angular impedance include two parts:
+                    A - turn from prior simplest-path route segment
+                    B - angular change across current segment
+                    */
+                    let mut turn: f32 = 0.0;
+                    if active_nd_idx.index() != src_idx {
+                        turn = (edge_payload.in_bearing - active_node_clone.out_bearing + 180.0)
+                            .abs()
+                            % 360.0
+                            - 180.0
+                    }
+                    let simpl_dist = active_node_clone.simpl_dist + turn + edge_payload.angle_sum;
+                    // add the neighbour to active if undiscovered but only if less than max shortest path threshold
+                    if nb_node_clone.pred.is_none() && short_dist <= max_dist as f32 {
+                        active.push(nb_nd_idx.index());
+                    }
+                    // jitter is for injecting a small amount of stochasticity for rectlinear grids
+                    let mut rng = thread_rng();
+                    let normal = Normal::new(0.0, 1.0).unwrap();
+                    let jitter: f32 = normal.sample(&mut rng) * jitter_scale;
+                    /*
+                    if impedance less than prior, update
+                    this will also happen for the first nodes that overshoot the boundary
+                    they will not be explored further because they have not been added to active
+                    */
+                    // shortest path heuristic differs for angular vs. not
+                    if (angular && simpl_dist + jitter < nb_node_clone.simpl_dist)
+                        || (!angular && short_dist + jitter < nb_node_clone.short_dist)
+                    {
+                        let origin_seg = if active_nd_idx.index() == src_idx {
+                            edge_idx.index()
+                        } else {
+                            active_node_clone.origin_seg.unwrap()
+                        };
+                        if let Some(nb_node_ref) = tree_map.get_mut(&nb_nd_idx.index()) {
+                            nb_node_ref.simpl_dist = simpl_dist;
+                            nb_node_ref.short_dist = short_dist;
+                            nb_node_ref.pred = Some(active_nd_idx.index());
+                            nb_node_ref.out_bearing = edge_payload.out_bearing;
+                            nb_node_ref.origin_seg = Some(origin_seg);
+                            nb_node_ref.last_seg = Some(edge_idx.index());
                         }
                     }
                 }
             }
         }
+        (tree_map, edge_map)
+    }
+
+    fn local_node_centrality_shortest(
+        &self,
+        distances: Vec<u32>,
+        betas: Vec<f32>,
+        closeness: bool,
+        betweenness: bool,
+    ) -> CentResShortClose {
+        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let close_result = CentResShortClose::new(distances.clone(), self.node_count());
+        let node_indices: Vec<usize> = self
+            .graph
+            .node_indices()
+            .map(|node| node.index() as usize)
+            .collect();
+        node_indices.par_iter().for_each(|src_idx| {
+            let (tree_map, edge_map) =
+                self.shortest_path_tree(*src_idx, max_dist, Some(0.0), Some(false));
+            for (to_idx, node_visit) in tree_map.iter() {
+                if to_idx == src_idx {
+                    continue;
+                }
+                if node_visit.short_dist.is_infinite() {
+                    continue;
+                }
+                for (distance, beta) in distances.iter().zip(betas.iter()) {
+                    if node_visit.short_dist > *distance as f32 {
+                        break;
+                    }
+                    close_result.node_density[distance][*src_idx].fetch_add(1, Ordering::Relaxed);
+                    close_result.node_farness[distance][*src_idx]
+                        .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                    close_result.node_cycles[distance][*src_idx]
+                        .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                    close_result.node_harmonic[distance][*src_idx]
+                        .fetch_add(1 as f32 / node_visit.short_dist, Ordering::Relaxed);
+                    close_result.node_beta[distance][*src_idx]
+                        .fetch_add((-*beta * node_visit.short_dist).exp(), Ordering::Relaxed);
+                }
+            }
+        });
+        close_result
+    }
+}
+pub struct CentResShortClose {
+    node_density: HashMap<u32, Vec<AtomicU32>>,
+    node_farness: HashMap<u32, Vec<AtomicF32>>,
+    node_cycles: HashMap<u32, Vec<AtomicF32>>,
+    node_harmonic: HashMap<u32, Vec<AtomicF32>>,
+    node_beta: HashMap<u32, Vec<AtomicF32>>,
+}
+impl CentResShortClose {
+    fn new(distances: Vec<u32>, size: usize) -> Self {
+        let mut cent_result = Self {
+            node_density: HashMap::new(),
+            node_farness: HashMap::new(),
+            node_cycles: HashMap::new(),
+            node_harmonic: HashMap::new(),
+            node_beta: HashMap::new(),
+        };
+        for distance in distances.iter() {
+            cent_result
+                .node_density
+                .insert(*distance, Vec::with_capacity(size));
+            cent_result
+                .node_farness
+                .insert(*distance, Vec::with_capacity(size));
+            cent_result
+                .node_cycles
+                .insert(*distance, Vec::with_capacity(size));
+            cent_result
+                .node_harmonic
+                .insert(*distance, Vec::with_capacity(size));
+            cent_result
+                .node_beta
+                .insert(*distance, Vec::with_capacity(size));
+        }
+        return cent_result;
     }
 }
 
-pub struct NodeVisit {
-    visited: bool,
-    pred: Option<usize>,
-    short_dist: f32,
-    simpl_dist: f32,
-    cycles: Option<usize>,
-    origin_seg: Option<usize>,
-    last_seg: Option<usize>,
-    out_bearing: f32,
-    in_bearing: f32,
+#[pyclass]
+pub struct CentResShortBetw {
+    #[pyo3(get)]
+    node_betweenness: HashMap<u32, Vec<u32>>,
+    #[pyo3(get)]
+    node_betweenness_beta: HashMap<u32, Vec<f32>>,
 }
-impl NodeVisit {
-    fn new() -> Self {
-        Self {
-            visited: false,
-            pred: None,
-            short_dist: f32::INFINITY,
-            simpl_dist: f32::INFINITY,
-            cycles: Some(0),
-            origin_seg: None,
-            last_seg: None,
-            out_bearing: f32::NAN,
-            in_bearing: f32::NAN,
-        }
-    }
+#[pyclass]
+pub struct CentResSimplClose {
+    #[pyo3(get)]
+    node_harmonic_angular: HashMap<u32, Vec<f32>>,
 }
-pub struct EdgeVisit {
-    visited: bool,
-    start_nd_idx: usize,
-    end_nd_idx: usize,
-    edge_idx: usize,
+#[pyclass]
+pub struct CentResSimplBetw {
+    #[pyo3(get)]
+    node_betweenness_angular: HashMap<u32, Vec<f32>>,
 }
 
 // TODO: can remove these
@@ -351,5 +526,58 @@ impl PyEdgeIndex {
     #[getter]
     fn index(&self) -> usize {
         self.0.index()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_network_structure() {
+        let mut ns = NetworkStructure::new();
+        let nd_a = ns.add_node("a".to_string(), 0.0, 0.0, true);
+        let nd_b = ns.add_node("b".to_string(), 1.0, 0.0, true);
+        let nd_c = ns.add_node("c".to_string(), 1.0, 1.0, true);
+        let nd_d = ns.add_node("d".to_string(), 0.0, 1.0, true);
+        let e_a = ns.add_edge(
+            nd_a,
+            nd_b,
+            0,
+            "a".to_string(),
+            "b".to_string(),
+            1.0,
+            0.0,
+            1.0,
+            90.0,
+            90.0,
+        );
+        let e_b = ns.add_edge(
+            nd_b,
+            nd_c,
+            0,
+            "b".to_string(),
+            "c".to_string(),
+            1.0,
+            0.0,
+            1.0,
+            180.0,
+            180.0,
+        );
+        let e_c = ns.add_edge(
+            nd_c,
+            nd_d,
+            0,
+            "c".to_string(),
+            "d".to_string(),
+            1.0,
+            0.0,
+            1.0,
+            270.0,
+            270.0,
+        );
+        let (tree_map, edge_map) = ns.shortest_path_tree(0, 5.0, None, None);
+        println!("bnoo");
+        // assert_eq!(add(2, 2), 4);
     }
 }
