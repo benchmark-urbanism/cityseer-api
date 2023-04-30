@@ -19,5 +19,9 @@ crate-type = ["cdylib"]
 name = "cityseer.rustalgos"
 
 [dependencies]
+atomic_float = "0.1.0"
 petgraph = "0.6.3"
 pyo3 = "0.18.3"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+rayon = "1.7.0"

@@ -2116,7 +2116,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
     crs: Union[str, int],
-) -> tuple[gpd.GeoDataFrame, rustalgos.NetworkStructure]:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
 
@@ -2148,7 +2148,8 @@ def network_structure_from_nx(
     # prepare the network structure
     network_structure = rustalgos.NetworkStructure()
     # generate the network information
-    agg_node_data: dict[str, tuple[int, float, float, bool]] = {}
+    agg_node_data: dict[str, tuple[Any, ...]] = {}
+    agg_edge_data: dict[str, tuple[Any, ...]] = {}
     node_data: NodeData
     # set nodes
     for node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):  # type: ignore
@@ -2165,18 +2166,18 @@ def network_structure_from_nx(
         if "live" in node_data:
             is_live = bool(node_data["live"])
         # set node
-        node_idx = network_structure.add_node(node_key, node_x, node_y, is_live)
-        agg_node_data[node_key] = (node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
+        ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live)
+        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
     # set edges
     for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):  # type: ignore
         # build edges
-        start_node_idx, start_node_x, start_node_y, _, _ = agg_node_data[start_node_key]
+        start_ns_node_idx, start_node_x, start_node_y, _, _ = agg_node_data[start_node_key]
         end_node_key: int
         for end_node_key in g_multi_copy.neighbors(start_node_key):
-            end_node_idx, _, _, _, _ = agg_node_data[end_node_key]
+            end_ns_node_idx, _, _, _, _ = agg_node_data[end_node_key]
             # add the new edge index to the node's out edges
             nx_edge_data: EdgeData
-            for nx_edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
+            for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
                 if not "geom" in nx_edge_data:
                     raise KeyError(
                         f"No edge geom found for edge {start_node_key}-{end_node_key}: Please add an edge 'geom' "
@@ -2220,14 +2221,15 @@ def network_structure_from_nx(
                 xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
                 in_bearing: float = _measure_bearing(xy_1, xy_2)
                 # out bearing
-                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
-                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
-                out_bearing: float = _measure_bearing(xy_1, xy_2)
+                xy_3: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
+                xy_4: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
+                out_bearing: float = _measure_bearing(xy_3, xy_4)
+                total_bearing = _measure_bearing(xy_1, xy_4)
                 # set edge
-                network_structure.add_edge(
-                    start_node_idx,
-                    end_node_idx,
-                    nx_edge_idx,
+                ns_edge_idx = network_structure.add_edge(
+                    start_ns_node_idx,
+                    end_ns_node_idx,
+                    edge_idx,
                     start_node_key,
                     end_node_key,
                     line_len,
@@ -2236,21 +2238,57 @@ def network_structure_from_nx(
                     in_bearing,
                     out_bearing,
                 )
+                # add to edge data
+                agg_edge_data[f"{start_node_key}-{end_node_key}"] = (
+                    ns_edge_idx,
+                    start_ns_node_idx,
+                    end_ns_node_idx,
+                    edge_idx,
+                    start_node_key,
+                    end_node_key,
+                    line_len,
+                    angle_sum,
+                    imp_factor,
+                    in_bearing,
+                    out_bearing,
+                    total_bearing,
+                    line_geom,
+                )
     # create geopandas for node keys and data state
     nodes_gdf = gpd.GeoDataFrame.from_dict(
         agg_node_data,
         orient="index",
-        columns=["node_idx", "x", "y", "live", "geom"],
+        columns=["ns_node_idx", "x", "y", "live", "geom"],
         geometry="geom",
         crs=crs,
     )
-    return nodes_gdf, network_structure
+    edges_gdf = gpd.GeoDataFrame.from_dict(
+        agg_edge_data,
+        orient="index",
+        columns=[
+            "ns_edge_idx",
+            "start_ns_node_idx",
+            "end_ns_node_idx",
+            "edge_idx",
+            "nx_start_node_key",
+            "nx_end_node_key",
+            "length",
+            "angle_sum",
+            "imp_factor",
+            "in_bearing",
+            "out_bearing",
+            "total_bearing",
+            "geom",
+        ],
+        geometry="geom",
+        crs=crs,
+    )
+    return nodes_gdf, edges_gdf, network_structure
 
 
-def nx_from_network_structure(
+def nx_from_geopandas(
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
-    nx_multigraph: Optional[MultiGraph] = None,
+    edges_gdf: gpd.GeoDataFrame,
 ) -> MultiGraph:
     """
     Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
@@ -2266,11 +2304,6 @@ def nx_from_network_structure(
     network_structure: structures.NetworkStructure
         A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf`
         parameter.
-    nx_multigraph: MultiGraph
-        An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should
-        correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not
-        provided, then a new `networkX` graph will be returned. This function is intended to be used for situations
-        where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
 
     Returns
     -------
@@ -2283,86 +2316,28 @@ def nx_from_network_structure(
 
     """
     logger.info("Populating node and edge map data to a networkX graph.")
-    if nx_multigraph is not None:
-        logger.info("Reusing existing graph as backbone.")
-        if nx_multigraph.number_of_nodes() != network_structure.nodes.count:
-            raise ValueError("The number of nodes in the graph does not match the number of nodes in the node map.")
-        g_multi_copy: MultiGraph = nx_multigraph.copy()
-        for nd_key in nodes_gdf.index:  # type: ignore
-            if nd_key not in g_multi_copy:
-                raise KeyError(
-                    f"Node key {nd_key} not found in graph. If passing an existing nx graph as backbone "
-                    "then the keys must match those supplied with the node and edge maps."
-                )
-    else:
-        logger.info("No existing graph found, creating new nx multigraph.")
-        g_multi_copy: MultiGraph = nx.MultiGraph()
-        g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
+    g_multi_copy: MultiGraph = nx.MultiGraph()
+    g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
     # after above so that errors caught first
-    network_structure.validate()
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):  # type: ignore
-        g_multi_copy.nodes[nd_key]["x"] = nd_data.geometry.x
-        g_multi_copy.nodes[nd_key]["y"] = nd_data.geometry.y
+        g_multi_copy.nodes[nd_key]["x"] = nd_data.x
+        g_multi_copy.nodes[nd_key]["y"] = nd_data.y
         g_multi_copy.nodes[nd_key]["live"] = nd_data.live
     logger.info("Unpacking edge data.")
-    for edge_idx in tqdm(range(network_structure.edges.count), disable=config.QUIET_MODE):  # type: ignore
-        start_nd_idx: NodeKey = network_structure.edges.start[edge_idx]
-        end_nd_idx: NodeKey = network_structure.edges.end[edge_idx]
-        length: float = network_structure.edges.length[edge_idx]
-        angle_sum: float = network_structure.edges.angle_sum[edge_idx]
-        imp_factor: float = network_structure.edges.imp_factor[edge_idx]
-        # find corresponding node keys
-        start_nd_key: NodeKey = nodes_gdf.index[start_nd_idx]  # type: ignore
-        end_nd_key: NodeKey = nodes_gdf.index[end_nd_idx]  # type: ignore
-        # note that the original geom is lost with round trip unless retained in a supplied backbone graph.
-        # the edge map is directional, so each original edge will be processed twice, once from either direction.
-        # edges are only added if A) not using a backbone graph and B) the edge hasn't already been added
-        if nx_multigraph is None:
-            # if the edge doesn't already exist, then simply add
-            if not g_multi_copy.has_edge(start_nd_key, end_nd_key):
-                add_edge = True
-            # else, only add if not matching an already added edge
-            # i.e. don't add the same edge when processed from opposite direction
-            else:
-                add_edge = True  # tentatively set to True
-                # iter the edges
-                edge_item_idx: int
-                edge_item_data: EdgeData
-                for edge_item_idx, edge_item_data in g_multi_copy[start_nd_key][end_nd_key].items():
-                    # set add_edge to false if a matching edge length is found
-                    if edge_item_data["length"] == length:
-                        add_edge = False
-            # add the edge if not existent
-            if add_edge:
-                g_multi_copy.add_edge(
-                    start_nd_key,
-                    end_nd_key,
-                    length=length,
-                    angle_sum=angle_sum,
-                    imp_factor=imp_factor,
-                )
-        # if a new edge is not being added then add the attributes to the appropriate backbone edge if not already done
-        # this is only relevant if processing a backbone graph
-        else:
-            # raise if the edge doesn't exist
-            if not g_multi_copy.has_edge(start_nd_key, end_nd_key):
-                raise KeyError(
-                    f"The backbone graph is missing an edge spanning from {start_nd_key} to {end_nd_key}"
-                    f"The original graph (with all original edges) has to be reused."
-                )
-            # due working with a MultiGraph it is necessary to check that the correct edge index is matched
-            for edge_item_idx, edge_item_data in g_multi_copy[start_nd_key][end_nd_key].items():
-                if np.isclose(edge_item_data["geom"].length, length, atol=config.ATOL, rtol=config.RTOL):
-                    # check whether the attributes have already been added from the other direction?
-                    if "length" in edge_item_data and edge_item_data["length"] == length:
-                        continue
-                    # otherwise add the edge attributes and move on
-                    exist_edge_data: EdgeData
-                    exist_edge_data = g_multi_copy[start_nd_key][end_nd_key][edge_item_idx]
-                    exist_edge_data["length"] = length
-                    exist_edge_data["angle_sum"] = angle_sum
-                    exist_edge_data["imp_factor"] = imp_factor
+    for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):  # type: ignore
+        g_multi_copy.add_edge(
+            row_data.nx_start_node_key,
+            row_data.nx_end_node_key,
+            row_data.edge_idx,
+            length=row_data.length,
+            angle_sum=row_data.angle_sum,
+            imp_factor=row_data.imp_factor,
+            in_bearing=row_data.in_bearing,
+            out_bearing=row_data.out_bearing,
+            total_bearing=row_data.total_bearing,
+            geom=row_data.geom,
+        )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]  # type: ignore
     if metrics_column_labels:

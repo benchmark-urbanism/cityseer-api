@@ -676,7 +676,7 @@ def test_network_structure_from_nx(diamond_graph):
     G_test_dual.nodes["2_3"]["live"] = False
     for G, is_dual in zip((G_test, G_test_dual), (False, True)):
         # generate test maps
-        nodes_gdf, network_structure = graphs.network_structure_from_nx(G, 3395)
+        nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, 3395)
         network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
@@ -689,28 +689,34 @@ def test_network_structure_from_nx(diamond_graph):
         node_idxs = network_structure.node_indices()
         for node_idx in node_idxs:
             node_payload = network_structure.get_node_payload(node_idx)
-            assert np.isclose(
-                node_payload.x, nodes_gdf.loc[node_payload.node_key].x, atol=config.ATOL, rtol=config.RTOL
-            )
-            assert np.isclose(
-                node_payload.y, nodes_gdf.loc[node_payload.node_key].y, atol=config.ATOL, rtol=config.RTOL
-            )
-            assert np.isclose(
-                node_payload.live, nodes_gdf.loc[node_payload.node_key].live, atol=config.ATOL, rtol=config.RTOL
-            )
+            assert node_payload.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
+            assert node_payload.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
+            assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
         edge_idxs = network_structure.edge_indices()
-        for start_node_idx, end_node_idx in edge_idxs:
-            edge_payload = network_structure.get_edge_payload(start_node_idx, end_node_idx)
+        for start_ns_node_idx, end_ns_node_idx in edge_idxs:
+            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx)
             start_nd_key = edge_payload.start_nd_key
             end_nd_key = edge_payload.end_nd_key
-            _edge_idx = edge_payload.edge_idx
+            edge_idx = edge_payload.edge_idx
             length = edge_payload.length
             angle_sum = edge_payload.angle_sum
             imp_factor = edge_payload.imp_factor
             in_bearing = edge_payload.in_bearing
             out_bearing = edge_payload.out_bearing
-            # checks
+            # check against edges_gdf
+            gdf_edge_key = f"{start_nd_key}-{end_nd_key}"
+            assert edges_gdf.loc[gdf_edge_key, "start_ns_node_idx"] == start_ns_node_idx
+            assert edges_gdf.loc[gdf_edge_key, "end_ns_node_idx"] == end_ns_node_idx
+            assert edges_gdf.loc[gdf_edge_key, "edge_idx"] == edge_idx
+            assert edges_gdf.loc[gdf_edge_key, "nx_start_node_key"] == start_nd_key
+            assert edges_gdf.loc[gdf_edge_key, "nx_end_node_key"] == end_nd_key
+            assert edges_gdf.loc[gdf_edge_key, "length"] - length < config.ATOL
+            assert edges_gdf.loc[gdf_edge_key, "angle_sum"] - angle_sum < config.ATOL
+            assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
+            assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
+            assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
+            # manual checks
             if not is_dual:
                 if (start_nd_key, end_nd_key) == ("0", "1"):
                     assert np.allclose(
@@ -1096,7 +1102,7 @@ def test_network_structure_from_nx(diamond_graph):
             graphs.network_structure_from_nx(G_test, 3395)
 
 
-def test_nx_from_network_structure(primal_graph):
+def test_nx_from_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
     # explicitly set live params for equality checks
@@ -1104,12 +1110,12 @@ def test_nx_from_network_structure(primal_graph):
     for node_key in primal_graph.nodes():
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    G_round_trip = graphs.nx_from_network_structure(nodes_gdf, network_structure)
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    G_round_trip = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
     # check with metrics
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     nodes_gdf = networks.node_centrality(
         measures=["node_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[500, 1000]
     )
@@ -1133,7 +1139,7 @@ def test_nx_from_network_structure(primal_graph):
         "cc_metric_c_1000_weighted",
     ]
     # without backbone
-    G_round_trip_nx = graphs.nx_from_network_structure(
+    G_round_trip_nx = graphs.nx_from_geopandas(
         nodes_gdf,
         network_structure,
     )
@@ -1141,7 +1147,7 @@ def test_nx_from_network_structure(primal_graph):
         for col_label in column_labels:
             assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
     # with backbone
-    G_round_trip_nx = graphs.nx_from_network_structure(
+    G_round_trip_nx = graphs.nx_from_geopandas(
         nodes_gdf,
         network_structure,
         nx_multigraph=primal_graph,
@@ -1154,21 +1160,21 @@ def test_nx_from_network_structure(primal_graph):
     # set live explicitly
     for node_key in G_decomposed.nodes():
         G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
-    nodes_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
-    G_round_trip_decomp = graphs.nx_from_network_structure(nodes_gdf_decomp, network_structure_decomp, G_decomposed)
+    nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
+    G_round_trip_decomp = graphs.nx_from_geopandas(nodes_gdf_decomp, network_structure_decomp, G_decomposed)
     assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
     for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
         assert node_key in G_decomposed
         assert iter_node_data["live"] == G_decomposed.nodes[node_key]["live"]
-        assert np.isclose(iter_node_data["x"], G_decomposed.nodes[node_key]["x"], rtol=config.RTOL, atol=config.ATOL)
-        assert np.isclose(iter_node_data["y"], G_decomposed.nodes[node_key]["y"], rtol=config.RTOL, atol=config.ATOL)
+        assert iter_node_data["x"] - G_decomposed.nodes[node_key]["x"] < config.ATOL
+        assert iter_node_data["y"] - G_decomposed.nodes[node_key]["y"] < config.ATOL
     assert G_round_trip_decomp.edges == G_decomposed.edges
     # error checks for when using backbone graph:
     # mismatching numbers of nodes
     corrupt_G = primal_graph.copy()
     corrupt_G.remove_node(0)
     with pytest.raises(ValueError):
-        graphs.nx_from_network_structure(
+        graphs.nx_from_geopandas(
             nodes_gdf,
             network_structure,
             nx_multigraph=corrupt_G,
@@ -1179,7 +1185,7 @@ def test_nx_from_network_structure(primal_graph):
         corrupt_index = corrupt_nodes_gdf.index.values
         corrupt_index[0] = -1
         corrupt_nodes_gdf.set_index(corrupt_index)
-        graphs.nx_from_network_structure(
+        graphs.nx_from_geopandas(
             corrupt_nodes_gdf,
             network_structure,
             nx_multigraph=primal_graph,
@@ -1188,7 +1194,7 @@ def test_nx_from_network_structure(primal_graph):
     with pytest.raises(KeyError):
         corrupt_primal_graph = primal_graph.copy()
         corrupt_primal_graph.remove_edge(0, 1)
-        graphs.nx_from_network_structure(
+        graphs.nx_from_geopandas(
             nodes_gdf,
             network_structure,
             nx_multigraph=corrupt_primal_graph,
