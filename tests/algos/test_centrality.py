@@ -39,12 +39,12 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest paths against networkX version of dijkstra
-    for max_dist in [0, 500, 2000, np.inf]:
+    for max_dist in [0, 500, 2000, 5000]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
             tree_map, edge_map = network_structure_p.shortest_path_tree(
                 src_idx,
-                np.float32(max_dist),
+                max_dist,
                 angular=False,
             )
             # compare against networkx dijkstra
@@ -282,40 +282,12 @@ def test_local_node_centrality(primal_graph):
     # needs a large enough beta so that distance thresholds aren't encountered
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
-    # set the keys - add shuffling to be sure various orders work
-    measure_keys = [
-        "node_density",
-        "node_farness",
-        "node_cycles",
-        "node_harmonic",
-        "node_beta",
-        "node_betweenness",
-        "node_betweenness_beta",
-    ]
-    np.random.shuffle(measure_keys)  # in place
-    measure_keys = tuple(measure_keys)
     # generate the measures
-    measures_data = centrality.local_node_centrality(
+    closeness_centrality = network_structure.local_node_centrality_shortest(
         distances,
         betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
+        True,
     )
-    node_density = measures_data[measure_keys.index("node_density")]
-    node_farness = measures_data[measure_keys.index("node_farness")]
-    node_cycles = measures_data[measure_keys.index("node_cycles")]
-    node_harmonic = measures_data[measure_keys.index("node_harmonic")]
-    node_beta = measures_data[measure_keys.index("node_beta")]
-    node_betweenness = measures_data[measure_keys.index("node_betweenness")]
-    node_betweenness_beta = measures_data[measure_keys.index("node_betweenness_beta")]
     # improved closeness is derived after the fact
     improved_closness = node_density / node_farness / node_density
     # test node density
