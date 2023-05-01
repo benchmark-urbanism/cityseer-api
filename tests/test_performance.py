@@ -29,6 +29,8 @@ def test_local_centrality_time(primal_graph):
     5.2 for 10000 iters
     without proto funcs (cacheing)
     5.15
+    computing all closeness and with rust
+    ~5
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
@@ -42,28 +44,21 @@ def test_local_centrality_time(primal_graph):
         return
     os.environ["CITYSEER_QUIET_MODE"] = "1"
     # load the test graph
-    _node_keys, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances, betas = networks.pair_distances_betas(distances=[5000])
 
     def shortest_path_tree_wrapper():
-        centrality.shortest_path_tree(
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            0,
-            max(distances),
-            angular=False,
+        network_structure.local_node_centrality_shortest(
+            distances,
+            betas,
+            True,
+            True,
         )
 
     # prime the function
     shortest_path_tree_wrapper()
-    iters = 100000
+    iters = 10000  # 56.34734088694677
     # time and report
     func_time = timeit.timeit(shortest_path_tree_wrapper, number=iters)
     print(f"shortest_path_tree_wrapper: {func_time} for {iters} iterations")

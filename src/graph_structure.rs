@@ -1,5 +1,6 @@
 use atomic_float::AtomicF32;
 use core::panic;
+use indicatif::{ProgressBar, ProgressDrawTarget};
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::prelude::*;
 use petgraph::Direction;
@@ -8,8 +9,7 @@ use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
-
+use std::sync::atomic::Ordering;
 #[pyclass]
 #[derive(Clone)]
 pub struct NodePayload {
@@ -399,23 +399,34 @@ impl NetworkStructure {
         }
         (tree_map, edge_map)
     }
-
     fn local_node_centrality_shortest(
         &self,
         distances: Vec<u32>,
         betas: Vec<f32>,
         closeness: bool,
-        betweenness: bool,
-    ) -> CentResShortClose {
+        pbar_disabled: Option<bool>,
+    ) -> CloseShortResult {
         let max_dist: u32 = distances.iter().max().unwrap().clone();
-        let close_result = CentResShortClose::new(distances.clone(), self.node_count());
+        let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_farness = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_beta = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_indices: Vec<usize> = self
             .graph
             .node_indices()
             .map(|node| node.index() as usize)
             .collect();
+        // par_iter
+        let bar = ProgressBar::new(node_indices.len() as u64).with_message("Computing centrality");
+        if pbar_disabled.is_some() {
+            if pbar_disabled.unwrap() {
+                bar.set_draw_target(ProgressDrawTarget::hidden())
+            }
+        }
         node_indices.par_iter().for_each(|src_idx| {
-            let (tree_map, edge_map) =
+            bar.inc(1);
+            let (tree_map, _edge_map) =
                 self.shortest_path_tree(*src_idx, max_dist, Some(0.0), Some(false));
             for (to_idx, node_visit) in tree_map.iter() {
                 if to_idx == src_idx {
@@ -424,78 +435,76 @@ impl NetworkStructure {
                 if node_visit.short_dist.is_infinite() {
                     continue;
                 }
-                for (distance, beta) in distances.iter().zip(betas.iter()) {
-                    if node_visit.short_dist > *distance as f32 {
-                        break;
+                if closeness {
+                    for (distance, beta) in distances.iter().zip(betas.iter()) {
+                        if node_visit.short_dist > *distance as f32 {
+                            break;
+                        }
+                        node_density.metric[distance][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                        node_farness.metric[distance][*src_idx]
+                            .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                        node_cycles.metric[distance][*src_idx]
+                            .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                        node_harmonic.metric[distance][*src_idx]
+                            .fetch_add(1 as f32 / node_visit.short_dist, Ordering::Relaxed);
+                        node_beta.metric[distance][*src_idx]
+                            .fetch_add((-*beta * node_visit.short_dist).exp(), Ordering::Relaxed);
                     }
-                    close_result.node_density[distance][*src_idx].fetch_add(1, Ordering::Relaxed);
-                    close_result.node_farness[distance][*src_idx]
-                        .fetch_add(node_visit.short_dist, Ordering::Relaxed);
-                    close_result.node_cycles[distance][*src_idx]
-                        .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                    close_result.node_harmonic[distance][*src_idx]
-                        .fetch_add(1 as f32 / node_visit.short_dist, Ordering::Relaxed);
-                    close_result.node_beta[distance][*src_idx]
-                        .fetch_add((-*beta * node_visit.short_dist).exp(), Ordering::Relaxed);
                 }
             }
         });
-        close_result
-    }
-}
-pub struct CentResShortClose {
-    node_density: HashMap<u32, Vec<AtomicU32>>,
-    node_farness: HashMap<u32, Vec<AtomicF32>>,
-    node_cycles: HashMap<u32, Vec<AtomicF32>>,
-    node_harmonic: HashMap<u32, Vec<AtomicF32>>,
-    node_beta: HashMap<u32, Vec<AtomicF32>>,
-}
-impl CentResShortClose {
-    fn new(distances: Vec<u32>, size: usize) -> Self {
-        let mut cent_result = Self {
-            node_density: HashMap::new(),
-            node_farness: HashMap::new(),
-            node_cycles: HashMap::new(),
-            node_harmonic: HashMap::new(),
-            node_beta: HashMap::new(),
-        };
-        for distance in distances.iter() {
-            cent_result
-                .node_density
-                .insert(*distance, Vec::with_capacity(size));
-            cent_result
-                .node_farness
-                .insert(*distance, Vec::with_capacity(size));
-            cent_result
-                .node_cycles
-                .insert(*distance, Vec::with_capacity(size));
-            cent_result
-                .node_harmonic
-                .insert(*distance, Vec::with_capacity(size));
-            cent_result
-                .node_beta
-                .insert(*distance, Vec::with_capacity(size));
+        bar.finish();
+        CloseShortResult {
+            node_density: node_density.load(),
+            node_farness: node_farness.load(),
+            node_cycles: node_cycles.load(),
+            node_harmonic: node_harmonic.load(),
+            node_beta: node_beta.load(),
         }
-        return cent_result;
     }
 }
-
-#[pyclass]
-pub struct CentResShortBetw {
-    #[pyo3(get)]
-    node_betweenness: HashMap<u32, Vec<u32>>,
-    #[pyo3(get)]
-    node_betweenness_beta: HashMap<u32, Vec<f32>>,
+struct MetricResult {
+    distances: Vec<u32>,
+    metric: HashMap<u32, Vec<AtomicF32>>,
+}
+impl MetricResult {
+    fn new(distances: Vec<u32>, size: usize) -> Self {
+        let mut metric = HashMap::new();
+        for distance in distances.iter() {
+            metric.insert(
+                *distance,
+                // tricky to initialise for given size
+                std::iter::repeat_with(|| AtomicF32::new(0.0))
+                    .take(size)
+                    .collect::<Vec<AtomicF32>>(),
+            );
+        }
+        Self { distances, metric }
+    }
+    fn load(&self) -> HashMap<u32, Vec<f32>> {
+        let mut loaded: HashMap<u32, Vec<f32>> = HashMap::new();
+        for distance in self.distances.iter() {
+            let vec_f32: Vec<f32> = self.metric[distance]
+                .iter()
+                .map(|a| a.load(Ordering::SeqCst))
+                .collect();
+            loaded.insert(*distance, vec_f32);
+        }
+        loaded
+    }
 }
 #[pyclass]
-pub struct CentResSimplClose {
+pub struct CloseShortResult {
     #[pyo3(get)]
-    node_harmonic_angular: HashMap<u32, Vec<f32>>,
-}
-#[pyclass]
-pub struct CentResSimplBetw {
+    node_density: HashMap<u32, Vec<f32>>,
     #[pyo3(get)]
-    node_betweenness_angular: HashMap<u32, Vec<f32>>,
+    node_farness: HashMap<u32, Vec<f32>>,
+    #[pyo3(get)]
+    node_cycles: HashMap<u32, Vec<f32>>,
+    #[pyo3(get)]
+    node_harmonic: HashMap<u32, Vec<f32>>,
+    #[pyo3(get)]
+    node_beta: HashMap<u32, Vec<f32>>,
 }
 
 // TODO: can remove these
@@ -576,8 +585,8 @@ mod tests {
             270.0,
             270.0,
         );
-        let (tree_map, edge_map) = ns.shortest_path_tree(0, 5.0, None, None);
-        println!("bnoo");
+        let (tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
+        let close_result = ns.local_node_centrality_shortest(vec![200], vec![0.02], true);
         // assert_eq!(add(2, 2), 4);
     }
 }
