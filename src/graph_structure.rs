@@ -101,11 +101,25 @@ impl NodeVisit {
 #[derive(Clone)]
 pub struct EdgeVisit {
     #[pyo3(get)]
-    start_nd_idx: usize,
+    visited: bool,
     #[pyo3(get)]
-    end_nd_idx: usize,
+    start_nd_idx: Option<usize>,
     #[pyo3(get)]
-    edge_idx: usize,
+    end_nd_idx: Option<usize>,
+    #[pyo3(get)]
+    edge_idx: Option<usize>,
+}
+#[pymethods]
+impl EdgeVisit {
+    #[new]
+    fn new() -> Self {
+        Self {
+            visited: false,
+            start_nd_idx: None,
+            end_nd_idx: None,
+            edge_idx: None,
+        }
+    }
 }
 #[pyclass]
 pub struct NetworkStructure {
@@ -228,23 +242,23 @@ impl NetworkStructure {
         max_dist: u32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
-    ) -> (HashMap<usize, NodeVisit>, HashMap<usize, EdgeVisit>) {
+    ) -> (Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         // setup
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         // hashmap of visited nodes
-        let mut tree_map: HashMap<usize, NodeVisit> = HashMap::new();
+        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
         // hashmap of visited edges
-        let mut edge_map: HashMap<usize, EdgeVisit> = HashMap::new();
+        let mut edge_map: Vec<EdgeVisit> = vec![EdgeVisit::new(); self.graph.edge_count()];
+        // vec of visited nodes
+        let mut visited_nodes: Vec<usize> = Vec::new();
         // vec of active node indices
         let mut active: Vec<usize> = Vec::new();
         // insert src node
         tree_map.insert(src_idx, NodeVisit::new());
         // the starting node's impedance and distance will be zero
-        if let Some(entry) = tree_map.get_mut(&src_idx) {
-            entry.short_dist = 0.0;
-            entry.simpl_dist = 0.0;
-        }
+        tree_map[src_idx].short_dist = 0.0;
+        tree_map[src_idx].simpl_dist = 0.0;
         // prime the active vec with the src node
         active.push(src_idx);
         // keep iterating while adding and removing until done
@@ -253,11 +267,10 @@ impl NetworkStructure {
             let mut min_nd_idx: Option<usize> = None;
             let mut min_imp: f32 = f32::INFINITY;
             for nd_idx in active.iter() {
-                let nd_visit_state = tree_map.get(&nd_idx).unwrap();
                 let imp = if angular {
-                    nd_visit_state.simpl_dist
+                    tree_map[*nd_idx].simpl_dist
                 } else {
-                    nd_visit_state.short_dist
+                    tree_map[*nd_idx].short_dist
                 };
                 if imp < min_imp {
                     min_imp = imp;
@@ -269,11 +282,8 @@ impl NetworkStructure {
             // remove from active vec
             active.retain(|&x| x != active_nd_idx.index());
             // mark as visited in tree map
-            if let Some(entry) = tree_map.get_mut(&active_nd_idx.index()) {
-                entry.visited = true;
-            }
-            // clone for convenience - prevents conflicts with hashmap refs to neighbouring node
-            let active_node_clone = tree_map.get(&active_nd_idx.index()).cloned().unwrap();
+            tree_map[active_nd_idx.index()].visited = true;
+            visited_nodes.push(active_nd_idx.index());
             // visit neighbours
             for nb_nd_idx in self
                 .graph
@@ -286,43 +296,30 @@ impl NetworkStructure {
                     // don't follow self-loops
                     if nb_nd_idx == active_nd_idx {
                         // before continuing, add edge to active for segment methods
-                        edge_map.insert(
-                            edge_idx.index(),
-                            EdgeVisit {
-                                start_nd_idx: active_nd_idx.index(),
-                                end_nd_idx: nb_nd_idx.index(),
-                                edge_idx: edge_payload.edge_idx,
-                            },
-                        );
+                        edge_map[edge_idx.index()].visited = true;
+                        edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
+                        edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
+                        edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
                         continue;
                     }
                     /*
                     don't visit predecessor nodes
                     otherwise successive nodes revisit out-edges to previous (neighbour) nodes
                     */
-                    if !active_node_clone.pred.is_none() {
-                        if nb_nd_idx.index() == active_node_clone.pred.unwrap() {
+                    if !tree_map[active_nd_idx.index()].pred.is_none() {
+                        if nb_nd_idx.index() == tree_map[active_nd_idx.index()].pred.unwrap() {
                             continue;
                         }
                     }
-                    // insert the neighbour into the tree map if it doesn't exist yet
-                    let nb_node_clone = tree_map
-                        .entry(nb_nd_idx.index())
-                        .or_insert(NodeVisit::new())
-                        .clone();
                     /*
                     only add edge to active if the neighbour node has not been processed previously
                     i.e. single direction only - if a neighbour node has been processed it has already been explored
                     */
-                    if !nb_node_clone.visited {
-                        edge_map.insert(
-                            edge_idx.index(),
-                            EdgeVisit {
-                                start_nd_idx: active_nd_idx.index(),
-                                end_nd_idx: nb_nd_idx.index(),
-                                edge_idx: edge_payload.edge_idx,
-                            },
-                        );
+                    if !tree_map[nb_nd_idx.index()].visited {
+                        edge_map[edge_idx.index()].visited = true;
+                        edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
+                        edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
+                        edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
                     }
                     if !angular {
                         /*
@@ -333,22 +330,18 @@ impl NetworkStructure {
                         so keep behaviour consistent by designating the farthest node (but via the shortest distance)
                         as the cycle node
                         */
-                        if !nb_node_clone.pred.is_none() {
-                            if active_node_clone.short_dist <= nb_node_clone.short_dist {
-                                if let Some(nb_node_ref) = tree_map.get_mut(&nb_nd_idx.index()) {
-                                    nb_node_ref.cycles += 0.5;
-                                }
+                        if !tree_map[nb_nd_idx.index()].pred.is_none() {
+                            if tree_map[active_nd_idx.index()].short_dist
+                                <= tree_map[nb_nd_idx.index()].short_dist
+                            {
+                                tree_map[nb_nd_idx.index()].cycles += 0.5;
                             } else {
-                                if let Some(active_node_ref) =
-                                    tree_map.get_mut(&active_nd_idx.index())
-                                {
-                                    active_node_ref.cycles += 0.5;
-                                }
+                                tree_map[active_nd_idx.index()].cycles += 0.5;
                             }
                         }
                     }
                     // impedance and distance is previous plus new
-                    let short_dist: f32 = active_node_clone.short_dist
+                    let short_dist: f32 = tree_map[active_nd_idx.index()].short_dist
                         + edge_payload.length * edge_payload.imp_factor;
                     /*
                     angular impedance include two parts:
@@ -357,14 +350,17 @@ impl NetworkStructure {
                     */
                     let mut turn: f32 = 0.0;
                     if active_nd_idx.index() != src_idx {
-                        turn = (edge_payload.in_bearing - active_node_clone.out_bearing + 180.0)
+                        turn = (edge_payload.in_bearing
+                            - tree_map[active_nd_idx.index()].out_bearing
+                            + 180.0)
                             .abs()
                             % 360.0
                             - 180.0
                     }
-                    let simpl_dist = active_node_clone.simpl_dist + turn + edge_payload.angle_sum;
+                    let simpl_dist =
+                        tree_map[active_nd_idx.index()].simpl_dist + turn + edge_payload.angle_sum;
                     // add the neighbour to active if undiscovered but only if less than max shortest path threshold
-                    if nb_node_clone.pred.is_none() && short_dist <= max_dist as f32 {
+                    if tree_map[nb_nd_idx.index()].pred.is_none() && short_dist <= max_dist as f32 {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting a small amount of stochasticity for rectlinear grids
@@ -377,15 +373,16 @@ impl NetworkStructure {
                     they will not be explored further because they have not been added to active
                     */
                     // shortest path heuristic differs for angular vs. not
-                    if (angular && simpl_dist + jitter < nb_node_clone.simpl_dist)
-                        || (!angular && short_dist + jitter < nb_node_clone.short_dist)
+                    if (angular && simpl_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
+                        || (!angular
+                            && short_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
                     {
                         let origin_seg = if active_nd_idx.index() == src_idx {
                             edge_idx.index()
                         } else {
-                            active_node_clone.origin_seg.unwrap()
+                            tree_map[active_nd_idx.index()].origin_seg.unwrap()
                         };
-                        if let Some(nb_node_ref) = tree_map.get_mut(&nb_nd_idx.index()) {
+                        if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
                             nb_node_ref.simpl_dist = simpl_dist;
                             nb_node_ref.short_dist = short_dist;
                             nb_node_ref.pred = Some(active_nd_idx.index());
@@ -397,8 +394,9 @@ impl NetworkStructure {
                 }
             }
         }
-        (tree_map, edge_map)
+        (visited_nodes, tree_map, edge_map)
     }
+
     fn local_node_centrality_shortest(
         &self,
         distances: Vec<u32>,
@@ -426,9 +424,10 @@ impl NetworkStructure {
         }
         node_indices.par_iter().for_each(|src_idx| {
             bar.inc(1);
-            let (tree_map, _edge_map) =
+            let (visited_nodes, tree_map, _edge_map) =
                 self.shortest_path_tree(*src_idx, max_dist, Some(0.0), Some(false));
-            for (to_idx, node_visit) in tree_map.iter() {
+            for to_idx in visited_nodes.iter() {
+                let node_visit = tree_map[*to_idx].clone();
                 if to_idx == src_idx {
                     continue;
                 }
@@ -587,8 +586,9 @@ mod tests {
             270.0,
             270.0,
         );
-        let (tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
-        let close_result = ns.local_node_centrality_shortest(vec![200], vec![0.02], true);
+        let (visited_nodes, tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
+        let close_result =
+            ns.local_node_centrality_shortest(vec![200], vec![0.02], true, Some(false));
         // assert_eq!(add(2, 2), 4);
     }
 }
