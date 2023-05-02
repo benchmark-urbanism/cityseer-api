@@ -436,19 +436,21 @@ impl NetworkStructure {
                     continue;
                 }
                 if closeness {
-                    for (distance, beta) in distances.iter().zip(betas.iter()) {
-                        if node_visit.short_dist > *distance as f32 {
+                    for i in 0..distances.len() {
+                        let distance = distances[i];
+                        let beta = betas[i];
+                        if node_visit.short_dist > distance as f32 {
                             break;
                         }
-                        node_density.metric[distance][*src_idx].fetch_add(1.0, Ordering::Relaxed);
-                        node_farness.metric[distance][*src_idx]
+                        node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                        node_farness.metric[i][*src_idx]
                             .fetch_add(node_visit.short_dist, Ordering::Relaxed);
-                        node_cycles.metric[distance][*src_idx]
+                        node_cycles.metric[i][*src_idx]
                             .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                        node_harmonic.metric[distance][*src_idx]
+                        node_harmonic.metric[i][*src_idx]
                             .fetch_add(1 as f32 / node_visit.short_dist, Ordering::Relaxed);
-                        node_beta.metric[distance][*src_idx]
-                            .fetch_add((-*beta * node_visit.short_dist).exp(), Ordering::Relaxed);
+                        node_beta.metric[i][*src_idx]
+                            .fetch_add((-beta * node_visit.short_dist).exp(), Ordering::Relaxed);
                     }
                 }
             }
@@ -465,14 +467,13 @@ impl NetworkStructure {
 }
 struct MetricResult {
     distances: Vec<u32>,
-    metric: HashMap<u32, Vec<AtomicF32>>,
+    metric: Vec<Vec<AtomicF32>>,
 }
 impl MetricResult {
     fn new(distances: Vec<u32>, size: usize) -> Self {
-        let mut metric = HashMap::new();
-        for distance in distances.iter() {
-            metric.insert(
-                *distance,
+        let mut metric = Vec::new();
+        for _d in 0..distances.len() {
+            metric.push(
                 // tricky to initialise for given size
                 std::iter::repeat_with(|| AtomicF32::new(0.0))
                     .take(size)
@@ -483,12 +484,13 @@ impl MetricResult {
     }
     fn load(&self) -> HashMap<u32, Vec<f32>> {
         let mut loaded: HashMap<u32, Vec<f32>> = HashMap::new();
-        for distance in self.distances.iter() {
-            let vec_f32: Vec<f32> = self.metric[distance]
+        for i in 0..self.distances.len() {
+            let dist = self.distances[i];
+            let vec_f32: Vec<f32> = self.metric[i]
                 .iter()
                 .map(|a| a.load(Ordering::SeqCst))
                 .collect();
-            loaded.insert(*distance, vec_f32);
+            loaded.insert(dist, vec_f32);
         }
         loaded
     }
