@@ -17,9 +17,6 @@ def find_path(start_idx, target_idx, tree_map):
     for extracting paths from predecessor map
     """
     s_path: list[int] = []
-    # return empty list if start_idx is not in the tree_map (exceeds max dist)
-    if start_idx not in tree_map:
-        return s_path
     pred_idx: int = start_idx
     while True:
         s_path.append(pred_idx)
@@ -42,7 +39,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     for max_dist in [0, 500, 2000, 5000]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
-            tree_map, edge_map = network_structure_p.shortest_path_tree(
+            visited_nodes, tree_map, edge_map = network_structure_p.shortest_path_tree(
                 src_idx,
                 max_dist,
                 angular=False,
