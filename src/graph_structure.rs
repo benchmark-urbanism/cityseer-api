@@ -1,6 +1,7 @@
 use atomic_float::AtomicF32;
 use core::panic;
 use indicatif::{ProgressBar, ProgressDrawTarget};
+use numpy::{IntoPyArray, PyArray1};
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::prelude::*;
 use petgraph::Direction;
@@ -10,6 +11,7 @@ use rand_distr::{Distribution, Normal};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
+
 #[pyclass]
 #[derive(Clone)]
 pub struct NodePayload {
@@ -481,15 +483,16 @@ impl MetricResult {
         }
         Self { distances, metric }
     }
-    fn load(&self) -> HashMap<u32, Vec<f32>> {
-        let mut loaded: HashMap<u32, Vec<f32>> = HashMap::new();
+    fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        let mut loaded: HashMap<u32, Py<PyArray1<f32>>> = HashMap::new();
         for i in 0..self.distances.len() {
             let dist = self.distances[i];
             let vec_f32: Vec<f32> = self.metric[i]
                 .iter()
                 .map(|a| a.load(Ordering::SeqCst))
                 .collect();
-            loaded.insert(dist, vec_f32);
+            let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned());
+            loaded.insert(dist, array);
         }
         loaded
     }
@@ -497,15 +500,15 @@ impl MetricResult {
 #[pyclass]
 pub struct CloseShortResult {
     #[pyo3(get)]
-    node_density: HashMap<u32, Vec<f32>>,
+    node_density: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
-    node_farness: HashMap<u32, Vec<f32>>,
+    node_farness: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
-    node_cycles: HashMap<u32, Vec<f32>>,
+    node_cycles: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
-    node_harmonic: HashMap<u32, Vec<f32>>,
+    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
-    node_beta: HashMap<u32, Vec<f32>>,
+    node_beta: HashMap<u32, Py<PyArray1<f32>>>,
 }
 
 // TODO: can remove these
