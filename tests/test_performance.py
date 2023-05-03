@@ -30,10 +30,11 @@ def test_local_centrality_time(primal_graph):
     without proto funcs (cacheing)
     5.15
     computing all closeness and with rust
-    ~4.58796109099967 for 10000 iterations with hashmap metrics
-    ~4.098207533999812 for 10000 iterations with vec metrics
-    ~3.721037642000738 for 10000 iterations for single closeness vs all five
-    ~2.1655273950000264 for 10000 iterations with vecs instead of hashmaps in closest path tree
+    ~4.58 for 10000 iterations with hashmap metrics
+    ~4.09 for 10000 iterations with vec metrics
+    ~3.72 for 10000 iterations for single closeness vs all five
+    ~2.16 for 10000 iterations with vecs instead of hashmaps in closest path tree
+    ~1.99 for 10000 iterations with vecs converted to numpy
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
