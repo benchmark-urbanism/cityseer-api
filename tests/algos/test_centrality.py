@@ -32,14 +32,14 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # prepare round-trip graph for checks
     G_round_trip = graphs.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
     # prepare dual graph
-    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
+    nodes_gdf_d, _edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest paths against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
-            visited_nodes, tree_map, edge_map = network_structure_p.shortest_path_tree(
+            _visited_nodes, tree_map, _edge_map = network_structure_p.shortest_path_tree(
                 src_idx,
                 max_dist,
                 angular=False,
@@ -54,66 +54,25 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
     # plot.plot_nx_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True, node_size=80)
-    p_source_idx = nodes_gdf_p.index.tolist().index(0)
-    primal_targets = (15, 20, 37)
+    p_source_idx = nodes_gdf_p.index.tolist().index("0")
+    primal_targets = ("15", "20", "37")
     dual_sources = ("0_1", "0_16", "0_31")
     dual_targets = ("13_15", "17_20", "36_37")
     for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets):
         p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
         d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
         d_target_idx = nodes_gdf_d.index.tolist().index(d_target)
-        (
-            _visited_nodes,
-            _preds,
-            _short_dist,
-            simpl_dist_p1,
-            _cycles,
-            _origin_seg,
-            _last_seg,
-            _out_bearings,
-            _visited_edges,
-        ) = centrality.shortest_path_tree(
-            network_structure_p.edges.start,
-            network_structure_p.edges.end,
-            network_structure_p.edges.length,
-            network_structure_p.edges.angle_sum,
-            network_structure_p.edges.imp_factor,
-            network_structure_p.edges.in_bearing,
-            network_structure_p.edges.out_bearing,
-            network_structure_p.node_edge_map,
+        _visited_nodes_p, tree_map_p, _edge_map_p = network_structure_p.shortest_path_tree(
             p_source_idx,
-            np.float32(np.inf),
+            5000,
             angular=True,
         )
-        (
-            _visited_nodes,
-            _preds,
-            _short_dist,
-            simpl_dist_d1,
-            _cycles,
-            _origin_seg,
-            _last_seg,
-            _out_bearings,
-            _visited_edges,
-        ) = centrality.shortest_path_tree(
-            network_structure_d.edges.start,
-            network_structure_d.edges.end,
-            network_structure_d.edges.length,
-            network_structure_d.edges.angle_sum,
-            network_structure_d.edges.imp_factor,
-            network_structure_d.edges.in_bearing,
-            network_structure_d.edges.out_bearing,
-            network_structure_d.node_edge_map,
+        _visited_nodes_d, tree_map_d, _edge_map_d = network_structure_d.shortest_path_tree(
             d_source_idx,
-            np.float32(np.inf),
+            5000,
             angular=True,
         )
-        assert np.allclose(
-            simpl_dist_p1[p_target_idx],
-            simpl_dist_d1[d_target_idx],
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
+        assert tree_map_p[p_target_idx].short_dist - tree_map_d[d_target_idx].short_dist < config.ATOL
     # angular impedance should take a simpler but longer path - test basic case on dual
     # source and target are the same for either
     src_idx = nodes_gdf_d.index.tolist().index("11_6")
