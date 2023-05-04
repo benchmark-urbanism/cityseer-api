@@ -8,9 +8,11 @@ _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(G_p
 # needs a large enough beta so that distance thresholds aren't encountered
 distances, betas = networks.pair_distances_betas(distances=[5000])
 
-close_short = network_structure.local_node_centrality_shortest(
+close_short, close_betw = network_structure.local_node_centrality_shortest(
     distances,
     betas,
     True,
+    True,
+    False,
 )
 print("here")

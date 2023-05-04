@@ -404,20 +404,24 @@ impl NetworkStructure {
         distances: Vec<u32>,
         betas: Vec<f32>,
         closeness: bool,
+        betweenness: bool,
         pbar_disabled: Option<bool>,
-    ) -> CloseShortResult {
+    ) -> (Option<CloseShortResult>, Option<BetwShortResult>) {
         let max_dist: u32 = distances.iter().max().unwrap().clone();
+        // metrics
         let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_farness = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_beta = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_betweenness_beta = MetricResult::new(distances.clone(), self.graph.node_count());
+        // indices
         let node_indices: Vec<usize> = self
             .graph
             .node_indices()
             .map(|node| node.index() as usize)
             .collect();
-        // par_iter
         let bar = ProgressBar::new(node_indices.len() as u64).with_message("Computing centrality");
         if pbar_disabled.is_some() {
             if pbar_disabled.unwrap() {
@@ -454,16 +458,53 @@ impl NetworkStructure {
                             .fetch_add((-beta * node_visit.short_dist).exp(), Ordering::Relaxed);
                     }
                 }
+                if betweenness {
+                    if to_idx < src_idx {
+                        continue;
+                    }
+                    let mut inter_idx: usize = node_visit.pred.unwrap();
+                    loop {
+                        if inter_idx == *src_idx {
+                            break;
+                        }
+                        for i in 0..distances.len() {
+                            let distance = distances[i];
+                            let beta = betas[i];
+                            if node_visit.short_dist <= distance as f32 {
+                                node_betweenness.metric[i][inter_idx]
+                                    .fetch_add(1.0, Ordering::Acquire);
+                                node_betweenness_beta.metric[i][inter_idx].fetch_add(
+                                    (-beta * node_visit.short_dist).exp(),
+                                    Ordering::Acquire,
+                                );
+                            }
+                        }
+                        inter_idx = tree_map[inter_idx].pred.unwrap();
+                    }
+                }
             }
         });
         bar.finish();
-        CloseShortResult {
-            node_density: node_density.load(),
-            node_farness: node_farness.load(),
-            node_cycles: node_cycles.load(),
-            node_harmonic: node_harmonic.load(),
-            node_beta: node_beta.load(),
-        }
+        let close_result: Option<CloseShortResult> = if closeness {
+            Some(CloseShortResult {
+                node_density: node_density.load(),
+                node_farness: node_farness.load(),
+                node_cycles: node_cycles.load(),
+                node_harmonic: node_harmonic.load(),
+                node_beta: node_beta.load(),
+            })
+        } else {
+            None
+        };
+        let betw_result: Option<BetwShortResult> = if betweenness {
+            Some(BetwShortResult {
+                node_betweenness: node_betweenness.load(),
+                node_betweenness_beta: node_betweenness_beta.load(),
+            })
+        } else {
+            None
+        };
+        (close_result, betw_result)
     }
 }
 struct MetricResult {
@@ -510,7 +551,13 @@ pub struct CloseShortResult {
     #[pyo3(get)]
     node_beta: HashMap<u32, Py<PyArray1<f32>>>,
 }
-
+#[pyclass]
+pub struct BetwShortResult {
+    #[pyo3(get)]
+    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_betweenness_beta: HashMap<u32, Py<PyArray1<f32>>>,
+}
 // TODO: can remove these
 #[pyclass]
 #[derive(Clone)]
@@ -545,9 +592,10 @@ impl PyEdgeIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_network_structure() {
+        pyo3::prepare_freethreaded_python();
+
         let mut ns = NetworkStructure::new();
         let nd_a = ns.add_node("a".to_string(), 0.0, 0.0, true);
         let nd_b = ns.add_node("b".to_string(), 1.0, 0.0, true);
@@ -591,7 +639,7 @@ mod tests {
         );
         let (visited_nodes, tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
         let close_result =
-            ns.local_node_centrality_shortest(vec![200], vec![0.02], true, Some(false));
+            ns.local_node_centrality_shortest(vec![200], vec![0.02], true, false, Some(false));
         // assert_eq!(add(2, 2), 4);
     }
 }
