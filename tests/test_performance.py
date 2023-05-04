@@ -34,7 +34,8 @@ def test_local_centrality_time(primal_graph):
     ~4.09 for 10000 iterations with vec metrics
     ~3.72 for 10000 iterations for single closeness vs all five
     ~2.16 for 10000 iterations with vecs instead of hashmaps in closest path tree
-    ~1.99 for 10000 iterations with vecs converted to numpy
+    ~2.14 for 10000 iterations with vecs converted to numpy
+    ~3.05 for 10000 iterations with both closeness and betweenness
 
     notes:
     - Segments of unreachable code used to add to timing: this seems to have been fixed in more recent versions of numba
@@ -56,6 +57,7 @@ def test_local_centrality_time(primal_graph):
         network_structure.local_node_centrality_shortest(
             distances,
             betas,
+            True,
             True,
             True,
         )
