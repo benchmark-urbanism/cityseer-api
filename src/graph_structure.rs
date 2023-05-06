@@ -442,18 +442,19 @@ impl NetworkStructure {
                     for i in 0..distances.len() {
                         let distance = distances[i];
                         let beta = betas[i];
-                        if node_visit.short_dist > distance as f32 {
-                            break;
+                        if node_visit.short_dist <= distance as f32 {
+                            node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                            node_farness.metric[i][*src_idx]
+                                .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                            node_cycles.metric[i][*src_idx]
+                                .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                            node_harmonic.metric[i][*src_idx]
+                                .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
+                            node_beta.metric[i][*src_idx].fetch_add(
+                                (-beta * node_visit.short_dist).exp(),
+                                Ordering::Relaxed,
+                            );
                         }
-                        node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
-                        node_farness.metric[i][*src_idx]
-                            .fetch_add(node_visit.short_dist, Ordering::Relaxed);
-                        node_cycles.metric[i][*src_idx]
-                            .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                        node_harmonic.metric[i][*src_idx]
-                            .fetch_add(1 as f32 / node_visit.short_dist, Ordering::Relaxed);
-                        node_beta.metric[i][*src_idx]
-                            .fetch_add((-beta * node_visit.short_dist).exp(), Ordering::Relaxed);
                     }
                 }
                 if betweenness {
