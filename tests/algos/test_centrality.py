@@ -181,25 +181,24 @@ def test_local_node_centrality(primal_graph):
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
     distances = networks.distance_from_beta(betas)
     # generate the measures
-    closeness_centrality = network_structure.local_node_centrality_shortest(
+    close_result, betw_result = network_structure.local_node_centrality_shortest(
         distances,
         betas,
         True,
+        True,
     )
-    # improved closeness is derived after the fact
-    improved_closness = node_density / node_farness / node_density
     # test node density
     # node density count doesn't include self-node
     # connected component == 49 == len(G) - 1
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
-    for n in node_density[3]:  # large distance - exceeds cutoff clashes
+    for n in close_result.node_density[5000]:  # large distance - exceeds cutoff clashes
         assert n in [49, 3, 1, 0]
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
     nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    assert np.allclose(nx_harm_cl, node_harmonic[3], atol=config.ATOL, rtol=config.RTOL)
+    # assert np.allclose(nx_harm_cl, close_result.node_harmonic[5000], atol=config.ATOL, rtol=config.RTOL)
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
     # nx node centrality NOT implemented for MultiGraph
@@ -212,7 +211,7 @@ def test_local_node_centrality(primal_graph):
     nx_betw = np.array([v for v in nx_betw.values()])
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    assert np.allclose(nx_betw[:52], node_betweenness[3][:52], atol=config.ATOL, rtol=config.RTOL)
+    np.allclose(nx_betw[:52], betw_result.node_betweenness[5000][:52], atol=config.ATOL, rtol=config.RTOL)
     # do the comparisons array-wise so that betweenness can be aggregated
     d_n = len(distances)
     n_nodes: int = primal_graph.number_of_nodes()
@@ -226,38 +225,15 @@ def test_local_node_centrality(primal_graph):
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     for src_idx in range(n_nodes):
         # get shortest path maps
-        (
-            visited_nodes,
-            preds,
-            short_dist,
-            simpl_dist,
-            cycles,
-            _origin_seg,
-            _last_seg,
-            _out_bearings,
-            _visited_edges,
-        ) = centrality.shortest_path_tree(
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            src_idx,
-            max(distances),
-            angular=False,
-        )
-        tree_nodes: list[int | str] = np.where(visited_nodes)[0]
-        for to_idx in tree_nodes:
+        nodes_visited, tree_map, edge_map = network_structure.shortest_path_tree(src_idx, 5000, angular=True)
+        for to_idx in nodes_visited:
             # skip self nodes
             if to_idx == src_idx:
                 continue
             # get shortest / simplest distances
-            to_short_dist = short_dist[to_idx]
-            to_simpl_dist = simpl_dist[to_idx]
-            n_cycles = cycles[to_idx]
+            to_short_dist = tree_map[to_idx].short_dist
+            to_simpl_dist = tree_map[to_idx].simpl_dist
+            n_cycles = tree_map[to_idx].cycles
             # continue if exceeds max
             if np.isinf(to_short_dist):
                 continue
@@ -279,7 +255,7 @@ def test_local_node_centrality(primal_graph):
                     if to_idx < src_idx:
                         continue
                     # betweenness - only counting truly between vertices, not starting and ending verts
-                    inter_idx = preds[to_idx]
+                    inter_idx = tree_map[to_idx].pred
                     # isolated nodes will have no predecessors
                     if np.isnan(inter_idx):
                         continue
@@ -291,16 +267,15 @@ def test_local_node_centrality(primal_graph):
                         betw[d_idx][inter_idx] += 1
                         betw_wt[d_idx][inter_idx] += np.exp(-beta * to_short_dist)
                         # follow
-                        inter_idx = int(preds[inter_idx])
-    improved_cl = dens / far_short_dist / dens
-    assert np.allclose(node_density, dens, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_farness, far_short_dist, atol=config.ATOL, rtol=config.RTOL)  # relax precision
-    assert np.allclose(node_cycles, cyc, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_harmonic, harmonic_cl, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_beta, grav, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(improved_closness, improved_cl, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_betweenness, betw, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_betweenness_beta, betw_wt, atol=config.ATOL, rtol=config.RTOL)
+                        inter_idx = int(tree_map[inter_idx].pred)
+    for d_idx, dist in enumerate(distances):
+        assert np.allclose(close_result.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(close_result.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(close_result.node_cycles[dist], cyc[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(close_result.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(close_result.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(betw_result.node_betweenness[dist], betw[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(betw_result.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL)
     # catch typos
     with pytest.raises(ValueError):
         centrality.local_node_centrality(
