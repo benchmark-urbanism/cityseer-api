@@ -256,8 +256,6 @@ impl NetworkStructure {
         let mut visited_nodes: Vec<usize> = Vec::new();
         // vec of active node indices
         let mut active: Vec<usize> = Vec::new();
-        // insert src node
-        tree_map.insert(src_idx, NodeVisit::new());
         // the starting node's impedance and distance will be zero
         tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].simpl_dist = 0.0;
@@ -352,12 +350,12 @@ impl NetworkStructure {
                     */
                     let mut turn: f32 = 0.0;
                     if active_nd_idx.index() != src_idx {
-                        turn = (edge_payload.in_bearing
+                        turn = ((edge_payload.in_bearing
                             - tree_map[active_nd_idx.index()].out_bearing
                             + 180.0)
-                            .abs()
                             % 360.0
-                            - 180.0
+                            - 180.0)
+                            .abs()
                     }
                     let simpl_dist =
                         tree_map[active_nd_idx.index()].simpl_dist + turn + edge_payload.angle_sum;
@@ -637,7 +635,7 @@ mod tests {
             270.0,
             270.0,
         );
-        let (visited_nodes, tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
+        let (visited_nodes, tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, Some(true));
         let close_result =
             ns.local_node_centrality_shortest(vec![200], vec![0.02], true, false, Some(false));
         // assert_eq!(add(2, 2), 4);
