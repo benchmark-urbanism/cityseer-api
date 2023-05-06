@@ -32,7 +32,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # prepare round-trip graph for checks
     G_round_trip = graphs.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
     # prepare dual graph
-    nodes_gdf_d, _edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
+    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest paths against networkX version of dijkstra
@@ -53,7 +53,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
-    # plot.plot_nx_primal_or_dual(primal=primal_graph, dual=dual_graph, labels=True, node_size=80)
+    # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80)
     p_source_idx = nodes_gdf_p.index.tolist().index("0")
     primal_targets = ("15", "20", "37")
     dual_sources = ("0_1", "0_16", "0_31")
@@ -72,39 +72,22 @@ def test_shortest_path_tree(primal_graph, dual_graph):
             5000,
             angular=True,
         )
-        assert tree_map_p[p_target_idx].short_dist - tree_map_d[d_target_idx].short_dist < config.ATOL
+        assert tree_map_p[p_target_idx].simpl_dist - tree_map_d[d_target_idx].simpl_dist < config.ATOL
     # angular impedance should take a simpler but longer path - test basic case on dual
     # source and target are the same for either
     src_idx = nodes_gdf_d.index.tolist().index("11_6")
     target = nodes_gdf_d.index.tolist().index("39_40")
     # SIMPLEST PATH: get simplest path tree using angular impedance
-    (
-        _visited_nodes,
-        preds_d2,
-        _short_dist,
-        _simpl_dist,
-        _cycles,
-        _origin_seg,
-        _last_seg,
-        _out_bearings,
-        _visited_edges,
-    ) = centrality.shortest_path_tree(
-        network_structure_d.edges.start,
-        network_structure_d.edges.end,
-        network_structure_d.edges.length,
-        network_structure_d.edges.angle_sum,
-        network_structure_d.edges.imp_factor,
-        network_structure_d.edges.in_bearing,
-        network_structure_d.edges.out_bearing,
-        network_structure_d.node_edge_map,
+    _visited_nodes_d, tree_map_d2, _edge_map_d = network_structure_d.shortest_path_tree(
         src_idx,
-        np.float32(np.inf),
+        5000,
         angular=True,
-    )  # ANGULAR = TRUE
+    )
     # find path
-    path = find_path(target, src_idx, preds_d2)
+    path = find_path(target, src_idx, tree_map_d2)
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # takes 1597m route via long outside segment
+    # this should follow the simplest path periphery route instead of cutting through the shortest route central node
     # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
     assert path_transpose == [
         "11_6",
@@ -117,31 +100,15 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     ]
     # SHORTEST PATH:
     # get shortest path tree using non angular impedance
-    (
-        _visited_nodes,
-        preds_d3,
-        _short_dist,
-        _simpl_dist,
-        _cycles,
-        _origin_seg,
-        _last_seg,
-        _out_bearings,
-        _visited_edges,
-    ) = centrality.shortest_path_tree(
-        network_structure_d.edges.start,
-        network_structure_d.edges.end,
-        network_structure_d.edges.length,
-        network_structure_d.edges.angle_sum,
-        network_structure_d.edges.imp_factor,
-        network_structure_d.edges.in_bearing,
-        network_structure_d.edges.out_bearing,
-        network_structure_d.node_edge_map,
+    # this should cut through central node
+    # would otherwise have used outside periphery route if using simplest path
+    _visited_nodes_d, tree_map_d3, _edge_map_d = network_structure_d.shortest_path_tree(
         src_idx,
-        max_dist=np.float32(np.inf),
+        5000,
         angular=False,
-    )  # ANGULAR = FALSE
+    )
     # find path
-    path = find_path(target, src_idx, preds_d3)
+    path = find_path(target, src_idx, tree_map_d3)
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # takes 1345m shorter route
     # tree_dists[int(full_to_trim_idx_map[node_keys.index('39_40')])]
@@ -162,64 +129,39 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src_idx = nodes_gdf_d.index.tolist().index("10_43")
     target = nodes_gdf_d.index.tolist().index("10_5")
-    (
-        _visited_nodes,
-        preds_d4,
-        _short_dist,
-        _simpl_dist,
-        _cycles,
-        _origin_seg,
-        _last_seg,
-        _out_bearings,
-        _visited_edges,
-    ) = centrality.shortest_path_tree(
-        network_structure_d.edges.start,
-        network_structure_d.edges.end,
-        network_structure_d.edges.length,
-        network_structure_d.edges.angle_sum,
-        network_structure_d.edges.imp_factor,
-        network_structure_d.edges.in_bearing,
-        network_structure_d.edges.out_bearing,
-        network_structure_d.node_edge_map,
+    _visited_nodes_d, tree_map_d4, _edge_map_d = network_structure_d.shortest_path_tree(
         src_idx,
-        max_dist=np.float32(np.inf),
+        5000,
         angular=True,
     )
     # find path
-    path = find_path(target, src_idx, preds_d4)
+    path = find_path(target, src_idx, tree_map_d4)
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # print(path_transpose)
     assert path_transpose == ["10_43", "10_5"]
     # WITH SIDESTEPS - set angular flag to False
-    # manually overwrite distance impedances with angular for this test
-    # (angular has to be false otherwise shortest-path sidestepping avoided)
-    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
-    network_structure_d.edges.length = network_structure_d.edges.angle_sum
-    (
-        _visited_nodes,
-        preds_d5,
-        _short_dist,
-        _simpl_dist,
-        _cycles,
-        _origin_seg,
-        _last_seg,
-        _out_bearings,
-        _visited_edges,
-    ) = centrality.shortest_path_tree(
-        network_structure_d.edges.start,
-        network_structure_d.edges.end,
-        network_structure_d.edges.length,
-        network_structure_d.edges.angle_sum,
-        network_structure_d.edges.imp_factor,
-        network_structure_d.edges.in_bearing,
-        network_structure_d.edges.out_bearing,
-        network_structure_d.node_edge_map,
+    # manually reduce distance impedances for this test to coerce shortest path via sharp turn
+    # angular has to be false otherwise shortest-path sidestepping should be avoided
+    for idx in ["10_14-10_5", "10_5-10_14", "10_43-10_14", "10_14-10_43"]:
+        network_structure_d.add_edge(
+            edges_gdf_d.loc[idx].start_ns_node_idx,
+            edges_gdf_d.loc[idx].end_ns_node_idx,
+            edges_gdf_d.loc[idx].edge_idx,
+            edges_gdf_d.loc[idx].nx_start_node_key,
+            edges_gdf_d.loc[idx].nx_end_node_key,
+            10,
+            edges_gdf_d.loc[idx].angle_sum,
+            edges_gdf_d.loc[idx].imp_factor,
+            edges_gdf_d.loc[idx].in_bearing,
+            edges_gdf_d.loc[idx].out_bearing,
+        )
+    _visited_nodes_d, tree_map_d5, _edge_map_d = network_structure_d.shortest_path_tree(
         src_idx,
-        max_dist=np.float32(np.inf),
+        5000,
         angular=False,
     )
     # find path
-    path = find_path(target, src_idx, preds_d5)
+    path = find_path(target, src_idx, tree_map_d5)
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     assert path_transpose == ["10_43", "10_14", "10_5"]
 
