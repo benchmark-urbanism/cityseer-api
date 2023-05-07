@@ -435,7 +435,7 @@ impl NetworkStructure {
                 if to_idx == src_idx {
                     continue;
                 }
-                if node_visit.short_dist.is_infinite() {
+                if !node_visit.short_dist.is_finite() {
                     continue;
                 }
                 if closeness {
