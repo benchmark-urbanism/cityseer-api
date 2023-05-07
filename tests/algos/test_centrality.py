@@ -35,7 +35,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
-    # test all shortest paths against networkX version of dijkstra
+    # test all shortest path routes against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
@@ -49,6 +49,16 @@ def test_shortest_path_tree(primal_graph, dual_graph):
             for j_node_key, j_nx_path in nx_path.items():
                 assert find_path(int(j_node_key), src_idx, tree_map) == [int(j) for j in j_nx_path]
                 assert tree_map[int(j_node_key)].short_dist - nx_dist[j_node_key] < config.ATOL
+    # test all shortest distance calculations against networkX
+    for src_idx in range(len(G_round_trip)):
+        shortest_dists = nx.shortest_path_length(G_round_trip, str(src_idx), weight="length")
+        _visted_nodes, tree_map, _edge_map = network_structure_p.shortest_path_tree(
+            src_idx, 5000, jitter_scale=0.0, angular=False
+        )
+        for target_idx in range(len(G_round_trip)):
+            if str(target_idx) not in shortest_dists:
+                continue
+            assert shortest_dists[str(target_idx)] - tree_map[target_idx].short_dist <= config.ATOL
     # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
@@ -197,8 +207,8 @@ def test_local_node_centrality(primal_graph):
         assert n in [49, 3, 1, 0]
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
-    nx_harm_cl = np.array([v for v in nx_harm_cl.values()])
-    # assert np.allclose(nx_harm_cl, close_result.node_harmonic[5000], atol=config.ATOL, rtol=config.RTOL)
+    for src_idx in range(len(G_round_trip)):
+        assert nx_harm_cl[str(src_idx)] - close_result.node_harmonic[5000][src_idx] < config.ATOL
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
     # nx node centrality NOT implemented for MultiGraph
@@ -225,7 +235,9 @@ def test_local_node_centrality(primal_graph):
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     for src_idx in range(n_nodes):
         # get shortest path maps
-        nodes_visited, tree_map, edge_map = network_structure.shortest_path_tree(src_idx, 5000, angular=True)
+        nodes_visited, tree_map, _edge_map = network_structure.shortest_path_tree(
+            src_idx, 5000, jitter_scale=0.0, angular=False
+        )
         for to_idx in nodes_visited:
             # skip self nodes
             if to_idx == src_idx:
@@ -276,22 +288,6 @@ def test_local_node_centrality(primal_graph):
         assert np.allclose(close_result.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(betw_result.node_betweenness[dist], betw[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(betw_result.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL)
-    # catch typos
-    with pytest.raises(ValueError):
-        centrality.local_node_centrality(
-            distances,
-            betas,
-            ("typo_key",),
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-        )
 
 
 def test_local_centrality(diamond_graph):
