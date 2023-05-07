@@ -176,7 +176,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     assert path_transpose == ["10_43", "10_14", "10_5"]
 
 
-def test_local_node_centrality(primal_graph):
+def test_local_node_centrality_shortest(primal_graph):
     """
     Also tested indirectly via test_networks.test_compute_centrality
 
@@ -290,7 +290,7 @@ def test_local_node_centrality(primal_graph):
         assert np.allclose(betw_result.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL)
 
 
-def test_local_centrality(diamond_graph):
+def test_local_centrality_all(diamond_graph):
     """
     manual checks for all methods against diamond graph
     measures_data is multidimensional in the form of measure_keys x distances x nodes
@@ -301,93 +301,69 @@ def test_local_centrality(diamond_graph):
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
     _nodes_gdf_d, _edges_gdf_d, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
-    distances: npt.NDArray[np.int_] = np.array([50, 150, 250], dtype=np.float32)
+    distances: npt.NDArray[np.int_] = np.array([50, 150, 250], dtype=np.int_)
     betas = networks.beta_from_distance(distances)
     # NODE SHORTEST
-    # set the keys - add shuffling to be sure various orders work
-    node_keys = [
-        "node_density",
-        "node_farness",
-        "node_cycles",
-        "node_harmonic",
-        "node_beta",
-        "node_betweenness",
-        "node_betweenness_beta",
-    ]
-    np.random.shuffle(node_keys)  # in place
-    measure_keys = tuple(node_keys)
-    measures_data = centrality.local_node_centrality(
+    close_result, betw_result = network_structure.local_node_centrality_shortest(
         distances,
         betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
+        True,
+        True,
     )
     # node density
     # additive nodes
-    m_idx = node_keys.index("node_density")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
     # node farness
     # additive distances
-    m_idx = node_keys.index("node_farness")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
     # node cycles
     # additive cycles
-    m_idx = node_keys.index("node_cycles")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
-    m_idx = node_keys.index("node_harmonic")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_harmonic[150], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_harmonic[250], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL)
     # node beta
     # additive exp(-beta * dist)
-    m_idx = node_keys.index("node_beta")
     # beta = 0.0
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result.node_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # beta = 0.02666667
-    assert np.allclose(
-        measures_data[m_idx][1],
-        [0.1389669, 0.20845035, 0.20845035, 0.1389669],
-        atol=config.ATOL,
-        rtol=config.RTOL,
+    np.allclose(
+        close_result.node_beta[150], [0.1389669, 0.20845035, 0.20845035, 0.1389669], atol=config.ATOL, rtol=config.RTOL
     )
     # beta = 0.016
-    assert np.allclose(
-        measures_data[m_idx][2],
-        [0.44455525, 0.6056895, 0.6056895, 0.44455522],
-        atol=config.ATOL,
-        rtol=config.RTOL,
+    np.allclose(
+        close_result.node_beta[250], [0.44455525, 0.6056895, 0.6056895, 0.44455522], atol=config.ATOL, rtol=config.RTOL
     )
     # node betweenness
     # additive 1 per node en route
-    m_idx = node_keys.index("node_betweenness")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    # takes first out of multiple equidistant routes
-    assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    # takes first out of multiple options, so either of following is correct
+    assert np.allclose(
+        betw_result.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL
+    ) or np.allclose(betw_result.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # node betweenness beta
     # additive exp(-beta * dist) en route
-    m_idx = node_keys.index("node_betweenness_beta")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)  # beta = 0.08
-    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)  # beta = 0.02666667
-    # takes first out of multiple equidistant routes
-    # beta evaluated over 200m distance from 3 to 0 via node 1
-    assert np.allclose(measures_data[m_idx][2], [0, 0.0407622, 0, 0])  # beta = 0.016
+    assert np.allclose(
+        betw_result.node_betweenness_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    )  # beta = 0.08
+    assert np.allclose(
+        betw_result.node_betweenness_beta[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    )  # beta = 0.02666667
+    # takes first out of multiple options, so either of following is correct
+    # beta evaluated over 200m distance from 3 to 0
+    # beta = 0.016
+    assert np.allclose(betw_result.node_betweenness_beta[250], [0, 0.0407622, 0, 0]) or np.allclose(
+        betw_result.node_betweenness_beta[250], [0, 0, 0.0407622, 0]
+    )
 
     # NODE SIMPLEST
     node_keys_angular = ["node_harmonic_angular", "node_betweenness_angular"]
