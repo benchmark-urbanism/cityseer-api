@@ -5,12 +5,15 @@ use numpy::{IntoPyArray, PyArray1};
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::prelude::*;
 use petgraph::Direction;
+use pyo3::exceptions;
 use pyo3::prelude::*;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
+
+use crate::common;
 
 #[pyclass]
 #[derive(Clone)]
@@ -217,26 +220,36 @@ impl NetworkStructure {
             })
             .collect()
     }
-    fn validate(&self) -> bool {
+    fn validate(&self) -> PyResult<bool> {
         if self.node_count() == 0 {
-            panic!("NetworkStructure contains no nodes.")
+            return Err(exceptions::PyValueError::new_err(
+                "NetworkStructure contains no nodes.",
+            ));
         };
         if self.edge_count() == 0 {
-            panic!("NetworkStructure contains no edges.")
+            return Err(exceptions::PyValueError::new_err(
+                "NetworkStructure contains no edges.",
+            ));
         };
         for node_idx in self.graph.node_indices() {
             let node_payload = self.graph.node_weight(node_idx).unwrap();
             if !node_payload.validate() {
-                panic!("Invalid node for node idx {:?}.", node_idx)
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Invalid node for node idx {:?}.",
+                    node_idx
+                )));
             }
         }
         for edge_idx in self.graph.edge_indices() {
             let edge_payload = self.graph.edge_weight(edge_idx).unwrap();
             if !edge_payload.validate() {
-                panic!("Invalid edge for edge idx {:?}.", edge_idx)
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Invalid edge for edge idx {:?}.",
+                    edge_idx
+                )));
             }
         }
-        true
+        Ok(true)
     }
     fn shortest_path_tree(
         &self,
@@ -245,7 +258,16 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
         angular: Option<bool>,
     ) -> (Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
-        // setup
+        /*
+        All shortest paths to max network distance from source node.
+
+        Returns impedances and predecessors for shortest paths from a source node to all other nodes within max
+        distance. Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns).
+
+        Prepares a shortest path tree map - loosely based on dijkstra's shortest path algo. Predecessor map is based on
+        impedance heuristic - which can be different from metres. Distance map in metres is used for defining max
+        distances and computing equivalent distance measures.
+        */
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         // hashmap of visited nodes
@@ -261,9 +283,9 @@ impl NetworkStructure {
         tree_map[src_idx].simpl_dist = 0.0;
         // prime the active vec with the src node
         active.push(src_idx);
-        // keep iterating while adding and removing until done
+        // keep iterating while adding and removing until exploration complete within max dist
         while active.len() > 0 {
-            // find the next active node with the smallest impedance
+            // find the next active node with the currently smallest impedance
             let mut min_nd_idx: Option<usize> = None;
             let mut min_imp: f32 = f32::INFINITY;
             for nd_idx in active.iter() {
@@ -331,6 +353,8 @@ impl NetworkStructure {
                         as the cycle node
                         */
                         if !tree_map[nb_nd_idx.index()].pred.is_none() {
+                            // bump farther location
+                            // prevents mismatching if cycle exceeds threshold in one direction or another
                             if tree_map[active_nd_idx.index()].short_dist
                                 <= tree_map[nb_nd_idx.index()].short_dist
                             {
@@ -382,6 +406,8 @@ impl NetworkStructure {
                         } else {
                             tree_map[active_nd_idx.index()].origin_seg.unwrap()
                         };
+                        // chain through origin segments
+                        // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
                             nb_node_ref.simpl_dist = simpl_dist;
                             nb_node_ref.short_dist = short_dist;
@@ -399,12 +425,17 @@ impl NetworkStructure {
 
     fn local_node_centrality_shortest(
         &self,
-        distances: Vec<u32>,
-        betas: Vec<f32>,
+        distances: Option<Vec<i32>>,
+        betas: Option<Vec<f32>>,
         closeness: bool,
         betweenness: bool,
+        min_threshold_wt: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> (Option<CloseShortResult>, Option<BetwShortResult>) {
+    ) -> PyResult<(Option<CloseShortResult>, Option<BetwShortResult>)> {
+        // setup
+        self.validate()?;
+        let (distances, betas) =
+            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         // metrics
         let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
@@ -442,7 +473,7 @@ impl NetworkStructure {
                     for i in 0..distances.len() {
                         let distance = distances[i];
                         let beta = betas[i];
-                        if node_visit.short_dist <= distance as f32 {
+                        if node_visit.short_dist <= distance {
                             node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
                             node_farness.metric[i][*src_idx]
                                 .fetch_add(node_visit.short_dist, Ordering::Relaxed);
@@ -469,7 +500,7 @@ impl NetworkStructure {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
-                            if node_visit.short_dist <= distance as f32 {
+                            if node_visit.short_dist <= distance {
                                 node_betweenness.metric[i][inter_idx]
                                     .fetch_add(1.0, Ordering::Acquire);
                                 node_betweenness_beta.metric[i][inter_idx].fetch_add(
@@ -503,7 +534,7 @@ impl NetworkStructure {
         } else {
             None
         };
-        (close_result, betw_result)
+        Ok((close_result, betw_result))
     }
 }
 struct MetricResult {
