@@ -24,7 +24,7 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray1<f32>) -> PyResult<()> {
 }
 
 #[pyfunction]
-pub fn check_categorical_data(data_arr: PyReadonlyArray2<i32>) -> PyResult<()> {
+pub fn check_categorical_data(data_arr: PyReadonlyArray2<u32>) -> PyResult<()> {
     let shape = data_arr.shape();
     for i in 0..shape[0] {
         for j in 0..shape[1] {
@@ -40,7 +40,7 @@ pub fn check_categorical_data(data_arr: PyReadonlyArray2<i32>) -> PyResult<()> {
 }
 
 #[pyfunction]
-pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> PyResult<Vec<f32>> {
+pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> PyResult<Vec<u32>> {
     if betas.len() == 0 {
         return Err(exceptions::PyValueError::new_err(
             "Empty iterable of betas.",
@@ -48,7 +48,7 @@ pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> P
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
     let mut clean: Vec<f32> = Vec::new();
-    let mut distances: Vec<f32> = Vec::new();
+    let mut distances: Vec<u32> = Vec::new();
     for beta in betas.iter() {
         if *beta < 0.0 {
             return Err(exceptions::PyValueError::new_err(
@@ -66,14 +66,14 @@ pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> P
             ));
         }
         clean.push(*beta);
-        distances.push(min_threshold_wt.ln() / -beta);
+        distances.push((min_threshold_wt.ln() / -beta).round() as u32);
     }
     Ok(distances)
 }
 
 #[pyfunction]
 pub fn betas_from_distances(
-    distances: Vec<f32>,
+    distances: Vec<u32>,
     min_threshold_wt: Option<f32>,
 ) -> PyResult<Vec<f32>> {
     if distances.len() == 0 {
@@ -82,10 +82,10 @@ pub fn betas_from_distances(
         ));
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    let mut clean: Vec<f32> = Vec::new();
+    let mut clean: Vec<u32> = Vec::new();
     let mut betas: Vec<f32> = Vec::new();
     for distance in distances.iter() {
-        if *distance <= 0.0 {
+        if *distance <= 0 {
             return Err(exceptions::PyValueError::new_err(
                 "Distances must be positive integers.",
             ));
@@ -103,10 +103,10 @@ pub fn betas_from_distances(
 
 #[pyfunction]
 pub fn pair_distances_and_betas(
-    distances: Option<Vec<f32>>,
+    distances: Option<Vec<u32>>,
     betas: Option<Vec<f32>>,
     min_threshold_wt: Option<f32>,
-) -> PyResult<(Vec<f32>, Vec<f32>)> {
+) -> PyResult<(Vec<u32>, Vec<f32>)> {
     if distances.is_some() && betas.is_some() {
         return Err(exceptions::PyValueError::new_err(
             "Please provide either a distances or betas, not both.",
@@ -139,13 +139,13 @@ pub fn avg_distances_for_betas(
     let mut avg_distances: Vec<f32> = Vec::new();
     let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
     for (beta, distance) in betas.iter().zip(distances.iter()) {
-        if *distance <= 0.0 {
+        if *distance <= 0 {
             return Err(exceptions::PyValueError::new_err(
                 "Distances must be positive integers.",
             ));
         }
-        let auc = ((-beta * distance).exp() - 1.0) / -beta;
-        let wt = auc / distance;
+        let auc = ((-beta * *distance as f32).exp() - 1.0) / -beta;
+        let wt = auc / *distance as f32;
         let avg_d = -wt.ln() / beta;
         avg_distances.push(avg_d)
     }
@@ -154,9 +154,9 @@ pub fn avg_distances_for_betas(
 
 #[pyfunction]
 pub fn clip_wts_curve(
-    distances: Vec<i32>,
+    distances: Vec<u32>,
     betas: Vec<f32>,
-    spatial_tolerance: i32,
+    spatial_tolerance: u32,
 ) -> PyResult<Vec<f32>> {
     let mut max_curve_wts: Vec<f32> = Vec::new();
     for (dist, beta) in distances.iter().zip(betas.iter()) {
@@ -178,7 +178,7 @@ pub fn clip_wts_curve(
 }
 
 #[pyfunction]
-pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: i32) -> PyResult<f32> {
+pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: u32) -> PyResult<f32> {
     let raw_wt = (-beta * data_dist as f32).exp();
     let clipped_wt = f32::min(raw_wt, max_curve_wt) / max_curve_wt;
     Ok(clipped_wt)
