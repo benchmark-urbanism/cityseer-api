@@ -1,5 +1,4 @@
 use atomic_float::AtomicF32;
-use core::panic;
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use numpy::{IntoPyArray, PyArray1};
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
@@ -257,7 +256,7 @@ impl NetworkStructure {
         max_dist: u32,
         angular: Option<bool>,
         jitter_scale: Option<f32>,
-    ) -> (Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
+    ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         /*
         All shortest paths to max network distance from source node.
 
@@ -274,8 +273,9 @@ impl NetworkStructure {
         let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
         // hashmap of visited edges
         let mut edge_map: Vec<EdgeVisit> = vec![EdgeVisit::new(); self.graph.edge_count()];
-        // vec of visited nodes
+        // vecs of visited nodes and edges
         let mut visited_nodes: Vec<usize> = Vec::new();
+        let mut visited_edges: Vec<usize> = Vec::new();
         // vec of active node indices
         let mut active: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
@@ -318,6 +318,7 @@ impl NetworkStructure {
                     // don't follow self-loops
                     if nb_nd_idx == active_nd_idx {
                         // before continuing, add edge to active for segment methods
+                        visited_edges.push(edge_idx.index());
                         edge_map[edge_idx.index()].visited = true;
                         edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
                         edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
@@ -338,6 +339,7 @@ impl NetworkStructure {
                     i.e. single direction only - if a neighbour node has been processed it has already been explored
                     */
                     if !tree_map[nb_nd_idx.index()].visited {
+                        visited_edges.push(edge_idx.index());
                         edge_map[edge_idx.index()].visited = true;
                         edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
                         edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
@@ -420,7 +422,7 @@ impl NetworkStructure {
                 }
             }
         }
-        (visited_nodes, tree_map, edge_map)
+        (visited_nodes, visited_edges, tree_map, edge_map)
     }
 
     fn local_node_centrality_shortest(
@@ -461,14 +463,15 @@ impl NetworkStructure {
             .map(|node| node.index() as usize)
             .collect();
         // pbar
-        let pbar = ProgressBar::new(node_indices.len() as u64).with_message("Computing centrality");
+        let pbar = ProgressBar::new(node_indices.len() as u64)
+            .with_message("Computing shortest path node centrality");
         if pbar_disabled {
             pbar.set_draw_target(ProgressDrawTarget::hidden())
         }
         // iter
         node_indices.par_iter().for_each(|src_idx| {
             pbar.inc(1);
-            let (visited_nodes, tree_map, _edge_map) =
+            let (visited_nodes, _visited_edges, tree_map, _edge_map) =
                 self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter);
             for to_idx in visited_nodes.iter() {
                 let node_visit = tree_map[*to_idx].clone();
@@ -579,14 +582,15 @@ impl NetworkStructure {
             .map(|node| node.index() as usize)
             .collect();
         // pbar
-        let pbar = ProgressBar::new(node_indices.len() as u64).with_message("Computing centrality");
+        let pbar = ProgressBar::new(node_indices.len() as u64)
+            .with_message("Computing simplest path node centrality");
         if pbar_disabled {
             pbar.set_draw_target(ProgressDrawTarget::hidden())
         }
         // iter
         node_indices.par_iter().for_each(|src_idx| {
             pbar.inc(1);
-            let (visited_nodes, tree_map, _edge_map) =
+            let (visited_nodes, _visited_edges, tree_map, _edge_map) =
                 self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter);
             for to_idx in visited_nodes.iter() {
                 let node_visit = tree_map[*to_idx].clone();
@@ -646,6 +650,134 @@ impl NetworkStructure {
         };
         Ok((close_result, betw_result))
     }
+    /*
+    fn local_segment_centrality_shortest(
+        &self,
+        distances: Option<Vec<u32>>,
+        betas: Option<Vec<f32>>,
+        closeness: Option<bool>,
+        betweenness: Option<bool>,
+        min_threshold_wt: Option<f32>,
+        jitter: Option<f32>,
+        pbar_disabled: Option<bool>,
+    ) -> PyResult<(Option<CloseShortestResult>, Option<BetwShortestResult>)> {
+        // setup
+        self.validate()?;
+        let (distances, betas) =
+            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let closeness = closeness.unwrap_or(false);
+        let betweenness = betweenness.unwrap_or(false);
+        if !closeness && !betweenness {
+            return Err(exceptions::PyValueError::new_err(
+                "Either or both closeness and betweenness flags is required, but both parameters are False.",
+            ));
+        }
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+        // metrics
+        let segment_density = MetricResult::new(distances.clone(), self.graph.node_count());
+        let segment_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
+        let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count());
+        let segment_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
+        // indices
+        let node_indices: Vec<usize> = self
+            .graph
+            .node_indices()
+            .map(|node| node.index() as usize)
+            .collect();
+        // pbar
+        let pbar = ProgressBar::new(node_indices.len() as u64)
+            .with_message("Computing shortest path segment centrality");
+        if pbar_disabled {
+            pbar.set_draw_target(ProgressDrawTarget::hidden())
+        }
+        // iter
+        /*
+        can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
+        hence visiting all processed edges and extrapolating information
+        NOTES:
+        1. the above shortest tree algorithm only tracks edges in one direction - i.e. no duplication
+        2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
+        */
+        node_indices.par_iter().for_each(|src_idx| {
+            pbar.inc(1);
+            let (_visited_nodes, visited_edges, tree_map, edge_map) =
+                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter);
+            for edge_idx in visited_edges.iter() {
+                let edge_visit = edge_map[*edge_idx].clone();
+                let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();
+                let node_visit_m = tree_map[edge_visit.end_nd_idx.unwrap()].clone();
+                if !node_visit_n.short_dist.is_finite() || !node_visit_m.short_dist.is_finite() {
+                    continue;
+                }
+                if closeness {
+                    for i in 0..distances.len() {
+                        let distance = distances[i];
+                        let beta = betas[i];
+                        if node_visit.short_dist <= distance as f32 {
+                            node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                            node_farness.metric[i][*src_idx]
+                                .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                            node_cycles.metric[i][*src_idx]
+                                .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                            node_harmonic.metric[i][*src_idx]
+                                .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
+                            node_beta.metric[i][*src_idx].fetch_add(
+                                (-beta * node_visit.short_dist).exp(),
+                                Ordering::Relaxed,
+                            );
+                        }
+                    }
+                }
+                if betweenness {
+                    if to_idx < src_idx {
+                        continue;
+                    }
+                    let mut inter_idx: usize = node_visit.pred.unwrap();
+                    loop {
+                        if inter_idx == *src_idx {
+                            break;
+                        }
+                        for i in 0..distances.len() {
+                            let distance = distances[i];
+                            let beta = betas[i];
+                            if node_visit.short_dist <= distance as f32 {
+                                node_betweenness.metric[i][inter_idx]
+                                    .fetch_add(1.0, Ordering::Acquire);
+                                node_betweenness_beta.metric[i][inter_idx].fetch_add(
+                                    (-beta * node_visit.short_dist).exp(),
+                                    Ordering::Acquire,
+                                );
+                            }
+                        }
+                        inter_idx = tree_map[inter_idx].pred.unwrap();
+                    }
+                }
+            }
+        });
+        pbar.finish();
+        let close_result: Option<CloseShortestResult> = if closeness {
+            Some(CloseShortestResult {
+                node_density: node_density.load(),
+                node_farness: node_farness.load(),
+                node_cycles: node_cycles.load(),
+                node_harmonic: node_harmonic.load(),
+                node_beta: node_beta.load(),
+            })
+        } else {
+            None
+        };
+        let betw_result: Option<BetwShortestResult> = if betweenness {
+            Some(BetwShortestResult {
+                node_betweenness: node_betweenness.load(),
+                node_betweenness_beta: node_betweenness_beta.load(),
+            })
+        } else {
+            None
+        };
+        Ok((close_result, betw_result))
+    }
+    */
 }
 struct MetricResult {
     distances: Vec<u32>,
@@ -696,9 +828,14 @@ pub struct CloseSimplestResult {
     #[pyo3(get)]
     node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
 }
-enum BetwResult {
-    BetwShortestResult(BetwShortestResult),
-    BetwSimplestResult(BetwSimplestResult),
+#[pyclass]
+pub struct CloseSegmentShortestResult {
+    #[pyo3(get)]
+    segment_density: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    segment_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    segment_beta: HashMap<u32, Py<PyArray1<f32>>>,
 }
 #[pyclass]
 pub struct BetwShortestResult {
@@ -711,6 +848,11 @@ pub struct BetwShortestResult {
 pub struct BetwSimplestResult {
     #[pyo3(get)]
     node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
+pub struct BetwSegmentShortestResult {
+    #[pyo3(get)]
+    segment_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
 }
 // TODO: can remove these
 #[pyclass]
@@ -791,7 +933,8 @@ mod tests {
             270.0,
             270.0,
         );
-        let (visited_nodes, tree_map, edge_map) = ns.shortest_path_tree(0, 5, None, None);
+        let (visited_nodes, visited_edges, tree_map, edge_map) =
+            ns.shortest_path_tree(0, 5, None, None);
         let close_result = ns.local_node_centrality_shortest(
             Some(vec![200]),
             None,
