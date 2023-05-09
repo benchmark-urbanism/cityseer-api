@@ -189,13 +189,12 @@ def test_local_node_centrality_shortest(primal_graph):
     G_round_trip = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
-    distances = networks.distance_from_beta(betas)
+    distances = rustalgos.distances_from_betas(betas)
     # generate the measures
     close_result, betw_result = network_structure.local_node_centrality_shortest(
-        distances,
-        betas,
-        True,
-        True,
+        distances=distances,
+        closeness=True,
+        betweenness=True,
     )
     # test node density
     # node density count doesn't include self-node
@@ -235,9 +234,7 @@ def test_local_node_centrality_shortest(primal_graph):
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     for src_idx in range(n_nodes):
         # get shortest path maps
-        nodes_visited, tree_map, _edge_map = network_structure.shortest_path_tree(
-            src_idx, 5000, jitter_scale=0.0, angular=False
-        )
+        nodes_visited, tree_map, _edge_map = network_structure.shortest_path_tree(src_idx, 5000)
         for to_idx in nodes_visited:
             # skip self nodes
             if to_idx == src_idx:
@@ -302,13 +299,12 @@ def test_local_centrality_all(diamond_graph):
     _nodes_gdf_d, _edges_gdf_d, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
     distances: npt.NDArray[np.int_] = np.array([50, 150, 250], dtype=np.int_)
-    betas = networks.beta_from_distance(distances)
+    betas = rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
     close_result, betw_result = network_structure.local_node_centrality_shortest(
         distances,
-        betas,
-        True,
-        True,
+        closeness=True,
+        betweenness=True,
     )
     # node density
     # additive nodes
@@ -366,68 +362,44 @@ def test_local_centrality_all(diamond_graph):
     )
 
     # NODE SIMPLEST
-    node_keys_angular = ["node_harmonic_angular", "node_betweenness_angular"]
-    np.random.shuffle(node_keys_angular)  # in place
-    measure_keys = tuple(node_keys_angular)
-    measures_data = centrality.local_node_centrality(
+    close_result_ang, betw_result_ang = network_structure.local_node_centrality_simplest(
         distances,
-        betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        angular=True,
+        closeness=True,
+        betweenness=True,
     )
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
-    m_idx = node_keys_angular.index("node_harmonic_angular")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_ang.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_ang.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_ang.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
     # node betweenness angular
     # additive 1 per node en simplest route
-    m_idx = node_keys_angular.index("node_betweenness_angular")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    # NODE SIMPLEST ON DUAL
-    node_keys_angular = ["node_harmonic_angular", "node_betweenness_angular"]
-    np.random.shuffle(node_keys_angular)  # in place
-    measure_keys = tuple(node_keys_angular)
-    measures_data = centrality.local_node_centrality(
+    assert np.allclose(betw_result_ang.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result_ang.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        betw_result_ang.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    ) or np.allclose(betw_result_ang.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL)
+    # NODE SIMPLEST ON DUAL network_structure_dual
+    close_result_ang_dual, betw_result_ang_dual = network_structure_dual.local_node_centrality_simplest(
         distances,
-        betas,
-        measure_keys,
-        network_structure_dual.nodes.live,
-        network_structure_dual.edges.start,
-        network_structure_dual.edges.end,
-        network_structure_dual.edges.length,
-        network_structure_dual.edges.angle_sum,
-        network_structure_dual.edges.imp_factor,
-        network_structure_dual.edges.in_bearing,
-        network_structure_dual.edges.out_bearing,
-        network_structure_dual.node_edge_map,
-        angular=True,
+        closeness=True,
+        betweenness=True,
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
-    m_idx = node_keys_angular.index("node_harmonic_angular")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_ang_dual.node_harmonic[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        close_result_ang_dual.node_harmonic[150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        close_result_ang_dual.node_harmonic[250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
+    )
     # node betweenness angular
     # additive 1 per node en simplest route
-    m_idx = node_keys_angular.index("node_betweenness_angular")
-    assert np.allclose(measures_data[m_idx][0], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result_ang_dual.node_betweenness[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result_ang_dual.node_betweenness[150], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(betw_result_ang_dual.node_betweenness[250], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
     # SEGMENT SHORTEST
     segment_keys = [
         "segment_density",
@@ -554,7 +526,7 @@ def test_local_centrality_all(diamond_graph):
 def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
-    distances = networks.distance_from_beta(betas)
+    distances = rustalgos.distance_from_beta(betas)
     node_measure_keys = (
         "node_density",
         "node_farness",

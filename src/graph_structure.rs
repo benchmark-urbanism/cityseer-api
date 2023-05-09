@@ -429,11 +429,10 @@ impl NetworkStructure {
         betas: Option<Vec<f32>>,
         closeness: Option<bool>,
         betweenness: Option<bool>,
-        angular: Option<bool>,
         min_threshold_wt: Option<f32>,
         jitter: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> PyResult<(Option<CloseResult>, Option<BetwResult>)> {
+    ) -> PyResult<(Option<CloseShortestResult>, Option<BetwShortestResult>)> {
         // setup
         self.validate()?;
         let (distances, betas) =
@@ -446,7 +445,6 @@ impl NetworkStructure {
                 "Either or both closeness and betweenness flags is required, but both parameters are False.",
             ));
         }
-        let angular = angular.unwrap_or(false);
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
         let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
@@ -456,9 +454,6 @@ impl NetworkStructure {
         let node_beta = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_betweenness_beta = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_harmonic_simplest = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_betweenness_angular =
-            MetricResult::new(distances.clone(), self.graph.node_count());
         // indices
         let node_indices: Vec<usize> = self
             .graph
@@ -474,7 +469,7 @@ impl NetworkStructure {
         node_indices.par_iter().for_each(|src_idx| {
             pbar.inc(1);
             let (visited_nodes, tree_map, _edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(angular), jitter);
+                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter);
             for to_idx in visited_nodes.iter() {
                 let node_visit = tree_map[*to_idx].clone();
                 if to_idx == src_idx {
@@ -488,23 +483,17 @@ impl NetworkStructure {
                         let distance = distances[i];
                         let beta = betas[i];
                         if node_visit.short_dist <= distance as f32 {
-                            if !angular {
-                                node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
-                                node_farness.metric[i][*src_idx]
-                                    .fetch_add(node_visit.short_dist, Ordering::Relaxed);
-                                node_cycles.metric[i][*src_idx]
-                                    .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                                node_harmonic.metric[i][*src_idx]
-                                    .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
-                                node_beta.metric[i][*src_idx].fetch_add(
-                                    (-beta * node_visit.short_dist).exp(),
-                                    Ordering::Relaxed,
-                                );
-                            } else {
-                                let ang = 1.0 + (node_visit.simpl_dist / 180.0);
-                                node_harmonic_simplest.metric[i][*src_idx]
-                                    .fetch_add(1.0 / ang, Ordering::Relaxed);
-                            }
+                            node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                            node_farness.metric[i][*src_idx]
+                                .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                            node_cycles.metric[i][*src_idx]
+                                .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                            node_harmonic.metric[i][*src_idx]
+                                .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
+                            node_beta.metric[i][*src_idx].fetch_add(
+                                (-beta * node_visit.short_dist).exp(),
+                                Ordering::Relaxed,
+                            );
                         }
                     }
                 }
@@ -521,17 +510,12 @@ impl NetworkStructure {
                             let distance = distances[i];
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
-                                if !angular {
-                                    node_betweenness.metric[i][inter_idx]
-                                        .fetch_add(1.0, Ordering::Acquire);
-                                    node_betweenness_beta.metric[i][inter_idx].fetch_add(
-                                        (-beta * node_visit.short_dist).exp(),
-                                        Ordering::Acquire,
-                                    );
-                                } else {
-                                    node_betweenness_angular.metric[i][inter_idx]
-                                        .fetch_add(1.0, Ordering::Acquire);
-                                }
+                                node_betweenness.metric[i][inter_idx]
+                                    .fetch_add(1.0, Ordering::Acquire);
+                                node_betweenness_beta.metric[i][inter_idx].fetch_add(
+                                    (-beta * node_visit.short_dist).exp(),
+                                    Ordering::Acquire,
+                                );
                             }
                         }
                         inter_idx = tree_map[inter_idx].pred.unwrap();
@@ -540,38 +524,123 @@ impl NetworkStructure {
             }
         });
         pbar.finish();
-        let close_result: Option<CloseResult> = if closeness {
-            if !angular {
-                let close_short_result = CloseShortestResult {
-                    node_density: node_density.load(),
-                    node_farness: node_farness.load(),
-                    node_cycles: node_cycles.load(),
-                    node_harmonic: node_harmonic.load(),
-                    node_beta: node_beta.load(),
-                };
-                Some(CloseResult::CloseShortestResult(close_short_result))
-            } else {
-                let close_simpl_result = CloseSimplestResult {
-                    node_harmonic_simplest: node_harmonic_simplest.load(),
-                };
-                Some(CloseResult::CloseSimplestResult(close_simpl_result))
-            }
+        let close_result: Option<CloseShortestResult> = if closeness {
+            Some(CloseShortestResult {
+                node_density: node_density.load(),
+                node_farness: node_farness.load(),
+                node_cycles: node_cycles.load(),
+                node_harmonic: node_harmonic.load(),
+                node_beta: node_beta.load(),
+            })
         } else {
             None
         };
-        let betw_result: Option<BetwResult> = if betweenness {
-            if !angular {
-                let betw_short_result = BetwShortestResult {
-                    node_betweenness: node_betweenness.load(),
-                    node_betweenness_beta: node_betweenness_beta.load(),
-                };
-                Some(BetwResult::BetwShortestResult(betw_short_result))
-            } else {
-                let betw_simpl_result = BetwSimplestResult {
-                    node_betweenness_angular: node_betweenness_angular.load(),
-                };
-                Some(BetwResult::BetwSimplestResult(betw_simpl_result))
+        let betw_result: Option<BetwShortestResult> = if betweenness {
+            Some(BetwShortestResult {
+                node_betweenness: node_betweenness.load(),
+                node_betweenness_beta: node_betweenness_beta.load(),
+            })
+        } else {
+            None
+        };
+        Ok((close_result, betw_result))
+    }
+
+    fn local_node_centrality_simplest(
+        &self,
+        distances: Option<Vec<u32>>,
+        betas: Option<Vec<f32>>,
+        closeness: Option<bool>,
+        betweenness: Option<bool>,
+        min_threshold_wt: Option<f32>,
+        jitter: Option<f32>,
+        pbar_disabled: Option<bool>,
+    ) -> PyResult<(Option<CloseSimplestResult>, Option<BetwSimplestResult>)> {
+        // setup
+        self.validate()?;
+        let (distances, betas) =
+            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let closeness = closeness.unwrap_or(false);
+        let betweenness = betweenness.unwrap_or(false);
+        if !closeness && !betweenness {
+            return Err(exceptions::PyValueError::new_err(
+                "Either or both closeness and betweenness flags is required, but both parameters are False.",
+            ));
+        }
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+        // metrics
+        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
+        // indices
+        let node_indices: Vec<usize> = self
+            .graph
+            .node_indices()
+            .map(|node| node.index() as usize)
+            .collect();
+        // pbar
+        let pbar = ProgressBar::new(node_indices.len() as u64).with_message("Computing centrality");
+        if pbar_disabled {
+            pbar.set_draw_target(ProgressDrawTarget::hidden())
+        }
+        // iter
+        node_indices.par_iter().for_each(|src_idx| {
+            pbar.inc(1);
+            let (visited_nodes, tree_map, _edge_map) =
+                self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter);
+            for to_idx in visited_nodes.iter() {
+                let node_visit = tree_map[*to_idx].clone();
+                if to_idx == src_idx {
+                    continue;
+                }
+                if !node_visit.short_dist.is_finite() {
+                    continue;
+                }
+                if closeness {
+                    for i in 0..distances.len() {
+                        let distance = distances[i];
+                        let beta = betas[i];
+                        if node_visit.short_dist <= distance as f32 {
+                            let ang = 1.0 + (node_visit.simpl_dist / 180.0);
+                            node_harmonic.metric[i][*src_idx]
+                                .fetch_add(1.0 / ang, Ordering::Relaxed);
+                        }
+                    }
+                }
+                if betweenness {
+                    if to_idx < src_idx {
+                        continue;
+                    }
+                    let mut inter_idx: usize = node_visit.pred.unwrap();
+                    loop {
+                        if inter_idx == *src_idx {
+                            break;
+                        }
+                        for i in 0..distances.len() {
+                            let distance = distances[i];
+                            let beta = betas[i];
+                            if node_visit.short_dist <= distance as f32 {
+                                node_betweenness.metric[i][inter_idx]
+                                    .fetch_add(1.0, Ordering::Acquire);
+                            }
+                        }
+                        inter_idx = tree_map[inter_idx].pred.unwrap();
+                    }
+                }
             }
+        });
+        pbar.finish();
+        let close_result: Option<CloseSimplestResult> = if closeness {
+            Some(CloseSimplestResult {
+                node_harmonic: node_harmonic.load(),
+            })
+        } else {
+            None
+        };
+        let betw_result: Option<BetwSimplestResult> = if betweenness {
+            Some(BetwSimplestResult {
+                node_betweenness: node_betweenness.load(),
+            })
         } else {
             None
         };
@@ -609,10 +678,6 @@ impl MetricResult {
         loaded
     }
 }
-enum CloseResult {
-    CloseShortestResult(CloseShortestResult),
-    CloseSimplestResult(CloseSimplestResult),
-}
 #[pyclass]
 pub struct CloseShortestResult {
     #[pyo3(get)]
@@ -629,7 +694,7 @@ pub struct CloseShortestResult {
 #[pyclass]
 pub struct CloseSimplestResult {
     #[pyo3(get)]
-    node_harmonic_simplest: HashMap<u32, Py<PyArray1<f32>>>,
+    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
 }
 enum BetwResult {
     BetwShortestResult(BetwShortestResult),
@@ -645,7 +710,7 @@ pub struct BetwShortestResult {
 #[pyclass]
 pub struct BetwSimplestResult {
     #[pyo3(get)]
-    node_betweenness_angular: HashMap<u32, Py<PyArray1<f32>>>,
+    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
 }
 // TODO: can remove these
 #[pyclass]
@@ -732,7 +797,6 @@ mod tests {
             None,
             Some(true),
             Some(false),
-            None,
             None,
             None,
             None,
