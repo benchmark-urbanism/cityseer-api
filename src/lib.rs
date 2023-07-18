@@ -19,7 +19,6 @@ fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<graph_structure::EdgePayload>()?;
     m.add_class::<graph_structure::NetworkStructure>()?;
     m.add_function(wrap_pyfunction!(common::check_numerical_data, m)?)?;
-    m.add_function(wrap_pyfunction!(common::check_categorical_data, m)?)?;
     m.add_function(wrap_pyfunction!(common::distances_from_betas, m)?)?;
     m.add_function(wrap_pyfunction!(common::betas_from_distances, m)?)?;
     m.add_function(wrap_pyfunction!(common::pair_distances_and_betas, m)?)?;
