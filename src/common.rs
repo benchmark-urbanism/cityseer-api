@@ -1,4 +1,4 @@
-use numpy::borrow::{PyReadonlyArray1, PyReadonlyArray2};
+use numpy::borrow::PyReadonlyArray1;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 
@@ -12,28 +12,12 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray1<f32>) -> PyResult<()> {
              consisting of the number of respective data arrays x the length of data points.",
         ));
     }
-    for num in data_arr.iter() {
+    while let Ok(num) = data_arr.iter() {
         let num_val = num.extract::<f32>()?;
         if num_val.is_infinite() {
             return Err(exceptions::PyValueError::new_err(
                 "The numeric data values must consist of either floats or NaNs.",
             ));
-        }
-    }
-    Ok(())
-}
-
-#[pyfunction]
-pub fn check_categorical_data(data_arr: PyReadonlyArray2<u32>) -> PyResult<()> {
-    let shape = data_arr.shape();
-    for i in 0..shape[0] {
-        for j in 0..shape[1] {
-            let cat = data_arr.get([i, j]).unwrap();
-            if *cat < 0 {
-                return Err(exceptions::PyValueError::new_err(
-                    "Data map contains points with missing data classes.",
-                ));
-            }
         }
     }
     Ok(())
@@ -160,11 +144,6 @@ pub fn clip_wts_curve(
 ) -> PyResult<Vec<f32>> {
     let mut max_curve_wts: Vec<f32> = Vec::new();
     for (dist, beta) in distances.iter().zip(betas.iter()) {
-        if spatial_tolerance < 0 {
-            return Err(exceptions::PyValueError::new_err(
-                "Clipping distance cannot be less than zero.",
-            ));
-        }
         if spatial_tolerance > *dist {
             return Err(exceptions::PyValueError::new_err(
                 "Clipping distance cannot be greater than the given distance threshold.",
