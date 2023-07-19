@@ -4,13 +4,11 @@ from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from numba import njit, prange  # type: ignore
 
-from cityseer import config
 from cityseer.algos import centrality, common, diversity
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def find_nearest(
     src_x: np.float32,
     src_y: np.float32,
@@ -40,14 +38,14 @@ def find_nearest(
 
 # https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
 # these two points / angles are relative to the origin so pass in difference between the points and origin as vectors
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _calculate_rotation(point_a: npt.NDArray[np.float32], point_b: npt.NDArray[np.float32]) -> np.float32:
     ang_a = np.arctan2(point_a[1], point_a[0])  # arctan is in y/x order
     ang_b = np.arctan2(point_b[1], point_b[0])
     return np.rad2deg((ang_a - ang_b) % (2 * np.pi))
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _calculate_rotation_smallest(point_a: npt.NDArray[np.float32], point_b: npt.NDArray[np.float32]) -> np.float32:
     # smallest difference angle
     ang_a = np.rad2deg(np.arctan2(point_a[1], point_a[0]))
@@ -55,7 +53,7 @@ def _calculate_rotation_smallest(point_a: npt.NDArray[np.float32], point_b: npt.
     return np.abs((ang_b - ang_a + 180) % 360 - 180)
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _road_distance(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -97,7 +95,7 @@ def _road_distance(
     return height, netw_idx_b, netw_idx_a
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _closest_intersections(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -132,7 +130,7 @@ def _closest_intersections(
     return min_d, nearest_idx, next_nearest_idx
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def assign_to_network(
     data_map_x_arr: npt.NDArray[np.float32],
     data_map_y_arr: npt.NDArray[np.float32],
@@ -304,7 +302,7 @@ def assign_to_network(
     return data_map_nearest_arr, data_map_next_nearest_arr
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def aggregate_to_src_idx(
     netw_src_idx: int,
     nodes_x_arr: npt.NDArray[np.float32],
@@ -405,7 +403,7 @@ def aggregate_to_src_idx(
     return reachable_data, reachable_data_dist
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def accessibility(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -538,7 +536,7 @@ def accessibility(
     return accessibility_data, accessibility_data_wt
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def mixed_uses(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],
@@ -734,7 +732,7 @@ def mixed_uses(
     return mixed_use_hill_data[mu_hill_k_int], mixed_use_other_data[mu_other_k_int]
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def aggregate_stats(
     nodes_x_arr: npt.NDArray[np.float32],
     nodes_y_arr: npt.NDArray[np.float32],

@@ -6,7 +6,6 @@ from typing import Optional, Union
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
-from numba_progress import ProgressBar  # type: ignore
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import cctypes, config, structures
@@ -90,10 +89,7 @@ def assign_gdf_to_network(
         data_map.data_id = lab_enc.fit_transform(data_gdf[data_id_col])  # type: ignore
     data_map.validate(False)
     if "nearest_assign" not in data_gdf:
-        if not config.QUIET_MODE:
-            progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=len(data_gdf))
-        else:
-            progress_proxy = None
+        progress_proxy = None
         data_map_nearest_arr, data_map_next_nearest_arr = data.assign_to_network(
             data_map.xs,
             data_map.ys,
@@ -258,10 +254,7 @@ def compute_accessibilities(
             acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
     if not config.QUIET_MODE:
         logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
-    if not config.QUIET_MODE:
-        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
-    else:
-        progress_proxy = None
+    progress_proxy = None
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying function
@@ -533,10 +526,7 @@ def compute_mixed_uses(
             mu_other_keys.append(idx - 4)
     if not config.QUIET_MODE:
         logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
-    if not config.QUIET_MODE:
-        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
-    else:
-        progress_proxy = None
+    progress_proxy = None
     # determine max impedance weights
     max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
     # call the underlying function
@@ -934,10 +924,7 @@ def compute_stats(
             raise ValueError(f"Column label {col_label} not found in provided GeoDataFrame.")
     stats_data_arrs: npt.NDArray[np.float32] = data_gdf[stats_column_labels].values.T  # type: ignore
     # call the underlying function
-    if not config.QUIET_MODE:
-        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
-    else:
-        progress_proxy = None
+    progress_proxy = None
     (
         stats_sum,
         stats_sum_wt,

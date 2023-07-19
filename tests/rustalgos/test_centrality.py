@@ -401,56 +401,36 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(betw_result_ang_dual.node_betweenness[150], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(betw_result_ang_dual.node_betweenness[250], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
     # SEGMENT SHORTEST
-    segment_keys = [
-        "segment_density",
-        "segment_harmonic",
-        "segment_beta",
-        "segment_betweenness",
-    ]
-    np.random.shuffle(segment_keys)  # in place
-    measure_keys = tuple(segment_keys)
-    measures_data = centrality.local_segment_centrality(
+    close_result_seg, betw_result_seg = network_structure.local_segment_centrality_shortest(
         distances,
-        betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        angular=False,
+        closeness=True,
+        betweenness=True,
     )
     # segment density
     # additive segment lengths
-    m_idx = segment_keys.index("segment_density")
-    assert np.allclose(measures_data[m_idx][0], [100, 150, 150, 100], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [400, 500, 500, 400], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [500, 500, 500, 500], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_seg.segment_density[50], [100, 150, 150, 100], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_seg.segment_density[150], [400, 500, 500, 400], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(close_result_seg.segment_density[250], [500, 500, 500, 500], atol=config.ATOL, rtol=config.RTOL)
     # segment harmonic
     # segments are potentially approached from two directions
     # i.e. along respective shortest paths to intersection of shortest routes
     # i.e. in this case, the midpoint of the middle segment is apportioned in either direction
     # additive log(b) - log(a) + log(d) - log(c)
     # nearer distance capped at 1m to avert negative numbers
-    m_idx = segment_keys.index("segment_harmonic")
     assert np.allclose(
-        measures_data[m_idx][0],
+        close_result_seg.segment_harmonic[50],
         [7.824046, 11.736069, 11.736069, 7.824046],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        measures_data[m_idx][1],
+        close_result_seg.segment_harmonic[150],
         [10.832201, 15.437371, 15.437371, 10.832201],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        measures_data[m_idx][2],
+        close_result_seg.segment_harmonic[250],
         [11.407564, 15.437371, 15.437371, 11.407565],
         atol=config.ATOL,
         rtol=config.RTOL,
@@ -458,21 +438,20 @@ def test_local_centrality_all(diamond_graph):
     # segment beta
     # additive (np.exp(-beta * b) - np.exp(-beta * a)) / -beta + (np.exp(-beta * d) - np.exp(-beta * c)) / -beta
     # beta = 0 resolves to b - a and avoids division through zero
-    m_idx = segment_keys.index("segment_beta")
     assert np.allclose(
-        measures_data[m_idx][0],
+        close_result_seg.segment_beta[50],
         [24.542109, 36.813164, 36.813164, 24.542109],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        measures_data[m_idx][1],
+        close_result_seg.segment_beta[150],
         [77.46391, 112.358284, 112.358284, 77.46391],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        measures_data[m_idx][2],
+        close_result_seg.segment_beta[250],
         [133.80205, 177.43903, 177.43904, 133.80205],
         atol=config.ATOL,
         rtol=config.RTOL,
@@ -481,29 +460,18 @@ def test_local_centrality_all(diamond_graph):
     # similar formulation to segment beta: start and end segment of each betweenness pair assigned to intervening nodes
     # distance thresholds are computed using the inside edges of the segments
     # so if the segments are touching, they will count up to the threshold distance...
-    m_idx = segment_keys.index("segment_betweenness")
-    assert np.allclose(measures_data[m_idx][0], [0, 24.542109, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][1], [0, 69.78874, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(measures_data[m_idx][2], [0, 99.76293, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
-    segment_keys_angular = ["segment_harmonic_hybrid", "segment_betweeness_hybrid"]
-    np.random.shuffle(segment_keys_angular)  # in place
-    measure_keys = tuple(segment_keys_angular)
-    measures_data = centrality.local_segment_centrality(
-        distances,
-        betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        angular=True,
+    assert np.allclose(
+        betw_result_seg.segment_betweenness[50], [0, 24.542109, 0, 0], atol=config.ATOL, rtol=config.RTOL
     )
+    assert np.allclose(
+        betw_result_seg.segment_betweenness[150], [0, 69.78874, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        betw_result_seg.segment_betweenness[250], [0, 99.76293, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    )
+    """
+    NOTE: segment simplest has been removed since v4
+    # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
     # segment density
     # additive segment lengths divided through angular impedance
     # (f - e) / (1 + (ang / 180))
@@ -521,6 +489,7 @@ def test_local_centrality_all(diamond_graph):
     # this is because it leads to double counting where segments overlap
     # e.g. 6 segments replace a single four-way intersection
     # it also causes issuse with sidestepping vs. discovering all necessary edges...
+    """
 
 
 def test_decomposed_local_centrality(primal_graph):

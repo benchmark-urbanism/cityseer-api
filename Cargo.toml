@@ -15,9 +15,6 @@ name = "cityseer"
 # crate-type = ["cdylib", "rlib"]
 crate-type = ["cdylib"]
 
-[package.metadata.maturin]
-name = "cityseer.rustalgos"
-
 [dependencies]
 atomic_float = "0.1.0"
 indicatif = { version = "0.17.3", features = ["rayon"] }

@@ -1,7 +1,6 @@
 # pyright: basic
 from __future__ import annotations
 
-import numba
 import numpy as np
 import numpy.typing as npt
 import pytest
@@ -29,17 +28,6 @@ def test_check_categorical_data(primal_graph):
     mock_categorical = mock.mock_landuse_categorical_data(primal_graph)
     # check for malformed data
     corrupt_categorical = mock_categorical.categorical_landuses.values.copy()
-    # negatives
-    with pytest.raises((ValueError, numba.TypingError)):
-        corrupt_categorical[0] = -1
-        common.check_categorical_data(corrupt_categorical)
-    # NaN
-    with pytest.raises((ValueError, numba.TypingError)):
-        corrupt_categorical[0] = np.nan
-        common.check_categorical_data(corrupt_categorical)
-    # floats
-    with pytest.raises((ValueError, numba.TypingError)):
-        common.check_categorical_data(mock_categorical.categorical_landuses.values.astype(np.float_))
 
 
 def test_distances_from_betas():

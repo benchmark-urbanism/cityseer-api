@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from numba import njit  # type: ignore
 
 from cityseer import config
 from cityseer.algos import common
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.float32:
     """
     Compute Hill diversity.
@@ -48,7 +47,7 @@ def hill_diversity(class_counts: npt.NDArray[np.int_], q: np.float32) -> np.floa
     return hill
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_branch_distance_wt(
     class_counts: npt.NDArray[np.int_],
     class_distances: npt.NDArray[np.float32],
@@ -112,7 +111,7 @@ def hill_diversity_branch_distance_wt(
     return div_branch_wt  # / T
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_pairwise_distance_wt(
     class_counts: npt.NDArray[np.int_],
     class_distances: npt.NDArray[np.float32],
@@ -207,7 +206,7 @@ def hill_diversity_pairwise_distance_wt(
     return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def hill_diversity_pairwise_matrix_wt(
     class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], q: np.float32
 ) -> np.float32:
@@ -288,7 +287,7 @@ def hill_diversity_pairwise_matrix_wt(
     return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
     Gini-Simpson diversity.
@@ -314,7 +313,7 @@ def gini_simpson_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     return 1 - gini
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     """
     Shannon diversity (information entropy).
@@ -338,7 +337,7 @@ def shannon_diversity(class_counts: npt.NDArray[np.int_]) -> np.float32:
     return -shannon  # remember negative
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def raos_quadratic_diversity(
     class_counts: npt.NDArray[np.int_],
     wt_matrix: npt.NDArray[np.float32],
