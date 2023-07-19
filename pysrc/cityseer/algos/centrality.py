@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from numba import njit, prange, types  # type: ignore
-from numba.typed import List
 
 from cityseer import config
 from cityseer.algos import common
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def _find_edge_idx(
     node_edge_map: dict[int, list[int]], edges_end_arr: npt.NDArray[np.int_], start_nd_idx: int, end_nd_idx: int
 ) -> int:
@@ -24,12 +22,7 @@ def _find_edge_idx(
     return -1
 
 
-segment_func_proto = types.FunctionType(
-    types.float32(types.float32, types.float32, types.float32, types.float32, types.float32)  # type: ignore
-)
-
-
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True, parallel=True)
 def local_segment_centrality(
     distances: npt.NDArray[np.int_],
     betas: npt.NDArray[np.float32],

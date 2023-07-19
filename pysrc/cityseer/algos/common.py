@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from numba import njit  # type: ignore
 
 from cityseer import config
 
 
-@njit(cache=True, fastmath=config.FASTMATH)
+# @njit(cache=True, fastmath=config.FASTMATH)
 def check_numerical_data(data_arr: npt.NDArray[np.float32]) -> None:
     """Check the integrity of numeric data arrays."""
     if not data_arr.ndim == 2:
@@ -20,7 +19,7 @@ def check_numerical_data(data_arr: npt.NDArray[np.float32]) -> None:
             raise ValueError("The numeric data values must consist of either floats or NaNs.")
 
 
-@njit(cache=True, fastmath=config.FASTMATH)
+# @njit(cache=True, fastmath=config.FASTMATH)
 def check_categorical_data(data_arr: npt.NDArray[np.int_]) -> None:
     """Check the integrity of categoric data arrays."""
     for cat in data_arr:
@@ -30,7 +29,7 @@ def check_categorical_data(data_arr: npt.NDArray[np.int_]) -> None:
             raise ValueError("Data map contains non-integer class-codes.")
 
 
-@njit(cache=True, fastmath=config.FASTMATH)
+# @njit(cache=True, fastmath=config.FASTMATH)
 def check_distances_and_betas(distances: npt.NDArray[np.int_], betas: npt.NDArray[np.float32]) -> None:
     """Check integrity across distances and betas."""
     if len(distances) == 0:
@@ -64,7 +63,7 @@ def check_distances_and_betas(distances: npt.NDArray[np.int_], betas: npt.NDArra
                 )
 
 
-@njit(cache=True, fastmath=config.FASTMATH, nogil=True)
+# @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
 def clipped_beta_wt(
     beta: np.float32,
     max_curve_wt: np.float32,

@@ -10,20 +10,9 @@ from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
-from numba.core import types
-from numba.experimental import jitclass  # type: ignore
-from numba.typed import Dict, List
-
-node_map_spec: list[tuple[str, Any]] = [
-    ("nodes_n", types.int_),
-    ("node_idx", types.int_),
-    ("xs", types.float32[:]),
-    ("ys", types.float32[:]),
-    ("live", types.bool_[:]),
-]
 
 
-@jitclass(node_map_spec)
+# #@jitclass(node_map_spec)
 class NodeMap:
     """
     `NodeMap` structure representing the `x`, `y`, and `live` information for the network.
@@ -96,19 +85,7 @@ class NodeMap:
             raise ValueError("NodeMap has no live nodes.")
 
 
-edge_map_spec: list[tuple[str, Any]] = [
-    ("edges_n", types.int_),
-    ("start", types.int_[:]),
-    ("end", types.int_[:]),
-    ("length", types.float32[:]),
-    ("angle_sum", types.float32[:]),
-    ("imp_factor", types.float32[:]),
-    ("in_bearing", types.float32[:]),
-    ("out_bearing", types.float32[:]),
-]
-
-
-@jitclass(edge_map_spec)
+# @jitclass(edge_map_spec)
 class EdgeMap:
     """
     `EdgeMap` structure containing edge (segment) information for the network.
@@ -187,19 +164,7 @@ class EdgeMap:
             )
 
 
-network_spec: list[tuple[str, Any]] = [
-    ("nodes_n", types.int_),
-    ("edges_n", types.int_),
-    ("node_idx", types.int_),
-    ("node_x", types.float32),
-    ("node_y", types.float32),
-    ("node_live", types.bool_),
-    ("node_edge_map", types.DictType(types.int64, types.ListType(types.int64))),
-    ("next_edge_idx", types.int_),
-]
-
-
-@jitclass(network_spec)
+# @jitclass(network_spec)
 class NetworkStructure:
     """
     `NetworkStructure` instance consisting of `nodes`, `edges` and `node_edge_map` attributes.
@@ -340,16 +305,7 @@ class NetworkStructure:
             raise ValueError("Mismatched node and edge maps encountered.")
 
 
-data_map_spec: list[tuple[str, Any]] = [
-    ("xs", types.float32[:]),
-    ("ys", types.float32[:]),
-    ("nearest_assign", types.int_[:]),
-    ("next_nearest_assign", types.int_[:]),
-    ("data_id", types.int_[:]),
-]
-
-
-@jitclass(data_map_spec)
+# @jitclass(data_map_spec)
 class DataMap:
     """
     `NodeMap` instance representing the `x`, `y` data coordinates and the nearest adjacent network node indices.

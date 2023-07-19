@@ -735,7 +735,7 @@ impl NetworkStructure {
                 let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();
                 let node_visit_m = tree_map[edge_visit.end_nd_idx.unwrap()].clone();
                 // don't process unreachable segments
-                if node_visit_n.short_dist.is_finite() && node_visit_m.short_dist.is_finite() {
+                if !node_visit_n.short_dist.is_finite() && !node_visit_m.short_dist.is_finite() {
                     continue;
                 }
                 /*
@@ -861,7 +861,7 @@ impl NetworkStructure {
                         }
                         // distance - do not proceed if no route available
                         let to_node_visit = tree_map[*to_idx].clone();
-                        if to_node_visit.short_dist.is_infinite() {
+                        if !to_node_visit.short_dist.is_finite() {
                             continue;
                         }
                         /*
@@ -876,19 +876,20 @@ impl NetworkStructure {
                         distance thresholds are computed using the inner as opposed to outer edges of the segments
                         */
                         // get the origin and last segment lengths for to_idx
-                        let origin_seg_idx = edge_map[to_node_visit.origin_seg.unwrap()]
-                            .edge_idx
-                            .unwrap();
+                        let o_seg_idx = to_node_visit.origin_seg.unwrap();
                         let o_seg_len = self
-                            .graph
-                            .edge_weight(EdgeIndex::new(origin_seg_idx))
+                            .get_edge_payload(
+                                edge_map[o_seg_idx].start_nd_idx.unwrap(),
+                                edge_map[o_seg_idx].end_nd_idx.unwrap(),
+                            )
                             .unwrap()
                             .length;
-                        let last_seg_idx =
-                            edge_map[to_node_visit.last_seg.unwrap()].edge_idx.unwrap();
+                        let l_seg_idx = to_node_visit.last_seg.unwrap();
                         let l_seg_len = self
-                            .graph
-                            .edge_weight(EdgeIndex::new(last_seg_idx))
+                            .get_edge_payload(
+                                edge_map[l_seg_idx].start_nd_idx.unwrap(),
+                                edge_map[l_seg_idx].end_nd_idx.unwrap(),
+                            )
                             .unwrap()
                             .length;
                         // calculate traversal distances from opposing segments
@@ -1157,12 +1158,13 @@ mod tests {
     #[test]
     fn test_network_structure() {
         pyo3::prepare_freethreaded_python();
-
+        // TODO: check indices vs paths
+        // TODO: check segment betweenness distances?
         let mut ns = NetworkStructure::new();
         let nd_a = ns.add_node("a".to_string(), 0.0, 0.0, true);
         let nd_b = ns.add_node("b".to_string(), 1.0, 0.0, true);
-        let nd_c = ns.add_node("c".to_string(), 1.0, 1.0, true);
-        let nd_d = ns.add_node("d".to_string(), 0.0, 1.0, true);
+        let nd_c = ns.add_node("c".to_string(), 1.0, 2.0, true);
+        let nd_d = ns.add_node("d".to_string(), -2.0, 2.0, true);
         let e_a = ns.add_edge(
             nd_a,
             nd_b,
@@ -1181,9 +1183,9 @@ mod tests {
             0,
             "b".to_string(),
             "c".to_string(),
-            1.0,
+            2.0,
             0.0,
-            1.0,
+            2.0,
             180.0,
             180.0,
         );
@@ -1193,9 +1195,9 @@ mod tests {
             0,
             "c".to_string(),
             "d".to_string(),
-            1.0,
+            3.0,
             0.0,
-            1.0,
+            3.0,
             270.0,
             270.0,
         );
@@ -1210,6 +1212,16 @@ mod tests {
             None,
             None,
         );
+        let betw_result_seg = ns.local_segment_centrality_shortest(
+            Some(vec![200]),
+            None,
+            Some(false),
+            Some(true),
+            None,
+            None,
+            None,
+        );
+        let a = 1;
         // assert_eq!(add(2, 2), 4);
     }
 }

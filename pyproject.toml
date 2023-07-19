@@ -3,7 +3,7 @@ name = "cityseer"
 version = '4.0.0a1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.9, <3.11"
+requires-python = ">=3.11, <3.12"
 license = { text = "AGPL-3.0" }
 keywords = [
   "network-topology",
@@ -55,17 +55,18 @@ homepage = "https://cityseer.benchmarkurbanism.com/"
 documentation = "https://cityseer.benchmarkurbanism.com/"
 repository = "https://github.com/benchmark-urbanism/cityseer-api"
 
-[tool.pdm]
-allow_prereleases = false
-
 [tool.maturin]
-python-source = "python"
+python-source = "pysrc"
+module-name='cityseer.rustalgos'
 features = ["pyo3/extension-module"]
 
 # [[tool.pdm.source]]
 # url = "https://test.pypi.org/simple"
 # name = "test"
 # verify_ssl = true
+
+[tool.pdm]
+allow_prereleases = false
 
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
@@ -99,11 +100,12 @@ dev = [
     "pyright>=1.1.286",
     "yapper>=0.4.0",
     "black>=22.12.0",
-    "maturin>=0.14.17",
+    "maturin>=1.1.0",
+    "pip>=23.2",
 ]
 
 [build-system]
-requires = ["maturin>=0.14,<0.15"]
+requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.setuptools]
@@ -162,9 +164,6 @@ max-args = 10
 [tool.pylint.format]
 max-line-length = 120
 
-[tool.pylint.logging]
-
-# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#sample-pyprojecttoml-file
 [tool.pyright]
 pythonVersion = "3.9"
 include = ["cityseer"]

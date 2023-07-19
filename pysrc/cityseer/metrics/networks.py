@@ -61,7 +61,6 @@ from typing import Any, Optional, Union
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
-from numba_progress import ProgressBar
 
 from cityseer import cctypes, config, structures
 from cityseer.algos import centrality, common
@@ -532,11 +531,7 @@ def node_centrality(
             raise ValueError(f"Please remove duplicate measure: {measure}.")
         prep_measure_keys.append(measure)
     measure_keys = tuple(prep_measure_keys)
-    if not config.QUIET_MODE:
-        logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
-    else:
-        progress_proxy = None
+    progress_proxy = None
     measures_data = centrality.local_node_centrality(
         _distances,
         _betas,
@@ -670,11 +665,7 @@ def segment_centrality(
             raise ValueError(f"Please remove duplicate measure: {measure}.")
         prep_measure_keys.append(measure)
     measure_keys = tuple(prep_measure_keys)
-    if not config.QUIET_MODE:
-        logger.info(f'Computing {", ".join(measure_keys)} centrality measures using {heuristic} path heuristic.')
-        progress_proxy = ProgressBar(update_interval=0.25, notebook=False, total=network_structure.nodes.count)
-    else:
-        progress_proxy = None
+    progress_proxy = None
     measures_data = centrality.local_segment_centrality(
         _distances,
         _betas,
