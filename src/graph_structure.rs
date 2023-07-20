@@ -192,13 +192,21 @@ impl NetworkStructure {
         );
         new_edge_idx.index().try_into().unwrap()
     }
-    fn get_edge_payload(&self, start_nd_idx: usize, end_nd_idx: usize) -> Option<EdgePayload> {
-        let edge_idx = self.graph.find_edge(
-            NodeIndex::new(start_nd_idx.try_into().unwrap()),
-            NodeIndex::new(end_nd_idx.try_into().unwrap()),
-        );
-        if edge_idx.is_some() {
-            Some(self.graph.edge_weight(edge_idx.unwrap())?.clone())
+    fn get_edge_payload(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> Option<EdgePayload> {
+        let selected_edge = self
+            .graph
+            .edges_connecting(
+                NodeIndex::new(start_nd_idx.try_into().unwrap()),
+                NodeIndex::new(end_nd_idx.try_into().unwrap()),
+            )
+            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
+        if selected_edge.is_some() {
+            Some(selected_edge.unwrap().weight().clone())
         } else {
             None
         }
@@ -217,13 +225,15 @@ impl NetworkStructure {
             .map(|node| node.index() as usize)
             .collect()
     }
-    fn edge_indices(&self) -> Vec<(usize, usize)> {
+    fn edge_references(&self) -> Vec<(usize, usize, usize)> {
         self.graph
-            .edge_indices()
-            .map(|edge| {
-                let source = self.graph.edge_endpoints(edge).unwrap().0.index() as usize;
-                let target = self.graph.edge_endpoints(edge).unwrap().1.index() as usize;
-                (source, target)
+            .edge_references()
+            .map(|edge_ref| {
+                (
+                    edge_ref.source().index(),
+                    edge_ref.target().index(),
+                    edge_ref.weight().edge_idx,
+                )
             })
             .collect()
     }
@@ -777,6 +787,7 @@ impl NetworkStructure {
                         .get_edge_payload(
                             edge_visit.start_nd_idx.unwrap(),
                             edge_visit.end_nd_idx.unwrap(),
+                            edge_visit.edge_idx.unwrap(),
                         )
                         .unwrap();
                     // c and d variables can diverge per beneath
@@ -836,96 +847,98 @@ impl NetworkStructure {
                         }
                     }
                 }
-                if betweenness {
-                    // prepare a list of neighbouring nodes relative to the src node
-                    let mut nb_nodes: Vec<usize> = Vec::new();
-                    for nb_nd_idx in self
-                        .graph
-                        .neighbors_directed(NodeIndex::new(*src_idx), Direction::Outgoing)
-                    {
-                        nb_nodes.push(nb_nd_idx.index());
+            }
+            if betweenness {
+                // prepare a list of neighbouring nodes relative to the src node
+                let mut nb_nodes: Vec<usize> = Vec::new();
+                for nb_nd_idx in self
+                    .graph
+                    .neighbors_directed(NodeIndex::new(*src_idx), Direction::Outgoing)
+                {
+                    nb_nodes.push(nb_nd_idx.index());
+                }
+                // betweenness is computed per to_idx
+                for to_idx in visited_nodes.iter() {
+                    // only process in one direction
+                    if to_idx < src_idx {
+                        continue;
                     }
-                    // betweenness is computed per to_idx
-                    for to_idx in visited_nodes.iter() {
-                        // only process in one direction
-                        if to_idx < src_idx {
-                            continue;
-                        }
-                        // skip self node
-                        if to_idx == src_idx {
-                            continue;
-                        }
-                        // skip direct neighbours (no nodes between)
-                        if nb_nodes.contains(&to_idx) {
-                            continue;
-                        }
-                        // distance - do not proceed if no route available
-                        let to_node_visit = tree_map[*to_idx].clone();
-                        if !to_node_visit.short_dist.is_finite() {
-                            continue;
-                        }
-                        /*
-                        BETWEENNESS
-                        segment versions only agg first and last segments
-                        the distance decay is based on the distance between the src segment and to segment
-                        i.e. willingness of people to walk between src and to segments
+                    // skip self node
+                    if to_idx == src_idx {
+                        continue;
+                    }
+                    // skip direct neighbours (no nodes between)
+                    if nb_nodes.contains(&to_idx) {
+                        continue;
+                    }
+                    // distance - do not proceed if no route available
+                    let to_node_visit = tree_map[*to_idx].clone();
+                    if !to_node_visit.short_dist.is_finite() {
+                        continue;
+                    }
+                    /*
+                    BETWEENNESS
+                    segment versions only agg first and last segments
+                    the distance decay is based on the distance between the src segment and to segment
+                    i.e. willingness of people to walk between src and to segments
 
-                        betweenness is aggregated to intervening nodes based on above distances and decays
-                        other sections (in between current first and last) are respectively processed from other to nodes
+                    betweenness is aggregated to intervening nodes based on above distances and decays
+                    other sections (in between current first and last) are respectively processed from other to nodes
 
-                        distance thresholds are computed using the inner as opposed to outer edges of the segments
-                        */
-                        // get the origin and last segment lengths for to_idx
-                        let o_seg_idx = to_node_visit.origin_seg.unwrap();
-                        let o_seg_len = self
-                            .get_edge_payload(
-                                edge_map[o_seg_idx].start_nd_idx.unwrap(),
-                                edge_map[o_seg_idx].end_nd_idx.unwrap(),
-                            )
-                            .unwrap()
-                            .length;
-                        let l_seg_idx = to_node_visit.last_seg.unwrap();
-                        let l_seg_len = self
-                            .get_edge_payload(
-                                edge_map[l_seg_idx].start_nd_idx.unwrap(),
-                                edge_map[l_seg_idx].end_nd_idx.unwrap(),
-                            )
-                            .unwrap()
-                            .length;
-                        // calculate traversal distances from opposing segments
-                        let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
-                        let o_1 = min_span;
-                        let mut o_2 = min_span + o_seg_len;
-                        let l_1 = min_span;
-                        let mut l_2 = min_span + l_seg_len;
-                        // betweenness - only counting truly between vertices, not starting and ending verts
-                        let mut inter_idx: usize = to_node_visit.pred.unwrap();
-                        loop {
-                            // break out of while loop if the intermediary has reached the source node
-                            if inter_idx == *src_idx {
-                                break;
-                            }
-                            // iterate the distance thresholds - from large to small for threshold snipping
-                            for i in (0..distances.len()).rev() {
-                                let distance = distances[i];
-                                let beta = betas[i];
-                                if min_span <= distance as f32 {
-                                    // prune if necessary
-                                    o_2 = o_2.min(distance as f32);
-                                    l_2 = l_2.min(distance as f32);
-                                    // catch division by zero
-                                    let auc = if beta == 0.0 {
-                                        o_2 - o_1 + l_2 - l_1
-                                    } else {
-                                        ((-beta * o_2).exp() - (-beta * o_1).exp()) / -beta
-                                            + ((-beta * l_2).exp() - (-beta * l_1).exp()) / -beta
-                                    };
-                                    segment_betweenness.metric[i][inter_idx]
-                                        .fetch_add(auc, Ordering::Acquire);
-                                }
-                            }
-                            inter_idx = tree_map[inter_idx].pred.unwrap();
+                    distance thresholds are computed using the inner as opposed to outer edges of the segments
+                    */
+                    // get the origin and last segment lengths for to_idx
+                    let o_seg_idx = to_node_visit.origin_seg.unwrap();
+                    let o_seg_len = self
+                        .get_edge_payload(
+                            edge_map[o_seg_idx].start_nd_idx.unwrap(),
+                            edge_map[o_seg_idx].end_nd_idx.unwrap(),
+                            edge_map[o_seg_idx].edge_idx.unwrap(),
+                        )
+                        .unwrap()
+                        .length;
+                    let l_seg_idx = to_node_visit.last_seg.unwrap();
+                    let l_seg_len = self
+                        .get_edge_payload(
+                            edge_map[l_seg_idx].start_nd_idx.unwrap(),
+                            edge_map[l_seg_idx].end_nd_idx.unwrap(),
+                            edge_map[l_seg_idx].edge_idx.unwrap(),
+                        )
+                        .unwrap()
+                        .length;
+                    // calculate traversal distances from opposing segments
+                    let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
+                    let o_1 = min_span;
+                    let mut o_2 = min_span + o_seg_len;
+                    let l_1 = min_span;
+                    let mut l_2 = min_span + l_seg_len;
+                    // betweenness - only counting truly between vertices, not starting and ending verts
+                    let mut inter_idx: usize = to_node_visit.pred.unwrap();
+                    loop {
+                        // break out of while loop if the intermediary has reached the source node
+                        if inter_idx == *src_idx {
+                            break;
                         }
+                        // iterate the distance thresholds - from large to small for threshold snipping
+                        for i in (0..distances.len()).rev() {
+                            let distance = distances[i];
+                            let beta = betas[i];
+                            if min_span <= distance as f32 {
+                                // prune if necessary
+                                o_2 = o_2.min(distance as f32);
+                                l_2 = l_2.min(distance as f32);
+                                // catch division by zero
+                                let auc = if beta == 0.0 {
+                                    o_2 - o_1 + l_2 - l_1
+                                } else {
+                                    ((-beta * o_2).exp() - (-beta * o_1).exp()) / -beta
+                                        + ((-beta * l_2).exp() - (-beta * l_1).exp()) / -beta
+                                };
+                                segment_betweenness.metric[i][inter_idx]
+                                    .fetch_add(auc, Ordering::Acquire);
+                            }
+                        }
+                        inter_idx = tree_map[inter_idx].pred.unwrap();
                     }
                 }
             }
@@ -1158,53 +1171,88 @@ mod tests {
     #[test]
     fn test_network_structure() {
         pyo3::prepare_freethreaded_python();
-        // TODO: check indices vs paths
-        // TODO: check segment betweenness distances?
+        //     3
+        //    / \
+        //   /   \
+        //  /  a  \
+        // 1-------2
+        //  \  |  /
+        //   \ |b/ c
+        //    \|/
+        //     0
+        // a = 100m = 2 * 50m
+        // b = 86.60254m
+        // c = 100m
+        // all inner angles = 60º
         let mut ns = NetworkStructure::new();
-        let nd_a = ns.add_node("a".to_string(), 0.0, 0.0, true);
-        let nd_b = ns.add_node("b".to_string(), 1.0, 0.0, true);
-        let nd_c = ns.add_node("c".to_string(), 1.0, 2.0, true);
-        let nd_d = ns.add_node("d".to_string(), -2.0, 2.0, true);
+        let nd_a = ns.add_node("a".to_string(), 0.0, -86.60254, true);
+        let nd_b = ns.add_node("b".to_string(), -50.0, 0.0, true);
+        let nd_c = ns.add_node("c".to_string(), 50.0, 0.0, true);
+        let nd_d = ns.add_node("d".to_string(), 0.0, 86.60254, true);
         let e_a = ns.add_edge(
             nd_a,
             nd_b,
             0,
             "a".to_string(),
             "b".to_string(),
-            1.0,
+            100.0,
             0.0,
             1.0,
-            90.0,
-            90.0,
+            120.0,
+            120.0,
         );
         let e_b = ns.add_edge(
+            nd_a,
+            nd_c,
+            0,
+            "a".to_string(),
+            "c".to_string(),
+            100.0,
+            0.0,
+            1.0,
+            60.0,
+            60.0,
+        );
+        let e_c = ns.add_edge(
             nd_b,
             nd_c,
             0,
             "b".to_string(),
             "c".to_string(),
-            2.0,
+            100.0,
             0.0,
-            2.0,
-            180.0,
-            180.0,
+            1.0,
+            0.0,
+            0.0,
         );
-        let e_c = ns.add_edge(
+        let e_d = ns.add_edge(
+            nd_b,
+            nd_d,
+            0,
+            "b".to_string(),
+            "d".to_string(),
+            100.0,
+            0.0,
+            1.0,
+            60.0,
+            60.0,
+        );
+        let e_e = ns.add_edge(
             nd_c,
             nd_d,
             0,
             "c".to_string(),
             "d".to_string(),
-            3.0,
+            100.0,
             0.0,
-            3.0,
-            270.0,
-            270.0,
+            1.0,
+            120.0,
+            120.0,
         );
         let (visited_nodes, visited_edges, tree_map, edge_map) =
             ns.shortest_path_tree(0, 5, None, None);
         let close_result = ns.local_node_centrality_shortest(
-            Some(vec![200]),
+            Some(vec![50]),
             None,
             Some(true),
             Some(false),
@@ -1213,7 +1261,7 @@ mod tests {
             None,
         );
         let betw_result_seg = ns.local_segment_centrality_shortest(
-            Some(vec![200]),
+            Some(vec![50]),
             None,
             Some(false),
             Some(true),

@@ -461,13 +461,13 @@ def test_local_centrality_all(diamond_graph):
     # distance thresholds are computed using the inside edges of the segments
     # so if the segments are touching, they will count up to the threshold distance...
     assert np.allclose(
-        betw_result_seg.segment_betweenness[50], [0, 24.542109, 0, 0], atol=config.ATOL, rtol=config.RTOL
+        betw_result_seg.segment_betweenness[50], [0, 0, 24.542109, 0], atol=config.ATOL, rtol=config.RTOL
     )
     assert np.allclose(
-        betw_result_seg.segment_betweenness[150], [0, 69.78874, 0, 0], atol=config.ATOL, rtol=config.RTOL
+        betw_result_seg.segment_betweenness[150], [0, 0, 69.78874, 0], atol=config.ATOL, rtol=config.RTOL
     )
     assert np.allclose(
-        betw_result_seg.segment_betweenness[250], [0, 99.76293, 0, 0], atol=config.ATOL, rtol=config.RTOL
+        betw_result_seg.segment_betweenness[250], [0, 0, 99.76293, 0], atol=config.ATOL, rtol=config.RTOL
     )
     """
     NOTE: segment simplest has been removed since v4
@@ -494,23 +494,7 @@ def test_local_centrality_all(diamond_graph):
 
 def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
-    distances = rustalgos.distance_from_beta(betas)
-    node_measure_keys = (
-        "node_density",
-        "node_farness",
-        "node_cycles",
-        "node_harmonic",
-        "node_beta",
-        "node_betweenness",
-        "node_betweenness_beta",
-    )
-    segment_measure_keys = (
-        "segment_density",
-        "segment_harmonic",
-        "segment_beta",
-        "segment_betweenness",
-    )
+    distances: npt.NDArray[np.int_] = np.array([200, 400, 800, 5000], dtype=np.int_)
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
@@ -520,93 +504,25 @@ def test_decomposed_local_centrality(primal_graph):
     _node_keys_decomp, _edges_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(
         G_decomposed, 3395
     )
-    # non-decomposed case
-    node_measures_data = centrality.local_node_centrality(
-        distances,
-        betas,
-        node_measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        angular=False,
-    )
-    # decomposed case
-    node_measures_data_decomposed = centrality.local_node_centrality(
-        distances,
-        betas,
-        node_measure_keys,
-        network_structure_decomp.nodes.live,
-        network_structure_decomp.edges.start,
-        network_structure_decomp.edges.end,
-        network_structure_decomp.edges.length,
-        network_structure_decomp.edges.angle_sum,
-        network_structure_decomp.edges.imp_factor,
-        network_structure_decomp.edges.in_bearing,
-        network_structure_decomp.edges.out_bearing,
-        network_structure_decomp.node_edge_map,
-        angular=False,
-    )
-    # node
-    d_range = len(distances)
-    m_range = len(node_measure_keys)
-    assert node_measures_data.shape == (m_range, d_range, len(primal_graph))
-    assert node_measures_data_decomposed.shape == (m_range, d_range, len(G_decomposed))
     # with increasing decomposition:
     # - node based measures will not match
     # - closeness segment measures will match - these measure to the cut endpoints per thresholds
     # - betweenness segment measures won't match - don't measure to cut endpoints
-    # segment versions
-    segment_measures_data = centrality.local_segment_centrality(
+    close_result_seg, betw_result_seg = network_structure.local_segment_centrality_shortest(
         distances,
-        betas,
-        segment_measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        angular=False,
+        closeness=True,
+        betweenness=True,
     )
-    segment_measures_data_decomposed = centrality.local_segment_centrality(
+    close_result_seg_decomp, betw_result_seg_decomp = network_structure_decomp.local_segment_centrality_shortest(
         distances,
-        betas,
-        segment_measure_keys,
-        network_structure_decomp.nodes.live,
-        network_structure_decomp.edges.start,
-        network_structure_decomp.edges.end,
-        network_structure_decomp.edges.length,
-        network_structure_decomp.edges.angle_sum,
-        network_structure_decomp.edges.imp_factor,
-        network_structure_decomp.edges.in_bearing,
-        network_structure_decomp.edges.out_bearing,
-        network_structure_decomp.node_edge_map,
-        angular=False,
+        closeness=True,
+        betweenness=True,
     )
-    m_range = len(segment_measure_keys)
-    assert segment_measures_data.shape == (m_range, d_range, len(primal_graph))
-    assert segment_measures_data_decomposed.shape == (
-        m_range,
-        d_range,
-        len(G_decomposed),
+    # compare against the original 56 elements (decomposed adds new nodes)
+    assert np.allclose(
+        close_result_seg.segment_density[400].sum(), close_result_seg_decomp.segment_density[400][:57].sum()
     )
-    for m_idx in range(m_range):
-        for d_idx in range(d_range):
-            match = np.allclose(
-                segment_measures_data[m_idx][d_idx],
-                # compare against the original 56 elements (prior to adding decomposed)
-                segment_measures_data_decomposed[m_idx][d_idx][:57],
-                atol=config.ATOL,
-                rtol=config.RTOL,
-            )  # relax precision
-            if m_range in (0, 1, 2):
-                assert match
+    assert np.allclose(close_result_seg.segment_beta[400].sum(), close_result_seg_decomp.segment_beta[400][:57].sum())
+    assert np.allclose(
+        close_result_seg.segment_harmonic[400].sum(), close_result_seg_decomp.segment_harmonic[400][:57].sum()
+    )

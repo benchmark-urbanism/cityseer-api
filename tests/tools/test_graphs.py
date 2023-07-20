@@ -693,9 +693,8 @@ def test_network_structure_from_nx(diamond_graph):
             assert node_payload.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
             assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
-        edge_idxs = network_structure.edge_indices()
-        for start_ns_node_idx, end_ns_node_idx in edge_idxs:
-            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx)
+        for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
+            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx, edge_idx)
             start_nd_key = edge_payload.start_nd_key
             end_nd_key = edge_payload.end_nd_key
             edge_idx = edge_payload.edge_idx

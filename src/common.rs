@@ -1,23 +1,36 @@
-use numpy::borrow::PyReadonlyArray1;
+use numpy::borrow::PyReadonlyArray2;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 
 #[pyfunction]
-pub fn check_numerical_data(data_arr: PyReadonlyArray1<f32>) -> PyResult<()> {
-    if data_arr.ndim() != 2 {
-        return Err(exceptions::PyValueError::new_err(
-            "The numeric data array must have a dimensionality 2, \
-             consisting of the number of respective data arrays x the length of data points.",
-        ));
+pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
+    let data_slice = data_arr.as_array();
+    for inner_arr in data_slice.rows() {
+        for num in inner_arr.iter() {
+            let num_val = *num;
+            if !num_val.is_finite() {
+                return Err(exceptions::PyValueError::new_err(
+                    "The numeric data values must be finite.",
+                ));
+            }
+        }
     }
-    while let Ok(num) = data_arr.iter() {
-        let num_val = num.extract::<f32>()?;
-        if num_val.is_infinite() {
-            return Err(exceptions::PyValueError::new_err(
-                "The numeric data values must consist of either floats or NaNs.",
-            ));
+    Ok(())
+}
+
+#[pyfunction]
+pub fn check_categorical_data(data_arr: PyReadonlyArray2<i32>) -> PyResult<()> {
+    let data_slice = data_arr.as_array();
+    for inner_arr in data_slice.rows() {
+        for num in inner_arr.iter() {
+            let num_val = *num;
+            if num_val < 0 {
+                return Err(exceptions::PyValueError::new_err(
+                    "The categorical data values must be encoded as positive integers",
+                ));
+            }
         }
     }
     Ok(())
