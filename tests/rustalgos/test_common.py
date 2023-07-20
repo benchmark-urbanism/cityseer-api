@@ -11,23 +11,25 @@ from cityseer.tools import mock
 
 
 def test_check_numerical_data(primal_graph):
-    mock_numerical = mock.mock_numerical_data(primal_graph)
-    # check for malformed data
-    # single dimension
-    with pytest.raises(ValueError):
-        corrupt_numerical = mock_numerical["mock_numerical_1"].values
+    # catch single dimensions
+    with pytest.raises(TypeError):
+        mock_numerical = mock.mock_numerical_data(primal_graph)
+        corrupt_numerical = mock_numerical.mock_numerical_1.values
         assert corrupt_numerical.ndim == 1
-        common.check_numerical_data(corrupt_numerical)
+        rustalgos.check_numerical_data(corrupt_numerical)
     # catch infinites
+    mock_numerical = mock.mock_numerical_data(primal_graph, num_arrs=2)
+    # should work
+    ok_numerical = mock_numerical[["mock_numerical_1", "mock_numerical_2"]].values
+    rustalgos.check_numerical_data(ok_numerical)
     with pytest.raises(ValueError):
-        mock_numerical.at[0, "mock_numerical_1"] = np.inf
-        common.check_numerical_data(mock_numerical["mock_numerical_1"].values)
+        corrupt_numerical = mock_numerical[["mock_numerical_1", "mock_numerical_2"]].values
+        corrupt_numerical[0, 0] = np.inf
+        rustalgos.check_numerical_data(corrupt_numerical)
 
 
 def test_check_categorical_data(primal_graph):
-    mock_categorical = mock.mock_landuse_categorical_data(primal_graph)
-    # check for malformed data
-    corrupt_categorical = mock_categorical.categorical_landuses.values.copy()
+    pass
 
 
 def test_distances_from_betas():
