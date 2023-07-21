@@ -62,8 +62,7 @@ import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
 
-from cityseer import cctypes, config, structures
-from cityseer.algos import centrality, common
+from cityseer import cctypes, config, structures, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,354 +75,266 @@ MultiGraph = Any
 MIN_THRESH_WT = config.MIN_THRESH_WT
 
 
-def _cast_beta(beta: cctypes.BetasType) -> npt.NDArray[np.float32]:
-    """Type checks and casts beta parameter to a numpy array of beta."""
-    if not isinstance(beta, (list, tuple, np.ndarray)):
-        beta = [beta]
-    if len(beta) == 0:
-        raise ValueError("Encountered empty iterable of beta.")
-    # check that the betas do not have leading negatives
-    for b in beta:
-        if b < 0:
-            raise ValueError("Please provide the beta value without the leading negative.")
-        if b == 0:
-            raise ValueError("Please provide a beta value greater than zero.")
-    return np.array(beta, dtype=np.float32)
+# def _cast_beta(beta: cctypes.BetasType) -> npt.NDArray[np.float32]:
+"""Type checks and casts beta parameter to a numpy array of beta."""
+
+# def distance_from_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.int_]:
+r"""
+Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
+
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+Parameters
+----------
+beta: float | ndarray[float]
+    $\beta$ value/s to convert to distance thresholds $d_{max}$.
+min_threshold_wt: float
+    An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.
+
+Returns
+-------
+betas: ndarray[float]
+    A numpy array of distance thresholds $d_{max}$.
+
+Examples
+--------
+```python
+from cityseer.metrics import networks
+# a list of betas
+betas = [0.01, 0.02]
+# convert to distance thresholds
+d_max = networks.distance_from_beta(betas)
+print(d_max)
+# prints: array([400., 200.])
+```
+
+Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are
+computed using a negative exponential decay function in the form of:
+
+$$
+weight = exp(-\beta \cdot distance)
+$$
+
+The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk
+correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk
+to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at
+13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a
+sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther
+away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum
+distance threshold by $d_{max}$.
+
+![Example beta decays](/images/betas.png)
+
+Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
+the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly,
+using:
+
+$$
+d_{max} = \frac{log(w_{min})}{-\beta}
+$$
+
+The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking
+thresholds, for example:
+
+| $\beta$ | $d_{max}$ |
+|:-------:|:---------:|
+| 0.02 | 200m |
+| 0.01 | 400m |
+| 0.005 | 800m |
+| 0.0025 | 1600m |
+
+Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
+
+| $\beta$ | $w_{min}$ | $d_{max}$ |
+|:-------:|:---------:|:---------:|
+| 0.02 | 0.01 | 230m |
+| 0.01 | 0.01 | 461m |
+| 0.005 | 0.01 | 921m |
+| 0.0025 | 0.01 | 1842m |
+
+"""
+
+# def _cast_distance(distance: cctypes.DistancesType) -> npt.NDArray[np.int_]:
+"""Type checks and casts distance parameter to a numpy array of distance."""
+
+# def beta_from_distance(distance: cctypes.DistancesType, min_threshold_wt: float = MIN_THRESH_WT,):
+r"""
+Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
+
+See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+Parameters
+----------
+distance: int | ndarray[int]
+    $d_{max}$ value/s to convert to decay parameters $\beta$.
+min_threshold_wt: float
+    The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
+
+Returns
+-------
+ndarray[float]
+    A numpy array of decay parameters $\beta$.
+
+Examples
+--------
+```python
+from cityseer.metrics import networks
+# a list of betas
+distances = [400, 200]
+# convert to betas
+betas = networks.beta_from_distance(distances)
+print(betas)  # prints: array([0.01, 0.02])
+```
+
+Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
+the `distances` parameter, then this function will be called in order to extrapolate the decay parameters
+implicitly, using:
+
+$$
+\beta = -\frac{log(w_{min})}{d_{max}}
+$$
+
+The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for
+example:
+
+| $d_{max}$ | $\beta$ |
+|:---------:|:-------:|
+| 200m | 0.02 |
+| 400m | 0.01 |
+| 800m | 0.005 |
+| 1600m | 0.0025 |
+
+"""
 
 
-def distance_from_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.int_]:
-    r"""
-    Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
+# def avg_distance_for_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.float32]:
+r"""
+Calculate the mean distance for a given $\beta$ parameter.
 
-    :::note
-    It is generally not necessary to utilise this function directly.
-    :::
+Parameters
+----------
+beta: float | ndarray[float]
+    $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
+min_threshold_wt: float
+    The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
-    Parameters
-    ----------
-    beta: float | ndarray[float]
-        $\beta$ value/s to convert to distance thresholds $d_{max}$.
-    min_threshold_wt: float
-        An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.
+Returns
+-------
+ndarray[float]
+    The average walking distance for a given $\beta$.
 
-    Returns
-    -------
-    betas: ndarray[float]
-        A numpy array of distance thresholds $d_{max}$.
+Examples
+--------
+```python
+from cityseer.metrics import networks
+import numpy as np
 
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks
-    # a list of betas
-    betas = [0.01, 0.02]
-    # convert to distance thresholds
-    d_max = networks.distance_from_beta(betas)
-    print(d_max)
-    # prints: array([400., 200.])
-    ```
+distances = np.array([100, 200, 400, 800, 1600])
+print('distances', distances)
+# distances [ 100  200  400  800 1600]
 
-    Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are
-    computed using a negative exponential decay function in the form of:
+betas = networks.beta_from_distance(distances)
+print('betas', betas)
+# betas [0.04   0.02   0.01   0.005  0.0025]
 
-    $$
-    weight = exp(-\beta \cdot distance)
-    $$
+print('avg', networks.avg_distance_for_beta(betas))
+# avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
+```
 
-    The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk
-    correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk
-    to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at
-    13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a
-    sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther
-    away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum
-    distance threshold by $d_{max}$.
-
-    ![Example beta decays](/images/betas.png)
-
-    Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
-    the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly,
-    using:
-
-    $$
-    d_{max} = \frac{log(w_{min})}{-\beta}
-    $$
-
-    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking
-    thresholds, for example:
-
-    | $\beta$ | $d_{max}$ |
-    |:-------:|:---------:|
-    | 0.02 | 200m |
-    | 0.01 | 400m |
-    | 0.005 | 800m |
-    | 0.0025 | 1600m |
-
-    Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
-
-    | $\beta$ | $w_{min}$ | $d_{max}$ |
-    |:-------:|:---------:|:---------:|
-    | 0.02 | 0.01 | 230m |
-    | 0.01 | 0.01 | 461m |
-    | 0.005 | 0.01 | 921m |
-    | 0.0025 | 0.01 | 1842m |
-
-    """
-    # cast
-    betas_arr = _cast_beta(beta)
-    # deduce the effective distance thresholds
-    return (np.log(min_threshold_wt) / -betas_arr).astype(np.int_)
+"""
 
 
-def _cast_distance(
-    distance: cctypes.DistancesType,
-) -> npt.NDArray[np.int_]:
-    """Type checks and casts distance parameter to a numpy array of distance."""
-    # cast to list form
-    if isinstance(distance, (int, float)):
-        distance = [distance]
-    if not isinstance(distance, (list, tuple, np.ndarray)):
-        raise TypeError("Please provide a distance or a list, tuple, or numpy.ndarray of distances.")
-    if len(distance) == 0:
-        raise ValueError("Encountered empty iterable of distances.")
-    # check that the betas do not have leading negatives
-    for dist in distance:
-        if dist <= 0:
-            raise ValueError("Please provide only positive distance values.")
-    # cast to numpy
-    return np.array(distance, dtype=np.int_)
+# def pair_distances_betas(
+r"""
+Pair distances and betas, where one or the other parameter is provided.
+
+Parameters
+----------
+distances: list[int] | tuple[int]
+    Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+    (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+    then the `beta` parameter must be provided instead.
+betas: float | ndarray[float]
+    A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+    `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+    provided, then the `distance` parameter must be provided instead.
+min_threshold_wt: float
+    The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+    `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+
+Returns
+-------
+distances: int | ndarray[int]
+    Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+    (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+    then the `beta` parameter must be provided instead.
+betas: float | ndarray[float]
+    A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+    `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+    provided, then the `distance` parameter must be provided instead.
+
+Examples
+--------
+:::warning
+Networks should be buffered according to the largest distance threshold that will be used for analysis. This
+protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
+buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
+Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
+when calculating shortest paths and landuse accessibilities.
+:::
+
+"""
 
 
-def beta_from_distance(
-    distance: cctypes.DistancesType,
-    min_threshold_wt: float = MIN_THRESH_WT,
-) -> npt.NDArray[np.float32]:
-    r"""
-    Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
+# def clip_weights_curve(
+r"""
+Calculate the upper bounds for clipping weights produced by spatial impedance functions.
 
-    See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the
+`spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights
+derived for spatial impedance functions are flattened and normalised. This functionality is only intended for
+situations where the location of datapoints is uncertain for a given spatial tolerance.
 
-    :::note
-    It is generally not necessary to utilise this function directly.
-    :::
+:::warning
+Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
+threshold clipped by 100m, then substantial distortion is introduced by the process of clipping and normalising the
+distance decay curve. More generally, smaller distance thresholds should generally be avoided for situations where
+datapoints are not located with high spatial precision.
+:::
 
-    Parameters
-    ----------
-    distance: int | ndarray[int]
-        $d_{max}$ value/s to convert to decay parameters $\beta$.
-    min_threshold_wt: float
-        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
+Parameters
+----------
+distances: ndarray[int]
+    An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
+betas: ndarray[float32]
+    An array of $\beta$ to be used for the exponential decay function for weighted metrics.
+spatial_tolerance: int
+    The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
 
-    Returns
-    -------
-    ndarray[float]
-        A numpy array of decay parameters $\beta$.
+Returns
+-------
+max_curve_wts: ndarray[float]
+    An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
 
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks
-    # a list of betas
-    distances = [400, 200]
-    # convert to betas
-    betas = networks.beta_from_distance(distances)
-    print(betas)  # prints: array([0.01, 0.02])
-    ```
-
-    Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using
-    the `distances` parameter, then this function will be called in order to extrapolate the decay parameters
-    implicitly, using:
-
-    $$
-    \beta = -\frac{log(w_{min})}{d_{max}}
-    $$
-
-    The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for
-    example:
-
-    | $d_{max}$ | $\beta$ |
-    |:---------:|:-------:|
-    | 200m | 0.02 |
-    | 400m | 0.01 |
-    | 800m | 0.005 |
-    | 1600m | 0.0025 |
-
-    """
-    # cast
-    distances_arr = _cast_distance(distance)
-    # deduce the effective distance thresholds
-    betas: npt.NDArray[np.float32] = -np.log(min_threshold_wt) / distances_arr
-
-    return betas.astype(np.float32)
-
-
-def avg_distance_for_beta(beta: cctypes.BetasType, min_threshold_wt: float = MIN_THRESH_WT) -> npt.NDArray[np.float32]:
-    r"""
-    Calculate the mean distance for a given $\beta$ parameter.
-
-    Parameters
-    ----------
-    beta: float | ndarray[float]
-        $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
-    min_threshold_wt: float
-        The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
-
-    Returns
-    -------
-    ndarray[float]
-        The average walking distance for a given $\beta$.
-
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks
-    import numpy as np
-
-    distances = np.array([100, 200, 400, 800, 1600])
-    print('distances', distances)
-    # distances [ 100  200  400  800 1600]
-
-    betas = networks.beta_from_distance(distances)
-    print('betas', betas)
-    # betas [0.04   0.02   0.01   0.005  0.0025]
-
-    print('avg', networks.avg_distance_for_beta(betas))
-    # avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
-    ```
-
-    """
-    beta = _cast_beta(beta)
-    # looking for the mean trip distance from 0 to d_max based on the impedance curve
-    dist = distance_from_beta(beta, min_threshold_wt=min_threshold_wt)
-    # area under the curve from 0 to d_max
-    auc = (np.exp(-beta * dist) - 1) / -beta
-    # divide by base (distance) for height, i.e. average weight
-    wt = auc / dist
-    # then solve for the corresponding distance
-    avg_d = -np.log(wt) / beta
-
-    return avg_d.astype(np.float32)
-
-
-def pair_distances_betas(
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
-) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.float32]]:
-    r"""
-    Pair distances and betas, where one or the other parameter is provided.
-
-    Parameters
-    ----------
-    distances: list[int] | tuple[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
-
-    Returns
-    -------
-    distances: int | ndarray[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-
-    Examples
-    --------
-    :::warning
-    Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-    protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
-    buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
-    Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
-    when calculating shortest paths and landuse accessibilities.
-    :::
-
-    """
-    # if distances, check the types and generate the betas
-    if distances is not None and betas is None:
-        _distances = _cast_distance(distances)
-        _betas = beta_from_distance(distances, min_threshold_wt=min_threshold_wt)
-    elif betas is not None and distances is None:
-        _betas = _cast_beta(betas)
-        _distances = distance_from_beta(_betas, min_threshold_wt=min_threshold_wt)
-    else:
-        raise ValueError("Please provide either a distance/s or beta/s, but not both.")
-    return _distances, _betas
-
-
-def clip_weights_curve(
-    distances: npt.NDArray[np.int_],
-    betas: npt.NDArray[np.float32],
-    spatial_tolerance: int = 0,
-) -> npt.NDArray[np.float32]:
-    r"""
-    Calculate the upper bounds for clipping weights produced by spatial impedance functions.
-
-    Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the
-    `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights
-    derived for spatial impedance functions are flattened and normalised. This functionality is only intended for
-    situations where the location of datapoints is uncertain for a given spatial tolerance.
-
-    :::warning
-    Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
-    threshold clipped by 100m, then substantial distortion is introduced by the process of clipping and normalising the
-    distance decay curve. More generally, smaller distance thresholds should generally be avoided for situations where
-    datapoints are not located with high spatial precision.
-    :::
-
-    Parameters
-    ----------
-    distances: ndarray[int]
-        An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: ndarray[float32]
-        An array of $\beta$ to be used for the exponential decay function for weighted metrics.
-    spatial_tolerance: int
-        The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
-
-    Returns
-    -------
-    max_curve_wts: ndarray[float]
-        An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
-
-    """
-    # check that distances and betas are in lockstep
-    common.check_distances_and_betas(distances, betas)
-    max_curve_wts = []
-    for dist, beta in zip(distances, betas):
-        if spatial_tolerance < 0:
-            raise ValueError("Clipping distance cannot be less than zero.")
-        if spatial_tolerance > dist:
-            raise ValueError("Clipping distance cannot be greater than the given distance threshold.")
-        max_curve_wt = np.exp(-beta * spatial_tolerance)
-        if max_curve_wt < 0.75:
-            logger.warning(
-                f"spatial_tolerance {spatial_tolerance}m would clip weights for beta {beta} at {max_curve_wt:%}. "
-                "Consider decreasing the spatial_tolerance or using larger distance thresholds / smaller betas."
-            )
-        max_curve_wts.append(max_curve_wt)
-
-    return np.array(max_curve_wts).astype(np.float32)
+"""
 
 
 # provides access to the underlying centrality.local_centrality method
-def node_centrality(
-    measures: Union[list[str], tuple[str]],
-    network_structure: structures.NetworkStructure,
+def node_centrality_shortest(
+    network_structure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
-    jitter_scale: float = 0.0,
-    angular: bool = False,
+    closeness: bool | None = None,
+    betweenness: bool | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
+    jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute node-based network centrality.
@@ -500,75 +411,70 @@ def node_centrality(
     (shortest angular distance). |
 
     """
-    network_structure.validate()
-    _distances, _betas = pair_distances_betas(distances, betas, min_threshold_wt)
-    # see centrality.local_centrality for integrity checks on closeness and betweenness keys
-    # typos are caught below
-    if not angular:
-        heuristic = "shortest (non-angular)"
-        options: tuple[str, ...] = (
-            "node_density",
-            "node_farness",
-            "node_cycles",
-            "node_harmonic",
-            "node_beta",
-            "node_betweenness",
-            "node_betweenness_beta",
-        )
-    else:
-        heuristic = "simplest (angular)"
-        options = ("node_harmonic_angular", "node_betweenness_angular")
-    if not measures:
-        raise ValueError("Please select at least one measure to compute.")
-    prep_measure_keys: list[str] = []
-    for measure in measures:
-        if measure not in options:
-            raise ValueError(
-                f"Invalid network measure: {measure}. "
-                f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.'
-            )
-        if measure in prep_measure_keys:
-            raise ValueError(f"Please remove duplicate measure: {measure}.")
-        prep_measure_keys.append(measure)
-    measure_keys = tuple(prep_measure_keys)
-    progress_proxy = None
-    measures_data = centrality.local_node_centrality(
-        _distances,
-        _betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        jitter_scale=np.float32(jitter_scale),
-        angular=angular,
-        progress_proxy=progress_proxy,
+    if distances is None:
+        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
+    close_result, betw_result = network_structure.local_node_centrality_shortest(
+        distances=distances,
+        closeness=closeness,
+        betweenness=betweenness,
+        min_threshold_wt=min_threshold_wt,
+        jitter=jitter_scale,
     )
-    if progress_proxy is not None:
-        progress_proxy.close()
-    # write the results
-    for measure_idx, measure_name in enumerate(measure_keys):
-        for d_idx, d_key in enumerate(_distances):
-            data_key = config.prep_gdf_key(f"{measure_name}_{d_key}")
-            nodes_gdf[data_key] = measures_data[measure_idx][d_idx]
+    if closeness is True:
+        for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
+    if betweenness is True:
+        for measure_name in ["node_betweenness", "node_betweenness_beta"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
+    return nodes_gdf
 
+
+def node_centrality_simplest(
+    network_structure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: Optional[cctypes.DistancesType] = None,
+    betas: Optional[cctypes.BetasType] = None,
+    closeness: bool | None = None,
+    betweenness: bool | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    jitter_scale: float = 0.0,
+) -> gpd.GeoDataFrame:
+    """ """
+    if distances is None:
+        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
+    close_result, betw_result = network_structure.local_node_centrality_simplest(
+        distances=distances,
+        closeness=closeness,
+        betweenness=betweenness,
+        min_threshold_wt=min_threshold_wt,
+        jitter=jitter_scale,
+    )
+    if closeness is True:
+        for measure_name in ["node_harmonic"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
+    if betweenness is True:
+        for measure_name in ["node_betweenness"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
     return nodes_gdf
 
 
 # provides access to the underlying centrality.local_centrality method
 def segment_centrality(
-    measures: Union[list[str], tuple[str]],
     network_structure: structures.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: Optional[cctypes.DistancesType] = None,
     betas: Optional[cctypes.BetasType] = None,
+    closeness: bool | None = None,
+    betweenness: bool | None = None,
     jitter_scale: float = 0.0,
-    angular: bool = False,
     min_threshold_wt: float = MIN_THRESH_WT,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -637,58 +543,23 @@ def segment_centrality(
     applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
     """
-    network_structure.validate()
-    _distances, _betas = pair_distances_betas(distances, betas, min_threshold_wt)
-    # see centrality.local_centrality for integrity checks on closeness and betweenness keys
-    # typos are caught below
-    if not angular:
-        heuristic = "shortest (non-angular)"
-        options: tuple[str, ...] = (
-            "segment_density",
-            "segment_harmonic",
-            "segment_beta",
-            "segment_betweenness",
-        )
-    else:
-        heuristic = "simplest (angular)"
-        options = ("segment_harmonic_hybrid", "segment_betweeness_hybrid")
-    if not measures:
-        raise ValueError("Please select at least one measure to compute.")
-    prep_measure_keys: list[str] = []
-    for measure in measures:
-        if measure not in options:
-            raise ValueError(
-                f"Invalid network measure: {measure}. "
-                f'Must be one of {", ".join(options)} when using {heuristic} path heuristic.'
-            )
-        if measure in prep_measure_keys:
-            raise ValueError(f"Please remove duplicate measure: {measure}.")
-        prep_measure_keys.append(measure)
-    measure_keys = tuple(prep_measure_keys)
-    progress_proxy = None
-    measures_data = centrality.local_segment_centrality(
-        _distances,
-        _betas,
-        measure_keys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        jitter_scale=np.float32(jitter_scale),
-        angular=angular,
-        progress_proxy=progress_proxy,
+    if distances is None:
+        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
+    close_result, betw_result = network_structure.local_segment_centrality_shortest(
+        distances=distances,
+        closeness=closeness,
+        betweenness=betweenness,
+        min_threshold_wt=min_threshold_wt,
+        jitter=jitter_scale,
     )
-    if progress_proxy is not None:
-        progress_proxy.close()
-    # write the results
-    for measure_idx, measure_name in enumerate(measure_keys):
-        for d_idx, d_key in enumerate(_distances):
-            data_key = config.prep_gdf_key(f"{measure_name}_{d_key}")
-            nodes_gdf[data_key] = measures_data[measure_idx][d_idx]
-
+    if closeness is True:
+        for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
+    if betweenness is True:
+        for measure_name in ["segment_betweenness"]:
+            for distance in distances:
+                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
     return nodes_gdf

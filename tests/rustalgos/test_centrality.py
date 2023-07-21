@@ -7,7 +7,6 @@ import numpy.typing as npt
 import pytest
 
 from cityseer import config, rustalgos
-from cityseer.algos import centrality
 from cityseer.metrics import networks
 from cityseer.tools import graphs
 
