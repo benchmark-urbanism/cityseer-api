@@ -36,41 +36,41 @@ def test_nx_simple_geoms():
             graphs.nx_simple_geoms(g_copy)
     # check that zero length self-loops are caught and removed
     g_copy = g_raw.copy()
-    g_copy.add_edge(0, 0)  # simple geom from self edge = length of zero
+    g_copy.add_edge("0", "0")  # simple geom from self edge = length of zero
     g_simple = graphs.nx_simple_geoms(g_copy)
-    assert not g_simple.has_edge(0, 0)
+    assert not g_simple.has_edge("0", "0")
 
 
 def test_add_node(diamond_graph):
-    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 50, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 50, 50)
     assert is_dupe is False
     assert new_name == "0±1"
-    assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1"]
+    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1"]
     assert diamond_graph.nodes["0±1"] == {"x": 50, "y": 50}
 
     # same name and coordinates should return None
-    response, is_dupe = graphs._add_node(diamond_graph, [0, 1], 50, 50)
+    response, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 50, 50)
     assert is_dupe is True
 
     # same name and different coordinates should return v2
-    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 40, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 40, 50)
     assert is_dupe is False
     assert new_name == "0±1§v2"
-    assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2"]
+    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2"]
     assert diamond_graph.nodes["0±1§v2"] == {"x": 40, "y": 50}
 
     # likewise v3
-    new_name, is_dupe = graphs._add_node(diamond_graph, [0, 1], 30, 50)
+    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 30, 50)
     assert is_dupe is False
     assert new_name == "0±1§v3"
-    assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2", "0±1§v3"]
+    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2", "0±1§v3"]
     assert diamond_graph.nodes["0±1§v3"] == {"x": 30, "y": 50}
 
     # and names should concatenate over old merges
-    new_name, is_dupe = graphs._add_node(diamond_graph, [0, "0±1"], 60, 30)
+    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "0±1"], 60, 30)
     assert is_dupe is False
     assert new_name == "0±0±1"
-    assert list(diamond_graph.nodes) == [0, 1, 2, 3, "0±1", "0±1§v2", "0±1§v3", "0±0±1"]
+    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2", "0±1§v3", "0±0±1"]
     assert diamond_graph.nodes["0±0±1"] == {"x": 60, "y": 30}
 
 
@@ -192,9 +192,9 @@ def make_messy_graph(G):
             G_messy.nodes[f"{s}-{e}"]["y"] = mid_y
 
     # test recursive weld by manually adding a chained series of orphan nodes
-    geom = G[10][43][0]["geom"]
+    geom = G["10"]["43"][0]["geom"]
     geom_a = ops.substring(geom, 0, 0.25, normalized=True)
-    G_messy.add_edge(10, "t_1", geom=geom_a)
+    G_messy.add_edge("10", "t_1", geom=geom_a)
     a_x, a_y = geom_a.coords[-1][:2]
     G_messy.nodes["t_1"]["x"] = a_x
     G_messy.nodes["t_1"]["y"] = a_y
@@ -209,9 +209,9 @@ def make_messy_graph(G):
     G_messy.nodes["t_3"]["x"] = c_x
     G_messy.nodes["t_3"]["y"] = c_y
     geom_d = ops.substring(geom, 0.75, 1.0, normalized=True)
-    G_messy.add_edge("t_3", 43, geom=geom_d)
+    G_messy.add_edge("t_3", "43", geom=geom_d)
     # remove original geom
-    G_messy.remove_edge(10, 43)
+    G_messy.remove_edge("10", "43")
 
     return G_messy
 
@@ -262,29 +262,34 @@ def test_nx_remove_filler_nodes(primal_graph):
     g_nodes = g_nodes.difference([53, 54, 55])
     assert list(g_nodes).sort() == list(G_simplified.nodes).sort()
     g_edges = set(primal_graph.edges)
-    g_edges = g_edges.difference([(52, 53), (53, 54), (54, 55), (52, 55)])  # condensed edges
-    g_edges = g_edges.union([(52, 52)])  # the new self loop
-    assert list(g_edges).sort() == list(G_simplified.edges).sort()
+    g_edges = g_edges.difference(
+        [("52", "53", 0), ("53", "54", 0), ("54", "55", 0), ("52", "55", 0)]
+    )  # condensed edges
+    g_edges = g_edges.union([("52", "52", 0)])  # the new self loop
+    # convert to ints, sort, compare
+    g_edges_ints = [(int(edge[0]), int(edge[1]), edge[2]) for edge in g_edges]
+    g_edges_simp_ints = [(int(edge[0]), int(edge[1]), edge[2]) for edge in G_simplified.edges]
+    assert g_edges_ints.sort() == g_edges_simp_ints.sort()
     # plot.plot_nx(G_simplified, labels=True, node_size=80, plot_geoms=True)
     # check the integrity of the edges
     for s, e, k, d in G_simplified.edges(data=True, keys=True):
         # ignore the new self-looping disconnected edge
-        if s == 52 and e == 52:
+        if s == "52" and e == "52":
             continue
         # and the parallel edge
-        if s in [45, 30] and e in [45, 30]:
+        if s in ["45", "30"] and e in ["45", "30"]:
             continue
         assert G_simplified[s][e][k]["geom"].length == primal_graph[s][e][k]["geom"].length
     # manually check that the new self-looping edge is equal in length to its original segments
     l = 0
-    for s, e in [(52, 53), (53, 54), (54, 55), (52, 55)]:
+    for s, e in [("52", "53"), ("53", "54"), ("54", "55"), ("52", "55")]:
         l += primal_graph[s][e][0]["geom"].length
-    assert l == G_simplified[52][52][0]["geom"].length
+    assert l == G_simplified["52"]["52"][0]["geom"].length
     # and that the new parallel edge is correct
     l = 0
-    for s, e in [(45, 56), (56, 30)]:
+    for s, e in [("45", "56"), ("56", "30")]:
         l += primal_graph[s][e][0]["geom"].length
-    assert l == G_simplified[45][30][0]["geom"].length
+    assert l == G_simplified["45"]["30"][0]["geom"].length
     # check that all nodes still have 'x' and 'y' keys
     for n, d in G_simplified.nodes(data=True):
         assert "x" in d
@@ -494,7 +499,7 @@ def test_nx_consolidate():
 def test_nx_decompose(primal_graph):
     # check that missing geoms throw an error
     G = primal_graph.copy()
-    del G[0][1][0]["geom"]
+    del G["0"]["1"][0]["geom"]
     with pytest.raises(KeyError):
         graphs.nx_decompose(G, 20)
 
@@ -516,8 +521,8 @@ def test_nx_decompose(primal_graph):
     # from cityseer.tools import plot
     # plot.plot_nx(G_simple, labels=True, node_size=80, plot_geoms=True)
     # plot.plot_nx(G_decompose, plot_geoms=True)
-    assert nx.number_of_nodes(G_decompose) == 292
-    assert nx.number_of_edges(G_decompose) == 314
+    assert nx.number_of_nodes(G_decompose) == 293
+    assert nx.number_of_edges(G_decompose) == 315
     for s, e in G_decompose.edges():
         assert G_decompose.number_of_edges(s, e) == 1
 
@@ -558,7 +563,7 @@ def test_nx_decompose(primal_graph):
 def test_nx_to_dual(primal_graph, diamond_graph):
     # check that missing geoms throw an error
     G = diamond_graph.copy()
-    del G[0][1][0]["geom"]
+    del G["0"]["1"][0]["geom"]
     with pytest.raises(KeyError):
         graphs.nx_to_dual(G)
 
@@ -1115,8 +1120,8 @@ def test_nx_from_geopandas(primal_graph):
     assert list(G_round_trip.edges) == list(primal_graph.edges)
     # check with metrics
     nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    nodes_gdf = networks.node_centrality(
-        measures=["node_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[500, 1000]
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure, nodes_gdf=nodes_gdf, closeness=True, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
     nodes_gdf, data_gdf = layers.compute_accessibilities(
