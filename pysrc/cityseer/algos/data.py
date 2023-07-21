@@ -5,7 +5,7 @@ from typing import Any, Optional
 import numpy as np
 import numpy.typing as npt
 
-from cityseer.algos import centrality, common, diversity
+from cityseer import rustalgos
 
 
 # @njit(cache=True, fastmath=config.FASTMATH, nogil=True)

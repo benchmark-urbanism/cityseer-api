@@ -10,7 +10,7 @@ from shapely import geometry
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, structures
-from cityseer.algos import centrality, data, diversity
+from cityseer.algos import data, diversity
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 

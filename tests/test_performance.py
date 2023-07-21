@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 import timeit
 
-from cityseer.algos import centrality
 from cityseer.metrics import networks
 from cityseer.tools import graphs
 

@@ -6,6 +6,7 @@ static MIN_THRESH_WT: f32 = 0.01831563888873418;
 
 #[pyfunction]
 pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
+    // Check the integrity of numeric data arrays.
     let data_slice = data_arr.as_array();
     for inner_arr in data_slice.rows() {
         for num in inner_arr.iter() {
@@ -22,6 +23,7 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
 
 #[pyfunction]
 pub fn check_categorical_data(data_arr: PyReadonlyArray2<i32>) -> PyResult<()> {
+    // Check the integrity of categoric data arrays.
     let data_slice = data_arr.as_array();
     for inner_arr in data_slice.rows() {
         for num in inner_arr.iter() {
@@ -171,6 +173,7 @@ pub fn clip_wts_curve(
 
 #[pyfunction]
 pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: u32) -> PyResult<f32> {
+    // Calculates negative exponential clipped to the max_curve_wt parameter.
     let raw_wt = (-beta * data_dist as f32).exp();
     let clipped_wt = f32::min(raw_wt, max_curve_wt) / max_curve_wt;
     Ok(clipped_wt)

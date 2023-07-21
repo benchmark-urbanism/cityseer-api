@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 
 from cityseer import config
-from cityseer.algos import common
 
 
 # @njit(cache=True, fastmath=config.FASTMATH, nogil=True)
