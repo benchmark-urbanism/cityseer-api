@@ -10,6 +10,41 @@ from cityseer.metrics import networks
 from cityseer.tools import mock
 
 
+def test_coord():
+    c1 = rustalgos.Coord(0, 1)
+    c2 = rustalgos.Coord(1, 2)
+    assert c1.x == 0 and c1.y == 1
+    assert c2.x == 1 and c2.y == 2
+    assert c1.xy() == (0, 1)
+    assert c2.xy() == (1, 2)
+    assert np.isclose(c1.hypot(c2), np.sqrt(2))
+    assert np.isclose(c2.hypot(c1), np.sqrt(2))
+    assert c1.difference(c2).xy() == (-1, -1)
+    assert c2.difference(c1).xy() == (1, 1)
+
+
+def test_calculate_rotation():
+    c1 = rustalgos.Coord(0, 0)
+    c2 = rustalgos.Coord(10, 10)
+    assert rustalgos.calculate_rotation(c1, c2) == -45
+    assert rustalgos.calculate_rotation(c2, c1) == 45
+    c3 = rustalgos.Coord(-10, 0)
+    c4 = rustalgos.Coord(10, 0)
+    assert rustalgos.calculate_rotation(c1, c3) == -180
+    assert rustalgos.calculate_rotation(c1, c4) == 0
+
+
+def test_calculate_rotation_smallest():
+    c1 = rustalgos.Coord(0, 0)
+    c2 = rustalgos.Coord(10, 10)
+    c3 = rustalgos.Coord(-10, 0)
+    c4 = rustalgos.Coord(10, -10)
+    # calculates anticlockwise
+    assert rustalgos.calculate_rotation_smallest(c2.difference(c1), c3.difference(c1)) == 135
+    assert rustalgos.calculate_rotation_smallest(c2.difference(c1), c4.difference(c1)) == 90
+    assert rustalgos.calculate_rotation_smallest(c3.difference(c1), c4.difference(c1)) == 225
+
+
 def test_check_numerical_data(primal_graph):
     # catch single dimensions
     with pytest.raises(TypeError):

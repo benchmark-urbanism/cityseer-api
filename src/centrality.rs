@@ -1,8 +1,10 @@
+use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
+
 use crate::common;
 use atomic_float::AtomicF32;
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use numpy::{IntoPyArray, PyArray1};
-use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+use petgraph::graph::NodeIndex;
 use petgraph::prelude::*;
 use petgraph::Direction;
 use pyo3::exceptions;
@@ -13,262 +15,85 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
-#[pyclass]
-#[derive(Clone)]
-pub struct NodePayload {
-    #[pyo3(get)]
-    node_key: String,
-    #[pyo3(get)]
-    x: f32,
-    #[pyo3(get)]
-    y: f32,
-    #[pyo3(get)]
-    live: bool,
+struct MetricResult {
+    distances: Vec<u32>,
+    metric: Vec<Vec<AtomicF32>>,
 }
-#[pymethods]
-impl NodePayload {
-    fn xy(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
-    fn validate(&self) -> bool {
-        self.x.is_finite() && self.y.is_finite()
-    }
-}
-#[pyclass]
-#[derive(Clone)]
-pub struct EdgePayload {
-    #[pyo3(get)]
-    start_nd_key: String,
-    #[pyo3(get)]
-    end_nd_key: String,
-    #[pyo3(get)]
-    edge_idx: usize,
-    #[pyo3(get)]
-    length: f32,
-    #[pyo3(get)]
-    angle_sum: f32,
-    #[pyo3(get)]
-    imp_factor: f32,
-    #[pyo3(get)]
-    in_bearing: f32,
-    #[pyo3(get)]
-    out_bearing: f32,
-}
-#[pymethods]
-impl EdgePayload {
-    fn validate(&self) -> bool {
-        self.length.is_finite()
-            && self.angle_sum.is_finite()
-            && self.imp_factor.is_finite()
-            && self.in_bearing.is_finite()
-            && self.out_bearing.is_finite()
-    }
-}
-#[pyclass]
-#[derive(Clone)]
-pub struct NodeVisit {
-    #[pyo3(get)]
-    visited: bool,
-    #[pyo3(get)]
-    pred: Option<usize>,
-    #[pyo3(get)]
-    short_dist: f32,
-    #[pyo3(get)]
-    simpl_dist: f32,
-    #[pyo3(get)]
-    cycles: f32,
-    #[pyo3(get)]
-    origin_seg: Option<usize>,
-    #[pyo3(get)]
-    last_seg: Option<usize>,
-    #[pyo3(get)]
-    out_bearing: f32,
-}
-#[pymethods]
-impl NodeVisit {
-    #[new]
-    fn new() -> Self {
-        Self {
-            visited: false,
-            pred: None,
-            short_dist: f32::INFINITY,
-            simpl_dist: f32::INFINITY,
-            cycles: 0.0,
-            origin_seg: None,
-            last_seg: None,
-            out_bearing: f32::NAN,
+impl MetricResult {
+    fn new(distances: Vec<u32>, size: usize) -> Self {
+        let mut metric = Vec::new();
+        for _d in 0..distances.len() {
+            metric.push(
+                // tricky to initialise for given size
+                std::iter::repeat_with(|| AtomicF32::new(0.0))
+                    .take(size)
+                    .collect::<Vec<AtomicF32>>(),
+            );
         }
+        Self { distances, metric }
     }
-}
-#[pyclass]
-#[derive(Clone)]
-pub struct EdgeVisit {
-    #[pyo3(get)]
-    visited: bool,
-    #[pyo3(get)]
-    start_nd_idx: Option<usize>,
-    #[pyo3(get)]
-    end_nd_idx: Option<usize>,
-    #[pyo3(get)]
-    edge_idx: Option<usize>,
-}
-#[pymethods]
-impl EdgeVisit {
-    #[new]
-    fn new() -> Self {
-        Self {
-            visited: false,
-            start_nd_idx: None,
-            end_nd_idx: None,
-            edge_idx: None,
+    fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        let mut loaded: HashMap<u32, Py<PyArray1<f32>>> = HashMap::new();
+        for i in 0..self.distances.len() {
+            let dist = self.distances[i];
+            let vec_f32: Vec<f32> = self.metric[i]
+                .iter()
+                .map(|a| a.load(Ordering::SeqCst))
+                .collect();
+            let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned());
+            loaded.insert(dist, array);
         }
+        loaded
     }
 }
 #[pyclass]
-pub struct NetworkStructure {
-    graph: DiGraph<NodePayload, EdgePayload>,
+pub struct CloseShortestResult {
+    #[pyo3(get)]
+    node_density: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_farness: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_cycles: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_beta: HashMap<u32, Py<PyArray1<f32>>>,
 }
+#[pyclass]
+pub struct CloseSimplestResult {
+    #[pyo3(get)]
+    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
+pub struct CloseSegmentShortestResult {
+    #[pyo3(get)]
+    segment_density: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    segment_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    segment_beta: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
+pub struct BetwShortestResult {
+    #[pyo3(get)]
+    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    node_betweenness_beta: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
+pub struct BetwSimplestResult {
+    #[pyo3(get)]
+    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
+pub struct BetwSegmentShortestResult {
+    #[pyo3(get)]
+    segment_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+}
+
 #[pymethods]
 impl NetworkStructure {
-    #[new]
-    fn new() -> Self {
-        Self {
-            graph: DiGraph::<NodePayload, EdgePayload>::default(),
-        }
-    }
-    fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool) -> usize {
-        let new_node_idx = self.graph.add_node(NodePayload {
-            node_key,
-            x,
-            y,
-            live,
-        });
-        new_node_idx.index().try_into().unwrap()
-    }
-    fn get_node_payload(&self, node_idx: usize) -> Option<NodePayload> {
-        Some(
-            self.graph
-                .node_weight(NodeIndex::new(node_idx.try_into().unwrap()))?
-                .clone(),
-        )
-    }
-    fn is_node_live(&self, node_idx: usize) -> bool {
-        let node_payload = self.get_node_payload(node_idx);
-        if node_payload.is_some() {
-            if !node_payload.unwrap().live {
-                return false;
-            }
-        }
-        true
-    }
-    fn add_edge(
-        &mut self,
-        start_nd_idx: usize,
-        end_nd_idx: usize,
-        edge_idx: usize,
-        start_nd_key: String,
-        end_nd_key: String,
-        length: f32,
-        angle_sum: f32,
-        imp_factor: f32,
-        in_bearing: f32,
-        out_bearing: f32,
-    ) -> usize {
-        let _node_idx_a = NodeIndex::new(start_nd_idx.try_into().unwrap());
-        let _node_idx_b = NodeIndex::new(end_nd_idx.try_into().unwrap());
-        let new_edge_idx = self.graph.add_edge(
-            _node_idx_a,
-            _node_idx_b,
-            EdgePayload {
-                start_nd_key,
-                end_nd_key,
-                edge_idx,
-                length,
-                angle_sum,
-                imp_factor,
-                in_bearing,
-                out_bearing,
-            },
-        );
-        new_edge_idx.index().try_into().unwrap()
-    }
-    fn get_edge_payload(
-        &self,
-        start_nd_idx: usize,
-        end_nd_idx: usize,
-        edge_idx: usize,
-    ) -> Option<EdgePayload> {
-        let selected_edge = self
-            .graph
-            .edges_connecting(
-                NodeIndex::new(start_nd_idx.try_into().unwrap()),
-                NodeIndex::new(end_nd_idx.try_into().unwrap()),
-            )
-            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
-        if selected_edge.is_some() {
-            Some(selected_edge.unwrap().weight().clone())
-        } else {
-            None
-        }
-    }
-    #[getter]
-    fn node_count(&self) -> usize {
-        self.graph.node_count().try_into().unwrap()
-    }
-    #[getter]
-    fn edge_count(&self) -> usize {
-        self.graph.edge_count().try_into().unwrap()
-    }
-    fn node_indices(&self) -> Vec<usize> {
-        self.graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect()
-    }
-    fn edge_references(&self) -> Vec<(usize, usize, usize)> {
-        self.graph
-            .edge_references()
-            .map(|edge_ref| {
-                (
-                    edge_ref.source().index(),
-                    edge_ref.target().index(),
-                    edge_ref.weight().edge_idx,
-                )
-            })
-            .collect()
-    }
-    fn validate(&self) -> PyResult<bool> {
-        if self.node_count() == 0 {
-            return Err(exceptions::PyValueError::new_err(
-                "NetworkStructure contains no nodes.",
-            ));
-        };
-        if self.edge_count() == 0 {
-            return Err(exceptions::PyValueError::new_err(
-                "NetworkStructure contains no edges.",
-            ));
-        };
-        for node_idx in self.graph.node_indices() {
-            let node_payload = self.graph.node_weight(node_idx).unwrap();
-            if !node_payload.validate() {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid node for node idx {:?}.",
-                    node_idx
-                )));
-            }
-        }
-        for edge_idx in self.graph.edge_indices() {
-            let edge_payload = self.graph.edge_weight(edge_idx).unwrap();
-            if !edge_payload.validate() {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid edge for edge idx {:?}.",
-                    edge_idx
-                )));
-            }
-        }
-        Ok(true)
-    }
-    fn shortest_path_tree(
+    pub fn shortest_path_tree(
         &self,
         src_idx: usize,
         max_dist: u32,
@@ -442,8 +267,7 @@ impl NetworkStructure {
         }
         (visited_nodes, visited_edges, tree_map, edge_map)
     }
-
-    fn local_node_centrality_shortest(
+    pub fn local_node_centrality_shortest(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -462,8 +286,8 @@ impl NetworkStructure {
         let betweenness = betweenness.unwrap_or(false);
         if !closeness && !betweenness {
             return Err(exceptions::PyValueError::new_err(
-                "Either or both closeness and betweenness flags is required, but both parameters are False.",
-            ));
+            "Either or both closeness and betweenness flags is required, but both parameters are False.",
+        ));
         }
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
@@ -571,7 +395,7 @@ impl NetworkStructure {
         Ok((close_result, betw_result))
     }
 
-    fn local_node_centrality_simplest(
+    pub fn local_node_centrality_simplest(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -590,8 +414,8 @@ impl NetworkStructure {
         let betweenness = betweenness.unwrap_or(false);
         if !closeness && !betweenness {
             return Err(exceptions::PyValueError::new_err(
-                "Either or both closeness and betweenness flags is required, but both parameters are False.",
-            ));
+            "Either or both closeness and betweenness flags is required, but both parameters are False.",
+        ));
         }
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
@@ -675,7 +499,7 @@ impl NetworkStructure {
         Ok((close_result, betw_result))
     }
 
-    fn local_segment_centrality_shortest(
+    pub fn local_segment_centrality_shortest(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -703,8 +527,8 @@ impl NetworkStructure {
         let betweenness = betweenness.unwrap_or(false);
         if !closeness && !betweenness {
             return Err(exceptions::PyValueError::new_err(
-                "Either or both closeness and betweenness flags is required, but both parameters are False.",
-            ));
+            "Either or both closeness and betweenness flags is required, but both parameters are False.",
+        ));
         }
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
@@ -976,300 +800,86 @@ this assumes segments are relatively straight, overly complex to subdivide segme
 # there are three scenarios:
 # 1) e is the predecessor for f
 if n_nd_idx == src_idx or preds[m_nd_idx] == n_nd_idx:  # pylint: disable=consider-using-in
-    e = short_dist[n_nd_idx]
-    f = short_dist[m_nd_idx]
-    # if travelling via n, then m = n_imp + seg_ang
-    # calculations are based on segment length / angle
-    # i.e. need to decide whether to base angular change on entry vs exit impedance
-    # else take midpoint of segment as ballpark for average, which is the course taken here
-    # i.e. exit impedance minus half segment impedance
-    ang = m_simpl_dist - seg_ang / 2
+e = short_dist[n_nd_idx]
+f = short_dist[m_nd_idx]
+# if travelling via n, then m = n_imp + seg_ang
+# calculations are based on segment length / angle
+# i.e. need to decide whether to base angular change on entry vs exit impedance
+# else take midpoint of segment as ballpark for average, which is the course taken here
+# i.e. exit impedance minus half segment impedance
+ang = m_simpl_dist - seg_ang / 2
 # 2) f is the predecessor for e
 elif m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx:  # pylint: disable=consider-using-in
-    e = short_dist[m_nd_idx]
-    f = short_dist[n_nd_idx]
-    ang = n_simpl_dist - seg_ang / 2  # per above
+e = short_dist[m_nd_idx]
+f = short_dist[n_nd_idx]
+ang = n_simpl_dist - seg_ang / 2  # per above
 # 3) neither of the above
 # get the approach angles for either side and compare to find the least inwards impedance
 # this involves impedance up to entrypoint either side plus respective turns onto the segment
 else:
-    # get the out bearing from the predecessor and calculate the turn onto current seg's in bearing
-    # find n's predecessor
-    n_pred_idx = int(preds[n_nd_idx])
-    # find the edge from n's predecessor to n
-    e_i = _find_edge_idx(node_edge_map, edges_end_arr, n_pred_idx, n_nd_idx)
-    # get the predecessor edge's outwards bearing at index 6
-    n_pred_out_bear = edges_out_bearing_arr[e_i]
-    # calculating the turn into this segment from the predecessor's out bearing
-    n_turn_in = np.abs((seg_in_bear - n_pred_out_bear + 180) % 360 - 180)
-    # then add the turn-in to the aggregated impedance at n
-    # i.e. total angular impedance onto this segment
-    # as above two scenarios, adding half of angular impedance for segment as avg between in / out
-    n_ang = n_simpl_dist + n_turn_in + seg_ang / 2
-    # repeat for the other side other side
-    # per original n -> m edge destructuring: m is the node in the outwards bound direction
-    # i.e. need to first find the corresponding edge in the opposite m -> n direction of travel
-    # this gives the correct inwards bearing as if m were the entry point
-    opp_i = _find_edge_idx(node_edge_map, edges_end_arr, m_nd_idx, n_nd_idx)
-    # now that the opposing edge is known, we can fetch the inwards bearing at index 5 (not 6)
-    opp_in_bear = edges_in_bearing_arr[opp_i]
-    # find m's predecessor
-    m_pred_idx = int(preds[m_nd_idx])
-    # we can now go ahead and find m's predecessor edge
-    e_i = _find_edge_idx(node_edge_map, edges_end_arr, m_pred_idx, m_nd_idx)
-    # get the predecessor edge's outwards bearing at index 6
-    m_pred_out_bear = edges_out_bearing_arr[e_i]
-    # and calculate the turn-in from m's predecessor onto the m inwards bearing
-    m_turn_in = np.abs((opp_in_bear - m_pred_out_bear + 180) % 360 - 180)
-    # then add to aggregated impedance at m
-    m_ang = m_simpl_dist + m_turn_in + seg_ang / 2
-    # the distance and angle are based on the smallest angular impedance onto the segment
-    # select by shortest distance in event angular impedances are identical from either direction
-    if n_ang == m_ang:
-        if n_short_dist <= m_short_dist:
-            e = short_dist[n_nd_idx]
-            ang = n_ang
-        else:
-            e = short_dist[m_nd_idx]
-            ang = m_ang
-    elif n_ang < m_ang:
+# get the out bearing from the predecessor and calculate the turn onto current seg's in bearing
+# find n's predecessor
+n_pred_idx = int(preds[n_nd_idx])
+# find the edge from n's predecessor to n
+e_i = _find_edge_idx(node_edge_map, edges_end_arr, n_pred_idx, n_nd_idx)
+# get the predecessor edge's outwards bearing at index 6
+n_pred_out_bear = edges_out_bearing_arr[e_i]
+# calculating the turn into this segment from the predecessor's out bearing
+n_turn_in = np.abs((seg_in_bear - n_pred_out_bear + 180) % 360 - 180)
+# then add the turn-in to the aggregated impedance at n
+# i.e. total angular impedance onto this segment
+# as above two scenarios, adding half of angular impedance for segment as avg between in / out
+n_ang = n_simpl_dist + n_turn_in + seg_ang / 2
+# repeat for the other side other side
+# per original n -> m edge destructuring: m is the node in the outwards bound direction
+# i.e. need to first find the corresponding edge in the opposite m -> n direction of travel
+# this gives the correct inwards bearing as if m were the entry point
+opp_i = _find_edge_idx(node_edge_map, edges_end_arr, m_nd_idx, n_nd_idx)
+# now that the opposing edge is known, we can fetch the inwards bearing at index 5 (not 6)
+opp_in_bear = edges_in_bearing_arr[opp_i]
+# find m's predecessor
+m_pred_idx = int(preds[m_nd_idx])
+# we can now go ahead and find m's predecessor edge
+e_i = _find_edge_idx(node_edge_map, edges_end_arr, m_pred_idx, m_nd_idx)
+# get the predecessor edge's outwards bearing at index 6
+m_pred_out_bear = edges_out_bearing_arr[e_i]
+# and calculate the turn-in from m's predecessor onto the m inwards bearing
+m_turn_in = np.abs((opp_in_bear - m_pred_out_bear + 180) % 360 - 180)
+# then add to aggregated impedance at m
+m_ang = m_simpl_dist + m_turn_in + seg_ang / 2
+# the distance and angle are based on the smallest angular impedance onto the segment
+# select by shortest distance in event angular impedances are identical from either direction
+if n_ang == m_ang:
+    if n_short_dist <= m_short_dist:
         e = short_dist[n_nd_idx]
         ang = n_ang
     else:
         e = short_dist[m_nd_idx]
         ang = m_ang
-    # f is the entry distance plus segment length
-    f = e + seg_len
+elif n_ang < m_ang:
+    e = short_dist[n_nd_idx]
+    ang = n_ang
+else:
+    e = short_dist[m_nd_idx]
+    ang = m_ang
+# f is the entry distance plus segment length
+f = e + seg_len
 # iterate the distance thresholds - from large to small for threshold snipping
 for d_idx in range(len(distances) - 1, -1, -1):
-    dist_cutoff = distances[d_idx]
-    if e <= dist_cutoff:
-        f = min(f, dist_cutoff)
-        # uses segment length as base (in this sense hybrid)
-        # intentionally not using integral because conflates harmonic shortest-path w. simplest
-        # there is only one case for angular - no need to abstract to func
-        for m_idx in close_simpl_idxs:
-            # transform - prevents division by zero
-            agg_ang = 1 + (ang / 180)
-            # then aggregate - angular uses distances explicitly
-            shadow_arr[m_idx, d_idx, src_idx] += (f - e) / agg_ang
+dist_cutoff = distances[d_idx]
+if e <= dist_cutoff:
+    f = min(f, dist_cutoff)
+    # uses segment length as base (in this sense hybrid)
+    # intentionally not using integral because conflates harmonic shortest-path w. simplest
+    # there is only one case for angular - no need to abstract to func
+    for m_idx in close_simpl_idxs:
+        # transform - prevents division by zero
+        agg_ang = 1 + (ang / 180)
+        # then aggregate - angular uses distances explicitly
+        shadow_arr[m_idx, d_idx, src_idx] += (f - e) / agg_ang
 BETWEENNESS
 bt_ang = 1 + simpl_dist[to_idx] / 180
 pt_a = o_2 - o_1
 pt_b = l_2 - l_1
 shadow_arr[m_idx, d_idx, inter_idx] += (pt_a + pt_b) / bt_ang
 */
-struct MetricResult {
-    distances: Vec<u32>,
-    metric: Vec<Vec<AtomicF32>>,
-}
-impl MetricResult {
-    fn new(distances: Vec<u32>, size: usize) -> Self {
-        let mut metric = Vec::new();
-        for _d in 0..distances.len() {
-            metric.push(
-                // tricky to initialise for given size
-                std::iter::repeat_with(|| AtomicF32::new(0.0))
-                    .take(size)
-                    .collect::<Vec<AtomicF32>>(),
-            );
-        }
-        Self { distances, metric }
-    }
-    fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        let mut loaded: HashMap<u32, Py<PyArray1<f32>>> = HashMap::new();
-        for i in 0..self.distances.len() {
-            let dist = self.distances[i];
-            let vec_f32: Vec<f32> = self.metric[i]
-                .iter()
-                .map(|a| a.load(Ordering::SeqCst))
-                .collect();
-            let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned());
-            loaded.insert(dist, array);
-        }
-        loaded
-    }
-}
-#[pyclass]
-pub struct CloseShortestResult {
-    #[pyo3(get)]
-    node_density: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_farness: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_cycles: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_beta: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct CloseSimplestResult {
-    #[pyo3(get)]
-    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct CloseSegmentShortestResult {
-    #[pyo3(get)]
-    segment_density: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    segment_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    segment_beta: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwShortestResult {
-    #[pyo3(get)]
-    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_betweenness_beta: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwSimplestResult {
-    #[pyo3(get)]
-    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwSegmentShortestResult {
-    #[pyo3(get)]
-    segment_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
-}
-// TODO: can remove these
-#[pyclass]
-#[derive(Clone)]
-struct PyNodeIndex(NodeIndex);
-#[pymethods]
-impl PyNodeIndex {
-    #[new]
-    fn new(index: usize) -> Self {
-        PyNodeIndex(NodeIndex::new(index))
-    }
-    #[getter]
-    fn index(&self) -> usize {
-        self.0.index().try_into().unwrap()
-    }
-}
-
-#[pyclass]
-#[derive(Clone)]
-struct PyEdgeIndex(EdgeIndex);
-#[pymethods]
-impl PyEdgeIndex {
-    #[new]
-    fn new(index: usize) -> Self {
-        PyEdgeIndex(EdgeIndex::new(index))
-    }
-    #[getter]
-    fn index(&self) -> usize {
-        self.0.index()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_network_structure() {
-        pyo3::prepare_freethreaded_python();
-        //     3
-        //    / \
-        //   /   \
-        //  /  a  \
-        // 1-------2
-        //  \  |  /
-        //   \ |b/ c
-        //    \|/
-        //     0
-        // a = 100m = 2 * 50m
-        // b = 86.60254m
-        // c = 100m
-        // all inner angles = 60º
-        let mut ns = NetworkStructure::new();
-        let nd_a = ns.add_node("a".to_string(), 0.0, -86.60254, true);
-        let nd_b = ns.add_node("b".to_string(), -50.0, 0.0, true);
-        let nd_c = ns.add_node("c".to_string(), 50.0, 0.0, true);
-        let nd_d = ns.add_node("d".to_string(), 0.0, 86.60254, true);
-        let e_a = ns.add_edge(
-            nd_a,
-            nd_b,
-            0,
-            "a".to_string(),
-            "b".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            120.0,
-            120.0,
-        );
-        let e_b = ns.add_edge(
-            nd_a,
-            nd_c,
-            0,
-            "a".to_string(),
-            "c".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            60.0,
-            60.0,
-        );
-        let e_c = ns.add_edge(
-            nd_b,
-            nd_c,
-            0,
-            "b".to_string(),
-            "c".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-        );
-        let e_d = ns.add_edge(
-            nd_b,
-            nd_d,
-            0,
-            "b".to_string(),
-            "d".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            60.0,
-            60.0,
-        );
-        let e_e = ns.add_edge(
-            nd_c,
-            nd_d,
-            0,
-            "c".to_string(),
-            "d".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            120.0,
-            120.0,
-        );
-        let (visited_nodes, visited_edges, tree_map, edge_map) =
-            ns.shortest_path_tree(0, 5, None, None);
-        let close_result = ns.local_node_centrality_shortest(
-            Some(vec![50]),
-            None,
-            Some(true),
-            Some(false),
-            None,
-            None,
-            None,
-        );
-        let betw_result_seg = ns.local_segment_centrality_shortest(
-            Some(vec![50]),
-            None,
-            Some(false),
-            Some(true),
-            None,
-            None,
-            None,
-        );
-        let a = 1;
-        // assert_eq!(add(2, 2), 4);
-    }
-}

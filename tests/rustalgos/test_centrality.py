@@ -1,6 +1,6 @@
 # pyright: basic
 from __future__ import annotations
-
+import math
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
@@ -8,7 +8,47 @@ import pytest
 
 from cityseer import config, rustalgos
 from cityseer.metrics import networks
-from cityseer.tools import graphs
+from cityseer.tools import graphs, mock
+
+
+def test_find_nearest(primal_graph):
+    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    # test the filter - iterating each point in data map
+    for row in data_gdf.iterfeatures():
+        # find the closest point on the network
+        data_coord = rustalgos.Coord(row["geometry"]["coordinates"][0], row["geometry"]["coordinates"][1])
+        min_idx, min_dist, _next_min_idx = network_structure.find_nearest(data_coord, 400)
+        # check that no other indices are nearer
+        d_x, d_y = data_coord.xy()
+        for n_idx in network_structure.node_indices():
+            n_x, n_y = network_structure.get_node_payload(n_idx).coord.xy()
+            dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
+            if n_idx == min_idx:
+                assert np.isclose(dist, min_dist, rtol=config.RTOL, atol=config.ATOL)
+            else:
+                assert dist > min_dist
+
+
+def test_road_distance(box_graph):
+    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(box_graph, 3395)
+    d1 = rustalgos.Coord(4, 2)
+    d2 = rustalgos.Coord(4, 4)
+    d3 = rustalgos.Coord(4, 6)
+    # returns perpendicular distance to road, nearest, next nearest road index
+    assert np.allclose(network_structure.road_distance(d1, 1, 2), (1, 1, 2))
+    assert np.allclose(network_structure.road_distance(d2, 1, 2), (1, 2, 1))
+    d, n, n_n = network_structure.road_distance(d3, 1, 2)
+    assert np.isinf(d) and n is None and n_n is None
+
+
+def test_closest_intersections(box_graph):
+    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(box_graph, 3395)
+    d1 = rustalgos.Coord(4, 2)
+    d2 = rustalgos.Coord(4, 4)
+    d3 = rustalgos.Coord(4, 6)
+    pred_map = [None, 0, 1, 2]
+    d, n, n_n = network_structure.closest_intersections(d1, pred_map)
 
 
 def find_path(start_idx, target_idx, tree_map):

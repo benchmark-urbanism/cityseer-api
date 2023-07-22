@@ -1,7 +1,8 @@
 use pyo3::prelude::*;
+mod centrality;
 mod common;
 mod data_structure;
-mod graph_structure;
+mod graph;
 
 #[pyfunction]
 fn multiply(a: isize, b: isize) -> PyResult<isize> {
@@ -15,9 +16,12 @@ fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     // m.add_submodule(rustalgos)?;
     m.add_class::<data_structure::DataEntry>()?;
     m.add_class::<data_structure::DataMap>()?;
-    m.add_class::<graph_structure::NodePayload>()?;
-    m.add_class::<graph_structure::EdgePayload>()?;
-    m.add_class::<graph_structure::NetworkStructure>()?;
+    m.add_class::<graph::NodePayload>()?;
+    m.add_class::<graph::EdgePayload>()?;
+    m.add_class::<graph::NetworkStructure>()?;
+    m.add_class::<common::Coord>()?;
+    m.add_function(wrap_pyfunction!(common::calculate_rotation, m)?)?;
+    m.add_function(wrap_pyfunction!(common::calculate_rotation_smallest, m)?)?;
     m.add_function(wrap_pyfunction!(common::check_numerical_data, m)?)?;
     m.add_function(wrap_pyfunction!(common::check_categorical_data, m)?)?;
     m.add_function(wrap_pyfunction!(common::distances_from_betas, m)?)?;
