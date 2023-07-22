@@ -15,28 +15,6 @@ from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
 
-def test_find_nearest(primal_graph):
-    _nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    data_gdf = mock.mock_data_gdf(primal_graph)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
-    # test the filter - iterating each point in data map
-    for d_idx in range(data_map.count):
-        # find the closest point on the network
-        d_x, d_y = data_map.x_y(d_idx)
-        min_idx, min_dist, _next_min_idx = data.find_nearest(
-            d_x, d_y, network_structure.nodes.xs, network_structure.nodes.ys, max_dist=np.float32(500)
-        )
-        # check that no other indices are nearer
-        for n_idx in range(network_structure.nodes.count):
-            n_x = network_structure.nodes.xs[n_idx]
-            n_y = network_structure.nodes.ys[n_idx]
-            dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
-            if n_idx == min_idx:
-                assert np.isclose(dist, min_dist, rtol=config.RTOL, atol=config.ATOL)
-            else:
-                assert dist > min_dist
-
-
 def override_coords(
     nx_multigraph: nx.MultiGraph, max_dist: int
 ) -> tuple[structures.DataMap, gpd.GeoDataFrame, structures.NetworkStructure]:

@@ -84,3 +84,19 @@ def diamond_graph() -> nx.MultiGraph:
     G_diamond.add_edges_from([("0", "1"), ("0", "2"), ("1", "2"), ("1", "3"), ("2", "3")])
     G_diamond = graphs.nx_simple_geoms(G_diamond)
     return G_diamond
+
+
+@pytest.fixture
+def box_graph() -> nx.MultiGraph:
+    G_box = nx.MultiGraph()
+    G_box.add_nodes_from(
+        [
+            ("0", {"x": 0, "y": 0}),
+            ("1", {"x": 5, "y": 0}),
+            ("2", {"x": 5, "y": 5}),
+            ("3", {"x": 0, "y": 5}),
+        ]
+    )
+    G_box.add_edges_from([("0", "1"), ("1", "2"), ("2", "3")])
+    G_box = graphs.nx_simple_geoms(G_box)
+    return G_box

@@ -1,9 +1,58 @@
 use numpy::borrow::PyReadonlyArray2;
 use pyo3::exceptions;
 use pyo3::prelude::*;
+use std::f32::consts::PI;
 
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 
+#[pyclass]
+#[derive(Clone, Copy)]
+pub struct Coord {
+    #[pyo3(get)]
+    pub x: f32,
+    #[pyo3(get)]
+    pub y: f32,
+}
+#[pymethods]
+impl Coord {
+    #[new]
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+    pub fn xy(&self) -> (f32, f32) {
+        (self.x, self.y)
+    }
+    pub fn validate(&self) -> bool {
+        self.x.is_finite() && self.y.is_finite()
+    }
+    pub fn hypot(&self, other_coord: Coord) -> f32 {
+        ((self.x - other_coord.x).powi(2) + (self.y - other_coord.y).powi(2)).sqrt()
+    }
+    pub fn difference(&self, other_coord: Coord) -> Coord {
+        // using Coord struct as a vector
+        let x_diff = self.x - other_coord.x;
+        let y_diff = self.y - other_coord.y;
+        Coord::new(x_diff, y_diff)
+    }
+}
+#[pyfunction]
+pub fn calculate_rotation(point_a: Coord, point_b: Coord) -> f32 {
+    let ang_a = point_a.y.atan2(point_a.x);
+    let ang_b = point_b.y.atan2(point_b.x);
+    let rotation = (ang_a - ang_b) % (2.0 * PI);
+    rotation.to_degrees()
+}
+// https://stackoverflow.com/questions/37459121/calculating-angle-between-three-points-but-only-anticlockwise-in-python
+// these two points / angles are relative to the origin
+// pass in difference between the points and origin as vectors
+#[pyfunction]
+pub fn calculate_rotation_smallest(vec_a: Coord, vec_b: Coord) -> f32 {
+    // Convert angles from radians to degrees and calculate the smallest difference angle
+    let ang_a = (vec_a.y.atan2(vec_a.x)).to_degrees();
+    let ang_b = (vec_b.y.atan2(vec_b.x)).to_degrees();
+    let diff_angle = (ang_b - ang_a + 180.0) % 360.0 - 180.0;
+    diff_angle.abs()
+}
 #[pyfunction]
 pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
     // Check the integrity of numeric data arrays.

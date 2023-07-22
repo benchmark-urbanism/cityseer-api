@@ -20,7 +20,7 @@ atomic_float = "0.1.0"
 indicatif = { version = "0.17.3", features = ["rayon"] }
 numpy = "0.18.0"
 petgraph = "0.6.3"
-pyo3 = "0.18.3"
+pyo3 = { version="0.18.3", features=["multiple-pymethods"]}
 rand = "0.8.5"
 rand_distr = "0.4.3"
 rayon = "1.7.0"
