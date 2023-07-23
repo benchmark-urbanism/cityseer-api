@@ -4,12 +4,15 @@ from __future__ import annotations
 import os
 import timeit
 
+from cityseer import rustalgos
 from cityseer.metrics import networks
 from cityseer.tools import graphs
 
 
 def test_local_centrality_time(primal_graph):
     """
+    NOTE - rust built in development mode will be slow - build via PDM install instead
+
     Keep in mind there are several extraneous variables:
     e.g. may be fairly dramatic differences in timing on larger graphs and larger search distances
 
@@ -50,41 +53,31 @@ def test_local_centrality_time(primal_graph):
     # load the test graph
     _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances, betas = networks.pair_distances_betas(distances=[5000])
+    distances, betas = rustalgos.pair_distances_and_betas(distances=[5000])
 
     def shortest_path_tree_wrapper():
-        network_structure.local_node_centrality_shortest(
-            distances,
-            betas,
-            True,
-            True,
-            True,
+        network_structure.shortest_path_tree(
+            src_idx=0,
+            max_dist=5000,
+            angular=False,
         )
 
     # prime the function
     shortest_path_tree_wrapper()
-    iters = 10000  # 56.34734088694677
+    iters = 10000
     # time and report
     func_time = timeit.timeit(shortest_path_tree_wrapper, number=iters)
     print(f"shortest_path_tree_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 5
+    assert func_time < 1
+    # shortest_path_tree_wrapper: 0.39821521303383633 for 10000 iterations
 
     def node_cent_wrapper():
-        centrality.local_node_centrality(
-            distances,
-            betas,
-            ("node_harmonic", "node_betweenness"),
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            angular=False,
-            progress_proxy=None,
+        network_structure.local_node_centrality_shortest(
+            distances=distances,
+            betas=None,
+            closeness=True,
+            betweenness=True,
+            pbar_disabled=True,
         )
 
     # prime the function
@@ -93,24 +86,16 @@ def test_local_centrality_time(primal_graph):
     # time and report
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 7
+    assert func_time < 5
+    # node_cent_wrapper: 3.1476474259980023 for 10000 iterations
 
     def segment_cent_wrapper():
-        centrality.local_segment_centrality(
-            distances,
-            betas,
-            ("segment_harmonic", "segment_betweenness"),
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            angular=False,
-            progress_proxy=None,
+        network_structure.local_segment_centrality_shortest(
+            distances=distances,
+            betas=None,
+            closeness=True,
+            betweenness=True,
+            pbar_disabled=True,
         )
 
     # prime the function
@@ -119,7 +104,8 @@ def test_local_centrality_time(primal_graph):
     # time and report - roughly 9.36s on 4.2GHz i7
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f"segment_cent_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 9
+    assert func_time < 8
+    # segment_cent_wrapper: 6.5499420869746245 for 10000 iterations
 
 
 if __name__ == "__main__":
