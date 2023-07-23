@@ -1,5 +1,5 @@
 use crate::common::{calculate_rotation_smallest, Coord};
-use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
@@ -146,6 +146,49 @@ impl NetworkStructure {
         }
         true
     }
+    #[getter]
+    fn node_count(&self) -> usize {
+        self.graph.node_count().try_into().unwrap()
+    }
+    #[getter]
+    fn node_indices(&self) -> Vec<usize> {
+        self.graph
+            .node_indices()
+            .map(|node| node.index() as usize)
+            .collect()
+    }
+    #[getter]
+    fn node_xs(&self) -> Vec<f32> {
+        self.graph
+            .node_indices()
+            .map(|node| self.graph[node].coord.x)
+            .collect()
+    }
+    #[getter]
+    fn node_ys(&self) -> Vec<f32> {
+        self.graph
+            .node_indices()
+            .map(|node| self.graph[node].coord.y)
+            .collect()
+    }
+    #[getter]
+    fn node_xys(&self) -> Vec<(f32, f32)> {
+        self.graph
+            .node_indices()
+            .map(|node| self.graph[node].coord.xy())
+            .collect()
+    }
+    #[getter]
+    fn node_lives(&self) -> Vec<bool> {
+        self.graph
+            .node_indices()
+            .map(|node| self.graph[node].live)
+            .collect()
+    }
+    #[getter]
+    fn edge_count(&self) -> usize {
+        self.graph.edge_count().try_into().unwrap()
+    }
     fn add_edge(
         &mut self,
         start_nd_idx: usize,
@@ -177,6 +220,18 @@ impl NetworkStructure {
         );
         new_edge_idx.index().try_into().unwrap()
     }
+    fn edge_references(&self) -> Vec<(usize, usize, usize)> {
+        self.graph
+            .edge_references()
+            .map(|edge_ref| {
+                (
+                    edge_ref.source().index(),
+                    edge_ref.target().index(),
+                    edge_ref.weight().edge_idx,
+                )
+            })
+            .collect()
+    }
     pub fn get_edge_payload(
         &self,
         start_nd_idx: usize,
@@ -195,32 +250,6 @@ impl NetworkStructure {
         } else {
             None
         }
-    }
-    #[getter]
-    fn node_count(&self) -> usize {
-        self.graph.node_count().try_into().unwrap()
-    }
-    #[getter]
-    fn edge_count(&self) -> usize {
-        self.graph.edge_count().try_into().unwrap()
-    }
-    fn node_indices(&self) -> Vec<usize> {
-        self.graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect()
-    }
-    fn edge_references(&self) -> Vec<(usize, usize, usize)> {
-        self.graph
-            .edge_references()
-            .map(|edge_ref| {
-                (
-                    edge_ref.source().index(),
-                    edge_ref.target().index(),
-                    edge_ref.weight().edge_idx,
-                )
-            })
-            .collect()
     }
     pub fn validate(&self) -> PyResult<bool> {
         if self.node_count() == 0 {
@@ -561,37 +590,6 @@ impl NetworkStructure {
             current_idx = nb_idx.unwrap();
         }
         (Some(nearest_idx), next_nearest_idx)
-    }
-}
-
-// not currently used
-#[pyclass]
-#[derive(Clone)]
-struct PyNodeIndex(NodeIndex);
-#[pymethods]
-impl PyNodeIndex {
-    #[new]
-    fn new(index: usize) -> Self {
-        PyNodeIndex(NodeIndex::new(index))
-    }
-    #[getter]
-    fn index(&self) -> usize {
-        self.0.index().try_into().unwrap()
-    }
-}
-
-#[pyclass]
-#[derive(Clone)]
-struct PyEdgeIndex(EdgeIndex);
-#[pymethods]
-impl PyEdgeIndex {
-    #[new]
-    fn new(index: usize) -> Self {
-        PyEdgeIndex(EdgeIndex::new(index))
-    }
-    #[getter]
-    fn index(&self) -> usize {
-        self.0.index()
     }
 }
 

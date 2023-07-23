@@ -415,7 +415,7 @@ def plot_nx(
 
 
 def plot_assignment(  # noqa
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     nx_multigraph: MultiGraph,
     data_gdf: gpd.GeoDataFrame,
     path: Optional[str] = None,
@@ -533,8 +533,8 @@ def plot_assignment(  # noqa
         next_nearest_netw_idx: int = data_row.next_nearest_assign
         if nearest_netw_idx != -1:
             # plot lines to parents for easier viz
-            p_x = network_structure.nodes.xs[nearest_netw_idx]
-            p_y = network_structure.nodes.ys[nearest_netw_idx]
+            p_x = network_structure.node_xs[nearest_netw_idx]
+            p_y = network_structure.node_ys[nearest_netw_idx]
             plt.plot(
                 [p_x, data_x],
                 [p_y, data_y],
@@ -543,8 +543,8 @@ def plot_assignment(  # noqa
                 ls="--",
             )
         if next_nearest_netw_idx != -1:
-            p_x = network_structure.nodes.xs[next_nearest_netw_idx]
-            p_y = network_structure.nodes.ys[next_nearest_netw_idx]
+            p_x = network_structure.node_xs[next_nearest_netw_idx]
+            p_y = network_structure.node_ys[next_nearest_netw_idx]
             plt.plot([p_x, data_x], [p_y, data_y], c="#888888", lw=0.5, ls="--")
 
     plt.tight_layout()
@@ -583,9 +583,11 @@ def plot_network_structure(
     # use two axes to check each copy of edges
     _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
     # set extents
+    xs_arr = np.array(network_structure.node_xs)
+    ys_arr = np.array(network_structure.node_ys)
     for ax in (ax1, ax2):  # type: ignore
-        ax.set_xlim(network_structure.nodes.xs.min() - 100, network_structure.nodes.xs.max() + 100)
-        ax.set_ylim(network_structure.nodes.ys.min() - 100, network_structure.nodes.ys.max() + 100)
+        ax.set_xlim(xs_arr.min() - 100, xs_arr.max() + 100)
+        ax.set_ylim(ys_arr.min() - 100, ys_arr.max() + 100)
     if poly:
         x = list(poly.exterior.coords.xy[0])  # type: ignore
         y = list(poly.exterior.coords.xy[1])  # type: ignore
@@ -593,36 +595,34 @@ def plot_network_structure(
         ax2.plot(x, y)
     # plot nodes
     cols = []
-    for is_live in network_structure.nodes.live:
+    for is_live in network_structure.node_lives:
         if is_live:
             cols.append(COLOUR_MAP.accent)
         else:
             cols.append(COLOUR_MAP.secondary)
     ax1.scatter(
-        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
+        network_structure.node_xs, network_structure.node_ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
     )
     ax2.scatter(
-        network_structure.nodes.xs, network_structure.nodes.ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
+        network_structure.node_xs, network_structure.node_ys, s=30, c=COLOUR_MAP.primary, edgecolor=cols, lw=0.5
     )
     # plot edges
     processed_edges: set[str] = set()
-    for edge_idx in range(network_structure.edges.count):
-        start_idx = network_structure.edges.start[edge_idx]
-        end_idx = network_structure.edges.end[edge_idx]
-        keys = sorted([start_idx, end_idx])
+    for start_nd_idx, end_nd_idx, edge_idx in network_structure.edge_references():
+        keys = sorted([start_nd_idx, end_nd_idx])
         se_key = "-".join([str(k) for k in keys])
         # bool indicating whether second copy in opposite direction
         dupe = se_key in processed_edges
         processed_edges.add(se_key)
         # get the start and end coords - this is to check that still within src edge - neighbour range
-        s_x, s_y = network_structure.nodes.xs[start_idx], network_structure.nodes.ys[start_idx]
-        e_x, e_y = network_structure.nodes.xs[end_idx], network_structure.nodes.ys[end_idx]
+        s_x, s_y = network_structure.node_xs[start_nd_idx], network_structure.node_ys[start_nd_idx]
+        e_x, e_y = network_structure.node_xs[end_nd_idx], network_structure.node_ys[end_nd_idx]
         if not dupe:
             ax1.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
-    for node_idx in range(network_structure.nodes.count):
-        ax2.annotate(node_idx, xy=network_structure.nodes.x_y(node_idx), size=5)  # type: ignore
+    for node_idx in range(network_structure.node_count):
+        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)  # type: ignore
     # plot parents on ax1
     ax1.scatter(
         x=data_gdf.geometry.x,
@@ -647,12 +647,12 @@ def plot_network_structure(
         next_nearest_netw_idx: int = data_row.next_nearest_assign
         ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
         # if the data points have been assigned network indices
-        if nearest_netw_idx != -1:
+        if not np.isnan(nearest_netw_idx):
             # plot lines to parents for easier viz
-            p_x, p_y = network_structure.nodes.x_y(nearest_netw_idx)
+            p_x, p_y = network_structure.node_xys[int(nearest_netw_idx)]
             ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.warning, lw=0.75, ls="-")
-        if next_nearest_netw_idx != -1:
-            p_x, p_y = network_structure.nodes.x_y(next_nearest_netw_idx)
+        if not np.isnan(next_nearest_netw_idx):
+            p_x, p_y = network_structure.node_xys[int(next_nearest_netw_idx)]
             ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
     plt.tight_layout()
     plt.gcf().set_facecolor(COLOUR_MAP.background)
@@ -661,8 +661,8 @@ def plot_network_structure(
 
 def plot_scatter(
     ax: plt.Axes,
-    xs: npt.NDArray[np.float_],
-    ys: npt.NDArray[np.float_],
+    xs: list | npt.NDArray[np.float_],
+    ys: list | npt.NDArray[np.float_],
     vals: npt.NDArray[np.float32],
     bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
     perc_range: tuple[float, float] = (0.01, 99.99),
@@ -705,6 +705,8 @@ def plot_scatter(
         A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).
 
     """
+    xs = np.array(xs)
+    ys = np.array(ys)
     # get extents relative to centre and ax size
     min_x, min_y, max_x, max_y = bbox_extents
     # filter

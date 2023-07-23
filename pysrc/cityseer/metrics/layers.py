@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
-from cityseer import cctypes, config, structures
+from cityseer import cctypes, config, structures, rustalgos
 from cityseer.algos import data
 from cityseer.metrics import networks
 
@@ -21,7 +21,7 @@ def assign_gdf_to_network(
     network_structure: structures.NetworkStructure,
     max_netw_assign_dist: Union[int, float],
     data_id_col: Optional[str] = None,
-) -> tuple[structures.DataMap, gpd.GeoDataFrame]:
+) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
     """
     Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
 
@@ -81,51 +81,27 @@ def assign_gdf_to_network(
 
     """
     network_structure.validate()
-    data_map = structures.DataMap(len(data_gdf))
-    data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
-    data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
-    if data_id_col is not None:
-        lab_enc = LabelEncoder()
-        data_map.data_id = lab_enc.fit_transform(data_gdf[data_id_col])  # type: ignore
-    data_map.validate(False)
-    if "nearest_assign" not in data_gdf:
-        progress_proxy = None
-        data_map_nearest_arr, data_map_next_nearest_arr = data.assign_to_network(
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.edges.end,
-            network_structure.node_edge_map,
-            np.float32(max_netw_assign_dist),
-            progress_proxy=progress_proxy,
-        )
-        if progress_proxy is not None:
-            progress_proxy.close()
-        data_map.nearest_assign = data_map_nearest_arr
-        data_map.next_nearest_assign = data_map_next_nearest_arr
-        data_gdf["nearest_assign"] = data_map_nearest_arr
-        data_gdf["next_nearest_assign"] = data_map_next_nearest_arr
-    else:
-        data_map.nearest_assign = data_gdf["nearest_assign"].values.astype(np.int_)
-        data_map.next_nearest_assign = data_gdf["next_nearest_assign"].values.astype(np.int_)
-    if np.all(data_map.nearest_assign == -1):
-        logger.warning("No assignments for nearest assigned direction.")
-    if np.all(data_map.next_nearest_assign == -1):
+    data_map = rustalgos.DataMap()
+    for data_key, data_row in data_gdf.iterrows():
+        if not isinstance(data_key, str):
+            raise ValueError("Data keys must be string instances.")
+        data_id = "generic" if data_id_col is None else str(data_row[data_id_col])
+        data_map.insert(data_key, data_row["geometry"].x, data_row["geometry"].y, data_id)
+    # add column to data_gdf
+    data_gdf["nearest_assign"] = None
+    data_gdf["next_nearest_assign"] = None
+    for data_key in data_map.entry_keys():
+        data_coord = data_map.get_data_coord(data_key)
+        nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
+        if nearest_idx is not None:
+            data_map.set_nearest_assign(data_key, nearest_idx)
+            data_gdf.at[data_key, "nearest_assign"] = nearest_idx
+        if next_nearest_idx is not None:
+            data_map.set_next_nearest_assign(data_key, next_nearest_idx)
+            data_gdf.at[data_key, "next_nearest_assign"] = next_nearest_idx
+    if data_map.none_assigned():
         logger.warning("No assignments for nearest assigned direction.")
     return data_map, data_gdf
-
-
-def compute_landuses():
-    """
-    Please use the compute_accessibilities or compute_mixed_uses functions instead.
-    """
-    raise DeprecationWarning(
-        "The compute_landuses function has been deprecated. Please use the compute_accessibilities or "
-        "compute_mixed_uses functions instead."
-    )
 
 
 def compute_accessibilities(

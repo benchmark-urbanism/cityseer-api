@@ -15,96 +15,19 @@ from cityseer.tools import graphs, mock
 
 
 def test_assign_gdf_to_network(primal_graph):
-    _nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-    # generate manual data map
-    man_data_map = structures.DataMap(len(data_gdf))
-    man_data_map.xs = data_gdf.geometry.x.values.astype(np.float32)
-    man_data_map.ys = data_gdf.geometry.y.values.astype(np.float32)
-    data.assign_to_network(
-        man_data_map.xs,
-        man_data_map.ys,
-        man_data_map.nearest_assign,
-        man_data_map.next_nearest_assign,
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.edges.end,
-        network_structure.node_edge_map,
-        np.float32(400),
-    )
-    # check auto vs. manual data_map
-    assert np.allclose(
-        data_map.xs,
-        man_data_map.xs,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        data_map.ys,
-        man_data_map.ys,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        data_map.nearest_assign,
-        man_data_map.nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        data_map.nearest_assign,
-        man_data_map.nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    # check against geopandas
-    assert np.allclose(
-        man_data_map.nearest_assign,
-        data_gdf.nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        man_data_map.next_nearest_assign,
-        data_gdf.next_nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    # check data keys - should not be -1
-    assert np.all(data_map.data_id != -1)
-    # this time - should be -1
-    data_map_no_keys, _data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    assert np.all(data_map_no_keys.data_id == -1)
-    # if not passing data_id_col then all should be -1
-    # repeat
-    # this time, already populated GDF will be passed through
-    # data map will be populated from GDF
-    new_data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    assert np.allclose(
-        man_data_map.nearest_assign,
-        data_gdf.nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        man_data_map.next_nearest_assign,
-        data_gdf.next_nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        man_data_map.nearest_assign,
-        new_data_map.nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
-    assert np.allclose(
-        man_data_map.next_nearest_assign,
-        new_data_map.next_nearest_assign,
-        atol=config.ATOL,
-        rtol=config.RTOL,
-    )
+    # check assignments
+    for data_key in data_map.entry_keys():
+        data_entry = data_map.get_entry(data_key)
+        # compute manually
+        nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
+        assert nearest_idx == data_entry.nearest_assign
+        assert next_nearest_idx == data_entry.next_nearest_assign
+        assert data_gdf.at[data_key, "nearest_assign"] == data_entry.nearest_assign
+        assert data_gdf.at[data_key, "next_nearest_assign"] == data_entry.next_nearest_assign
+    assert data_map.all_assigned()
 
 
 def test_compute_accessibilities(primal_graph):

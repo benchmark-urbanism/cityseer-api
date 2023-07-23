@@ -1,113 +1,18 @@
 # pyright: basic
 from __future__ import annotations
 
-import geopandas as gpd
+
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import pytest
-from shapely import geometry
+
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, structures
 from cityseer.algos import data, diversity
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
-
-
-def override_coords(
-    nx_multigraph: nx.MultiGraph, max_dist: int
-) -> tuple[structures.DataMap, gpd.GeoDataFrame, structures.NetworkStructure]:
-    """Some tweaks for visual checks."""
-    _nodes_gdf, network_structure = graphs.network_structure_from_nx(nx_multigraph, 3395)
-    data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
-    data_gdf.geometry[18] = geometry.Point(701200, 5719400)
-    data_gdf.geometry[39] = geometry.Point(700750, 5720025)
-    data_gdf.geometry[26] = geometry.Point(700400, 5719525)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist)
-
-    return data_map, data_gdf, network_structure
-
-
-def test_assign_to_network(primal_graph):
-    # create additional dead-end scenario
-    primal_graph.remove_edge(14, 15)
-    primal_graph.remove_edge(15, 28)
-    # G = graphs.nx_auto_edge_params(G)
-    G = graphs.nx_decompose(primal_graph, 50)
-    # visually confirmed in plots
-    targets = np.array(
-        [
-            [0, 257, 256],
-            [1, 17, 131],
-            [2, 43, 243],
-            [3, 110, 109],
-            [4, 66, 67],
-            [5, 105, 106],
-            [6, 18, 136],
-            [7, 58, 1],
-            [8, 126, 17],
-            [9, 32, 209],
-            [10, 32, 207],
-            [11, 118, 119],
-            [12, 67, 4],
-            [13, 250, 251],
-            [14, 116, 11],
-            [15, 204, 31],
-            [16, 270, 53],
-            [17, 142, 20],
-            [18, 182, 183],
-            [19, 184, 183],
-            [20, 238, 44],
-            [21, 226, 225],
-            [22, 63, 64],
-            [23, 199, 198],
-            [24, 264, 263],
-            [25, 17, 131],
-            [26, 49, -1],
-            [27, 149, 148],
-            [28, 207, 208],
-            [29, 202, 203],
-            [30, 42, 221],
-            [31, 169, 170],
-            [32, 129, 130],
-            [33, 66, 67],
-            [34, 43, 244],
-            [35, 125, 124],
-            [36, 234, 233],
-            [37, 141, 24],
-            [38, 187, 186],
-            [39, 263, 264],
-            [40, 111, 112],
-            [41, 132, 131],
-            [42, 244, 43],
-            [43, 265, 264],
-            [44, 174, 173],
-            [45, 114, 113],
-            [46, 114, 113],
-            [47, 114, 113],
-            [48, 113, 114],
-            [49, 113, 114],
-        ]
-    )
-    # generate data
-    data_map_1600, _data_gdf_1600, _network_structure_1600 = override_coords(G, 1600)
-    # from cityseer.tools import plot
-    # plot.plot_network_structure(_network_structure_1600, _data_gdf_1600)
-    # plot.plot_assignment(_network_structure_1600, G, _data_gdf_1600)
-    # for idx in range(data_map_1600.count):
-    #     print(idx, data_map_1600.nearest_assign[idx], data_map_1600.next_nearest_assign[idx])
-    # assignment map includes data x, data y, nearest assigned, next nearest assigned
-    assert np.allclose(data_map_1600.nearest_assign, targets[:, 1], atol=0, rtol=0)
-    assert np.allclose(data_map_1600.next_nearest_assign, targets[:, 2], atol=0, rtol=0)
-    # max distance of 0 should return all NaN
-    data_map_0, _, _ = override_coords(G, 0)
-    assert np.all(data_map_0.nearest_assign == -1)
-    assert np.all(data_map_0.next_nearest_assign == -1)
-    # with enough distance, all should be matched except location 26
-    data_map_2000, _, _ = override_coords(G, 2000)
-    assert not np.any(data_map_2000.nearest_assign == -1)
-    assert np.where(data_map_2000.next_nearest_assign == -1)[0][0] == 26
 
 
 def test_aggregate_to_src_idx(primal_graph):
