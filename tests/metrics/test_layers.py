@@ -27,6 +27,7 @@ def test_assign_gdf_to_network(primal_graph):
         assert next_nearest_idx == data_entry.next_nearest_assign
         assert data_gdf.at[data_key, "nearest_assign"] == data_entry.nearest_assign
         assert data_gdf.at[data_key, "next_nearest_assign"] == data_entry.next_nearest_assign
+        assert str(data_gdf.at[data_key, "data_id"]) == data_entry.data_id
     assert data_map.all_assigned()
 
 

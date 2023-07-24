@@ -85,7 +85,7 @@ def assign_gdf_to_network(
     for data_key, data_row in data_gdf.iterrows():
         if not isinstance(data_key, str):
             raise ValueError("Data keys must be string instances.")
-        data_id = "generic" if data_id_col is None else str(data_row[data_id_col])
+        data_id = None if data_id_col is None else str(data_row[data_id_col])
         data_map.insert(data_key, data_row["geometry"].x, data_row["geometry"].y, data_id)
     # add column to data_gdf
     data_gdf["nearest_assign"] = None
