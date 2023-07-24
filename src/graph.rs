@@ -51,7 +51,7 @@ impl EdgePayload {
     }
 }
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct NodeVisit {
     #[pyo3(get)]
     pub visited: bool,
@@ -111,6 +111,7 @@ impl EdgeVisit {
     }
 }
 #[pyclass]
+#[derive(Clone)]
 pub struct NetworkStructure {
     pub graph: DiGraph<NodePayload, EdgePayload>,
 }
@@ -130,7 +131,7 @@ impl NetworkStructure {
         });
         new_node_idx.index().try_into().unwrap()
     }
-    fn get_node_payload(&self, node_idx: usize) -> Option<NodePayload> {
+    pub fn get_node_payload(&self, node_idx: usize) -> Option<NodePayload> {
         Some(
             self.graph
                 .node_weight(NodeIndex::new(node_idx.try_into().unwrap()))?

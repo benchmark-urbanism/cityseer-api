@@ -9,7 +9,7 @@ import pytest
 
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
-from cityseer import config, structures
+from cityseer import config, rustalgos
 from cityseer.algos import data, diversity
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
@@ -18,108 +18,56 @@ from cityseer.tools import graphs, mock
 def test_aggregate_to_src_idx(primal_graph):
     for max_dist in [400, 750]:
         # generate data
-        _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        data_gdf = mock.mock_data_gdf(primal_graph, random_seed=13)
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+        _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+        data_gdf = mock.mock_data_gdf(primal_graph)
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
         # in this case, use same assignment max dist as search max dist
+        # for debugging
+        # from cityseer.tools import plot
+        # plot.plot_network_structure(network_structure, data_map)
         for angular in [True, False]:
-            for netw_src_idx in range(network_structure.nodes.count):
+            for netw_src_idx in range(network_structure.node_count):
                 # aggregate to src...
-                reachable_data, reachable_data_dist = data.aggregate_to_src_idx(
-                    netw_src_idx,
-                    network_structure.nodes.xs,
-                    network_structure.nodes.ys,
-                    network_structure.edges.start,
-                    network_structure.edges.end,
-                    network_structure.edges.length,
-                    network_structure.edges.angle_sum,
-                    network_structure.edges.imp_factor,
-                    network_structure.edges.in_bearing,
-                    network_structure.edges.out_bearing,
-                    network_structure.node_edge_map,
-                    data_map.xs,
-                    data_map.ys,
-                    data_map.nearest_assign,
-                    data_map.next_nearest_assign,
-                    np.float32(max_dist),
-                    angular=angular,
+                reachable_entries = data_map.aggregate_to_src_idx(
+                    netw_src_idx, network_structure, max_dist, angular=angular
                 )
                 # compare to manual checks on distances:
                 # get the network distances
-                (
-                    _visited_nodes,
-                    _preds,
-                    short_dist,
-                    _simpl_dist,
-                    _cycles,
-                    _origin_seg,
-                    _last_seg,
-                    _out_bearings,
-                    _visited_edges,
-                ) = centrality.shortest_path_tree(
-                    network_structure.edges.start,
-                    network_structure.edges.end,
-                    network_structure.edges.length,
-                    network_structure.edges.angle_sum,
-                    network_structure.edges.imp_factor,
-                    network_structure.edges.in_bearing,
-                    network_structure.edges.out_bearing,
-                    network_structure.node_edge_map,
-                    netw_src_idx,
-                    max_dist=np.float32(max_dist),
-                    angular=angular,
+                _nodes, _edges, tree_map, _edge_map = network_structure.shortest_path_tree(
+                    netw_src_idx, max_dist, angular
                 )
-                # for debugging
-                # from cityseer.tools import plot
-                # plot.plot_network_structure(network_structure, data_map)
                 # verify distances vs. the max
-                for d_idx in range(data_map.count):
-                    # check the integrity of the distances and classes
-                    reachable = reachable_data[d_idx]
-                    reachable_dist = reachable_data_dist[d_idx]
-                    # get the distance via the nearest assigned index
-                    nearest_dist = np.inf
-                    # if a nearest node has been assigned
-                    if data_map.nearest_assign[d_idx] != -1:
-                        # get the index for the assigned network node
-                        netw_idx = data_map.nearest_assign[d_idx]
-                        # if this node is within the cutoff distance:
-                        if short_dist[netw_idx] < max_dist:
-                            # get the distances from the data point to the assigned network node
-                            d_d = np.hypot(
-                                data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
-                                data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
-                            )
-                            # and add it to the network distance path from the source to the assigned node
-                            n_d = short_dist[netw_idx]
-                            nearest_dist = d_d + n_d
-                    # also get the distance via the next nearest assigned index
-                    next_nearest_dist = np.inf
-                    # if a nearest node has been assigned
-                    if data_map.next_nearest_assign[d_idx] != -1:
-                        # get the index for the assigned network node
-                        netw_idx = data_map.next_nearest_assign[d_idx]
-                        # if this node is within the radial cutoff distance:
-                        if short_dist[netw_idx] < max_dist:
-                            # get the distances from the data point to the assigned network node
-                            d_d = np.hypot(
-                                data_map.xs[d_idx] - network_structure.nodes.xs[netw_idx],
-                                data_map.ys[d_idx] - network_structure.nodes.ys[netw_idx],
-                            )
-                            # and add it to the network distance path from the source to the assigned node
-                            n_d = short_dist[netw_idx]
-                            next_nearest_dist = d_d + n_d
-                    # now check distance integrity
-                    if np.isinf(reachable_dist):
-                        assert not reachable
-                        assert nearest_dist > max_dist and next_nearest_dist > max_dist
+                for data_key, data_entry in data_map.entries.items():
+                    # nearest
+                    if data_entry.nearest_assign is not None:
+                        nearest_netw_node = network_structure.get_node_payload(data_entry.nearest_assign)
+                        nearest_assign_dist = tree_map[data_entry.nearest_assign].short_dist
+                        # add tail
+                        if not np.isinf(nearest_assign_dist):
+                            nearest_assign_dist += nearest_netw_node.coord.hypot(data_entry.coord)
                     else:
-                        assert reachable
-                        assert reachable_dist <= max_dist
-                        if nearest_dist < next_nearest_dist:
-                            assert reachable_dist == nearest_dist
-                        else:
-                            assert reachable_dist == next_nearest_dist
+                        nearest_assign_dist = np.inf
+                    # next nearest
+                    if data_entry.next_nearest_assign is not None:
+                        next_nearest_netw_node = network_structure.get_node_payload(data_entry.next_nearest_assign)
+                        next_nearest_assign_dist = tree_map[data_entry.next_nearest_assign].short_dist
+                        # add tail
+                        if not np.isinf(next_nearest_assign_dist):
+                            next_nearest_assign_dist += next_nearest_netw_node.coord.hypot(data_entry.coord)
+                    else:
+                        next_nearest_assign_dist = np.inf
+                    # checks
+                    if nearest_assign_dist > max_dist and next_nearest_assign_dist > max_dist:
+                        assert data_key not in reachable_entries
+                    elif np.isinf(nearest_assign_dist) and next_nearest_assign_dist < max_dist:
+                        assert reachable_entries[data_key] - next_nearest_assign_dist < config.ATOL
+                    elif np.isinf(next_nearest_assign_dist) and nearest_assign_dist < max_dist:
+                        assert reachable_entries[data_key] - nearest_assign_dist < config.ATOL
+                    else:
+                        assert (
+                            reachable_entries[data_key] - min(nearest_assign_dist, next_nearest_assign_dist)
+                            < config.ATOL
+                        )
 
 
 def test_accessibility(primal_graph):
