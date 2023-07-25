@@ -147,12 +147,10 @@ impl NetworkStructure {
         }
         true
     }
-    #[getter]
-    fn node_count(&self) -> usize {
+    pub fn node_count(&self) -> usize {
         self.graph.node_count().try_into().unwrap()
     }
-    #[getter]
-    fn node_indices(&self) -> Vec<usize> {
+    pub fn node_indices(&self) -> Vec<usize> {
         self.graph
             .node_indices()
             .map(|node| node.index() as usize)

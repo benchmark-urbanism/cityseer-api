@@ -1,7 +1,11 @@
+use atomic_float::AtomicF32;
 use numpy::borrow::PyReadonlyArray2;
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions;
 use pyo3::prelude::*;
+use std::collections::HashMap;
 use std::f32::consts::PI;
+use std::sync::atomic::Ordering;
 
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 
@@ -33,6 +37,37 @@ impl Coord {
         let x_diff = self.x - other_coord.x;
         let y_diff = self.y - other_coord.y;
         Coord::new(x_diff, y_diff)
+    }
+}
+pub struct MetricResult {
+    pub distances: Vec<u32>,
+    pub metric: Vec<Vec<AtomicF32>>,
+}
+impl MetricResult {
+    pub fn new(distances: Vec<u32>, size: usize) -> Self {
+        let mut metric = Vec::new();
+        for _d in 0..distances.len() {
+            metric.push(
+                // tricky to initialise for given size
+                std::iter::repeat_with(|| AtomicF32::new(0.0))
+                    .take(size)
+                    .collect::<Vec<AtomicF32>>(),
+            );
+        }
+        Self { distances, metric }
+    }
+    pub fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        let mut loaded: HashMap<u32, Py<PyArray1<f32>>> = HashMap::new();
+        for i in 0..self.distances.len() {
+            let dist = self.distances[i];
+            let vec_f32: Vec<f32> = self.metric[i]
+                .iter()
+                .map(|a| a.load(Ordering::SeqCst))
+                .collect();
+            let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned());
+            loaded.insert(dist, array);
+        }
+        loaded
     }
 }
 #[pyfunction]
@@ -221,9 +256,19 @@ pub fn clip_wts_curve(
 }
 
 #[pyfunction]
-pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: u32) -> PyResult<f32> {
+pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: f32) -> PyResult<f32> {
+    if beta < 0.0 || beta > 1.0 {
+        return Err(exceptions::PyValueError::new_err(
+            "Max curve weight must be in a range of 0 - 1.",
+        ));
+    }
+    if max_curve_wt < 0.0 || max_curve_wt > 1.0 {
+        return Err(exceptions::PyValueError::new_err(
+            "Max curve weight must be in a range of 0 - 1.",
+        ));
+    }
     // Calculates negative exponential clipped to the max_curve_wt parameter.
-    let raw_wt = (-beta * data_dist as f32).exp();
+    let raw_wt = (-beta * data_dist).exp();
     let clipped_wt = f32::min(raw_wt, max_curve_wt) / max_curve_wt;
     Ok(clipped_wt)
 }

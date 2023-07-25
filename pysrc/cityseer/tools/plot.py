@@ -621,7 +621,7 @@ def plot_network_structure(
             ax1.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
-    for node_idx in range(network_structure.node_count):
+    for node_idx in range(network_structure.node_count()):
         ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)  # type: ignore
     # plot parents on ax1
     ax1.scatter(
