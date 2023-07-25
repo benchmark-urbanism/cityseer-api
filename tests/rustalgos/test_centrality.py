@@ -23,7 +23,7 @@ def test_find_nearest(primal_graph):
         min_idx, min_dist, _next_min_idx = network_structure.find_nearest(data_coord, 400)
         # check that no other indices are nearer
         d_x, d_y = data_coord.xy()
-        for n_idx in network_structure.node_indices:
+        for n_idx in network_structure.node_indices():
             n_x, n_y = network_structure.get_node_payload(n_idx).coord.xy()
             dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
             if n_idx == min_idx:

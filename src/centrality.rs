@@ -1,9 +1,8 @@
-use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
-
 use crate::common;
-use atomic_float::AtomicF32;
+use crate::common::MetricResult;
+use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
 use indicatif::{ProgressBar, ProgressDrawTarget};
-use numpy::{IntoPyArray, PyArray1};
+use numpy::PyArray1;
 use petgraph::graph::NodeIndex;
 use petgraph::prelude::*;
 use petgraph::Direction;
@@ -15,37 +14,6 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
-struct MetricResult {
-    distances: Vec<u32>,
-    metric: Vec<Vec<AtomicF32>>,
-}
-impl MetricResult {
-    fn new(distances: Vec<u32>, size: usize) -> Self {
-        let mut metric = Vec::new();
-        for _d in 0..distances.len() {
-            metric.push(
-                // tricky to initialise for given size
-                std::iter::repeat_with(|| AtomicF32::new(0.0))
-                    .take(size)
-                    .collect::<Vec<AtomicF32>>(),
-            );
-        }
-        Self { distances, metric }
-    }
-    fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        let mut loaded: HashMap<u32, Py<PyArray1<f32>>> = HashMap::new();
-        for i in 0..self.distances.len() {
-            let dist = self.distances[i];
-            let vec_f32: Vec<f32> = self.metric[i]
-                .iter()
-                .map(|a| a.load(Ordering::SeqCst))
-                .collect();
-            let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned());
-            loaded.insert(dist, array);
-        }
-        loaded
-    }
-}
 #[pyclass]
 pub struct CloseShortestResult {
     #[pyo3(get)]
@@ -299,11 +267,7 @@ impl NetworkStructure {
         let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_betweenness_beta = MetricResult::new(distances.clone(), self.graph.node_count());
         // indices
-        let node_indices: Vec<usize> = self
-            .graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect();
+        let node_indices: Vec<usize> = self.node_indices();
         // pbar
         let pbar = ProgressBar::new(node_indices.len() as u64)
             .with_message("Computing shortest path node centrality");

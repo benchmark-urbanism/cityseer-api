@@ -687,15 +687,15 @@ def test_network_structure_from_nx(diamond_graph):
         # plot.plot_graphs(primal=G)
         # plot.plot_network_structure(nodes_gdf, node_data, edge_data)
         # check lengths
-        assert len(nodes_gdf) == network_structure.node_count == G.number_of_nodes()
+        assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
         # check node maps (idx and label match in this case...)
         node_idxs = network_structure.node_indices()
         for node_idx in node_idxs:
             node_payload = network_structure.get_node_payload(node_idx)
-            assert node_payload.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
-            assert node_payload.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
+            assert node_payload.coord.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
+            assert node_payload.coord.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
             assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
         for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
@@ -1124,6 +1124,7 @@ def test_nx_from_geopandas(primal_graph):
         network_structure=network_structure, nodes_gdf=nodes_gdf, closeness=True, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
+    # TODO:
     nodes_gdf, data_gdf = layers.compute_accessibilities(
         data_gdf,
         landuse_column_label="categorical_landuses",
