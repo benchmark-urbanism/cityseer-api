@@ -56,13 +56,10 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 import geopandas as gpd
-import numpy as np
-import numpy.typing as npt
-
-from cityseer import cctypes, config, structures, rustalgos
+from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -329,8 +326,8 @@ max_curve_wts: ndarray[float]
 def node_centrality_shortest(
     network_structure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
     closeness: bool | None = None,
     betweenness: bool | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -418,7 +415,7 @@ def node_centrality_shortest(
         closeness=closeness,
         betweenness=betweenness,
         min_threshold_wt=min_threshold_wt,
-        jitter=jitter_scale,
+        jitter_scale=jitter_scale,
     )
     if closeness is True:
         for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
@@ -436,8 +433,8 @@ def node_centrality_shortest(
 def node_centrality_simplest(
     network_structure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
     closeness: bool | None = None,
     betweenness: bool | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -451,7 +448,7 @@ def node_centrality_simplest(
         closeness=closeness,
         betweenness=betweenness,
         min_threshold_wt=min_threshold_wt,
-        jitter=jitter_scale,
+        jitter_scale=jitter_scale,
     )
     if closeness is True:
         for measure_name in ["node_harmonic"]:
@@ -468,10 +465,10 @@ def node_centrality_simplest(
 
 # provides access to the underlying centrality.local_centrality method
 def segment_centrality(
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
     closeness: bool | None = None,
     betweenness: bool | None = None,
     jitter_scale: float = 0.0,
@@ -550,7 +547,7 @@ def segment_centrality(
         closeness=closeness,
         betweenness=betweenness,
         min_threshold_wt=min_threshold_wt,
-        jitter=jitter_scale,
+        jitter_scale=jitter_scale,
     )
     if closeness is True:
         for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:

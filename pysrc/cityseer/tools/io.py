@@ -122,16 +122,11 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
     return osm_response
 
 
-def osm_graph_from_poly_wgs() -> None:
-    """Deprecated. Please use [`osm_graph_from_poly()`](#osm-graph-from-poly) instead."""
-    raise DeprecationWarning("This method is deprecated. Please use osm_graph_from_poly instead.")
-
-
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
     to_epsg_code: Optional[int] = None,
-    custom_request: Optional[str] = None,
+    custom_request: str | None = None,
     simplify: bool = True,
     remove_parallel: bool = True,
     iron_edges: bool = True,
@@ -272,8 +267,8 @@ def osm_graph_from_poly(
 
 def nx_from_osm_nx(
     nx_multidigraph: MultiDiGraph,
-    node_attributes: Optional[Union[list[str], tuple[str]]] = None,
-    edge_attributes: Optional[Union[list[str], tuple[str]]] = None,
+    node_attributes: Optional[list[str] | tuple[str]] = None,
+    edge_attributes: Optional[list[str] | tuple[str]] = None,
     tolerance: float = config.ATOL,
 ) -> MultiGraph:
     """

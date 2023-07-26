@@ -79,6 +79,16 @@ def test_aggregate_to_src_idx(primal_graph):
                                 reachable_entries[data_key] - min(nearest_assign_dist, next_nearest_assign_dist)
                                 < config.ATOL
                             )
+    # reuse the last instance of data_gdf and check that recomputing is not happening if already assigned
+    assert "nearest_assign" in data_gdf
+    assert "next_nearest_assign" in data_gdf.columns
+    # override with nonsense value
+    data_gdf["nearest_assign"] = 0
+    data_gdf["next_nearest_assign"] = 0
+    # check that these have not been replaced
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col=None)
+    assert np.all(data_gdf["nearest_assign"].values == 0)
+    assert np.all(data_gdf["next_nearest_assign"].values == 0)
 
 
 def test_accessibility(primal_graph):
@@ -88,13 +98,13 @@ def test_accessibility(primal_graph):
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    landuse_encodings = data_gdf["categorical_landuses"].to_dict()
+    landuses_map = data_gdf["categorical_landuses"].to_dict()
     # all datapoints and types are completely unique except for the last five - which all point to the same source
     accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
     # generate
     accessibilities = data_map.accessibility(
         network_structure,
-        landuse_encodings,
+        landuses_map,
         accessibility_keys,
         distances,
     )
@@ -117,7 +127,7 @@ def test_accessibility(primal_graph):
                 # double check distance is within threshold
                 assert data_dist <= max_dist
                 if data_dist <= dist:
-                    data_class = landuse_encodings[data_key]
+                    data_class = landuses_map[data_key]
                     # aggregate accessibility codes
                     if data_class == "a":
                         a_nw += 1
@@ -146,7 +156,7 @@ def test_accessibility(primal_graph):
     # setup dual data
     accessibilities_ang = data_map.accessibility(
         network_structure,
-        landuse_encodings,
+        landuses_map,
         accessibility_keys,
         distances,
         angular=True,
@@ -228,7 +238,7 @@ def test_mixed_uses_signatures(primal_graph):
             distances,
             betas,
             max_curve_wts,
-            landuse_encodings=encoded_labels[:-1],
+            landuses_map=encoded_labels[:-1],
             mixed_use_other_keys=np.array([0]),
         )
     # check that no provided metrics flags
@@ -252,7 +262,7 @@ def test_mixed_uses_signatures(primal_graph):
             distances,
             betas,
             max_curve_wts,
-            landuse_encodings=encoded_labels,
+            landuses_map=encoded_labels,
         )
     # check that missing qs flags
     with pytest.raises(ValueError):
@@ -276,7 +286,7 @@ def test_mixed_uses_signatures(primal_graph):
             betas,
             max_curve_wts,
             mixed_use_hill_keys=np.array([0]),
-            landuse_encodings=encoded_labels,
+            landuses_map=encoded_labels,
         )
     # check that problematic mixed use and accessibility keys are caught
     for mu_h_key, mu_o_key in [
@@ -337,7 +347,7 @@ def test_mixed_uses_signatures(primal_graph):
                 distances,
                 betas,
                 max_curve_wts,
-                landuse_encodings=encoded_labels,
+                landuses_map=encoded_labels,
                 qs=qs,
                 mixed_use_hill_keys=np.array(h_key),
                 mixed_use_other_keys=np.array(o_key),
@@ -364,7 +374,7 @@ def test_mixed_uses_signatures(primal_graph):
                 distances,
                 betas,
                 max_curve_wts,
-                landuse_encodings=encoded_labels,
+                landuses_map=encoded_labels,
                 qs=qs,
                 mixed_use_hill_keys=np.array(h_key),
                 mixed_use_other_keys=np.array(o_key),
@@ -412,7 +422,7 @@ def test_mixed_uses(primal_graph):
         distances,
         betas,
         max_curve_wts,
-        landuse_encodings=encoded_labels,
+        landuses_map=encoded_labels,
         qs=qs,
         mixed_use_hill_keys=hill_keys,
         mixed_use_other_keys=non_hill_keys,

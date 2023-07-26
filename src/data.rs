@@ -1,5 +1,5 @@
 use crate::common::MetricResult;
-use crate::common::{clipped_beta_wt, pair_distances_and_betas, Coord};
+use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_and_betas, Coord};
 use crate::graph::NetworkStructure;
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use numpy::PyArray1;
@@ -10,6 +10,13 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
 #[pyclass]
+struct AccessibilityResult {
+    #[pyo3(get)]
+    weighted: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    unweighted: HashMap<u32, Py<PyArray1<f32>>>,
+}
+#[pyclass]
 #[derive(Clone)]
 pub struct DataEntry {
     #[pyo3(get)]
@@ -17,22 +24,29 @@ pub struct DataEntry {
     #[pyo3(get)]
     coord: Coord,
     #[pyo3(get)]
+    data_id: Option<String>,
+    #[pyo3(get)]
     nearest_assign: Option<usize>,
     #[pyo3(get)]
     next_nearest_assign: Option<usize>,
-    #[pyo3(get)]
-    data_id: Option<String>,
 }
 #[pymethods]
 impl DataEntry {
     #[new]
-    fn new(data_key: String, x: f32, y: f32, data_id: Option<String>) -> DataEntry {
+    fn new(
+        data_key: String,
+        x: f32,
+        y: f32,
+        data_id: Option<String>,
+        nearest_assign: Option<usize>,
+        next_nearest_assign: Option<usize>,
+    ) -> DataEntry {
         DataEntry {
             data_key,
             coord: Coord::new(x, y),
-            nearest_assign: None,
-            next_nearest_assign: None,
             data_id,
+            nearest_assign,
+            next_nearest_assign,
         }
     }
     fn is_assigned(&self) -> bool {
@@ -45,13 +59,6 @@ pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
 }
-#[pyclass]
-struct AccessibilityResult {
-    #[pyo3(get)]
-    weighted: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    unweighted: HashMap<u32, Py<PyArray1<f32>>>,
-}
 #[pymethods]
 impl DataMap {
     #[new]
@@ -60,9 +67,19 @@ impl DataMap {
             entries: HashMap::new(),
         }
     }
-    fn insert(&mut self, data_key: String, x: f32, y: f32, data_id: Option<String>) {
-        self.entries
-            .insert(data_key.clone(), DataEntry::new(data_key, x, y, data_id));
+    fn insert(
+        &mut self,
+        data_key: String,
+        x: f32,
+        y: f32,
+        data_id: Option<String>,
+        nearest_assign: Option<usize>,
+        next_nearest_assign: Option<usize>,
+    ) {
+        self.entries.insert(
+            data_key.clone(),
+            DataEntry::new(data_key, x, y, data_id, nearest_assign, next_nearest_assign),
+        );
     }
     fn entry_keys(&self) -> Vec<String> {
         self.entries.keys().cloned().collect()
@@ -215,19 +232,19 @@ impl DataMap {
     fn accessibility(
         &self,
         network_structure: &NetworkStructure,
-        landuse_encodings: HashMap<String, String>,
+        landuses_map: HashMap<String, String>,
         accessibility_keys: Vec<String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         angular: Option<bool>,
-        max_curve_wts: Option<Vec<f32>>,
+        spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
-        jitter: Option<f32>,
+        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
         let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
-        if landuse_encodings.len() != self.count() {
+        if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
             ));
@@ -237,7 +254,8 @@ impl DataMap {
                 "At least one accessibility key must be specified.",
             ));
         }
-        let max_curve_wts = max_curve_wts.unwrap_or(vec![1.0; distances.len()]);
+        let spatial_tolerance = spatial_tolerance.unwrap_or(0);
+        let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // prepare the containers for tracking results
         let metrics: HashMap<String, MetricResult> = accessibility_keys
@@ -285,11 +303,11 @@ impl DataMap {
                 *netw_src_idx,
                 network_structure,
                 max_dist,
-                jitter,
+                jitter_scale,
                 angular,
             );
             for (data_key, data_dist) in reachable_entries {
-                let cl_code = landuse_encodings[&data_key].clone();
+                let cl_code = landuses_map[&data_key].clone();
                 if !accessibility_keys.contains(&cl_code) {
                     continue;
                 }
@@ -319,22 +337,5 @@ impl DataMap {
             );
         }
         Ok(accessibilities)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_data_entry() {
-        let entry = DataEntry::new(1, 2);
-        assert_eq!(entry.xy(), (1, 2));
-        assert_eq!(entry.is_assigned(), false);
-
-        let mut entry2 = DataEntry::new(3, 4);
-        assert_eq!(entry2.is_assigned(), false);
-        entry2.nearest_assign = 1;
-        assert_eq!(entry2.is_assigned(), true);
     }
 }

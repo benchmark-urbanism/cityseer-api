@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pytest
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
-from cityseer import config, structures
+from cityseer import config, rustalgos
 from cityseer.algos import data
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
@@ -32,147 +32,57 @@ def test_assign_gdf_to_network(primal_graph):
 
 
 def test_compute_accessibilities(primal_graph):
-    betas: npt.NDArray[np.float32] = np.array([0.01, 0.005], dtype=np.float32)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
-    raw_betas = [0.01, 0.005]
-    nodes_gdf, data_gdf = layers.compute_accessibilities(
-        data_gdf,
-        "categorical_landuses",
-        ["c"],
-        nodes_gdf,
-        network_structure,
-        betas=raw_betas,
-    )
-    # test against manual implementation over underlying method
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    distances, betas = networks.pair_distances_betas(betas=raw_betas)
-    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
-    lab_enc = LabelEncoder()
-    encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
-    # accessibilities
-    ac_data, ac_data_wt = data.accessibility(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        data_map.data_id,
-        distances,
-        betas,
-        max_curve_wts,
-        encoded_lu_labels,  # type: ignore
-        accessibility_keys=np.array([lab_enc.classes_.tolist().index("c")]),  # type: ignore
-    )
-    for d_idx, d_key in enumerate(distances):
-        acc_data_key_nw = config.prep_gdf_key(f"c_{d_key}_non_weighted")
-        assert np.allclose(
-            nodes_gdf[acc_data_key_nw],
-            ac_data[0][d_idx],
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        acc_data_key_wt = config.prep_gdf_key(f"c_{d_key}_weighted")
-        assert np.allclose(
-            nodes_gdf[acc_data_key_wt],
-            ac_data_wt[0][d_idx],
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-    # most integrity checks happen in underlying method
-    with pytest.raises(ValueError):
-        layers.compute_accessibilities(
-            data_gdf,
-            "lu_col_label_typo",
-            ["c"],
-            nodes_gdf,
-            network_structure,
-            distances=distances,
-        )
-    # both distances and betas
-    with pytest.raises(ValueError):
-        layers.compute_accessibilities(
-            data_gdf,
-            "categorical_landuses",
-            ["c"],
-            nodes_gdf,
-            network_structure,
-            distances=distances,
-            betas=betas,
-        )
-    # accessibility
-    ac_random = np.arange(len(lab_enc.classes_))
-    np.random.shuffle(ac_random)
-    # not necessary to do all labels, first few should do
-    for ac_min in range(3):
-        ac_keys = np.array(ac_random[ac_min:])
-        # randomise order of keys and metrics
-        ac_metrics: list[str] = lab_enc.inverse_transform(ac_keys).tolist()
-        # prepare network and compute
-        nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-        distances, betas = networks.pair_distances_betas(betas=raw_betas)
-        # landuse encodings
-        lab_enc = LabelEncoder()
-        encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
+    distances = [400, 800]
+    max_assign_dist = 400
+    for key_set in (["a"], ["b"], ["a", "b"]):
         nodes_gdf, data_gdf = layers.compute_accessibilities(
             data_gdf,
             "categorical_landuses",
-            ac_metrics,
+            key_set,
             nodes_gdf,
             network_structure,
-            betas=raw_betas,
+            max_netw_assign_dist=max_assign_dist,
+            distances=distances,
         )
-        # test against underlying method
-        ac_data, ac_data_wt = data.accessibility(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            data_map.data_id,
+        # test against manual implementation over underlying method
+        landuses_map = data_gdf["categorical_landuses"].to_dict()
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
+        # accessibilities
+        accessibility_data = data_map.accessibility(
+            network_structure,
+            landuses_map,
+            key_set,
             distances,
-            betas,
-            max_curve_wts,
-            encoded_lu_labels,  # type: ignore
-            accessibility_keys=ac_keys,
         )
-        for ac_idx, ac_met in enumerate(ac_metrics):
-            for d_idx, d_key in enumerate(distances):
-                acc_data_key_nw = config.prep_gdf_key(f"{ac_met}_{d_key}_non_weighted")
+        for acc_key in key_set:
+            for dist_key in distances:
+                acc_data_key_nw = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
                 assert np.allclose(
-                    nodes_gdf[acc_data_key_nw],
-                    ac_data[ac_idx][d_idx],
+                    nodes_gdf[acc_data_key_nw].values,
+                    accessibility_data[acc_key].unweighted[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
-                acc_data_key_wt = config.prep_gdf_key(f"{ac_met}_{d_key}_weighted")
+                acc_data_key_wt = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
                 assert np.allclose(
-                    nodes_gdf[acc_data_key_wt],
-                    ac_data_wt[ac_idx][d_idx],
+                    nodes_gdf[acc_data_key_wt].values,
+                    accessibility_data[acc_key].weighted[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
+        # most integrity checks happen in underlying method
+        with pytest.raises(ValueError):
+            nodes_gdf, data_gdf = layers.compute_accessibilities(
+                data_gdf,
+                "categorical_landuses-TYPO",
+                ["c"],
+                nodes_gdf,
+                network_structure,
+                max_netw_assign_dist=max_assign_dist,
+                distances=distances,
+            )
 
 
 def test_compute_mixed_uses(primal_graph):
