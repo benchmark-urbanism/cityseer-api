@@ -536,7 +536,8 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     nx_multigraph: MultiGraph = nx.MultiGraph()
     for elem in osm_network_data["elements"]:
         if elem["type"] == "node":
-            nx_multigraph.add_node(elem["id"], x=elem["lon"], y=elem["lat"])
+            # all nodes should be string type
+            nx_multigraph.add_node(str(elem["id"]), x=elem["lon"], y=elem["lat"])
     for elem in osm_network_data["elements"]:
         if elem["type"] == "way":
             count = len(elem["nodes"])
@@ -547,11 +548,15 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
                 highway = tags["highway"] if "highway" in tags else None
                 for idx in range(count - 1):
                     nx_multigraph.add_edge(
-                        elem["nodes"][idx], elem["nodes"][idx + 1], names=[name], routes=[ref], highways=[highway]
+                        str(elem["nodes"][idx]),
+                        str(elem["nodes"][idx + 1]),
+                        names=[name],
+                        routes=[ref],
+                        highways=[highway],
                     )
             else:
                 for idx in range(count - 1):
-                    nx_multigraph.add_edge(elem["nodes"][idx], elem["nodes"][idx + 1])
+                    nx_multigraph.add_edge(str(elem["nodes"][idx]), str(elem["nodes"][idx + 1]))
 
     return nx_multigraph
 
@@ -1372,7 +1377,7 @@ def nx_consolidate_nodes(
     min_node_degree: int = 1,
     min_cumulative_degree: Optional[int] = None,
     max_cumulative_degree: Optional[int] = None,
-    neighbour_policy: Optional[str] = None,
+    neighbour_policy: str | None = None,
     crawl: bool = False,
     cent_min_degree: int = 3,
     cent_min_names: Optional[int] = None,

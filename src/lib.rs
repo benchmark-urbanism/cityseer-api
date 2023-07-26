@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 mod centrality;
 mod common;
 mod data;
+mod diversity;
 mod graph;
 
 #[pyfunction]
@@ -30,6 +31,18 @@ fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(common::avg_distances_for_betas, m)?)?;
     m.add_function(wrap_pyfunction!(common::clip_wts_curve, m)?)?;
     m.add_function(wrap_pyfunction!(common::clipped_beta_wt, m)?)?;
+    m.add_function(wrap_pyfunction!(diversity::hill_diversity, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        diversity::hill_diversity_branch_distance_wt,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        diversity::hill_diversity_pairwise_distance_wt,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(diversity::gini_simpson_diversity, m)?)?;
+    m.add_function(wrap_pyfunction!(diversity::shannon_diversity, m)?)?;
+    m.add_function(wrap_pyfunction!(diversity::raos_quadratic_diversity, m)?)?;
     // let sys = PyModule::import(py, "sys")?;
     // sys.getattr("modules")?.set_item("rustalgos", rustalgos)?;
     Ok(())

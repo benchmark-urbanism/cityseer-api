@@ -131,6 +131,7 @@ disable = [
   "logging-fstring-interpolation",
   "R0801",
 ]
+extension-pkg-allow-list=['cityseer.rustalgos']
 jobs = 0
 output-format = "colorized"
 

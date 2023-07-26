@@ -203,16 +203,17 @@ impl NetworkStructure {
                     // jitter is for injecting a small amount of stochasticity for rectlinear grids
                     let mut rng = thread_rng();
                     let normal = Normal::new(0.0, 1.0).unwrap();
-                    let jitter: f32 = normal.sample(&mut rng) * jitter_scale;
+                    let jitter_scale: f32 = normal.sample(&mut rng) * jitter_scale;
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
                     they will not be explored further because they have not been added to active
                     */
                     // shortest path heuristic differs for angular vs. not
-                    if (angular && simpl_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
+                    if (angular
+                        && simpl_dist + jitter_scale < tree_map[nb_nd_idx.index()].simpl_dist)
                         || (!angular
-                            && short_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
+                            && short_dist + jitter_scale < tree_map[nb_nd_idx.index()].short_dist)
                     {
                         let origin_seg = if active_nd_idx.index() == src_idx {
                             edge_idx.index()
@@ -242,7 +243,7 @@ impl NetworkStructure {
         closeness: Option<bool>,
         betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
-        jitter: Option<f32>,
+        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
     ) -> PyResult<(Option<CloseShortestResult>, Option<BetwShortestResult>)> {
         // setup
@@ -282,7 +283,7 @@ impl NetworkStructure {
                 return;
             }
             let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter);
+                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
             for to_idx in visited_nodes.iter() {
                 let node_visit = tree_map[*to_idx].clone();
                 if to_idx == src_idx {
@@ -366,7 +367,7 @@ impl NetworkStructure {
         closeness: Option<bool>,
         betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
-        jitter: Option<f32>,
+        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
     ) -> PyResult<(Option<CloseSimplestResult>, Option<BetwSimplestResult>)> {
         // setup
@@ -405,7 +406,7 @@ impl NetworkStructure {
                 return;
             }
             let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter);
+                self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter_scale);
             for to_idx in visited_nodes.iter() {
                 let node_visit = tree_map[*to_idx].clone();
                 if to_idx == src_idx {
@@ -470,7 +471,7 @@ impl NetworkStructure {
         closeness: Option<bool>,
         betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
-        jitter: Option<f32>,
+        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
     ) -> PyResult<(
         Option<CloseSegmentShortestResult>,
@@ -527,7 +528,7 @@ impl NetworkStructure {
                 return;
             }
             let (visited_nodes, visited_edges, tree_map, edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter);
+                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
             for edge_idx in visited_edges.iter() {
                 let edge_visit = edge_map[*edge_idx].clone();
                 let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();

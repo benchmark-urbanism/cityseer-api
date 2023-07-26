@@ -27,7 +27,7 @@ from shapely import geometry
 from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
 from tqdm import tqdm
 
-from cityseer import config, structures
+from cityseer import config, rustalgos
 from cityseer.tools.graphs import EdgeData, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
@@ -61,7 +61,7 @@ def _open_plots_reset():
 def plot_nx_primal_or_dual(  # noqa
     primal_graph: Optional[MultiGraph] = None,
     dual_graph: Optional[MultiGraph] = None,
-    path: Optional[str] = None,
+    path: str | None = None,
     labels: bool = False,
     primal_node_size: int = 30,
     primal_node_colour: Optional[ColourType] = None,
@@ -315,7 +315,7 @@ def plot_nx_primal_or_dual(  # noqa
 
 def plot_nx(
     nx_multigraph: MultiGraph,
-    path: Optional[str] = None,
+    path: str | None = None,
     labels: bool = False,
     node_size: int = 20,
     node_colour: Optional[ColourType] = None,
@@ -418,7 +418,7 @@ def plot_assignment(  # noqa
     network_structure: rustalgos.NetworkStructure,
     nx_multigraph: MultiGraph,
     data_gdf: gpd.GeoDataFrame,
-    path: Optional[str] = None,
+    path: str | None = None,
     node_colour: Optional[ColourType] = None,
     node_labels: bool = False,
     data_labels: Optional[Union[npt.NDArray[np.int_], npt.NDArray[np.unicode_]]] = None,
@@ -556,7 +556,7 @@ def plot_assignment(  # noqa
 
 
 def plot_network_structure(
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     data_gdf: gpd.GeoDataFrame,
     poly: Optional[geometry.Polygon] = None,
 ):
@@ -608,7 +608,7 @@ def plot_network_structure(
     )
     # plot edges
     processed_edges: set[str] = set()
-    for start_nd_idx, end_nd_idx, edge_idx in network_structure.edge_references():
+    for start_nd_idx, end_nd_idx, _edge_idx in network_structure.edge_references():
         keys = sorted([start_nd_idx, end_nd_idx])
         se_key = "-".join([str(k) for k in keys])
         # bool indicating whether second copy in opposite direction
@@ -661,8 +661,8 @@ def plot_network_structure(
 
 def plot_scatter(
     ax: plt.Axes,
-    xs: list | npt.NDArray[np.float_],
-    ys: list | npt.NDArray[np.float_],
+    xs: list[float] | npt.NDArray[np.float_],
+    ys: list[float] | npt.NDArray[np.float_],
     vals: npt.NDArray[np.float32],
     bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
     perc_range: tuple[float, float] = (0.01, 99.99),
@@ -758,7 +758,7 @@ def plot_nx_edges(
     shape_exp: float = 1,
     lw_min: float = 0.1,
     lw_max: float = 1,
-    edge_label_key: Optional[str] = None,
+    edge_label_key: str | None = None,
     colour_by_categorical: bool = False,
     max_n_categorical: int = 10,
     rasterized: bool = True,

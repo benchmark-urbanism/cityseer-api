@@ -404,7 +404,7 @@ def mock_numerical_data(
 
 def mock_species_data(
     random_seed: int = 0,
-) -> Generator[tuple[npt.NDArray[np.int_], npt.NDArray[np.float32]], None, None]:
+) -> Generator[tuple[list[int], list[float]], None, None]:
     """
     Generate a series of randomly generated counts and corresponding probabilities.
 
@@ -461,4 +461,4 @@ def mock_species_data(
             counts[idx] = (data == uniq).sum()
         probs = counts / len(data)
 
-        yield counts, probs
+        yield counts.tolist(), probs.tolist()

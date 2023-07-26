@@ -140,7 +140,7 @@ def test_betas_from_distances():
 
 
 def test_pair_distances_and_betas():
-    betas = np.array([0.02, 0.01, 0.005, 0.0025], np.float32)
+    betas = [0.02, 0.01, 0.005, 0.0025]
     distances = rustalgos.distances_from_betas(betas)
     # should raise if both provided
     with pytest.raises(ValueError):
@@ -179,7 +179,7 @@ def test_clip_wts_curve():
 
 
 def test_clipped_beta_wt():
-    distances = np.array([400, 800, 1600], dtype=np.int_)
+    distances = [400, 800, 1600]
     betas = rustalgos.betas_from_distances(distances)
     # try a range of spatial tolerances
     for spatial_tolerance in [0, 50, 400]:
@@ -188,7 +188,7 @@ def test_clipped_beta_wt():
         # iter
         for dist, beta, max_wt in zip(distances, betas, max_curve_wts):
             # try a range of datapoint distances
-            for data_dist in np.array([0, 25, 50, 100, 400, 800, 1600], dtype=np.int_):
+            for data_dist in [0, 25, 50, 100, 400, 800, 1600]:
                 # continue if data distance exceeds current distance threshold - these are ignored in computations
                 if data_dist > dist:
                     continue

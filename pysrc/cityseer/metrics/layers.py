@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
-from cityseer import cctypes, config, structures, rustalgos
+from cityseer import config, rustalgos
 from cityseer.algos import data
 from cityseer.metrics import networks
 
@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: Union[int, float],
-    data_id_col: Optional[str] = None,
+    data_id_col: str | None = None,
 ) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
     """
     Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
@@ -80,25 +80,37 @@ def assign_gdf_to_network(
     _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
 
     """
-    network_structure.validate()
     data_map = rustalgos.DataMap()
+    calculate_assigned = False
+    # add column to data_gdf
+    if not ("nearest_assign" in data_gdf.columns and "next_nearest_assign" in data_gdf.columns):
+        calculate_assigned = True
+        data_gdf["nearest_assign"] = None
+        data_gdf["next_nearest_assign"] = None
+    # prepare the data_map
     for data_key, data_row in data_gdf.iterrows():
         if not isinstance(data_key, str):
             raise ValueError("Data keys must be string instances.")
         data_id = None if data_id_col is None else str(data_row[data_id_col])
-        data_map.insert(data_key, data_row["geometry"].x, data_row["geometry"].y, data_id)
-    # add column to data_gdf
-    data_gdf["nearest_assign"] = None
-    data_gdf["next_nearest_assign"] = None
-    for data_key in data_map.entry_keys():
-        data_coord = data_map.get_data_coord(data_key)
-        nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
-        if nearest_idx is not None:
-            data_map.set_nearest_assign(data_key, nearest_idx)
-            data_gdf.at[data_key, "nearest_assign"] = nearest_idx
-        if next_nearest_idx is not None:
-            data_map.set_next_nearest_assign(data_key, next_nearest_idx)
-            data_gdf.at[data_key, "next_nearest_assign"] = next_nearest_idx
+        data_map.insert(
+            data_key,
+            data_row["geometry"].x,
+            data_row["geometry"].y,
+            data_id,
+            data_row["nearest_assign"],
+            data_row["next_nearest_assign"],
+        )
+    # only compute if not already computed
+    if calculate_assigned is True:
+        for data_key in data_map.entry_keys():
+            data_coord = data_map.get_data_coord(data_key)
+            nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
+            if nearest_idx is not None:
+                data_map.set_nearest_assign(data_key, nearest_idx)
+                data_gdf.at[data_key, "nearest_assign"] = nearest_idx
+            if next_nearest_idx is not None:
+                data_map.set_next_nearest_assign(data_key, next_nearest_idx)
+                data_gdf.at[data_key, "next_nearest_assign"] = next_nearest_idx
     if data_map.none_assigned():
         logger.warning("No assignments for nearest assigned direction.")
     return data_map, data_gdf
@@ -107,14 +119,15 @@ def assign_gdf_to_network(
 def compute_accessibilities(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
-    accessibility_keys: Union[list[str], tuple[str]],
+    accessibility_keys: list[str] | tuple[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    data_id_col: Optional[str] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    data_id_col: str | None = None,
     spatial_tolerance: int = 0,
+    min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -207,90 +220,59 @@ def compute_accessibilities(
     ```
 
     """
-    network_structure.validate()
-    _distances, _betas = networks.pair_distances_betas(distances, betas)
-    data_map, data_gdf = assign_gdf_to_network(
-        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_id_col=data_id_col
-    )
-    # remember, most checks on parameter integrity occur in underlying function
-    # so, don't duplicate here
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    # get the landuse encodings
-    lab_enc = LabelEncoder()
-    encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf[landuse_column_label])  # type: ignore
-    data_gdf[f"{landuse_column_label}_encoded"] = encoded_labels  # type: ignore
-    # figure out the corresponding indices for the landuse classes that are present in the dataset
-    # these indices are passed as keys which will be matched against the integer landuse encodings
-    acc_keys: list[int] = []
-    for ac_label in accessibility_keys:
-        if ac_label not in lab_enc.classes_:  # type: ignore
-            logger.warning(f"No instances of accessibility label '{ac_label}' in the data.")
-        else:
-            acc_keys.append(lab_enc.transform([ac_label]))  # type: ignore
+    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
         logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
-    progress_proxy = None
-    # determine max impedance weights
-    max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
+    # extract landuses
+    landuses_map = data_gdf[landuse_column_label].to_dict()
     # call the underlying function
-    accessibility_data, accessibility_data_wt = data.accessibility(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        data_map.data_id,
-        distances=_distances,
-        betas=_betas,
-        max_curve_wts=max_curve_wts,
-        landuse_encodings=encoded_labels,
-        accessibility_keys=np.array(acc_keys, dtype=np.int_),
-        jitter_scale=np.float32(jitter_scale),
-        angular=angular,
-        progress_proxy=progress_proxy,
+    accessibility_data = data_map.accessibility(
+        network_structure,
+        landuses_map,
+        accessibility_keys,
+        distances,
+        betas,
+        angular,
+        spatial_tolerance,
+        min_threshold_wt,
+        jitter_scale,
     )
-    if progress_proxy is not None:
-        progress_proxy.close()
     # unpack accessibility data
-    for ac_label in accessibility_keys:
-        for d_idx, d_key in enumerate(_distances):
-            ac_nw_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_non_weighted")
-            ac_wt_data_key = config.prep_gdf_key(f"{ac_label}_{d_key}_weighted")
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    for acc_key in accessibility_keys:
+        for dist_key in distances:
+            ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
+            ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
             # sometimes target classes are not present in data
-            if ac_label in lab_enc.classes_:  # type: ignore
-                ac_code: int = lab_enc.transform([ac_label])  # type: ignore
-                ac_idx: int = acc_keys.index(ac_code)
-                nodes_gdf[ac_nw_data_key] = accessibility_data[ac_idx][d_idx]  # non-weighted
-                nodes_gdf[ac_wt_data_key] = accessibility_data_wt[ac_idx][d_idx]  # weighted
-            else:
-                nodes_gdf[ac_nw_data_key] = int(0)
-                nodes_gdf[ac_wt_data_key] = float(0.0)
+            nodes_gdf[ac_nw_data_key] = accessibility_data[acc_key].unweighted[dist_key]  # non-weighted
+            nodes_gdf[ac_wt_data_key] = accessibility_data[acc_key].weighted[dist_key]  # weighted
 
     return nodes_gdf, data_gdf
+
+
+QsType = Union[
+    int,
+    float,
+    Union[list[int], list[float]],
+    Union[tuple[int], tuple[float]],
+    Union[npt.NDArray[np.int_], npt.NDArray[np.float32]],
+    None,
+]
 
 
 def compute_mixed_uses(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
-    mixed_use_keys: Union[list[str], tuple[str]],
+    mixed_use_keys: list[str] | tuple[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
     cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
-    qs: Optional[cctypes.QsType] = None,
+    qs: QsType | None = None,
     spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
@@ -525,7 +507,7 @@ def compute_mixed_uses(
         distances=_distances,
         betas=_betas,
         max_curve_wts=max_curve_wts,
-        landuse_encodings=encoded_labels,
+        landuses_map=encoded_labels,
         qs=np.array(qs, dtype=np.float32),
         mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.int_),
         mixed_use_other_keys=np.array(mu_other_keys, dtype=np.int_),
@@ -559,11 +541,11 @@ def hill_diversity(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    qs: cctypes.QsType = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    qs: QsType = None,
     spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
@@ -670,11 +652,11 @@ def hill_branch_wt_diversity(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    qs: cctypes.QsType = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    qs: QsType = None,
     spatial_tolerance: int = 0,
     jitter_scale: float = 0.0,
     angular: bool = False,
@@ -781,11 +763,11 @@ def compute_stats(
     data_gdf: gpd.GeoDataFrame,
     stats_column_labels: Union[str, list[str], tuple[str], npt.NDArray[np.unicode_]],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: structures.NetworkStructure,
+    network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
-    distances: Optional[cctypes.DistancesType] = None,
-    betas: Optional[cctypes.BetasType] = None,
-    data_id_col: Optional[str] = None,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    data_id_col: str | None = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
