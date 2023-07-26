@@ -3,7 +3,7 @@ use pyo3::exceptions;
 use pyo3::prelude::*;
 
 #[pyfunction]
-pub fn hill_diversity(class_counts: Vec<i32>, q: f32) -> PyResult<f32> {
+pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
     /*
     Compute Hill diversity.
 
@@ -21,7 +21,7 @@ pub fn hill_diversity(class_counts: Vec<i32>, q: f32) -> PyResult<f32> {
             "Please select a non-zero value for q.",
         ));
     }
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     // catch potential division by zero situations
     let mut hill = 0.0;
     if num != 0 {
@@ -54,7 +54,7 @@ pub fn hill_diversity(class_counts: Vec<i32>, q: f32) -> PyResult<f32> {
 
 #[pyfunction]
 pub fn hill_diversity_branch_distance_wt(
-    class_counts: Vec<i32>,
+    class_counts: Vec<u32>,
     class_distances: Vec<f32>,
     q: f32,
     beta: f32,
@@ -89,7 +89,7 @@ pub fn hill_diversity_branch_distance_wt(
         ));
     }
     // catch potential division by zero situations
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     if num == 0 {
         return Ok(0.0);
     }
@@ -134,7 +134,7 @@ pub fn hill_diversity_branch_distance_wt(
 
 #[pyfunction]
 pub fn hill_diversity_pairwise_distance_wt(
-    class_counts: Vec<i32>,
+    class_counts: Vec<u32>,
     class_distances: Vec<f32>,
     q: f32,
     beta: f32,
@@ -173,7 +173,7 @@ pub fn hill_diversity_pairwise_distance_wt(
         ));
     }
     // catch potential division by zero situations
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     if num == 0 {
         return Ok(0.0);
     }
@@ -268,7 +268,7 @@ pub fn hill_diversity_pairwise_distance_wt(
 }
 
 #[pyfunction]
-pub fn gini_simpson_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
+pub fn gini_simpson_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
     /*
     Gini-Simpson diversity.
     Gini transformed to 1 − λ
@@ -278,7 +278,7 @@ pub fn gini_simpson_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
     Bias corrected:
     D = 1 - sum(Xi/N * (Xi-1/N-1))
     */
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     let mut gini: f32 = 0.0;
     // catch potential division by zero situations
     if num < 2 {
@@ -292,7 +292,7 @@ pub fn gini_simpson_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
 }
 
 #[pyfunction]
-pub fn shannon_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
+pub fn shannon_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
     /*
     Shannon diversity (information entropy).
     Entropy
@@ -300,7 +300,7 @@ pub fn shannon_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
     S = -sum(p * log(p))
     Uncertainty of the species identity of an individual picked at random (Tuomisto)
     */
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     let mut shannon: f32 = 0.0;
     // catch potential division by zero situations
     if num == 0 {
@@ -319,7 +319,7 @@ pub fn shannon_diversity(class_counts: Vec<i32>) -> PyResult<f32> {
 
 #[pyfunction]
 pub fn raos_quadratic_diversity(
-    class_counts: Vec<i32>,
+    class_counts: Vec<u32>,
     wt_matrix: Vec<Vec<f32>>,
     alpha: f32,
     beta: f32,
@@ -353,7 +353,7 @@ pub fn raos_quadratic_diversity(
         ));
     }
     // catch potential division by zero situations
-    let num: i32 = class_counts.iter().sum();
+    let num: u32 = class_counts.iter().sum();
     if num < 2 {
         return Ok(0.0);
     }

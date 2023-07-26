@@ -258,7 +258,6 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
-        let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
         let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
         let node_farness = MetricResult::new(distances.clone(), self.graph.node_count());
@@ -270,6 +269,7 @@ impl NetworkStructure {
         // indices
         let node_indices: Vec<usize> = self.node_indices();
         // pbar
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
         let pbar = ProgressBar::new(node_indices.len() as u64)
             .with_message("Computing shortest path node centrality");
         if pbar_disabled {
