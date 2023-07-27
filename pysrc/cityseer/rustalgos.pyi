@@ -94,7 +94,7 @@ class NetworkStructure:
     @classmethod
     def new(cls) -> NetworkStructure: ...
     def add_node(self, node_key: str, x: float, y: float, live: bool) -> int: ...
-    def get_node_payload(self, node_idx: int) -> NodePayload | None: ...
+    def get_node_payload(self, node_idx: int) -> NodePayload: ...
     def is_node_live(self, node_idx: int) -> bool: ...
     def node_count(self) -> int: ...
     def node_indices(self) -> list[int]: ...
@@ -122,7 +122,7 @@ class NetworkStructure:
         out_bearing: float,
     ) -> int: ...
     def edge_references(self) -> list[tuple[int, int, int]]: ...
-    def get_edge_payload(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> EdgePayload | None: ...
+    def get_edge_payload(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> EdgePayload: ...
     def validate(self) -> bool: ...
     def find_nearest(self, data_coord: Any, max_dist: float) -> tuple[int | None, float, int | None]: ...
     def road_distance(self, data_coord: Any, nd_a_idx: int, nd_b_idx: int) -> tuple[float, int | None, int | None]: ...
@@ -135,33 +135,33 @@ class NetworkStructure:
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]: ...
     def local_node_centrality_shortest(
         self,
-        distances: list[int] | None,
-        betas: list[float] | None,
-        closeness: bool | None,
-        betweenness: bool | None,
-        min_threshold_wt: float | None,
-        jitter_scale: float | None,
-        pbar_disabled: bool | None,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        closeness: bool | None = None,
+        betweenness: bool | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
     ) -> tuple[CloseShortestResult | None, BetwShortestResult | None]: ...
     def local_node_centrality_simplest(
         self,
-        distances: list[int] | None,
-        betas: list[float] | None,
-        closeness: bool | None,
-        betweenness: bool | None,
-        min_threshold_wt: float | None,
-        jitter_scale: float | None,
-        pbar_disabled: bool | None,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        closeness: bool | None = None,
+        betweenness: bool | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
     ) -> tuple[CloseSimplestResult | None, BetwSimplestResult | None]: ...
     def local_segment_centrality_shortest(
         self,
-        distances: list[int] | None,
-        betas: list[float] | None,
-        closeness: bool | None,
-        betweenness: bool | None,
-        min_threshold_wt: float | None,
-        jitter_scale: float | None,
-        pbar_disabled: bool | None,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        closeness: bool | None = None,
+        betweenness: bool | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
     ) -> tuple[CloseSegmentShortestResult | None, BetwSegmentShortestResult | None]: ...
 
 def hill_diversity(class_counts: list[int], q: float) -> float: ...
@@ -176,3 +176,94 @@ def shannon_diversity(class_counts: list[int]) -> float: ...
 def raos_quadratic_diversity(
     class_counts: list[int], wt_matrix: list[list[float]], alpha: float, beta: float
 ) -> float: ...
+
+class AccessibilityResult:
+    weighted: dict[int, np.ndarray]
+    unweighted: dict[int, np.ndarray]
+
+class MixedUsesHillResult:
+    hill: dict[int, dict[int, np.ndarray]]
+    hill_weighted: dict[int, dict[int, np.ndarray]]
+
+class MixedUsesOtherResult:
+    shannon: dict[int, np.ndarray]
+    gini: dict[int, np.ndarray]
+
+class ClassesState:
+    count: int
+    nearest: float
+
+class DataEntry:
+    data_key: str
+    coord: Coord
+    data_id: str | None
+    nearest_assign: int | None
+    next_nearest_assign: int | None
+
+    def __init__(
+        self,
+        data_key: str,
+        x: float,
+        y: float,
+        data_id: str | None = None,
+        nearest_assign: int | None = None,
+        next_nearest_assign: int | None = None,
+    ) -> None: ...
+    def is_assigned(self) -> bool: ...
+
+class DataMap:
+    entries: dict[str, DataEntry]
+    def __init__(self) -> None: ...
+    def insert(
+        self,
+        data_key: str,
+        x: float,
+        y: float,
+        data_id: str | None = None,
+        nearest_assign: int | None = None,
+        next_nearest_assign: int | None = None,
+    ) -> None: ...
+    def entry_keys(self) -> list[str]: ...
+    def get_entry(self, data_key: str) -> DataEntry | None: ...
+    def get_data_coord(self, data_key: str) -> Coord | None: ...
+    def count(self) -> int: ...
+    def is_empty(self) -> bool: ...
+    def all_assigned(self) -> bool: ...
+    def none_assigned(self) -> bool: ...
+    def set_nearest_assign(self, data_key: str, assign_idx: int) -> None: ...
+    def set_next_nearest_assign(self, data_key: str, assign_idx: int) -> None: ...
+    def aggregate_to_src_idx(
+        self,
+        netw_src_idx: int,
+        network_structure: NetworkStructure,
+        max_dist: int,
+        jitter_scale: float | None = None,
+        angular: bool | None = None,
+    ) -> dict[str, float]: ...
+    def accessibility(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[str, str],
+        accessibility_keys: list[str],
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        angular: bool | None = None,
+        spatial_tolerance: int | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> dict[str, AccessibilityResult]: ...
+    def mixed_uses(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[str, str],
+        mixed_uses_hill: bool | None = None,
+        mixed_uses_other: bool | None = None,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        angular: bool | None = None,
+        spatial_tolerance: int | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> tuple[MixedUsesHillResult | None, MixedUsesOtherResult | None]: ...

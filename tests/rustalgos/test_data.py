@@ -10,7 +10,6 @@ import pytest
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, rustalgos
-from cityseer.algos import data, diversity
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
@@ -34,7 +33,7 @@ def test_aggregate_to_src_idx(primal_graph):
             # from cityseer.tools import plot
             # plot.plot_network_structure(network_structure, data_map)
             for angular in [True, False]:
-                for netw_src_idx in range(network_structure.node_count()):
+                for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
                         netw_src_idx, network_structure, max_dist, angular=angular
@@ -80,7 +79,7 @@ def test_aggregate_to_src_idx(primal_graph):
                                 < config.ATOL
                             )
     # reuse the last instance of data_gdf and check that recomputing is not happening if already assigned
-    assert "nearest_assign" in data_gdf
+    assert "nearest_assign" in data_gdf.columns
     assert "next_nearest_assign" in data_gdf.columns
     # override with nonsense value
     data_gdf["nearest_assign"] = 0
@@ -111,7 +110,7 @@ def test_accessibility(primal_graph):
     # test manual metrics against all nodes
     betas = rustalgos.betas_from_distances(distances)
     for dist, beta in zip(distances, betas):
-        for src_idx in range(len(primal_graph)):  # type: ignore
+        for src_idx in network_structure.node_indices():  # type: ignore
             # aggregate
             a_nw = 0
             b_nw = 0
@@ -182,469 +181,97 @@ def test_accessibility(primal_graph):
     assert some_false is True
 
 
-def test_mixed_uses_signatures(primal_graph):
-    # generate node and edge maps
-    _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500)
-    lab_enc = LabelEncoder()
-    encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
-    # set parameters
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025])
-    distances = networks.distance_from_beta(betas)
-    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
-    qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
-    # check that empty land_use encodings are caught
-    with pytest.raises(ValueError):
-        data.mixed_uses(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            distances,
-            betas,
-            max_curve_wts,
-            mixed_use_hill_keys=np.array([0], dtype=np.int_),
-        )
-    # check that unequal land_use encodings vs data map lengths are caught
-    with pytest.raises(ValueError):
-        data.mixed_uses(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            distances,
-            betas,
-            max_curve_wts,
-            landuses_map=encoded_labels[:-1],
-            mixed_use_other_keys=np.array([0]),
-        )
-    # check that no provided metrics flags
-    with pytest.raises(ValueError):
-        data.mixed_uses(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            distances,
-            betas,
-            max_curve_wts,
-            landuses_map=encoded_labels,
-        )
-    # check that missing qs flags
-    with pytest.raises(ValueError):
-        data.mixed_uses(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            distances,
-            betas,
-            max_curve_wts,
-            mixed_use_hill_keys=np.array([0]),
-            landuses_map=encoded_labels,
-        )
-    # check that problematic mixed use and accessibility keys are caught
-    for mu_h_key, mu_o_key in [
-        # negatives
-        ([-1], [1]),
-        ([1], [-1]),
-        # out of range
-        ([4], [1]),
-        ([1], [3]),
-        # duplicates
-        ([1, 1], [1]),
-        ([1], [1, 1]),
-    ]:
-        with pytest.raises(ValueError):
-            data.mixed_uses(
-                network_structure.nodes.xs,
-                network_structure.nodes.ys,
-                network_structure.nodes.live,
-                network_structure.edges.start,
-                network_structure.edges.end,
-                network_structure.edges.length,
-                network_structure.edges.angle_sum,
-                network_structure.edges.imp_factor,
-                network_structure.edges.in_bearing,
-                network_structure.edges.out_bearing,
-                network_structure.node_edge_map,
-                data_map.xs,
-                data_map.ys,
-                data_map.nearest_assign,
-                data_map.next_nearest_assign,
-                distances,
-                betas,
-                max_curve_wts,
-                encoded_labels,
-                qs=qs,
-                mixed_use_hill_keys=np.array(mu_h_key),
-                mixed_use_other_keys=np.array(mu_o_key),
-            )
-    for h_key, o_key in (([3], []), ([], [2])):
-        # check that missing matrix is caught for disparity weighted indices
-        with pytest.raises(ValueError):
-            data.mixed_uses(
-                network_structure.nodes.xs,
-                network_structure.nodes.ys,
-                network_structure.nodes.live,
-                network_structure.edges.start,
-                network_structure.edges.end,
-                network_structure.edges.length,
-                network_structure.edges.angle_sum,
-                network_structure.edges.imp_factor,
-                network_structure.edges.in_bearing,
-                network_structure.edges.out_bearing,
-                network_structure.node_edge_map,
-                data_map.xs,
-                data_map.ys,
-                data_map.nearest_assign,
-                data_map.next_nearest_assign,
-                distances,
-                betas,
-                max_curve_wts,
-                landuses_map=encoded_labels,
-                qs=qs,
-                mixed_use_hill_keys=np.array(h_key),
-                mixed_use_other_keys=np.array(o_key),
-            )
-        # check that non-square disparity matrix is caught
-        mock_matrix = np.full((len(lab_enc.classes_), len(lab_enc.classes_)), 1)
-        with pytest.raises(ValueError):
-            data.mixed_uses(
-                network_structure.nodes.xs,
-                network_structure.nodes.ys,
-                network_structure.nodes.live,
-                network_structure.edges.start,
-                network_structure.edges.end,
-                network_structure.edges.length,
-                network_structure.edges.angle_sum,
-                network_structure.edges.imp_factor,
-                network_structure.edges.in_bearing,
-                network_structure.edges.out_bearing,
-                network_structure.node_edge_map,
-                data_map.xs,
-                data_map.ys,
-                data_map.nearest_assign,
-                data_map.next_nearest_assign,
-                distances,
-                betas,
-                max_curve_wts,
-                landuses_map=encoded_labels,
-                qs=qs,
-                mixed_use_hill_keys=np.array(h_key),
-                mixed_use_other_keys=np.array(o_key),
-                cl_disparity_wt_matrix=mock_matrix[:-1],
-            )
-
-
 def test_mixed_uses(primal_graph):
     # generate node and edge maps
-    _nodes_gpd, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 500)
-    lab_enc = LabelEncoder()
-    encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
-    # set parameters
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0025], dtype=np.float32)
-    distances = networks.distance_from_beta(betas)
-    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
-    qs: npt.NDArray[np.float32] = np.array([0, 1, 2])
-    mock_matrix: npt.NDArray[np.float32] = np.full((len(lab_enc.classes_), len(lab_enc.classes_)), 1)
-    # set the keys - add shuffling to be sure various orders work
-    hill_keys: npt.NDArray[np.int_] = np.arange(4)
-    np.random.shuffle(hill_keys)
-    non_hill_keys: npt.NDArray[np.int_] = np.arange(3)
-    np.random.shuffle(non_hill_keys)
-    ac_keys: npt.NDArray[np.int_] = np.array([1, 2, 5])
-    np.random.shuffle(ac_keys)
-    # generate
-    mu_data_hill, mu_data_other = data.mixed_uses(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        distances,
-        betas,
-        max_curve_wts,
-        landuses_map=encoded_labels,
-        qs=qs,
-        mixed_use_hill_keys=hill_keys,
-        mixed_use_other_keys=non_hill_keys,
-        cl_disparity_wt_matrix=mock_matrix,
-        angular=False,
-    )
-    # hill
-    hill = mu_data_hill[np.where(hill_keys == 0)][0]
-    hill_branch_wt = mu_data_hill[np.where(hill_keys == 1)][0]
-    hill_pw_wt = mu_data_hill[np.where(hill_keys == 2)][0]
-    hill_disp_wt = mu_data_hill[np.where(hill_keys == 3)][0]
-    # non hill
-    shannon = mu_data_other[np.where(non_hill_keys == 0)][0]
-    gini = mu_data_other[np.where(non_hill_keys == 1)][0]
-    raos = mu_data_other[np.where(non_hill_keys == 2)][0]
-    # test manual metrics against all nodes
-    mu_max_unique = len(lab_enc.classes_)
+    distances = [200, 400, 800, 1600]
+    max_dist = max(distances)
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
+    landuses_map = data_gdf["categorical_landuses"].to_dict()
     # test against various distances
-    for d_idx, (dist_cutoff, beta) in enumerate(zip(distances, betas)):
-        for src_idx in range(len(primal_graph)):
-            reachable_data, reachable_data_dist = data.aggregate_to_src_idx(
-                src_idx,
-                network_structure.nodes.xs,
-                network_structure.nodes.ys,
-                network_structure.edges.start,
-                network_structure.edges.end,
-                network_structure.edges.length,
-                network_structure.edges.angle_sum,
-                network_structure.edges.imp_factor,
-                network_structure.edges.in_bearing,
-                network_structure.edges.out_bearing,
-                network_structure.node_edge_map,
-                data_map.xs,
-                data_map.ys,
-                data_map.nearest_assign,
-                data_map.next_nearest_assign,
-                dist_cutoff,
+    betas = rustalgos.betas_from_distances(distances)
+    for angular in [False, True]:
+        # generate
+        mu_data_hill, mu_data_other = data_map.mixed_uses(
+            network_structure,
+            landuses_map,
+            distances=distances,
+            mixed_uses_hill=True,
+            mixed_uses_other=True,
+            angular=angular,
+        )
+        for netw_src_idx in network_structure.node_indices():
+            reachable_entries = data_map.aggregate_to_src_idx(
+                netw_src_idx, network_structure, max_dist, angular=angular
             )
-            # counts of each class type (array length per max unique classes - not just those within max distance)
-            cl_counts: npt.NDArray[np.int_] = np.full(mu_max_unique, 0)
-            # nearest of each class type (likewise)
-            cl_nearest: npt.NDArray[np.float32] = np.full(mu_max_unique, np.inf)
-            # aggregate
-            a_nw = 0
-            b_nw = 0
-            c_nw = 0
-            a_w = 0
-            b_w = 0
-            c_w = 0
-            # iterate reachable
-            for data_idx, (reachable, data_dist) in enumerate(zip(reachable_data, reachable_data_dist)):
-                if not reachable:
-                    continue
-                cl = encoded_labels[data_idx]
-                # double check distance is within threshold
-                assert data_dist <= dist_cutoff
-                # update the class counts
-                cl_counts[cl] += 1
-                # if distance is nearer, update the nearest distance array too
-                if data_dist < cl_nearest[cl]:
-                    cl_nearest[cl] = data_dist
-                # aggregate accessibility codes
-                if cl == 1:
-                    a_nw += 1
-                    a_w += np.exp(-beta * data_dist)
-                elif cl == 2:
-                    b_nw += 1
-                    b_w += np.exp(-beta * data_dist)
-                elif cl == 5:
-                    c_nw += 1
-                    c_w += np.exp(-beta * data_dist)
-            # assertions
-            assert np.isclose(
-                hill[0, d_idx, src_idx],
-                diversity.hill_diversity(cl_counts, np.float32(0)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill[1, d_idx, src_idx],
-                diversity.hill_diversity(cl_counts, np.float32(1)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill[2, d_idx, src_idx],
-                diversity.hill_diversity(cl_counts, np.float32(2)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_branch_wt[0, d_idx, src_idx],
-                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(0), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_branch_wt[1, d_idx, src_idx],
-                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(1), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_branch_wt[2, d_idx, src_idx],
-                diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, np.float32(2), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_pw_wt[0, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(0), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_pw_wt[1, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(1), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_pw_wt[2, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_distance_wt(cl_counts, cl_nearest, np.float32(2), beta),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_disp_wt[0, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(0)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_disp_wt[1, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(1)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                hill_disp_wt[2, d_idx, src_idx],
-                diversity.hill_diversity_pairwise_matrix_wt(cl_counts, mock_matrix, np.float32(2)),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.isclose(
-                shannon[d_idx, src_idx], diversity.shannon_diversity(cl_counts), rtol=config.RTOL, atol=config.ATOL
-            )
-            assert np.isclose(
-                gini[d_idx, src_idx], diversity.gini_simpson_diversity(cl_counts), rtol=config.RTOL, atol=config.ATOL
-            )
-            assert np.isclose(
-                raos[d_idx, src_idx],
-                diversity.raos_quadratic_diversity(cl_counts, mock_matrix),
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-    # check that angular is passed-through
-    # actual angular tests happen in test_shortest_path_tree()
-    # here the emphasis is simply on checking that the angular instruction gets chained through
-    # setup dual data
-    G_dual = graphs.nx_to_dual(primal_graph)
-    _nodes_gpd_dual, network_structure_dual = graphs.network_structure_from_nx(G_dual, 3395)
-    data_gdf_dual = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map_dual, data_gdf_dual = layers.assign_gdf_to_network(data_gdf_dual, network_structure_dual, 500)
-    lab_enc_dual = LabelEncoder()
-    encoded_labels_dual: npt.NDArray[np.int_] = lab_enc_dual.fit_transform(data_gdf_dual["categorical_landuses"])
-    mock_matrix: npt.NDArray[np.float32] = np.full((len(lab_enc_dual.classes_), len(lab_enc_dual.classes_)), 1)
-    # checks
-    mu_hill_dual, mu_other_dual = data.mixed_uses(
-        network_structure_dual.nodes.xs,
-        network_structure_dual.nodes.ys,
-        network_structure_dual.nodes.live,
-        network_structure_dual.edges.start,
-        network_structure_dual.edges.end,
-        network_structure_dual.edges.length,
-        network_structure_dual.edges.angle_sum,
-        network_structure_dual.edges.imp_factor,
-        network_structure_dual.edges.in_bearing,
-        network_structure_dual.edges.out_bearing,
-        network_structure_dual.node_edge_map,
-        data_map_dual.xs,
-        data_map_dual.ys,
-        data_map_dual.nearest_assign,
-        data_map_dual.next_nearest_assign,
-        distances,
-        betas,
-        max_curve_wts,
-        encoded_labels_dual,
-        qs=qs,
-        mixed_use_hill_keys=hill_keys,
-        mixed_use_other_keys=non_hill_keys,
-        cl_disparity_wt_matrix=mock_matrix,
-        angular=True,
-    )
-    mu_hill_dual_sidestep, mu_other_dual_sidestep = data.mixed_uses(
-        network_structure_dual.nodes.xs,
-        network_structure_dual.nodes.ys,
-        network_structure_dual.nodes.live,
-        network_structure_dual.edges.start,
-        network_structure_dual.edges.end,
-        network_structure_dual.edges.length,
-        network_structure_dual.edges.angle_sum,
-        network_structure_dual.edges.imp_factor,
-        network_structure_dual.edges.in_bearing,
-        network_structure_dual.edges.out_bearing,
-        network_structure_dual.node_edge_map,
-        data_map_dual.xs,
-        data_map_dual.ys,
-        data_map_dual.nearest_assign,
-        data_map_dual.next_nearest_assign,
-        distances,
-        betas,
-        max_curve_wts,
-        encoded_labels_dual,
-        qs=qs,
-        mixed_use_hill_keys=hill_keys,
-        mixed_use_other_keys=non_hill_keys,
-        cl_disparity_wt_matrix=mock_matrix,
-        angular=False,
-    )
-    assert not np.allclose(mu_hill_dual, mu_hill_dual_sidestep, atol=config.ATOL, rtol=config.RTOL)
-    assert not np.allclose(mu_other_dual, mu_other_dual_sidestep, atol=config.ATOL, rtol=config.RTOL)
+            for dist_cutoff, beta in zip(distances, betas):
+                class_agg = dict()
+                # iterate reachable
+                for data_key, data_dist in reachable_entries.items():
+                    # double check distance is within threshold
+                    if data_dist > dist_cutoff:
+                        continue
+                    cl = landuses_map[data_key]
+                    if cl not in class_agg:
+                        class_agg[cl] = {"count": 0, "nearest": np.inf}
+                    # update the class counts
+                    class_agg[cl]["count"] += 1
+                    # if distance is nearer, update the nearest distance array too
+                    if data_dist < class_agg[cl]["nearest"]:
+                        class_agg[cl]["nearest"] = data_dist
+                # summarise
+                cl_counts = [v["count"] for v in class_agg.values()]
+                cl_nearest = [v["nearest"] for v in class_agg.values()]
+                # assertions
+                assert np.isclose(
+                    mu_data_hill.hill[0][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity(cl_counts, 0.0),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_hill.hill[1][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity(cl_counts, 1),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_hill.hill[2][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity(cl_counts, 2),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_hill.hill_weighted[0][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_hill.hill_weighted[1][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_hill.hill_weighted[2][dist_cutoff][netw_src_idx],
+                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_other.shannon[dist_cutoff][netw_src_idx],
+                    rustalgos.shannon_diversity(cl_counts),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
+                assert np.isclose(
+                    mu_data_other.gini[dist_cutoff][netw_src_idx],
+                    rustalgos.gini_simpson_diversity(cl_counts),
+                    rtol=config.RTOL,
+                    atol=config.ATOL,
+                )
 
 
 def test_aggregate_stats(primal_graph):

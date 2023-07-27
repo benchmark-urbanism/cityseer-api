@@ -36,335 +36,134 @@ def test_compute_accessibilities(primal_graph):
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
-    for key_set in (["a"], ["b"], ["a", "b"]):
-        nodes_gdf, data_gdf = layers.compute_accessibilities(
-            data_gdf,
-            "categorical_landuses",
-            key_set,
-            nodes_gdf,
-            network_structure,
-            max_netw_assign_dist=max_assign_dist,
-            distances=distances,
-        )
-        # test against manual implementation over underlying method
-        landuses_map = data_gdf["categorical_landuses"].to_dict()
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-        # accessibilities
-        accessibility_data = data_map.accessibility(
-            network_structure,
-            landuses_map,
-            key_set,
-            distances,
-        )
-        for acc_key in key_set:
-            for dist_key in distances:
-                acc_data_key_nw = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
-                assert np.allclose(
-                    nodes_gdf[acc_data_key_nw].values,
-                    accessibility_data[acc_key].unweighted[dist_key],
-                    atol=config.ATOL,
-                    rtol=config.RTOL,
+    for angular in [False, True]:
+        for data_id_col in [None, "data_id"]:
+            for key_set in (["a"], ["b"], ["a", "b"]):
+                nodes_gdf, data_gdf = layers.compute_accessibilities(
+                    data_gdf,
+                    "categorical_landuses",
+                    key_set,
+                    nodes_gdf,
+                    network_structure,
+                    max_netw_assign_dist=max_assign_dist,
+                    distances=distances,
+                    data_id_col=data_id_col,
+                    angular=angular,
                 )
-                acc_data_key_wt = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
-                assert np.allclose(
-                    nodes_gdf[acc_data_key_wt].values,
-                    accessibility_data[acc_key].weighted[dist_key],
-                    atol=config.ATOL,
-                    rtol=config.RTOL,
+                # test against manual implementation over underlying method
+                landuses_map = data_gdf["categorical_landuses"].to_dict()
+                data_map, data_gdf = layers.assign_gdf_to_network(
+                    data_gdf,
+                    network_structure,
+                    max_assign_dist,
+                    data_id_col=data_id_col,
                 )
-        # most integrity checks happen in underlying method
-        with pytest.raises(ValueError):
-            nodes_gdf, data_gdf = layers.compute_accessibilities(
+                # accessibilities
+                accessibility_data = data_map.accessibility(
+                    network_structure,
+                    landuses_map,
+                    key_set,
+                    distances,
+                    angular=angular,
+                )
+                for acc_key in key_set:
+                    for dist_key in distances:
+                        acc_data_key_nw = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
+                        assert np.allclose(
+                            nodes_gdf[acc_data_key_nw].values,
+                            accessibility_data[acc_key].unweighted[dist_key],
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
+                        acc_data_key_wt = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
+                        assert np.allclose(
+                            nodes_gdf[acc_data_key_wt].values,
+                            accessibility_data[acc_key].weighted[dist_key],
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
+                # most integrity checks happen in underlying method
+                with pytest.raises(ValueError):
+                    nodes_gdf, data_gdf = layers.compute_accessibilities(
+                        data_gdf,
+                        "categorical_landuses-TYPO",
+                        ["c"],
+                        nodes_gdf,
+                        network_structure,
+                        max_netw_assign_dist=max_assign_dist,
+                        distances=distances,
+                    )
+
+
+def test_compute_mixed_uses(primal_graph):
+    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    distances = [400, 800]
+    max_assign_dist = 400
+    # test against manual implementation over underlying method
+    max_dist = max(distances)
+    landuses_map = data_gdf["categorical_landuses"].to_dict()
+    for data_id_col in [None, "data_id"]:
+        for angular in [False, True]:
+            nodes_gdf, data_gdf = layers.compute_mixed_uses(
                 data_gdf,
-                "categorical_landuses-TYPO",
-                ["c"],
+                "categorical_landuses",
                 nodes_gdf,
                 network_structure,
                 max_netw_assign_dist=max_assign_dist,
                 distances=distances,
+                hill_mu_measures=True,
+                other_mu_measures=True,
+                data_id_col=data_id_col,
+                angular=angular,
             )
-
-
-def test_compute_mixed_uses(primal_graph):
-    betas: npt.NDArray[np.float32] = np.array([0.01, 0.005], dtype=np.float32)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    data_gdf = mock.mock_landuse_categorical_data(primal_graph)
-    raw_betas = [0.01, 0.005]
-    qs: npt.NDArray[np.float32] = np.array([0, 1, 2], dtype=np.float32)
-    nodes_gdf, data_gdf = layers.compute_mixed_uses(
-        data_gdf,
-        "categorical_landuses",
-        ["hill_branch_wt", "gini_simpson"],
-        nodes_gdf,
-        network_structure,
-        betas=raw_betas,
-        qs=qs,
-    )
-    # test against manual implementation over underlying method
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    distances, betas = networks.pair_distances_betas(betas=raw_betas)
-    max_curve_wts = networks.clip_weights_curve(distances, betas, 0)
-    lab_enc = LabelEncoder()
-    encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
-    mu_data_hill, mu_data_other = data.mixed_uses(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        distances,
-        betas,
-        max_curve_wts,
-        encoded_lu_labels,  # type: ignore
-        qs=qs,
-        mixed_use_hill_keys=np.array([1]),
-    )
-    for q_idx, q_key in enumerate(qs):
-        for d_idx, d_key in enumerate(distances):
-            mu_hill_data_key = config.prep_gdf_key(f"hill_branch_wt_q{q_key}_{d_key}")
-            assert np.allclose(
-                nodes_gdf[mu_hill_data_key],
-                mu_data_hill[0][q_idx][d_idx],
-                atol=config.ATOL,
-                rtol=config.RTOL,
+            # generate manually
+            data_map, data_gdf = layers.assign_gdf_to_network(
+                data_gdf, network_structure, max_dist, data_id_col=data_id_col
             )
-    # gini simpson
-    mu_data_hill, mu_data_other = data.mixed_uses(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        distances,
-        betas,
-        max_curve_wts,
-        encoded_lu_labels,  # type: ignore
-        qs=qs,
-        mixed_use_other_keys=np.array([1]),
-    )
-    for d_idx, d_key in enumerate(distances):
-        mu_oth_data_key = config.prep_gdf_key(f"gini_simpson_{d_key}")
-        assert np.allclose(
-            nodes_gdf[mu_oth_data_key],
-            mu_data_other[0][d_idx],
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-    # most integrity checks happen in underlying method, though check here for mismatching labels length and typos
-    with pytest.raises(ValueError):
-        layers.compute_mixed_uses(
-            data_gdf,
-            "lu_col_label_typo",
-            ["hill"],
-            nodes_gdf,
-            network_structure,
-            distances=distances,
-        )
-    # both distances and betas
-    with pytest.raises(ValueError):
-        layers.compute_mixed_uses(
-            data_gdf,
-            "categorical_landuses",
-            ["hill"],
-            nodes_gdf,
-            network_structure,
-            distances=distances,
-            betas=betas,
-        )
-    # mu typo
-    with pytest.raises(ValueError):
-        layers.compute_mixed_uses(
-            data_gdf,
-            "categorical_landuses",
-            ["spelling_typo"],
-            nodes_gdf,
-            network_structure,
-            betas=betas,
-        )
-    # also check the number of returned types for a few assortments of metrics
-    mixed_uses_hill_types = np.array(["hill", "hill_branch_wt", "hill_pairwise_wt", "hill_pairwise_disparity"])
-    mixed_use_other_types = np.array(["shannon", "gini_simpson", "raos_pairwise_disparity"])
-    # mixed uses hill
-    mu_hill_random = np.arange(len(mixed_uses_hill_types))
-    np.random.shuffle(mu_hill_random)
-    # mixed uses other
-    mu_other_random = np.arange(len(mixed_use_other_types))
-    np.random.shuffle(mu_other_random)
-    # mock disparity matrix
-    mock_disparity_wt_matrix = np.full((len(lab_enc.classes_), len(lab_enc.classes_)), 1)
-    # not necessary to do all labels, first few should do
-    for mu_h_min in range(3):
-        mu_h_keys = np.array(mu_hill_random[mu_h_min:])
-        for mu_o_min in range(3):
-            mu_o_keys = np.array(mu_other_random[mu_o_min:])
-            # randomise order of keys and metrics
-            mu_h_metrics = mixed_uses_hill_types[mu_h_keys]
-            mu_o_metrics = mixed_use_other_types[mu_o_keys]
-            # prepare network and compute
-            nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-            data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-            distances, betas = networks.pair_distances_betas(betas=raw_betas)
-            # landuse encodings
-            lab_enc = LabelEncoder()
-            encoded_lu_labels = lab_enc.fit_transform(data_gdf["categorical_landuses"])  # type: ignore
-            nodes_gdf, data_gdf = layers.compute_mixed_uses(
-                data_gdf,
-                "categorical_landuses",
-                list(mu_h_metrics) + list(mu_o_metrics),
-                nodes_gdf,
+            mu_data_hill, mu_data_other = data_map.mixed_uses(
                 network_structure,
-                betas=raw_betas,
-                cl_disparity_wt_matrix=mock_disparity_wt_matrix,
-                qs=qs,
+                landuses_map,
+                distances=distances,
+                mixed_uses_hill=True,
+                mixed_uses_other=True,
+                angular=angular,
             )
-            # test against underlying method
-            mu_data_hill, mu_data_other = data.mixed_uses(
-                network_structure.nodes.xs,
-                network_structure.nodes.ys,
-                network_structure.nodes.live,
-                network_structure.edges.start,
-                network_structure.edges.end,
-                network_structure.edges.length,
-                network_structure.edges.angle_sum,
-                network_structure.edges.imp_factor,
-                network_structure.edges.in_bearing,
-                network_structure.edges.out_bearing,
-                network_structure.node_edge_map,
-                data_map.xs,
-                data_map.ys,
-                data_map.nearest_assign,
-                data_map.next_nearest_assign,
-                distances,
-                betas,
-                max_curve_wts,
-                encoded_lu_labels,  # type: ignore
-                qs=qs,
-                mixed_use_hill_keys=mu_h_keys,
-                mixed_use_other_keys=mu_o_keys,
-                cl_disparity_wt_matrix=mock_disparity_wt_matrix,
-            )
-            for mu_h_idx, mu_h_met in enumerate(mu_h_metrics):
-                for q_idx, q_key in enumerate(qs):
-                    for d_idx, d_key in enumerate(distances):
-                        mu_hill_data_key = config.prep_gdf_key(f"{mu_h_met}_q{q_key}_{d_key}")
-                        assert np.allclose(
-                            nodes_gdf[mu_hill_data_key],
-                            mu_data_hill[mu_h_idx][q_idx][d_idx],
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
-            for mu_o_idx, mu_o_met in enumerate(mu_o_metrics):
-                for d_idx, d_key in enumerate(distances):
-                    mu_oth_data_key = config.prep_gdf_key(f"{mu_o_met}_{d_key}")
+            for dist_key in distances:
+                for q_key in [0, 1, 2]:
+                    hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
                     assert np.allclose(
-                        nodes_gdf[mu_oth_data_key],
-                        mu_data_other[mu_o_idx][d_idx],
+                        nodes_gdf[hill_nw_data_key].values,
+                        mu_data_hill.hill[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
+                    hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
+                    assert np.allclose(
+                        nodes_gdf[hill_wt_data_key].values,
+                        mu_data_hill.hill_weighted[q_key][dist_key],
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
+                assert np.allclose(
+                    nodes_gdf[shannon_data_key].values,
+                    mu_data_other.shannon[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                )
+                gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
+                assert np.allclose(
+                    nodes_gdf[gini_data_key].values,
+                    mu_data_other.gini[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                )
 
 
 def distance_generator() -> Generator[npt.NDArray[np.int_]]:  # type: ignore
     for distances in [[500], [500, 2000]]:
         yield distances
-
-
-def test_hill_diversity(primal_graph):
-    for distances in distance_generator():
-        # prepare network and compute
-        nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        data_gdf = mock.mock_landuse_categorical_data(primal_graph)
-        _data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-        # easy version
-        nodes_gdf_easy, _data_gdf_easy = layers.hill_diversity(
-            data_gdf,
-            "categorical_landuses",
-            nodes_gdf,
-            network_structure,
-            max_netw_assign_dist=400,
-            distances=distances,
-            qs=[0, 1, 2],
-        )
-        # custom version
-        nodes_gdf_full, _data_gdf_full = layers.compute_mixed_uses(
-            data_gdf,
-            "categorical_landuses",
-            ["hill"],
-            nodes_gdf,
-            network_structure,
-            max_netw_assign_dist=400,
-            distances=distances,
-            qs=[0, 1, 2],
-        )
-        # compare
-        for d_key in distances:
-            for q_key in [0, 1, 2]:
-                mu_hill_data_key = config.prep_gdf_key(f"hill_q{q_key}_{d_key}")
-                assert np.allclose(
-                    nodes_gdf_easy[mu_hill_data_key],  # type: ignore
-                    nodes_gdf_full[mu_hill_data_key],  # type: ignore
-                    atol=config.ATOL,
-                    rtol=config.RTOL,
-                )
-
-
-def test_hill_branch_wt_diversity(primal_graph):
-    for distances in distance_generator():
-        # prepare network and compute
-        nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        data_gdf = mock.mock_landuse_categorical_data(primal_graph)
-        _data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-        # easy version
-        nodes_gdf_easy, _data_gdf_easy = layers.hill_branch_wt_diversity(
-            data_gdf,
-            "categorical_landuses",
-            nodes_gdf,
-            network_structure,
-            max_netw_assign_dist=400,
-            distances=distances,
-            qs=[0, 1, 2],
-        )
-        # custom version
-        nodes_gdf_full, _data_gdf_full = layers.compute_mixed_uses(
-            data_gdf,
-            "categorical_landuses",
-            ["hill_branch_wt"],
-            nodes_gdf,
-            network_structure,
-            max_netw_assign_dist=400,
-            distances=distances,
-            qs=[0, 1, 2],
-        )
-        # compare
-        for d_key in distances:
-            for q_key in [0, 1, 2]:
-                mu_hill_data_key = config.prep_gdf_key(f"hill_branch_wt_q{q_key}_{d_key}")
-                assert np.allclose(
-                    nodes_gdf_easy[mu_hill_data_key],  # type: ignore
-                    nodes_gdf_full[mu_hill_data_key],  # type: ignore
-                    atol=config.ATOL,
-                    rtol=config.RTOL,
-                )
 
 
 def test_compute_stats(primal_graph):

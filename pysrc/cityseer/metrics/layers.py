@@ -245,35 +245,25 @@ def compute_accessibilities(
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
             ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
-            # sometimes target classes are not present in data
             nodes_gdf[ac_nw_data_key] = accessibility_data[acc_key].unweighted[dist_key]  # non-weighted
             nodes_gdf[ac_wt_data_key] = accessibility_data[acc_key].weighted[dist_key]  # weighted
 
     return nodes_gdf, data_gdf
 
 
-QsType = Union[
-    int,
-    float,
-    Union[list[int], list[float]],
-    Union[tuple[int], tuple[float]],
-    Union[npt.NDArray[np.int_], npt.NDArray[np.float32]],
-    None,
-]
-
-
 def compute_mixed_uses(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
-    mixed_use_keys: list[str] | tuple[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    cl_disparity_wt_matrix: Optional[npt.NDArray[np.float32]] = None,
-    qs: QsType | None = None,
+    hill_mu_measures: bool | None = True,
+    other_mu_measures: bool | None = None,
+    data_id_col: str | None = None,
     spatial_tolerance: int = 0,
+    min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -431,108 +421,37 @@ def compute_mixed_uses(
     :::
 
     """
-    network_structure.validate()
-    _distances, _betas = networks.pair_distances_betas(distances, betas)
-    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist)
-    mixed_uses_options = [
-        "hill",
-        "hill_branch_wt",
-        "hill_pairwise_wt",
-        "hill_pairwise_disparity",
-        "shannon",
-        "gini_simpson",
-        "raos_pairwise_disparity",
-    ]
-    # remember, most checks on parameter integrity occur in underlying function
-    # so, don't duplicate here
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    # get the landuse encodings
-    lab_enc = LabelEncoder()
-    encoded_labels: npt.NDArray[np.int_] = lab_enc.fit_transform(data_gdf[landuse_column_label])  # type: ignore
-    data_gdf[f"{landuse_column_label}_encoded"] = encoded_labels  # type: ignore
-    # if necessary, check the disparity matrix
-    if cl_disparity_wt_matrix is None:
-        cl_disparity_wt_matrix = np.full((0, 0), np.nan)
-    elif (
-        not isinstance(cl_disparity_wt_matrix, np.ndarray)
-        or cl_disparity_wt_matrix.ndim != 2
-        or cl_disparity_wt_matrix.shape[0] != cl_disparity_wt_matrix.shape[1]
-        or len(cl_disparity_wt_matrix) != len(lab_enc.classes_)  # type: ignore
-    ):
-        raise TypeError(
-            "Disparity weights must be a square pairwise NxN matrix in list, tuple, or numpy.ndarray form. "
-            "The number of edge-wise elements should match the number of unique class labels."
-        )
-    # warn if no qs provided
-    if qs is None:
-        qs = tuple([])
-    if isinstance(qs, (int, float)):
-        qs = [qs]
-    if not isinstance(qs, (list, tuple, np.ndarray)):
-        raise TypeError("Please provide a float, list, tuple, or numpy.ndarray of q values.")
-    # extrapolate the requested mixed use measures
-    mu_hill_keys: list[int] = []
-    mu_other_keys: list[int] = []
-    for mu in mixed_use_keys:
-        if mu not in mixed_uses_options:
-            raise ValueError(f'Invalid mixed-use option: {mu}. Must be one of {", ".join(mixed_uses_options)}.')
-        idx = mixed_uses_options.index(mu)
-        if idx < 4:
-            mu_hill_keys.append(idx)
-        else:
-            mu_other_keys.append(idx - 4)
+    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
-        logger.info(f'Computing mixed-use measures: {", ".join(mixed_use_keys)}')
-    progress_proxy = None
-    # determine max impedance weights
-    max_curve_wts = networks.clip_weights_curve(_distances, _betas, spatial_tolerance)
-    # call the underlying function
-    mixed_use_hill_data, mixed_use_other_data = data.mixed_uses(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        distances=_distances,
-        betas=_betas,
-        max_curve_wts=max_curve_wts,
-        landuses_map=encoded_labels,
-        qs=np.array(qs, dtype=np.float32),
-        mixed_use_hill_keys=np.array(mu_hill_keys, dtype=np.int_),
-        mixed_use_other_keys=np.array(mu_other_keys, dtype=np.int_),
-        cl_disparity_wt_matrix=np.array(cl_disparity_wt_matrix, dtype=np.float32),
-        jitter_scale=np.float32(jitter_scale),
+        logger.info(f"Computing mixed-use measures.")
+    # extract landuses
+    landuses_map = data_gdf[landuse_column_label].to_dict()
+    mixed_use_hill_data, mixed_use_other_data = data_map.mixed_uses(
+        network_structure,
+        landuses_map,
+        distances=distances,
+        betas=betas,
+        mixed_uses_hill=hill_mu_measures,
+        mixed_uses_other=other_mu_measures,
         angular=angular,
-        progress_proxy=progress_proxy,
+        spatial_tolerance=spatial_tolerance,
+        min_threshold_wt=min_threshold_wt,
+        jitter_scale=jitter_scale,
     )
-    if progress_proxy is not None:
-        progress_proxy.close()
-    # write the results to the GeoDataFrame
-    # unpack mixed use hill
-    for mu_h_idx, mu_h_key in enumerate(mu_hill_keys):
-        mu_h_label = mixed_uses_options[mu_h_key]
-        for q_idx, q_key in enumerate(qs):
-            for d_idx, d_key in enumerate(_distances):
-                mu_h_data_key = config.prep_gdf_key(f"{mu_h_label}_q{q_key}_{d_key}")
-                nodes_gdf[mu_h_data_key] = mixed_use_hill_data[mu_h_idx][q_idx][d_idx]
-    # unpack mixed use other
-    for mu_o_idx, mu_o_key in enumerate(mu_other_keys):
-        mu_o_label = mixed_uses_options[mu_o_key + 4]
-        # no qs
-        for d_idx, d_key in enumerate(_distances):
-            mu_o_data_key = config.prep_gdf_key(f"{mu_o_label}_{d_key}")
-            nodes_gdf[mu_o_data_key] = mixed_use_other_data[mu_o_idx][d_idx]
+    # unpack mixed-uses data
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    for dist_key in distances:
+        for q_key in [0, 1, 2]:
+            hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
+            hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
+            nodes_gdf[hill_nw_data_key] = mixed_use_hill_data.hill[q_key][dist_key]
+            nodes_gdf[hill_wt_data_key] = mixed_use_hill_data.hill_weighted[q_key][dist_key]
+        shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
+        gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
+        nodes_gdf[shannon_data_key] = mixed_use_other_data.shannon[dist_key]
+        nodes_gdf[gini_data_key] = mixed_use_other_data.gini[dist_key]
 
     return nodes_gdf, data_gdf
 
