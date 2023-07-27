@@ -117,11 +117,9 @@ impl DataMap {
         }
         None
     }
-    #[getter]
     fn count(&self) -> usize {
         self.entries.len()
     }
-    #[getter]
     fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -362,10 +360,10 @@ impl DataMap {
         &self,
         network_structure: &NetworkStructure,
         landuses_map: HashMap<String, String>,
-        mixed_uses_hill: Option<bool>,
-        mixed_uses_other: Option<bool>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        mixed_uses_hill: Option<bool>,
+        mixed_uses_other: Option<bool>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
@@ -447,7 +445,7 @@ impl DataMap {
                         cl_code.clone(),
                         ClassesState {
                             count: 0,
-                            nearest: 0.0,
+                            nearest: f32::INFINITY,
                         },
                     );
                 }
@@ -458,11 +456,11 @@ impl DataMap {
                 // get the class category
                 let cl_code = landuses_map[&data_key].clone();
                 // iterate the distance dimensions
-                for d in distances.iter() {
+                for &dist_key in &distances {
                     // increment class counts at respective distances if the distance is less than current dist
-                    if data_dist <= *d as f32 {
+                    if data_dist <= dist_key as f32 {
                         let class_state = classes
-                            .get_mut(&d)
+                            .get_mut(&dist_key)
                             .unwrap()
                             .get_mut(&cl_code.to_string())
                             .unwrap();
@@ -553,7 +551,7 @@ impl DataMap {
             let mut hill_weighted: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> = HashMap::new();
             for q_key in vec![0, 1, 2].iter() {
                 hill.insert(q_key.clone(), hill_mu[q_key].load());
-                hill_weighted.insert(q_key.clone(), hill_mu[q_key].load());
+                hill_weighted.insert(q_key.clone(), hill_wt_mu[q_key].load());
             }
             Some(MixedUsesHillResult {
                 hill,
