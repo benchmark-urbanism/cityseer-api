@@ -1121,10 +1121,9 @@ def test_nx_from_geopandas(primal_graph):
     # check with metrics
     nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     nodes_gdf = networks.node_centrality_shortest(
-        network_structure=network_structure, nodes_gdf=nodes_gdf, closeness=True, distances=[500, 1000]
+        network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
-    # TODO:
     nodes_gdf, data_gdf = layers.compute_accessibilities(
         data_gdf,
         landuse_column_label="categorical_landuses",
@@ -1146,16 +1145,7 @@ def test_nx_from_geopandas(primal_graph):
     # without backbone
     G_round_trip_nx = graphs.nx_from_geopandas(
         nodes_gdf,
-        network_structure,
-    )
-    for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
-        for col_label in column_labels:
-            assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
-    # with backbone
-    G_round_trip_nx = graphs.nx_from_geopandas(
-        nodes_gdf,
-        network_structure,
-        nx_multigraph=primal_graph,
+        edges_gdf,
     )
     for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
         for col_label in column_labels:
@@ -1166,7 +1156,7 @@ def test_nx_from_geopandas(primal_graph):
     for node_key in G_decomposed.nodes():
         G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
-    G_round_trip_decomp = graphs.nx_from_geopandas(nodes_gdf_decomp, network_structure_decomp, G_decomposed)
+    G_round_trip_decomp = graphs.nx_from_geopandas(nodes_gdf_decomp, edges_gdf_decomp)
     assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
     for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
         assert node_key in G_decomposed
@@ -1174,33 +1164,3 @@ def test_nx_from_geopandas(primal_graph):
         assert iter_node_data["x"] - G_decomposed.nodes[node_key]["x"] < config.ATOL
         assert iter_node_data["y"] - G_decomposed.nodes[node_key]["y"] < config.ATOL
     assert G_round_trip_decomp.edges == G_decomposed.edges
-    # error checks for when using backbone graph:
-    # mismatching numbers of nodes
-    corrupt_G = primal_graph.copy()
-    corrupt_G.remove_node(0)
-    with pytest.raises(ValueError):
-        graphs.nx_from_geopandas(
-            nodes_gdf,
-            network_structure,
-            nx_multigraph=corrupt_G,
-        )
-    # mismatching node_key
-    with pytest.raises(KeyError):
-        corrupt_nodes_gdf = nodes_gdf.copy(deep=True)
-        corrupt_index = corrupt_nodes_gdf.index.values
-        corrupt_index[0] = -1
-        corrupt_nodes_gdf.set_index(corrupt_index)
-        graphs.nx_from_geopandas(
-            corrupt_nodes_gdf,
-            network_structure,
-            nx_multigraph=primal_graph,
-        )
-    # missing edge
-    with pytest.raises(KeyError):
-        corrupt_primal_graph = primal_graph.copy()
-        corrupt_primal_graph.remove_edge(0, 1)
-        graphs.nx_from_geopandas(
-            nodes_gdf,
-            network_structure,
-            nx_multigraph=corrupt_primal_graph,
-        )

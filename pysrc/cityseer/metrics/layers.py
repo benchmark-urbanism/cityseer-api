@@ -5,7 +5,6 @@ import logging
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
-from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, rustalgos
 from cityseer.metrics import networks
@@ -464,13 +463,15 @@ def compute_mixed_uses(
 
 def compute_stats(
     data_gdf: gpd.GeoDataFrame,
-    stats_column_labels: str | list[str] | tuple[str],
+    stats_column_label: str | list[str] | tuple[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     data_id_col: str | None = None,
+    spatial_tolerance: int = 0,
+    min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
     angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -567,86 +568,29 @@ def compute_stats(
     :::
 
     """
-    network_structure.validate()
-    _distances, _betas = networks.pair_distances_betas(distances, betas)
-    data_map, data_gdf = assign_gdf_to_network(
-        data_gdf, network_structure, max_netw_assign_dist=max_netw_assign_dist, data_id_col=data_id_col
+    if stats_column_label not in data_gdf.columns:
+        raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
+    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
+    if not config.QUIET_MODE:
+        logger.info(f"Computing mixed-use measures.")
+    # extract landuses
+    stats_map = data_gdf[stats_column_label].to_dict()
+    # stats
+    stats_result = data_map.stats(
+        network_structure, stats_map, distances, betas, angular, spatial_tolerance, min_threshold_wt, jitter_scale
     )
-    data_map.validate(True)
-    # check keys
-    if not isinstance(stats_column_labels, (str, list, tuple, np.ndarray)):
-        raise TypeError("Stats keys should be a string else a list, tuple, or np.ndarray of strings.")
-    # wrap single keys
-    if isinstance(stats_column_labels, str):
-        stats_column_labels = [stats_column_labels]
-    # check data arrays
-    for col_label in stats_column_labels:
-        if col_label not in data_gdf.columns:
-            raise ValueError(f"Column label {col_label} not found in provided GeoDataFrame.")
-    stats_data_arrs: npt.NDArray[np.float32] = data_gdf[stats_column_labels].values.T  # type: ignore
-    # call the underlying function
-    progress_proxy = None
-    (
-        stats_sum,
-        stats_sum_wt,
-        stats_mean,
-        stats_mean_wt,
-        stats_variance,
-        stats_variance_wt,
-        stats_max,
-        stats_min,
-    ) = data.aggregate_stats(
-        network_structure.nodes.xs,
-        network_structure.nodes.ys,
-        network_structure.nodes.live,
-        network_structure.edges.start,
-        network_structure.edges.end,
-        network_structure.edges.length,
-        network_structure.edges.angle_sum,
-        network_structure.edges.imp_factor,
-        network_structure.edges.in_bearing,
-        network_structure.edges.out_bearing,
-        network_structure.node_edge_map,
-        data_map.xs,
-        data_map.ys,
-        data_map.nearest_assign,
-        data_map.next_nearest_assign,
-        data_map.data_id,
-        distances=_distances,
-        betas=_betas,
-        numerical_arrays=stats_data_arrs,  # type: ignore
-        jitter_scale=np.float32(jitter_scale),
-        angular=angular,
-        progress_proxy=progress_proxy,
-    )
-    if progress_proxy is not None:
-        progress_proxy.close()
     # unpack the numerical arrays
-    for num_idx, stats_key in enumerate(stats_column_labels):
-        for stats_type_key, stats in zip(
-            [
-                "max",
-                "min",
-                "sum",
-                "sum_weighted",
-                "mean",
-                "mean_weighted",
-                "variance",
-                "variance_weighted",
-            ],
-            [
-                stats_max,
-                stats_min,
-                stats_sum,
-                stats_sum_wt,
-                stats_mean,
-                stats_mean_wt,
-                stats_variance,
-                stats_variance_wt,
-            ],
-        ):
-            for d_idx, d_key in enumerate(_distances):
-                stats_data_key = config.prep_gdf_key(f"{stats_key}_{stats_type_key}_{d_key}")
-                nodes_gdf[stats_data_key] = stats[num_idx][d_idx]
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    for dist_key in distances:
+        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = stats_result.sum[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = stats_result.sum_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = stats_result.mean[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = stats_result.mean_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = stats_result.count[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = stats_result.count_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = stats_result.variance[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = stats_result.variance_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = stats_result.max[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = stats_result.min[dist_key]
 
     return nodes_gdf, data_gdf

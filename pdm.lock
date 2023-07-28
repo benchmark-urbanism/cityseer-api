@@ -1937,12 +1937,12 @@ files = [
 
 [[package]]
 name = "pip"
-version = "23.2"
+version = "23.2.1"
 requires_python = ">=3.7"
 summary = "The PyPA recommended tool for installing Python packages."
 files = [
-    {file = "pip-23.2-py3-none-any.whl", hash = "sha256:78e5353a9dda374b462f2054f83a7b63f3f065c98236a68361845c1b0ee7e35f"},
-    {file = "pip-23.2.tar.gz", hash = "sha256:a160a170f3331d9ca1a0247eb1cd79c758879f1f81158f9cd05bbb5df80bea5c"},
+    {file = "pip-23.2.1-py3-none-any.whl", hash = "sha256:7ccf472345f20d35bdc9d1841ff5f313260c2c33fe417f48c30ac46cccabf5be"},
+    {file = "pip-23.2.1.tar.gz", hash = "sha256:fb0bd5435b3200c602b5bf61d2d43c2f13c02e29c1707567ae7fbc514eb9faf2"},
 ]
 
 [[package]]
@@ -2063,11 +2063,11 @@ files = [
 
 [[package]]
 name = "pylint"
-version = "2.17.4"
+version = "2.17.5"
 requires_python = ">=3.7.2"
 summary = "python code static checker"
 dependencies = [
-    "astroid<=2.17.0-dev0,>=2.15.4",
+    "astroid<=2.17.0-dev0,>=2.15.6",
     "colorama>=0.4.5; sys_platform == \"win32\"",
     "dill>=0.3.6; python_version >= \"3.11\"",
     "isort<6,>=4.2.5",
@@ -2076,8 +2076,8 @@ dependencies = [
     "tomlkit>=0.10.1",
 ]
 files = [
-    {file = "pylint-2.17.4-py3-none-any.whl", hash = "sha256:7a1145fb08c251bdb5cca11739722ce64a63db479283d10ce718b2460e54123c"},
-    {file = "pylint-2.17.4.tar.gz", hash = "sha256:5dcf1d9e19f41f38e4e85d10f511e5b9c35e1aa74251bf95cdd8cb23584e2db1"},
+    {file = "pylint-2.17.5-py3-none-any.whl", hash = "sha256:73995fb8216d3bed149c8d51bba25b2c52a8251a2c8ac846ec668ce38fab5413"},
+    {file = "pylint-2.17.5.tar.gz", hash = "sha256:f7b601cbc06fef7e62a754e2b41294c2aa31f1cb659624b9a85bcba29eaf8252"},
 ]
 
 [[package]]
@@ -2128,15 +2128,15 @@ files = [
 
 [[package]]
 name = "pyright"
-version = "1.1.317"
+version = "1.1.318"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
     "nodeenv>=1.6.0",
 ]
 files = [
-    {file = "pyright-1.1.317-py3-none-any.whl", hash = "sha256:9cf24f83fe8f2cf00773068e06ce771f03331590c7d5e771546f81d7f60efaba"},
-    {file = "pyright-1.1.317.tar.gz", hash = "sha256:74da4d3e2dcfe66a2d1d1001e16431ec17aac0ad35b03c0410f7379c2cb5c7f0"},
+    {file = "pyright-1.1.318-py3-none-any.whl", hash = "sha256:056c1b2e711c3526e32919de1684ae599d34b7ec27e94398858a43f56ac9ba9b"},
+    {file = "pyright-1.1.318.tar.gz", hash = "sha256:69dcf9c32d5be27d531750de627e76a7cadc741d333b547c09044278b508db7b"},
 ]
 
 [[package]]
@@ -2879,14 +2879,14 @@ files = [
 
 [[package]]
 name = "types-requests"
-version = "2.31.0.1"
+version = "2.31.0.2"
 summary = "Typing stubs for requests"
 dependencies = [
     "types-urllib3",
 ]
 files = [
-    {file = "types-requests-2.31.0.1.tar.gz", hash = "sha256:3de667cffa123ce698591de0ad7db034a5317457a596eb0b4944e5a9d9e8d1ac"},
-    {file = "types_requests-2.31.0.1-py3-none-any.whl", hash = "sha256:afb06ef8f25ba83d59a1d424bd7a5a939082f94b94e90ab5e6116bd2559deaa3"},
+    {file = "types-requests-2.31.0.2.tar.gz", hash = "sha256:6aa3f7faf0ea52d728bb18c0a0d1522d9bfd8c72d26ff6f61bfc3d06a411cf40"},
+    {file = "types_requests-2.31.0.2-py3-none-any.whl", hash = "sha256:56d181c85b5925cbc59f4489a57e72a8b2166f18273fd8ba7b6fe0c0b986f12a"},
 ]
 
 [[package]]

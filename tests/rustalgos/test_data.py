@@ -7,8 +7,6 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from sklearn.preprocessing import LabelEncoder  # type: ignore
-
 from cityseer import config, rustalgos
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
