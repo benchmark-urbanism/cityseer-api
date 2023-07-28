@@ -9,7 +9,6 @@ import pytest
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, rustalgos
-from cityseer.algos import data
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
@@ -112,8 +111,10 @@ def test_compute_mixed_uses(primal_graph):
                 network_structure,
                 max_netw_assign_dist=max_assign_dist,
                 distances=distances,
-                hill_mu_measures=True,
-                other_mu_measures=True,
+                compute_hill=True,
+                compute_hill_weighted=True,
+                compute_shannon=True,
+                compute_gini=True,
                 data_id_col=data_id_col,
                 angular=angular,
             )
@@ -121,12 +122,14 @@ def test_compute_mixed_uses(primal_graph):
             data_map, data_gdf = layers.assign_gdf_to_network(
                 data_gdf, network_structure, max_dist, data_id_col=data_id_col
             )
-            mu_data_hill, mu_data_other = data_map.mixed_uses(
+            mu_data_data = data_map.mixed_uses(
                 network_structure,
                 landuses_map,
+                compute_hill=True,
+                compute_hill_weighted=True,
+                compute_shannon=True,
+                compute_gini=True,
                 distances=distances,
-                mixed_uses_hill=True,
-                mixed_uses_other=True,
                 angular=angular,
             )
             for dist_key in distances:
@@ -134,28 +137,28 @@ def test_compute_mixed_uses(primal_graph):
                     hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
                     assert np.allclose(
                         nodes_gdf[hill_nw_data_key].values,
-                        mu_data_hill.hill[q_key][dist_key],
+                        mu_data_data.hill[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                     hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
                     assert np.allclose(
                         nodes_gdf[hill_wt_data_key].values,
-                        mu_data_hill.hill_weighted[q_key][dist_key],
+                        mu_data_data.hill_weighted[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
                 assert np.allclose(
                     nodes_gdf[shannon_data_key].values,
-                    mu_data_other.shannon[dist_key],
+                    mu_data_data.shannon[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
                 gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
                 assert np.allclose(
                     nodes_gdf[gini_data_key].values,
-                    mu_data_other.gini[dist_key],
+                    mu_data_data.gini[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )

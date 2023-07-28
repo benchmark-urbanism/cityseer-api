@@ -44,12 +44,12 @@ pub struct MetricResult {
     pub metric: Vec<Vec<AtomicF32>>,
 }
 impl MetricResult {
-    pub fn new(distances: Vec<u32>, size: usize) -> Self {
+    pub fn new(distances: Vec<u32>, size: usize, init_val: f32) -> Self {
         let mut metric = Vec::new();
         for _d in 0..distances.len() {
             metric.push(
                 // tricky to initialise for given size
-                std::iter::repeat_with(|| AtomicF32::new(0.0))
+                std::iter::repeat_with(|| AtomicF32::new(init_val))
                     .take(size)
                     .collect::<Vec<AtomicF32>>(),
             );

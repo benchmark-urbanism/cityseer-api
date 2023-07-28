@@ -12,7 +12,7 @@ See the demos section for examples.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 import geopandas as gpd
 import matplotlib as mpl
@@ -51,7 +51,7 @@ class ColourMap:
 
 COLOUR_MAP = ColourMap()
 
-ColourType = Union[str, npt.NDArray[np.float_], npt.NDArray[np.float_]]
+ColourType = str | npt.NDArray[np.float_] | npt.NDArray[np.float_]
 
 
 def _open_plots_reset():
@@ -59,22 +59,22 @@ def _open_plots_reset():
 
 
 def plot_nx_primal_or_dual(  # noqa
-    primal_graph: Optional[MultiGraph] = None,
-    dual_graph: Optional[MultiGraph] = None,
+    primal_graph: MultiGraph | None = None,
+    dual_graph: MultiGraph | None = None,
     path: str | None = None,
     labels: bool = False,
     primal_node_size: int = 30,
-    primal_node_colour: Optional[ColourType] = None,
-    primal_edge_colour: Optional[ColourType] = None,
+    primal_node_colour: ColourType | None = None,
+    primal_edge_colour: ColourType | None = None,
     dual_node_size: int = 30,
-    dual_node_colour: Optional[ColourType] = None,
-    dual_edge_colour: Optional[ColourType] = None,
-    primal_edge_width: Optional[Union[int, float]] = None,
-    dual_edge_width: Optional[Union[int, float]] = None,
+    dual_node_colour: ColourType | None = None,
+    dual_edge_colour: ColourType | None = None,
+    primal_edge_width: int | float | None = None,
+    dual_edge_width: int | float | None = None,
     plot_geoms: bool = True,
-    x_lim: Optional[Union[tuple[float, float], list[float]]] = None,
-    y_lim: Optional[Union[tuple[float, float], list[float]]] = None,
-    ax: Optional[plt.Axes] = None,
+    x_lim: tuple[float, float] | None = None,
+    y_lim: tuple[float, float] | None = None,
+    ax: plt.Axes | None = None,
     **kwargs: dict[str, Any],
 ):
     """
@@ -168,11 +168,11 @@ def plot_nx_primal_or_dual(  # noqa
         _graph: MultiGraph,
         _is_primal: bool,
         _node_size: float,
-        _node_colour: Optional[ColourType],
+        _node_colour: ColourType | None,
         _node_shape: str,
-        _edge_colour: Optional[ColourType],
+        _edge_colour: ColourType | None,
         _edge_style: str,
-        _edge_width: Optional[Union[int, float]],
+        _edge_width: int | float | None,
     ) -> None:
         if not len(_graph):  # pylint: disable=len-as-condition
             raise ValueError("Graph contains no nodes to plot.")
@@ -318,13 +318,13 @@ def plot_nx(
     path: str | None = None,
     labels: bool = False,
     node_size: int = 20,
-    node_colour: Optional[ColourType] = None,
-    edge_colour: Optional[ColourType] = None,
-    edge_width: Optional[Union[int, float]] = None,
+    node_colour: ColourType | None = None,
+    edge_colour: ColourType | None = None,
+    edge_width: int | float | None = None,
     plot_geoms: bool = False,
-    x_lim: Optional[Union[tuple[float, float], list[float]]] = None,
-    y_lim: Optional[Union[tuple[float, float], list[float]]] = None,
-    ax: Optional[plt.Axes] = None,
+    x_lim: tuple[float, float] | None = None,
+    y_lim: tuple[float, float] | None = None,
+    ax: plt.Axes | None = None,
     **kwargs: dict[str, Any],
 ):  # noqa
     """
@@ -414,14 +414,14 @@ def plot_nx(
     )
 
 
-def plot_assignment(  # noqa
+def plot_assignment(
     network_structure: rustalgos.NetworkStructure,
     nx_multigraph: MultiGraph,
     data_gdf: gpd.GeoDataFrame,
     path: str | None = None,
-    node_colour: Optional[ColourType] = None,
+    node_colour: ColourType | None = None,
     node_labels: bool = False,
-    data_labels: Optional[Union[npt.NDArray[np.int_], npt.NDArray[np.unicode_]]] = None,
+    data_labels: npt.NDArray[np.int_] | npt.NDArray[np.unicode_] | None = None,
     **kwargs: dict[str, Any],
 ):
     """
@@ -558,7 +558,7 @@ def plot_assignment(  # noqa
 def plot_network_structure(
     network_structure: rustalgos.NetworkStructure,
     data_gdf: gpd.GeoDataFrame,
-    poly: Optional[geometry.Polygon] = None,
+    poly: geometry.Polygon | None = None,
 ):
     """
     Plot a graph from raw `cityseer` data structures.
@@ -647,11 +647,11 @@ def plot_network_structure(
         next_nearest_netw_idx: int = data_row.next_nearest_assign
         ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
         # if the data points have been assigned network indices
-        if not np.isnan(nearest_netw_idx):
+        if nearest_netw_idx is not None:
             # plot lines to parents for easier viz
             p_x, p_y = network_structure.node_xys[int(nearest_netw_idx)]
             ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.warning, lw=0.75, ls="-")
-        if not np.isnan(next_nearest_netw_idx):
+        if next_nearest_netw_idx is not None:
             p_x, p_y = network_structure.node_xys[int(next_nearest_netw_idx)]
             ax1.plot([p_x, data_x], [p_y, data_y], c=COLOUR_MAP.info, lw=0.75, ls="--")
     plt.tight_layout()
@@ -664,7 +664,7 @@ def plot_scatter(
     xs: list[float] | npt.NDArray[np.float_],
     ys: list[float] | npt.NDArray[np.float_],
     vals: npt.NDArray[np.float32],
-    bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
     perc_range: tuple[float, float] = (0.01, 99.99),
     cmap_key: str = "viridis",
     shape_exp: float = 1,
@@ -752,7 +752,7 @@ def plot_nx_edges(
     ax: plt.Axes,
     nx_multigraph: nx.MultiGraph,
     edge_metrics_key: str,
-    bbox_extents: Union[tuple[int, int, int, int], tuple[float, float, float, float]],
+    bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
     perc_range: tuple[float, float] = (0.01, 99.99),
     cmap_key: str = "viridis",
     shape_exp: float = 1,

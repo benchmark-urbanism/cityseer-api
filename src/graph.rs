@@ -687,7 +687,7 @@ mod tests {
             None,
             None,
         );
-        let betw_result_seg = ns.local_segment_centrality_shortest(
+        let betw_result_seg = ns.local_segment_centrality(
             Some(vec![50]),
             None,
             Some(false),

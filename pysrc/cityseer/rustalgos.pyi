@@ -62,35 +62,29 @@ class EdgeVisit:
     @classmethod
     def new(cls) -> EdgeVisit: ...
 
-class CloseShortestResult:
+class CentralityShortestResult:
     node_density: dict[int, np.ndarray]
     node_farness: dict[int, np.ndarray]
     node_cycles: dict[int, np.ndarray]
     node_harmonic: dict[int, np.ndarray]
     node_beta: dict[int, np.ndarray]
-
-class CloseSimplestResult:
-    node_harmonic: dict[int, np.ndarray]
-
-class CloseSegmentShortestResult:
-    segment_density: dict[int, np.ndarray]
-    segment_harmonic: dict[int, np.ndarray]
-    segment_beta: dict[int, np.ndarray]
-
-class BetwShortestResult:
     node_betweenness: dict[int, np.ndarray]
     node_betweenness_beta: dict[int, np.ndarray]
 
-class BetwSimplestResult:
+class CentralitySimplestResult:
+    node_harmonic: dict[int, np.ndarray]
     node_betweenness: dict[int, np.ndarray]
 
-class BetwSegmentShortestResult:
+class CentralitySegmentResult:
+    segment_density: dict[int, np.ndarray]
+    segment_harmonic: dict[int, np.ndarray]
+    segment_beta: dict[int, np.ndarray]
     segment_betweenness: dict[int, np.ndarray]
 
 class DiGraph: ...
 
 class NetworkStructure:
-    graph: DiGraph[NodePayload, EdgePayload]
+    graph: DiGraph
     @classmethod
     def new(cls) -> NetworkStructure: ...
     def add_node(self, node_key: str, x: float, y: float, live: bool) -> int: ...
@@ -137,32 +131,32 @@ class NetworkStructure:
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
-        closeness: bool | None = None,
-        betweenness: bool | None = None,
+        compute_closeness: bool | None = True,
+        compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> tuple[CloseShortestResult | None, BetwShortestResult | None]: ...
+    ) -> CentralityShortestResult: ...
     def local_node_centrality_simplest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
-        closeness: bool | None = None,
-        betweenness: bool | None = None,
+        compute_closeness: bool | None = True,
+        compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> tuple[CloseSimplestResult | None, BetwSimplestResult | None]: ...
-    def local_segment_centrality_shortest(
+    ) -> CentralitySimplestResult: ...
+    def local_segment_centrality(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
-        closeness: bool | None = None,
-        betweenness: bool | None = None,
+        compute_closeness: bool | None = True,
+        compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> tuple[CloseSegmentShortestResult | None, BetwSegmentShortestResult | None]: ...
+    ) -> CentralitySegmentResult: ...
 
 def hill_diversity(class_counts: list[int], q: float) -> float: ...
 def hill_diversity_branch_distance_wt(
@@ -181,13 +175,23 @@ class AccessibilityResult:
     weighted: dict[int, np.ndarray]
     unweighted: dict[int, np.ndarray]
 
-class MixedUsesHillResult:
-    hill: dict[int, dict[int, np.ndarray]]
-    hill_weighted: dict[int, dict[int, np.ndarray]]
+class MixedUsesResult:
+    hill: dict[int, dict[int, np.ndarray]] | None
+    hill_weighted: dict[int, dict[int, np.ndarray]] | None
+    shannon: dict[int, np.ndarray] | None
+    gini: dict[int, np.ndarray] | None
 
-class MixedUsesOtherResult:
-    shannon: dict[int, np.ndarray]
-    gini: dict[int, np.ndarray]
+class StatsResult:
+    sum: dict[int, np.ndarray]
+    sum_wt: dict[int, np.ndarray]
+    mean: dict[int, np.ndarray]
+    mean_wt: dict[int, np.ndarray]
+    count: dict[int, np.ndarray]
+    count_wt: dict[int, np.ndarray]
+    variance: dict[int, np.ndarray]
+    variance_wt: dict[int, np.ndarray]
+    max: dict[int, np.ndarray]
+    min: dict[int, np.ndarray]
 
 class ClassesState:
     count: int
@@ -257,8 +261,10 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         landuses_map: dict[str, str],
-        mixed_uses_hill: bool | None = None,
-        mixed_uses_other: bool | None = None,
+        compute_hill: bool | None = True,
+        compute_hill_weighted: bool | None = True,
+        compute_shannon: bool | None = False,
+        compute_gini: bool | None = False,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         angular: bool | None = None,
@@ -266,4 +272,16 @@ class DataMap:
         min_threshold_wt: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> tuple[MixedUsesHillResult | None, MixedUsesOtherResult | None]: ...
+    ) -> MixedUsesResult: ...
+    def stats(
+        self,
+        network_structure: NetworkStructure,
+        numerical_map: dict[str, float],
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        angular: bool | None = None,
+        spatial_tolerance: int | None = None,
+        min_threshold_wt: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> StatsResult: ...

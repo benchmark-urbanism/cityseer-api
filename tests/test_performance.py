@@ -53,7 +53,7 @@ def test_local_centrality_time(primal_graph):
     # load the test graph
     _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances, betas = rustalgos.pair_distances_and_betas(distances=[5000])
+    distances, _betas = rustalgos.pair_distances_and_betas(distances=[5000])
 
     def shortest_path_tree_wrapper():
         network_structure.shortest_path_tree(
@@ -75,8 +75,8 @@ def test_local_centrality_time(primal_graph):
         network_structure.local_node_centrality_shortest(
             distances=distances,
             betas=None,
-            closeness=True,
-            betweenness=True,
+            compute_closeness=True,
+            compute_betweenness=True,
             pbar_disabled=True,
         )
 
@@ -90,11 +90,11 @@ def test_local_centrality_time(primal_graph):
     # node_cent_wrapper: 3.1476474259980023 for 10000 iterations
 
     def segment_cent_wrapper():
-        network_structure.local_segment_centrality_shortest(
+        network_structure.local_segment_centrality(
             distances=distances,
             betas=None,
-            closeness=True,
-            betweenness=True,
+            compute_closeness=True,
+            compute_betweenness=True,
             pbar_disabled=True,
         )
 
