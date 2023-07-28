@@ -435,8 +435,8 @@ def node_centrality_simplest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    compute_closeness: bool | None = None,
-    compute_betweenness: bool | None = None,
+    compute_closeness: bool | None = True,
+    compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
@@ -469,8 +469,8 @@ def segment_centrality(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    compute_closeness: bool | None = None,
-    compute_betweenness: bool | None = None,
+    compute_closeness: bool | None = True,
+    compute_betweenness: bool | None = True,
     jitter_scale: float = 0.0,
     min_threshold_wt: float = MIN_THRESH_WT,
 ) -> gpd.GeoDataFrame:

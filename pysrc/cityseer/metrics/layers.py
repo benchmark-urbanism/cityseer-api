@@ -446,10 +446,10 @@ def compute_mixed_uses(
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
-                hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
+                hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
                 nodes_gdf[hill_nw_data_key] = mixed_uses_data.hill[q_key][dist_key]
             if compute_hill_weighted:
-                hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
+                hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
                 nodes_gdf[hill_wt_data_key] = mixed_uses_data.hill_weighted[q_key][dist_key]
         if compute_shannon:
             shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")

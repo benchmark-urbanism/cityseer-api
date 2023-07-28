@@ -376,6 +376,7 @@ impl DataMap {
         }
         Ok(accessibilities)
     }
+
     fn mixed_uses(
         &self,
         network_structure: &NetworkStructure,
