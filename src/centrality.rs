@@ -15,48 +15,39 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
 #[pyclass]
-pub struct CloseShortestResult {
+pub struct CentralityShortestResult {
     #[pyo3(get)]
-    node_density: HashMap<u32, Py<PyArray1<f32>>>,
+    node_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    node_farness: HashMap<u32, Py<PyArray1<f32>>>,
+    node_farness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    node_cycles: HashMap<u32, Py<PyArray1<f32>>>,
+    node_cycles: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    node_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    node_beta: HashMap<u32, Py<PyArray1<f32>>>,
+    node_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
+    node_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
+    node_betweenness_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
 #[pyclass]
-pub struct CloseSimplestResult {
+pub struct CentralitySimplestResult {
     #[pyo3(get)]
-    node_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    node_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
+    node_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
 #[pyclass]
-pub struct CloseSegmentShortestResult {
+pub struct CentralitySegmentResult {
     #[pyo3(get)]
-    segment_density: HashMap<u32, Py<PyArray1<f32>>>,
+    segment_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    segment_harmonic: HashMap<u32, Py<PyArray1<f32>>>,
+    segment_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    segment_beta: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwShortestResult {
+    segment_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
-    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    node_betweenness_beta: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwSimplestResult {
-    #[pyo3(get)]
-    node_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
-}
-#[pyclass]
-pub struct BetwSegmentShortestResult {
-    #[pyo3(get)]
-    segment_betweenness: HashMap<u32, Py<PyArray1<f32>>>,
+    segment_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
 
 #[pymethods]
@@ -240,32 +231,33 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        closeness: Option<bool>,
-        betweenness: Option<bool>,
+        compute_closeness: Option<bool>,
+        compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> PyResult<(Option<CloseShortestResult>, Option<BetwShortestResult>)> {
+    ) -> PyResult<CentralityShortestResult> {
         // setup
         self.validate()?;
         let (distances, betas) =
             common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
-        let closeness = closeness.unwrap_or(false);
-        let betweenness = betweenness.unwrap_or(false);
-        if !closeness && !betweenness {
+        let compute_closeness = compute_closeness.unwrap_or(true);
+        let compute_betweenness = compute_betweenness.unwrap_or(true);
+        if !compute_closeness && !compute_betweenness {
             return Err(exceptions::PyValueError::new_err(
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
         // metrics
-        let node_density = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_farness = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_beta = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_betweenness_beta = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_betweenness_beta =
+            MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
         // indices
         let node_indices: Vec<usize> = self.node_indices();
         // pbar
@@ -292,7 +284,7 @@ impl NetworkStructure {
                 if !node_visit.short_dist.is_finite() {
                     continue;
                 }
-                if closeness {
+                if compute_closeness {
                     for i in 0..distances.len() {
                         let distance = distances[i];
                         let beta = betas[i];
@@ -311,7 +303,7 @@ impl NetworkStructure {
                         }
                     }
                 }
-                if betweenness {
+                if compute_betweenness {
                     if to_idx < src_idx {
                         continue;
                     }
@@ -338,54 +330,72 @@ impl NetworkStructure {
             }
         });
         pbar.finish();
-        let close_result: Option<CloseShortestResult> = if closeness {
-            Some(CloseShortestResult {
-                node_density: node_density.load(),
-                node_farness: node_farness.load(),
-                node_cycles: node_cycles.load(),
-                node_harmonic: node_harmonic.load(),
-                node_beta: node_beta.load(),
-            })
-        } else {
-            None
+        let result = CentralityShortestResult {
+            node_density: if compute_closeness {
+                Some(node_density.load())
+            } else {
+                None
+            },
+            node_farness: if compute_closeness {
+                Some(node_farness.load())
+            } else {
+                None
+            },
+            node_cycles: if compute_closeness {
+                Some(node_cycles.load())
+            } else {
+                None
+            },
+            node_harmonic: if compute_closeness {
+                Some(node_harmonic.load())
+            } else {
+                None
+            },
+            node_beta: if compute_closeness {
+                Some(node_beta.load())
+            } else {
+                None
+            },
+            node_betweenness: if compute_betweenness {
+                Some(node_betweenness.load())
+            } else {
+                None
+            },
+            node_betweenness_beta: if compute_betweenness {
+                Some(node_betweenness_beta.load())
+            } else {
+                None
+            },
         };
-        let betw_result: Option<BetwShortestResult> = if betweenness {
-            Some(BetwShortestResult {
-                node_betweenness: node_betweenness.load(),
-                node_betweenness_beta: node_betweenness_beta.load(),
-            })
-        } else {
-            None
-        };
-        Ok((close_result, betw_result))
+        Ok(result)
     }
 
     pub fn local_node_centrality_simplest(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        closeness: Option<bool>,
-        betweenness: Option<bool>,
+        compute_closeness: Option<bool>,
+        compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> PyResult<(Option<CloseSimplestResult>, Option<BetwSimplestResult>)> {
+    ) -> PyResult<CentralitySimplestResult> {
         // setup
         self.validate()?;
         let (distances, _betas) =
             common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
-        let closeness = closeness.unwrap_or(false);
-        let betweenness = betweenness.unwrap_or(false);
-        if !closeness && !betweenness {
+        let compute_closeness = compute_closeness.unwrap_or(true);
+        let compute_betweenness = compute_betweenness.unwrap_or(true);
+        if !compute_closeness && !compute_betweenness {
             return Err(exceptions::PyValueError::new_err(
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
-        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
-        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
+        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
         // indices
         let node_indices: Vec<usize> = self
             .graph
@@ -415,7 +425,7 @@ impl NetworkStructure {
                 if !node_visit.short_dist.is_finite() {
                     continue;
                 }
-                if closeness {
+                if compute_closeness {
                     for i in 0..distances.len() {
                         let distance = distances[i];
                         if node_visit.short_dist <= distance as f32 {
@@ -425,7 +435,7 @@ impl NetworkStructure {
                         }
                     }
                 }
-                if betweenness {
+                if compute_betweenness {
                     if to_idx < src_idx {
                         continue;
                     }
@@ -447,36 +457,31 @@ impl NetworkStructure {
             }
         });
         pbar.finish();
-        let close_result: Option<CloseSimplestResult> = if closeness {
-            Some(CloseSimplestResult {
-                node_harmonic: node_harmonic.load(),
-            })
-        } else {
-            None
+        let result = CentralitySimplestResult {
+            node_harmonic: if compute_closeness {
+                Some(node_harmonic.load())
+            } else {
+                None
+            },
+            node_betweenness: if compute_betweenness {
+                Some(node_betweenness.load())
+            } else {
+                None
+            },
         };
-        let betw_result: Option<BetwSimplestResult> = if betweenness {
-            Some(BetwSimplestResult {
-                node_betweenness: node_betweenness.load(),
-            })
-        } else {
-            None
-        };
-        Ok((close_result, betw_result))
+        Ok(result)
     }
 
-    pub fn local_segment_centrality_shortest(
+    pub fn local_segment_centrality(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        closeness: Option<bool>,
-        betweenness: Option<bool>,
+        compute_closeness: Option<bool>,
+        compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> PyResult<(
-        Option<CloseSegmentShortestResult>,
-        Option<BetwSegmentShortestResult>,
-    )> {
+    ) -> PyResult<CentralitySegmentResult> {
         /*
         can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
         hence visiting all processed edges and extrapolating information
@@ -488,19 +493,20 @@ impl NetworkStructure {
         let (distances, betas) =
             common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
-        let closeness = closeness.unwrap_or(false);
-        let betweenness = betweenness.unwrap_or(false);
-        if !closeness && !betweenness {
+        let compute_closeness = compute_closeness.unwrap_or(true);
+        let compute_betweenness = compute_betweenness.unwrap_or(true);
+        if !compute_closeness && !compute_betweenness {
             return Err(exceptions::PyValueError::new_err(
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         // metrics
-        let segment_density = MetricResult::new(distances.clone(), self.graph.node_count());
-        let segment_harmonic = MetricResult::new(distances.clone(), self.graph.node_count());
-        let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count());
-        let segment_betweenness = MetricResult::new(distances.clone(), self.graph.node_count());
+        let segment_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let segment_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+        let segment_betweenness =
+            MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
         // indices
         let node_indices: Vec<usize> = self
             .graph
@@ -544,7 +550,7 @@ impl NetworkStructure {
                 the edge is then split at the farthest point from either direction and apportioned either way
                 if the segment is on the shortest path then the second segment will squash down to naught
                 */
-                if closeness {
+                if compute_closeness {
                     /*
                     dijkstra discovers edges from near to far (sorts before popping next node)
                     i.e. this sort may be unnecessary?
@@ -637,7 +643,7 @@ impl NetworkStructure {
                     }
                 }
             }
-            if betweenness {
+            if compute_betweenness {
                 // prepare a list of neighbouring nodes relative to the src node
                 let mut nb_nodes: Vec<usize> = Vec::new();
                 for nb_nd_idx in self
@@ -733,23 +739,29 @@ impl NetworkStructure {
             }
         });
         pbar.finish();
-        let close_result: Option<CloseSegmentShortestResult> = if closeness {
-            Some(CloseSegmentShortestResult {
-                segment_density: segment_density.load(),
-                segment_harmonic: segment_harmonic.load(),
-                segment_beta: segment_beta.load(),
-            })
-        } else {
-            None
+        let result = CentralitySegmentResult {
+            segment_density: if compute_closeness {
+                Some(segment_density.load())
+            } else {
+                None
+            },
+            segment_harmonic: if compute_closeness {
+                Some(segment_harmonic.load())
+            } else {
+                None
+            },
+            segment_beta: if compute_closeness {
+                Some(segment_beta.load())
+            } else {
+                None
+            },
+            segment_betweenness: if compute_betweenness {
+                Some(segment_betweenness.load())
+            } else {
+                None
+            },
         };
-        let betw_result: Option<BetwSegmentShortestResult> = if betweenness {
-            Some(BetwSegmentShortestResult {
-                segment_betweenness: segment_betweenness.load(),
-            })
-        } else {
-            None
-        };
-        Ok((close_result, betw_result))
+        Ok(result)
     }
 }
 /*

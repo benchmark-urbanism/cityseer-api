@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Union
 
 import geopandas as gpd
 import numpy as np
@@ -9,7 +8,6 @@ import numpy.typing as npt
 from sklearn.preprocessing import LabelEncoder  # type: ignore
 
 from cityseer import config, rustalgos
-from cityseer.algos import data
 from cityseer.metrics import networks
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +17,7 @@ logger = logging.getLogger(__name__)
 def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: Union[int, float],
+    max_netw_assign_dist: int | float,
     data_id_col: str | None = None,
 ) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
     """
@@ -257,10 +255,12 @@ def compute_mixed_uses(
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
+    compute_hill: bool | None = True,
+    compute_hill_weighted: bool | None = True,
+    compute_shannon: bool | None = False,
+    compute_gini: bool | None = False,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    hill_mu_measures: bool | None = True,
-    other_mu_measures: bool | None = None,
     data_id_col: str | None = None,
     spatial_tolerance: int = 0,
     min_threshold_wt: float | None = None,
@@ -428,13 +428,15 @@ def compute_mixed_uses(
         logger.info(f"Computing mixed-use measures.")
     # extract landuses
     landuses_map = data_gdf[landuse_column_label].to_dict()
-    mixed_use_hill_data, mixed_use_other_data = data_map.mixed_uses(
+    mixed_uses_data = data_map.mixed_uses(
         network_structure,
         landuses_map,
         distances=distances,
         betas=betas,
-        mixed_uses_hill=hill_mu_measures,
-        mixed_uses_other=other_mu_measures,
+        compute_hill=compute_hill,
+        compute_hill_weighted=compute_hill_weighted,
+        compute_shannon=compute_shannon,
+        compute_gini=compute_gini,
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
@@ -444,243 +446,25 @@ def compute_mixed_uses(
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
         for q_key in [0, 1, 2]:
-            hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
-            hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
-            nodes_gdf[hill_nw_data_key] = mixed_use_hill_data.hill[q_key][dist_key]
-            nodes_gdf[hill_wt_data_key] = mixed_use_hill_data.hill_weighted[q_key][dist_key]
-        shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
-        gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
-        nodes_gdf[shannon_data_key] = mixed_use_other_data.shannon[dist_key]
-        nodes_gdf[gini_data_key] = mixed_use_other_data.gini[dist_key]
+            if compute_hill:
+                hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
+                nodes_gdf[hill_nw_data_key] = mixed_uses_data.hill[q_key][dist_key]
+            if compute_hill_weighted:
+                hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
+                nodes_gdf[hill_wt_data_key] = mixed_uses_data.hill_weighted[q_key][dist_key]
+        if compute_shannon:
+            shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
+            nodes_gdf[shannon_data_key] = mixed_uses_data.shannon[dist_key]
+        if compute_gini:
+            gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
+            nodes_gdf[gini_data_key] = mixed_uses_data.gini[dist_key]
 
     return nodes_gdf, data_gdf
 
 
-def hill_diversity(
-    data_gdf: gpd.GeoDataFrame,
-    landuse_column_label: str,
-    nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int = 400,
-    distances: list[int] | None = None,
-    betas: list[float] | None = None,
-    qs: QsType = None,
-    spatial_tolerance: int = 0,
-    jitter_scale: float = 0.0,
-    angular: bool = False,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    r"""
-    Compute hill diversity for the provided `landuse_labels` at the specified values of `q`.
-
-    See [`compute_landuses`](#compute-landuses) for additional information.
-
-    Parameters
-    ----------
-    data_gdf: GeoDataFrame
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing data points. The coordinates of data points should correspond as precisely as possible to the
-        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
-        building entrance.
-    landuse_column_label: str
-        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
-        contain "shop", "pub", "school", etc., landuse categories.
-    nodes_gdf
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) function. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
-    network_structure
-        A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
-    max_netw_assign_dist: int
-        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-    qs: tuple[float]
-        The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-    angular: bool
-        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances.
-
-    Returns
-    -------
-    nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
-
-    # prepare a mock graph
-    G = mock.mock_graph()
-    G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-    print(nodes_gdf.head())
-    landuses_gdf = mock.mock_landuse_categorical_data(G)
-    print(landuses_gdf.head())
-    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-    nodes_gdf, landuses_gdf = layers.hill_diversity(
-        data_gdf=landuses_gdf,
-        landuse_column_label="categorical_landuses",
-        nodes_gdf=nodes_gdf,
-        network_structure=network_structure,
-        distances=[200, 400, 800],
-        qs=[0, 1],
-    )
-    print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_hill_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
-    ```
-
-    """
-    return compute_mixed_uses(
-        data_gdf,
-        landuse_column_label,
-        ["hill"],
-        nodes_gdf,
-        network_structure,
-        max_netw_assign_dist=max_netw_assign_dist,
-        distances=distances,
-        betas=betas,
-        qs=qs,
-        spatial_tolerance=spatial_tolerance,
-        jitter_scale=jitter_scale,
-        angular=angular,
-    )
-
-
-def hill_branch_wt_diversity(
-    data_gdf: gpd.GeoDataFrame,
-    landuse_column_label: str,
-    nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int = 400,
-    distances: list[int] | None = None,
-    betas: list[float] | None = None,
-    qs: QsType = None,
-    spatial_tolerance: int = 0,
-    jitter_scale: float = 0.0,
-    angular: bool = False,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    r"""
-    Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`.
-
-    See [`compute_landuses`](#compute-landuses) for additional information.
-
-    Parameters
-    ----------
-    data_gdf: GeoDataFrame
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing data points. The coordinates of data points should correspond as precisely as possible to the
-        location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
-        building entrance.
-    landuse_column_label: str
-        The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
-        contain "shop", "pub", "school", etc., landuse categories.
-    nodes_gdf
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the function.
-    network_structure
-        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
-    max_netw_assign_dist: int
-        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-    qs: tuple[float]
-        The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-    angular: bool
-        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances.
-
-    Returns
-    -------
-    nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-
-    Examples
-    --------
-    ```python
-    from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
-
-    # prepare a mock graph
-    G = mock.mock_graph()
-    G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-    print(nodes_gdf.head())
-    landuses_gdf = mock.mock_landuse_categorical_data(G)
-    print(landuses_gdf.head())
-    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-    nodes_gdf, landuses_gdf = layers.hill_branch_wt_diversity(
-        data_gdf=landuses_gdf,
-        landuse_column_label="categorical_landuses",
-        nodes_gdf=nodes_gdf,
-        network_structure=network_structure,
-        distances=[200, 400, 800],
-        qs=[0, 1],
-    )
-    print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_hill_branch_wt_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
-    ```
-
-    """
-    return compute_mixed_uses(
-        data_gdf,
-        landuse_column_label,
-        ["hill_branch_wt"],
-        nodes_gdf,
-        network_structure,
-        max_netw_assign_dist=max_netw_assign_dist,
-        distances=distances,
-        betas=betas,
-        qs=qs,
-        spatial_tolerance=spatial_tolerance,
-        jitter_scale=jitter_scale,
-        angular=angular,
-    )
-
-
 def compute_stats(
     data_gdf: gpd.GeoDataFrame,
-    stats_column_labels: Union[str, list[str], tuple[str], npt.NDArray[np.unicode_]],
+    stats_column_labels: str | list[str] | tuple[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,

@@ -325,10 +325,10 @@ def test_local_node_centrality_shortest(primal_graph):
     betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
     distances = rustalgos.distances_from_betas(betas)
     # generate the measures
-    close_result, betw_result = network_structure.local_node_centrality_shortest(
+    node_result_short = network_structure.local_node_centrality_shortest(
         distances=distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # test node density
     # node density count doesn't include self-node
@@ -336,12 +336,12 @@ def test_local_node_centrality_shortest(primal_graph):
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
-    for n in close_result.node_density[5000]:  # large distance - exceeds cutoff clashes
+    for n in node_result_short.node_density[5000]:  # large distance - exceeds cutoff clashes
         assert n in [49, 3, 1, 0]
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
     for src_idx in range(len(G_round_trip)):
-        assert nx_harm_cl[str(src_idx)] - close_result.node_harmonic[5000][src_idx] < config.ATOL
+        assert nx_harm_cl[str(src_idx)] - node_result_short.node_harmonic[5000][src_idx] < config.ATOL
     # test betweenness vs NetworkX
     # set endpoint counting to false and do not normalise
     # nx node centrality NOT implemented for MultiGraph
@@ -354,7 +354,7 @@ def test_local_node_centrality_shortest(primal_graph):
     nx_betw = np.array([v for v in nx_betw.values()])
     # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
     # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    np.allclose(nx_betw[:52], betw_result.node_betweenness[5000][:52], atol=config.ATOL, rtol=config.RTOL)
+    np.allclose(nx_betw[:52], node_result_short.node_betweenness[5000][:52], atol=config.ATOL, rtol=config.RTOL)
     # do the comparisons array-wise so that betweenness can be aggregated
     d_n = len(distances)
     n_nodes: int = primal_graph.number_of_nodes()
@@ -412,13 +412,19 @@ def test_local_node_centrality_shortest(primal_graph):
                         # follow
                         inter_idx = int(tree_map[inter_idx].pred)
     for d_idx, dist in enumerate(distances):
-        assert np.allclose(close_result.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(close_result.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(close_result.node_cycles[dist], cyc[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(close_result.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(close_result.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(betw_result.node_betweenness[dist], betw[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(betw_result.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(
+            node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
+        )
+        assert np.allclose(node_result_short.node_cycles[dist], cyc[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(
+            node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
+        )
+        assert np.allclose(node_result_short.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(node_result_short.node_betweenness[dist], betw[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(
+            node_result_short.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL
+        )
 
 
 def test_local_centrality_all(diamond_graph):
@@ -432,119 +438,129 @@ def test_local_centrality_all(diamond_graph):
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
     _nodes_gdf_d, _edges_gdf_d, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
-    distances: npt.NDArray[np.int_] = np.array([50, 150, 250], dtype=np.int_)
+    distances = [50, 150, 250]
     betas = rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
-    close_result, betw_result = network_structure.local_node_centrality_shortest(
+    node_result_short = network_structure.local_node_centrality_shortest(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # node density
     # additive nodes
-    assert np.allclose(close_result.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
     # node farness
     # additive distances
-    assert np.allclose(close_result.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
     # node cycles
     # additive cycles
-    assert np.allclose(close_result.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
-    assert np.allclose(close_result.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_harmonic[150], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result.node_harmonic[250], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        node_result_short.node_harmonic[150], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        node_result_short.node_harmonic[250], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL
+    )
     # node beta
     # additive exp(-beta * dist)
     # beta = 0.0
-    assert np.allclose(close_result.node_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # beta = 0.02666667
     np.allclose(
-        close_result.node_beta[150], [0.1389669, 0.20845035, 0.20845035, 0.1389669], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.node_beta[150],
+        [0.1389669, 0.20845035, 0.20845035, 0.1389669],
+        atol=config.ATOL,
+        rtol=config.RTOL,
     )
     # beta = 0.016
     np.allclose(
-        close_result.node_beta[250], [0.44455525, 0.6056895, 0.6056895, 0.44455522], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.node_beta[250],
+        [0.44455525, 0.6056895, 0.6056895, 0.44455522],
+        atol=config.ATOL,
+        rtol=config.RTOL,
     )
     # node betweenness
     # additive 1 per node en route
-    assert np.allclose(betw_result.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(betw_result.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # takes first out of multiple options, so either of following is correct
     assert np.allclose(
-        betw_result.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL
-    ) or np.allclose(betw_result.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+        node_result_short.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL
+    ) or np.allclose(node_result_short.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # node betweenness beta
     # additive exp(-beta * dist) en route
     assert np.allclose(
-        betw_result.node_betweenness_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.node_betweenness_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
     )  # beta = 0.08
     assert np.allclose(
-        betw_result.node_betweenness_beta[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.node_betweenness_beta[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
     )  # beta = 0.02666667
     # takes first out of multiple options, so either of following is correct
     # beta evaluated over 200m distance from 3 to 0
     # beta = 0.016
-    assert np.allclose(betw_result.node_betweenness_beta[250], [0, 0.0407622, 0, 0]) or np.allclose(
-        betw_result.node_betweenness_beta[250], [0, 0, 0.0407622, 0]
+    assert np.allclose(node_result_short.node_betweenness_beta[250], [0, 0.0407622, 0, 0]) or np.allclose(
+        node_result_short.node_betweenness_beta[250], [0, 0, 0.0407622, 0]
     )
 
     # NODE SIMPLEST
-    close_result_ang, betw_result_ang = network_structure.local_node_centrality_simplest(
+    node_result_simplest = network_structure.local_node_centrality_simplest(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
-    assert np.allclose(close_result_ang.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result_ang.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result_ang.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
     # node betweenness angular
     # additive 1 per node en simplest route
-    assert np.allclose(betw_result_ang.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(betw_result_ang.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(
-        betw_result_ang.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL
-    ) or np.allclose(betw_result_ang.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL)
+        node_result_simplest.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL
+    ) or np.allclose(node_result_simplest.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL)
     # NODE SIMPLEST ON DUAL network_structure_dual
-    close_result_ang_dual, betw_result_ang_dual = network_structure_dual.local_node_centrality_simplest(
+    node_result_simplest = network_structure_dual.local_node_centrality_simplest(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
-    assert np.allclose(close_result_ang_dual.node_harmonic[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(
-        close_result_ang_dual.node_harmonic[150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL
+        node_result_simplest.node_harmonic[150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL
     )
     assert np.allclose(
-        close_result_ang_dual.node_harmonic[250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
+        node_result_simplest.node_harmonic[250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
     )
     # node betweenness angular
     # additive 1 per node en simplest route
-    assert np.allclose(betw_result_ang_dual.node_betweenness[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(betw_result_ang_dual.node_betweenness[150], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(betw_result_ang_dual.node_betweenness[250], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_betweenness[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_betweenness[150], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_betweenness[250], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
     # SEGMENT SHORTEST
-    close_result_seg, betw_result_seg = network_structure.local_segment_centrality_shortest(
+    segment_result = network_structure.local_segment_centrality(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # segment density
     # additive segment lengths
-    assert np.allclose(close_result_seg.segment_density[50], [100, 150, 150, 100], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result_seg.segment_density[150], [400, 500, 500, 400], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(close_result_seg.segment_density[250], [500, 500, 500, 500], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(segment_result.segment_density[50], [100, 150, 150, 100], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(segment_result.segment_density[150], [400, 500, 500, 400], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(segment_result.segment_density[250], [500, 500, 500, 500], atol=config.ATOL, rtol=config.RTOL)
     # segment harmonic
     # segments are potentially approached from two directions
     # i.e. along respective shortest paths to intersection of shortest routes
@@ -552,19 +568,19 @@ def test_local_centrality_all(diamond_graph):
     # additive log(b) - log(a) + log(d) - log(c)
     # nearer distance capped at 1m to avert negative numbers
     assert np.allclose(
-        close_result_seg.segment_harmonic[50],
+        segment_result.segment_harmonic[50],
         [7.824046, 11.736069, 11.736069, 7.824046],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        close_result_seg.segment_harmonic[150],
+        segment_result.segment_harmonic[150],
         [10.832201, 15.437371, 15.437371, 10.832201],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        close_result_seg.segment_harmonic[250],
+        segment_result.segment_harmonic[250],
         [11.407564, 15.437371, 15.437371, 11.407565],
         atol=config.ATOL,
         rtol=config.RTOL,
@@ -573,19 +589,19 @@ def test_local_centrality_all(diamond_graph):
     # additive (np.exp(-beta * b) - np.exp(-beta * a)) / -beta + (np.exp(-beta * d) - np.exp(-beta * c)) / -beta
     # beta = 0 resolves to b - a and avoids division through zero
     assert np.allclose(
-        close_result_seg.segment_beta[50],
+        segment_result.segment_beta[50],
         [24.542109, 36.813164, 36.813164, 24.542109],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        close_result_seg.segment_beta[150],
+        segment_result.segment_beta[150],
         [77.46391, 112.358284, 112.358284, 77.46391],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
-        close_result_seg.segment_beta[250],
+        segment_result.segment_beta[250],
         [133.80205, 177.43903, 177.43904, 133.80205],
         atol=config.ATOL,
         rtol=config.RTOL,
@@ -594,15 +610,9 @@ def test_local_centrality_all(diamond_graph):
     # similar formulation to segment beta: start and end segment of each betweenness pair assigned to intervening nodes
     # distance thresholds are computed using the inside edges of the segments
     # so if the segments are touching, they will count up to the threshold distance...
-    assert np.allclose(
-        betw_result_seg.segment_betweenness[50], [0, 0, 24.542109, 0], atol=config.ATOL, rtol=config.RTOL
-    )
-    assert np.allclose(
-        betw_result_seg.segment_betweenness[150], [0, 0, 69.78874, 0], atol=config.ATOL, rtol=config.RTOL
-    )
-    assert np.allclose(
-        betw_result_seg.segment_betweenness[250], [0, 0, 99.76293, 0], atol=config.ATOL, rtol=config.RTOL
-    )
+    assert np.allclose(segment_result.segment_betweenness[50], [0, 0, 24.542109, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(segment_result.segment_betweenness[150], [0, 0, 69.78874, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(segment_result.segment_betweenness[250], [0, 0, 99.76293, 0], atol=config.ATOL, rtol=config.RTOL)
     """
     NOTE: segment simplest has been removed since v4
     # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
@@ -642,21 +652,19 @@ def test_decomposed_local_centrality(primal_graph):
     # - node based measures will not match
     # - closeness segment measures will match - these measure to the cut endpoints per thresholds
     # - betweenness segment measures won't match - don't measure to cut endpoints
-    close_result_seg, betw_result_seg = network_structure.local_segment_centrality_shortest(
+    segment_result = network_structure.local_segment_centrality(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
-    close_result_seg_decomp, betw_result_seg_decomp = network_structure_decomp.local_segment_centrality_shortest(
+    segment_result_decomp = network_structure_decomp.local_segment_centrality(
         distances,
-        closeness=True,
-        betweenness=True,
+        compute_closeness=True,
+        compute_betweenness=True,
     )
     # compare against the original 56 elements (decomposed adds new nodes)
+    assert np.allclose(segment_result.segment_density[400].sum(), segment_result_decomp.segment_density[400][:57].sum())
+    assert np.allclose(segment_result.segment_beta[400].sum(), segment_result_decomp.segment_beta[400][:57].sum())
     assert np.allclose(
-        close_result_seg.segment_density[400].sum(), close_result_seg_decomp.segment_density[400][:57].sum()
-    )
-    assert np.allclose(close_result_seg.segment_beta[400].sum(), close_result_seg_decomp.segment_beta[400][:57].sum())
-    assert np.allclose(
-        close_result_seg.segment_harmonic[400].sum(), close_result_seg_decomp.segment_harmonic[400][:57].sum()
+        segment_result.segment_harmonic[400].sum(), segment_result_decomp.segment_harmonic[400][:57].sum()
     )

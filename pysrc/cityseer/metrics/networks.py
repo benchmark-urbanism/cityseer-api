@@ -328,8 +328,8 @@ def node_centrality_shortest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    closeness: bool | None = None,
-    betweenness: bool | None = None,
+    compute_closeness: bool | None = True,
+    compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
@@ -410,23 +410,23 @@ def node_centrality_shortest(
     """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    close_result, betw_result = network_structure.local_node_centrality_shortest(
+    node_result_short = network_structure.local_node_centrality_shortest(
         distances=distances,
-        closeness=closeness,
-        betweenness=betweenness,
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
-    if closeness is True:
+    if compute_closeness is True:
         for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
-    if betweenness is True:
+                nodes_gdf[data_key] = getattr(node_result_short, measure_name)[distance]
+    if compute_betweenness is True:
         for measure_name in ["node_betweenness", "node_betweenness_beta"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(node_result_short, measure_name)[distance]
     return nodes_gdf
 
 
@@ -435,31 +435,31 @@ def node_centrality_simplest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    closeness: bool | None = None,
-    betweenness: bool | None = None,
+    compute_closeness: bool | None = None,
+    compute_betweenness: bool | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     """ """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    close_result, betw_result = network_structure.local_node_centrality_simplest(
+    node_result = network_structure.local_node_centrality_simplest(
         distances=distances,
-        closeness=closeness,
-        betweenness=betweenness,
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
-    if closeness is True:
+    if compute_closeness is True:
         for measure_name in ["node_harmonic"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
-    if betweenness is True:
+                nodes_gdf[data_key] = getattr(node_result, measure_name)[distance]
+    if compute_betweenness is True:
         for measure_name in ["node_betweenness"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(node_result, measure_name)[distance]
     return nodes_gdf
 
 
@@ -469,8 +469,8 @@ def segment_centrality(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    closeness: bool | None = None,
-    betweenness: bool | None = None,
+    compute_closeness: bool | None = None,
+    compute_betweenness: bool | None = None,
     jitter_scale: float = 0.0,
     min_threshold_wt: float = MIN_THRESH_WT,
 ) -> gpd.GeoDataFrame:
@@ -542,21 +542,21 @@ def segment_centrality(
     """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    close_result, betw_result = network_structure.local_segment_centrality_shortest(
+    segment_result = network_structure.local_segment_centrality(
         distances=distances,
-        closeness=closeness,
-        betweenness=betweenness,
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
-    if closeness is True:
+    if compute_closeness is True:
         for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(close_result, measure_name)[distance]
-    if betweenness is True:
+                nodes_gdf[data_key] = getattr(segment_result, measure_name)[distance]
+    if compute_betweenness is True:
         for measure_name in ["segment_betweenness"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(betw_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(segment_result, measure_name)[distance]
     return nodes_gdf

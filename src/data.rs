@@ -18,18 +18,38 @@ struct AccessibilityResult {
     unweighted: HashMap<u32, Py<PyArray1<f32>>>,
 }
 #[pyclass]
-struct MixedUsesHillResult {
+struct MixedUsesResult {
     #[pyo3(get)]
-    hill: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>,
+    hill: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>>,
     #[pyo3(get)]
-    hill_weighted: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>,
+    hill_weighted: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>>,
+    #[pyo3(get)]
+    shannon: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
+    gini: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
 #[pyclass]
-struct MixedUsesOtherResult {
+struct StatsResult {
     #[pyo3(get)]
-    shannon: HashMap<u32, Py<PyArray1<f32>>>,
+    sum: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
-    gini: HashMap<u32, Py<PyArray1<f32>>>,
+    sum_wt: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    mean: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    mean_wt: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    count: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    count_wt: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    variance: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    variance_wt: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    max: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    min: HashMap<u32, Py<PyArray1<f32>>>,
 }
 struct ClassesState {
     count: u32,
@@ -281,7 +301,7 @@ impl DataMap {
             .map(|acc_key| {
                 (
                     acc_key,
-                    MetricResult::new(distances.clone(), network_structure.node_count()),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 )
             })
             .collect();
@@ -291,7 +311,7 @@ impl DataMap {
             .map(|acc_key| {
                 (
                     acc_key,
-                    MetricResult::new(distances.clone(), network_structure.node_count()),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 )
             })
             .collect();
@@ -362,14 +382,16 @@ impl DataMap {
         landuses_map: HashMap<String, String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        mixed_uses_hill: Option<bool>,
-        mixed_uses_other: Option<bool>,
+        compute_hill: Option<bool>,
+        compute_hill_weighted: Option<bool>,
+        compute_shannon: Option<bool>,
+        compute_gini: Option<bool>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
-    ) -> PyResult<(Option<MixedUsesHillResult>, Option<MixedUsesOtherResult>)> {
+    ) -> PyResult<MixedUsesResult> {
         let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         if landuses_map.len() != self.count() {
@@ -377,9 +399,11 @@ impl DataMap {
                 "The number of landuse encodings must match the number of data points",
             ));
         }
-        let mixed_uses_hill = mixed_uses_hill.unwrap_or(false);
-        let mixed_uses_other = mixed_uses_other.unwrap_or(false);
-        if !mixed_uses_hill && !mixed_uses_other {
+        let compute_hill = compute_hill.unwrap_or(true);
+        let compute_hill_weighted = compute_hill_weighted.unwrap_or(true);
+        let compute_shannon = compute_shannon.unwrap_or(false);
+        let compute_gini = compute_gini.unwrap_or(false);
+        if !compute_hill && !compute_hill_weighted && !compute_shannon && !compute_gini {
             return Err(exceptions::PyValueError::new_err(
                 "Either or both closeness and mixed-use flags is required, but both parameters are False.",
             ));
@@ -392,7 +416,7 @@ impl DataMap {
             .map(|q| {
                 (
                     q,
-                    MetricResult::new(distances.clone(), network_structure.node_count()),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 )
             })
             .collect();
@@ -401,12 +425,12 @@ impl DataMap {
             .map(|q| {
                 (
                     q,
-                    MetricResult::new(distances.clone(), network_structure.node_count()),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 )
             })
             .collect();
-        let shannon_mu = MetricResult::new(distances.clone(), network_structure.node_count());
-        let gini_mu = MetricResult::new(distances.clone(), network_structure.node_count());
+        let shannon_mu = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+        let gini_mu = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
         // prepare unique landuse classes
         let mut classes_uniq: HashSet<String> = HashSet::new();
         for cl_code in landuses_map.values() {
@@ -486,7 +510,7 @@ impl DataMap {
                     nearest.push(classes_state.nearest);
                 }
                 // hill
-                if mixed_uses_hill {
+                if compute_hill {
                     hill_mu[&0].metric[i][*netw_src_idx].fetch_add(
                         diversity::hill_diversity(counts.clone(), 0.0).unwrap(),
                         Ordering::Relaxed,
@@ -499,6 +523,8 @@ impl DataMap {
                         diversity::hill_diversity(counts.clone(), 2.0).unwrap(),
                         Ordering::Relaxed,
                     );
+                }
+                if compute_hill_weighted {
                     hill_wt_mu[&0].metric[i][*netw_src_idx].fetch_add(
                         diversity::hill_diversity_branch_distance_wt(
                             counts.clone(),
@@ -533,11 +559,13 @@ impl DataMap {
                         Ordering::Relaxed,
                     );
                 }
-                if mixed_uses_other {
+                if compute_shannon {
                     shannon_mu.metric[i][*netw_src_idx].fetch_add(
                         diversity::shannon_diversity(counts.clone()).unwrap(),
                         Ordering::Relaxed,
                     );
+                }
+                if compute_gini {
                     gini_mu.metric[i][*netw_src_idx].fetch_add(
                         diversity::gini_simpson_diversity(counts.clone()).unwrap(),
                         Ordering::Relaxed,
@@ -546,28 +574,235 @@ impl DataMap {
             }
         });
         pbar.finish();
-        let mu_hill_result: Option<MixedUsesHillResult> = if mixed_uses_hill {
-            let mut hill: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> = HashMap::new();
-            let mut hill_weighted: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> = HashMap::new();
+        let mut hill_result: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>> = None;
+        if compute_hill == true {
+            let mut hr: HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> = HashMap::new();
             for q_key in vec![0, 1, 2].iter() {
-                hill.insert(q_key.clone(), hill_mu[q_key].load());
-                hill_weighted.insert(q_key.clone(), hill_wt_mu[q_key].load());
+                hr.insert(q_key.clone(), hill_mu[q_key].load());
             }
-            Some(MixedUsesHillResult {
-                hill,
-                hill_weighted,
-            })
+            hill_result = Some(hr)
+        };
+        let mut hill_weighted_result: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>> = None;
+        if compute_hill_weighted {
+            let mut hr = HashMap::new();
+            for q_key in vec![0, 1, 2].iter() {
+                hr.insert(q_key.clone(), hill_wt_mu[q_key].load());
+            }
+            hill_weighted_result = Some(hr)
+        };
+        let shannon_result: Option<HashMap<u32, Py<PyArray1<f32>>>> = if compute_shannon {
+            Some(shannon_mu.load())
         } else {
             None
         };
-        let mu_other_result: Option<MixedUsesOtherResult> = if mixed_uses_other {
-            Some(MixedUsesOtherResult {
-                shannon: shannon_mu.load(),
-                gini: gini_mu.load(),
-            })
+        let gini_result: Option<HashMap<u32, Py<PyArray1<f32>>>> = if compute_gini {
+            Some(gini_mu.load())
         } else {
             None
         };
-        Ok((mu_hill_result, mu_other_result))
+        let mu_result: MixedUsesResult = MixedUsesResult {
+            hill: hill_result,
+            hill_weighted: hill_weighted_result,
+            shannon: shannon_result,
+            gini: gini_result,
+        };
+
+        Ok(mu_result)
+    }
+    fn stats(
+        &self,
+        network_structure: &NetworkStructure,
+        numerical_map: HashMap<String, f32>,
+        distances: Option<Vec<u32>>,
+        betas: Option<Vec<f32>>,
+        angular: Option<bool>,
+        spatial_tolerance: Option<u32>,
+        min_threshold_wt: Option<f32>,
+        jitter_scale: Option<f32>,
+        pbar_disabled: Option<bool>,
+    ) -> PyResult<StatsResult> {
+        let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        if numerical_map.len() != self.count() {
+            return Err(exceptions::PyValueError::new_err(
+                "The number of numerical entries must match the number of data points",
+            ));
+        }
+        let spatial_tolerance = spatial_tolerance.unwrap_or(0);
+        let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+        // prepare the containers for tracking results
+        let sum = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+        let sum_wt = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+        let count = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+        let count_wt = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+        let max = MetricResult::new(
+            distances.clone(),
+            network_structure.node_count(),
+            f32::NEG_INFINITY,
+        );
+        let min = MetricResult::new(
+            distances.clone(),
+            network_structure.node_count(),
+            f32::INFINITY,
+        );
+        let mean = MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+        let mean_wt =
+            MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+        let variance =
+            MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+        let variance_wt =
+            MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+        // indices
+        let node_indices: Vec<usize> = network_structure.node_indices();
+        // pbar
+        let pbar = ProgressBar::new(node_indices.len() as u64)
+            .with_message("Computing shortest path node centrality");
+        if pbar_disabled {
+            pbar.set_draw_target(ProgressDrawTarget::hidden())
+        }
+        // iter
+        node_indices.par_iter().for_each(|netw_src_idx| {
+            pbar.inc(1);
+            // skip if not live
+            if !network_structure.is_node_live(*netw_src_idx) {
+                return;
+            }
+            // generate the reachable classes and their respective distances
+            let reachable_entries = self.aggregate_to_src_idx(
+                *netw_src_idx,
+                network_structure,
+                max_dist,
+                jitter_scale,
+                angular,
+            );
+            /*
+            IDW
+            the order of the loops matters because the nested aggregations happen per distance per numerical array
+            iterate the reachable indices and related distances
+            sort by increasing distance re: deduplication via data keys
+            because these are sorted, no need to deduplicate by respective distance thresholds
+            */
+            for (data_key, data_dist) in reachable_entries.iter() {
+                let num = numerical_map[data_key].clone();
+                if num.is_nan() {
+                    continue;
+                };
+                for i in 0..distances.len() {
+                    let d = distances[i];
+                    let b = betas[i];
+                    let mcw = max_curve_wts[i];
+                    if *data_dist <= d as f32 {
+                        let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap();
+                        let num_wt = num * wt;
+                        // agg
+                        sum.metric[i][*netw_src_idx].fetch_add(num, Ordering::Relaxed);
+                        sum_wt.metric[i][*netw_src_idx].fetch_add(num_wt, Ordering::Relaxed);
+                        count.metric[i][*netw_src_idx].fetch_add(1.0, Ordering::Relaxed);
+                        count_wt.metric[i][*netw_src_idx].fetch_add(wt, Ordering::Relaxed);
+                        // not using compare_exchang in loop because only one netw_src_idx is processed at a time
+                        let current_max = max.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        if num > current_max {
+                            max.metric[i][*netw_src_idx].store(num, Ordering::Relaxed);
+                        };
+                        let current_min = min.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        if num < current_min {
+                            min.metric[i][*netw_src_idx].store(num, Ordering::Relaxed);
+                        };
+                    }
+                }
+            }
+            // finalise mean calculations - this is happening for a single netw_src_idx, so fairly fast
+            for i in 0..distances.len() {
+                let sum_val = sum.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                let count_val = count.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                mean.metric[i][*netw_src_idx].store(sum_val / count_val, Ordering::Relaxed);
+                let sum_wt_val = sum_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                let count_wt_val = count_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                mean_wt.metric[i][*netw_src_idx]
+                    .store(sum_wt_val / count_wt_val, Ordering::Relaxed);
+                // also clean up min and max - e.g. isolated locations
+                let current_max_val = max.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                if current_max_val.is_infinite() {
+                    max.metric[i][*netw_src_idx].store(f32::NAN, Ordering::Relaxed);
+                }
+                let current_min_val = min.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                if current_min_val.is_infinite() {
+                    min.metric[i][*netw_src_idx].store(f32::NAN, Ordering::Relaxed);
+                }
+            }
+            // calculate variances - counts are already computed per above
+            // weighted version is IDW by division through equivalently weighted counts above
+            for (data_key, data_dist) in reachable_entries {
+                let num = numerical_map[&data_key].clone();
+                if num.is_nan() {
+                    continue;
+                };
+                for i in 0..distances.len() {
+                    let d = distances[i];
+                    if data_dist <= d as f32 {
+                        let current_var_val =
+                            variance.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        let current_mean_val =
+                            mean.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        let diff = num - current_mean_val;
+                        if current_var_val.is_nan() {
+                            variance.metric[i][*netw_src_idx].store(diff * diff, Ordering::Relaxed);
+                        } else {
+                            variance.metric[i][*netw_src_idx]
+                                .fetch_add(diff * diff, Ordering::Relaxed);
+                        }
+                        let current_var_wt_val =
+                            variance_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        let current_mean_wt_val =
+                            mean_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                        let diff_wt = num - current_mean_wt_val;
+                        if current_var_wt_val.is_nan() {
+                            variance_wt.metric[i][*netw_src_idx]
+                                .store(diff_wt * diff_wt, Ordering::Relaxed);
+                        } else {
+                            variance_wt.metric[i][*netw_src_idx]
+                                .fetch_add(diff_wt * diff_wt, Ordering::Relaxed);
+                        }
+                    }
+                }
+            }
+            // finalise variance calculations
+            for i in 0..distances.len() {
+                let current_var_val = variance.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                let current_count_val = count.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                if current_count_val == 0.0 {
+                    variance.metric[i][*netw_src_idx].store(f32::NAN, Ordering::Relaxed);
+                } else {
+                    variance.metric[i][*netw_src_idx]
+                        .store(current_var_val / current_count_val, Ordering::Relaxed);
+                }
+                let current_var_wt_val =
+                    variance_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                let current_count_wt_val =
+                    count_wt.metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                if current_count_wt_val == 0.0 {
+                    variance_wt.metric[i][*netw_src_idx].store(f32::NAN, Ordering::Relaxed);
+                } else {
+                    variance_wt.metric[i][*netw_src_idx]
+                        .store(current_var_wt_val / current_count_wt_val, Ordering::Relaxed);
+                }
+            }
+        });
+        pbar.finish();
+        // unpack
+        let stats_result: StatsResult = StatsResult {
+            sum: sum.load(),
+            sum_wt: sum_wt.load(),
+            mean: mean.load(),
+            mean_wt: mean_wt.load(),
+            count: count.load(),
+            count_wt: count_wt.load(),
+            variance: variance.load(),
+            variance_wt: variance_wt.load(),
+            max: max.load(),
+            min: min.load(),
+        };
+        Ok(stats_result)
     }
 }
