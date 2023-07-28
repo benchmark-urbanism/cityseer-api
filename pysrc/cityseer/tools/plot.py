@@ -531,7 +531,7 @@ def plot_assignment(
         data_y: float = data_row.geometry.y
         nearest_netw_idx: int = data_row.nearest_assign
         next_nearest_netw_idx: int = data_row.next_nearest_assign
-        if nearest_netw_idx != -1:
+        if nearest_netw_idx is not None:
             # plot lines to parents for easier viz
             p_x = network_structure.node_xs[nearest_netw_idx]
             p_y = network_structure.node_ys[nearest_netw_idx]
@@ -542,7 +542,7 @@ def plot_assignment(
                 lw=0.5,
                 ls="--",
             )
-        if next_nearest_netw_idx != -1:
+        if next_nearest_netw_idx is not None:
             p_x = network_structure.node_xs[next_nearest_netw_idx]
             p_y = network_structure.node_ys[next_nearest_netw_idx]
             plt.plot([p_x, data_x], [p_y, data_y], c="#888888", lw=0.5, ls="--")
