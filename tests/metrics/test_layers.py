@@ -164,97 +164,110 @@ def test_compute_mixed_uses(primal_graph):
                 )
 
 
-def distance_generator() -> Generator[npt.NDArray[np.int_]]:  # type: ignore
-    for distances in [[500], [500, 2000]]:
-        yield distances
-
-
 def test_compute_stats(primal_graph):
     """
     Test stats component
     """
-    for distances in distance_generator():
-        # prepare network and compute
-        nodes_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-        data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-        # generate stats
-        nodes_gdf, data_gdf = layers.compute_stats(
-            data_gdf,
-            ["mock_numerical_1", "mock_numerical_2"],
-            nodes_gdf,
-            network_structure,
-            distances=distances,
-        )
-        # test against data computed directly from underlying methods
-        stats_arrays = data_gdf[["mock_numerical_1", "mock_numerical_2"]].values.T
-        (
-            stats_sum,
-            stats_sum_wt,
-            stats_mean,
-            stats_mean_wt,
-            stats_variance,
-            stats_variance_wt,
-            stats_max,
-            stats_min,
-        ) = data.aggregate_stats(
-            network_structure.nodes.xs,
-            network_structure.nodes.ys,
-            network_structure.nodes.live,
-            network_structure.edges.start,
-            network_structure.edges.end,
-            network_structure.edges.length,
-            network_structure.edges.angle_sum,
-            network_structure.edges.imp_factor,
-            network_structure.edges.in_bearing,
-            network_structure.edges.out_bearing,
-            network_structure.node_edge_map,
-            data_map.xs,
-            data_map.ys,
-            data_map.nearest_assign,
-            data_map.next_nearest_assign,
-            data_map.data_id,
-            distances,
-            networks.beta_from_distance(distances),
-            numerical_arrays=stats_arrays,
-        )
-        stats_keys = [
-            "max",
-            "min",
-            "sum",
-            "sum_weighted",
-            "mean",
-            "mean_weighted",
-            "variance",
-            "variance_weighted",
-        ]
-        stats_data = [
-            stats_max,
-            stats_min,
-            stats_sum,
-            stats_sum_wt,
-            stats_mean,
-            stats_mean_wt,
-            stats_variance,
-            stats_variance_wt,
-        ]
-        for stats_idx, stats_key in enumerate(["mock_numerical_1", "mock_numerical_2"]):
-            for stats_type_key, stats in zip(stats_keys, stats_data):
-                for d_idx, d_key in enumerate(distances):
-                    stats_data_key = config.prep_gdf_key(f"{stats_key}_{stats_type_key}_{d_key}")
-                    # check one-at-a-time computed vs multiply computed
-                    assert np.allclose(
-                        nodes_gdf[stats_data_key],
-                        stats[stats_idx][d_idx],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                        equal_nan=True,
-                    )
+    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    max_assign_dist = 400
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
+    # test against manual implementation over underlying method
+    distances = [400, 800]
+    for data_id_col in [None, "data_id"]:
+        for angular in [False, True]:
+            nodes_gdf, data_gdf = layers.compute_stats(
+                data_gdf,
+                "mock_numerical_1",
+                nodes_gdf,
+                network_structure,
+                max_assign_dist,
+                distances=distances,
+            )
+            # generate stats
+            # compare to manual
+            numerical_map = data_gdf["mock_numerical_1"].to_dict()
+            stats_result = data_map.stats(
+                network_structure,
+                numerical_map=numerical_map,
+                distances=distances,
+            )
+            for dist_key in distances:
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")],
+                    stats_result.sum[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")],
+                    stats_result.sum_wt[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")],
+                    stats_result.mean[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")],
+                    stats_result.mean_wt[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")],
+                    stats_result.count[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")],
+                    stats_result.count_wt[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")],
+                    stats_result.variance[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")],
+                    stats_result.variance_wt[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")],
+                    stats_result.max[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")],
+                    stats_result.min[dist_key],
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                    equal_nan=True,
+                )
     # check that problematic column labels are raised
     with pytest.raises(ValueError):
         layers.compute_stats(
             data_gdf,
-            ["typo"],
+            "typo",
             nodes_gdf,
             network_structure,
             distances=distances,
