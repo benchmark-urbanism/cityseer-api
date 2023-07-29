@@ -1,7 +1,6 @@
 use crate::common;
 use crate::common::MetricResult;
 use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
-use indicatif::{ProgressBar, ProgressDrawTarget};
 use numpy::PyArray1;
 use petgraph::graph::NodeIndex;
 use petgraph::prelude::*;
@@ -252,7 +251,7 @@ impl NetworkStructure {
         }
         // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
-        // iter
+        self.progress_init();
         let result = py.allow_threads(move || {
             // metrics
             let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
@@ -266,6 +265,7 @@ impl NetworkStructure {
                 MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
             // indices
             let node_indices: Vec<usize> = self.node_indices();
+            // iter
             node_indices.par_iter().for_each(|src_idx| {
                 // progress
                 if !pbar_disabled {
@@ -380,6 +380,7 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
+        py: Python,
     ) -> PyResult<CentralitySimplestResult> {
         // setup
         self.validate()?;
@@ -393,83 +394,81 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+        // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
-        // metrics
-        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        // indices
-        let node_indices: Vec<usize> = self
-            .graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect();
-        // pbar
-        let pbar = ProgressBar::new(node_indices.len() as u64)
-            .with_message("Computing simplest path node centrality");
-        if pbar_disabled {
-            pbar.set_draw_target(ProgressDrawTarget::hidden())
-        }
+        self.progress_init();
         // iter
-        node_indices.par_iter().for_each(|src_idx| {
-            pbar.inc(1);
-            // skip if not live
-            if !self.is_node_live(*src_idx) {
-                return;
-            }
-            let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter_scale);
-            for to_idx in visited_nodes.iter() {
-                let node_visit = tree_map[*to_idx].clone();
-                if to_idx == src_idx {
-                    continue;
+        let result = py.allow_threads(move || {
+            // metrics
+            let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_betweenness =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            // indices
+            let node_indices: Vec<usize> = self.node_indices();
+            // iter
+            node_indices.par_iter().for_each(|src_idx| {
+                // progress
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                if !node_visit.short_dist.is_finite() {
-                    continue;
+                // skip if not live
+                if !self.is_node_live(*src_idx) {
+                    return;
                 }
-                if compute_closeness {
-                    for i in 0..distances.len() {
-                        let distance = distances[i];
-                        if node_visit.short_dist <= distance as f32 {
-                            let ang = 1.0 + (node_visit.simpl_dist / 180.0);
-                            node_harmonic.metric[i][*src_idx]
-                                .fetch_add(1.0 / ang, Ordering::Relaxed);
-                        }
-                    }
-                }
-                if compute_betweenness {
-                    if to_idx < src_idx {
+                let (visited_nodes, _visited_edges, tree_map, _edge_map) =
+                    self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter_scale);
+                for to_idx in visited_nodes.iter() {
+                    let node_visit = tree_map[*to_idx].clone();
+                    if to_idx == src_idx {
                         continue;
                     }
-                    let mut inter_idx: usize = node_visit.pred.unwrap();
-                    loop {
-                        if inter_idx == *src_idx {
-                            break;
-                        }
+                    if !node_visit.short_dist.is_finite() {
+                        continue;
+                    }
+                    if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             if node_visit.short_dist <= distance as f32 {
-                                node_betweenness.metric[i][inter_idx]
-                                    .fetch_add(1.0, Ordering::Acquire);
+                                let ang = 1.0 + (node_visit.simpl_dist / 180.0);
+                                node_harmonic.metric[i][*src_idx]
+                                    .fetch_add(1.0 / ang, Ordering::Relaxed);
                             }
                         }
-                        inter_idx = tree_map[inter_idx].pred.unwrap();
+                    }
+                    if compute_betweenness {
+                        if to_idx < src_idx {
+                            continue;
+                        }
+                        let mut inter_idx: usize = node_visit.pred.unwrap();
+                        loop {
+                            if inter_idx == *src_idx {
+                                break;
+                            }
+                            for i in 0..distances.len() {
+                                let distance = distances[i];
+                                if node_visit.short_dist <= distance as f32 {
+                                    node_betweenness.metric[i][inter_idx]
+                                        .fetch_add(1.0, Ordering::Acquire);
+                                }
+                            }
+                            inter_idx = tree_map[inter_idx].pred.unwrap();
+                        }
                     }
                 }
+            });
+            CentralitySimplestResult {
+                node_harmonic: if compute_closeness {
+                    Some(node_harmonic.load())
+                } else {
+                    None
+                },
+                node_betweenness: if compute_betweenness {
+                    Some(node_betweenness.load())
+                } else {
+                    None
+                },
             }
         });
-        pbar.finish();
-        let result = CentralitySimplestResult {
-            node_harmonic: if compute_closeness {
-                Some(node_harmonic.load())
-            } else {
-                None
-            },
-            node_betweenness: if compute_betweenness {
-                Some(node_betweenness.load())
-            } else {
-                None
-            },
-        };
         Ok(result)
     }
 
@@ -482,6 +481,7 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
+        py: Python,
     ) -> PyResult<CentralitySegmentResult> {
         /*
         can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
@@ -501,267 +501,269 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+        // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
-        // metrics
-        let segment_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let segment_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let segment_betweenness =
-            MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        // indices
-        let node_indices: Vec<usize> = self
-            .graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect();
-        // pbar
-        let pbar = ProgressBar::new(node_indices.len() as u64)
-            .with_message("Computing shortest path segment centrality");
-        if pbar_disabled {
-            pbar.set_draw_target(ProgressDrawTarget::hidden())
-        }
+        self.progress_init();
         // iter
-        /*
-        can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
-        hence visiting all processed edges and extrapolating information
-        NOTES:
-        1. the above shortest tree algorithm only tracks edges in one direction - i.e. no duplication
-        2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
-        */
-        node_indices.par_iter().for_each(|src_idx| {
-            pbar.inc(1);
-            // skip if not live
-            if !self.is_node_live(*src_idx) {
-                return;
-            }
-            let (visited_nodes, visited_edges, tree_map, edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
-            for edge_idx in visited_edges.iter() {
-                let edge_visit = edge_map[*edge_idx].clone();
-                let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();
-                let node_visit_m = tree_map[edge_visit.end_nd_idx.unwrap()].clone();
-                // don't process unreachable segments
-                if !node_visit_n.short_dist.is_finite() && !node_visit_m.short_dist.is_finite() {
-                    continue;
+        let result = py.allow_threads(move || {
+            // metrics
+            let segment_density =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let segment_harmonic =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let segment_betweenness =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            // indices
+            let node_indices: Vec<usize> = self.node_indices();
+            // iter
+            /*
+            can't do edge processing as part of shortest tree because all shortest paths have to be resolved first
+            hence visiting all processed edges and extrapolating information
+            NOTES:
+            1. the above shortest tree algorithm only tracks edges in one direction - i.e. no duplication
+            2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
+            */
+            node_indices.par_iter().for_each(|src_idx| {
+                // progress
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                /*
-                shortest path (non-angular) uses a split segment workflow
-                the split workflow allows for non-shortest-path edges to be approached from either direction
-                i.e. the shortest path to node "b" isn't necessarily via node "a"
-                the edge is then split at the farthest point from either direction and apportioned either way
-                if the segment is on the shortest path then the second segment will squash down to naught
-                */
-                if compute_closeness {
+                // skip if not live
+                if !self.is_node_live(*src_idx) {
+                    return;
+                }
+                let (visited_nodes, visited_edges, tree_map, edge_map) =
+                    self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
+                for edge_idx in visited_edges.iter() {
+                    let edge_visit = edge_map[*edge_idx].clone();
+                    let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();
+                    let node_visit_m = tree_map[edge_visit.end_nd_idx.unwrap()].clone();
+                    // don't process unreachable segments
+                    if !node_visit_n.short_dist.is_finite() && !node_visit_m.short_dist.is_finite()
+                    {
+                        continue;
+                    }
                     /*
-                    dijkstra discovers edges from near to far (sorts before popping next node)
-                    i.e. this sort may be unnecessary?
+                    shortest path (non-angular) uses a split segment workflow
+                    the split workflow allows for non-shortest-path edges to be approached from either direction
+                    i.e. the shortest path to node "b" isn't necessarily via node "a"
+                    the edge is then split at the farthest point from either direction and apportioned either way
+                    if the segment is on the shortest path then the second segment will squash down to naught
                     */
-                    // sort where a < b
-                    let n_nearer = node_visit_n.short_dist <= node_visit_m.short_dist;
-                    let a = if n_nearer {
-                        node_visit_n.short_dist
-                    } else {
-                        node_visit_m.short_dist
-                    };
-                    let a_imp = if n_nearer {
-                        node_visit_n.short_dist
-                    } else {
-                        node_visit_m.short_dist
-                    };
-                    let b = if n_nearer {
-                        node_visit_m.short_dist
-                    } else {
-                        node_visit_n.short_dist
-                    };
-                    let b_imp = if n_nearer {
-                        node_visit_m.short_dist
-                    } else {
-                        node_visit_n.short_dist
-                    };
-                    // get the max distance along the segment: seg_len = (m - start_len) + (m - end_len)
-                    let edge_payload = self
-                        .get_edge_payload(
-                            edge_visit.start_nd_idx.unwrap(),
-                            edge_visit.end_nd_idx.unwrap(),
-                            edge_visit.edge_idx.unwrap(),
-                        )
-                        .unwrap();
-                    // c and d variables can diverge per beneath
-                    let mut c = (edge_payload.length + a + b) / 2.0;
-                    let mut d = c.clone();
-                    // c | d impedance should technically be the same if computed from either side
-                    let mut c_imp = a_imp + (c - a) * edge_payload.imp_factor;
-                    let mut d_imp = c_imp.clone();
-                    // iterate the distance and beta thresholds - from large to small for threshold snipping
-                    for i in (0..distances.len()).rev() {
-                        let distance = distances[i] as f32;
-                        let beta = betas[i];
-                        // if c or d are greater than the distance threshold, then the segments are "snipped"
-                        // a to c segment
-                        if a < distance {
-                            if c > distance {
-                                c = distance;
-                                c_imp = a_imp + (distance - a) * edge_payload.imp_factor;
+                    if compute_closeness {
+                        /*
+                        dijkstra discovers edges from near to far (sorts before popping next node)
+                        i.e. this sort may be unnecessary?
+                        */
+                        // sort where a < b
+                        let n_nearer = node_visit_n.short_dist <= node_visit_m.short_dist;
+                        let a = if n_nearer {
+                            node_visit_n.short_dist
+                        } else {
+                            node_visit_m.short_dist
+                        };
+                        let a_imp = if n_nearer {
+                            node_visit_n.short_dist
+                        } else {
+                            node_visit_m.short_dist
+                        };
+                        let b = if n_nearer {
+                            node_visit_m.short_dist
+                        } else {
+                            node_visit_n.short_dist
+                        };
+                        let b_imp = if n_nearer {
+                            node_visit_m.short_dist
+                        } else {
+                            node_visit_n.short_dist
+                        };
+                        // get the max distance along the segment: seg_len = (m - start_len) + (m - end_len)
+                        let edge_payload = self
+                            .get_edge_payload(
+                                edge_visit.start_nd_idx.unwrap(),
+                                edge_visit.end_nd_idx.unwrap(),
+                                edge_visit.edge_idx.unwrap(),
+                            )
+                            .unwrap();
+                        // c and d variables can diverge per beneath
+                        let mut c = (edge_payload.length + a + b) / 2.0;
+                        let mut d = c.clone();
+                        // c | d impedance should technically be the same if computed from either side
+                        let mut c_imp = a_imp + (c - a) * edge_payload.imp_factor;
+                        let mut d_imp = c_imp.clone();
+                        // iterate the distance and beta thresholds - from large to small for threshold snipping
+                        for i in (0..distances.len()).rev() {
+                            let distance = distances[i] as f32;
+                            let beta = betas[i];
+                            // if c or d are greater than the distance threshold, then the segments are "snipped"
+                            // a to c segment
+                            if a < distance {
+                                if c > distance {
+                                    c = distance;
+                                    c_imp = a_imp + (distance - a) * edge_payload.imp_factor;
+                                }
+                                segment_density.metric[i][*src_idx]
+                                    .fetch_add(c - a, Ordering::Relaxed);
+                                let seg_harm = if a_imp < 1.0 {
+                                    c_imp.ln()
+                                } else {
+                                    c_imp.ln() - a_imp.ln()
+                                };
+                                segment_harmonic.metric[i][*src_idx]
+                                    .fetch_add(seg_harm, Ordering::Relaxed);
+                                let bet = if beta == 0.0 {
+                                    c_imp - a_imp
+                                } else {
+                                    ((-beta * c_imp).exp() - (-beta * a_imp).exp()) / -beta
+                                };
+                                segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
                             }
-                            segment_density.metric[i][*src_idx].fetch_add(c - a, Ordering::Relaxed);
-                            let seg_harm = if a_imp < 1.0 {
-                                c_imp.ln()
-                            } else {
-                                c_imp.ln() - a_imp.ln()
-                            };
-                            segment_harmonic.metric[i][*src_idx]
-                                .fetch_add(seg_harm, Ordering::Relaxed);
-                            let bet = if beta == 0.0 {
-                                c_imp - a_imp
-                            } else {
-                                ((-beta * c_imp).exp() - (-beta * a_imp).exp()) / -beta
-                            };
-                            segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
+                            if b == d {
+                                continue;
+                            }
+                            if b <= distance {
+                                if d > distance {
+                                    d = distance;
+                                    d_imp = b_imp + (distance - b) * edge_payload.imp_factor;
+                                }
+                                segment_density.metric[i][*src_idx]
+                                    .fetch_add(d - b, Ordering::Relaxed);
+                                let seg_harm = if b_imp < 1.0 {
+                                    d_imp.ln()
+                                } else {
+                                    d_imp.ln() - b_imp.ln()
+                                };
+                                segment_harmonic.metric[i][*src_idx]
+                                    .fetch_add(seg_harm, Ordering::Relaxed);
+                                let bet = if beta == 0.0 {
+                                    d_imp - b_imp
+                                } else {
+                                    ((-beta * d_imp).exp() - (-beta * b_imp).exp()) / -beta
+                                };
+                                segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
+                            }
                         }
-                        if b == d {
+                    }
+                }
+                if compute_betweenness {
+                    // prepare a list of neighbouring nodes relative to the src node
+                    let mut nb_nodes: Vec<usize> = Vec::new();
+                    for nb_nd_idx in self
+                        .graph
+                        .neighbors_directed(NodeIndex::new(*src_idx), Direction::Outgoing)
+                    {
+                        nb_nodes.push(nb_nd_idx.index());
+                    }
+                    // betweenness is computed per to_idx
+                    for to_idx in visited_nodes.iter() {
+                        // only process in one direction
+                        if to_idx < src_idx {
                             continue;
                         }
-                        if b <= distance {
-                            if d > distance {
-                                d = distance;
-                                d_imp = b_imp + (distance - b) * edge_payload.imp_factor;
-                            }
-                            segment_density.metric[i][*src_idx].fetch_add(d - b, Ordering::Relaxed);
-                            let seg_harm = if b_imp < 1.0 {
-                                d_imp.ln()
-                            } else {
-                                d_imp.ln() - b_imp.ln()
-                            };
-                            segment_harmonic.metric[i][*src_idx]
-                                .fetch_add(seg_harm, Ordering::Relaxed);
-                            let bet = if beta == 0.0 {
-                                d_imp - b_imp
-                            } else {
-                                ((-beta * d_imp).exp() - (-beta * b_imp).exp()) / -beta
-                            };
-                            segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
+                        // skip self node
+                        if to_idx == src_idx {
+                            continue;
                         }
-                    }
-                }
-            }
-            if compute_betweenness {
-                // prepare a list of neighbouring nodes relative to the src node
-                let mut nb_nodes: Vec<usize> = Vec::new();
-                for nb_nd_idx in self
-                    .graph
-                    .neighbors_directed(NodeIndex::new(*src_idx), Direction::Outgoing)
-                {
-                    nb_nodes.push(nb_nd_idx.index());
-                }
-                // betweenness is computed per to_idx
-                for to_idx in visited_nodes.iter() {
-                    // only process in one direction
-                    if to_idx < src_idx {
-                        continue;
-                    }
-                    // skip self node
-                    if to_idx == src_idx {
-                        continue;
-                    }
-                    // skip direct neighbours (no nodes between)
-                    if nb_nodes.contains(&to_idx) {
-                        continue;
-                    }
-                    // distance - do not proceed if no route available
-                    let to_node_visit = tree_map[*to_idx].clone();
-                    if !to_node_visit.short_dist.is_finite() {
-                        continue;
-                    }
-                    /*
-                    BETWEENNESS
-                    segment versions only agg first and last segments
-                    the distance decay is based on the distance between the src segment and to segment
-                    i.e. willingness of people to walk between src and to segments
+                        // skip direct neighbours (no nodes between)
+                        if nb_nodes.contains(&to_idx) {
+                            continue;
+                        }
+                        // distance - do not proceed if no route available
+                        let to_node_visit = tree_map[*to_idx].clone();
+                        if !to_node_visit.short_dist.is_finite() {
+                            continue;
+                        }
+                        /*
+                        BETWEENNESS
+                        segment versions only agg first and last segments
+                        the distance decay is based on the distance between the src segment and to segment
+                        i.e. willingness of people to walk between src and to segments
 
-                    betweenness is aggregated to intervening nodes based on above distances and decays
-                    other sections (in between current first and last) are respectively processed from other to nodes
+                        betweenness is aggregated to intervening nodes based on above distances and decays
+                        other sections (in between current first and last) are respectively processed from other to nodes
 
-                    distance thresholds are computed using the inner as opposed to outer edges of the segments
-                    */
-                    // get the origin and last segment lengths for to_idx
-                    let o_seg_idx = to_node_visit.origin_seg.unwrap();
-                    let o_seg_len = self
-                        .get_edge_payload(
-                            edge_map[o_seg_idx].start_nd_idx.unwrap(),
-                            edge_map[o_seg_idx].end_nd_idx.unwrap(),
-                            edge_map[o_seg_idx].edge_idx.unwrap(),
-                        )
-                        .unwrap()
-                        .length;
-                    let l_seg_idx = to_node_visit.last_seg.unwrap();
-                    let l_seg_len = self
-                        .get_edge_payload(
-                            edge_map[l_seg_idx].start_nd_idx.unwrap(),
-                            edge_map[l_seg_idx].end_nd_idx.unwrap(),
-                            edge_map[l_seg_idx].edge_idx.unwrap(),
-                        )
-                        .unwrap()
-                        .length;
-                    // calculate traversal distances from opposing segments
-                    let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
-                    let o_1 = min_span;
-                    let mut o_2 = min_span + o_seg_len;
-                    let l_1 = min_span;
-                    let mut l_2 = min_span + l_seg_len;
-                    // betweenness - only counting truly between vertices, not starting and ending verts
-                    let mut inter_idx: usize = to_node_visit.pred.unwrap();
-                    loop {
-                        // break out of while loop if the intermediary has reached the source node
-                        if inter_idx == *src_idx {
-                            break;
-                        }
-                        // iterate the distance thresholds - from large to small for threshold snipping
-                        for i in (0..distances.len()).rev() {
-                            let distance = distances[i];
-                            let beta = betas[i];
-                            if min_span <= distance as f32 {
-                                // prune if necessary
-                                o_2 = o_2.min(distance as f32);
-                                l_2 = l_2.min(distance as f32);
-                                // catch division by zero
-                                let auc = if beta == 0.0 {
-                                    o_2 - o_1 + l_2 - l_1
-                                } else {
-                                    ((-beta * o_2).exp() - (-beta * o_1).exp()) / -beta
-                                        + ((-beta * l_2).exp() - (-beta * l_1).exp()) / -beta
-                                };
-                                segment_betweenness.metric[i][inter_idx]
-                                    .fetch_add(auc, Ordering::Acquire);
+                        distance thresholds are computed using the inner as opposed to outer edges of the segments
+                        */
+                        // get the origin and last segment lengths for to_idx
+                        let o_seg_idx = to_node_visit.origin_seg.unwrap();
+                        let o_seg_len = self
+                            .get_edge_payload(
+                                edge_map[o_seg_idx].start_nd_idx.unwrap(),
+                                edge_map[o_seg_idx].end_nd_idx.unwrap(),
+                                edge_map[o_seg_idx].edge_idx.unwrap(),
+                            )
+                            .unwrap()
+                            .length;
+                        let l_seg_idx = to_node_visit.last_seg.unwrap();
+                        let l_seg_len = self
+                            .get_edge_payload(
+                                edge_map[l_seg_idx].start_nd_idx.unwrap(),
+                                edge_map[l_seg_idx].end_nd_idx.unwrap(),
+                                edge_map[l_seg_idx].edge_idx.unwrap(),
+                            )
+                            .unwrap()
+                            .length;
+                        // calculate traversal distances from opposing segments
+                        let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
+                        let o_1 = min_span;
+                        let mut o_2 = min_span + o_seg_len;
+                        let l_1 = min_span;
+                        let mut l_2 = min_span + l_seg_len;
+                        // betweenness - only counting truly between vertices, not starting and ending verts
+                        let mut inter_idx: usize = to_node_visit.pred.unwrap();
+                        loop {
+                            // break out of while loop if the intermediary has reached the source node
+                            if inter_idx == *src_idx {
+                                break;
                             }
+                            // iterate the distance thresholds - from large to small for threshold snipping
+                            for i in (0..distances.len()).rev() {
+                                let distance = distances[i];
+                                let beta = betas[i];
+                                if min_span <= distance as f32 {
+                                    // prune if necessary
+                                    o_2 = o_2.min(distance as f32);
+                                    l_2 = l_2.min(distance as f32);
+                                    // catch division by zero
+                                    let auc = if beta == 0.0 {
+                                        o_2 - o_1 + l_2 - l_1
+                                    } else {
+                                        ((-beta * o_2).exp() - (-beta * o_1).exp()) / -beta
+                                            + ((-beta * l_2).exp() - (-beta * l_1).exp()) / -beta
+                                    };
+                                    segment_betweenness.metric[i][inter_idx]
+                                        .fetch_add(auc, Ordering::Acquire);
+                                }
+                            }
+                            inter_idx = tree_map[inter_idx].pred.unwrap();
                         }
-                        inter_idx = tree_map[inter_idx].pred.unwrap();
                     }
                 }
+            });
+            CentralitySegmentResult {
+                segment_density: if compute_closeness {
+                    Some(segment_density.load())
+                } else {
+                    None
+                },
+                segment_harmonic: if compute_closeness {
+                    Some(segment_harmonic.load())
+                } else {
+                    None
+                },
+                segment_beta: if compute_closeness {
+                    Some(segment_beta.load())
+                } else {
+                    None
+                },
+                segment_betweenness: if compute_betweenness {
+                    Some(segment_betweenness.load())
+                } else {
+                    None
+                },
             }
         });
-        pbar.finish();
-        let result = CentralitySegmentResult {
-            segment_density: if compute_closeness {
-                Some(segment_density.load())
-            } else {
-                None
-            },
-            segment_harmonic: if compute_closeness {
-                Some(segment_harmonic.load())
-            } else {
-                None
-            },
-            segment_beta: if compute_closeness {
-                Some(segment_beta.load())
-            } else {
-                None
-            },
-            segment_betweenness: if compute_betweenness {
-                Some(segment_betweenness.load())
-            } else {
-                None
-            },
-        };
         Ok(result)
     }
 }

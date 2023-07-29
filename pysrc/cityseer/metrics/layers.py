@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from functools import partial
 import logging
 
 import geopandas as gpd
 import numpy as np
-import numpy.typing as npt
 
 from cityseer import config, rustalgos
-from cityseer.metrics import networks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -116,7 +115,7 @@ def assign_gdf_to_network(
 def compute_accessibilities(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
-    accessibility_keys: list[str] | tuple[str],
+    accessibility_keys: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
@@ -225,25 +224,28 @@ def compute_accessibilities(
     # extract landuses
     landuses_map = data_gdf[landuse_column_label].to_dict()
     # call the underlying function
-    accessibility_data = data_map.accessibility(
-        network_structure,
-        landuses_map,
-        accessibility_keys,
-        distances,
-        betas,
-        angular,
-        spatial_tolerance,
-        min_threshold_wt,
-        jitter_scale,
+    partial_func = partial(
+        data_map.accessibility,
+        network_structure=network_structure,
+        landuses_map=landuses_map,
+        accessibility_keys=accessibility_keys,
+        distances=distances,
+        betas=betas,
+        angular=angular,
+        spatial_tolerance=spatial_tolerance,
+        min_threshold_wt=min_threshold_wt,
+        jitter_scale=jitter_scale,
     )
+    # wraps progress bar
+    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack accessibility data
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
             ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
-            nodes_gdf[ac_nw_data_key] = accessibility_data[acc_key].unweighted[dist_key]  # non-weighted
-            nodes_gdf[ac_wt_data_key] = accessibility_data[acc_key].weighted[dist_key]  # weighted
+            nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # non-weighted
+            nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # weighted
 
     return nodes_gdf, data_gdf
 
@@ -269,11 +271,10 @@ def compute_mixed_uses(
     r"""
     Compute landuse metrics.
 
-    This function wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and
-    land-use accessibility measures. These are computed simultaneously for any required combinations of measures
-    (and distances). Situations requiring only a single measure can instead make use of the simplified
-    [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and
-    [`compute_accessibilities`](#compute-accessibilities) functions.
+    This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use.
+    These are computed simultaneously for any required combinations of measures (and distances). By default, hill and
+    hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used
+    to configure which classes of measures should run.
 
     See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
     at the pedestrian scale.
@@ -427,9 +428,10 @@ def compute_mixed_uses(
         logger.info(f"Computing mixed-use measures.")
     # extract landuses
     landuses_map = data_gdf[landuse_column_label].to_dict()
-    mixed_uses_data = data_map.mixed_uses(
-        network_structure,
-        landuses_map,
+    partial_func = partial(
+        data_map.mixed_uses,
+        network_structure=network_structure,
+        landuses_map=landuses_map,
         distances=distances,
         betas=betas,
         compute_hill=compute_hill,
@@ -441,22 +443,24 @@ def compute_mixed_uses(
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
+    # wraps progress bar
+    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack mixed-uses data
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
                 hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
-                nodes_gdf[hill_nw_data_key] = mixed_uses_data.hill[q_key][dist_key]
+                nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]
             if compute_hill_weighted:
                 hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
-                nodes_gdf[hill_wt_data_key] = mixed_uses_data.hill_weighted[q_key][dist_key]
+                nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]
         if compute_shannon:
             shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
-            nodes_gdf[shannon_data_key] = mixed_uses_data.shannon[dist_key]
+            nodes_gdf[shannon_data_key] = result.shannon[dist_key]
         if compute_gini:
             gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
-            nodes_gdf[gini_data_key] = mixed_uses_data.gini[dist_key]
+            nodes_gdf[gini_data_key] = result.gini[dist_key]
 
     return nodes_gdf, data_gdf
 
@@ -478,7 +482,7 @@ def compute_stats(
     r"""
     Compute stats.
 
-    This function wraps the underlying `numba` optimised functions for computing statistical measures. The data is
+    This function wraps the underlying `rust` optimised function for computing statistical measures. The data is
     aggregated and computed over the street network relative to the network nodes, with the implication
     that statistical aggregations are generated from the same locations as for centrality computations, which can
     therefore be correlated or otherwise compared.
@@ -576,21 +580,31 @@ def compute_stats(
     # extract landuses
     stats_map = data_gdf[stats_column_label].to_dict()
     # stats
-    stats_result = data_map.stats(
-        network_structure, stats_map, distances, betas, angular, spatial_tolerance, min_threshold_wt, jitter_scale
+    partial_func = partial(
+        data_map.stats,
+        network_structure=network_structure,
+        numerical_map=stats_map,
+        distances=distances,
+        betas=betas,
+        angular=angular,
+        spatial_tolerance=spatial_tolerance,
+        min_threshold_wt=min_threshold_wt,
+        jitter_scale=jitter_scale,
     )
+    # wraps progress bar
+    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack the numerical arrays
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
-        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = stats_result.sum[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = stats_result.sum_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = stats_result.mean[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = stats_result.mean_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = stats_result.count[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = stats_result.count_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = stats_result.variance[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = stats_result.variance_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = stats_result.max[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = stats_result.min[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = result.sum[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = result.sum_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = result.mean[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = result.mean_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = result.count[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = result.count_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = result.variance[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = result.variance_wt[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = result.max[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = result.min[dist_key]
 
     return nodes_gdf, data_gdf
