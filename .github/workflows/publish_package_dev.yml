@@ -16,8 +16,6 @@ jobs:
         with:
           python-version: "3.11"
           cache: true
-          architecture: x64
-          update-python: true
       - name: Install and verify
         run: |
           pdm install
@@ -119,9 +117,6 @@ jobs:
         with:
           name: wheels
           path: dist
-      - name: Display structure of downloaded files
-        run: ls -R
-        working-directory: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
