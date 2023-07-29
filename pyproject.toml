@@ -226,7 +226,6 @@ source = ["pysrc/cityseer"]
 branch = true
 omit = [
   "**/__init__.py",
-  "pysrc/cityseer/algos/**",      # NOTE: coverage can't trace jitted files
   "pysrc/cityseer/config.py",
   "pysrc/cityseer/tools/plot.py",
 ]
@@ -235,13 +234,12 @@ omit = [
 include = ["cityseer/**"]
 omit = [
   "**/__init__.py",
-  "pysrc/cityseer/algos/**",      # NOTE: coverage can't trace jitted files
   "pysrc/cityseer/config.py",
   "pysrc/cityseer/tools/plot.py",
 ]
 
 [tool.yapper]
-package_root_relative_path = './'
+package_root_relative_path = './pysrc'
 intro_template = """
 ---
 import Markdown from '@astrojs/markdown-component';
@@ -253,12 +251,12 @@ outro_template = """
 </PageLayout>
 """
 module_map = [
-  { module = "cityseer.structures", astro = "docs/src/pages/structures.astro" },
-  { module = "cityseer.metrics.observe", astro = "docs/src/pages/metrics/observe.astro" },
-  { module = "cityseer.metrics.networks", astro = "docs/src/pages/metrics/networks.astro" },
-  { module = "cityseer.metrics.layers", astro = "docs/src/pages/metrics/layers.astro" },
-  { module = "cityseer.tools.graphs", astro = "docs/src/pages/tools/graphs.astro" },
-  { module = "cityseer.tools.io", astro = "docs/src/pages/tools/io.astro" },
-  { module = "cityseer.tools.plot", astro = "docs/src/pages/tools/plot.astro" },
-  { module = "cityseer.tools.mock", astro = "docs/src/pages/tools/mock.astro" },
+  { module = "cityseer.rustalgos", astro = "../docs/src/pages/rustalgos.astro" },
+  { module = "cityseer.metrics.observe", astro = "../docs/src/pages/metrics/observe.astro" },
+  { module = "cityseer.metrics.networks", astro = "../docs/src/pages/metrics/networks.astro" },
+  { module = "cityseer.metrics.layers", astro = "../docs/src/pages/metrics/layers.astro" },
+  { module = "cityseer.tools.graphs", astro = "../docs/src/pages/tools/graphs.astro" },
+  { module = "cityseer.tools.io", astro = "../docs/src/pages/tools/io.astro" },
+  { module = "cityseer.tools.plot", astro = "../docs/src/pages/tools/plot.astro" },
+  { module = "cityseer.tools.mock", astro = "../docs/src/pages/tools/mock.astro" },
 ]

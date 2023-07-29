@@ -1,4 +1,3 @@
-import mdx from '@astrojs/mdx'
 import prefetch from '@astrojs/prefetch'
 import sitemap from '@astrojs/sitemap'
 import tailwind from '@astrojs/tailwind'
@@ -110,7 +109,7 @@ export default defineConfig({
                     'fill-rule': 'evenodd',
                     'clip-rule': 'evenodd',
                   }),
-                ]
+                ],
               ),
             ]
           },
@@ -137,6 +136,5 @@ export default defineConfig({
     }),
     sitemap(),
     prefetch(),
-    mdx(),
   ],
 })

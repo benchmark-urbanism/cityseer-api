@@ -27,22 +27,19 @@ plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}",
 # INTRO EXAMPLE PLOTS
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 20)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-networks.segment_centrality(
-    measures=["segment_harmonic"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800]
-)
+nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf = networks.segment_centrality(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800])
 data_gdf = mock.mock_landuse_categorical_data(G, random_seed=25)
-nodes_gdf, data_gdf = layers.hill_branch_wt_diversity(
+nodes_gdf, data_gdf = layers.compute_mixed_uses(
     data_gdf,
     landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[400, 800],
-    qs=[0],
 )
 # custom colourmap
 segment_harmonic_vals = nodes_gdf["cc_metric_segment_harmonic_800"]
-mixed_uses_vals = nodes_gdf["cc_metric_hill_branch_wt_q0_400"]
+mixed_uses_vals = nodes_gdf["cc_metric_q0_400_hill"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 segment_harmonic_cols = cmap(segment_harmonic_vals)
@@ -167,16 +164,15 @@ plot.plot_nx(
 )
 
 # generate the network layer and compute some metrics
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 # compute some-or-other metrics
 nodes_gdf = networks.segment_centrality(
-    measures=["segment_harmonic"],
     network_structure=network_structure,
     nodes_gdf=nodes_gdf,
     distances=[200, 400, 800, 1600],
 )
 # convert back to networkX
-G_post = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
+G_post = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
 plot.plot_nx(
     G_post,
     plot_geoms=True,
@@ -194,7 +190,7 @@ plot.plot_nx(
 # random seed 25
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
@@ -206,7 +202,7 @@ plot.plot_assignment(
     figsize=(5, 5),
 )
 G_decomposed = graphs.nx_decompose(G, 50)
-nodes_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, crs=3395)
+nodes_gdf_decomp, _edges_gdf, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, crs=3395)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
 plot.plot_assignment(
@@ -234,11 +230,9 @@ plot.plot_nx_primal_or_dual(
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-networks.node_centrality(
-    measures=["node_beta"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800]
-)
-G_after = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
+G_after = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
@@ -263,7 +257,7 @@ plot.plot_nx(
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G_decomp = graphs.nx_decompose(G, 50)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
+nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
 data_gdf = mock.mock_landuse_categorical_data(G_decomp, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
