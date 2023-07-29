@@ -7,9 +7,9 @@ approach:
 - [`node_centrality`](#node-centrality)
 - [`segment_centrality`](#segment-centrality)
 
-These methods wrap the underlying `numba` optimised functions for computing centralities, and provides access to
-all of the underlying node-based or segment-based centrality methods. Multiple selected measures and distances are
-computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+These methods wrap the underlying `rust` optimised functions for computing centralities. Multiple classes of measures
+and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar
+strategies.
 
 See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
 
@@ -55,14 +55,12 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 from __future__ import annotations
 
+from functools import partial
 import logging
 from typing import Any
-import threading
-import time
-from queue import Queue
 
 import geopandas as gpd
-from tqdm import tqdm
+
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
@@ -328,7 +326,7 @@ max_curve_wts: ndarray[float]
 
 # provides access to the underlying centrality.local_centrality method
 def node_centrality_shortest(
-    network_structure,
+    network_structure: rustalgos.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -412,42 +410,32 @@ def node_centrality_shortest(
     (shortest angular distance). |
 
     """
-    if distances is None:
+    if betas is not None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-
-    def wrapper(queue):
-        result = network_structure.local_node_centrality_shortest(
-            distances=distances,
-            compute_closeness=compute_closeness,
-            compute_betweenness=compute_betweenness,
-            min_threshold_wt=min_threshold_wt,
-            jitter_scale=jitter_scale,
-        )
-        queue.put(result)
-
-    # start and track progress
-    result_queue = Queue()
-    thread = threading.Thread(target=wrapper, args=(result_queue,))
-    pbar = tqdm(total=network_structure.node_count())
-    thread.start()
-    while thread.is_alive():
-        time.sleep(1)
-        pbar.update(network_structure.progress() - pbar.n)
-    pbar.update(network_structure.node_count() - pbar.n)
-    pbar.close()
-    node_result_short = result_queue.get()
-    thread.join()
+    # wrap the main function call for passing to the progress wrapper
+    partial_func = partial(
+        network_structure.local_node_centrality_shortest,
+        distances=distances,
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
+        min_threshold_wt=min_threshold_wt,
+        jitter_scale=jitter_scale,
+    )
+    # wraps progress bar
+    result = config.wrap_progress(
+        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
     # unpack
     if compute_closeness is True:
         for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(node_result_short, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     if compute_betweenness is True:
         for measure_name in ["node_betweenness", "node_betweenness_beta"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(node_result_short, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     return nodes_gdf
 
 
@@ -464,23 +452,28 @@ def node_centrality_simplest(
     """ """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    node_result = network_structure.local_node_centrality_simplest(
+    partial_func = partial(
+        network_structure.local_node_centrality_simplest,
         distances=distances,
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
+    # wraps progress bar
+    result = config.wrap_progress(
+        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
     if compute_closeness is True:
         for measure_name in ["node_harmonic"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(node_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     if compute_betweenness is True:
         for measure_name in ["node_betweenness"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(node_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     return nodes_gdf
 
 
@@ -563,21 +556,26 @@ def segment_centrality(
     """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    segment_result = network_structure.local_segment_centrality(
+    partial_func = partial(
+        network_structure.local_segment_centrality,
         distances=distances,
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         jitter_scale=jitter_scale,
     )
+    # wraps progress bar
+    result = config.wrap_progress(
+        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
     if compute_closeness is True:
         for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(segment_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     if compute_betweenness is True:
         for measure_name in ["segment_betweenness"]:
             for distance in distances:
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(segment_result, measure_name)[distance]
+                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
     return nodes_gdf

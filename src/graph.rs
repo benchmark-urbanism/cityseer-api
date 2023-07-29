@@ -127,6 +127,9 @@ impl NetworkStructure {
             progress: Arc::new(AtomicUsize::new(0)),
         }
     }
+    pub fn progress_init(&self) {
+        self.progress.store(0, Ordering::Relaxed);
+    }
     fn progress(&self) -> usize {
         self.progress.as_ref().load(Ordering::Relaxed)
     }

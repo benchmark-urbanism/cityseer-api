@@ -45,6 +45,7 @@ def test_local_centrality_time(primal_graph):
       though this may be due to function setup at invocation (x10000) which wouldn't be incurred in real scenarios...?
     - Tests on using a List(Dict('x', 'y', etc.) structure proved almost four times slower, so sticking with arrays
     - Experiments with golang proved too complex re: bindings...
+    - Ended up with rust
     """
 
     if "GITHUB_ACTIONS" in os.environ:
