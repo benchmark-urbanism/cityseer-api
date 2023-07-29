@@ -5,8 +5,8 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-from shapely import geometry
 import pytest
+from shapely import geometry
 
 from cityseer import config, rustalgos
 from cityseer.metrics import networks

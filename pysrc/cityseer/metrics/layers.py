@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from functools import partial
 import logging
+from functools import partial
 
 import geopandas as gpd
-import numpy as np
 
 from cityseer import config, rustalgos
 
@@ -84,17 +83,17 @@ def assign_gdf_to_network(
         data_gdf["nearest_assign"] = None
         data_gdf["next_nearest_assign"] = None
     # prepare the data_map
-    for data_key, data_row in data_gdf.iterrows():
+    for data_key, data_row in data_gdf.iterrows():  # type: ignore
         if not isinstance(data_key, str):
             raise ValueError("Data keys must be string instances.")
-        data_id = None if data_id_col is None else str(data_row[data_id_col])
+        data_id: str | None = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
         data_map.insert(
             data_key,
-            data_row["geometry"].x,
-            data_row["geometry"].y,
+            data_row["geometry"].x,  # type: ignore
+            data_row["geometry"].y,  # type: ignore
             data_id,
-            data_row["nearest_assign"],
-            data_row["next_nearest_assign"],
+            data_row["nearest_assign"],  # type: ignore
+            data_row["next_nearest_assign"],  # type: ignore
         )
     # only compute if not already computed
     if calculate_assigned is True:
@@ -222,7 +221,7 @@ def compute_accessibilities(
     if not config.QUIET_MODE:
         logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
     # extract landuses
-    landuses_map = data_gdf[landuse_column_label].to_dict()
+    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
@@ -244,8 +243,8 @@ def compute_accessibilities(
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
             ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
-            nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # non-weighted
-            nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # weighted
+            nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # type: ignore
+            nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -425,9 +424,9 @@ def compute_mixed_uses(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
-        logger.info(f"Computing mixed-use measures.")
+        logger.info("Computing mixed-use measures.")
     # extract landuses
-    landuses_map = data_gdf[landuse_column_label].to_dict()
+    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
@@ -451,16 +450,16 @@ def compute_mixed_uses(
         for q_key in [0, 1, 2]:
             if compute_hill:
                 hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
-                nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]
+                nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
             if compute_hill_weighted:
                 hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
-                nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]
+                nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
         if compute_shannon:
             shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
-            nodes_gdf[shannon_data_key] = result.shannon[dist_key]
+            nodes_gdf[shannon_data_key] = result.shannon[dist_key]  # type: ignore
         if compute_gini:
             gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
-            nodes_gdf[gini_data_key] = result.gini[dist_key]
+            nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -576,9 +575,9 @@ def compute_stats(
         raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
-        logger.info(f"Computing mixed-use measures.")
+        logger.info("Computing mixed-use measures.")
     # extract landuses
-    stats_map = data_gdf[stats_column_label].to_dict()
+    stats_map: dict[str, float] = data_gdf[stats_column_label].to_dict()  # type: ignore
     # stats
     partial_func = partial(
         data_map.stats,
@@ -596,15 +595,15 @@ def compute_stats(
     # unpack the numerical arrays
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
-        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = result.sum[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = result.sum_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = result.mean[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = result.mean_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = result.count[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = result.count_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = result.variance[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = result.variance_wt[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = result.max[dist_key]
-        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = result.min[dist_key]
+        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = result.sum[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = result.sum_wt[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = result.mean[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = result.mean_wt[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = result.count[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = result.count_wt[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = result.variance[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = result.variance_wt[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = result.max[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = result.min[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf

@@ -12,7 +12,7 @@ See the demos section for examples.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Union
 
 import geopandas as gpd
 import matplotlib as mpl
@@ -24,7 +24,7 @@ from matplotlib import colors
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Patch
 from shapely import geometry
-from sklearn.preprocessing import LabelEncoder, minmax_scale  # type: ignore
+from sklearn.preprocessing import LabelEncoder, minmax_scale
 from tqdm import tqdm
 
 from cityseer import config, rustalgos
@@ -51,7 +51,7 @@ class ColourMap:
 
 COLOUR_MAP = ColourMap()
 
-ColourType = str | npt.NDArray[np.float_] | npt.NDArray[np.float_]
+ColourType = Union[str, npt.ArrayLike]
 
 
 def _open_plots_reset():
@@ -410,7 +410,7 @@ def plot_nx(
         x_lim=x_lim,
         y_lim=y_lim,
         ax=ax,
-        **kwargs,
+        **kwargs,  # type: ignore
     )
 
 
@@ -463,7 +463,7 @@ def plot_assignment(
 
     """
     _open_plots_reset()
-    plt.figure(**kwargs)
+    plt.figure(**kwargs)  # type: ignore
 
     if isinstance(node_colour, (list, tuple, np.ndarray)):
         if not (len(node_colour) == 1 or len(node_colour) == len(nx_multigraph)):
@@ -480,7 +480,7 @@ def plot_assignment(
     node_data: NodeData
     for node_key, node_data in nx_multigraph.nodes(data=True):
         pos[node_key] = (node_data["x"], node_data["y"])
-    nx.draw(  # type: ignore
+    nx.draw(
         nx_multigraph,
         pos,
         with_labels=node_labels,
@@ -505,7 +505,7 @@ def plot_assignment(
         lab_enc = LabelEncoder()
         lab_enc.fit(data_labels)
         # map the int encodings to the respective classes
-        classes_int: npt.NDArray[np.int_] = lab_enc.transform(data_labels)  # type: ignore
+        classes_int: npt.NDArray[np.int_] = lab_enc.transform(data_labels)
         data_colour = colors.Normalize()(classes_int)
         data_cmap = "Dark2"  # Set1
 
@@ -513,8 +513,8 @@ def plot_assignment(
     plt.scatter(
         x=data_gdf.geometry.x,
         y=data_gdf.geometry.y,
-        c=data_colour,  # type: ignore
-        cmap=data_cmap,  # type: ignore
+        c=data_colour,
+        cmap=data_cmap,
         s=30,
         edgecolors="white",
         lw=0.5,
@@ -525,7 +525,7 @@ def plot_assignment(
             "Cannot plot assignment for GeoDataFrame that has not yet been assigned to a NetworkStructure."
         )
     # draw assignment
-    for _data_key, data_row in data_gdf.iterrows():  # type: ignore
+    for _data_key, data_row in data_gdf.iterrows():
         # if the data points have been assigned network indices
         data_x: float = data_row.geometry.x
         data_y: float = data_row.geometry.y
@@ -581,16 +581,16 @@ def plot_network_structure(
     _open_plots_reset()
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
-    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
+    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))
     # set extents
     xs_arr = np.array(network_structure.node_xs)
     ys_arr = np.array(network_structure.node_ys)
-    for ax in (ax1, ax2):  # type: ignore
+    for ax in (ax1, ax2):
         ax.set_xlim(xs_arr.min() - 100, xs_arr.max() + 100)
         ax.set_ylim(ys_arr.min() - 100, ys_arr.max() + 100)
     if poly:
-        x = list(poly.exterior.coords.xy[0])  # type: ignore
-        y = list(poly.exterior.coords.xy[1])  # type: ignore
+        x = list(poly.exterior.coords.xy[0])
+        y = list(poly.exterior.coords.xy[1])
         ax1.plot(x, y)
         ax2.plot(x, y)
     # plot nodes
@@ -622,7 +622,7 @@ def plot_network_structure(
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.node_count()):
-        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)  # type: ignore
+        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)
     # plot parents on ax1
     ax1.scatter(
         x=data_gdf.geometry.x,
@@ -640,7 +640,7 @@ def plot_network_structure(
         alpha=0.9,
         lw=0.5,
     )
-    for data_idx, data_row in data_gdf.iterrows():  # type: ignore
+    for data_idx, data_row in data_gdf.iterrows():
         data_x: float = data_row.geometry.x
         data_y: float = data_row.geometry.y
         nearest_netw_idx: int = data_row.nearest_assign
@@ -733,7 +733,7 @@ def plot_scatter(
         s=sizes[select_idx],
         linewidths=0,
         edgecolors="none",
-        cmap=plt.get_cmap(cmap_key),  # type: ignore
+        cmap=plt.get_cmap(cmap_key),
         rasterized=rasterized,
     )
     # limits
@@ -803,8 +803,8 @@ def plot_nx_edges(
         Whether to invert the plot order, e.g. if using an inverse colour map.
 
     """
-    min_x, min_y, max_x, max_y = bbox_extents  # type: ignore
-    cmap = plt.get_cmap(cmap_key)  # type: ignore
+    min_x, min_y, max_x, max_y = bbox_extents
+    cmap = plt.get_cmap(cmap_key)
     # extract data for shaping
     vals: list[str] = []
     edge_geoms: list[geometry.LineString] = []
@@ -812,10 +812,10 @@ def plot_nx_edges(
     logger.info("Extracting edge geometries")
     edge_data: EdgeData
     for idx, (_, _, edge_data) in tqdm(  # type: ignore
-        enumerate(nx_multigraph.edges(data=True)), disable=config.QUIET_MODE  # type: ignore
+        enumerate(nx_multigraph.edges(data=True)), disable=config.QUIET_MODE
     ):
-        vals.append(edge_data[edge_metrics_key])  # type: ignore
-        edge_geoms.append(edge_data["geom"])  # type: ignore
+        vals.append(edge_data[edge_metrics_key])
+        edge_geoms.append(edge_data["geom"])
         # if label key provided
         if edge_label_key is not None:
             label_val: str | None = edge_data[edge_label_key]
@@ -845,7 +845,7 @@ def plot_nx_edges(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
     colours: npt.NDArray[np.float_] = c_norm(v_shape)
-    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))
+    sizes: npt.NDArray[np.float_] = minmax_scale(colours, (lw_min, lw_max))  # type: ignore
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.NDArray[np.int_] = np.argsort(colours)
     if invert_plot_order:
@@ -865,16 +865,16 @@ def plot_nx_edges(
             if np.any(ys < min_y) or np.any(ys > max_y):
                 continue
             plot_geoms.append(tuple(zip(xs, ys)))
-            plot_colours.append(cmap(colours[idx]))  # type: ignore
+            plot_colours.append(cmap(colours[idx]))
             plot_lws.append(sizes[idx])
         lines = LineCollection(
             plot_geoms,
-            colors=plot_colours,  # type: ignore
-            linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,  # type: ignore
-            alpha=0.9,  # type: ignore
+            colors=plot_colours,
+            linewidths=plot_lws,
+            rasterized=rasterized,
+            alpha=0.9,
         )
-        ax.add_collection(lines)  # type: ignore
+        ax.add_collection(lines)
     else:
         plot_handles = []
         plot_geoms = []
@@ -901,10 +901,10 @@ def plot_nx_edges(
             label_idxs = label_info["idxs"]
             if label_count in label_counts:
                 item_wt = (label_counts.index(label_count)) / (max_n_categorical - 1)
-                item_c = cmap(item_wt)  # type: ignore
+                item_c = cmap(item_wt)
                 s_range = lw_max - lw_min
                 item_lw = lw_min + item_wt * s_range
-                plot_handles.append(Patch(facecolor=item_c, edgecolor=item_c, label=label_key))  # type: ignore
+                plot_handles.append(Patch(facecolor=item_c, edgecolor=item_c, label=label_key))
             else:
                 item_c = "#444"
                 item_lw = lw_min
@@ -916,14 +916,14 @@ def plot_nx_edges(
                 if np.any(ys < min_y) or np.any(ys > max_y):
                     continue
                 plot_geoms.append(tuple(zip(xs, ys)))
-                plot_colours.append(item_c)  # type: ignore
+                plot_colours.append(item_c)
                 plot_lws.append(item_lw)
         lines = LineCollection(
             plot_geoms,
-            colors=plot_colours,  # type: ignore
-            linewidths=plot_lws,  # type: ignore
-            rasterized=rasterized,  # type: ignore
-            alpha=0.9,  # type: ignore
+            colors=plot_colours,
+            linewidths=plot_lws,
+            rasterized=rasterized,
+            alpha=0.9,
         )
         ax.add_collection(lines)
         ax.legend(handles=plot_handles)

@@ -52,7 +52,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
+    nx_multigraph: MultiGraph = nx.MultiGraph()
 
     nodes = [
         ("0", {"x": 700700, "y": 5719700}),
@@ -211,14 +211,14 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     nx_multigraph.add_edges_from(edges)
 
     if wgs84_coords:
-        for node_idx, node_data in nx_multigraph.nodes(data=True):  # type: ignore
-            easting = node_data["x"]  # type: ignore
-            northing = node_data["y"]  # type: ignore
+        for node_idx, node_data in nx_multigraph.nodes(data=True):
+            easting = node_data["x"]
+            northing = node_data["y"]
             # be cognisant of parameter and return order
             # returns in lat, lng order
-            lat, lng = utm.to_latlon(easting, northing, 30, "U")  # type: ignore
-            nx_multigraph.nodes[node_idx]["x"] = lng  # type: ignore
-            nx_multigraph.nodes[node_idx]["y"] = lat  # type: ignore
+            lat, lng = utm.to_latlon(easting, northing, 30, "U")
+            nx_multigraph.nodes[node_idx]["x"] = lng
+            nx_multigraph.nodes[node_idx]["y"] = lat
 
     return nx_multigraph
 
@@ -298,7 +298,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
         data_gpd.loc[str(loc_idx), "data_id"] = length - 5
-        data_gpd.loc[str(loc_idx), "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
+        data_gpd.loc[str(loc_idx), "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)
     data_gpd = cast(gpd.GeoDataFrame, data_gpd)
     return data_gpd
 
@@ -390,7 +390,7 @@ def mock_numerical_data(
     """
     np.random.seed(seed=random_seed)
     data_gpd = mock_data_gdf(nx_multigraph, length=length, random_seed=random_seed)
-    for idx in range(1, num_arrs + 1):  # type: ignore
+    for idx in range(1, num_arrs + 1):
         num_arr: npt.NDArray[np.float32] = np.array(
             np.random.randint(val_min, high=val_max, size=length), dtype=np.float32
         )

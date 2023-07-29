@@ -63,12 +63,12 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
     # create a point, and then buffer
     pnt = geometry.Point(easting, northing)
-    poly_utm: geometry.Polygon = pnt.buffer(buffer)  # type: ignore
+    poly_utm: geometry.Polygon = pnt.buffer(buffer)
     # convert back to WGS
     # the polygon is too big for the OSM server, so have to use convex hull then later prune
     coords = []
-    for easting, northing in poly_utm.convex_hull.exterior.coords:  # type: ignore
-        lat, lng = utm.to_latlon(easting, northing, utm_zone_number, utm_zone_letter)  # type: ignore
+    for easting, northing in poly_utm.convex_hull.exterior.coords:
+        lat, lng = utm.to_latlon(easting, northing, utm_zone_number, utm_zone_letter)
         coords.append((lng, lat))
     poly_wgs = geometry.Polygon(coords)
 
@@ -210,7 +210,7 @@ def osm_graph_from_poly(
         raise TypeError('Please provide "to_epsg_code" parameter as int')
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
-    coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]  # type: ignore
+    coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]
     geom_osm = str.join(" ", [f"{lat} {lng}" for lng, lat in coords])
     if custom_request is not None:
         if "geom_osm" not in custom_request:
@@ -315,7 +315,7 @@ def nx_from_osm_nx(
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
-    if not isinstance(nx_multidigraph, nx.MultiDiGraph):  # type: ignore
+    if not isinstance(nx_multidigraph, nx.MultiDiGraph):
         raise TypeError("This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.")
     if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):
         raise TypeError("Node attributes to be copied should be provided as either a list or tuple of attribute keys.")
@@ -323,7 +323,7 @@ def nx_from_osm_nx(
         raise TypeError("Edge attributes to be copied should be provided as either a list or tuple of attribute keys.")
     logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
     # target MultiGraph
-    g_multi: MultiGraph = nx.MultiGraph()  # type: ignore
+    g_multi: MultiGraph = nx.MultiGraph()
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
         # x
@@ -418,18 +418,18 @@ def nx_from_open_roads(
     g_multi = nx.MultiGraph()
 
     # load the nodes
-    with fiona.open(open_roads_path, layer="RoadNode") as nodes:  # type: ignore
-        for node_data in nodes.values(bbox=target_bbox):  # type: ignore
+    with fiona.open(open_roads_path, layer="RoadNode") as nodes:
+        for node_data in nodes.values(bbox=target_bbox):
             node_id: str = node_data["properties"]["id"]
             x: float
             y: float
             x, y = node_data["geometry"]["coordinates"]
-            g_multi.add_node(node_id, x=x, y=y)  # type: ignore
+            g_multi.add_node(node_id, x=x, y=y)
 
     # load the edges
     n_dropped = 0
-    with fiona.open(open_roads_path, layer="RoadLink") as edges:  # type: ignore
-        for edge_data in edges.values(bbox=target_bbox):  # type: ignore
+    with fiona.open(open_roads_path, layer="RoadLink") as edges:
+        for edge_data in edges.values(bbox=target_bbox):
             # x, y = edge_data['geometry']['coordinates']
             props: dict = edge_data["properties"]  # type: ignore
             start_nd: str = props["startNode"]
@@ -465,7 +465,7 @@ def nx_from_open_roads(
                 }
             )
             # create the geometry
-            geom = geometry.LineString(edge_data["geometry"]["coordinates"])  # type: ignore
+            geom = geometry.LineString(edge_data["geometry"]["coordinates"])
             geom: geometry.LineString = geom.simplify(5)
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
