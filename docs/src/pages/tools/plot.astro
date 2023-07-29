@@ -122,7 +122,7 @@ Plot a primal or dual cityseer graph.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_graph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.
@@ -131,7 +131,7 @@ An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_graph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
+          <div class="yap doc-str-elem-type">MultiGraph | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.
@@ -140,7 +140,7 @@ An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults t
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">path</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.
@@ -167,7 +167,7 @@ The diameter for the primal graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_node_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -176,7 +176,7 @@ Primal node colour or colours. When passing an iterable of colours, the number o
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_edge_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -194,7 +194,7 @@ The diameter for the dual graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_node_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -203,7 +203,7 @@ Dual node colour or colours. When passing a list of colours, the number of colou
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_edge_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -212,7 +212,7 @@ Dual edge colour or colours. When passing an iterable of colours, the number of 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">primal_edge_width</div>
-          <div class="yap doc-str-elem-type">int|float</div>
+          <div class="yap doc-str-elem-type">int | float | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for the primal edge. Defaults to None.
@@ -221,7 +221,7 @@ Linewidths for the primal edge. Defaults to None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">dual_edge_width</div>
-          <div class="yap doc-str-elem-type">int|float</div>
+          <div class="yap doc-str-elem-type">int | float | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for the dual edge. Defaults to None.
@@ -239,7 +239,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_lim</div>
-          <div class="yap doc-str-elem-type">tuple[float|float]|list[float]</div>
+          <div class="yap doc-str-elem-type">tuple[float, float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
@@ -248,7 +248,7 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">y_lim</div>
-          <div class="yap doc-str-elem-type">tuple[float|float]|list[float]</div>
+          <div class="yap doc-str-elem-type">tuple[float, float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
@@ -257,7 +257,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">ax</div>
-          <div class="yap doc-str-elem-type">Axes</div>
+          <div class="yap doc-str-elem-type">Axes | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
@@ -266,7 +266,7 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">kwargs</div>
-          <div class="yap doc-str-elem-type">dict[str, Any]</div>
+          <div class="yap doc-str-elem-type">Any]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -334,7 +334,7 @@ A `NetworkX` MultiGraph.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">path</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.
@@ -361,7 +361,7 @@ The diameter for the graph's nodes.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -370,7 +370,7 @@ Node colour or colours. When passing an iterable of colours, the number of colou
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Edges colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -379,7 +379,7 @@ Edges colour as a `matplotlib` compatible colour string. Defaults to None.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_width</div>
-          <div class="yap doc-str-elem-type">int|float</div>
+          <div class="yap doc-str-elem-type">int | float | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Linewidths for edges. Defaults to None.
@@ -397,7 +397,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">x_lim</div>
-          <div class="yap doc-str-elem-type">tuple[float|float]|list[float]</div>
+          <div class="yap doc-str-elem-type">tuple[float, float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
@@ -406,7 +406,7 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">y_lim</div>
-          <div class="yap doc-str-elem-type">tuple[float|float]|list[float]</div>
+          <div class="yap doc-str-elem-type">tuple[float, float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
@@ -415,7 +415,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">ax</div>
-          <div class="yap doc-str-elem-type">Axes</div>
+          <div class="yap doc-str-elem-type">Axes | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
@@ -424,7 +424,7 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">kwargs</div>
-          <div class="yap doc-str-elem-type">dict[str, Any]</div>
+          <div class="yap doc-str-elem-type">Any]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -529,7 +529,7 @@ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` c
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">path</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.
@@ -538,7 +538,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">node_colour</div>
-          <div class="yap doc-str-elem-type">ColourType</div>
+          <div class="yap doc-str-elem-type">ColourType | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.
@@ -556,7 +556,7 @@ Whether to plot the node labels. Defaults to False.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_labels</div>
-          <div class="yap doc-str-elem-type">npt.NDArray[np.int_]|npt.NDArray[np.unicode_]</div>
+          <div class="yap doc-str-elem-type">unicode_] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `data_layer`. Defaults to None.
@@ -565,7 +565,7 @@ An optional iterable of categorical data labels which will be mapped to colours.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">kwargs</div>
-          <div class="yap doc-str-elem-type">dict[str, Any]</div>
+          <div class="yap doc-str-elem-type">Any]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.
@@ -626,7 +626,7 @@ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` c
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">poly</div>
-          <div class="yap doc-str-elem-type">Polygon</div>
+          <div class="yap doc-str-elem-type">Polygon | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional polygon. Defaults to None.
@@ -679,7 +679,7 @@ A 'matplotlib' `Ax` to which to plot.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">xs</div>
-          <div class="yap doc-str-elem-type">npt.NDArray[np.float_]</div>
+          <div class="yap doc-str-elem-type">float_]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A numpy array of floats representing the `x` coordinates for points to plot.
@@ -688,7 +688,7 @@ A numpy array of floats representing the `x` coordinates for points to plot.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">ys</div>
-          <div class="yap doc-str-elem-type">npt.NDArray[np.float_]</div>
+          <div class="yap doc-str-elem-type">float_]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A numpy array of floats representing the `y` coordinates for points to plot.
@@ -697,7 +697,7 @@ A numpy array of floats representing the `y` coordinates for points to plot.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">vals</div>
-          <div class="yap doc-str-elem-type">npt.NDArray[np.float32]</div>
+          <div class="yap doc-str-elem-type">float32]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A numpy array of floats representing the data values for the provided points.
@@ -706,7 +706,7 @@ A numpy array of floats representing the data values for the provided points.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">bbox_extents</div>
-          <div class="yap doc-str-elem-type">tuple[int|int|int|int]|tuple[float|float|float|float]</div>
+          <div class="yap doc-str-elem-type">tuple[int, int, int, int] | tuple[float, float, float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
@@ -843,7 +843,7 @@ An edge key for the provided `nx_multigraph`. Plotted values will be retrieved f
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">bbox_extents</div>
-          <div class="yap doc-str-elem-type">tuple[int|int|int|int]|tuple[float|float|float|float]</div>
+          <div class="yap doc-str-elem-type">tuple[int, int, int, int] | tuple[float, float, float, float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.
@@ -897,7 +897,7 @@ A float representing the maximum line width for a plotted edge.
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">edge_label_key</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A key for retrieving categorical labels from edges.

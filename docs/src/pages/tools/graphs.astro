@@ -497,7 +497,7 @@ A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordina
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">force_zone_number</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-type">Optional[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results.
@@ -604,7 +604,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">despine</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">Optional[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.
@@ -906,7 +906,7 @@ The least number of edges a node should have in order to be considered for conso
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">min_cumulative_degree</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-type">Optional[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional minimum cumulative degree to consider a valid node group for consolidation. Defaults to None.
@@ -915,7 +915,7 @@ An optional minimum cumulative degree to consider a valid node group for consoli
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">max_cumulative_degree</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-type">Optional[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional maximum cumulative degree to consider a valid node group for consolidation. Defaults to None.
@@ -924,7 +924,7 @@ An optional maximum cumulative degree to consider a valid node group for consoli
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">neighbour_policy</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to None.
@@ -951,7 +951,7 @@ The minimum node degree for a node to be considered when calculating the new cen
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">cent_min_names</div>
-          <div class="yap doc-str-elem-type">int</div>
+          <div class="yap doc-str-elem-type">Optional[int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The minimum number of cumulative street names or street references to be considered when calculating the new centroid. Requires `names` and `routes` edge attributes containing lists of OSM street names or route identifiers. Defaults to None.
@@ -960,7 +960,7 @@ The minimum number of cumulative street names or street references to be conside
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">cent_min_len_factor</div>
-          <div class="yap doc-str-elem-type">float</div>
+          <div class="yap doc-str-elem-type">Optional[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge lengths. Defaults to None.
@@ -1254,7 +1254,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">crs</div>
-          <div class="yap doc-str-elem-type">str|int</div>
+          <div class="yap doc-str-elem-type">Union[str, int]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).
@@ -1282,22 +1282,21 @@ A [`structures.NetworkStructure`](/structures#networkstructure) instance.
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="nx-from-network-structure">
-      <a aria-hidden="true" href="#nx-from-network-structure" tabindex="-1">
+    <h2 class="yap func-title" id="nx-from-geopandas">
+      <a aria-hidden="true" href="#nx-from-geopandas" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
           <path clip-rule="evenodd" d="
 M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
 " fill-rule="evenodd"></path>
         </svg>
-      </a>nx_from_network_structure
+      </a>nx_from_geopandas
     </h2>
     <div class="yap func-sig-content">
       <div class="yap func-sig">
-        <span>nx_from_network_structure(</span>
+        <span>nx_from_geopandas(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">nx_multigraph=None)</div>
+          <div class="yap func-sig-param">edges_gdf)</div>
         </div>
       </div>
     </div>
@@ -1319,19 +1318,10 @@ A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be 
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">NetworkStructure</div>
+          <div class="yap doc-str-elem-type">None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf` parameter.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nx_multigraph</div>
-          <div class="yap doc-str-elem-type">MultiGraph</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional `networkX` graph to use as a backbone for unpacking the data. The number of nodes and edges should correspond to the `cityseer` data maps and the node identifiers should correspond to the `node_keys`. If not provided, then a new `networkX` graph will be returned. This function is intended to be used for situations where `cityseer` data is being transposed back to a source `networkX` graph. Defaults to None.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>

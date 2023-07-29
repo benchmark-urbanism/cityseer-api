@@ -36,28 +36,28 @@ State management for an individual street continuity entry.
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">entry_name</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">str</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">count</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">int</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">length</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">float</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">edges</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">dict[str, tuple[cityseer.tools.graphs.NodeKey, cityseer.tools.graphs.NodeKey, int]]</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
@@ -152,14 +152,14 @@ State management for a collection of street continuity metrics.
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">method</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">str</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
     <div class="yap class-prop-elem-container">
       <div class="yap class-prop-def">
         <div class="yap class-prop-def-name">entries</div>
-        <div class="yap class-prop-def-type"></div>
+        <div class="yap class-prop-def-type">dict[str, cityseer.metrics.observe.ContinuityEntry]</div>
       </div>
       <div class="yap class-prop-def-desc"></div>
     </div>
@@ -290,7 +290,7 @@ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">method</div>
-          <div class="yap doc-str-elem-type">str|tuple[str|str]</div>
+          <div class="yap doc-str-elem-type">Union[str, tuple[str, str]]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The type of continuity metric to compute, where available options are "names", "routes", or "highways".
