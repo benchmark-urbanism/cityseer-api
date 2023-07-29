@@ -11,14 +11,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 #[pyclass]
-struct AccessibilityResult {
+pub struct AccessibilityResult {
     #[pyo3(get)]
     weighted: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
     unweighted: HashMap<u32, Py<PyArray1<f32>>>,
 }
 #[pyclass]
-struct MixedUsesResult {
+pub struct MixedUsesResult {
     #[pyo3(get)]
     hill: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>>,
     #[pyo3(get)]
@@ -29,7 +29,7 @@ struct MixedUsesResult {
     gini: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
 #[pyclass]
-struct StatsResult {
+pub struct StatsResult {
     #[pyo3(get)]
     sum: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
