@@ -1,7 +1,6 @@
 # pyright: basic
 from __future__ import annotations
 
-
 import networkx as nx
 import numpy as np
 import numpy.typing as npt

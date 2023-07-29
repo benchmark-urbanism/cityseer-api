@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
-from queue import Queue
 import threading
 import time
-from typing import Callable
+from queue import Queue
+from typing import Callable, Union
+
 import numpy as np
 from tqdm import tqdm
 
@@ -51,23 +52,26 @@ ATOL: float = 0.001
 RTOL: float = 0.0001
 
 
+RustResults = Union[
+    rustalgos.CentralityShortestResult,
+    rustalgos.CentralitySimplestResult,
+    rustalgos.CentralitySegmentResult,
+    rustalgos.AccessibilityResult,
+    rustalgos.MixedUsesResult,
+    rustalgos.StatsResult,
+]
+
+
 def wrap_progress(
-    total: int, rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap, partial_func: Callable
-) -> (
-    rustalgos.CentralityShortestResult
-    | rustalgos.CentralitySimplestResult
-    | rustalgos.CentralitySegmentResult
-    | rustalgos.AccessibilityResult
-    | rustalgos.MixedUsesResult
-    | rustalgos.StatsResult
-):
+    total: int, rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap, partial_func: Callable  # type: ignore
+) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 
-    def wrapper(queue):
-        result = partial_func()
-        queue.put(result)
+    def wrapper(queue: Queue[RustResults]):
+        result: RustResults = partial_func()  # type: ignore
+        queue.put(result)  # type: ignore
 
-    result_queue = Queue()
+    result_queue: Queue[RustResults] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
     pbar = tqdm(total=total)
     thread.start()

@@ -106,23 +106,6 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
 }
 
 #[pyfunction]
-pub fn check_categorical_data(data_arr: PyReadonlyArray2<i32>) -> PyResult<()> {
-    // Check the integrity of categoric data arrays.
-    let data_slice = data_arr.as_array();
-    for inner_arr in data_slice.rows() {
-        for num in inner_arr.iter() {
-            let num_val = *num;
-            if num_val < 0 {
-                return Err(exceptions::PyValueError::new_err(
-                    "The categorical data values must be encoded as positive integers",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-#[pyfunction]
 pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> PyResult<Vec<u32>> {
     if betas.len() == 0 {
         return Err(exceptions::PyValueError::new_err(

@@ -87,7 +87,7 @@ class StreetContinuityReport:
         logger.info(f"Reporting top {n_items} continuity observations by street counts.")
         item_keys = list(self.entries.keys())
         counts: list[int] = [v.count for v in self.entries.values()]
-        for n, arg_idx in enumerate(np.argsort(counts)[::-1]):  # type: ignore
+        for n, arg_idx in enumerate(np.argsort(counts)[::-1]):
             if n == n_items:
                 break
             logger.info(f"Count: {counts[arg_idx]} - {item_keys[arg_idx]}")
@@ -97,7 +97,7 @@ class StreetContinuityReport:
         logger.info(f"Reporting top {n_items} continuity observations by street lengths.")
         item_keys = list(self.entries.keys())
         lengths: list[float] = [v.length for v in self.entries.values()]
-        for n, arg_idx in enumerate(np.argsort(lengths)[::-1]):  # type: ignore
+        for n, arg_idx in enumerate(np.argsort(lengths)[::-1]):
             if n == n_items:
                 break
             len_idx: float = lengths[arg_idx]
@@ -115,7 +115,7 @@ def _continuity_report_to_nx(
     # iterate from smallest to largest so that larger routes overwrite smaller if overlapping
     route_keys = list(continuity_report.entries.keys())
     route_counts: list[float] = [v.count for v in continuity_report.entries.values()]
-    for arg_idx in np.argsort(route_counts):  # type: ignore
+    for arg_idx in np.argsort(route_counts):
         route_key: str = route_keys[arg_idx]
         continuity_entry: ContinuityEntry = continuity_report.entries[route_key]
         for hb_start_nd_key, hb_end_nd_key, hb_edge_idx in continuity_entry.edges.values():
@@ -126,9 +126,9 @@ def _continuity_report_to_nx(
     edge_data: graphs.EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
         if count_edge_key not in edge_data or length_edge_key not in edge_data:
-            nx_multigraph[start_nd_key][end_nd_key][edge_idx][label_edge_key] = None  # type: ignore
-            nx_multigraph[start_nd_key][end_nd_key][edge_idx][count_edge_key] = 0  # type: ignore
-            nx_multigraph[start_nd_key][end_nd_key][edge_idx][length_edge_key] = 0  # type: ignore
+            nx_multigraph[start_nd_key][end_nd_key][edge_idx][label_edge_key] = None
+            nx_multigraph[start_nd_key][end_nd_key][edge_idx][count_edge_key] = 0
+            nx_multigraph[start_nd_key][end_nd_key][edge_idx][length_edge_key] = 0
 
     return nx_multigraph
 
@@ -165,10 +165,10 @@ def _recurse_edges(
     )
     # find all neighbouring edge pairs
     a_nb_pairs: list[tuple[graphs.NodeKey, graphs.NodeKey]] = [
-        (_a_nd_key, ann) for ann in nx.neighbors(_nx_multigraph, _a_nd_key) if ann != _b_nd_key  # type: ignore
+        (_a_nd_key, ann) for ann in nx.neighbors(_nx_multigraph, _a_nd_key) if ann != _b_nd_key
     ]
     b_nb_pairs: list[tuple[graphs.NodeKey, graphs.NodeKey]] = [
-        (_b_nd_key, bnn) for bnn in nx.neighbors(_nx_multigraph, _b_nd_key) if bnn != _a_nd_key  # type: ignore
+        (_b_nd_key, bnn) for bnn in nx.neighbors(_nx_multigraph, _b_nd_key) if bnn != _a_nd_key
     ]
     # recurse into neighbours
     for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
@@ -221,7 +221,7 @@ def street_continuity(
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 
-    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
+    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
     # check intended method keys
     available_targets = ["names", "routes", "highways"]
     if method not in available_targets:
@@ -236,7 +236,7 @@ def street_continuity(
     edge_idx: int
     edge_data: dict[str, Any]
     for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE  # type: ignore
+        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
         # raise if the key doesn't exist
         if method not in edge_data:
@@ -256,7 +256,7 @@ def street_continuity(
                     method_report.scaffold_entry(entry_name=match_target)
                     visited_edges: set[str] = set()
                     _recurse_edges(
-                        nx_multi_copy,  # type: ignore
+                        nx_multi_copy,
                         method,
                         match_target,
                         a_nd_key,
@@ -275,7 +275,7 @@ def street_continuity(
                 )
     # copy to networkx input graph
     nx_multi_copy = _continuity_report_to_nx(
-        edge_key=method, nx_multigraph=nx_multi_copy, continuity_report=method_report  # type: ignore
+        edge_key=method, nx_multigraph=nx_multi_copy, continuity_report=method_report
     )
 
     return nx_multi_copy, method_report
@@ -320,7 +320,7 @@ def hybrid_street_continuity(
     # process in order - useful for debugging
     route_keys = list(routes_continuity_report.entries.keys())
     route_lengths: list[float] = [v.length for v in routes_continuity_report.entries.values()]
-    for arg_idx in np.argsort(route_lengths)[::-1]:  # type: ignore
+    for arg_idx in np.argsort(route_lengths)[::-1]:
         route_key: str = route_keys[arg_idx]
         routes_continuity_entry: ContinuityEntry = routes_continuity_report.entries[route_key]
         # iterate the edges associated with an entry
