@@ -2,9 +2,6 @@ name: publish dev package
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - "*.*.*[ab]*"
 permissions:
