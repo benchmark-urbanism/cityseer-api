@@ -57,8 +57,12 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+import threading
+import time
+from queue import Queue
 
 import geopandas as gpd
+from tqdm import tqdm
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
@@ -410,13 +414,30 @@ def node_centrality_shortest(
     """
     if distances is None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
-    node_result_short = network_structure.local_node_centrality_shortest(
-        distances=distances,
-        compute_closeness=compute_closeness,
-        compute_betweenness=compute_betweenness,
-        min_threshold_wt=min_threshold_wt,
-        jitter_scale=jitter_scale,
-    )
+
+    def wrapper(queue):
+        result = network_structure.local_node_centrality_shortest(
+            distances=distances,
+            compute_closeness=compute_closeness,
+            compute_betweenness=compute_betweenness,
+            min_threshold_wt=min_threshold_wt,
+            jitter_scale=jitter_scale,
+        )
+        queue.put(result)
+
+    # start and track progress
+    result_queue = Queue()
+    thread = threading.Thread(target=wrapper, args=(result_queue,))
+    pbar = tqdm(total=network_structure.node_count())
+    thread.start()
+    while thread.is_alive():
+        time.sleep(1)
+        pbar.update(network_structure.progress() - pbar.n)
+    pbar.update(network_structure.node_count() - pbar.n)
+    pbar.close()
+    node_result_short = result_queue.get()
+    thread.join()
+    # unpack
     if compute_closeness is True:
         for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
             for distance in distances:

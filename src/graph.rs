@@ -3,6 +3,8 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 #[pyclass]
 #[derive(Clone)]
@@ -114,6 +116,7 @@ impl EdgeVisit {
 #[derive(Clone)]
 pub struct NetworkStructure {
     pub graph: DiGraph<NodePayload, EdgePayload>,
+    pub progress: Arc<AtomicUsize>,
 }
 #[pymethods]
 impl NetworkStructure {
@@ -121,7 +124,11 @@ impl NetworkStructure {
     fn new() -> Self {
         Self {
             graph: DiGraph::<NodePayload, EdgePayload>::default(),
+            progress: Arc::new(AtomicUsize::new(0)),
         }
+    }
+    fn progress(&self) -> usize {
+        self.progress.as_ref().load(Ordering::Relaxed)
     }
     fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool) -> usize {
         let new_node_idx = self.graph.add_node(NodePayload {

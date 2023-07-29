@@ -5,15 +5,9 @@ mod data;
 mod diversity;
 mod graph;
 
-#[pyfunction]
-fn multiply(a: isize, b: isize) -> PyResult<isize> {
-    Ok(a * b)
-}
-
 #[pymodule]
 fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     // let rustalgos = PyModule::new(py, "rustalgos")?;
-    m.add_wrapped(wrap_pyfunction!(multiply))?;
     // m.add_submodule(rustalgos)?;
     m.add_class::<data::DataEntry>()?;
     m.add_class::<data::DataMap>()?;

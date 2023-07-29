@@ -122,7 +122,7 @@ def test_compute_mixed_uses(primal_graph):
             data_map, data_gdf = layers.assign_gdf_to_network(
                 data_gdf, network_structure, max_dist, data_id_col=data_id_col
             )
-            mu_data_data = data_map.mixed_uses(
+            mu_data = data_map.mixed_uses(
                 network_structure,
                 landuses_map,
                 compute_hill=True,
@@ -134,31 +134,31 @@ def test_compute_mixed_uses(primal_graph):
             )
             for dist_key in distances:
                 for q_key in [0, 1, 2]:
-                    hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_non_weighted")
+                    hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
                     assert np.allclose(
                         nodes_gdf[hill_nw_data_key].values,
-                        mu_data_data.hill[q_key][dist_key],
+                        mu_data.hill[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                    hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_weighted")
+                    hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
                     assert np.allclose(
                         nodes_gdf[hill_wt_data_key].values,
-                        mu_data_data.hill_weighted[q_key][dist_key],
+                        mu_data.hill_weighted[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
                 assert np.allclose(
                     nodes_gdf[shannon_data_key].values,
-                    mu_data_data.shannon[dist_key],
+                    mu_data.shannon[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
                 gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
                 assert np.allclose(
                     nodes_gdf[gini_data_key].values,
-                    mu_data_data.gini[dist_key],
+                    mu_data.gini[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
