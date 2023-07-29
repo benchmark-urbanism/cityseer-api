@@ -84,6 +84,8 @@ def test_mock_numerical_data(primal_graph):
 
 def test_mock_species_data():
     for counts, probs in mock.mock_species_data():
+        counts = np.array(counts)
+        probs = np.array(probs)
         assert np.allclose(counts / counts.sum(), probs, atol=config.ATOL, rtol=config.RTOL)
         assert round(probs.sum(), 8) == 1
 
