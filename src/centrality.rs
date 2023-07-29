@@ -236,6 +236,7 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
+        py: Python,
     ) -> PyResult<CentralityShortestResult> {
         // setup
         self.validate()?;
@@ -249,124 +250,124 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
-        // metrics
-        let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_betweenness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        let node_betweenness_beta =
-            MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-        // indices
-        let node_indices: Vec<usize> = self.node_indices();
-        // pbar
+        // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
-        let pbar = ProgressBar::new(node_indices.len() as u64)
-            .with_message("Computing shortest path node centrality");
-        if pbar_disabled {
-            pbar.set_draw_target(ProgressDrawTarget::hidden())
-        }
         // iter
-        node_indices.par_iter().for_each(|src_idx| {
-            pbar.inc(1);
-            // skip if not live
-            if !self.is_node_live(*src_idx) {
-                return;
-            }
-            let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
-            for to_idx in visited_nodes.iter() {
-                let node_visit = tree_map[*to_idx].clone();
-                if to_idx == src_idx {
-                    continue;
+        let result = py.allow_threads(move || {
+            // metrics
+            let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_betweenness =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_betweenness_beta =
+                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            // indices
+            let node_indices: Vec<usize> = self.node_indices();
+            node_indices.par_iter().for_each(|src_idx| {
+                // progress
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                if !node_visit.short_dist.is_finite() {
-                    continue;
+                // skip if not live
+                if !self.is_node_live(*src_idx) {
+                    return;
                 }
-                if compute_closeness {
-                    for i in 0..distances.len() {
-                        let distance = distances[i];
-                        let beta = betas[i];
-                        if node_visit.short_dist <= distance as f32 {
-                            node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
-                            node_farness.metric[i][*src_idx]
-                                .fetch_add(node_visit.short_dist, Ordering::Relaxed);
-                            node_cycles.metric[i][*src_idx]
-                                .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                            node_harmonic.metric[i][*src_idx]
-                                .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
-                            node_beta.metric[i][*src_idx].fetch_add(
-                                (-beta * node_visit.short_dist).exp(),
-                                Ordering::Relaxed,
-                            );
-                        }
-                    }
-                }
-                if compute_betweenness {
-                    if to_idx < src_idx {
+                let (visited_nodes, _visited_edges, tree_map, _edge_map) =
+                    self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
+                for to_idx in visited_nodes.iter() {
+                    let node_visit = tree_map[*to_idx].clone();
+                    if to_idx == src_idx {
                         continue;
                     }
-                    let mut inter_idx: usize = node_visit.pred.unwrap();
-                    loop {
-                        if inter_idx == *src_idx {
-                            break;
-                        }
+                    if !node_visit.short_dist.is_finite() {
+                        continue;
+                    }
+                    if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
-                                node_betweenness.metric[i][inter_idx]
-                                    .fetch_add(1.0, Ordering::Acquire);
-                                node_betweenness_beta.metric[i][inter_idx].fetch_add(
+                                node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                                node_farness.metric[i][*src_idx]
+                                    .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                                node_cycles.metric[i][*src_idx]
+                                    .fetch_add(node_visit.cycles, Ordering::Relaxed);
+                                node_harmonic.metric[i][*src_idx]
+                                    .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
+                                node_beta.metric[i][*src_idx].fetch_add(
                                     (-beta * node_visit.short_dist).exp(),
-                                    Ordering::Acquire,
+                                    Ordering::Relaxed,
                                 );
                             }
                         }
-                        inter_idx = tree_map[inter_idx].pred.unwrap();
+                    }
+                    if compute_betweenness {
+                        if to_idx < src_idx {
+                            continue;
+                        }
+                        let mut inter_idx: usize = node_visit.pred.unwrap();
+                        loop {
+                            if inter_idx == *src_idx {
+                                break;
+                            }
+                            for i in 0..distances.len() {
+                                let distance = distances[i];
+                                let beta = betas[i];
+                                if node_visit.short_dist <= distance as f32 {
+                                    node_betweenness.metric[i][inter_idx]
+                                        .fetch_add(1.0, Ordering::Acquire);
+                                    node_betweenness_beta.metric[i][inter_idx].fetch_add(
+                                        (-beta * node_visit.short_dist).exp(),
+                                        Ordering::Acquire,
+                                    );
+                                }
+                            }
+                            inter_idx = tree_map[inter_idx].pred.unwrap();
+                        }
                     }
                 }
+            });
+            CentralityShortestResult {
+                node_density: if compute_closeness {
+                    Some(node_density.load())
+                } else {
+                    None
+                },
+                node_farness: if compute_closeness {
+                    Some(node_farness.load())
+                } else {
+                    None
+                },
+                node_cycles: if compute_closeness {
+                    Some(node_cycles.load())
+                } else {
+                    None
+                },
+                node_harmonic: if compute_closeness {
+                    Some(node_harmonic.load())
+                } else {
+                    None
+                },
+                node_beta: if compute_closeness {
+                    Some(node_beta.load())
+                } else {
+                    None
+                },
+                node_betweenness: if compute_betweenness {
+                    Some(node_betweenness.load())
+                } else {
+                    None
+                },
+                node_betweenness_beta: if compute_betweenness {
+                    Some(node_betweenness_beta.load())
+                } else {
+                    None
+                },
             }
         });
-        pbar.finish();
-        let result = CentralityShortestResult {
-            node_density: if compute_closeness {
-                Some(node_density.load())
-            } else {
-                None
-            },
-            node_farness: if compute_closeness {
-                Some(node_farness.load())
-            } else {
-                None
-            },
-            node_cycles: if compute_closeness {
-                Some(node_cycles.load())
-            } else {
-                None
-            },
-            node_harmonic: if compute_closeness {
-                Some(node_harmonic.load())
-            } else {
-                None
-            },
-            node_beta: if compute_closeness {
-                Some(node_beta.load())
-            } else {
-                None
-            },
-            node_betweenness: if compute_betweenness {
-                Some(node_betweenness.load())
-            } else {
-                None
-            },
-            node_betweenness_beta: if compute_betweenness {
-                Some(node_betweenness_beta.load())
-            } else {
-                None
-            },
-        };
         Ok(result)
     }
 
