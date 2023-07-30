@@ -8,9 +8,9 @@ layout: '@src/layouts/PageLayout.astro'
 
 `cityseer` is underpinned by network-based methods that have been developed from the ground-up for micro-morphological urban analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given streetfront location. Importantly, `cityseer` computes metrics directly over the street network and offers distance-weighted variants. The combination of these strategies makes `cityseer` more contextually sensitive than methods otherwise based on crow-flies aggregation methods that do not take the network structure and its affect on pedestrian walking distances into account.
 
-The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows with [`OSMnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/), [`geopandas`](https://geopandas.org/en/stable/) (and [`momepy`](http://docs.momepy.org)) stack of packages. The underlying algorithms are are implemented in [`numba`](https://numba.pydata.org/) JIT compiled code so that the methods can be applied to large decomposed networks. In-out convenience methods are provided for interfacing with `networkX` and graph cleaning tools aid the incorporation of messier network representations such as those derived from [Open Street Map](https://www.openstreetmap.org).
+The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows with [`OSMnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/), [`geopandas`](https://geopandas.org/en/stable/) (and [`momepy`](http://docs.momepy.org)) stack of packages. The underlying algorithms are parallelised and implemented in `rust` so that the methods can be scaled to large networks. In-out convenience methods are provided for interfacing with `networkX` and graph cleaning tools aid the incorporation of messier network representations such as those derived from [Open Street Map](https://www.openstreetmap.org).
 
-The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api). Associated papers introducing the package and demonstrating the forms of analysis that can be done with it are [available at `arXiv`](https://arxiv.org/a/simons_g_1.html).
+The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api). Please cite the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827) when using this package. Associated papers introducing the package and demonstrating the forms of analysis that can be done with it are [available at `arXiv`](https://arxiv.org/a/simons_g_1.html).
 
 ## Installation
 
@@ -20,11 +20,11 @@ The github repository is available at [github.com/benchmark-urbanism/cityseer-ap
 pip install cityseer
 ```
 
-Code tests are run against `python 3.9`, though the code base will generally be compatible with Python 3.8+.
+Code tests are run against `python 3.10`, though the code base will generally be compatible with Python 3.8+.
 
 ## Notebooks
 
-The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebooks which can be accessed via the [`Examples`](/examples) page.
+The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebooks which can be accessed via the [`Examples`](/examples) page. The examples include workflows showing how to run network centralities and land-use accessibility analysis for some real-world situations.
 
 ## Quickstart
 
@@ -37,7 +37,7 @@ import networkx as nx
 from cityseer.tools import mock, graphs, plot
 
 G = mock.mock_graph()
-print(nx.info(G))
+print(G)
 # let's plot the network
 plot.plot_nx(G, labels=True, node_size=80, dpi=200, figsize=(4, 4))
 ```
@@ -95,21 +95,20 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 After graph preparation and cleaning has been completed, the `networkX` graph can be transformed into data structures for efficiently computing centralities, land-use measures, or statistical aggregations.
 
-Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into a GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`structures.NetworkStructure`](/structures#networkstructure), which is used by Cityseer for efficiently computing over the network.
+Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into GeoPandas [`GeoDataFrames`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure), the latter of which is used by `cityseer` for efficiently computing the measures with the underlying `rust` algorithms.
 
 ### Network Centralities
 
-The [`networks.node_centrality`](/metrics/networks#node-centrality) and [`networks.segment_centrality`](/metrics/networks#segment-centrality) methods wrap underlying numba optimised functions that compute a range of centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `GeoDataFrame`.
+The [`networks.node_centrality_shortest`](/metrics/networks#node-centrality-shortest), [`networks.node_centrality_simplest`](/metrics/networks#node-centrality-simplest), and [`networks.segment_centrality`](/metrics/networks#segment-centrality) methods wrap underlying `rust` functions that compute the centrality methods. All selected measures and distance thresholds are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar workflows. The results of the computations will be written to the `GeoDataFrame`.
 
 ```python
 from cityseer.metrics import networks
 
 # create a Network layer from the networkX graph
 # use a CRS EPSG code matching the projected coordinate reference system for your data
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 nodes_gdf = networks.segment_centrality(
-    measures=["segment_harmonic", "segment_betweenness"],  # the form of centrality measures to compute - see docs
     network_structure=network_structure,  # the network structure for which to compute the measures
     nodes_gdf=nodes_gdf,  # the nodes GeoDataFrame, to which the results will be written
     distances=[200, 400, 800, 1600],  # the distance thresholds for which to compute centralities
@@ -143,7 +142,7 @@ Landuse and statistical measures require a GeoPandas [`GeoDataFrame`](https://ge
 
 When computing these measures, `cityseer` will assign each data point to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This enables `cityseer` to use dynamic spatial aggregation methods that more accurately describe distances from the perspective of pedestrians travelling over the network, and relative to the direction of approach.
 
-[`layers.compute_landuses`](/metrics/layers#compute-landuses) method is used for the calculation of mixed-use and land-use accessibility measures whereas [`layers.compute_stats`](/metrics/layers#compute-stats) can be used for statistical aggregations. As with the centrality methods, the measures are all computed simultaneously (and for all distances); however, simpler stand-alone methods are also available, including [`layers.hill_diversity`](/metrics/layers#hill-diversity), [`layers.hill_branch_wt_diversity`](/metrics/layers#hill-branch-wt-diversity), and [`layers.compute_accessibilities`](/metrics/layers#compute-accessibilities).
+[`layers.compute_landuses`](/metrics/layers#compute-landuses) and [`layers.compute_mixed_uses`](/metrics/layers#compute-mixed-uses) methods are used for the calculation of land-use accessibility and mixed-use measures whereas [`layers.compute_stats`](/metrics/layers#compute-stats) can be used for statistical aggregations. As with the centrality methods, the measures are computed over the network and are computed simultaneously for all measures and distances.
 
 ```python
 from cityseer.metrics import layers
@@ -157,16 +156,15 @@ data_gdf.head()
 ```python
 # example easy-wrapper method for computing mixed-uses
 # this is a distance weighted form of hill diversity
-nodes_gdf, data_gdf = layers.hill_branch_wt_diversity(
+nodes_gdf, data_gdf = layers.compute_mixed_uses(
     data_gdf,  # the source data
     landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
     nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
     network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
     distances=[200, 400, 800, 1600],  # distance thresholds for which you want to compute the measures
-    qs=[0, 1, 2],  # q parameter for hill mixed uses
 )
 print(nodes_gdf.columns)  # the GeoDataFrame will contain the results of the calculations
-print(nodes_gdf["cc_metric_hill_branch_wt_q0_800"])  # which can be retrieved as needed
+print(nodes_gdf["cc_metric_q0_800_hill"])  # which can be retrieved as needed
 ```
 
 ```python
@@ -181,8 +179,8 @@ _Data points assigned to a Network Layer._
 _Data assignment becomes more precise on a decomposed Network Layer._
 
 ```python
-# plot distance-weighted hill mixed uses
-mixed_uses_vals = nodes_gdf["cc_metric_hill_branch_wt_q0_800"]
+# plot distance-weighted "hill" numbers mixed uses
+mixed_uses_vals = nodes_gdf["cc_metric_q0_800_hill_weighted"]
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
 plot.plot_assignment(
@@ -200,7 +198,7 @@ plot.plot_assignment(
 _400m distance-weighted mixed-uses._
 
 ```python
-# example easy-wrapper method for computing landuse accessibilities
+# compute landuse accessibilities for land-use types a, b, c
 nodes_gdf, data_gdf = layers.compute_accessibilities(
     data_gdf,  # the source data
     landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
@@ -218,29 +216,28 @@ Aggregations can likewise be computed for numerical data. Let's generate some mo
 ```python
 numerical_data_gdf = mock.mock_numerical_data(G_decomp, num_arrs=3)
 numerical_data_gdf.head()
-
-# example easy-wrapper method for computing landuse accessibilities
+# compute stats for column mock_numerical_1
 nodes_gdf, numerical_data_gdf = layers.compute_stats(
     numerical_data_gdf,  # the source data
-    stats_column_labels=["mock_numerical_1", "mock_numerical_2"],  # numerical columns to compute stats for
+    stats_column_label="mock_numerical_1",  # numerical column to compute stats for
     nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
     network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
     distances=[800, 1600],  # distance thresholds for which you want to compute the measures
 )
 # statistical aggregations are calculated for each requested column, and in the following forms:
 # max, min, sum, sum_weighted, mean, mean_weighted, variance, variance_weighted
-
-print(nodes_gdf["cc_metric_mock_numerical_2_max_800"])
-print(nodes_gdf["cc_metric_mock_numerical_1_mean_weighted_800"])
+print(nodes_gdf["cc_metric_max_800"])
+print(nodes_gdf["cc_metric_mean_wt_800"])
 ```
 
 The landuse metrics and statistical aggregations are computed over the street network relative to the network, with results written to each node. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared.
 
-Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_network_structure](/metrics/networks#nx-from-network-structure) method, or can otherwise be used to overlay computed metrics onto the original graph by providing the `nx_multigraph` parameter.
+Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_geopandas](/metrics/networks#nx-from-network-geopandas) method.
 
 ```python
-nx_multigraph_round_trip = graphs.nx_from_network_structure(
-    nodes_gdf=nodes_gdf, network_structure=network_structure, nx_multigraph=G_decomp
+nx_multigraph_round_trip = graphs.nx_from_geopandas(
+    nodes_gdf,
+    edges_gdf,
 )
-nx_multigraph_round_trip.nodes[0]
+nx_multigraph_round_trip.nodes["0"]
 ```

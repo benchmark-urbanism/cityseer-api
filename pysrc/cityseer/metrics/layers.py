@@ -18,7 +18,7 @@ def assign_gdf_to_network(
     data_id_col: str | None = None,
 ) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
     """
-    Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
+    Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
@@ -32,8 +32,8 @@ def assign_gdf_to_network(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures#networkstructure).
+    network_structure: rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure).
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
@@ -44,8 +44,8 @@ def assign_gdf_to_network(
 
     Returns
     -------
-    data_map: structures.DataMap
-        A [`structures.DataMap`](/structures#datamap) instance.
+    data_map: rustalgos.DataMap
+        A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
@@ -121,15 +121,16 @@ def compute_accessibilities(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     data_id_col: str | None = None,
+    angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
-    angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
-    Compute land-use accessibilities for the specified land-use classification keys.
+    Compute land-use accessibilities for the specified land-use classification keys over the street network.
 
-    See [`compute_landuses`](#compute-landuses) for additional information.
+    The landuses are aggregated and computed over the street network relative to the network nodes, with the implication
+    that the measures are generated from the same locations as those used for centrality computations.
 
     Parameters
     ----------
@@ -140,10 +141,10 @@ def compute_accessibilities(
         building entrance.
     landuse_column_label: str
         The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might
-        contain "shop", "pub", "school", etc., landuse categories.
+        contain "shop", "pub", "school", etc.
     accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
-        schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both
+        schema used for the `landuse_labels` parameter, e.g. "pub". The calculations will be performed in both
         `weighted` and `non_weighted` variants.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -151,15 +152,15 @@ def compute_accessibilities(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
         then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
+    betas: list[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
@@ -168,17 +169,21 @@ def compute_accessibilities(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances.
     spatial_tolerance: int
         Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
+        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
+        more information.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-    angular: bool
-        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances.
 
     Returns
     -------
@@ -196,11 +201,10 @@ def compute_accessibilities(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
     nodes_gdf, landuses_gdf = layers.compute_accessibilities(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
@@ -262,10 +266,10 @@ def compute_mixed_uses(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     data_id_col: str | None = None,
+    angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
-    angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute landuse metrics.
@@ -300,46 +304,55 @@ def compute_mixed_uses(
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
+    compute_hill: bool
+        Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.
+    compute_hill_weighted: bool
+        Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0,
+        1, and 2.
+    compute_shannon: bool
+        Compute shannon entropy. Hill diversity of q=1 is generally preferable.
+    compute_gini: bool
+        Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
         then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
+    betas: list[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
-    mixed_use_keys: tuple[str]
-        Mixed-use metrics to compute, containing any combination of the `key` values from the following table.
-        See examples below for additional information.
-    cl_disparity_wt_matrix: ndarray[float]
-        An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair
-        of distinct land-uses. This parameter is only required if computing mixed-uses using
-        `hill_pairwise_disparity` or `raos_pairwise_disparity`.
-    qs: tuple[float]
-        The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of
-        the Hill diversity mixed-use measures and is otherwise ignored.
+    data_id_col: str
+        An optional column name for data point keys. This is used for deduplicating points representing a shared source
+        of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
+        nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
+        datapoint identifier.
+    angular: bool
+        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
+        and distances.
     spatial_tolerance: int
         Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`distance_from_beta`](/metrics/networks#clip-weights-curve).
+        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
+        more information.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-    angular: bool
-        Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
-        and distances.
+
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+        The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -352,39 +365,23 @@ def compute_mixed_uses(
     the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in
     an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of
     distinct land-uses.|
-    | hill_branch_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \
+    | hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \
     \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based
     on the distances from the point of computation to the nearest example of a particular land-use. It therefore
     gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
     function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
-    [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
-    | hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q}
-    \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a
-    pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest
-    examples of the pairwise distinct land-use combinations as routed through the point of computation.
-    $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay.
-    ($\beta$ is provided by the `Network Layer`, see
-    [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
-    | hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i}
-    p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i}
-    p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between
-    land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix`
-    parameter.|
+    [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)|
     | shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is
     one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is
     effectively a transformation of Shannon diversity into units of effective species.|
-    | gini_simpson | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index.
+    | gini | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index.
     It can behave problematically because it does not adhere to the replication principle and places emphasis on the
     balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an
     emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a
     transformation of Gini-Simpson diversity into units of effective species.|
-    | raos_pairwise_disparity | $$ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity
-    is a pairwise disparity measure and requires the use of a disparity matrix provided through the
-    `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use
-    disparity weighted Hill diversity with `q=2`.|
 
     :::note
-    `hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+    `hill_branch_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
     `q=2` for increasingly crude landuse classifications schemas.
     :::
 
@@ -396,19 +393,16 @@ def compute_mixed_uses(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    # compute some metrics - here we'll use the full interface, see below for simplified interfaces
     nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[200, 400, 800],
-        mixed_use_keys=["hill"],
-        qs=[0, 1],
     )
     print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
     print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
@@ -449,16 +443,16 @@ def compute_mixed_uses(
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
-                hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
+                hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}_{dist_key}")
                 nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
             if compute_hill_weighted:
-                hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
+                hill_wt_data_key = config.prep_gdf_key(f"hill_wt_q{q_key}_{dist_key}")
                 nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
         if compute_shannon:
-            shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
+            shannon_data_key = config.prep_gdf_key(f"shannon_{dist_key}")
             nodes_gdf[shannon_data_key] = result.shannon[dist_key]  # type: ignore
         if compute_gini:
-            gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
+            gini_data_key = config.prep_gdf_key(f"gini_{dist_key}")
             nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
@@ -473,13 +467,13 @@ def compute_stats(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     data_id_col: str | None = None,
+    angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float | None = None,
     jitter_scale: float = 0.0,
-    angular: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
-    Compute stats.
+    Compute numerical statistics over the street network.
 
     This function wraps the underlying `rust` optimised function for computing statistical measures. The data is
     aggregated and computed over the street network relative to the network nodes, with the implication
@@ -493,23 +487,23 @@ def compute_stats(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    stats_column_labels: list[str]
-        The column labels corresponding to the columns in `data_gdf` from which to take numerical information.
+    stats_column_label: str
+        The column label corresponding to the column in `data_gdf` from which to take numerical information.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
         [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-    distances: list[int] | tuple[int]
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
         then the `beta` parameter must be provided instead.
-    betas: float | ndarray[float]
+    betas: list[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
@@ -518,12 +512,21 @@ def compute_stats(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
+    spatial_tolerance: int
+        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
+        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
+         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
+        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
+        more information.
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations, useful for situations with highly
+        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 
     Returns
     -------
@@ -543,21 +546,19 @@ def compute_stats(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())
-
-    # some of the more commonly used measures can be accessed through simplified interfaces, e.g.
     nodes_gdf, numerical_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
-        stats_column_labels=["mock_numerical_1"],
+        stats_column_label="mock_numerical_1",
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[200, 400, 800],
     )
     print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_mock_numerical_1_mean_weighted_400"])  # weighted form
+    print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])  # weighted form
     print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])  # non-weighted form
     ```
 
@@ -595,15 +596,27 @@ def compute_stats(
     # unpack the numerical arrays
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
-        nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")] = result.sum[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")] = result.sum_wt[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")] = result.mean[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")] = result.mean_wt[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")] = result.count[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")] = result.count_wt[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")] = result.variance[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")] = result.variance_wt[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")] = result.max[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")] = result.min[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_{dist_key}")] = result.sum[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_wt_{dist_key}")] = result.sum_wt[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_mean_{dist_key}")] = result.mean[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_mean_wt_{dist_key}")] = result.mean_wt[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_count_{dist_key}")] = result.count[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_count_wt_{dist_key}")] = result.count_wt[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_var_{dist_key}")] = result.variance[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_var_wt_{dist_key}")] = result.variance_wt[  # type: ignore
+            dist_key
+        ]
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_max_{dist_key}")] = result.max[dist_key]  # type: ignore
+        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_min_{dist_key}")] = result.min[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf

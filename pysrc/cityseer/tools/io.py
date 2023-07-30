@@ -72,7 +72,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
         coords.append((lng, lat))
     poly_wgs = geometry.Polygon(coords)
 
-    return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter
+    return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter  # type: ignore
 
 
 def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> Optional[requests.Response]:
