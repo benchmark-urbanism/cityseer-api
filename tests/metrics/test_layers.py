@@ -134,28 +134,28 @@ def test_compute_mixed_uses(primal_graph):
             )
             for dist_key in distances:
                 for q_key in [0, 1, 2]:
-                    hill_nw_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill")
+                    hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}_{dist_key}")
                     assert np.allclose(
                         nodes_gdf[hill_nw_data_key].values,
                         mu_data.hill[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                    hill_wt_data_key = config.prep_gdf_key(f"q{q_key}_{dist_key}_hill_weighted")
+                    hill_wt_data_key = config.prep_gdf_key(f"hill_wt_q{q_key}_{dist_key}")
                     assert np.allclose(
                         nodes_gdf[hill_wt_data_key].values,
                         mu_data.hill_weighted[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                shannon_data_key = config.prep_gdf_key(f"{dist_key}_shannon")
+                shannon_data_key = config.prep_gdf_key(f"shannon_{dist_key}")
                 assert np.allclose(
                     nodes_gdf[shannon_data_key].values,
                     mu_data.shannon[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
-                gini_data_key = config.prep_gdf_key(f"{dist_key}_gini")
+                gini_data_key = config.prep_gdf_key(f"gini_{dist_key}")
                 assert np.allclose(
                     nodes_gdf[gini_data_key].values,
                     mu_data.gini[dist_key],
@@ -194,70 +194,70 @@ def test_compute_stats(primal_graph):
             )
             for dist_key in distances:
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"sum_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_sum_{dist_key}")],
                     stats_result.sum[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"sum_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_sum_wt_{dist_key}")],
                     stats_result.sum_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mean_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_mean_{dist_key}")],
                     stats_result.mean[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mean_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_mean_wt_{dist_key}")],
                     stats_result.mean_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"count_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_count_{dist_key}")],
                     stats_result.count[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"count_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_count_wt_{dist_key}")],
                     stats_result.count_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"variance_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_var_{dist_key}")],
                     stats_result.variance[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"variance_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_var_wt_{dist_key}")],
                     stats_result.variance_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"max_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_max_{dist_key}")],
                     stats_result.max[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"min_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_min_{dist_key}")],
                     stats_result.min[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,

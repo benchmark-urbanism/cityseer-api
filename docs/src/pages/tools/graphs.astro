@@ -1272,11 +1272,20 @@ A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` 
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">edges_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A `GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">network_structure</div>
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure) instance.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
 </Markdown></div>
       </div>
     </div>
@@ -1301,9 +1310,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
-
- This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the `nx_multigraph` parameter.
+Write nodes and edges `GeoDataFrames` to a `networkX` `MultiGraph`.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -1317,11 +1324,11 @@ A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be 
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">None</div>
+          <div class="yap doc-str-elem-name">edges_gdf</div>
+          <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf` parameter.
+An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -1331,7 +1338,7 @@ A [`structures.NetworkStructure`](/structures#networkstructure) instance corresp
           <div class="yap doc-str-elem-type">MultiGraph</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf` to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf` `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
+A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.
 </Markdown></div>
       </div>
     </div>

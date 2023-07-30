@@ -433,8 +433,8 @@ def plot_assignment(
 
     Parameters
     ----------
-    network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
+    network_structure: rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
@@ -561,7 +561,7 @@ def plot_network_structure(
     poly: geometry.Polygon | None = None,
 ):
     """
-    Plot a graph from raw `cityseer` data structures.
+    Plot a graph from raw `cityseer` network structure.
 
     :::note
     Note that this function is subject to frequent revision pending short-term development requirements. It is used
@@ -570,8 +570,8 @@ def plot_network_structure(
 
     Parameters
     ----------
-    network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
+    network_structure: rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
         A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     poly: geometry.Polygon

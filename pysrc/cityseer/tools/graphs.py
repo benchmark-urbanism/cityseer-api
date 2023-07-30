@@ -2130,8 +2130,12 @@ def network_structure_from_nx(
     nodes_gdf: GeoDataFrame
         A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used
         for the `GeoDataFrame` index.
-    network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures#networkstructure) instance.
+    edges_gdf: GeoDataFrame
+        A `GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`,
+        `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
+        attributes.
+    network_structure: rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
@@ -2284,28 +2288,20 @@ def nx_from_geopandas(
     edges_gdf: gpd.GeoDataFrame,
 ) -> MultiGraph:
     """
-    Write `cityseer` data graph maps back to a `networkX` `MultiGraph`.
-
-    This method will write back to an existing `MultiGraph` if an existing graph is provided as an argument to the
-    `nx_multigraph` parameter.
+    Write nodes and edges `GeoDataFrames` to a `networkX` `MultiGraph`.
 
     Parameters
     ----------
     nodes_gdf: GeoDataFrame
         A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX`
         graph's node keys.
-    network_structure: structures.NetworkStructure
-        A [`structures.NetworkStructure`](/structures#networkstructure) instance corresponding to the `nodes_gdf`
-        parameter.
+    edges_gdf: GeoDataFrame
+        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
 
     Returns
     -------
     nx_multigraph: MultiGraph
-        A `networkX` graph. If a backbone graph was provided, a copy of the same graph will be returned. If no graph was
-        provided, then a new graph will be generated. `x`, `y`, `live` node attributes will be copied from `nodes_gdf`
-        to the graph nodes. `length`, `angle_sum`, `imp_factor`, `in_bearing`, and `out_bearing` attributes will be
-        copied from the `network_structure` to the graph edges. `cc_metric` columns will be copied from the `nodes_gdf`
-        `GeoDataFrame` to the corresponding nodes in the returned `MultiGraph`.
+        A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.
 
     """
     logger.info("Populating node and edge map data to a networkX graph.")
