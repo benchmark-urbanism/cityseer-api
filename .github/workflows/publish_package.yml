@@ -2,7 +2,7 @@ name: publish package
 on:
   push:
     tags-ignore:
-      - "*.*.*[ab]*"
+      - "*.*.*[a]*"
 permissions:
   contents: read
 jobs:

@@ -26,6 +26,14 @@ Code tests are run against `python 3.10`, though the code base will generally be
 
 The getting started guide on this page, and a growing collection of other examples, is available as an Jupyter Notebooks which can be accessed via the [`Examples`](/examples) page. The examples include workflows showing how to run network centralities and land-use accessibility analysis for some real-world situations.
 
+## Old versions
+
+For documentations of older versions of `cityseer`, please refer to the docstrings which are directly embedded in the code for the respective version:
+
+- Documentation for [`v1.x`](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer)
+- Documentation for [`v2.x`](https://github.com/benchmark-urbanism/cityseer-api/tree/v2.0.0/cityseer)
+- Documentation for [`v3.x`](https://github.com/benchmark-urbanism/cityseer-api/tree/v3.7.2)
+
 ## Quickstart
 
 `cityseer` revolves around networks (graphs). If you're comfortable with `numpy` and abstract data handling, then the underlying data structures can be created and manipulated directly. However, it is generally more convenient to sketch the graph using [`NetworkX`](https://networkx.github.io/) and to let `cityseer` take care of initialising and converting the graph for you.

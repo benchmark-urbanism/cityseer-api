@@ -322,7 +322,7 @@ def test_local_node_centrality_shortest(primal_graph):
     nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
     G_round_trip = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
     # needs a large enough beta so that distance thresholds aren't encountered
-    betas: npt.NDArray[np.float32] = np.array([0.02, 0.01, 0.005, 0.0008], dtype=np.float32)
+    betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)
     # generate the measures
     node_result_short = network_structure.local_node_centrality_shortest(
@@ -638,7 +638,7 @@ def test_local_centrality_all(diamond_graph):
 
 def test_decomposed_local_centrality(primal_graph):
     # centralities on the original nodes within the decomposed network should equal non-decomposed workflow
-    distances: npt.NDArray[np.int_] = np.array([200, 400, 800, 5000], dtype=np.int_)
+    distances = [200, 400, 800, 5000]
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
