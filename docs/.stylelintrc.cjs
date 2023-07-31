@@ -1,9 +1,5 @@
 module.exports = {
-  extends: [
-    'stylelint-config-standard',
-    // last - to turn of clashes with prettier
-    'stylelint-config-prettier',
-  ],
+  extends: ['stylelint-config-standard'],
   plugins: [],
   rules: {
     'selector-nested-pattern': '^&',

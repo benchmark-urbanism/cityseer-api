@@ -12,9 +12,10 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-- Documentation for `v1.x`: see documented code per tagged release [v1.2.1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer)
-- Documentation for `v2.x`: see documented code per tagged release [v2.0.0](https://github.com/benchmark-urbanism/cityseer-api/tree/v2.0.0/cityseer)
-- Documentation for `v3+`: <https://cityseer.benchmarkurbanism.com/>
+- Documentation for `v1.x`: see documented code per tagged release [v1](https://github.com/benchmark-urbanism/cityseer-api/tree/v1.2.1/cityseer)
+- Documentation for `v2.x`: see documented code per tagged release [v2](https://github.com/benchmark-urbanism/cityseer-api/tree/v2.0.0/cityseer)
+- Documentation for `v3.x`: see documented code per tagged release [v3](https://github.com/benchmark-urbanism/cityseer-api/tree/v3.7.2)
+- Documentation for `v4+`: <https://cityseer.benchmarkurbanism.com/>
 
 Demo Notebooks: <https://cityseer.benchmarkurbanism.com/examples/>
 
@@ -32,3 +33,9 @@ The `cityseer-api` `Python` package addresses a range of issues specific to comp
 - Network centralities dovetailed with land-use accessibilities, mixed-uses, and general statistical aggregations from the same points of analysis to generate multi-scalar and multi-variable datasets facilitating downstream data science and machine learning workflows. For examples, see [_"Untangling urban data signatures: unsupervised machine learning methods for the detection of urban archetypes at the pedestrian scale"_](https://arxiv.org/abs/2106.15363) and [_"Prediction of 'artificial' urban archetypes at the pedestrian-scale through a synthesis of domain expertise with machine learning methods"_](https://arxiv.org/abs/2106.15364).
 - The inclusion of graph cleaning methods reduce topological distortions for higher quality network analysis and aggregation workflows while accommodating workflows bridging the wider `NumPy` ecosystem of scientific and geospatial packages. See the [Graph Cleaning Guide](https://cityseer.benchmarkurbanism.com/guide#graph-cleaning).
 - [`Numba`](https://numba.pydata.org) JIT compilation of underlying loop-intensive algorithms allows for these methods to be applied to large and, optionally, decomposed graphs, which have greater computational demands.
+
+## Development
+
+`pdm install`
+`python -m ensurepip --default-pip`
+`brew install rust rust-analyzer rustfmt`

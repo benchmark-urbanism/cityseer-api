@@ -39,11 +39,6 @@ def test_buffered_point_poly():
     )
 
 
-def test_fetch_osm_network():
-    """Tested via test_osm_graph_from_poly"""
-    pass
-
-
 def test_osm_graph_from_poly():
     """ """
     # scaffold
@@ -51,8 +46,7 @@ def test_osm_graph_from_poly():
     # check that default 4326 works - this will convert to UTM internally
     network_from_wgs = io.osm_graph_from_poly(poly_wgs, simplify=False)
     # visual check for debugging
-    if False:
-        plot.plot_nx(network_from_wgs)
+    # plot.plot_nx(network_from_wgs)
     assert isinstance(network_from_wgs, nx.MultiGraph)
     assert len(network_from_wgs.nodes) > 0
     assert len(network_from_wgs.edges) > 0
@@ -64,8 +58,7 @@ def test_osm_graph_from_poly():
     assert utm_epsg == 32630
     network_from_utm = io.osm_graph_from_poly(poly_utm, poly_epsg_code=utm_epsg, simplify=False)
     # visual check for debugging
-    if False:
-        plot.plot_nx(network_from_utm)
+    # plot.plot_nx(network_from_utm)
     assert isinstance(network_from_utm, nx.MultiGraph)
     assert len(network_from_utm.nodes) > 0
     assert len(network_from_utm.edges) > 0

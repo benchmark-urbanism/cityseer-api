@@ -1,0 +1,838 @@
+---
+import Markdown from '@astrojs/markdown-component';
+import PageLayout from '@src/layouts/PageLayout.astro'
+---
+<PageLayout>
+
+<div class="yap module">
+  <h1 class="yap module-title" id="cityseer-rustalgos">
+    <a aria-hidden="true" href="#cityseer-rustalgos" tabindex="-1">
+      <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+        <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+      </svg>
+    </a>cityseer.rustalgos
+  </h1><Markdown is:raw>
+
+</Markdown>
+  <section class="yap func">
+    <h2 class="yap func-title" id="avg-distances-for-betas">
+      <a aria-hidden="true" href="#avg-distances-for-betas" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>avg_distances_for_betas
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>avg_distances_for_betas(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">betas, </div>
+          <div class="yap func-sig-param">min_threshold_wt=Ellipsis)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Calculate the mean distance for a given $\beta$ parameter.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">beta</div>
+          <div class="yap doc-str-elem-type">None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+$\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">tuple[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The average walking distance for a given $\beta$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
+```python
+from cityseer.metrics import networks
+import numpy as np
+
+distances = [100, 200, 400, 800, 1600]
+print('distances', distances)
+# distances [ 100  200  400  800 1600]
+
+betas = networks.beta_from_distance(distances)
+print('betas', betas)
+# betas [0.04   0.02   0.01   0.005  0.0025]
+
+print('avg', networks.avg_distance_for_beta(betas))
+# avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
+```
+
+</Markdown>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="betas-from-distances">
+      <a aria-hidden="true" href="#betas-from-distances" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>betas_from_distances
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>betas_from_distances(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">distances, </div>
+          <div class="yap func-sig-param">min_threshold_wt=Ellipsis)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
+
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">betas</div>
+          <div class="yap doc-str-elem-type">None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+$\beta$ value/s to convert to distance thresholds $d_{max}$.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distances</div>
+          <div class="yap doc-str-elem-type">list[int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A list of distance thresholds $d_{max}$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
+```python
+from cityseer import rustalgos
+# a list of betas
+betas = [0.01, 0.02]
+# convert to distance thresholds
+d_max = rustalgos.distances_from_betas(betas)
+print(d_max)
+# prints: [400, 200]
+```
+
+ Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+
+$$
+weight = exp(-\beta \cdot distance)
+$$
+
+ The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+
+![Example beta decays](/images/betas.png)
+
+ Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+
+$$
+d_{max} = \frac{log(w_{min})}{-\beta}
+$$
+
+ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
+
+| $\beta$ | $d_{max}$ |
+|:-------:|:---------:|
+| 0.02 | 200m |
+| 0.01 | 400m |
+| 0.005 | 800m |
+| 0.0025 | 1600m |
+
+Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
+
+| $\beta$ | $w_{min}$ | $d_{max}$ |
+|:-------:|:---------:|:---------:|
+| 0.02 | 0.01 | 230m |
+| 0.01 | 0.01 | 461m |
+| 0.005 | 0.01 | 921m |
+| 0.0025 | 0.01 | 1842m |
+</Markdown>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="calculate-rotation">
+      <a aria-hidden="true" href="#calculate-rotation" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>calculate_rotation
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>calculate_rotation(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">point_a, </div>
+          <div class="yap func-sig-param">point_b)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="calculate-rotation-smallest">
+      <a aria-hidden="true" href="#calculate-rotation-smallest" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>calculate_rotation_smallest
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>calculate_rotation_smallest(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">vec_a, </div>
+          <div class="yap func-sig-param">vec_b)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Calculates the angle between `vec_a` and `vec_b`.
+</Markdown></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="check-numerical-data">
+      <a aria-hidden="true" href="#check-numerical-data" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>check_numerical_data
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>check_numerical_data(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">data_arr)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Checks the integrity of a numerical data array. data_arr: list[float]
+</Markdown></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="clip-wts-curve">
+      <a aria-hidden="true" href="#clip-wts-curve" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>clip_wts_curve
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>clip_wts_curve(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">distances, </div>
+          <div class="yap func-sig-param">betas, </div>
+          <div class="yap func-sig-param">spatial_tolerance)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Calculate the upper bounds for clipping weights produced by spatial impedance functions.
+
+ Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.
+
+:::warning
+Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
+threshold clipped by 100m, then substantial distortion is introduced by the process of clipping and normalising the
+distance decay curve. More generally, smaller distance thresholds should generally be avoided for situations where
+datapoints are not located with high spatial precision.
+:::
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distances</div>
+          <div class="yap doc-str-elem-type">list[int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">betas</div>
+          <div class="yap doc-str-elem-type">list[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An array of $\beta$ to be used for the exponential decay function for weighted metrics.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">max_curve_wts</div>
+          <div class="yap doc-str-elem-type">tuple[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
+</Markdown></div>
+      </div>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="clipped-beta-wt">
+      <a aria-hidden="true" href="#clipped-beta-wt" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>clipped_beta_wt
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>clipped_beta_wt(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">beta, </div>
+          <div class="yap func-sig-param">max_curve_wt, </div>
+          <div class="yap func-sig-param">data_dist)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="distances-from-betas">
+      <a aria-hidden="true" href="#distances-from-betas" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>distances_from_betas
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>distances_from_betas(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">betas, </div>
+          <div class="yap func-sig-param">min_threshold_wt=Ellipsis)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$.
+
+ See [`distance_from_beta`](#distance-from-beta) for additional discussion.
+
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distance</div>
+          <div class="yap doc-str-elem-type">None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+$d_{max}$ value/s to convert to decay parameters $\beta$.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name"></div>
+          <div class="yap doc-str-elem-type">tuple[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A numpy array of decay parameters $\beta$.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
+```python
+from cityseer.metrics import networks
+# a list of betas
+distances = [400, 200]
+# convert to betas
+betas = networks.beta_from_distance(distances)
+print(betas)  # prints: array([0.01, 0.02])
+```
+
+ Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+
+$$
+\beta = -\frac{log(w_{min})}{d_{max}}
+$$
+
+ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
+
+| $d_{max}$ | $\beta$ |
+|:---------:|:-------:|
+| 200m | 0.02 |
+| 400m | 0.01 |
+| 800m | 0.005 |
+| 1600m | 0.0025 |
+</Markdown>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="gini-simpson-diversity">
+      <a aria-hidden="true" href="#gini-simpson-diversity" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>gini_simpson_diversity
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>gini_simpson_diversity(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="hill-diversity">
+      <a aria-hidden="true" href="#hill-diversity" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>hill_diversity
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>hill_diversity(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts, </div>
+          <div class="yap func-sig-param">q)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="hill-diversity-branch-distance-wt">
+      <a aria-hidden="true" href="#hill-diversity-branch-distance-wt" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>hill_diversity_branch_distance_wt
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>hill_diversity_branch_distance_wt(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts, </div>
+          <div class="yap func-sig-param">class_distances, </div>
+          <div class="yap func-sig-param">q, </div>
+          <div class="yap func-sig-param">beta, </div>
+          <div class="yap func-sig-param">max_curve_wt)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="hill-diversity-pairwise-distance-wt">
+      <a aria-hidden="true" href="#hill-diversity-pairwise-distance-wt" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>hill_diversity_pairwise_distance_wt
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>hill_diversity_pairwise_distance_wt(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts, </div>
+          <div class="yap func-sig-param">class_distances, </div>
+          <div class="yap func-sig-param">q, </div>
+          <div class="yap func-sig-param">beta, </div>
+          <div class="yap func-sig-param">max_curve_wt)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="pair-distances-and-betas">
+      <a aria-hidden="true" href="#pair-distances-and-betas" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>pair_distances_and_betas
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>pair_distances_and_betas(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">distances=Ellipsis, </div>
+          <div class="yap func-sig-param">betas=Ellipsis, </div>
+          <div class="yap func-sig-param">min_threshold_wt=Ellipsis)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"><Markdown is:raw>
+Pair distances and betas, where one or the other parameter is provided.
+</Markdown>
+      <h3 class="yap">Parameters</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distances</div>
+          <div class="yap doc-str-elem-type">list[int] | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">betas</div>
+          <div class="yap doc-str-elem-type">list[float] | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Returns</h3>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">distances</div>
+          <div class="yap doc-str-elem-type">tuple[int]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">betas</div>
+          <div class="yap doc-str-elem-type">tuple[float]</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
+</Markdown></div>
+      </div>
+      <h3 class="yap">Examples</h3><Markdown is:raw>
+:::warning
+Networks should be buffered according to the largest distance threshold that will be used for analysis. This
+protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
+buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
+Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
+when calculating shortest paths and landuse accessibilities.
+:::
+</Markdown>
+    </div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="raos-quadratic-diversity">
+      <a aria-hidden="true" href="#raos-quadratic-diversity" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>raos_quadratic_diversity
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>raos_quadratic_diversity(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts, </div>
+          <div class="yap func-sig-param">wt_matrix, </div>
+          <div class="yap func-sig-param">alpha, </div>
+          <div class="yap func-sig-param">beta)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap func">
+    <h2 class="yap func-title" id="shannon-diversity">
+      <a aria-hidden="true" href="#shannon-diversity" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>shannon_diversity
+    </h2>
+    <div class="yap func-sig-content">
+      <div class="yap func-sig">
+        <span>shannon_diversity(</span>
+        <div class="yap func-sig-params">
+          <div class="yap func-sig-param">class_counts)</div>
+        </div>
+      </div>
+    </div>
+    <div class="yap"></div>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="nodevisit">
+      <a aria-hidden="true" href="#nodevisit" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>NodeVisit
+    </h2>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">visited</div>
+        <div class="yap class-prop-def-type">bool</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">pred</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">short_dist</div>
+        <div class="yap class-prop-def-type">float</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">simpl_dist</div>
+        <div class="yap class-prop-def-type">float</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">cycles</div>
+        <div class="yap class-prop-def-type">float</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">origin_seg</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">last_seg</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">out_bearing</div>
+        <div class="yap class-prop-def-type">float</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="nodevisit-new">
+        <a aria-hidden="true" href="#nodevisit-new" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>NodeVisit.new
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>new(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">cls)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="edgevisit">
+      <a aria-hidden="true" href="#edgevisit" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>EdgeVisit
+    </h2>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">visited</div>
+        <div class="yap class-prop-def-type">bool</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">start_nd_idx</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">end_nd_idx</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">edge_idx</div>
+        <div class="yap class-prop-def-type">int | None</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <h3 class="yap">Methods</h3>
+    <section class="yap func">
+      <h2 class="yap func-title" id="edgevisit-new">
+        <a aria-hidden="true" href="#edgevisit-new" tabindex="-1">
+          <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+          </svg>
+        </a>EdgeVisit.new
+      </h2>
+      <div class="yap func-sig-content">
+        <div class="yap func-sig">
+          <span>new(</span>
+          <div class="yap func-sig-params">
+            <div class="yap func-sig-param">cls)</div>
+          </div>
+        </div>
+      </div>
+      <div class="yap"></div>
+    </section>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="digraph">
+      <a aria-hidden="true" href="#digraph" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>DiGraph
+    </h2>
+  </section>
+  <section class="yap class">
+    <h2 class="yap class-title" id="classesstate">
+      <a aria-hidden="true" href="#classesstate" tabindex="-1">
+        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
+          <path clip-rule="evenodd" d="
+M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
+" fill-rule="evenodd"></path>
+        </svg>
+      </a>ClassesState
+    </h2>
+    <h3 class="yap">Properties</h3>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">count</div>
+        <div class="yap class-prop-def-type">int</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+    <div class="yap class-prop-elem-container">
+      <div class="yap class-prop-def">
+        <div class="yap class-prop-def-name">nearest</div>
+        <div class="yap class-prop-def-type">float</div>
+      </div>
+      <div class="yap class-prop-def-desc"></div>
+    </div>
+  </section>
+</div>
+</PageLayout>
+
