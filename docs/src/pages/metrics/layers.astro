@@ -36,7 +36,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Assign a `GeoDataFrame` to a [`structures.NetworkStructure`](/structures#networkstructure).
+Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure).
 
  A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
 </Markdown>
@@ -56,13 +56,13 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure).
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure).
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">max_netw_assign_dist</div>
-          <div class="yap doc-str-elem-type">int|float</div>
+          <div class="yap doc-str-elem-type">int | float</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -71,7 +71,7 @@ The maximum distance to consider when assigning respective data points to the ne
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_id_col</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
@@ -84,7 +84,7 @@ An optional column name for data point keys. This is used for deduplicating poin
           <div class="yap doc-str-elem-type">DataMap</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.DataMap`](/structures#datamap) instance.
+A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -121,25 +121,6 @@ representation of variations of metrics along street-fronts.
     </div>
   </section>
   <section class="yap func">
-    <h2 class="yap func-title" id="compute-landuses">
-      <a aria-hidden="true" href="#compute-landuses" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>compute_landuses
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>compute_landuses()</span>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Please use the compute_accessibilities or compute_mixed_uses functions instead.
-</Markdown></div>
-  </section>
-  <section class="yap func">
     <h2 class="yap func-title" id="compute-accessibilities">
       <a aria-hidden="true" href="#compute-accessibilities" tabindex="-1">
         <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
@@ -162,16 +143,17 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">distances=None, </div>
           <div class="yap func-sig-param">betas=None, </div>
           <div class="yap func-sig-param">data_id_col=None, </div>
+          <div class="yap func-sig-param">angular=False, </div>
           <div class="yap func-sig-param">spatial_tolerance=0, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
+          <div class="yap func-sig-param">min_threshold_wt=None, </div>
+          <div class="yap func-sig-param">jitter_scale=0.0)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute land-use accessibilities for the specified land-use classification keys.
+Compute land-use accessibilities for the specified land-use classification keys over the street network.
 
- See [`compute_landuses`](#compute-landuses) for additional information.
+ The landuses are aggregated and computed over the street network relative to the network nodes, with the implication that the measures are generated from the same locations as those used for centrality computations.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -189,16 +171,16 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">str</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
+The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">accessibility_keys</div>
-          <div class="yap doc-str-elem-type">list[str]|tuple[str]</div>
+          <div class="yap doc-str-elem-type">list[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "retail". The calculations will be performed in both `weighted` and `non_weighted` variants.
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. "pub". The calculations will be performed in both `weighted` and `non_weighted` variants.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -216,7 +198,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -231,7 +213,7 @@ The maximum distance to consider when assigning respective data points to the ne
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">DistancesType</div>
+          <div class="yap doc-str-elem-type">list[int] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
@@ -240,7 +222,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">BetasType</div>
+          <div class="yap doc-str-elem-type">list[float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
@@ -249,28 +231,10 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_id_col</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">spatial_tolerance</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -280,6 +244,33 @@ The scale of random jitter to add to shortest path calculations, useful for situ
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">jitter_scale</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -309,11 +300,10 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
-# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, landuses_gdf = layers.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="categorical_landuses",
@@ -346,24 +336,27 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">data_gdf, </div>
           <div class="yap func-sig-param">landuse_column_label, </div>
-          <div class="yap func-sig-param">mixed_use_keys, </div>
           <div class="yap func-sig-param">nodes_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
           <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
+          <div class="yap func-sig-param">compute_hill=True, </div>
+          <div class="yap func-sig-param">compute_hill_weighted=True, </div>
+          <div class="yap func-sig-param">compute_shannon=False, </div>
+          <div class="yap func-sig-param">compute_gini=False, </div>
           <div class="yap func-sig-param">distances=None, </div>
           <div class="yap func-sig-param">betas=None, </div>
-          <div class="yap func-sig-param">cl_disparity_wt_matrix=None, </div>
-          <div class="yap func-sig-param">qs=None, </div>
+          <div class="yap func-sig-param">data_id_col=None, </div>
+          <div class="yap func-sig-param">angular=False, </div>
           <div class="yap func-sig-param">spatial_tolerance=0, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
+          <div class="yap func-sig-param">min_threshold_wt=None, </div>
+          <div class="yap func-sig-param">jitter_scale=0.0)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
 Compute landuse metrics.
 
- This function wraps the underlying `numba` optimised functions for aggregating and computing various mixed-use and land-use accessibility measures. These are computed simultaneously for any required combinations of measures (and distances). Situations requiring only a single measure can instead make use of the simplified [`hill_diversity`](#hill-diversity), [`hill_branch_wt_diversity`](#hill-branch-wt-diversity), and [`compute_accessibilities`](#compute-accessibilities) functions.
+ This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill and hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used to configure which classes of measures should run.
 
  See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
 
@@ -403,7 +396,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -417,8 +410,44 @@ The maximum distance to consider when assigning respective data points to the ne
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">compute_hill</div>
+          <div class="yap doc-str-elem-type">bool | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">compute_hill_weighted</div>
+          <div class="yap doc-str-elem-type">bool | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">compute_shannon</div>
+          <div class="yap doc-str-elem-type">bool | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Compute shannon entropy. Hill diversity of q=1 is generally preferable.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">compute_gini</div>
+          <div class="yap doc-str-elem-type">bool | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">DistancesType</div>
+          <div class="yap doc-str-elem-type">list[int] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
@@ -427,7 +456,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">BetasType</div>
+          <div class="yap doc-str-elem-type">list[float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
@@ -435,47 +464,11 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">mixed_use_keys</div>
-          <div class="yap doc-str-elem-type">list[str]|tuple[str]</div>
+          <div class="yap doc-str-elem-name">data_id_col</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Mixed-use metrics to compute, containing any combination of the `key` values from the following table. See examples below for additional information.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">cl_disparity_wt_matrix</div>
-          <div class="yap doc-str-elem-type">npt.NDArray[np.float32]</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-An optional pairwise `NxN` disparity matrix numerically describing the degree of disparity between any pair of distinct land-uses. This parameter is only required if computing mixed-uses using `hill_pairwise_disparity` or `raos_pairwise_disparity`.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">qs</div>
-          <div class="yap doc-str-elem-type">QsType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">spatial_tolerance</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -487,6 +480,33 @@ The scale of random jitter to add to shortest path calculations, useful for situ
 Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
 </Markdown></div>
       </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">jitter_scale</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+</Markdown></div>
+      </div>
       <h3 class="yap">Returns</h3>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
@@ -494,7 +514,7 @@ Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic wh
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -503,22 +523,19 @@ The input `node_gdf` parameter is returned with additional columns populated wit
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 </Markdown></div>
       </div>
       <h3 class="yap">Examples</h3><Markdown is:raw>
 | key | formula | notes |
 |-----|:-------:|-------|
 | hill | $$q\geq{0},\ q\neq{1} \ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \ lim_{q\to1} \ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
-| hill_branch_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
-| hill_pairwise_wt | $$\big[\sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | This is a pairwise-distance-weighted variant of Hill Diversity based on the respective distances between the closest examples of the pairwise distinct land-use combinations as routed through the point of computation. $d_{ij}$ represents a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`distance_from_beta`](/metrics/networks#distance-from-beta).)|
-| hill_pairwise_disparity | $$\big[ \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} \big(  \frac{p_{i} p_{j}}{Q} \big)^{q} \big]^{1/(1-q)} \ Q = \sum_{i}^{S} \sum_{j\neq{i}}^{S} w_{ij} p_{i} p_{j}$$ | This is a disparity-weighted variant of Hill Diversity based on the pairwise disparities between land-uses. This variant requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter.|
+| hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)|
 | shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
-| gini_simpson | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
-| raos_pairwise_disparity | $$ \sum_{i}^{S} \sum_{j\neq{i}}^{S} d_{ij} p_{i} p_{j}$$ | Rao diversity is a pairwise disparity measure and requires the use of a disparity matrix provided through the `cl_disparity_wt_matrix` parameter. It suffers from the same issues as Gini-Simpson. It is preferable to use disparity weighted Hill diversity with `q=2`.|
+| gini | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
 
 :::note
-`hill_branch_wt` paired with `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+`hill_branch_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
 `q=2` for increasingly crude landuse classifications schemas.
 :::
 
@@ -530,19 +547,16 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
-# compute some metrics - here we'll use the full interface, see below for simplified interfaces
 nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
     data_gdf=landuses_gdf,
     landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
-    mixed_use_keys=["hill"],
-    qs=[0, 1],
 )
 print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
 print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
@@ -553,366 +567,6 @@ Be cognisant that mixed-use and land-use accessibility measures are sensitive to
 has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
 been applied.
 :::
-</Markdown>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="hill-diversity">
-      <a aria-hidden="true" href="#hill-diversity" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>hill_diversity
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>hill_diversity(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">data_gdf, </div>
-          <div class="yap func-sig-param">landuse_column_label, </div>
-          <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
-          <div class="yap func-sig-param">distances=None, </div>
-          <div class="yap func-sig-param">betas=None, </div>
-          <div class="yap func-sig-param">qs=None, </div>
-          <div class="yap func-sig-param">spatial_tolerance=0, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Compute hill diversity for the provided `landuse_labels` at the specified values of `q`.
-
- See [`compute_landuses`](#compute-landuses) for additional information.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">landuse_column_label</div>
-          <div class="yap doc-str-elem-type">str</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#etwork-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">NetworkStructure</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#etworkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">max_netw_assign_dist</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">DistancesType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">BetasType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">qs</div>
-          <div class="yap doc-str-elem-type">QsType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">spatial_tolerance</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">angular</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Examples</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks, layers
-from cityseer.tools import mock, graphs
-
-# prepare a mock graph
-G = mock.mock_graph()
-G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-print(nodes_gdf.head())
-landuses_gdf = mock.mock_landuse_categorical_data(G)
-print(landuses_gdf.head())
-# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-nodes_gdf, landuses_gdf = layers.hill_diversity(
-    data_gdf=landuses_gdf,
-    landuse_column_label="categorical_landuses",
-    nodes_gdf=nodes_gdf,
-    network_structure=network_structure,
-    distances=[200, 400, 800],
-    qs=[0, 1],
-)
-print(nodes_gdf.columns)
-print(nodes_gdf["cc_metric_hill_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
-```
-
-</Markdown>
-    </div>
-  </section>
-  <section class="yap func">
-    <h2 class="yap func-title" id="hill-branch-wt-diversity">
-      <a aria-hidden="true" href="#hill-branch-wt-diversity" tabindex="-1">
-        <svg aria-hidden="true" class="heading-icon" height="15px" viewBox="0 0 20 20" width="15px" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd" d="
-M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z
-" fill-rule="evenodd"></path>
-        </svg>
-      </a>hill_branch_wt_diversity
-    </h2>
-    <div class="yap func-sig-content">
-      <div class="yap func-sig">
-        <span>hill_branch_wt_diversity(</span>
-        <div class="yap func-sig-params">
-          <div class="yap func-sig-param">data_gdf, </div>
-          <div class="yap func-sig-param">landuse_column_label, </div>
-          <div class="yap func-sig-param">nodes_gdf, </div>
-          <div class="yap func-sig-param">network_structure, </div>
-          <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
-          <div class="yap func-sig-param">distances=None, </div>
-          <div class="yap func-sig-param">betas=None, </div>
-          <div class="yap func-sig-param">qs=None, </div>
-          <div class="yap func-sig-param">spatial_tolerance=0, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
-        </div>
-      </div>
-    </div>
-    <div class="yap"><Markdown is:raw>
-Compute distance-weighted hill diversity for the provided `landuse_labels` at the specified values of `q`.
-
- See [`compute_landuses`](#compute-landuses) for additional information.
-</Markdown>
-      <h3 class="yap">Parameters</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">landuse_column_label</div>
-          <div class="yap doc-str-elem-type">str</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column label from which to take landuse categories, e.g. a column labelled "landuse_categories" might contain "shop", "pub", "school", etc., landuse categories.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">network_structure</div>
-          <div class="yap doc-str-elem-type">NetworkStructure</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">max_netw_assign_dist</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">DistancesType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">BetasType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">qs</div>
-          <div class="yap doc-str-elem-type">QsType</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The values of `q` for which to compute Hill diversity. This parameter is only required if computing one of the Hill diversity mixed-use measures and is otherwise ignored.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">spatial_tolerance</div>
-          <div class="yap doc-str-elem-type">int</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`distance_from_beta`](/metrics/networks#clip-weights-curve).
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">angular</div>
-          <div class="yap doc-str-elem-type">bool</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Returns</h3>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">nodes_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">data_gdf</div>
-          <div class="yap doc-str-elem-type">GeoDataFrame</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
-</Markdown></div>
-      </div>
-      <h3 class="yap">Examples</h3><Markdown is:raw>
-```python
-from cityseer.metrics import networks, layers
-from cityseer.tools import mock, graphs
-
-# prepare a mock graph
-G = mock.mock_graph()
-G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
-print(nodes_gdf.head())
-landuses_gdf = mock.mock_landuse_categorical_data(G)
-print(landuses_gdf.head())
-# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
-nodes_gdf, landuses_gdf = layers.hill_branch_wt_diversity(
-    data_gdf=landuses_gdf,
-    landuse_column_label="categorical_landuses",
-    nodes_gdf=nodes_gdf,
-    network_structure=network_structure,
-    distances=[200, 400, 800],
-    qs=[0, 1],
-)
-print(nodes_gdf.columns)
-print(nodes_gdf["cc_metric_hill_branch_wt_q1_400"])  # e.g. distance weighted hill at q=1 and 400m
-```
-
 </Markdown>
     </div>
   </section>
@@ -931,22 +585,24 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
         <span>compute_stats(</span>
         <div class="yap func-sig-params">
           <div class="yap func-sig-param">data_gdf, </div>
-          <div class="yap func-sig-param">stats_column_labels, </div>
+          <div class="yap func-sig-param">stats_column_label, </div>
           <div class="yap func-sig-param">nodes_gdf, </div>
           <div class="yap func-sig-param">network_structure, </div>
           <div class="yap func-sig-param">max_netw_assign_dist=400, </div>
           <div class="yap func-sig-param">distances=None, </div>
           <div class="yap func-sig-param">betas=None, </div>
           <div class="yap func-sig-param">data_id_col=None, </div>
-          <div class="yap func-sig-param">jitter_scale=0.0, </div>
-          <div class="yap func-sig-param">angular=False)</div>
+          <div class="yap func-sig-param">angular=False, </div>
+          <div class="yap func-sig-param">spatial_tolerance=0, </div>
+          <div class="yap func-sig-param">min_threshold_wt=None, </div>
+          <div class="yap func-sig-param">jitter_scale=0.0)</div>
         </div>
       </div>
     </div>
     <div class="yap"><Markdown is:raw>
-Compute stats.
+Compute numerical statistics over the street network.
 
- This function wraps the underlying `numba` optimised functions for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
+ This function wraps the underlying `rust` optimised function for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
 </Markdown>
       <h3 class="yap">Parameters</h3>
       <div class="yap doc-str-elem-container">
@@ -960,11 +616,11 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">stats_column_labels</div>
-          <div class="yap doc-str-elem-type">str|list[str]|tuple[str]|npt.NDArray[np.unicode_]</div>
+          <div class="yap doc-str-elem-name">stats_column_label</div>
+          <div class="yap doc-str-elem-type">str | list[str] | tuple[str]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The column labels corresponding to the columns in `data_gdf` from which to take numerical information.
+The column label corresponding to the column in `data_gdf` from which to take numerical information.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -982,7 +638,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`structures.NetworkStructure`](/structures#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -997,7 +653,7 @@ The maximum distance to consider when assigning respective data points to the ne
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">distances</div>
-          <div class="yap doc-str-elem-type">DistancesType</div>
+          <div class="yap doc-str-elem-type">list[int] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.
@@ -1006,7 +662,7 @@ Distances corresponding to the local $d_{max}$ thresholds to be used for calcula
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">betas</div>
-          <div class="yap doc-str-elem-type">BetasType</div>
+          <div class="yap doc-str-elem-type">list[float] | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.
@@ -1015,19 +671,10 @@ A $\beta$, or array of $\beta$ to be used for the exponential decay function for
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
           <div class="yap doc-str-elem-name">data_id_col</div>
-          <div class="yap doc-str-elem-type">str</div>
+          <div class="yap doc-str-elem-type">str | None</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.
-</Markdown></div>
-      </div>
-      <div class="yap doc-str-elem-container">
-        <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">jitter_scale</div>
-          <div class="yap doc-str-elem-type">float</div>
-        </div>
-        <div class="yap doc-str-elem-desc"><Markdown is:raw>
-The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -1037,6 +684,33 @@ The scale of random jitter to add to shortest path calculations, useful for situ
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
 Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">spatial_tolerance</div>
+          <div class="yap doc-str-elem-type">int</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">min_threshold_wt</div>
+          <div class="yap doc-str-elem-type">float | None</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.
+</Markdown></div>
+      </div>
+      <div class="yap doc-str-elem-container">
+        <div class="yap doc-str-elem-def">
+          <div class="yap doc-str-elem-name">jitter_scale</div>
+          <div class="yap doc-str-elem-type">float</div>
+        </div>
+        <div class="yap doc-str-elem-desc"><Markdown is:raw>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
 </Markdown></div>
       </div>
       <h3 class="yap">Returns</h3>
@@ -1068,21 +742,19 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
 print(numerical_gdf.head())
-
-# some of the more commonly used measures can be accessed through simplified interfaces, e.g.
 nodes_gdf, numerical_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
-    stats_column_labels=["mock_numerical_1"],
+    stats_column_label="mock_numerical_1",
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-print(nodes_gdf["cc_metric_mock_numerical_1_mean_weighted_400"])  # weighted form
+print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])  # weighted form
 print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])  # non-weighted form
 ```
 
