@@ -1106,6 +1106,16 @@ def test_network_structure_from_nx(diamond_graph):
             graphs.network_structure_from_nx(G_test, 3395)
 
 
+def test_blend_metrics(primal_graph):
+    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
+    )
+    merged_gdf = graphs.blend_metrics(nodes_gdf, edges_gdf)
+    # TODO: finish test
+    print("here")
+
+
 def test_nx_from_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
