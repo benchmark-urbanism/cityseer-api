@@ -2337,27 +2337,23 @@ def blend_metrics(
     merged_gdf: GeoDataFrame
         An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
         provided edges `GeoDataFrame`.
-
     """
-    # suffix only works for overlapping column names
-    edges_merged_gdf = pd.merge(edges_gdf, nodes_gdf, left_on="nx_start_node_key", right_index=True)
-    edges_merged_gdf = pd.merge(
-        edges_merged_gdf, nodes_gdf, left_on="nx_end_node_key", right_index=True, suffixes=("", "_end_nd")
-    )
-    # merge the columns and cleanup
+    merged_edges_gdf = edges_gdf.copy()
     for node_column in nodes_gdf.columns:
-        start_nd_col = node_column
+        if not node_column.startswith("cc_metric"):
+            continue
+        # suffix is only applied for overlapping column names
+        merged_edges_gdf = pd.merge(merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True)
+        merged_edges_gdf = pd.merge(
+            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_end_node_key", right_index=True, suffixes=("", "_end_nd")
+        )
+        # merge
         end_nd_col = f"{node_column}_end_nd"
-        # merge if a metrics column
-        if node_column.startswith("cc_metric"):
-            edges_merged_gdf[node_column] = (edges_merged_gdf[start_nd_col] + edges_merged_gdf[end_nd_col]) / 2
-            edges_merged_gdf = edges_merged_gdf.drop(columns=[end_nd_col])
-        else:
-            for col in [start_nd_col, end_nd_col]:
-                if col in edges_merged_gdf.columns:
-                    edges_merged_gdf = edges_merged_gdf.drop(columns=[col])
+        merged_edges_gdf[node_column] = (merged_edges_gdf[node_column] + merged_edges_gdf[end_nd_col]) / 2
+        # cleanup
+        merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
 
-    return edges_merged_gdf
+    return merged_edges_gdf
 
 
 def nx_from_geopandas(
