@@ -19,6 +19,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import utm
 from pyproj import CRS, Transformer
 from shapely import coords, geometry, ops, strtree
@@ -998,6 +999,37 @@ def merge_parallel_edges(
                 edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
 
     return deduped_graph
+
+
+def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
+    """
+    Snaps geom endpoints to adjacent node coordinates.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph`.
+
+    """
+    logger.info("Snapping edge endpoints.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(keys=True, data=True)  # , disable=config.QUIET_MODE
+    ):
+        edge_geom: geometry.LineString = edge_data["geom"]
+        edge_geom = geometry.LineString(
+            _snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_geom.coords)
+        )
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+    return g_multi_copy
 
 
 def nx_iron_edges(
@@ -2281,6 +2313,51 @@ def network_structure_from_nx(
         crs=crs,
     )
     return nodes_gdf, edges_gdf, network_structure
+
+
+def blend_metrics(
+    nodes_gdf: gpd.GeoDataFrame,
+    edges_gdf: gpd.GeoDataFrame,
+) -> MultiGraph:
+    """
+    Blends metrics from a nodes GeoDataFrame into an edges GeoDataFrame.
+
+    This is useful for situations where it is preferable to visualise the computed metrics as LineStrings instead of
+    points.
+
+    Parameters
+    ----------
+    nodes_gdf: GeoDataFrame
+        A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+    edges_gdf: GeoDataFrame
+        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+
+    Returns
+    -------
+    merged_gdf: GeoDataFrame
+        An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
+        provided edges `GeoDataFrame`.
+
+    """
+    # suffix only works for overlapping column names
+    edges_merged_gdf = pd.merge(edges_gdf, nodes_gdf, left_on="nx_start_node_key", right_index=True)
+    edges_merged_gdf = pd.merge(
+        edges_merged_gdf, nodes_gdf, left_on="nx_end_node_key", right_index=True, suffixes=("", "_end_nd")
+    )
+    # merge the columns and cleanup
+    for node_column in nodes_gdf.columns:
+        start_nd_col = node_column
+        end_nd_col = f"{node_column}_end_nd"
+        # merge if a metrics column
+        if node_column.startswith("cc_metric"):
+            edges_merged_gdf[node_column] = (edges_merged_gdf[start_nd_col] + edges_merged_gdf[end_nd_col]) / 2
+            edges_merged_gdf = edges_merged_gdf.drop(columns=[end_nd_col])
+        else:
+            for col in [start_nd_col, end_nd_col]:
+                if col in edges_merged_gdf.columns:
+                    edges_merged_gdf = edges_merged_gdf.drop(columns=[col])
+
+    return edges_merged_gdf
 
 
 def nx_from_geopandas(
