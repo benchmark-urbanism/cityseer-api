@@ -1111,9 +1111,14 @@ def test_blend_metrics(primal_graph):
     nodes_gdf = networks.node_centrality_shortest(
         network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
     )
-    merged_gdf = graphs.blend_metrics(nodes_gdf, edges_gdf)
-    # TODO: finish test
-    print("here")
+    merged_edges_gdf = graphs.blend_metrics(nodes_gdf, edges_gdf)
+    for node_column in nodes_gdf.columns:
+        if not node_column.startswith("cc_metric"):
+            continue
+        for _edge_idx, edge_row in merged_edges_gdf.iterrows():
+            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
+            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
+            assert edge_row[node_column] == (start_val + end_val) / 2
 
 
 def test_nx_from_geopandas(primal_graph):
