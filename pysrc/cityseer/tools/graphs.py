@@ -2343,9 +2343,15 @@ def blend_metrics(
         if not node_column.startswith("cc_metric"):
             continue
         # suffix is only applied for overlapping column names
-        merged_edges_gdf = pd.merge(merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True)
         merged_edges_gdf = pd.merge(
-            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_end_node_key", right_index=True, suffixes=("", "_end_nd")
+            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True
+        )
+        merged_edges_gdf = pd.merge(
+            merged_edges_gdf,
+            nodes_gdf[[node_column]],
+            left_on="nx_end_node_key",
+            right_index=True,
+            suffixes=("", "_end_nd"),
         )
         # merge
         end_nd_col = f"{node_column}_end_nd"
