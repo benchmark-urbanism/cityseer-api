@@ -2318,12 +2318,14 @@ def network_structure_from_nx(
 def blend_metrics(
     nodes_gdf: gpd.GeoDataFrame,
     edges_gdf: gpd.GeoDataFrame,
+    method: str,
 ) -> MultiGraph:
     """
     Blends metrics from a nodes GeoDataFrame into an edges GeoDataFrame.
 
     This is useful for situations where it is preferable to visualise the computed metrics as LineStrings instead of
-    points.
+    points. The line will be assigned the value from the adjacent two nodes based on the selected "min", "max", or "avg"
+    method.
 
     Parameters
     ----------
@@ -2331,6 +2333,8 @@ def blend_metrics(
         A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
     edges_gdf: GeoDataFrame
         An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+    method: str
+        The method used for determining the line value from the adjacent points. Must be one of "min", "max", or "avg".
 
     Returns
     -------
@@ -2338,6 +2342,8 @@ def blend_metrics(
         An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
         provided edges `GeoDataFrame`.
     """
+    if method not in ["min", "max", "avg"]:
+        raise ValueError('Method should be one of "min", "max", or "avg"')
     merged_edges_gdf = edges_gdf.copy()
     for node_column in nodes_gdf.columns:
         if not node_column.startswith("cc_metric"):
@@ -2355,7 +2361,12 @@ def blend_metrics(
         )
         # merge
         end_nd_col = f"{node_column}_end_nd"
-        merged_edges_gdf[node_column] = (merged_edges_gdf[node_column] + merged_edges_gdf[end_nd_col]) / 2
+        if method == "avg":
+            merged_edges_gdf[node_column] = (merged_edges_gdf[node_column] + merged_edges_gdf[end_nd_col]) / 2
+        elif method == "min":
+            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].min(axis=1)
+        else:
+            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].max(axis=1)
         # cleanup
         merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
 
