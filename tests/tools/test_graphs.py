@@ -1111,14 +1111,33 @@ def test_blend_metrics(primal_graph):
     nodes_gdf = networks.node_centrality_shortest(
         network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
     )
-    merged_edges_gdf = graphs.blend_metrics(nodes_gdf, edges_gdf)
+    # AVG
+    merged_edges_gdf_avg = graphs.blend_metrics(nodes_gdf, edges_gdf, method="avg")
     for node_column in nodes_gdf.columns:
         if not node_column.startswith("cc_metric"):
             continue
-        for _edge_idx, edge_row in merged_edges_gdf.iterrows():
+        for _edge_idx, edge_row in merged_edges_gdf_avg.iterrows():
             start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
             end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
             assert edge_row[node_column] == (start_val + end_val) / 2
+    # MIN
+    merged_edges_gdf_min = graphs.blend_metrics(nodes_gdf, edges_gdf, method="min")
+    for node_column in nodes_gdf.columns:
+        if not node_column.startswith("cc_metric"):
+            continue
+        for _edge_idx, edge_row in merged_edges_gdf_min.iterrows():
+            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
+            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
+            assert edge_row[node_column] == min([start_val, end_val])
+    # MAX
+    merged_edges_gdf_max = graphs.blend_metrics(nodes_gdf, edges_gdf, method="max")
+    for node_column in nodes_gdf.columns:
+        if not node_column.startswith("cc_metric"):
+            continue
+        for _edge_idx, edge_row in merged_edges_gdf_max.iterrows():
+            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
+            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
+            assert edge_row[node_column] == max([start_val, end_val])
 
 
 def test_nx_from_geopandas(primal_graph):
