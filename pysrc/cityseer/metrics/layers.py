@@ -89,8 +89,9 @@ def assign_gdf_to_network(
         data_id: str | None = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
         data_map.insert(
             data_key,
-            data_row["geometry"].x,  # type: ignore
-            data_row["geometry"].y,  # type: ignore
+            # get key from GDF in case of different geom column name
+            data_row[data_gdf.geometry.name].x,  # type: ignore
+            data_row[data_gdf.geometry.name].y,  # type: ignore
             data_id,
             data_row["nearest_assign"],  # type: ignore
             data_row["next_nearest_assign"],  # type: ignore
