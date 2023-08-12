@@ -2151,15 +2151,15 @@ files = [
 
 [[package]]
 name = "pyright"
-version = "1.1.320"
+version = "1.1.322"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
     "nodeenv>=1.6.0",
 ]
 files = [
-    {file = "pyright-1.1.320-py3-none-any.whl", hash = "sha256:cdf739f7827374575cefb134311457d08c189793c3da3097c023debec9acaedb"},
-    {file = "pyright-1.1.320.tar.gz", hash = "sha256:94223e3b82d0b4c99c5125bab4d628ec749ce0b5b2ae0471fd4921dd4eff460d"},
+    {file = "pyright-1.1.322-py3-none-any.whl", hash = "sha256:1bcddb55c4fca5d3c86eee71db0e8aad80536527f2084284998c6cbceda10e4e"},
+    {file = "pyright-1.1.322.tar.gz", hash = "sha256:c8299d8b5d8c6e6f6ea48a77bf330a6df79e23305d21d25043bba8a23c1e1ed8"},
 ]
 
 [[package]]
@@ -2882,15 +2882,15 @@ files = [
 
 [[package]]
 name = "tqdm"
-version = "4.65.1"
+version = "4.66.1"
 requires_python = ">=3.7"
 summary = "Fast, Extensible Progress Meter"
 dependencies = [
     "colorama; platform_system == \"Windows\"",
 ]
 files = [
-    {file = "tqdm-4.65.1-py3-none-any.whl", hash = "sha256:16181c62ad2c6f8f6f29876e66322faad1c7fd3cc70aa9cc25ff63e50d1da031"},
-    {file = "tqdm-4.65.1.tar.gz", hash = "sha256:2cb0075cc5269f8edac40bdeb757cc36ab5b6648caf014822b67e1a49fba141d"},
+    {file = "tqdm-4.66.1-py3-none-any.whl", hash = "sha256:d302b3c5b53d47bce91fea46679d9c3c6508cf6332229aa1e7d8653723793386"},
+    {file = "tqdm-4.66.1.tar.gz", hash = "sha256:d88e651f9db8d8551a62556d3cff9e3034274ca5d66e93197cf2490e2dcb69c7"},
 ]
 
 [[package]]
