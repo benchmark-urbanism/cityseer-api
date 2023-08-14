@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.0.0b11'
+version = '4.0.0b12'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
