@@ -846,7 +846,7 @@ M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4
           <div class="yap func-sig-param">crawl=False, </div>
           <div class="yap func-sig-param">cent_min_degree=3, </div>
           <div class="yap func-sig-param">cent_min_names=None, </div>
-          <div class="yap func-sig-param">cent_min_len_factor=None, </div>
+          <div class="yap func-sig-param">centroid_by_min_len_factor=None, </div>
           <div class="yap func-sig-param">merge_edges_by_midline=True, </div>
           <div class="yap func-sig-param">contains_buffer_dist=20)</div>
         </div>
@@ -860,7 +860,7 @@ Consolidates nodes if they are within a buffer distance of each other.
  Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
 - The centroid of the node group;
 - Else, all nodes of degree greater or equal to `cent_min_degree`;
-- Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node with the greatest aggregate length for adjacent edges.
+- Else, all nodes with aggregate adjacent edge lengths greater than a factor of `centroid_by_min_len_factor` of the node with the greatest aggregate length for adjacent edges.
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
@@ -959,7 +959,7 @@ The minimum number of cumulative street names or street references to be conside
       </div>
       <div class="yap doc-str-elem-container">
         <div class="yap doc-str-elem-def">
-          <div class="yap doc-str-elem-name">cent_min_len_factor</div>
+          <div class="yap doc-str-elem-name">centroid_by_min_len_factor</div>
           <div class="yap doc-str-elem-type">Optional[float]</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
