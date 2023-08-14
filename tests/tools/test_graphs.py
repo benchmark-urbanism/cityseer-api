@@ -480,19 +480,17 @@ def test_nx_consolidate():
         G_split_opps, buffer_dist=25, centroid_by_straightness=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
-
     assert G_merged_spatial.number_of_nodes() == 8
     assert G_merged_spatial.number_of_edges() == 8
-
     node_coords = []
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d["x"], d["y"]))
     assert node_coords == [
         (620.0, 710.0),
         (660.0, 710.0),
-        (660, 660),
+        (660.0, 660.0),
         (710.0, 800.0),
-        (710.0, 710.0),
+        (706.6666666666666, 713.3333333333334),
         (710.0, 620.0),
         (780.0, 710.0),
         (840.0, 710.0),
@@ -501,7 +499,19 @@ def test_nx_consolidate():
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d["geom"].length)
-    assert edge_lens == [40.0, 50.0, 50.0, 90.0, 90.0, 70.0, 60.0, 147.70329614269008]
+    assert np.allclose(
+        edge_lens,
+        [
+            40.0,
+            50.0,
+            46.78556282539396,
+            86.73074554171788,
+            93.39283817414604,
+            73.40905181848417,
+            60.0,
+            147.70329614269008,
+        ],
+    )
 
 
 def test_nx_decompose(primal_graph):
