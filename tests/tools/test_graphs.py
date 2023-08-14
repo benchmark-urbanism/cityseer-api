@@ -216,38 +216,6 @@ def make_messy_graph(G):
     return G_messy
 
 
-def test_nx_remove_dangling_nodes(primal_graph):
-    G_messy = make_messy_graph(primal_graph)
-    # no despining or disconnected components removal
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False, cleanup_filler_nodes=False)
-    assert G_post.nodes == G_messy.nodes
-    assert G_post.edges == G_messy.edges
-    # check that all single neighbour nodes have been removed if geom less than despine distance
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=False)
-    for n in G_messy.nodes():
-        if nx.degree(G_messy, n) == 1:
-            nb = list(nx.neighbors(G_messy, n))[0]
-            if G_messy[n][nb][0]["geom"].length <= 100:
-                assert (n, nb) not in G_post.edges
-            else:
-                assert (n, nb) in G_post.edges
-    # check that disconnected components are removed
-    # this behaviour changed in networkx 2.4
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True, cleanup_filler_nodes=False)
-    pre_components = list(nx.algorithms.components.connected_components(G_messy))
-    post_components = list(nx.algorithms.components.connected_components(G_post))
-    assert len(pre_components) != 1
-    assert len(post_components) == 1
-    # check that components match
-    biggest_component = sorted(pre_components, key=len, reverse=True)[0]
-    # index to 0 because post_components is still in list form
-    assert biggest_component == post_components[0]
-    # check that actual graphs are equivalent
-    G_biggest_component = nx.MultiGraph(G_messy.subgraph(biggest_component))
-    assert G_biggest_component.nodes == G_post.nodes
-    assert G_biggest_component.edges == G_post.edges
-
-
 def test_nx_remove_filler_nodes(primal_graph):
     # test that redundant intersections are removed, i.e. where degree == 2
     G_messy = make_messy_graph(primal_graph)
@@ -416,7 +384,43 @@ def test_nx_remove_filler_nodes(primal_graph):
         graphs.nx_remove_filler_nodes(G_corr)
 
 
-# this method tests both nx_consolidate_spatial and nx_consolidate_parallel
+def test_nx_remove_dangling_nodes(primal_graph):
+    G_messy = make_messy_graph(primal_graph)
+    # no despining or disconnected components removal
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=False, cleanup_filler_nodes=False)
+    assert G_post.nodes == G_messy.nodes
+    assert G_post.edges == G_messy.edges
+    # check that all single neighbour nodes have been removed if geom less than despine distance
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=False)
+    for n in G_messy.nodes():
+        if nx.degree(G_messy, n) == 1:
+            nb = list(nx.neighbors(G_messy, n))[0]
+            if G_messy[n][nb][0]["geom"].length <= 100:
+                assert (n, nb) not in G_post.edges
+            else:
+                assert (n, nb) in G_post.edges
+    # check that disconnected components are removed
+    # this behaviour changed in networkx 2.4
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=True, cleanup_filler_nodes=False)
+    pre_components = list(nx.algorithms.components.connected_components(G_messy))
+    post_components = list(nx.algorithms.components.connected_components(G_post))
+    assert len(pre_components) != 1
+    assert len(post_components) == 1
+    # check that components match
+    biggest_component = sorted(pre_components, key=len, reverse=True)[0]
+    # index to 0 because post_components is still in list form
+    assert biggest_component == post_components[0]
+    # check that actual graphs are equivalent
+    G_biggest_component = nx.MultiGraph(G_messy.subgraph(biggest_component))
+    assert G_biggest_component.nodes == G_post.nodes
+    assert G_biggest_component.edges == G_post.edges
+
+
+def test_nx_iron_edges(primal_graph):
+    # TODO
+    pass
+
+
 def test_nx_consolidate():
     # create a test graph
     G = nx.MultiGraph()
@@ -463,13 +467,17 @@ def test_nx_consolidate():
     # behaviour confirmed visually
     # from cityseer.tools import plot
     # plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True)
-    G_merged_spatial = graphs.nx_consolidate_nodes(G, buffer_dist=25, crawl=True, merge_edges_by_midline=True)
+    # set centroid_by_straightness to False
+    G_merged_spatial = graphs.nx_consolidate_nodes(
+        G, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
+    )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     # this time, start with same origin graph but split opposing geoms first
     G_split_opps = graphs.nx_split_opposing_geoms(G, buffer_dist=25, merge_edges_by_midline=True)
     # plot.plot_nx(G_split_opps, labels=True, node_size=80, plot_geoms=True)
+    # set straightness heuristic false for this one
     G_merged_spatial = graphs.nx_consolidate_nodes(
-        G_split_opps, buffer_dist=25, merge_edges_by_midline=True, cent_min_degree=2
+        G_split_opps, buffer_dist=25, centroid_by_straightness=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
 
@@ -480,9 +488,9 @@ def test_nx_consolidate():
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d["x"], d["y"]))
     assert node_coords == [
-        (660, 660),
         (620.0, 710.0),
         (660.0, 710.0),
+        (660, 660),
         (710.0, 800.0),
         (710.0, 710.0),
         (710.0, 620.0),
@@ -493,7 +501,7 @@ def test_nx_consolidate():
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d["geom"].length)
-    assert edge_lens == [50.0, 40.0, 50.0, 90.0, 90.0, 70.0, 60.0, 147.70329614269008]
+    assert edge_lens == [40.0, 50.0, 50.0, 90.0, 90.0, 70.0, 60.0, 147.70329614269008]
 
 
 def test_nx_decompose(primal_graph):

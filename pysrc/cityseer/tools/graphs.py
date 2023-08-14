@@ -1034,51 +1034,22 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def nx_iron_edges(
     nx_multigraph: MultiGraph,
-    simplify: bool = True,
-    simplify_dist: int = 2,
-    straighten: bool = True,
-    min_straightness_ratio: float = 0.9975,
-    remove_wonky: bool = True,
-    max_wonky_ratio: float = 0.7,
-    wonky_dist_buffer: int = 50,
 ) -> MultiGraph:
     """
-    Flattens edges straighter than `min_straightness_ratio`.
+    Simplifies edges.
 
     Parameters
     ----------
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    simplify: bool
-        Whether to simplify the street geometries per `simplify_dist`.
-    simplify_dist: int
-        Ignored if `simplify` is False. Simplification distance to use for simplifying the linestring geometries.
-    straighten: bool
-        Whether to straighten edges where the ratio of the distance from a street's start to end point divided by its
-        length is greater than `min_straightness_ratio`.
-    min_straightness_ratio: float
-        Ignored if `straighten` is False. Edges with straightness greater than `min_straightness_ratio` will be
-        flattened.
-    remove_wonky: bool
-        Straighten kinked street endings. This is intended for handling jagged endpoints arising from node consolidation
-        processes.
-    max_wonky_ratio: float
-        Ignored if remove_wonky is False. The maximum straightness ratio to consider when looking for potentially wonky
-        edges.
-    wonky_dist_buffer: int
-        Ignored if remove_wonky is False. The maximum distance to be searched from either end for wonky endpoints.
 
     Returns
     -------
     MultiGraph
-        A `networkX` `MultiGraph`.
+        A `networkX` `MultiGraph` with simplified edges.
 
     """
-    if not simplify and not straighten and not remove_wonky:
-        raise ValueError("Please select at least one option via simplify, straighten, or remove_wonky parameters.")
-    if straighten and remove_wonky and min_straightness_ratio < max_wonky_ratio:
-        raise ValueError("The min_straightness_ratio parameter should be greater than max_wonky_ratio.")
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
     start_nd_key: NodeKey
@@ -1088,77 +1059,16 @@ def nx_iron_edges(
     ):
         edge_geom: geometry.LineString = edge_data["geom"]
         # for all changes - write over edge_geom and also update in place
-        if simplify:
-            edge_geom = edge_geom.simplify(simplify_dist)
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-        if not straighten and not remove_wonky:
-            continue
-        # check that it isn't a looping segment where start and end are the same
-        if np.allclose(
-            edge_geom.coords[0],
-            edge_geom.coords[-1],
-            rtol=0,
-            atol=1,
-        ):
-            continue
-        # first align the geom
-        edge_geom = geometry.LineString(
-            _snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_geom.coords)
-        )
-        # take the straightness ratio of crow edge vs. full edge
-        start_pt = geometry.Point(edge_geom.coords[0])
-        end_pt = geometry.Point(edge_geom.coords[-1])
-        straightness_ratio: float = start_pt.distance(end_pt) / edge_geom.length
-        if straighten and straightness_ratio > min_straightness_ratio:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString([start_pt, end_pt])
-        elif remove_wonky and straightness_ratio < max_wonky_ratio:
-            search_dist = min(wonky_dist_buffer, int(np.floor(edge_geom.length)))
-            # increment along length and look for backtracking
-            lag_dist = 0
-            backtracking = False
-            for step in range(5, search_dist, 5):
-                loc: geometry.Point = _substring(edge_geom, step, step)
-                # increment distance if increasing
-                current_dist: float = start_pt.distance(loc)
-                # detect inwards backtrack
-                if current_dist < lag_dist:
-                    backtracking = True
-                    lag_dist = current_dist
-                else:
-                    # if not yet backtracking, bump lag_dist distance
-                    if not backtracking:
-                        lag_dist = current_dist
-                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
-                    else:
-                        # snip subsegment
-                        sub_seg: geometry.LineString = _substring(edge_geom, step, edge_geom.length)
-                        # overwrite edge_geom (for reverse)
-                        edge_geom = geometry.LineString([start_pt, *sub_seg.coords])
-                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-                        break
-            # reverse direction
-            lag_dist = 0
-            backtracking = False
-            for step in range(5, search_dist, 5):
-                loc: geometry.Point = _substring(edge_geom, -step, -step)
-                # increment distance if increasing
-                current_dist: float = end_pt.distance(loc)
-                # detect inwards backtrack
-                if current_dist < lag_dist:
-                    backtracking = True
-                    lag_dist = current_dist
-                else:
-                    # if not yet backtracking, bump lag_dist distance
-                    if not backtracking:
-                        lag_dist = current_dist
-                    # else, this is an outwards reversal after backtracking - i.e. clip and move on
-                    else:
-                        # snip subsegment
-                        sub_seg = _substring(edge_geom, 0, edge_geom.length - step)
-                        # overwrite edge_geom (for reverse)
-                        edge_geom = geometry.LineString([*sub_seg.coords, end_pt])
-                        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-                        break
+        total_angle = _measure_cumulative_angle(edge_geom.coords)
+        if total_angle < 5:
+            edge_geom = edge_geom.simplify(20, preserve_topology=False)
+        elif total_angle < 10:
+            edge_geom = edge_geom.simplify(10, preserve_topology=False)
+        elif total_angle < 20:
+            edge_geom = edge_geom.simplify(5, preserve_topology=False)
+        else:
+            edge_geom = edge_geom.simplify(2, preserve_topology=True)
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
     # straightening parallel edges can create duplicates
     g_multi_copy = merge_parallel_edges(g_multi_copy, False, 1)
 
@@ -1168,9 +1078,8 @@ def nx_iron_edges(
 def _squash_adjacent(
     nx_multigraph: MultiGraph,
     node_group: list[NodeKey],
-    cent_min_degree: Optional[int] = None,
-    cent_min_names: Optional[int] = None,
-    cent_min_len_factor: Optional[float] = None,
+    centroid_by_straightness: bool = True,
+    centroid_by_min_len_factor: float | None = 0.9,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -1179,28 +1088,40 @@ def _squash_adjacent(
     - The centroid of all nodes;
     - else, all nodes of degree greater or equal to cent_min_degree;
     - and / else, all nodes with cumulative adjacent OSM street names or routes greater than cent_min_names;
-    - and / else, all nodes with aggregate adjacent edge lengths greater than cent_min_len_factor as a factor of the
-      node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined node.
+    - and / else, all nodes with aggregate adjacent edge lengths greater than centroid_by_min_len_factor as a factor of
+    the node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined
+    node.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if cent_min_degree is not None and (not isinstance(cent_min_degree, int) or cent_min_degree < 1):
-        raise ValueError("merge_node_min_degree should be a positive integer.")
-    if cent_min_names is not None and (not isinstance(cent_min_names, int) or cent_min_names < 1):
-        raise ValueError("cent_min_names should be a positive integer")
-    if cent_min_len_factor is not None and not 1 >= cent_min_len_factor >= 0:
-        raise ValueError("cent_min_len_factor should be a float between 0 and 1.")
+    if centroid_by_min_len_factor is not None and not 1 >= centroid_by_min_len_factor >= 0:
+        raise ValueError("centroid_by_min_len_factor should be a float between 0 and 1.")
     # remove any node keys no longer in the graph
     node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
-    # filter out nodes if using cent_min_degree or cent_min_len_factor
-    centroid_nodes: list[NodeKey] = []
-    if cent_min_degree is not None:
+    # straightness basis - looks for intersections bridging relatively straight through routes
+    centroid_nodes: list[int] = []
+    if centroid_by_straightness:
         for nd_key in node_group:
-            if nx.degree(nx_multigraph, nd_key) >= cent_min_degree:
-                centroid_nodes.append(nd_key)
-    # else if merging on a longest adjacent edges basis
-    if cent_min_len_factor is not None:
+            nd_x_y = (nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
+            for nb_nd_key_a in nx.neighbors(nx_multigraph, nd_key):
+                for nb_edge_data_a in nx_multigraph[nd_key][nb_nd_key_a].values():
+                    geom_a_coords = align_linestring_coords(nb_edge_data_a["geom"].coords, nd_x_y, reverse=True)
+                    for nb_nd_key_b in nx.neighbors(nx_multigraph, nd_key):
+                        if nb_nd_key_b == nb_nd_key_a:
+                            continue
+                        for nb_edge_data_b in nx_multigraph[nd_key][nb_nd_key_b].values():
+                            geom_b_coords = align_linestring_coords(
+                                nb_edge_data_b["geom"].coords, nd_x_y, reverse=False
+                            )
+                            # take the last linestring coordinates before / first coordinate after intersection
+                            angular_change = _measure_coords_angle(geom_a_coords[-2][:2], nd_x_y, geom_b_coords[1][:2])
+                            # if straight through - then prioritise this centroid
+                            if angular_change < 5:
+                                centroid_nodes.append(nd_key)
+                                continue
+    # if merging on a longest adjacent edges basis
+    if centroid_by_min_len_factor is not None:
         # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
         if centroid_nodes:
             node_pool = centroid_nodes.copy()
@@ -1224,32 +1145,7 @@ def _squash_adjacent(
         nd_key: NodeKey
         agg_len: int
         for nd_key, agg_len in zip(node_pool, agg_lens):
-            if agg_len >= max_len * cent_min_len_factor:
-                centroid_nodes.append(nd_key)
-    # prioritise
-    if cent_min_names is not None:
-        # if nodes are pre-filtered by edge degrees or lengths, then use the filtered nodes as a starting point
-        if centroid_nodes:
-            node_pool = centroid_nodes.copy()
-            centroid_nodes = []  # reset
-        # else use the full original node group
-        else:
-            node_pool = node_group
-        # values to be filtered out if encountered
-        dodge_vals = set([None, "unclassified"])
-        # iter nodes, then iter edges
-        for nd_key in node_pool:
-            agg_keys: set[str] = set()
-            nb_key: NodeKey
-            for nb_key in nx.neighbors(nx_multigraph, nd_key):
-                for edge_data in nx_multigraph[nd_key][nb_key].values():
-                    for valid_key in ["names", "routes"]:
-                        if valid_key in edge_data:
-                            val: str
-                            for val in edge_data[valid_key]:
-                                if val not in dodge_vals:
-                                    agg_keys.add(val)
-            if len(agg_keys) >= cent_min_names:
+            if agg_len >= max_len * centroid_by_min_len_factor:
                 centroid_nodes.append(nd_key)
     # fallback
     if not centroid_nodes:
@@ -1399,15 +1295,10 @@ def _create_edges_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, l
 def nx_consolidate_nodes(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 5,
-    min_node_group: int = 2,
-    min_node_degree: int = 1,
-    min_cumulative_degree: Optional[int] = None,
-    max_cumulative_degree: Optional[int] = None,
     neighbour_policy: str | None = None,
     crawl: bool = False,
-    cent_min_degree: int = 3,
-    cent_min_names: Optional[int] = None,
-    cent_min_len_factor: Optional[float] = None,
+    centroid_by_straightness: bool = True,
+    centroid_by_min_len_factor: Optional[float] = None,
     merge_edges_by_midline: bool = True,
     contains_buffer_dist: int = 20,
 ) -> MultiGraph:
@@ -1421,8 +1312,8 @@ def nx_consolidate_nodes(
     edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
     - The centroid of the node group;
     - Else, all nodes of degree greater or equal to `cent_min_degree`;
-    - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `cent_min_len_factor` of the node
-      with the greatest aggregate length for adjacent edges.
+    - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `centroid_by_min_len_factor` of the
+    node with the greatest aggregate length for adjacent edges.
 
     The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
     by a single new edge, with the new geometry selected from either:
@@ -1437,28 +1328,15 @@ def nx_consolidate_nodes(
         edge attributes containing `LineString` geoms.
     buffer_dist: float
         The buffer distance to be used for consolidating nearby nodes. Defaults to 5.
-    min_node_group: int
-        The minimum number of nodes to consider a valid group for consolidation. Defaults to 2.
-    min_node_degree: int
-        The least number of edges a node should have in order to be considered for consolidation. Defaults to 1.
-    min_cumulative_degree: int
-        An optional minimum cumulative degree to consider a valid node group for consolidation. Defaults to None.
-    max_cumulative_degree: int
-        An optional maximum cumulative degree to consider a valid node group for consolidation. Defaults to None.
     neighbour_policy: str
         Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to
         None.
     crawl: bool
         Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the
         buffer distance from the prior node. Defaults to True.
-    cent_min_degree: int
-        The minimum node degree for a node to be considered when calculating the new centroid for the merged node
-        cluster. Defaults to 3.
-    cent_min_names: int
-        The minimum number of cumulative street names or street references to be considered when calculating the new
-        centroid. Requires `names` and `routes` edge attributes containing lists of OSM street names or route
-        identifiers. Defaults to None.
-    cent_min_len_factor: float
+    centroid_by_straightness: bool
+        Whether to use an intersection straightness heuristic to select new centroids. True by default.
+    centroid_by_min_len_factor: float
         The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
         centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
         lengths. Defaults to None.
@@ -1486,8 +1364,6 @@ def nx_consolidate_nodes(
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    if min_node_group < 2:
-        raise ValueError("The minimum node threshold should be set to at least two.")
     if neighbour_policy is not None and neighbour_policy not in ("direct", "indirect"):
         raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
     if crawl and buffer_dist > 25:
@@ -1514,12 +1390,10 @@ def nx_consolidate_nodes(
         j_hits: list[int] = nodes_tree.query(geometry.Point(x, y).buffer(buffer_dist))
         # review each node within the buffer
         j_nd_key: NodeKey
-        j_nd_degree: float
         for j_hit_idx in j_hits:
             j_lookup: dict[str, Any] = node_lookups[j_hit_idx]
             j_nd_key = j_lookup["nd_key"]
-            j_nd_degree = j_lookup["nd_degree"]
-            if j_nd_key in removed_nodes or j_nd_key in processed_nodes or j_nd_degree < min_node_degree:
+            if j_nd_key in removed_nodes or j_nd_key in processed_nodes:
                 continue
             # check neighbour policy
             if neighbour_policy is not None:
@@ -1550,7 +1424,7 @@ def nx_consolidate_nodes(
     nd_data: NodeData
     for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
         # skip if already consolidated from an adjacent node, or if the node's degree doesn't meet min_node_degree
-        if nd_key in removed_nodes or nx.degree(nx_multigraph, nd_key) < min_node_degree:
+        if nd_key in removed_nodes:
             continue
         node_group = recursive_squash(
             nd_key,  # node nd_key
@@ -1560,31 +1434,19 @@ def nx_consolidate_nodes(
             [],  # processed nodes tracked through recursion
             crawl,
         )  # whether to recursively probe neighbours per distance
-        # check for min_node_threshold
-        if len(node_group) < min_node_group:
-            continue
-        # check for cumulative degree thresholds if requested
-        if min_cumulative_degree is not None or max_cumulative_degree is not None:
-            gather_degrees: list[int] = [nx.degree(nx_multigraph, nd_key) for nd_key in node_group]
-            cumulative_degree: int = sum(gather_degrees)
-            if min_cumulative_degree is not None and cumulative_degree < min_cumulative_degree:
-                continue
-            if max_cumulative_degree is not None and cumulative_degree > max_cumulative_degree:
-                continue
         # update removed nodes
         removed_nodes.update(node_group)
         # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
         _multi_graph = _squash_adjacent(
             _multi_graph,
             node_group,
-            cent_min_degree=cent_min_degree,
-            cent_min_names=cent_min_names,
-            cent_min_len_factor=cent_min_len_factor,
+            centroid_by_straightness=centroid_by_straightness,
+            centroid_by_min_len_factor=centroid_by_min_len_factor,
         )
     # remove new filler nodes
     _multi_graph = nx_remove_filler_nodes(_multi_graph)
     # remove wonky endings from consolidation process
-    _multi_graph = nx_iron_edges(_multi_graph, straighten=False, simplify=False)
+    _multi_graph = nx_iron_edges(_multi_graph)
     # remove parallel edges resulting from squashing nodes
     _multi_graph = merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
 
@@ -1807,7 +1669,18 @@ def _measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_])
     return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
 
 
-def _measure_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
+def _measure_coords_angle(
+    coords_1: npt.NDArray[np.float_], coords_2: npt.NDArray[np.float_], coords_3: npt.NDArray[np.float_]
+) -> float:
+    """Measures angle between three coordinate pairs"""
+    # arctan2 is y / x order
+    a_1: float = _measure_bearing(coords_2, coords_1)
+    a_2: float = _measure_bearing(coords_3, coords_2)
+    angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
+    return angle
+
+
+def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
     """Measures angle between two segment bearings per indices."""
     coords_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
     coords_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
@@ -1828,7 +1701,7 @@ def _measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
     """Measures the cumulative angle along a LineString geom's coords."""
     angle_sum: float = 0
     for c_idx in range(len(linestring_coords) - 2):
-        angle_sum += _measure_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
+        angle_sum += _measure_linestring_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
 
     return angle_sum
 
