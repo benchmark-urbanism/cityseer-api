@@ -397,7 +397,7 @@ class _EdgeInfo:
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
 
 
-def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 2) -> MultiGraph:
+def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 5) -> MultiGraph:
     """
     Inferring geometries from node to node.
 
@@ -1077,8 +1077,8 @@ def nx_iron_edges(
 
 def _squash_adjacent(
     nx_multigraph: MultiGraph,
-    node_group: list[NodeKey],
-    centroid_by_straightness: bool = True,
+    node_group: set[NodeKey],
+    centroid_by_straightness: bool,
     centroid_by_min_len_factor: float | None = 0.9,
 ) -> MultiGraph:
     """
@@ -1101,7 +1101,7 @@ def _squash_adjacent(
     node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
     # straightness basis - looks for intersections bridging relatively straight through routes
     centroid_nodes: list[int] = []
-    if centroid_by_straightness:
+    if centroid_by_straightness is True:
         for nd_key in node_group:
             nd_x_y = (nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
             for nb_nd_key_a in nx.neighbors(nx_multigraph, nd_key):
@@ -1380,12 +1380,12 @@ def nx_consolidate_nodes(
         nd_key: NodeKey,
         x: float,
         y: float,
-        node_group: list[NodeKey],
-        processed_nodes: list[NodeKey],
+        node_group: set[NodeKey],
+        processed_nodes: set[NodeKey],
         recursive: bool = False,
-    ) -> list[NodeKey]:
+    ) -> set[NodeKey]:
         # keep track of which nodes have been processed as part of recursion
-        processed_nodes.append(nd_key)
+        processed_nodes.add(nd_key)
         # get all other nodes within buffer distance - the self-node and previously processed nodes are also returned
         j_hits: list[int] = nodes_tree.query(geometry.Point(x, y).buffer(buffer_dist))
         # review each node within the buffer
@@ -1404,7 +1404,7 @@ def nx_consolidate_nodes(
                 if neighbour_policy == "direct" and j_nd_key not in neighbours:
                     continue
             # otherwise add the node
-            node_group.append(j_nd_key)
+            node_group.add(j_nd_key)
             # if recursive, follow the chain
             if recursive:
                 j_nd_data: NodeData = nx_multigraph.nodes[j_nd_key]
@@ -1430,8 +1430,8 @@ def nx_consolidate_nodes(
             nd_key,  # node nd_key
             nd_data["x"],  # x point for buffer
             nd_data["y"],  # y point for buffer
-            [nd_key],  # node group for consolidation (with starting node)
-            [],  # processed nodes tracked through recursion
+            set([nd_key]),  # node group for consolidation (with starting node)
+            set(),  # processed nodes tracked through recursion
             crawl,
         )  # whether to recursively probe neighbours per distance
         # update removed nodes
@@ -1572,6 +1572,9 @@ def nx_split_opposing_geoms(
         n_geom = geometry.Point(nd_data["x"], nd_data["y"])
         # iter gapped edges
         for start_nd_key, end_nd_key, edge_idx, edge_geom in gapped_edges:
+            # don't proceed with splits for short geoms
+            if edge_geom.length < buffer_dist:
+                continue
             # project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
@@ -1588,6 +1591,9 @@ def nx_split_opposing_geoms(
             new_edge_geom_a: geometry.LineString
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms
+            # don't proceed with split for overly short split segments
+            if new_edge_geom_a.length < buffer_dist or new_edge_geom_b.length < buffer_dist:
+                continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = _add_node(
                 _multi_graph, [start_nd_key, nd_key, end_nd_key], x=nearest_point.x, y=nearest_point.y
