@@ -254,7 +254,7 @@ def osm_graph_from_poly(
         graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=True)
         if remove_parallel:
             graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
-            graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=False, neighbour_policy='indirect')
+            graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=False, neighbour_policy="indirect")
         if iron_edges:
             graph_crs = graphs.nx_iron_edges(graph_crs)
 
