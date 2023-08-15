@@ -1678,7 +1678,7 @@ def _measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_])
 def _measure_coords_angle(
     coords_1: npt.NDArray[np.float_], coords_2: npt.NDArray[np.float_], coords_3: npt.NDArray[np.float_]
 ) -> float:
-    """Measures angle between three coordinate pairs"""
+    """Measures angle between three coordinate pairs."""
     # arctan2 is y / x order
     a_1: float = _measure_bearing(coords_2, coords_1)
     a_2: float = _measure_bearing(coords_3, coords_2)
@@ -2220,6 +2220,7 @@ def blend_metrics(
     merged_gdf: GeoDataFrame
         An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
         provided edges `GeoDataFrame`.
+
     """
     if method not in ["min", "max", "avg"]:
         raise ValueError('Method should be one of "min", "max", or "avg"')
