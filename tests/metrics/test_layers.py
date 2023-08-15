@@ -28,6 +28,11 @@ def test_assign_gdf_to_network(primal_graph):
         assert data_gdf.at[data_key, "next_nearest_assign"] == data_entry.next_nearest_assign
         assert str(data_gdf.at[data_key, "data_id"]) == data_entry.data_id
     assert data_map.all_assigned()
+    # check with different geometry column name
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
+    data_gdf.set_geometry("geom", inplace=True)
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
 
 
 def test_compute_accessibilities(primal_graph):

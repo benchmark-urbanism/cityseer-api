@@ -133,10 +133,10 @@ Things are already looked much better, but we still have areas with large concen
 
 In this case, we're trying to get rid of parallel road segments so we'll do this in three steps, though it should be noted that, depending on your use-case, Step 1 may already be sufficient:
 
-Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) function. The arguments passed to the parameters allow for a number of different strategies, such as whether to 'crawl'; minimum and maximum numbers of nodes to consider for consolidation; and to set the policies according to which nodes and edges are consolidated. These are explained more fully in the documentation. In this case, we're accepting the defaults except for explicitly setting the buffer distance and bumping the minimum size of node groups to be considered for consolidation from 2 to 3.
+Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) function. The arguments passed to the parameters allow for a number of different strategies, such as whether to 'crawl' and the heuristics according to which nodes and edges are consolidated. These are explained more fully in the documentation. In this case, we're accepting the defaults except for explicitly setting the buffer distance and setting `crawl` to `True`.
 
 ```py
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4)
+G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True)
 simple_plot(G1)
 ```
 
@@ -155,16 +155,13 @@ simple_plot(G2)
 ![Splitting opposing geoms](/images/graph_cleaning_4.png)
 _After "splitting opposing geoms" on longer parallel segments._
 
-In the next step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`, setting `min_node_degree` down to 2, and prioritising nodes of `degree=4` for determination of the newly consolidated centroids:
+In the next step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`:
 
 ```py
 G3 = graphs.nx_consolidate_nodes(
     G2,
     buffer_dist=15,
     crawl=False,
-    min_node_degree=2,
-    cent_min_degree=4,
-    cent_min_names=4,
 )
 simple_plot(G3)
 ```
@@ -262,11 +259,9 @@ G = graphs.nx_wgs_to_utm(G_raw)
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_remove_filler_nodes(G)
 G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4)
+G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True)
 G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = graphs.nx_consolidate_nodes(
-    G2, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
-)
+G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False)
 G4 = graphs.nx_iron_edges(G3)
 simple_plot(G4)
 
