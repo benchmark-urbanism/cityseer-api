@@ -24,7 +24,7 @@ Examples showing how to import OSM data as discussed in [OSM and NetworkX](/guid
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/osm_to_cityseer.ipynb" target="_blank">Github: osm_to_cityseer.ipynb</a>
 
-## Centralities for Inner London
+## Centralities for London
 
 Computing network centralities for London:
 
@@ -32,7 +32,7 @@ Computing network centralities for London:
 
 - OSM data: <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_osm.ipynb" target="_blank">Github: centrality_osm.ipynb</a>
 
-## Accessibility to Pubs and Restaurants for Inner London
+## Landuse Accessibility for London
 
 Computing landuse acccessibility to pubs and restaurants in London.
 
