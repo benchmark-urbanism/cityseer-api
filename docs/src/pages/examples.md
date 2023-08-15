@@ -32,11 +32,11 @@ Computing network centralities for London:
 
 - OSM data: <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_osm.ipynb" target="_blank">Github: centrality_osm.ipynb</a>
 
-## Accessibility to Pubs for Inner London
+## Accessibility to Pubs and Restaurants for Inner London
 
-Computing landuse acccessibility to pubs in London.
+Computing landuse acccessibility to pubs and restaurants in London.
 
-<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_pubs.ipynb" target="_blank">Github: london_pubs.ipynb</a>
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_amenities.ipynb" target="_blank">Github: london_amenities.ipynb</a>
 
 ## Street Network continuity
 
