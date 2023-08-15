@@ -277,7 +277,7 @@ impl DataMap {
     fn accessibility(
         &self,
         network_structure: &NetworkStructure,
-        landuses_map: HashMap<String, String>,
+        landuses_map: HashMap<String, Option<String>>,
         accessibility_keys: Vec<String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -355,7 +355,11 @@ impl DataMap {
                 );
                 for (data_key, data_dist) in reachable_entries {
                     let cl_code = landuses_map[&data_key].clone();
-                    if !accessibility_keys.contains(&cl_code) {
+                    if cl_code.is_none() {
+                        continue;
+                    }
+                    let lu_class = cl_code.unwrap();
+                    if !accessibility_keys.contains(&lu_class) {
                         continue;
                     }
                     for i in 0..distances.len() {
@@ -363,10 +367,10 @@ impl DataMap {
                         let b = betas[i];
                         let mcw = max_curve_wts[i];
                         if data_dist <= d as f32 {
-                            metrics[&cl_code].metric[i][*netw_src_idx]
+                            metrics[&lu_class].metric[i][*netw_src_idx]
                                 .fetch_add(1.0, Ordering::Relaxed);
                             let val_wt = clipped_beta_wt(b, mcw, data_dist);
-                            metrics_wt[&cl_code].metric[i][*netw_src_idx]
+                            metrics_wt[&lu_class].metric[i][*netw_src_idx]
                                 .fetch_add(val_wt.unwrap(), Ordering::Relaxed);
                         }
                     }
@@ -391,7 +395,7 @@ impl DataMap {
     fn mixed_uses(
         &self,
         network_structure: &NetworkStructure,
-        landuses_map: HashMap<String, String>,
+        landuses_map: HashMap<String, Option<String>>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         compute_hill: Option<bool>,
@@ -453,7 +457,10 @@ impl DataMap {
             // prepare unique landuse classes
             let mut classes_uniq: HashSet<String> = HashSet::new();
             for cl_code in landuses_map.values() {
-                classes_uniq.insert(cl_code.clone());
+                if cl_code.is_none() {
+                    continue;
+                }
+                classes_uniq.insert(cl_code.clone().unwrap());
             }
             // indices
             let node_indices: Vec<usize> = network_structure.node_indices();
@@ -494,6 +501,10 @@ impl DataMap {
                 for (data_key, data_dist) in reachable_entries {
                     // get the class category
                     let cl_code = landuses_map[&data_key].clone();
+                    if cl_code.is_none() {
+                        continue;
+                    }
+                    let lu_class = cl_code.unwrap();
                     // iterate the distance dimensions
                     for &dist_key in &distances {
                         // increment class counts at respective distances if the distance is less than current dist
@@ -501,7 +512,7 @@ impl DataMap {
                             let class_state = classes
                                 .get_mut(&dist_key)
                                 .unwrap()
-                                .get_mut(&cl_code.to_string())
+                                .get_mut(&lu_class.to_string())
                                 .unwrap();
                             class_state.count += 1;
                             // if distance is nearer, update the nearest distance vector too

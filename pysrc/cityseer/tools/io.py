@@ -250,15 +250,11 @@ def osm_graph_from_poly(
     if simplify:
         graph_crs = graphs.nx_simple_geoms(graph_crs)
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=20, remove_disconnected=remove_disconnected)
-        graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=15, crawl=True, min_node_group=4, cent_min_degree=4, cent_min_names=4
-        )
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=15, remove_disconnected=remove_disconnected)
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=True)
         if remove_parallel:
             graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
-            graph_crs = graphs.nx_consolidate_nodes(
-                graph_crs, buffer_dist=15, crawl=False, min_node_degree=2, cent_min_degree=4, cent_min_names=4
-            )
+            graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=False, neighbour_policy="indirect")
         if iron_edges:
             graph_crs = graphs.nx_iron_edges(graph_crs)
 
