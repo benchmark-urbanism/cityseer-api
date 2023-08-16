@@ -39,7 +39,7 @@ nodes_gdf, data_gdf = layers.compute_mixed_uses(
 )
 # custom colourmap
 segment_harmonic_vals = nodes_gdf["cc_metric_segment_harmonic_800"]
-mixed_uses_vals = nodes_gdf["cc_metric_hill_q0_400"]
+mixed_uses_vals = nodes_gdf["cc_metric_hill_wt_q0_800"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 segment_harmonic_cols = cmap(segment_harmonic_vals)
@@ -91,7 +91,7 @@ plot.plot_nx(G_decomposed, plot_geoms=True, path=f"{IMAGES_PATH}/graph_decompose
 
 G_dual = graphs.nx_to_dual(G_simple)
 plot.plot_nx_primal_or_dual(
-    G_simple, G_dual, plot_geoms=True, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=200, figsize=(5, 5)
+    G_simple, G_dual, plot_geoms=False, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=200, figsize=(5, 5)
 )
 
 # graph cleanup examples
@@ -217,6 +217,7 @@ from cityseer.tools import graphs, mock, plot
 
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
+# below actually duplicates / overwrites same file...
 G_dual = graphs.nx_to_dual(G_simple)
 plot.plot_nx_primal_or_dual(
     G_simple, G_dual, plot_geoms=False, path=f"{IMAGES_PATH}/graph_dual.{FORMAT}", dpi=200, figsize=(5, 5)
