@@ -141,18 +141,6 @@ def node_centrality_shortest(
     spatial impedance decay function to betweenness centrality. $d$ represents the full distance from
     any $j$ to $k$ node pair passing through node $i$. |
 
-    The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular`
-    parameter is explicitly set to `True`:
-
-    | key                      | formula | notes |
-    | ------------------------ | :-----: | ----- |
-    | node_harmonic_angular    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | The simplest-path implementation of
-    harmonic closeness uses angular-distances for the impedance parameter. Angular-distances are normalised by 180 and
-    added to 1 to avoid division by zero: ${Z = 1 + (angularchange/180)}$. |
-    | node_betweenness_angular | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | The simplest-path version of
-    betweenness centrality. This is distinguished from the shortest-path version by use of a simplest-path heuristic
-    (shortest angular distance). |
-
     """
     if distances is None and betas is not None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
