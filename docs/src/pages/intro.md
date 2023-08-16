@@ -203,7 +203,7 @@ plot.plot_assignment(
 ```
 
 ![Example mixed-use plot](/images/intro_mixed_uses.png)
-_400m distance-weighted mixed-uses._
+_800m distance-weighted mixed-uses._
 
 ```python
 # compute landuse accessibilities for land-use types a, b, c
