@@ -178,6 +178,11 @@ pub fn pair_distances_and_betas(
             "Please provide either a distances or betas, not both.",
         ));
     }
+    if distances.is_none() && betas.is_none() {
+        return Err(exceptions::PyValueError::new_err(
+            "Please provide either a distances or betas. Neither has been provided",
+        ));
+    }
     let betas = if betas.is_some() {
         betas.unwrap()
     } else {
