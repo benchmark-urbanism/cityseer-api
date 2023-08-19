@@ -145,6 +145,9 @@ def test_pair_distances_and_betas():
     # should raise if both provided
     with pytest.raises(ValueError):
         rustalgos.pair_distances_and_betas(distances, betas)
+    # should raise if neither provided
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_and_betas(None, None)
     distances, betas_1 = rustalgos.pair_distances_and_betas(distances, None)
     assert np.allclose(betas_1, betas, atol=config.ATOL, rtol=config.RTOL)
     distances_1, betas = rustalgos.pair_distances_and_betas(None, betas)
