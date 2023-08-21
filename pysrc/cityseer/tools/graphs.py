@@ -1974,7 +1974,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
-        mid_point = edge_data["geom"].interpolate(0.5, normalized=True)
+        mid_point = edge_data["geom"].interpolate(0.5, normalized=True)  # type: ignore
         dual_node_key = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # create a new dual node corresponding to the current primal edge
         g_dual.add_node(
