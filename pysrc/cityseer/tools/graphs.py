@@ -1970,6 +1970,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
+    logger.info("Preparing dual nodes")
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
     ):
@@ -1987,6 +1988,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         # add and set live property if present in parent graph
         set_live(start_nd_key, end_nd_key, dual_node_key)
     # add dual edges
+    logger.info("Preparing dual edges (splitting and welding geoms)")
     for start_nd_key, end_nd_key, edge_idx in tqdm(
         nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE
     ):
