@@ -2094,7 +2094,6 @@ def network_structure_from_nx(
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
             agg_node_dual_data[node_key] = (
-                ns_node_idx,
                 node_data["primal_edge_node_a"],
                 node_data["primal_edge_node_b"],
                 node_data["primal_edge_idx"],
@@ -2221,13 +2220,12 @@ def network_structure_from_nx(
             agg_node_dual_data,
             orient="index",
             columns=[
-                "ns_node_idx",
                 "primal_edge_node_a",
                 "primal_edge_node_b",
                 "primal_edge_idx",
             ],
         )
-        nodes_gdf = pd.merge(nodes_gdf, nodes_dual_gdf, left_index=True, right_index=True)
+        nodes_gdf = nodes_gdf.join(nodes_dual_gdf)
         edges_gdf["primal_node_id"] = agg_edge_dual_data
     return nodes_gdf, edges_gdf, network_structure
 
