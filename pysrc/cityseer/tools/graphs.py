@@ -1863,8 +1863,11 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live`
         attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set
         to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be
-        split and welded to form the new dual `geom` edge attributes. A `parent_primal_node` edge attribute will be
-        added, corresponding to the node identifier of the primal graph.
+        split and welded to form the new dual `geom` edge attributes. `primal_edge_node_a`, `primal_edge_node_b`, and
+        `primal_edge_idx` attributes will be added to the new (dual) nodes, and a `primal_node_id` edge attribute
+        will be added to the new (dual) edges. This is useful for welding the primal geometry to the dual
+        representations where useful for purposes such as visualisation, or otherwise welding downstream metrics to
+        source (primal) geometries.
 
     Examples
     --------
@@ -1887,6 +1890,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting graph to dual.")
     g_dual: MultiGraph = nx.MultiGraph()
+    g_dual.graph["is_dual"] = True
 
     def get_half_geoms(nx_multigraph_ref: MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):
         """
@@ -1958,61 +1962,71 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                 live = False
             g_dual.nodes[dual_node_key]["live"] = live
 
-    # iterate the primal graph's edges
+    def prepare_dual_node_key(start_nd_key: NodeKey, end_nd_key: NodeKey, edge_idx: int) -> str:
+        s_e = sorted([str(start_nd_key), str(end_nd_key)])
+        return f"{s_e[0]}_{s_e[1]}_k{edge_idx}"
+
+    # add dual nodes
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
+    logger.info("Preparing dual nodes")
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
+    ):
+        mid_point = edge_data["geom"].interpolate(0.5, normalized=True)  # type: ignore
+        dual_node_key = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
+        # create a new dual node corresponding to the current primal edge
+        g_dual.add_node(
+            dual_node_key,
+            x=mid_point.x,
+            y=mid_point.y,
+            primal_edge_node_a=start_nd_key,
+            primal_edge_node_b=end_nd_key,
+            primal_edge_idx=edge_idx,
+        )
+        # add and set live property if present in parent graph
+        set_live(start_nd_key, end_nd_key, dual_node_key)
+    # add dual edges
+    logger.info("Preparing dual edges (splitting and welding geoms)")
     for start_nd_key, end_nd_key, edge_idx in tqdm(
         nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE
     ):
+        hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # get the first and second half geoms
         s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
-        # create a new dual node corresponding to the current primal edge
-        # nodes are added manually to retain link to origin node names and to check for duplicates
-        s_e = sorted([str(start_nd_key), str(end_nd_key)])
-        hub_node_dual = f"{s_e[0]}_{s_e[1]}"
-        # the node may already have been added from a neighbouring node that has already been processed
-        if hub_node_dual not in g_dual:
-            x, y = s_half_geom.coords[-1][:2]
-            g_dual.add_node(hub_node_dual, x=x, y=y)
-            # add and set live property if present in parent graph
-            set_live(start_nd_key, end_nd_key, hub_node_dual)
         # process either side
-        for n_side, half_geom in zip([start_nd_key, end_nd_key], [s_half_geom, e_half_geom]):
+        for n_side, m_side, half_geom in zip(
+            [start_nd_key, end_nd_key], [end_nd_key, start_nd_key], [s_half_geom, e_half_geom]
+        ):
             # add the spoke edges on the dual
             nb_nd_key: NodeKey
             for nb_nd_key in nx.neighbors(nx_multigraph, n_side):
                 # don't follow neighbour back to current edge combo
-                if nb_nd_key in [start_nd_key, end_nd_key]:
+                if nb_nd_key == m_side:
                     continue
-                # add the neighbouring primal edge as dual node
-                s_nb = sorted([str(n_side), str(nb_nd_key)])
-                spoke_node_dual = f"{s_nb[0]}_{s_nb[1]}"
-                # skip if the edge has already been processed from another direction
-                if g_dual.has_edge(hub_node_dual, spoke_node_dual):
-                    continue
-                # get the near and far half geoms
-                spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)
-                # nodes will be added if not already present (i.e. from first direction processed)
-                if spoke_node_dual not in g_dual:
-                    x, y = spoke_half_geom.coords[-1][:2]
-                    g_dual.add_node(spoke_node_dual, x=x, y=y)
-                    # add and set live property if present in parent graph
-                    set_live(start_nd_key, end_nd_key, spoke_node_dual)
-                # weld the lines
-                merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])
-                if merged_line.geom_type != "LineString":
-                    raise TypeError(
-                        f'Found {merged_line.geom_type} instead of "LineString" for new geom {merged_line.wkt}. '
-                        f"Check that the LineStrings for {start_nd_key}-{end_nd_key} and {n_side}-{nb_nd_key} touch."
+                # add the neighbouring primal edges as dual nodes
+                for edge_idx in nx_multigraph[n_side][nb_nd_key]:
+                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, edge_idx)
+                    # skip if the edge has already been processed from another direction
+                    if g_dual.has_edge(hub_node_dual, spoke_node_dual):
+                        continue
+                    # get the near and far half geoms
+                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)
+                    # weld the lines
+                    merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])
+                    if merged_line.geom_type != "LineString":
+                        raise TypeError(
+                            f'Found {merged_line.geom_type} instead of "LineString" for new geom {merged_line.wkt}. '
+                            f"Check that the LineStrings for {start_nd_key}-{end_nd_key} & {n_side}-{nb_nd_key} touch."
+                        )
+                    # add the dual edge
+                    g_dual.add_edge(
+                        hub_node_dual,
+                        spoke_node_dual,
+                        primal_node_id=n_side,
+                        geom=merged_line,
                     )
-                # add the dual edge
-                g_dual.add_edge(
-                    hub_node_dual,
-                    spoke_node_dual,
-                    parent_primal_node=n_side,
-                    geom=merged_line,
-                )
 
     return g_dual
 
@@ -2057,7 +2071,9 @@ def network_structure_from_nx(
     network_structure = rustalgos.NetworkStructure()
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
+    agg_node_dual_data: dict[str, tuple[Any]] = {}
     agg_edge_data: dict[str, tuple[Any, ...]] = {}
+    agg_edge_dual_data: list[str] = []
     node_data: NodeData
     # set nodes
     for node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
@@ -2076,6 +2092,12 @@ def network_structure_from_nx(
         # set node
         ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
+        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+            agg_node_dual_data[node_key] = (
+                node_data["primal_edge_node_a"],
+                node_data["primal_edge_node_b"],
+                node_data["primal_edge_idx"],
+            )
     # set edges
     for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
         # build edges
@@ -2162,6 +2184,8 @@ def network_structure_from_nx(
                     total_bearing,
                     line_geom,
                 )
+                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+                    agg_edge_dual_data.append(nx_edge_data["primal_node_id"])
     # create geopandas for node keys and data state
     nodes_gdf = gpd.GeoDataFrame.from_dict(
         agg_node_data,
@@ -2191,6 +2215,18 @@ def network_structure_from_nx(
         geometry="geom",
         crs=crs,
     )
+    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+        nodes_dual_gdf = pd.DataFrame.from_dict(
+            agg_node_dual_data,
+            orient="index",
+            columns=[
+                "primal_edge_node_a",
+                "primal_edge_node_b",
+                "primal_edge_idx",
+            ],
+        )
+        nodes_gdf = nodes_gdf.join(nodes_dual_gdf)
+        edges_gdf["primal_node_id"] = agg_edge_dual_data
     return nodes_gdf, edges_gdf, network_structure
 
 
