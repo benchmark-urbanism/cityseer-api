@@ -152,6 +152,8 @@ def osm_graph_from_poly(
         An optional integer representing a valid EPSG code for the generated network returned from this function. If
         this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
         system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
+    buffer_dist: int
+        A distance to use for buffering and cleaning operations. 15m by default.
     custom_request: str
         An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
         the geometry passed to the OSM API query. See the discussion below.
