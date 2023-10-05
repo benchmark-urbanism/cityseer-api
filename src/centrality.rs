@@ -195,12 +195,12 @@ impl NetworkStructure {
                     let normal = Normal::new(0.0, 1.0).unwrap();
                     let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
                     // reset jitter if a negative and greater than current dist
-                    if (angular) {
-                        if (simpl_dist + jitter <= 0) {
+                    if angular {
+                        if simpl_dist + jitter < 0.0 {
                             jitter = 0.0
                         }
                     } else {
-                        if (short_dist + jitter <= 0) {
+                        if short_dist + jitter < 0.0 {
                             jitter = 0.0
                         }
                     }

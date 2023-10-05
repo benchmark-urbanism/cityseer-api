@@ -422,7 +422,7 @@ impl DataMap {
         let compute_gini = compute_gini.unwrap_or(false);
         if !compute_hill && !compute_hill_weighted && !compute_shannon && !compute_gini {
             return Err(exceptions::PyValueError::new_err(
-                "Either or both closeness and mixed-use flags is required, but both parameters are False.",
+                "One of the compute_<measure> flags must be True, but all are currently False.",
             ));
         }
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
