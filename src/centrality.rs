@@ -193,7 +193,17 @@ impl NetworkStructure {
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
                     let mut rng = thread_rng();
                     let normal = Normal::new(0.0, 1.0).unwrap();
-                    let jitter: f32 = normal.sample(&mut rng) * jitter_scale;
+                    let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
+                    // reset jitter if a negative and greater than current dist
+                    if (angular) {
+                        if (simpl_dist + jitter <= 0) {
+                            jitter = 0.0
+                        }
+                    } else {
+                        if (short_dist + jitter <= 0) {
+                            jitter = 0.0
+                        }
+                    }
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
