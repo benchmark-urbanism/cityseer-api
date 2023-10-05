@@ -171,8 +171,9 @@ impl NetworkStructure {
                         }
                     }
                     // impedance and distance is previous plus new
-                    let short_dist: f32 = tree_map[active_nd_idx.index()].short_dist
-                        + edge_payload.length * edge_payload.imp_factor;
+                    let short_preceding_val = edge_payload.length * edge_payload.imp_factor;
+                    let short_dist: f32 =
+                        tree_map[active_nd_idx.index()].short_dist + short_preceding_val;
                     /*
                     angular impedance include two parts:
                     A - turn from prior simplest-path route segment
@@ -187,19 +188,22 @@ impl NetworkStructure {
                             - 180.0)
                             .abs()
                     }
+                    let simpl_preceding_val = turn + edge_payload.angle_sum;
                     let simpl_dist =
-                        tree_map[active_nd_idx.index()].simpl_dist + turn + edge_payload.angle_sum;
+                        tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_val;
                     // add the neighbour to active if undiscovered but only if less than max shortest path threshold
                     if tree_map[nb_nd_idx.index()].pred.is_none() && short_dist <= max_dist as f32 {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
                     let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
-                    // reset jitter if a negative and greater than current dist
-                    let dist = if angular { simpl_dist } else { short_dist };
-                    if dist + jitter < 0.0 {
-                        jitter = 0.0;
-                    }
+                    // cap jitter to the preceding segment value
+                    let preceding_val = if angular {
+                        simpl_preceding_val
+                    } else {
+                        short_preceding_val
+                    };
+                    jitter = f32::min(preceding_val, jitter);
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
