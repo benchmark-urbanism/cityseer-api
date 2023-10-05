@@ -227,13 +227,20 @@ def osm_graph_from_poly(
         /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
         [out:json];
         (
-            way["highway"]
-            ["area"!="yes"]
-            ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction"]
-            ["service"!~"parking_aisle"]
-            ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-            ["access"!~"private|customers"]
-            ["indoor"!="yes"]
+        way["highway"]
+        ["area"!="yes"]
+        ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction|cycleway"]
+        ["service"!~"parking_aisle"]
+        ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+        ["access"!~"private|customers"]
+        ["footway"!~"sidewalk|traffic_island"]
+        ["indoor"!="yes"]
+        ["level"!="-1"]
+        ["level"!="-2"]
+        ["level"!="-3"]
+        ["level"!="-4"]
+        ["level"!="-5"]
+        ["conveying"!="yes"]
             (poly:"{geom_osm}");
         );
         out body;
