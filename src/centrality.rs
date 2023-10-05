@@ -190,20 +190,19 @@ impl NetworkStructure {
                     if tree_map[nb_nd_idx.index()].pred.is_none() && short_dist <= max_dist as f32 {
                         active.push(nb_nd_idx.index());
                     }
-                    // jitter is for injecting a small amount of stochasticity for rectlinear grids
+                    // jitter is for injecting stochasticity, e.g. for rectlinear grids
                     let mut rng = thread_rng();
                     let normal = Normal::new(0.0, 1.0).unwrap();
-                    let jitter_scale: f32 = normal.sample(&mut rng) * jitter_scale;
+                    let jitter: f32 = normal.sample(&mut rng) * jitter_scale;
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
                     they will not be explored further because they have not been added to active
                     */
                     // shortest path heuristic differs for angular vs. not
-                    if (angular
-                        && simpl_dist + jitter_scale < tree_map[nb_nd_idx.index()].simpl_dist)
+                    if (angular && simpl_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
                         || (!angular
-                            && short_dist + jitter_scale < tree_map[nb_nd_idx.index()].short_dist)
+                            && short_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
                     {
                         let origin_seg = if active_nd_idx.index() == src_idx {
                             edge_idx.index()
