@@ -84,6 +84,9 @@ impl NetworkStructure {
         tree_map[src_idx].simpl_dist = 0.0;
         // prime the active vec with the src node
         active.push(src_idx);
+        // random number generator
+        let mut rng = thread_rng();
+        let normal = Normal::new(0.0, 1.0).unwrap();
         // keep iterating while adding and removing until exploration complete within max dist
         while active.len() > 0 {
             // find the next active node with the currently smallest impedance
@@ -191,18 +194,11 @@ impl NetworkStructure {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
-                    let mut rng = thread_rng();
-                    let normal = Normal::new(0.0, 1.0).unwrap();
                     let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
                     // reset jitter if a negative and greater than current dist
-                    if angular {
-                        if simpl_dist + jitter < 0.0 {
-                            jitter = 0.0
-                        }
-                    } else {
-                        if short_dist + jitter < 0.0 {
-                            jitter = 0.0
-                        }
+                    let dist = if angular { simpl_dist } else { short_dist };
+                    if dist + jitter < 0.0 {
+                        jitter = 0.0;
                     }
                     /*
                     if impedance less than prior, update
@@ -222,8 +218,8 @@ impl NetworkStructure {
                         // chain through origin segments
                         // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_dist;
-                            nb_node_ref.short_dist = short_dist;
+                            nb_node_ref.simpl_dist = simpl_dist + jitter;
+                            nb_node_ref.short_dist = short_dist + jitter;
                             nb_node_ref.pred = Some(active_nd_idx.index());
                             nb_node_ref.out_bearing = edge_payload.out_bearing;
                             nb_node_ref.origin_seg = Some(origin_seg);
