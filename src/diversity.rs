@@ -278,16 +278,21 @@ pub fn gini_simpson_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
     Bias corrected:
     D = 1 - sum(Xi/N * (Xi-1/N-1))
     */
-    let num: u32 = class_counts.iter().sum();
-    let mut gini: f32 = 0.0;
+    let num = class_counts.iter().sum::<u32>();
     // catch potential division by zero situations
     if num < 2 {
-        return Ok(gini);
+        return Ok(0.0);
     }
+    let num_f32 = num as f32;
+    let num_minus_1_f32 = (num - 1) as f32;
     // compute bias corrected gini-simpson
-    for class_count in class_counts {
-        gini += class_count as f32 / num as f32 * ((class_count - 1) as f32 / (num - 1) as f32);
-    }
+    let gini: f32 = class_counts
+        .iter()
+        .map(|&x| {
+            let x_f32 = x as f32;
+            x_f32 / num_f32 * ((x_f32 - 1.0) / num_minus_1_f32)
+        })
+        .sum();
     Ok(1.0 - gini)
 }
 
