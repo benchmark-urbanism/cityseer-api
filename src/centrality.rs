@@ -205,7 +205,7 @@ impl NetworkStructure {
                     } else {
                         short_preceding_dist
                     };
-                    jitter = f32::min(preceding_val, jitter);
+                    jitter = f32::min(preceding_val / 2, jitter);
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
