@@ -229,7 +229,7 @@ def osm_graph_from_poly(
         (
         way["highway"]
         ["area"!="yes"]
-        ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction|cycleway"]
+        ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|cycleway"]
         ["service"!~"parking_aisle"]
         ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
         ["access"!~"private|customers"]
