@@ -7,8 +7,7 @@ use petgraph::prelude::*;
 use petgraph::Direction;
 use pyo3::exceptions;
 use pyo3::prelude::*;
-use rand::thread_rng;
-use rand_distr::{Distribution, Normal};
+use rand::Rng;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -85,8 +84,7 @@ impl NetworkStructure {
         // prime the active vec with the src node
         active.push(src_idx);
         // random number generator
-        let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 1.0).unwrap();
+        let mut rng = rand::thread_rng();
         // keep iterating while adding and removing until exploration complete within max dist
         while active.len() > 0 {
             // find the next active node with the currently smallest impedance
@@ -196,14 +194,17 @@ impl NetworkStructure {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
-                    let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
-                    // cap jitter to the preceding segment value
-                    let preceding_val = if angular {
-                        simpl_preceding_dist
-                    } else {
-                        short_preceding_dist
-                    };
-                    jitter = f32::min(preceding_val / 2.0, jitter);
+                    let mut jitter: f32 = 0.0;
+                    if jitter_scale > 0.0 {
+                        jitter = rng.gen_range(-1.0..=1.0) * jitter_scale;
+                        // cap jitter to the preceding segment value
+                        let preceding_val = if angular {
+                            simpl_preceding_dist
+                        } else {
+                            short_preceding_dist
+                        };
+                        jitter = f32::min(preceding_val * 0.1, jitter);
+                    }
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
