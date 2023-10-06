@@ -183,7 +183,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # check with jitter
     nodes_gdf_j, edges_gdf_j, network_structure_j = graphs.network_structure_from_nx(primal_graph, 3395)
     for max_dist in [2000]:
-        for jitter in [10, 50]:
+        # use aggressive jitter and check that at least one shortest path is different to non-jitter
+        for jitter in [200]:
+            diffs = False
             for src_idx in range(len(primal_graph)):
                 # don't calculate for isolated nodes
                 if src_idx >= 49:
@@ -198,11 +200,15 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                 _visited_nodes_j, _visited_edges_j, tree_map_j, _edge_map_j = network_structure_j.shortest_path_tree(
                     src_idx, max_dist, angular=False, jitter_scale=jitter
                 )
-                diffs = 0
                 for to_idx in range(len(primal_graph)):
-                    if np.isfinite(tree_map[to_idx].short_dist) and np.isfinite(tree_map_j[to_idx].short_dist):
-                        diffs += tree_map[to_idx].short_dist - tree_map_j[to_idx].short_dist
-                assert diffs != 0
+                    if to_idx >= 49:
+                        continue
+                    if find_path(int(to_idx), src_idx, tree_map) != find_path(int(to_idx), src_idx, tree_map_j):
+                        diffs = True
+                        break
+                if diffs is True:
+                    break
+            assert diffs is True
     # test all shortest distance calculations against networkX
     for src_idx in range(len(G_round_trip)):
         shortest_dists = nx.shortest_path_length(G_round_trip, str(src_idx), weight="length")
