@@ -217,8 +217,8 @@ impl NetworkStructure {
                         // chain through origin segments
                         // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_total_dist;
-                            nb_node_ref.short_dist = short_total_dist;
+                            nb_node_ref.simpl_dist = simpl_total_dist + jitter;
+                            nb_node_ref.short_dist = short_total_dist + jitter;
                             nb_node_ref.pred = Some(active_nd_idx.index());
                             nb_node_ref.out_bearing = edge_payload.out_bearing;
                             nb_node_ref.origin_seg = Some(origin_seg);
