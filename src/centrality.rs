@@ -171,9 +171,9 @@ impl NetworkStructure {
                         }
                     }
                     // impedance and distance is previous plus new
-                    let short_preceding_val = edge_payload.length * edge_payload.imp_factor;
-                    let short_dist: f32 =
-                        tree_map[active_nd_idx.index()].short_dist + short_preceding_val;
+                    let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
+                    let short_total_dist: f32 =
+                        tree_map[active_nd_idx.index()].short_dist + short_preceding_dist;
                     /*
                     angular impedance include two parts:
                     A - turn from prior simplest-path route segment
@@ -188,20 +188,22 @@ impl NetworkStructure {
                             - 180.0)
                             .abs()
                     }
-                    let simpl_preceding_val = turn + edge_payload.angle_sum;
-                    let simpl_dist =
-                        tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_val;
+                    let simpl_preceding_dist = turn + edge_payload.angle_sum;
+                    let simpl_total_dist =
+                        tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_dist;
                     // add the neighbour to active if undiscovered but only if less than max shortest path threshold
-                    if tree_map[nb_nd_idx.index()].pred.is_none() && short_dist <= max_dist as f32 {
+                    if tree_map[nb_nd_idx.index()].pred.is_none()
+                        && short_total_dist <= max_dist as f32
+                    {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
                     let mut jitter: f32 = normal.sample(&mut rng) * jitter_scale;
                     // cap jitter to the preceding segment value
                     let preceding_val = if angular {
-                        simpl_preceding_val
+                        simpl_preceding_dist
                     } else {
-                        short_preceding_val
+                        short_preceding_dist
                     };
                     jitter = f32::min(preceding_val, jitter);
                     /*
@@ -210,9 +212,10 @@ impl NetworkStructure {
                     they will not be explored further because they have not been added to active
                     */
                     // shortest path heuristic differs for angular vs. not
-                    if (angular && simpl_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
+                    if (angular
+                        && simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
                         || (!angular
-                            && short_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
+                            && short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
                     {
                         let origin_seg = if active_nd_idx.index() == src_idx {
                             edge_idx.index()
@@ -222,8 +225,8 @@ impl NetworkStructure {
                         // chain through origin segments
                         // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_dist + jitter;
-                            nb_node_ref.short_dist = short_dist + jitter;
+                            nb_node_ref.simpl_dist = simpl_total_dist + jitter;
+                            nb_node_ref.short_dist = short_total_dist + jitter;
                             nb_node_ref.pred = Some(active_nd_idx.index());
                             nb_node_ref.out_bearing = edge_payload.out_bearing;
                             nb_node_ref.origin_seg = Some(origin_seg);
