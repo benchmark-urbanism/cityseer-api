@@ -196,14 +196,7 @@ impl NetworkStructure {
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids
                     let mut jitter: f32 = 0.0;
                     if jitter_scale > 0.0 {
-                        jitter = rng.gen_range(-1.0..=1.0) * jitter_scale;
-                        // cap jitter to the preceding segment value
-                        let preceding_val = if angular {
-                            simpl_preceding_dist
-                        } else {
-                            short_preceding_dist
-                        };
-                        jitter = f32::min(preceding_val * 0.1, jitter);
+                        jitter = rng.gen::<f32>() * jitter_scale;
                     }
                     /*
                     if impedance less than prior, update
@@ -224,8 +217,8 @@ impl NetworkStructure {
                         // chain through origin segments
                         // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_total_dist + jitter;
-                            nb_node_ref.short_dist = short_total_dist + jitter;
+                            nb_node_ref.simpl_dist = simpl_total_dist;
+                            nb_node_ref.short_dist = short_total_dist;
                             nb_node_ref.pred = Some(active_nd_idx.index());
                             nb_node_ref.out_bearing = edge_payload.out_bearing;
                             nb_node_ref.origin_seg = Some(origin_seg);
