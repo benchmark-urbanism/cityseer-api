@@ -192,9 +192,7 @@ impl NetworkStructure {
                     let simpl_total_dist =
                         tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_dist;
                     // add the neighbour to active if undiscovered but only if less than max shortest path threshold
-                    if tree_map[nb_nd_idx.index()].pred.is_none()
-                        && short_total_dist <= max_dist as f32
-                    {
+                    if !tree_map[nb_nd_idx.index()].visited && short_total_dist <= max_dist as f32 {
                         active.push(nb_nd_idx.index());
                     }
                     // jitter is for injecting stochasticity, e.g. for rectlinear grids

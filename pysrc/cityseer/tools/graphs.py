@@ -533,10 +533,27 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     """
     osm_network_data = json.loads(osm_json)
     nx_multigraph: MultiGraph = nx.MultiGraph()
+    nd_dupes: set[str] = set()
     for elem in osm_network_data["elements"]:
         if elem["type"] == "node":
             # all nodes should be string type
-            nx_multigraph.add_node(str(elem["id"]), x=elem["lon"], y=elem["lat"])
+            x = elem["lon"]
+            y = elem["lat"]
+            nd_dupe_check = f"{x}-{y}"
+            if nd_dupe_check in nd_dupes:
+                logger.warning(f"Skipping node {elem['id']} with identical coords to another: x: {x}, y:{y}")
+                continue
+            nd_dupes.add(nd_dupe_check)
+            nx_multigraph.add_node(str(elem["id"]), x=x, y=y)
+
+    def check_for_nodes(_idx: int):
+        start_nd_key = str(elem["nodes"][_idx])
+        end_nd_key = str(elem["nodes"][_idx + 1])
+        if start_nd_key not in nx_multigraph or end_nd_key not in nx_multigraph:
+            logger.error("Missing start or end node key, skipping edge")
+            return False
+        return True
+
     for elem in osm_network_data["elements"]:
         if elem["type"] == "way":
             count = len(elem["nodes"])
@@ -546,16 +563,18 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
                 ref = tags["ref"] if "ref" in tags else None
                 highway = tags["highway"] if "highway" in tags else None
                 for idx in range(count - 1):
-                    nx_multigraph.add_edge(
-                        str(elem["nodes"][idx]),
-                        str(elem["nodes"][idx + 1]),
-                        names=[name],
-                        routes=[ref],
-                        highways=[highway],
-                    )
+                    if check_for_nodes(idx) is True:
+                        nx_multigraph.add_edge(
+                            str(elem["nodes"][idx]),
+                            str(elem["nodes"][idx + 1]),
+                            names=[name],
+                            routes=[ref],
+                            highways=[highway],
+                        )
             else:
                 for idx in range(count - 1):
-                    nx_multigraph.add_edge(str(elem["nodes"][idx]), str(elem["nodes"][idx + 1]))
+                    if check_for_nodes(idx) is True:
+                        nx_multigraph.add_edge(str(elem["nodes"][idx]), str(elem["nodes"][idx + 1]))
 
     return nx_multigraph
 
