@@ -7,8 +7,7 @@ use petgraph::prelude::*;
 use petgraph::Direction;
 use pyo3::exceptions;
 use pyo3::prelude::*;
-use rand::thread_rng;
-use rand_distr::{Distribution, Normal};
+use rand::Rng;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -84,6 +83,8 @@ impl NetworkStructure {
         tree_map[src_idx].simpl_dist = 0.0;
         // prime the active vec with the src node
         active.push(src_idx);
+        // random number generator
+        let mut rng = rand::thread_rng();
         // keep iterating while adding and removing until exploration complete within max dist
         while active.len() > 0 {
             // find the next active node with the currently smallest impedance
@@ -168,8 +169,9 @@ impl NetworkStructure {
                         }
                     }
                     // impedance and distance is previous plus new
-                    let short_dist: f32 = tree_map[active_nd_idx.index()].short_dist
-                        + edge_payload.length * edge_payload.imp_factor;
+                    let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
+                    let short_total_dist: f32 =
+                        tree_map[active_nd_idx.index()].short_dist + short_preceding_dist;
                     /*
                     angular impedance include two parts:
                     A - turn from prior simplest-path route segment
@@ -184,16 +186,18 @@ impl NetworkStructure {
                             - 180.0)
                             .abs()
                     }
-                    let simpl_dist =
-                        tree_map[active_nd_idx.index()].simpl_dist + turn + edge_payload.angle_sum;
+                    let simpl_preceding_dist = turn + edge_payload.angle_sum;
+                    let simpl_total_dist =
+                        tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_dist;
                     // add the neighbour to active if undiscovered but only if less than max shortest path threshold
-                    if tree_map[nb_nd_idx.index()].pred.is_none() && short_dist <= max_dist as f32 {
+                    if !tree_map[nb_nd_idx.index()].visited && short_total_dist <= max_dist as f32 {
                         active.push(nb_nd_idx.index());
                     }
-                    // jitter is for injecting a small amount of stochasticity for rectlinear grids
-                    let mut rng = thread_rng();
-                    let normal = Normal::new(0.0, 1.0).unwrap();
-                    let jitter_scale: f32 = normal.sample(&mut rng) * jitter_scale;
+                    // jitter is for injecting stochasticity, e.g. for rectlinear grids
+                    let mut jitter: f32 = 0.0;
+                    if jitter_scale > 0.0 {
+                        jitter = rng.gen::<f32>() * jitter_scale;
+                    }
                     /*
                     if impedance less than prior, update
                     this will also happen for the first nodes that overshoot the boundary
@@ -201,9 +205,9 @@ impl NetworkStructure {
                     */
                     // shortest path heuristic differs for angular vs. not
                     if (angular
-                        && simpl_dist + jitter_scale < tree_map[nb_nd_idx.index()].simpl_dist)
+                        && simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
                         || (!angular
-                            && short_dist + jitter_scale < tree_map[nb_nd_idx.index()].short_dist)
+                            && short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
                     {
                         let origin_seg = if active_nd_idx.index() == src_idx {
                             edge_idx.index()
@@ -213,8 +217,8 @@ impl NetworkStructure {
                         // chain through origin segments
                         // identifies which segment a particular shortest path originated from
                         if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_dist;
-                            nb_node_ref.short_dist = short_dist;
+                            nb_node_ref.simpl_dist = simpl_total_dist + jitter;
+                            nb_node_ref.short_dist = short_total_dist + jitter;
                             nb_node_ref.pred = Some(active_nd_idx.index());
                             nb_node_ref.out_bearing = edge_payload.out_bearing;
                             nb_node_ref.origin_seg = Some(origin_seg);

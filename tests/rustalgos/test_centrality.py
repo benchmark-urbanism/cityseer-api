@@ -165,9 +165,6 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = graphs.network_structure_from_nx(primal_graph, 3395)
     # prepare round-trip graph for checks
     G_round_trip = graphs.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
-    # prepare dual graph
-    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
-    assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:
@@ -183,6 +180,35 @@ def test_shortest_path_tree(primal_graph, dual_graph):
             for j_node_key, j_nx_path in nx_path.items():
                 assert find_path(int(j_node_key), src_idx, tree_map) == [int(j) for j in j_nx_path]
                 assert tree_map[int(j_node_key)].short_dist - nx_dist[j_node_key] < config.ATOL
+    # check with jitter
+    nodes_gdf_j, edges_gdf_j, network_structure_j = graphs.network_structure_from_nx(primal_graph, 3395)
+    for max_dist in [2000]:
+        # use aggressive jitter and check that at least one shortest path is different to non-jitter
+        for jitter in [200]:
+            diffs = False
+            for src_idx in range(len(primal_graph)):
+                # don't calculate for isolated nodes
+                if src_idx >= 49:
+                    continue
+                # no jitter
+                _visited_nodes, _visited_edges, tree_map, _edge_map = network_structure_p.shortest_path_tree(
+                    src_idx,
+                    max_dist,
+                    angular=False,
+                )
+                # with jitter
+                _visited_nodes_j, _visited_edges_j, tree_map_j, _edge_map_j = network_structure_j.shortest_path_tree(
+                    src_idx, max_dist, angular=False, jitter_scale=jitter
+                )
+                for to_idx in range(len(primal_graph)):
+                    if to_idx >= 49:
+                        continue
+                    if find_path(int(to_idx), src_idx, tree_map) != find_path(int(to_idx), src_idx, tree_map_j):
+                        diffs = True
+                        break
+                if diffs is True:
+                    break
+            assert diffs is True
     # test all shortest distance calculations against networkX
     for src_idx in range(len(G_round_trip)):
         shortest_dists = nx.shortest_path_length(G_round_trip, str(src_idx), weight="length")
@@ -193,6 +219,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
             if str(target_idx) not in shortest_dists:
                 continue
             assert shortest_dists[str(target_idx)] - tree_map[target_idx].short_dist <= config.ATOL
+    # prepare dual graph
+    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
+    assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight

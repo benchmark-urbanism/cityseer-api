@@ -126,6 +126,7 @@ def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
     to_epsg_code: Optional[int] = None,
+    buffer_dist: int = 15,
     custom_request: str | None = None,
     simplify: bool = True,
     remove_parallel: bool = True,
@@ -151,6 +152,8 @@ def osm_graph_from_poly(
         An optional integer representing a valid EPSG code for the generated network returned from this function. If
         this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
         system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
+    buffer_dist: int
+        A distance to use for buffering and cleaning operations. 15m by default.
     custom_request: str
         An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
         the geometry passed to the OSM API query. See the discussion below.
@@ -224,14 +227,17 @@ def osm_graph_from_poly(
         /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
         [out:json];
         (
-            way["highway"]
-            ["area"!="yes"]
-            ["highway"!~"motorway|motorway_link|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction"]
-            ["service"!~"parking_aisle"]
-            ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-            ["access"!~"private|customers"]
-            ["indoor"!="yes"]
-            (poly:"{geom_osm}");
+        way["highway"]
+        ["area"!="yes"]
+        ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
+        ["service"!~"parking_aisle|driveway|drive-through|slipway"] ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+        ["footway"!~"sidewalk|traffic_island|crossing"]
+        ["indoor"!="yes"]
+        ["level"!="-2"]
+        ["level"!="-3"]
+        ["level"!="-4"]
+        ["level"!="-5"]
+        (poly:"{geom_osm}");
         );
         out body;
         >;
@@ -250,11 +256,15 @@ def osm_graph_from_poly(
     if simplify:
         graph_crs = graphs.nx_simple_geoms(graph_crs)
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=15, remove_disconnected=remove_disconnected)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=True)
+        graph_crs = graphs.nx_remove_dangling_nodes(
+            graph_crs, despine=buffer_dist, remove_disconnected=remove_disconnected
+        )
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=buffer_dist, crawl=True)
         if remove_parallel:
-            graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
-            graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, crawl=False, neighbour_policy="indirect")
+            graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=buffer_dist)
+            graph_crs = graphs.nx_consolidate_nodes(
+                graph_crs, buffer_dist=buffer_dist, crawl=False, neighbour_policy="indirect"
+            )
         if iron_edges:
             graph_crs = graphs.nx_iron_edges(graph_crs)
 

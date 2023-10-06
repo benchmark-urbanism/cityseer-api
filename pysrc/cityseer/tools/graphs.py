@@ -533,10 +533,36 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
     """
     osm_network_data = json.loads(osm_json)
     nx_multigraph: MultiGraph = nx.MultiGraph()
+    # deduplicate nodes based on x, y matches
+    xy_nd_map: dict[str, str] = {}  # from x y to original node index
+    nd_merge_map: dict[str, str] = {}  # from original node index to deduplicated node index
+
     for elem in osm_network_data["elements"]:
         if elem["type"] == "node":
             # all nodes should be string type
-            nx_multigraph.add_node(str(elem["id"]), x=elem["lon"], y=elem["lat"])
+            nd_idx = str(elem["id"])
+            x = elem["lon"]
+            y = elem["lat"]
+            nd_x_y = f"{x}-{y}"
+            # when deduplicating, sometimes overlapping stairways / underpasses might share an x, y space...
+            if "tags" in elem and "level" in elem["tags"]:
+                nd_x_y = f'{nd_x_y}-{elem["tags"]["level"]}'
+            # only add if non-duplicate
+            if nd_x_y not in xy_nd_map:
+                xy_nd_map[nd_x_y] = nd_idx
+            else:
+                logger.warning(f"Merging node {nd_idx} into {xy_nd_map[nd_x_y]} due to identical x, y coords.")
+            # ok_nd_idx will correspond to deduplicated node index
+            ok_nd_idx = xy_nd_map[nd_x_y]
+            # track original node idx to deduplicated idx for reference when building edges
+            nd_merge_map[nd_idx] = ok_nd_idx
+            nx_multigraph.add_node(ok_nd_idx, x=x, y=y)
+
+    def get_merged_nd_keys(_idx: int) -> tuple[str, str]:
+        start_nd_key = str(elem["nodes"][_idx])
+        end_nd_key = str(elem["nodes"][_idx + 1])
+        return nd_merge_map[start_nd_key], nd_merge_map[end_nd_key]
+
     for elem in osm_network_data["elements"]:
         if elem["type"] == "way":
             count = len(elem["nodes"])
@@ -546,16 +572,18 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
                 ref = tags["ref"] if "ref" in tags else None
                 highway = tags["highway"] if "highway" in tags else None
                 for idx in range(count - 1):
+                    start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(
-                        str(elem["nodes"][idx]),
-                        str(elem["nodes"][idx + 1]),
+                        start_nd_key,
+                        end_nd_key,
                         names=[name],
                         routes=[ref],
                         highways=[highway],
                     )
             else:
                 for idx in range(count - 1):
-                    nx_multigraph.add_edge(str(elem["nodes"][idx]), str(elem["nodes"][idx + 1]))
+                    start_nd_key, end_nd_key = get_merged_nd_keys(idx)
+                    nx_multigraph.add_edge(start_nd_key, end_nd_key)
 
     return nx_multigraph
 
