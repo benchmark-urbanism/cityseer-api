@@ -113,7 +113,11 @@ def node_centrality_shortest(
         more information.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
+        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
+        shortest path calculations to provide random variation to the paths traced through the network. When working
+        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
+        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -212,7 +216,11 @@ def node_centrality_simplest(
         more information.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
+        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
+        shortest path calculations to provide random variation to the paths traced through the network. When working
+        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
+        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -302,7 +310,11 @@ def segment_centrality(
         more information.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids. `jitter_scale` is passed to the `scale` parameter of `np.random.normal`.
+        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
+        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
+        shortest path calculations to provide random variation to the paths traced through the network. When working
+        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
+        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------

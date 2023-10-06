@@ -688,24 +688,28 @@ mod tests {
         );
         let (visited_nodes, visited_edges, tree_map, edge_map) =
             ns.shortest_path_tree(0, 5, None, None);
-        let close_result = ns.local_node_centrality_shortest(
-            Some(vec![50]),
-            None,
-            Some(true),
-            Some(false),
-            None,
-            None,
-            None,
-        );
-        let betw_result_seg = ns.local_segment_centrality(
-            Some(vec![50]),
-            None,
-            Some(false),
-            Some(true),
-            None,
-            None,
-            None,
-        );
+        let (visited_nodes, visited_edges, tree_map, edge_map) =
+            ns.shortest_path_tree(0, 5, None, Some(1.0));
+        let (visited_nodes, visited_edges, tree_map, edge_map) =
+            ns.shortest_path_tree(0, 5, None, Some(10.0));
+        // let close_result = ns.local_node_centrality_shortest(
+        //     Some(vec![50]),
+        //     None,
+        //     Some(true),
+        //     Some(false),
+        //     None,
+        //     None,
+        //     None,
+        // );
+        // let betw_result_seg = ns.local_segment_centrality(
+        //     Some(vec![50]),
+        //     None,
+        //     Some(false),
+        //     Some(true),
+        //     None,
+        //     None,
+        //     None,
+        // );
         let a = 1;
         // assert_eq!(add(2, 2), 4);
     }

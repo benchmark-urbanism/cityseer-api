@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-from matplotlib import colors
+from matplotlib import axes, colors
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Patch
 from shapely import geometry
@@ -74,7 +74,7 @@ def plot_nx_primal_or_dual(  # noqa
     plot_geoms: bool = True,
     x_lim: tuple[float, float] | None = None,
     y_lim: tuple[float, float] | None = None,
-    ax: plt.Axes | None = None,
+    ax: axes.Axes | None = None,
     **kwargs: dict[str, Any],
 ):
     """
@@ -332,7 +332,7 @@ def plot_nx(
     plot_geoms: bool = False,
     x_lim: tuple[float, float] | None = None,
     y_lim: tuple[float, float] | None = None,
-    ax: plt.Axes | None = None,
+    ax: axes.Axes | None = None,
     **kwargs: dict[str, Any],
 ):  # noqa
     """
@@ -521,7 +521,7 @@ def plot_assignment(
     plt.scatter(
         x=data_gdf.geometry.x,
         y=data_gdf.geometry.y,
-        c=data_colour,
+        c=data_colour,  # type: ignore
         cmap=data_cmap,  # type: ignore
         s=30,
         edgecolors="white",
@@ -668,7 +668,7 @@ def plot_network_structure(
 
 
 def plot_scatter(
-    ax: plt.Axes,
+    ax: axes.Axes,
     xs: list[float] | npt.ArrayLike,
     ys: list[float] | npt.ArrayLike,
     vals: npt.ArrayLike,
@@ -757,7 +757,7 @@ def plot_scatter(
 
 
 def plot_nx_edges(
-    ax: plt.Axes,
+    ax: axes.Axes,
     nx_multigraph: nx.MultiGraph,
     edge_metrics_key: str,
     bbox_extents: tuple[int, int, int, int] | tuple[float, float, float, float],
