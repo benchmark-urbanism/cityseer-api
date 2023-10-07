@@ -1838,7 +1838,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             new_nd_name, is_dupe = _add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
             if is_dupe:
                 raise ValueError(
-                    f"Attempted to add a duplicate node. "
+                    f"Attempted to add a duplicate node at x: {x}, y:{y}. "
                     f"Check for existence of duplicate edges in the vicinity of {start_nd_key}-{end_nd_key}."
                 )
             sub_node_counter += 1
