@@ -710,8 +710,8 @@ def network_structure_from_nx(
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        A `GeoDataFrame` with `live` and `geometry` attributes. The original `networkX` graph's node keys will be used
-        for the `GeoDataFrame` index.
+        A `GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys
+        will be used for the `GeoDataFrame` index.
     edges_gdf: GeoDataFrame
         A `GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`,
         `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
@@ -746,9 +746,12 @@ def network_structure_from_nx(
         is_live: bool = True
         if "live" in node_data:
             is_live = bool(node_data["live"])
+        weight = 1
+        if "weight" in node_data:
+            weight = node_data["weight"]
         # set node
-        ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live)
-        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, geometry.Point(node_x, node_y))
+        ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live, weight)
+        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
             agg_node_dual_data[node_key] = (
                 node_data["primal_edge_node_a"],
@@ -758,10 +761,10 @@ def network_structure_from_nx(
     # set edges
     for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
         # build edges
-        start_ns_node_idx, start_node_x, start_node_y, _, _ = agg_node_data[start_node_key]
+        start_ns_node_idx, start_node_x, start_node_y, _, _, _ = agg_node_data[start_node_key]
         end_node_key: str
         for end_node_key in g_multi_copy.neighbors(start_node_key):
-            end_ns_node_idx, _, _, _, _ = agg_node_data[end_node_key]
+            end_ns_node_idx, _, _, _, _, _ = agg_node_data[end_node_key]
             # add the new edge index to the node's out edges
             nx_edge_data: EdgeData
             for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
@@ -847,7 +850,7 @@ def network_structure_from_nx(
     nodes_gdf = gpd.GeoDataFrame.from_dict(
         agg_node_data,
         orient="index",
-        columns=["ns_node_idx", "x", "y", "live", "geom"],
+        columns=["ns_node_idx", "x", "y", "live", "weight", "geom"],
         geometry="geom",
         crs=crs,
     )
@@ -897,8 +900,8 @@ def nx_from_geopandas(
     Parameters
     ----------
     nodes_gdf: GeoDataFrame
-        A `GeoDataFrame` with `live` and Point `geometry` attributes. The index will be used for the returned `networkX`
-        graph's node keys.
+        A `GeoDataFrame` with `live`, `weight`, and Point `geometry` attributes. The index will be used for the returned
+        `networkX` graph's node keys.
     edges_gdf: GeoDataFrame
         An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
 
@@ -917,6 +920,7 @@ def nx_from_geopandas(
         g_multi_copy.nodes[nd_key]["x"] = nd_data.x
         g_multi_copy.nodes[nd_key]["y"] = nd_data.y
         g_multi_copy.nodes[nd_key]["live"] = nd_data.live
+        g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
     logger.info("Unpacking edge data.")
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
         g_multi_copy.add_edge(

@@ -1121,6 +1121,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if cuts = 1
         for _ in range(cuts - 1):
             # create the split LineString geom for measuring the new length
+            # switch back to shapely once bug resolved
             line_segment: geometry.LineString = util.substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
@@ -1147,6 +1148,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             step += step_size
         # set the last edge manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add edge
+        # switch back to shapely once bug resolved
         line_segment = util.substring(line_geom, step, line_geom.length)
         edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
         g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **edge_data_copy)
@@ -1242,6 +1244,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         line_geom_coords = util.align_linestring_coords(line_geom.coords, a_xy)
         line_geom = geometry.LineString(line_geom_coords)
         # generate the two half geoms
+        # switch back to shapely once bug resolved
         a_half_geom: geometry.LineString = util.substring(line_geom, 0.0, 0.5, normalized=True)
         b_half_geom: geometry.LineString = util.substring(line_geom, 0.5, 1.0, normalized=True)
         # check that nothing odd happened with new midpoint
