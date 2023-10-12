@@ -1,5 +1,5 @@
 """
-Functions for fetching and cleaning OSM data.
+Functions for fetching and converting graphs and network structures.
 """
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false

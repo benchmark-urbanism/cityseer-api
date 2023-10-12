@@ -2,7 +2,6 @@
 Convenience functions for the preparation and conversion of `networkX` graphs to and from `cityseer` data structures.
 
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
-
 """
 # workaround until networkx adopts types
 # pyright: reportUnknownVariableType=false
@@ -386,7 +385,7 @@ def weld_linestring_coords(
 
 
 class EdgeInfo:
-    """ """
+    """Encapsulates EdgeInfo logic."""
 
     _names: list[str]
     _refs: list[str]
