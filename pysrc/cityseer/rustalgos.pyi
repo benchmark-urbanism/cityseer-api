@@ -330,6 +330,7 @@ class NodePayload:
     node_key: str
     coord: Coord
     live: bool
+    weight: float
     def validate(self) -> bool: ...
 
 class EdgePayload:
@@ -389,7 +390,7 @@ class NetworkStructure:
     @classmethod
     def new(cls) -> NetworkStructure: ...
     def progress(self) -> int: ...
-    def add_node(self, node_key: str, x: float, y: float, live: bool) -> int:
+    def add_node(self, node_key: str, x: float, y: float, live: bool, weight: float) -> int:
         """
         Parameters
         ----------

@@ -152,7 +152,7 @@ impl NetworkStructure {
                         if edge has not been claimed AND the neighbouring node has already been discovered,
                         then it is a cycle do before distance cutoff because this node and the neighbour can
                         respectively be within max distance even if cumulative distance across this edge
-                        (via non-shortest path) exceeds distance in some cases all distances are run at once,
+                        (via non-shortest path) exceeds distance. In some cases all distances are run at once,
                         so keep behaviour consistent by designating the farthest node (but via the shortest distance)
                         as the cycle node
                         */
@@ -276,7 +276,7 @@ impl NetworkStructure {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !self.is_node_live(*src_idx) {
+                if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
                 let (visited_nodes, _visited_edges, tree_map, _edge_map) =
@@ -289,20 +289,24 @@ impl NetworkStructure {
                     if !node_visit.short_dist.is_finite() {
                         continue;
                     }
+                    let wt = self.get_node_weight(*to_idx).unwrap();
                     if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
-                                node_density.metric[i][*src_idx].fetch_add(1.0, Ordering::Relaxed);
+                                node_density.metric[i][*src_idx]
+                                    .fetch_add(1.0 * wt, Ordering::Relaxed);
                                 node_farness.metric[i][*src_idx]
-                                    .fetch_add(node_visit.short_dist, Ordering::Relaxed);
+                                    .fetch_add(node_visit.short_dist * wt, Ordering::Relaxed);
                                 node_cycles.metric[i][*src_idx]
-                                    .fetch_add(node_visit.cycles, Ordering::Relaxed);
-                                node_harmonic.metric[i][*src_idx]
-                                    .fetch_add(1.0 / node_visit.short_dist, Ordering::Relaxed);
+                                    .fetch_add(node_visit.cycles * wt, Ordering::Relaxed);
+                                node_harmonic.metric[i][*src_idx].fetch_add(
+                                    (1.0 / node_visit.short_dist) * wt,
+                                    Ordering::Relaxed,
+                                );
                                 node_beta.metric[i][*src_idx].fetch_add(
-                                    (-beta * node_visit.short_dist).exp(),
+                                    (-beta * node_visit.short_dist).exp() * wt,
                                     Ordering::Relaxed,
                                 );
                             }
@@ -322,9 +326,9 @@ impl NetworkStructure {
                                 let beta = betas[i];
                                 if node_visit.short_dist <= distance as f32 {
                                     node_betweenness.metric[i][inter_idx]
-                                        .fetch_add(1.0, Ordering::Acquire);
+                                        .fetch_add(1.0 * wt, Ordering::Acquire);
                                     node_betweenness_beta.metric[i][inter_idx].fetch_add(
-                                        (-beta * node_visit.short_dist).exp(),
+                                        (-beta * node_visit.short_dist).exp() * wt,
                                         Ordering::Acquire,
                                     );
                                 }
@@ -416,7 +420,7 @@ impl NetworkStructure {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !self.is_node_live(*src_idx) {
+                if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
                 let (visited_nodes, _visited_edges, tree_map, _edge_map) =
@@ -534,7 +538,7 @@ impl NetworkStructure {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !self.is_node_live(*src_idx) {
+                if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
                 let (visited_nodes, visited_edges, tree_map, edge_map) =
