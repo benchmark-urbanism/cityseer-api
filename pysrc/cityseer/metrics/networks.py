@@ -89,11 +89,11 @@ def node_centrality_shortest(
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
@@ -192,11 +192,11 @@ def node_centrality_simplest(
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
@@ -286,11 +286,11 @@ def segment_centrality(
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
