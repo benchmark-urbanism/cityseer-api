@@ -23,18 +23,8 @@ from shapely import geometry
 from tqdm import tqdm
 
 from cityseer import config, rustalgos
-from cityseer.tools import graphs
-from cityseer.tools.graphs import (
-    EdgeData,
-    ListCoordsType,
-    MultiDiGraph,
-    NodeData,
-    NodeKey,
-    align_linestring_coords,
-    measure_bearing,
-    measure_cumulative_angle,
-    snap_linestring_endpoints,
-)
+from cityseer.tools import graphs, util
+from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -112,7 +102,7 @@ def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_c
             # convert
             edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
             # snap ends
-            edge_coords = snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
+            edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
 
@@ -584,15 +574,15 @@ def nx_from_osm_nx(
         # orient LineString
         geom_coords = line_geom.coords
         if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
-            geom_coords = graphs.align_linestring_coords(geom_coords, (s_x, s_y))
+            geom_coords = util.align_linestring_coords(geom_coords, (s_x, s_y))
         # check starting and ending tolerances
         if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
             raise ValueError("Starting node coordinates don't match LineString geometry starting coordinates.")
         if not np.allclose((e_x, e_y), geom_coords[-1][:2], atol=tolerance, rtol=0):
             raise ValueError("Ending node coordinates don't match LineString geometry ending coordinates.")
         # snap starting and ending coords to avoid rounding error issues
-        geom_coords = graphs.snap_linestring_startpoint(geom_coords, (s_x, s_y))
-        geom_coords = graphs.snap_linestring_endpoint(geom_coords, (e_x, e_y))
+        geom_coords = util.snap_linestring_startpoint(geom_coords, (s_x, s_y))
+        geom_coords = util.snap_linestring_endpoint(geom_coords, (e_x, e_y))
         g_multi.add_edge(start_nd_key, end_nd_key, key=edge_idx, geom=geometry.LineString(geom_coords))
         if edge_attributes is not None:
             for edge_att in edge_attributes:
@@ -795,9 +785,9 @@ def network_structure_from_nx(
                     )
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
-                line_geom_coords = align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
+                line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
                 # iterate the coordinates and calculate the angular change
-                angle_sum = measure_cumulative_angle(line_geom_coords)
+                angle_sum = util.measure_cumulative_angle(line_geom_coords)
                 if not np.isfinite(angle_sum) or angle_sum < 0:
                     raise ValueError(
                         f"Angle sum {angle_sum} for edge {start_node_key}-{end_node_key} must be finite and positive."
@@ -816,12 +806,12 @@ def network_structure_from_nx(
                 # in bearing
                 xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[0])
                 xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
-                in_bearing: float = measure_bearing(xy_1, xy_2)
+                in_bearing: float = util.measure_bearing(xy_1, xy_2)
                 # out bearing
                 xy_3: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
                 xy_4: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
-                out_bearing: float = measure_bearing(xy_3, xy_4)
-                total_bearing = measure_bearing(xy_1, xy_4)
+                out_bearing: float = util.measure_bearing(xy_3, xy_4)
+                total_bearing = util.measure_bearing(xy_1, xy_4)
                 # set edge
                 ns_edge_idx = network_structure.add_edge(
                     start_ns_node_idx,
