@@ -42,7 +42,7 @@ For documentations of older versions of `cityseer`, please refer to the docstrin
 # any networkX MultiGraph with 'x' and 'y' node attributes will do
 # here we'll use the cityseer mock module to generate an example networkX graph
 import networkx as nx
-from cityseer.tools import mock, graphs, plot
+from cityseer.tools import mock, graphs, plot, io
 
 G = mock.mock_graph()
 print(G)
@@ -114,7 +114,7 @@ from cityseer.metrics import networks
 
 # create a Network layer from the networkX graph
 # use a CRS EPSG code matching the projected coordinate reference system for your data
-nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G_decomp, crs=3395)
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 nodes_gdf = networks.segment_centrality(
     network_structure=network_structure,  # the network structure for which to compute the measures
@@ -243,7 +243,7 @@ The landuse metrics and statistical aggregations are computed over the street ne
 Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_geopandas](/metrics/networks#nx-from-network-geopandas) method.
 
 ```python
-nx_multigraph_round_trip = graphs.nx_from_geopandas(
+nx_multigraph_round_trip = io.nx_from_geopandas(
     nodes_gdf,
     edges_gdf,
 )

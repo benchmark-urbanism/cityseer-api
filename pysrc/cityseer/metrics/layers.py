@@ -150,11 +150,11 @@ def compute_accessibilities(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
@@ -206,7 +206,7 @@ def compute_accessibilities(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -306,11 +306,11 @@ def compute_mixed_uses(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     compute_hill: bool
@@ -402,7 +402,7 @@ def compute_mixed_uses(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -501,11 +501,11 @@ def compute_stats(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
@@ -559,7 +559,7 @@ def compute_stats(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())

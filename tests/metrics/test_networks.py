@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pytest
 
 from cityseer import config, rustalgos
 from cityseer.metrics import networks
-from cityseer.tools import graphs
+from cityseer.tools import io
 
 
 def test_node_centrality_shortest(primal_graph):
@@ -17,7 +16,7 @@ def test_node_centrality_shortest(primal_graph):
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
     # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
-    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
         for _distances, _betas in [(distances, None), (None, betas)]:
@@ -52,7 +51,7 @@ def test_node_centrality_simplest(primal_graph):
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
     # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
-    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
         for _distances, _betas in [(distances, None), (None, betas)]:
@@ -96,7 +95,7 @@ def test_segment_centrality(primal_graph):
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
     # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
-    nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
         for _distances, _betas in [(distances, None), (None, betas)]:

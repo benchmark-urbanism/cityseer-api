@@ -101,7 +101,7 @@ The automated graph cleaning provided by [osm_graph_from_poly](/tools/io#osm-gra
 Once OSM data has been converted to a `NetworkX` `MultiGraph`, the `tools.graphs` module can be used to clean the network.
 
 :::note
-The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`graphs.nx_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm).
+The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`io.nx_wgs_to_utm`](/tools/io#nx-wgs-to-utm).
 :::
 
 Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
@@ -255,7 +255,7 @@ simple_plot(multi_graph_cons)
 # WORKFLOW 2: Using cityseer to manually clean an OSMnx graph
 # ===========================================================
 G_raw = io.nx_from_osm_nx(multi_di_graph_raw)
-G = graphs.nx_wgs_to_utm(G_raw)
+G = io.nx_wgs_to_utm(G_raw)
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_remove_filler_nodes(G)
 G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)

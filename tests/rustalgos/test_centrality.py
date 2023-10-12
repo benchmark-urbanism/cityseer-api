@@ -9,12 +9,11 @@ import pytest
 from shapely import geometry
 
 from cityseer import config, rustalgos
-from cityseer.metrics import networks
-from cityseer.tools import graphs, mock
+from cityseer.tools import graphs, io, mock
 
 
 def test_find_nearest(primal_graph):
-    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     data_gdf = mock.mock_data_gdf(primal_graph)
     # test the filter - iterating each point in data map
     for geom in data_gdf["geometry"]:
@@ -33,7 +32,7 @@ def test_find_nearest(primal_graph):
 
 
 def test_road_distance(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(box_graph, 3395)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph, 3395)
     d1 = rustalgos.Coord(4, 2)
     d2 = rustalgos.Coord(4, 4)
     d3 = rustalgos.Coord(4, 6)
@@ -45,7 +44,7 @@ def test_road_distance(box_graph):
 
 
 def test_closest_intersections(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(box_graph, 3395)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph, 3395)
     d1 = rustalgos.Coord(2.5, 1)  # should pick 0 - 1
     d2 = rustalgos.Coord(4, 2.5)  # should pick 1 - 2
     d3 = rustalgos.Coord(2.5, 4)  # should pick 2 - 3
@@ -128,7 +127,7 @@ def test_assign_to_network(primal_graph):
         ]
     )
     # generate data
-    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(G, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, 3395)
     data_gdf = override_coords(G)
     for target_idx, geom in enumerate(data_gdf["geometry"]):
         # find the closest point on the network
@@ -162,9 +161,9 @@ def find_path(start_idx, target_idx, tree_map):
 
 
 def test_shortest_path_tree(primal_graph, dual_graph):
-    nodes_gdf_p, edges_gdf_p, network_structure_p = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph, 3395)
     # prepare round-trip graph for checks
-    G_round_trip = graphs.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
+    G_round_trip = io.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:
@@ -181,7 +180,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                 assert find_path(int(j_node_key), src_idx, tree_map) == [int(j) for j in j_nx_path]
                 assert tree_map[int(j_node_key)].short_dist - nx_dist[j_node_key] < config.ATOL
     # check with jitter
-    nodes_gdf_j, edges_gdf_j, network_structure_j = graphs.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf_j, edges_gdf_j, network_structure_j = io.network_structure_from_nx(primal_graph, 3395)
     for max_dist in [2000]:
         # use aggressive jitter and check that at least one shortest path is different to non-jitter
         for jitter in [200]:
@@ -220,7 +219,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                 continue
             assert shortest_dists[str(target_idx)] - tree_map[target_idx].short_dist <= config.ATOL
     # prepare dual graph
-    nodes_gdf_d, edges_gdf_d, network_structure_d = graphs.network_structure_from_nx(dual_graph, 3395)
+    nodes_gdf_d, edges_gdf_d, network_structure_d = io.network_structure_from_nx(dual_graph, 3395)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
@@ -348,8 +347,8 @@ def test_local_node_centrality_shortest(primal_graph):
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     """
     # generate node and edge maps
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    G_round_trip = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    G_round_trip = io.nx_from_geopandas(nodes_gdf, edges_gdf)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)
@@ -462,10 +461,10 @@ def test_local_centrality_all(diamond_graph):
     measures_data is multidimensional in the form of measure_keys x distances x nodes
     """
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(diamond_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(diamond_graph, 3395)
     # generate dual
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
-    _nodes_gdf_d, _edges_gdf_d, network_structure_dual = graphs.network_structure_from_nx(diamond_graph_dual, 3395)
+    _nodes_gdf_d, _edges_gdf_d, network_structure_dual = io.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
     distances = [50, 150, 250]
     betas = rustalgos.betas_from_distances(distances)
@@ -671,12 +670,10 @@ def test_decomposed_local_centrality(primal_graph):
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(
         primal_graph, 3395
     )  # generate node and edge maps
-    _node_keys_decomp, _edges_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(
-        G_decomposed, 3395
-    )
+    _node_keys_decomp, _edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed, 3395)
     # with increasing decomposition:
     # - node based measures will not match
     # - closeness segment measures will match - these measure to the cut endpoints per thresholds

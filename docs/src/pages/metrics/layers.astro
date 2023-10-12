@@ -189,7 +189,7 @@ Land-use keys for which to compute accessibilities. The keys should be selected 
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -198,7 +198,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -300,7 +300,7 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
@@ -387,7 +387,7 @@ The column label from which to take landuse categories, e.g. a column labelled "
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -396,7 +396,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -547,7 +547,7 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
@@ -629,7 +629,7 @@ The column label corresponding to the column in `data_gdf` from which to take nu
           <div class="yap doc-str-elem-type">GeoDataFrame</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -638,7 +638,7 @@ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structur
           <div class="yap doc-str-elem-type">NetworkStructure</div>
         </div>
         <div class="yap doc-str-elem-desc"><Markdown is:raw>
-A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`graphs.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
+A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) function.
 </Markdown></div>
       </div>
       <div class="yap doc-str-elem-container">
@@ -742,7 +742,7 @@ from cityseer.tools import mock, graphs
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
 print(nodes_gdf.head())
 numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
 print(numerical_gdf.head())
