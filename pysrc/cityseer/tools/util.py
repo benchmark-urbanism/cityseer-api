@@ -12,9 +12,11 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional, Union
 
+import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 from shapely import coords, geometry, strtree
 from shapely.errors import GeometryTypeError
 from shapely.geometry import LineString
@@ -538,3 +540,62 @@ def create_edges_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, li
         edge_lookups.append({"start_nd_key": start_nd_key, "end_nd_key": end_nd_key, "edge_idx": edge_idx})
     edge_tree = strtree.STRtree(edge_geoms)
     return edge_tree, edge_lookups
+
+
+def blend_metrics(
+    nodes_gdf: gpd.GeoDataFrame,
+    edges_gdf: gpd.GeoDataFrame,
+    method: str,
+) -> MultiGraph:
+    """
+    Blends metrics from a nodes GeoDataFrame into an edges GeoDataFrame.
+
+    This is useful for situations where it is preferable to visualise the computed metrics as LineStrings instead of
+    points. The line will be assigned the value from the adjacent two nodes based on the selected "min", "max", or "avg"
+    method.
+
+    Parameters
+    ----------
+    nodes_gdf: GeoDataFrame
+        A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+    edges_gdf: GeoDataFrame
+        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+    method: str
+        The method used for determining the line value from the adjacent points. Must be one of "min", "max", or "avg".
+
+    Returns
+    -------
+    merged_gdf: GeoDataFrame
+        An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
+        provided edges `GeoDataFrame`.
+
+    """
+    if method not in ["min", "max", "avg"]:
+        raise ValueError('Method should be one of "min", "max", or "avg"')
+    merged_edges_gdf = edges_gdf.copy()
+    for node_column in nodes_gdf.columns:
+        if not node_column.startswith("cc_metric"):
+            continue
+        # suffix is only applied for overlapping column names
+        merged_edges_gdf = pd.merge(
+            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True
+        )
+        merged_edges_gdf = pd.merge(
+            merged_edges_gdf,
+            nodes_gdf[[node_column]],
+            left_on="nx_end_node_key",
+            right_index=True,
+            suffixes=("", "_end_nd"),
+        )
+        # merge
+        end_nd_col = f"{node_column}_end_nd"
+        if method == "avg":
+            merged_edges_gdf[node_column] = (merged_edges_gdf[node_column] + merged_edges_gdf[end_nd_col]) / 2
+        elif method == "min":
+            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].min(axis=1)
+        else:
+            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].max(axis=1)
+        # cleanup
+        merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
+
+    return merged_edges_gdf
