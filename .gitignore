@@ -1,6 +1,9 @@
 # mac
 .DS_Store
 
+# code profiling
+.prof
+
 #setuptools_scm
 cityseer/_version.py
 

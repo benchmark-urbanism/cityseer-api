@@ -7,8 +7,7 @@ import pytest
 from shapely import geometry, ops
 
 from cityseer import config
-from cityseer.metrics import networks
-from cityseer.tools import graphs, io, mock
+from cityseer.tools import graphs, mock
 
 
 def test_nx_simple_geoms():
@@ -308,59 +307,18 @@ def test_nx_iron_edges():
     pass
 
 
-def test_nx_consolidate_nodes():
-    # create a test graph
-    G = nx.MultiGraph()
-    nodes = [
-        (0, {"x": 620, "y": 720}),
-        (1, {"x": 620, "y": 700}),
-        (2, {"x": 660, "y": 700}),
-        (3, {"x": 660, "y": 660}),
-        (4, {"x": 700, "y": 800}),
-        (5, {"x": 720, "y": 800}),
-        (6, {"x": 700, "y": 720}),
-        (7, {"x": 720, "y": 720}),
-        (8, {"x": 700, "y": 700}),
-        (9, {"x": 700, "y": 620}),
-        (10, {"x": 720, "y": 620}),
-        (11, {"x": 760, "y": 760}),
-        (12, {"x": 800, "y": 760}),
-        (13, {"x": 780, "y": 720}),
-        (14, {"x": 840, "y": 720}),
-        (15, {"x": 840, "y": 700}),
-    ]
-    edges = [
-        (0, 6),
-        (1, 2),
-        (2, 3),
-        (2, 8),
-        (4, 6),
-        (5, 7),
-        (6, 7),
-        (6, 8),
-        (7, 10),
-        (7, 13),
-        (8, 9),
-        (8, 15),
-        (11, 12),
-        (11, 13),
-        (12, 13),
-        (13, 14),
-    ]
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
-
-    G = graphs.nx_simple_geoms(G)
+def test_nx_consolidate_nodes(parallel_segments_graph):
+    """ """
     # behaviour confirmed visually
     # from cityseer.tools import plot
     # plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True)
     # set centroid_by_straightness to False
     G_merged_spatial = graphs.nx_consolidate_nodes(
-        G, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
+        parallel_segments_graph, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     # this time, start with same origin graph but split opposing geoms first
-    G_split_opps = graphs.nx_split_opposing_geoms(G, buffer_dist=25, merge_edges_by_midline=True)
+    G_split_opps = graphs.nx_split_opposing_geoms(parallel_segments_graph, buffer_dist=25, merge_edges_by_midline=True)
     # plot.plot_nx(G_split_opps, labels=True, node_size=80, plot_geoms=True)
     # set straightness heuristic false for this one
     G_merged_spatial = graphs.nx_consolidate_nodes(
@@ -382,7 +340,6 @@ def test_nx_consolidate_nodes():
         (780.0, 710.0),
         (840.0, 710.0),
     ]
-
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d["geom"].length)
@@ -588,3 +545,19 @@ def test_nx_to_dual(primal_graph, diamond_graph):
     assert G_dual.number_of_edges() == 155
     for s, e in G_dual.edges():
         assert G_dual.number_of_edges(s, e) == 1
+
+
+def test_nx_locally_dissolve_edges(parallel_segments_graph):
+    """ """
+    G_20 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 20)
+    # G_10 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 10)
+    G_0 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 0)
+    # crude test for now
+    for nd_key, nd_data in G_20.nodes(data=True):
+        assert nd_data["weight"] < 1
+        assert nd_data["weight"] > 0
+    for nd_key, nd_data in G_10.nodes(data=True):
+        assert nd_data["weight"] < 1
+        assert nd_data["weight"] > 0
+    for nd_key, nd_data in G_0.nodes(data=True):
+        assert nd_data["weight"] == 1

@@ -100,3 +100,49 @@ def box_graph() -> nx.MultiGraph:
     G_box.add_edges_from([("0", "1"), ("1", "2"), ("2", "3")])
     G_box = graphs.nx_simple_geoms(G_box)
     return G_box
+
+
+@pytest.fixture
+def parallel_segments_graph() -> nx.MultiGraph:
+    """ """
+    nodes = [
+        (0, {"x": 620, "y": 720}),
+        (1, {"x": 620, "y": 700}),
+        (2, {"x": 660, "y": 700}),
+        (3, {"x": 660, "y": 660}),
+        (4, {"x": 700, "y": 800}),
+        (5, {"x": 720, "y": 800}),
+        (6, {"x": 700, "y": 720}),
+        (7, {"x": 720, "y": 720}),
+        (8, {"x": 700, "y": 700}),
+        (9, {"x": 700, "y": 620}),
+        (10, {"x": 720, "y": 620}),
+        (11, {"x": 760, "y": 760}),
+        (12, {"x": 800, "y": 760}),
+        (13, {"x": 780, "y": 720}),
+        (14, {"x": 840, "y": 720}),
+        (15, {"x": 840, "y": 700}),
+    ]
+    edges = [
+        (0, 6),
+        (1, 2),
+        (2, 3),
+        (2, 8),
+        (4, 6),
+        (5, 7),
+        (6, 7),
+        (6, 8),
+        (7, 10),
+        (7, 13),
+        (8, 9),
+        (8, 15),
+        (11, 12),
+        (11, 13),
+        (12, 13),
+        (13, 14),
+    ]
+    G_parallel = nx.MultiGraph()
+    G_parallel.add_nodes_from(nodes)
+    G_parallel.add_edges_from(edges)
+    G_parallel = graphs.nx_simple_geoms(G_parallel)
+    return G_parallel

@@ -6,7 +6,7 @@ groups = ["default", "dev"]
 cross_platform = true
 static_urls = false
 lock_version = "4.3"
-content_hash = "sha256:a8ee999fced4c3de5cd1d545c6bcc42196ac383cd0753a9fd78531d865fbc4c7"
+content_hash = "sha256:02e9ef3c133fabcf4221ed03b78fcb739ed2e1c5b5a3d2b2f0cc0e02911516a0"
 
 [[package]]
 name = "anyio"
@@ -2224,6 +2224,19 @@ summary = "Python 2 and 3 compatibility utilities"
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+
+[[package]]
+name = "snakeviz"
+version = "2.2.0"
+requires_python = ">=3.7"
+summary = "A web-based viewer for Python profiler output"
+dependencies = [
+    "tornado>=2.0",
+]
+files = [
+    {file = "snakeviz-2.2.0-py2.py3-none-any.whl", hash = "sha256:569e2d71c47f80a886aa6e70d6405cb6d30aa3520969ad956b06f824c5f02b8e"},
+    {file = "snakeviz-2.2.0.tar.gz", hash = "sha256:7bfd00be7ae147eb4a170a471578e1cd3f41f803238958b6b8efcf2c698a6aa9"},
 ]
 
 [[package]]
