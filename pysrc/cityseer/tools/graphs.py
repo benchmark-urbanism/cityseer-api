@@ -1352,7 +1352,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_dual
 
 
-def nx_locally_dissolve_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
+def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
 

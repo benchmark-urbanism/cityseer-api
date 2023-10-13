@@ -433,13 +433,14 @@ impl NetworkStructure {
                     if !node_visit.short_dist.is_finite() {
                         continue;
                     }
+                    let wt = self.get_node_weight(*to_idx).unwrap();
                     if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             if node_visit.short_dist <= distance as f32 {
                                 let ang = 1.0 + (node_visit.simpl_dist / 180.0);
                                 node_harmonic.metric[i][*src_idx]
-                                    .fetch_add(1.0 / ang, Ordering::Relaxed);
+                                    .fetch_add((1.0 / ang) * wt, Ordering::Relaxed);
                             }
                         }
                     }
@@ -456,7 +457,7 @@ impl NetworkStructure {
                                 let distance = distances[i];
                                 if node_visit.short_dist <= distance as f32 {
                                     node_betweenness.metric[i][inter_idx]
-                                        .fetch_add(1.0, Ordering::Acquire);
+                                        .fetch_add(1.0 * wt, Ordering::Acquire);
                                 }
                             }
                             inter_idx = tree_map[inter_idx].pred.unwrap();

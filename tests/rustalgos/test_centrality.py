@@ -597,6 +597,7 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_short.node_betweenness_beta[250], [0, 0.0407622, 0, 0]) or np.allclose(
         node_result_short.node_betweenness_beta[250], [0, 0, 0.0407622, 0]
     )
+    # node shortest weights tested in previous function
 
     # NODE SIMPLEST
     node_result_simplest = network_structure.local_node_centrality_simplest(
@@ -616,6 +617,32 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(
         node_result_simplest.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL
     ) or np.allclose(node_result_simplest.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL)
+    # check weights
+    for wt in [0.5, 2]:
+        # for weighted checks
+        diamond_graph_wt = diamond_graph.copy()
+        for nd_idx in diamond_graph_wt.nodes():
+            diamond_graph_wt.nodes[nd_idx]["weight"] = wt
+        _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt, 3395)
+        node_result_simplest_wt = network_structure_wt.local_node_centrality_simplest(
+            distances,
+            compute_closeness=True,
+            compute_betweenness=True,
+        )
+        # check that weighted versions behave as anticipated
+        for dist in distances:
+            assert np.allclose(
+                node_result_simplest.node_betweenness[dist] * wt,
+                node_result_simplest_wt.node_betweenness[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_simplest.node_harmonic[dist] * wt,
+                node_result_simplest_wt.node_harmonic[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
     # NODE SIMPLEST ON DUAL network_structure_dual
     node_result_simplest = network_structure_dual.local_node_centrality_simplest(
         distances,
