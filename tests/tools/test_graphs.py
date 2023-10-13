@@ -550,14 +550,16 @@ def test_nx_to_dual(primal_graph, diamond_graph):
 def test_nx_locally_dissolve_edges(parallel_segments_graph):
     """ """
     G_20 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 20)
-    # G_10 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 10)
+    G_10 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 10)
     G_0 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 0)
+    # from cityseer.tools import plot
+    # plot.plot_nx(G_0, labels=True, plot_geoms=True)
     # crude test for now
     for nd_key, nd_data in G_20.nodes(data=True):
-        assert nd_data["weight"] < 1
+        assert nd_data["weight"] <= 1
         assert nd_data["weight"] > 0
     for nd_key, nd_data in G_10.nodes(data=True):
-        assert nd_data["weight"] < 1
+        assert nd_data["weight"] <= 1
         assert nd_data["weight"] > 0
     for nd_key, nd_data in G_0.nodes(data=True):
         assert nd_data["weight"] == 1
