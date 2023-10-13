@@ -453,6 +453,65 @@ def test_local_node_centrality_shortest(primal_graph):
         assert np.allclose(
             node_result_short.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
+    # check weights
+    for wt in [0.5, 2]:
+        # create a weighted version fo the graph
+        primal_graph_wt = primal_graph.copy()
+        for nd_idx in primal_graph_wt:
+            primal_graph_wt.nodes[nd_idx]["weight"] = wt
+        # compute weighted measures
+        nodes_gdf_wt, edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(primal_graph_wt, 3395)
+        # weights should persists to the nodes GDF
+        assert np.all(nodes_gdf_wt.weight == wt)
+        node_result_short_wt = network_structure_wt.local_node_centrality_shortest(
+            distances=distances,
+            compute_closeness=True,
+            compute_betweenness=True,
+        )
+        # check that weighted versions behave as anticipated
+        for dist in distances:
+            assert np.allclose(
+                node_result_short.node_beta[dist] * wt,
+                node_result_short_wt.node_beta[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_betweenness[dist] * wt,
+                node_result_short_wt.node_betweenness[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_betweenness_beta[dist] * wt,
+                node_result_short_wt.node_betweenness_beta[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_cycles[dist] * wt,
+                node_result_short_wt.node_cycles[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_density[dist] * wt,
+                node_result_short_wt.node_density[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_farness[dist] * wt,
+                node_result_short_wt.node_farness[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            assert np.allclose(
+                node_result_short.node_harmonic[dist] * wt,
+                node_result_short_wt.node_harmonic[dist],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
 
 
 def test_local_centrality_all(diamond_graph):
