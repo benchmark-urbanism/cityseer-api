@@ -1381,33 +1381,41 @@ def nx_locally_dissolve_edges(nx_multigraph: MultiGraph, dissolve_distance: int 
     g_multi_copy: MultiGraph = nx_multigraph.copy()
     # generate STR tree
     edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
+    # first iterate edges to save number of iters
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
+    ):
+        # start scratch variable
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["nearby_itx_lens"] = 0
+        # find nearby edges
+        edge_geom = edge_data["geom"]
+        edge_geom_buff = edge_geom.buffer(dissolve_distance)
+        edges_hits: list[int] = edges_tree.query(edge_geom_buff)
+        for edge_hit_idx in edges_hits:
+            edge_lookup = edge_lookups[edge_hit_idx]
+            nearby_start_nd_key = edge_lookup["start_nd_key"]
+            nearby_end_nd_key = edge_lookup["end_nd_key"]
+            nearby_edge_idx = edge_lookup["edge_idx"]
+            # don't add edges which share common nodes (directly adjacent)
+            if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [start_nd_key, end_nd_key]:
+                continue
+            # get linestring
+            edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
+            nearby_edge_geom: geometry.LineString = edge_data["geom"]
+            # find length of geom intersecting buff
+            edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
+            if edge_itx and edge_itx.geom_type == "LineString":
+                g_multi_copy[start_nd_key][end_nd_key][edge_idx]["nearby_itx_lens"] += edge_itx.length
     # gather out edges
-    adjacent_lens = 0
-    total_lens = 0
     for nd_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
-        for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
-            for nb_edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+        adjacent_lens = 0
+        total_lens = 0
+        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):
+            for nb_edge_data in g_multi_copy[nd_key][nb_nd_key].values():
                 edge_geom = nb_edge_data["geom"]
                 adjacent_lens += edge_geom.length
                 total_lens += edge_geom.length
-                # find nearby edges
-                edge_geom_buff = edge_geom.buffer(dissolve_distance)
-                edges_hits: list[int] = edges_tree.query(edge_geom_buff)
-                for edge_hit_idx in edges_hits:
-                    edge_lookup = edge_lookups[edge_hit_idx]
-                    start_nd_key = edge_lookup["start_nd_key"]
-                    end_nd_key = edge_lookup["end_nd_key"]
-                    # filter out edges connected to the current node
-                    if start_nd_key == nd_key or end_nd_key == nd_key:
-                        continue
-                    # get linestring
-                    edge_idx = edge_lookup["edge_idx"]
-                    edge_data = nx_multigraph[start_nd_key][end_nd_key][edge_idx]
-                    nearby_edge_geom: geometry.LineString = edge_data["geom"]
-                    # find length of geom intersecting buff
-                    edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
-                    if edge_itx and edge_itx.geom_type == "LineString":
-                        total_lens += edge_itx.length
+                total_lens += nb_edge_data["nearby_itx_lens"]
         # calculate ratio
         g_multi_copy.nodes[nd_key]["weight"] = adjacent_lens / total_lens
 
