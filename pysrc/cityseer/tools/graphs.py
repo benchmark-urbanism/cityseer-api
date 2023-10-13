@@ -430,7 +430,7 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
-        g_multi_copy.edges(keys=True, data=True)  # , disable=config.QUIET_MODE
+        g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
         edge_geom: geometry.LineString = edge_data["geom"]
         edge_geom = geometry.LineString(
@@ -1350,3 +1350,66 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                     )
 
     return g_dual
+
+
+def nx_locally_dissolve_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
+    """
+    Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
+
+    This is used to control for unintended amplification of centrality measures where redundant network representations
+    (e.g. complicated intersections or duplicitious segments, i.e. street, sidewalk, cycleway, busway) tend to inflate
+    centrality scores. This method is intended for 'messier' network representations (e.g. OSM).
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    dissolve_distance: int
+        A distance to use when buffering edges to calculate the weighting. 20m by default.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the
+        locally 'dissolved' context.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info(f"Generating node weights based on locally dissolved edges using a buffer of {dissolve_distance}m.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # generate STR tree
+    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
+    # gather out edges
+    adjacent_edges: list[geometry.LineString] = []
+    adjacent_lens = 0
+    total_lens = 0
+    for nd_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
+        for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+            for nb_edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                edge_geom = nb_edge_data["geom"]
+                adjacent_edges.append(edge_geom)
+                adjacent_lens += edge_geom.length
+                total_lens += edge_geom.length
+        # merge
+        merged_edges_buff = geometry.MultiLineString(adjacent_edges).buffer(dissolve_distance)
+        # find nearby edges
+        edges_hits: list[int] = edges_tree.query(merged_edges_buff)
+        for edge_hit_idx in edges_hits:
+            edge_lookup = edge_lookups[edge_hit_idx]
+            start_nd_key = edge_lookup["start_nd_key"]
+            end_nd_key = edge_lookup["end_nd_key"]
+            edge_idx = edge_lookup["edge_idx"]
+            # filter out edges connected to the current node
+            if start_nd_key == nd_key or end_nd_key == nd_key:
+                continue
+            edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+            # find length of geom intersecting merged_edges_buff
+            edge_itx = edge_geom.intersection(merged_edges_buff)
+            if edge_itx and edge_itx.geom_type == "LineString":
+                total_lens += edge_itx.length
+        # calculate ratio
+        g_multi_copy.nodes[nd_key]["weight"] = adjacent_lens / total_lens
+
+    return g_multi_copy
