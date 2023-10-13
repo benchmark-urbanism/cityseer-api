@@ -85,15 +85,20 @@ def node_centrality_shortest(
     r"""
     Compute node-based network centrality using the shortest path heuristic.
 
+    > Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
+    manually specified. Consider use of
+    [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
+    network representations.
+
     Parameters
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
@@ -188,15 +193,20 @@ def node_centrality_simplest(
     r"""
     Compute node-based network centrality using the simplest path (angular) heuristic.
 
+    > Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
+    manually specified. Consider use of
+    [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
+    network representations.
+
     Parameters
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
@@ -282,15 +292,17 @@ def segment_centrality(
 
     > Simplest path heuristics introduce conceptual and practical complications and support is deprecated since v4.
 
+    > For conceptual and practical reasons, segment based centralities are not weighted by node weights.
+
     Parameters
     ----------
     network_structure
         A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method.
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/graphs#network-structure-from-nx) method. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters

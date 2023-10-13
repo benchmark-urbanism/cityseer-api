@@ -547,11 +547,11 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         assert G_dual.number_of_edges(s, e) == 1
 
 
-def test_nx_locally_dissolve_edges(parallel_segments_graph):
+def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
     """ """
-    G_20 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 20)
-    G_10 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 10)
-    G_0 = graphs.nx_locally_dissolve_edges(parallel_segments_graph, 0)
+    G_20 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 20)
+    G_10 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 10)
+    G_0 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 0)
     # from cityseer.tools import plot
     # plot.plot_nx(G_0, labels=True, plot_geoms=True)
     # crude test for now
