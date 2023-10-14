@@ -85,10 +85,12 @@ def node_centrality_shortest(
     r"""
     Compute node-based network centrality using the shortest path heuristic.
 
-    > Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
+    :::note
+    Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
     manually specified. Consider use of
     [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
     network representations.
+    :::
 
     Parameters
     ----------
@@ -140,17 +142,18 @@ def node_centrality_shortest(
     | node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
     | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-    | node_beta             | $$\sum_{j\neq{i}}^{n}\exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
+    | node_beta             | $$\sum_{j\neq{i}}^{n} \\ \exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
     This is a spatial impedance metric differentiated from other closeness centralities by the use of an
     explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
     increase. |
     | node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
     shortest-paths traversing each node $i$. |
-    | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}\exp(-\beta\cdot d[j,k])$$ | Applies a
+    | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n} \\ \exp(-\beta\cdot d[j,k])$$ | Applies a
     spatial impedance decay function to betweenness centrality. $d$ represents the full distance from
     any $j$ to $k$ node pair passing through node $i$. |
 
     """
+    logger.info("Computing shortest path node centrality.")
     if distances is None and betas is not None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     # wrap the main function call for passing to the progress wrapper
@@ -193,10 +196,12 @@ def node_centrality_simplest(
     r"""
     Compute node-based network centrality using the simplest path (angular) heuristic.
 
-    > Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
+    :::note
+    Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
     manually specified. Consider use of
     [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
     network representations.
+    :::
 
     Parameters
     ----------
@@ -252,6 +257,7 @@ def node_centrality_simplest(
     parameter is explicitly set to `True`:
 
     """
+    logger.info("Computing simplest path node centrality.")
     if distances is None and betas is not None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     partial_func = partial(
@@ -348,6 +354,7 @@ def segment_centrality(
     on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
     """
+    logger.info("Computing shortest path segment centrality.")
     if distances is None and betas is not None:
         distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     partial_func = partial(

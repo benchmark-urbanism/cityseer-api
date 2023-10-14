@@ -16,7 +16,7 @@ jobs:
       - name: Build docs
         run: |
           pdm install --dev
-          pdm run build_docs
+          pdm run generate_docs
       - run: cd docs && npm install && npm run build && cd ..
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

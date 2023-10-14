@@ -55,11 +55,11 @@ def assign_gdf_to_network(
     The `max_assign_dist` parameter should not be set overly low. The `max_assign_dist` parameter sets a crow-flies
     distance limit on how far the algorithm will search in its attempts to encircle the data point. If the
     `max_assign_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a
-    node is found, may have to terminate exploration prematurely because it can't travel sufficiently far from the data
-    point to explore the surrounding network. If too many data points are not being successfully assigned to the correct
-    street edges, then this distance should be increased. Conversely, if most of the data points are satisfactorily
-    assigned, then it may be possible to decrease this threshold. A distance of around 400m may provide a good starting
-    point.
+    node is found, may have to terminate exploration prematurely because it can't travel sufficiently far from the
+    data point to explore the surrounding network. If too many data points are not being successfully assigned to the
+    correct street edges, then this distance should be increased. Conversely, if most of the data points are
+    satisfactorily assigned, then it may be possible to decrease this threshold. A distance of around 400m may provide
+    a good starting point.
     :::
 
     :::note
@@ -219,8 +219,10 @@ def compute_accessibilities(
         distances=[200, 400, 800],
     )
     print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_c_400_weighted"])  # weighted form
-    print(nodes_gdf["cc_metric_c_400_non_weighted"])  # non-weighted form
+    # weighted form
+    print(nodes_gdf["cc_metric_c_400_weighted"])
+    # non-weighted form
+    print(nodes_gdf["cc_metric_c_400_non_weighted"])
     ```
 
     """
@@ -367,14 +369,14 @@ def compute_mixed_uses(
     --------
     | key | formula | notes |
     |-----|:-------:|-------|
-    | hill | $$q\geq{0},\ q\neq{1} \ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \
-    lim_{q\to1} \ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the
+    | hill | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\
+    lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the
     preferred form of diversity metric because it adheres to the replication principle and uses units of effective
     species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on
     the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in
     an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of
     distinct land-uses.|
-    | hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \
+    | hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\
     \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based
     on the distances from the point of computation to the nearest example of a particular land-use. It therefore
     gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
@@ -413,8 +415,10 @@ def compute_mixed_uses(
         network_structure=network_structure,
         distances=[200, 400, 800],
     )
-    print(nodes_gdf.columns)  # the data is written to the GeoDataFrame
-    print(nodes_gdf["cc_metric_hill_q0_800"])  # access accordingly, e.g. hill diversity at q=0 and 800m
+    # the data is written to the GeoDataFrame
+    print(nodes_gdf.columns)
+    # access accordingly, e.g. hill diversity at q=0 and 800m
+    print(nodes_gdf["cc_metric_hill_q0_800"])
     ```
     :::warning
     Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
@@ -571,8 +575,10 @@ def compute_stats(
         distances=[200, 400, 800],
     )
     print(nodes_gdf.columns)
-    print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])  # weighted form
-    print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])  # non-weighted form
+    # weighted form
+    print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])
+    # non-weighted form
+    print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])
     ```
 
     :::note

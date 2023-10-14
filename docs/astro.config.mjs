@@ -2,19 +2,19 @@ import prefetch from '@astrojs/prefetch'
 import sitemap from '@astrojs/sitemap'
 import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
+import remarkAllyEmoji from '@fec/remark-a11y-emoji'
 import { defineConfig } from 'astro/config'
 import { h, s } from 'hastscript'
-import { visit } from 'unist-util-visit'
-import rehypeCitation from 'rehype-citation'
-import remarkGfm from 'remark-gfm'
-import rehypeSlug from 'rehype-slug'
-import remarkEmoji from 'remark-emoji'
-import remarkAllyEmoji from '@fec/remark-a11y-emoji'
-import remarkSmartypants from 'remark-smartypants'
-import remarkMath from 'remark-math'
-import remarkDirective from 'remark-directive'
-import rehypeKatex from 'rehype-katex'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
+import rehypeCitation from 'rehype-citation'
+import rehypeKatex from 'rehype-katex'
+import rehypeSlug from 'rehype-slug'
+import remarkDirective from 'remark-directive'
+import remarkEmoji from 'remark-emoji'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import remarkSmartypants from 'remark-smartypants'
+import { visit } from 'unist-util-visit'
 
 function admonitionRemarkPlugin() {
   return (tree) => {
@@ -51,15 +51,15 @@ export default defineConfig({
   base: '/',
   // firebase hosting is set to false
   trailingSlash: 'never',
+  output: 'static',
   build: {
     format: 'directory',
   },
   markdown: {
     drafts: false,
-    syntaxHighlight: 'shiki',
     shikiConfig: {
-      theme: 'material-darker',
-      langs: ['astro'],
+      theme: 'material-theme-darker',
+      langs: [],
       wrap: true,
     },
     remarkPlugins: [
@@ -89,7 +89,6 @@ export default defineConfig({
         {
           test: ['h1', 'h2', 'h3'],
           behavior: 'prepend',
-
           content(node) {
             return [
               s(

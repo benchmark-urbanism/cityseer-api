@@ -10,7 +10,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import geopandas as gpd
 import networkx as nx
@@ -321,7 +321,7 @@ def snap_linestring_endpoints(
 def weld_linestring_coords(
     linestring_coords_a: AnyCoordsType,
     linestring_coords_b: AnyCoordsType,
-    force_xy: Optional[CoordsType] = None,
+    force_xy: CoordsType | None = None,
     tolerance: float = 0.01,
 ) -> ListCoordsType:
     """
@@ -442,7 +442,7 @@ def add_node(
     nodes_names: list[NodeKey],
     x: float,
     y: float,
-    live: Optional[bool] = None,
+    live: bool | None = None,
 ) -> tuple[str, bool]:
     """
     Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.

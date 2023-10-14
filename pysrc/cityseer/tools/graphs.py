@@ -12,7 +12,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -138,7 +138,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             # otherwise randomly select one side and find a non-simple node as a starting point.
             nb_nd_key = nbs[0]
             # anchor_nd should be the first node of the chain of nodes to be merged, and should be a non-simple node
-            anchor_nd: Optional[NodeKey] = None
+            anchor_nd: NodeKey | None = None
             # next_link_nd should be a direct neighbour of anchor_nd and must be a simple node
             next_link_nd: NodeKey = nd_key
             # find the non-simple start node
@@ -162,7 +162,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             # accumulate and weld geometries along the way
             # break once finding another non-simple node
             trailing_nd: NodeKey = anchor_nd
-            end_nd: Optional[NodeKey] = None
+            end_nd: NodeKey | None = None
             drop_nodes: list[NodeKey] = []
             agg_geom: ListCoordsType = []
             edge_info = util.EdgeInfo()
@@ -238,7 +238,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
-    despine: Optional[float] = None,
+    despine: float | None = None,
     remove_disconnected: bool = True,
     cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
@@ -660,7 +660,7 @@ def nx_consolidate_nodes(
     neighbour_policy: str | None = None,
     crawl: bool = False,
     centroid_by_straightness: bool = True,
-    centroid_by_min_len_factor: Optional[float] = None,
+    centroid_by_min_len_factor: float | None = None,
     merge_edges_by_midline: bool = True,
     contains_buffer_dist: int = 20,
 ) -> MultiGraph:
@@ -825,7 +825,7 @@ def nx_split_opposing_geoms(
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
 
     This facilitates merging parallel roadways through subsequent use of
-    [`nx-consolidate-nodes`](#nx-consolidate-nodes).
+    [`nx_consolidate-nodes`](#nx-consolidate-nodes).
 
     The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
         by a single new edge, with the new geometry selected from either:

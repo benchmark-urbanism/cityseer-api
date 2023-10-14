@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 import fiona
 import geopandas as gpd
@@ -109,7 +109,7 @@ def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_c
     return g_multi_copy
 
 
-def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: Optional[int] = None) -> MultiGraph:
+def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = None) -> MultiGraph:
     """
     Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
 
@@ -198,7 +198,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter  # type: ignore
 
 
-def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> Optional[requests.Response]:
+def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:
     """
     Fetches an OSM response.
 
@@ -224,7 +224,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         An OSM API response.
 
     """
-    osm_response: Optional[requests.Response] | None = None
+    osm_response: requests.Response | None = None
     while max_tries:
         osm_response = requests.get(
             "https://overpass-api.de/api/interpreter",
@@ -248,7 +248,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
-    to_epsg_code: Optional[int] = None,
+    to_epsg_code: int | None = None,
     buffer_dist: int = 15,
     custom_request: str | None = None,
     simplify: bool = True,
@@ -306,13 +306,13 @@ def osm_graph_from_poly(
     pedestrianised routes and walkways.
 
     If you wish to provide your own OSM request, then provide a valid OSM API request as a string. The string must
-    contain a `{geom_osm}` string formatting key. This allows for the geometry parameter passed to the OSM API to be
+    contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the OSM API to be
     injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use
     street name and highway reference information for cleaning purposes. See
     [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
 
-    For example, to return only drivable roads, then use a request similar to the following. Notice the `{geom_osm}`
-    formatting key and the use of `out qt;` instead of `out skel qt;`.
+    For example, to return only drivable roads, then use a request similar to the following. Notice the `geom_osm`
+    f-string interpolation key and the use of `out qt;` instead of `out skel qt;`.
 
     ```python
     custom_request = f'''
@@ -341,7 +341,7 @@ def osm_graph_from_poly(
     if custom_request is not None:
         if "geom_osm" not in custom_request:
             raise ValueError(
-                'The provided custom_request does not contain a "geom_osm" formatting key, i.e. (poly:"{geom_osm}") '
+                'The provided custom_request does not contain an f-string interpolation bracket for "geom_osm". '
                 "This key is required for interpolating the generated geometry into the request."
             )
         request = custom_request.format(geom_osm=geom_osm)
@@ -470,8 +470,8 @@ def nx_from_osm(osm_json: str) -> MultiGraph:
 
 def nx_from_osm_nx(
     nx_multidigraph: MultiDiGraph,
-    node_attributes: Optional[list[str] | tuple[str]] = None,
-    edge_attributes: Optional[list[str] | tuple[str]] = None,
+    node_attributes: list[str] | None = None,
+    edge_attributes: list[str] | None = None,
     tolerance: float = config.ATOL,
 ) -> MultiGraph:
     """
@@ -597,8 +597,8 @@ BboxType = Union[tuple[int, int, int, int], tuple[float, float, float, float]]
 
 
 def nx_from_open_roads(
-    open_roads_path: Union[str, Path],
-    target_bbox: Optional[BboxType] = None,
+    open_roads_path: str | Path,
+    target_bbox: BboxType | None = None,
 ) -> nx.MultiGraph:
     """
     Generates a `networkX` `MultiGraph` from an OS Open Roads dataset.
@@ -690,7 +690,7 @@ def nx_from_open_roads(
 
 def network_structure_from_nx(
     nx_multigraph: MultiGraph,
-    crs: Union[str, int],
+    crs: str | int,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
