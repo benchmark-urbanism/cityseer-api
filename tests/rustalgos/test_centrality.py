@@ -729,7 +729,7 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(segment_result.segment_betweenness[250], [0, 0, 99.76293, 0], atol=config.ATOL, rtol=config.RTOL)
     """
     NOTE: segment simplest has been removed since v4
-    # SEGMENT SIMPLEST ON PRIMAL!!! ( NO DOUBLE COUNTING )
+    # SEGMENT SIMPLEST ON PRIMAL::: ( NO DOUBLE COUNTING )
     # segment density
     # additive segment lengths divided through angular impedance
     # (f - e) / (1 + (ang / 180))

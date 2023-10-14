@@ -1,3 +1,4 @@
+"""Rust based algorithms used from cityseer."""
 from __future__ import annotations
 
 from typing import Any

@@ -1,70 +1,75 @@
-.yap {
-  & .module {
-    @apply m-3 py-3;
-  }
+.md-content {
+  @apply m-3 py-3;
 
   & p {
     @apply px-1;
   }
 
-  & .func-title,
-  .module-title {
-    @apply pl-2 font-mono text-xl font-semibold;
+  & .title {
+    @apply pl-2 text-3xl font-medium;
   }
 
   & .class {
-    @apply my-8 border-l-3 border-t-1 border-theme pl-2;
+    @apply my-8 border-l-3 border-t-1 border-mid-grey pl-2;
+
+    & .title {
+    }
+
+    & .attr {
+    }
+
+    & .inherited {
+    }
   }
 
-  & .func {
-    @apply my-4 border-l border-mid-grey bg-dark-grey p-1;
+  & .function {
+    @apply my-4 border-l border-mid-grey bg-dark-grey px-0.5;
+
+    & .decorator {
+      @apply text-sm font-medium p-1;
+    }
+
+    & .content {
+      @apply mb-2 text-sm flex items-start border-t-2 border-theme bg-darker-grey p-3 font-mono;
+    }
+
+    & .name {
+    }
+
+    & .multiline {
+      @apply flex-col;
+    }
+
+    & .signature {
+      @apply flex;
+
+      & .param {
+        @apply px-0.5;
+      }
+    }
   }
 
-  & .func-sig-content {
-    @apply mb-2 flex items-start border-t-2 border-theme bg-darker-grey p-3 font-mono;
-  }
-
-  & .func-sig {
-    @apply flex items-start text-sm;
-  }
-
-  & .func-sig-params {
-    white-space: pre-wrap;
-    @apply flex flex-wrap;
-  }
-
-  & .func-sig-param {
-  }
-
-  & .doc-str-meta {
-  }
-
-  & .doc-str-elem-container,
-  .class-prop-elem-container {
+  & .param-set {
     @apply flex items-start border-t border-mid-grey bg-darker-grey py-1;
-  }
 
-  & .doc-str-elem-def,
-  .class-prop-def {
-    @apply flex min-w-[170px] max-w-[230px] flex-col py-1;
-  }
+    & .def {
+      @apply flex min-w-[180px] max-w-[230px] flex-col py-1;
+    }
 
-  & .doc-str-elem-name,
-  .class-prop-def-name {
-    @apply px-1 text-xs font-semibold;
-  }
+    & .name {
+      @apply px-1 text-xs font-semibold;
+    }
 
-  & .doc-str-elem-type,
-  .class-prop-def-type {
-    @apply px-1 text-xs font-light;
-  }
+    & .type {
+      @apply px-1 text-xs font-light;
+    }
 
-  & .doc-str-elem-desc,
-  .class-prop-def-desc {
-    @apply flex w-full flex-col text-xs font-light;
+    & .desc {
+      @apply flex w-full flex-col text-xs font-light;
 
-    & p {
-      @apply text-xs font-light;
+      & p {
+        @apply text-xs font-light;
+      }
     }
   }
 }

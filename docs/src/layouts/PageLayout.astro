@@ -33,7 +33,7 @@ const navPaths = [
     <div id='nav-col'>
       <div class='flex flex-col items-end object-contain'>
         <a href='/' title='home' class='hover:scale-105 transition-all object-contain'>
-          <img src={logoURL} alt='logo' class='w-full h-full max-w-xs py-10 px-4' />
+          <img src={logoURL.src} alt='logo' class='w-full h-full max-w-xs py-10 px-4' />
         </a>
         <NavColumn client:visible navPaths={navPaths} currentPath={currentPath} />
         <div class='flex-grow'></div>
@@ -43,7 +43,7 @@ const navPaths = [
       </div>
       <StripeTitle />
     </div>
-    <div id='content-col'>
+    <div id='content-col' class="md-content">
       <slot />
       <Footer />
     </div>
