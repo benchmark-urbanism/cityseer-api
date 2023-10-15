@@ -704,8 +704,6 @@ out qt;
   </div>
   <div class="param">
     <span class="pn">target_bbox</span>
-    <span class="pc">:</span>
-    <span class="pa"> tuple[float] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
