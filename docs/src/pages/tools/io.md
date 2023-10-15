@@ -824,7 +824,7 @@ out qt;
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 

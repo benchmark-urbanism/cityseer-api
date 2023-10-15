@@ -717,7 +717,7 @@ def network_structure_from_nx(
         `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
         attributes.
     network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):

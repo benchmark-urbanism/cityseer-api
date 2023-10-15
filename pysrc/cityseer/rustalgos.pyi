@@ -115,9 +115,7 @@ def distances_from_betas(betas: list[float], min_threshold_wt: float | None = No
     the `distances` parameter, then this function will be called in order to extrapolate the decay parameters
     implicitly, using:
 
-    $$
-    \beta = -\frac{log(w_{min})}{d_{max}}
-    $$
+    $$\beta = -\frac{log(w_{min})}{d_{max}}$$
 
     The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for
     example:
@@ -167,9 +165,7 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are
     computed using a negative exponential decay function in the form of:
 
-    $$
-    weight = exp(-\beta \cdot distance)
-    $$
+    $$weight = exp(-\beta \cdot distance)$$
 
     The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk
     correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk
@@ -185,9 +181,7 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly,
     using:
 
-    $$
-    d_{max} = \frac{log(w_{min})}{-\beta}
-    $$
+    $$d_{max} = \frac{log(w_{min})}{-\beta}$$
 
     The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking
     thresholds, for example:
