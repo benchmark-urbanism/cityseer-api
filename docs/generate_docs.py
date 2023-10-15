@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from pathlib import Path
 
 import docstring_parser
@@ -96,7 +97,7 @@ def strip_markdown(text: str) -> str:
     return cleaned_text
 
 
-def process_docstring(doc_str: str) -> str:
+def custom_process_docstring(doc_str: str) -> str:
     """Process a docstring."""
     doc_str_frag: str = ""
     parsed_doc_str = docstring_parser.parse(doc_str)
@@ -163,9 +164,65 @@ def process_docstring(doc_str: str) -> str:
     return doc_str_frag
 
 
+def custom_format_signature(sig: inspect.Signature, colon: bool = True) -> str:
+    """pdoc currently returns expanded annotations - problematic for npt.Arraylike etc."""
+    # First get a list with all params as strings.
+    params: list[str] = doc._PrettySignature._params(sig)  # type: ignore
+    return_annot = doc._PrettySignature._return_annotation_str(sig)  # type: ignore
+    parsed_return_annot: list[str] = []
+    if return_annot not in ["", "None", None]:
+        ra = return_annot.lstrip("tuple[")
+        ra = ra.rstrip("]")
+        rs = ra.split(",")
+        for r in rs:
+            r = r.strip()
+            if "." in r:
+                r = r.split(".")[-1]
+            if r.lower() not in ["any", "nonetype"]:
+                parsed_return_annot.append(r)
+    # build tags
+    if len(params) <= 1 and len(parsed_return_annot) <= 1:
+        sig_fragment: tags.div = tags.div(cls="signature")
+    else:
+        sig_fragment: tags.div = tags.div(cls="signature multiline")
+    with sig_fragment:
+        tags.span("(", cls="pt")
+    # nest sig params for CSS alignment
+    for param in params:
+        param_fragment = tags.div(cls="param")
+        if ":" in param:
+            param_text, annot = param.split(":")
+            if "any" in annot.strip().lower():
+                annot = None
+            elif annot.strip().lower().startswith("union"):
+                annot = None
+        else:
+            param_text = param
+            annot = None
+        with param_fragment:
+            tags.span(param_text, cls="pn")
+        if annot is not None:
+            with param_fragment:
+                tags.span(":", cls="pc")
+                tags.span(annot, cls="pa")
+        sig_fragment += param_fragment
+    if not parsed_return_annot:
+        with sig_fragment:
+            tags.span(")", cls="pt")
+    else:
+        with sig_fragment:
+            tags.span(")->[", cls="pt")
+            for parsed_return in parsed_return_annot:
+                tags.span(parsed_return, cls="pr")
+            tags.span("]", cls="pt")
+
+    return sig_fragment.render()
+
+
 if __name__ == "__main__":
     # Add custom function
-    render.env.filters["process_docstring"] = process_docstring  # type: ignore
+    render.env.filters["custom_process_docstring"] = custom_process_docstring  # type: ignore
+    render.env.filters["custom_format_signature"] = custom_format_signature  # type: ignore
     here = Path(__file__).parent
 
     module_file_maps = [

@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+<section class="module">
 
 # mock
 
@@ -14,7 +15,15 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">mock_graph</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">wgs84_coords</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">mock_graph</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">wgs84_coords</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -61,7 +70,18 @@ plot.plot_nx(nx_multigraph)
 
 
 <div class="content">
-<span class="name">get_graph_extents</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>:</span></span>
+<span class="name">get_graph_extents</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -132,7 +152,25 @@ plot.plot_nx(nx_multigraph)
 
 
 <div class="content">
-<span class="name">mock_data_gdf</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>,</span><span class="param">	<span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">mock_data_gdf</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">length</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -189,7 +227,30 @@ plot.plot_nx(nx_multigraph)
 
 
 <div class="content">
-<span class="name">mock_landuse_categorical_data</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>,</span><span class="param">	<span class="n">num_classes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>,</span><span class="param">	<span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">mock_landuse_categorical_data</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">length</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">num_classes</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 10</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -256,7 +317,45 @@ plot.plot_nx(nx_multigraph)
 
 
 <div class="content">
-<span class="name">mock_numerical_data</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>,</span><span class="param">	<span class="n">val_min</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>,</span><span class="param">	<span class="n">val_max</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span>,</span><span class="param">	<span class="n">num_arrs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>,</span><span class="param">	<span class="n">floating_pt</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>,</span><span class="param">	<span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">mock_numerical_data</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">length</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">val_min</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 0</span>
+  </div>
+  <div class="param">
+    <span class="pn">val_max</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100000</span>
+  </div>
+  <div class="param">
+    <span class="pn">num_arrs</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">floating_pt</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 3</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -353,7 +452,18 @@ plot.plot_nx(nx_multigraph)
 
 
 <div class="content">
-<span class="name">mock_species_data</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></span><span class="return-annotation">) -> <span class="n">Generator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span> <span class="n">NoneType</span><span class="p">,</span> <span class="n">NoneType</span><span class="p">]</span>:</span></span>
+<span class="name">mock_species_data</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Generator[tuple[list[int]</span>
+  <span class="pr">list[float]]</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -421,3 +531,4 @@ for counts, probs in mock.mock_species_data():
 
 
 
+</section>

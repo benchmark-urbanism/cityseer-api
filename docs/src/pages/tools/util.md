@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+<section class="module">
 
 # util
 
@@ -14,7 +15,18 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">measure_bearing</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">xy_1</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span>,</span><span class="param">	<span class="n">xy_2</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
+<span class="name">measure_bearing</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">xy_1</span>
+  </div>
+  <div class="param">
+    <span class="pn">xy_2</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -29,7 +41,21 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">measure_coords_angle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">coords_1</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span>,</span><span class="param">	<span class="n">coords_2</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span>,</span><span class="param">	<span class="n">coords_3</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
+<span class="name">measure_coords_angle</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">coords_1</span>
+  </div>
+  <div class="param">
+    <span class="pn">coords_2</span>
+  </div>
+  <div class="param">
+    <span class="pn">coords_3</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -44,7 +70,17 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">measure_cumulative_angle</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">linestring_coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
+<span class="name">measure_cumulative_angle</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[typing.Union[tuple[float, float], tuple[float, float, float]]]</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -59,7 +95,22 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">substring</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">geom</span>, </span><span class="param"><span class="n">start_dist</span>, </span><span class="param"><span class="n">end_dist</span>, </span><span class="param"><span class="n">normalized</span><span class="o">=</span><span class="kc">False</span></span><span class="return-annotation">):</span></span>
+<span class="name">substring</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">geom</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_dist</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_dist</span>
+  </div>
+  <div class="param">
+    <span class="pn">normalized=False</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -74,7 +125,22 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">snap_linestring_startpoint</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">linestring_coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]],</span> <span class="n">shapely</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">CoordinateSequence</span><span class="p">]</span>,</span><span class="param">	<span class="n">x_y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>:</span></span>
+<span class="name">snap_linestring_startpoint</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords</span>
+  </div>
+  <div class="param">
+    <span class="pn">x_y</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[tuple[float</span>
+  <span class="pr">float]</span>
+  <span class="pr">tuple[float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -121,7 +187,22 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">snap_linestring_endpoint</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">linestring_coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]],</span> <span class="n">shapely</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">CoordinateSequence</span><span class="p">]</span>,</span><span class="param">	<span class="n">x_y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>:</span></span>
+<span class="name">snap_linestring_endpoint</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords</span>
+  </div>
+  <div class="param">
+    <span class="pn">x_y</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[tuple[float</span>
+  <span class="pr">float]</span>
+  <span class="pr">tuple[float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -168,7 +249,32 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">align_linestring_coords</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">linestring_coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]],</span> <span class="n">shapely</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">CoordinateSequence</span><span class="p">]</span>,</span><span class="param">	<span class="n">x_y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span>,</span><span class="param">	<span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>:</span></span>
+<span class="name">align_linestring_coords</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords</span>
+  </div>
+  <div class="param">
+    <span class="pn">x_y</span>
+  </div>
+  <div class="param">
+    <span class="pn">reverse</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.5</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[tuple[float</span>
+  <span class="pr">float]</span>
+  <span class="pr">tuple[float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -235,7 +341,41 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">snap_linestring_endpoints</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">multigraph</span><span class="o">.</span><span class="n">MultiGraph</span>,</span><span class="param">	<span class="n">start_nd_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">end_nd_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">linestring_coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>,</span><span class="param">	<span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>:</span></span>
+<span class="name">snap_linestring_endpoints</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">linestring_coords</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[typing.Union[tuple[float, float], tuple[float, float, float]]]</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.5</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[tuple[float</span>
+  <span class="pr">float]</span>
+  <span class="pr">tuple[float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -312,7 +452,30 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">weld_linestring_coords</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">linestring_coords_a</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]],</span> <span class="n">shapely</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">CoordinateSequence</span><span class="p">]</span>,</span><span class="param">	<span class="n">linestring_coords_b</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">]],</span> <span class="n">shapely</span><span class="o">.</span><span class="n">coords</span><span class="o">.</span><span class="n">CoordinateSequence</span><span class="p">]</span>,</span><span class="param">	<span class="n">force_xy</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">NoneType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>:</span></span>
+<span class="name">weld_linestring_coords</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords_a</span>
+  </div>
+  <div class="param">
+    <span class="pn">linestring_coords_b</span>
+  </div>
+  <div class="param">
+    <span class="pn">force_xy</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[tuple[float</span>
+  <span class="pr">float]</span>
+  <span class="pr">tuple[float</span>
+  <span class="pr">float</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -338,7 +501,10 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">EdgeInfo</span><span class="signature pdoc-code condensed">()</span>
+<span class="name">EdgeInfo</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -351,24 +517,15 @@ layout: ../../layouts/PageLayout.astro
 <span class="name">names</span>
 
 
-
- Returns a set of street names.
-
  
 
 <span class="name">routes</span>
 
 
-
- Returns a set of routes - e.g. route numbers.
-
  
 
 <span class="name">highways</span>
 
-
-
- Returns a set of highway types - e.g. footway.
 
  
 
@@ -378,7 +535,16 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">gather_edge_info</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">edge_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span></span><span class="return-annotation">):</span></span>
+<span class="name">gather_edge_info</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_data</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -394,7 +560,33 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">set_edge_info</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">multigraph</span><span class="o">.</span><span class="n">MultiGraph</span>,</span><span class="param">	<span class="n">start_node_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">end_node_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">edge_idx</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">):</span></span>
+<span class="name">set_edge_info</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_node_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_node_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -412,7 +604,36 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">add_node</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">nodes_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>,</span><span class="param">	<span class="n">x</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">y</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">live</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span>:</span></span>
+<span class="name">add_node</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_names</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str]</span>
+  </div>
+  <div class="param">
+    <span class="pn">x</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">y</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">live</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">str</span>
+  <span class="pr">bool</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -427,7 +648,16 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">create_nodes_strtree</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">shapely</span><span class="o">.</span><span class="n">strtree</span><span class="o">.</span><span class="n">STRtree</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]]]</span>:</span></span>
+<span class="name">create_nodes_strtree</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">STRtree</span>
+  <span class="pr">list[dict[str</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -442,7 +672,16 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">create_edges_strtree</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">shapely</span><span class="o">.</span><span class="n">strtree</span><span class="o">.</span><span class="n">STRtree</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]]]</span>:</span></span>
+<span class="name">create_edges_strtree</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">STRtree</span>
+  <span class="pr">list[dict[str</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -457,7 +696,25 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">blend_metrics</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nodes_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">edges_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">blend_metrics</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">method</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -509,3 +766,4 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+</section>

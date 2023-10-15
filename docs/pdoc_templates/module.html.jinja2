@@ -1,9 +1,11 @@
 {#
 DON'T INDENT -> CAUSES ISSUES FOR MARKDOWN OUTPUT
+PRESERVE WHITE SPACE AROUND MARKDOWN BLOCKS FOR PARSER
 #}
 {% extends "frame.html.jinja2" %}
 
 {% block content %}
+<section class="module">
 
 {% block module_info %}
 {% if module.namespace %}
@@ -20,6 +22,7 @@ DON'T INDENT -> CAUSES ISSUES FOR MARKDOWN OUTPUT
 {% endfor %}
 {% endblock %}
 
+</section>
 {% endblock content %}
 {#
 End of content, beginning of helper macros.
@@ -34,7 +37,6 @@ See https://pdoc.dev/docs/pdoc/render_helpers.html#DefaultMacroExtension for an 
 {{ submodule(doc) }}
 {% else %}
 {{ variable(doc) }}
-{{ docstring(doc) }}
 {% endif %}
 {% enddefaultmacro %}
 
@@ -107,18 +109,14 @@ See https://pdoc.dev/docs/pdoc/render_helpers.html#DefaultMacroExtension for an 
 <div class="content">
 {% if fn.name == "__init__" %}
 <span class="name">{{ ".".join(fn.qualname.split(".")[:-1]) }}</span>
-{{- fn.signature_without_self | format_signature(colon=False) | linkify }}
+{{- fn.signature_without_self | custom_format_signature | safe }}
 {% else %}
 <span class="name">{{ fn.name }}</span>
-{{- fn.signature | format_signature(colon=True) | linkify }}
+{{- fn.signature | custom_format_signature | safe }}
 {% endif %}
 </div>
 {{ docstring(fn) }}
 </div>
-{% enddefaultmacro %}
-
-{% defaultmacro variable(var) -%}
-<span class="name">{{ var.name }}</span>{{ annotation(var) }}{{ default_value(var) }}
 {% enddefaultmacro %}
 
 {% defaultmacro submodule(mod) -%}
@@ -126,10 +124,15 @@ See https://pdoc.dev/docs/pdoc/render_helpers.html#DefaultMacroExtension for an 
 {{ docstring(mod) }}
 {% enddefaultmacro %}
 
+{% defaultmacro variable(var) -%}
+<span class="name">{{ var.name }}</span>{{ annotation(var) }}{{ default_value(var) }}
+{{ docstring(doc) }}
+{% enddefaultmacro %}
+
 {% defaultmacro docstring(var) %}
 {% if var %}
 {% if var.docstring %}
-{{ var.docstring | process_docstring | safe }}
+{{ var.docstring | custom_process_docstring | safe }}
 {% endif %}
 {% endif %}
 {% enddefaultmacro %}
