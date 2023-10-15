@@ -95,7 +95,7 @@ def node_centrality_shortest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -206,7 +206,7 @@ def node_centrality_simplest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -303,7 +303,7 @@ def segment_centrality(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)

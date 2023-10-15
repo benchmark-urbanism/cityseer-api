@@ -74,7 +74,7 @@ def strip_markdown(text: str) -> str:
         elif next_line == "":
             cleaned_text += "\n\n"
         # admonitions
-        elif next_line.startswith(":::") or next_line.startswith("$$"):
+        elif next_line.startswith(":::"):
             if not other_block:
                 other_block = True
                 cleaned_text += f"\n{next_line.strip()}"
@@ -226,8 +226,7 @@ if __name__ == "__main__":
     here = Path(__file__).parent
 
     module_file_maps = [
-        # TODO: sort out path for pagelayout...
-        # ("cityseer.rustalgos", here / "src/pages/rustalgos.astro"),
+        ("cityseer.rustalgos", here / "src/pages/rustalgos/rustalgos.md"),
         ("cityseer.metrics.observe", here / "src/pages/metrics/observe.md"),
         ("cityseer.metrics.networks", here / "src/pages/metrics/networks.md"),
         ("cityseer.metrics.layers", here / "src/pages/metrics/layers.md"),

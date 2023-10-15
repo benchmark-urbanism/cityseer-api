@@ -42,7 +42,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
+ Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -61,7 +61,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure).</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -261,7 +261,7 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -536,7 +536,7 @@ print(nodes_gdf["cc_metric_c_400_non_weighted"])
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -843,7 +843,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">

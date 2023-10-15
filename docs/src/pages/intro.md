@@ -105,7 +105,7 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 After graph preparation and cleaning has been completed, the `networkX` graph can be transformed into data structures for efficiently computing centralities, land-use measures, or statistical aggregations.
 
-Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into GeoPandas [`GeoDataFrames`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure), the latter of which is used by `cityseer` for efficiently computing the measures with the underlying `rust` algorithms.
+Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into GeoPandas [`GeoDataFrames`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure), the latter of which is used by `cityseer` for efficiently computing the measures with the underlying `rust` algorithms.
 
 ### Network Centralities
 

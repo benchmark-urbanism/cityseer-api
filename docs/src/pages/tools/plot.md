@@ -595,7 +595,7 @@ This method is primarily intended for package testing and development.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
@@ -716,7 +716,7 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">

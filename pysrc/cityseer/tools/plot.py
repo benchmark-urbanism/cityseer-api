@@ -442,7 +442,7 @@ def plot_assignment(
     Parameters
     ----------
     network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
@@ -579,7 +579,7 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
         A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     poly: geometry.Polygon
