@@ -382,7 +382,7 @@ def plot_nx(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    nodes_gdf, network_structure = graphs.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
     networks.node_centrality(
         measures=["node_beta"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800]
     )
@@ -442,7 +442,7 @@ def plot_assignment(
     Parameters
     ----------
     network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
@@ -579,7 +579,7 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos#networkstructure) instance.
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
         A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
     poly: geometry.Polygon

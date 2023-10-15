@@ -52,7 +52,7 @@ def test_local_centrality_time(primal_graph):
         return
     os.environ["CITYSEER_QUIET_MODE"] = "1"
     # load the test graph
-    _nodes_gdf, _edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     # needs a large enough beta so that distance thresholds aren't encountered
     distances, _betas = rustalgos.pair_distances_and_betas(distances=[5000])
 

@@ -26,10 +26,7 @@ The `live=True` node attribute is used for identifying nodes falling within the 
 
 ## Graph Cleaning
 
-:::warning
-You can find a notebook of this guide on the [examples](/examples/) page.
-:::
-
+Boo
 Good sources of street network data, such as the Ordnance Survey's [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html), typically have two distinguishing characteristics:
 
 - The network has been simplified to its essential structure: i.e. unnecessarily complex representations of intersections, on-ramps, divided roadways, etc., have been reduced to a simpler representation concurring more readily with the core topological structure of street networks. Simplified forms of network representation contrast those focusing on completeness (e.g. for route way-finding, see [OS ITN Layer](https://www.ordnancesurvey.co.uk/business-and-government/help-and-support/products/itn-layer.html)): these introduce unnecessary complexity serving to hinder rather than help shortest-path algorithms in the sense used by pedestrian centrality measures.
@@ -37,158 +34,9 @@ Good sources of street network data, such as the Ordnance Survey's [OS Open Road
 
 When a high-quality source is available, it is best not to attempt additional clean-up unless there is a particular reason. On the other hand, many indispensable sources of network information, particularly Open Street Map data, can be particularly messy for network analysis purposes.
 
-`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which may otherwise confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible.
+`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which may otherwise confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible. These are demonstrated in the [`Graph Cleaning`](/examples#graph-cleaning-guide) example notebook.
 
-### Downloading data
-
-This example will make use of OSM data downloaded from the [OSM API](https://wiki.openstreetmap.org/wiki/API). To keep things interesting, let's pick London Soho, which will be buffered and cleaned for a 1,250m radius.
-
-```python
-from shapely import geometry
-import utm
-
-from cityseer.tools import graphs, plot, io
-
-# Let's download data within a 1,250m buffer around London Soho:
-lng, lat = -0.13396079424572427, 51.51371088849723
-buffer = 1250
-# creates a WGS shapely polygon
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer)
-# use a WGS shapely polygon to download information from OSM
-# this version will not simplify
-G_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
-# whereas this version does simplify
-G_utm = io.osm_graph_from_poly(poly_wgs)
-
-# select extents for clipping the plotting extents
-easting, northing = utm.from_latlon(lat, lng)[:2]
-buff = geometry.Point(easting, northing).buffer(1000)
-min_x, min_y, max_x, max_y = buff.bounds
-
-
-# reusable plot function
-def simple_plot(_G, plot_geoms=True):
-    # plot using the selected extents
-    plot.plot_nx(
-        _G,
-        labels=False,
-        plot_geoms=plot_geoms,
-        node_size=4,
-        edge_width=1,
-        x_lim=(min_x, max_x),
-        y_lim=(min_y, max_y),
-        figsize=(6, 6),
-        dpi=150,
-    )
-
-print("The graph before simplification.")
-simple_plot(G_raw, plot_geoms=False)
-
-print("The graph after simplification")
-simple_plot(G_utm, plot_geoms=True)
-```
-
-![The raw graph from OSM](/images/graph_cleaning_1a.png)
-_The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
-
-![The automatically cleaned graph from OSM](/images/graph_cleaning_1b.png)
-_The automatically cleaned OSM street network for Soho, London. © OpenStreetMap contributors._
-
-The automated graph cleaning provided by [osm_graph_from_poly](/tools/io#osm-graph-from-poly) may give satisfactory results depending on the intended end-use. See the steps following beneath for an example of how to manually clean the graph where additional control is preferred.
-
-### Deducing the network topology
-
-Once OSM data has been converted to a `NetworkX` `MultiGraph`, the `tools.graphs` module can be used to clean the network.
-
-:::note
-The convenience method used for this demonstration has already converted the graph from a geographic WGS to projected UTM coordinate system; however, if working with a graph which is otherwise in a WGS coordinate system then it must be converted to a projected coordinate system prior to further processing. This can be done with [`graphs.nx_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm).
-:::
-
-Now that raw OSM data has been loaded into a NetworkX graph, the `cityseer.tools.graph` methods can be used to further clean and prepare the network prior to analysis.
-
-At this stage, the raw OSM graph is going to look a bit messy. Note how that nodes have been used to represent the roadway geometry. These nodes need to be removed and will be abstracted into `shapely` `LineString` geometries assigned to the respective street edges. So doing, the geometric representation will be kept distinct from the network topology.
-
-```py
-# the raw osm nodes denote the road geometries by the placement of nodes
-# the first step generates explicit LineStrings geometries for each street edge
-G = graphs.nx_simple_geoms(G_raw)
-# We'll now strip the "filler-nodes" from the graph
-# the associated geometries will be welded into continuous LineStrings
-# the new LineStrings will be assigned to the newly consolidated topological links
-G = graphs.nx_remove_filler_nodes(G)
-# and remove dangling nodes: short dead-end stubs
-# these are often found at entrances to buildings or parking lots
-# The removed_disconnected flag will removed isolated network components
-# i.e. disconnected portions of network that are not joined to the main street network
-G = graphs.nx_remove_dangling_nodes(G, despine=20)
-simple_plot(G)
-```
-
-![Initial graph cleaning](/images/graph_cleaning_2.png)
-_After removal of filler nodes, dangling nodes, and disconnected components._
-
-### Refining the network
-
-Things are already looked much better, but we still have areas with large concentrations of nodes at complex intersections and many parallel roadways, which will confound centrality methods. We'll now try to remove as much of this as possible. These steps involve the consolidation of nodes to clean-up extraneous nodes, which may otherwise exaggerate the intensity or complexity of the network in certain situations.
-
-In this case, we're trying to get rid of parallel road segments so we'll do this in three steps, though it should be noted that, depending on your use-case, Step 1 may already be sufficient:
-
-Step 1: An initial pass to cleanup complex intersections will be performed with the [`graphs.nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) function. The arguments passed to the parameters allow for a number of different strategies, such as whether to 'crawl' and the heuristics according to which nodes and edges are consolidated. These are explained more fully in the documentation. In this case, we're accepting the defaults except for explicitly setting the buffer distance and setting `crawl` to `True`.
-
-```py
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True)
-simple_plot(G1)
-```
-
-![First step of node consolidation](/images/graph_cleaning_3.png)
-_After an initial pass of node consolidation._
-
-Complex intersections have now been simplified, for example, the intersection of Oxford and Regent has gone from 17 nodes to a single node.
-
-In Step 2, we'll use [`graphs.nx_split_opposing_geoms`](/tools/graphs#nx-split-opposing-geoms) to intentionally split edges in near proximity to nodes located on an adjacent roadway. This is going to help with the final pass of consolidation in Step 3.
-
-```py
-G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-simple_plot(G2)
-```
-
-![Splitting opposing geoms](/images/graph_cleaning_4.png)
-_After "splitting opposing geoms" on longer parallel segments._
-
-In the next step, we can now rerun the consolidation to clean up any remaining clusters of nodes. In this case, we're setting the `crawl` parameter to `False`:
-
-```py
-G3 = graphs.nx_consolidate_nodes(
-    G2,
-    buffer_dist=15,
-    crawl=False,
-)
-simple_plot(G3)
-```
-
-![Final step of node consolidation](/images/graph_cleaning_5.png)
-_After the final step of node consolidation._
-
-Finally, we can optionally "iron" the edges to straighten out artefacts introduced by automated cleaning, which will sometimes bend the ends of edge segments to the locations of new centroids.
-
-```py
-G4 = graphs.nx_iron_edges(G3)
-simple_plot(G4)
-```
-
-![Ironing the edges](/images/graph_cleaning_6.png)
-_After edge straightening._
-
-:::note
-
-#### Manual Cleaning
-
-When using shortest-path methods, automated graph simplification and consolidation can arguably eliminate the need for manual checks; however, it is worth plotting the graph and performing a quick look-through to be sure there aren't any unexpectedly odd situations.
-
-When using simplest-path (angular) centralities, manual checks become more important because automated simplification and consolidation can result in small twists and turns where nodes and edges have been merged. `cityseer` uses particular methods that attempt to keep these issues to a minimum, though there may still be some situations necessitating manual checks. From this perspective, it may be preferable to use a cleaner source of network topology (e.g. OS Open Roads) if working with simplest-path centralities; else, if only OSM data is available, to instead consider the use of shortest-path methods if the graph has too many unresolvable situations to clean-up manually.
-:::
-
-The above recipe should be enough to get you started, but there are innumerable other strategies that may also work for any variety of scenarios.
+There are still situations where it can be difficult to automate network cleaning, especially when using the same workflows across different cities. Each city tends to have its own quirks, and for this reason it can be preferable to retain the unsimplified representation but to control for algorithmic artefacts encountered for centrality computations by using other methods. These are demonstrated in the [`Graph Corrections`](/examples#graph-corrections-guide) example notebook.
 
 ## OSM and NetworkX
 
@@ -203,89 +51,13 @@ The following points may be helpful when using `OSMnx` and `cityseer` together:
   - `cityseer` graph simplification and consolidation workflows will give different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
 - `cityseer` uses internal validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing graph manipulation outside of `cityseer` before conversion, the conversion function may complain of disconnected geometries. In these cases, you may need to relax the tolerance parameter used for error checking upon conversion to a `cityseer` `MultiGraph`, in which case geometries disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
 
-The below example is available as a Jupyter Notebook on the [`Examples`](/examples/) page.
-
-```py
-import osmnx as ox
-from shapely import geometry
-import utm
-
-from cityseer.tools import graphs, plot, io
-
-# centrepoint
-lng, lat = -0.13396079424572427, 51.51371088849723
-
-# select extents for plotting
-easting, northing = utm.from_latlon(lat, lng)[:2]
-buffer_dist = 1250
-buffer_poly = geometry.Point(easting, northing).buffer(1000)
-min_x, min_y, max_x, max_y = buffer_poly.bounds
-
-
-# reusable plot function
-def simple_plot(_G):
-    # plot using the selected extents
-    plot.plot_nx(
-        _G,
-        labels=False,
-        plot_geoms=True,
-        node_size=4,
-        edge_width=1,
-        x_lim=(min_x, max_x),
-        y_lim=(min_y, max_y),
-        figsize=(6, 6),
-        dpi=150,
-    )
-
-
-# Let's use OSMnx to fetch an OSM graph
-# We'll use the same raw network for both workflows (hence simplify=False)
-multi_di_graph_raw = ox.graph_from_point((lat, lng), dist=buffer_dist, simplify=False)
-
-# Workflow 1: Using OSMnx to prepare the graph
-# ============================================
-# explicit simplification and consolidation via OSMnx
-multi_di_graph_utm = ox.project_graph(multi_di_graph_raw)
-multi_di_graph_simpl = ox.simplify_graph(multi_di_graph_utm)
-multi_di_graph_cons = ox.consolidate_intersections(multi_di_graph_simpl, tolerance=10, dead_ends=True)
-# let's use the same plotting function for both scenarios to aid visual comparisons
-multi_graph_cons = io.nx_from_osm_nx(multi_di_graph_cons, tolerance=50)
-simple_plot(multi_graph_cons)
-
-# WORKFLOW 2: Using cityseer to manually clean an OSMnx graph
-# ===========================================================
-G_raw = io.nx_from_osm_nx(multi_di_graph_raw)
-G = graphs.nx_wgs_to_utm(G_raw)
-G = graphs.nx_simple_geoms(G)
-G = graphs.nx_remove_filler_nodes(G)
-G = graphs.nx_remove_dangling_nodes(G, despine=20, remove_disconnected=True)
-G1 = graphs.nx_consolidate_nodes(G, buffer_dist=15, crawl=True)
-G2 = graphs.nx_split_opposing_geoms(G1, buffer_dist=15)
-G3 = graphs.nx_consolidate_nodes(G2, buffer_dist=15, crawl=False)
-G4 = graphs.nx_iron_edges(G3)
-simple_plot(G4)
-
-# WORKFLOW 3: Using cityseer to download and automatically simplify the graph
-# ===========================================================================
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer_dist)
-G_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
-simple_plot(G_utm)
-```
-
-![Example OSMnx simplification and consolidation](/images/osmnx_simplification.png)
-_An example `OSMnx` simplification and consolidation workflow._
-
-![Example OSMnx to cityseer workflow](/images/osmnx_cityseer_simplification.png)
-_An example `OSMnx` to `cityseer` conversion followed by simplification and consolidation workflow in `cityseer`._
-
-![Example cityseer only workflow](/images/cityseer_only_simplification.png)
-_An example where OSM data is retrieved with `cityseer` with automatic simplification._
+See the [Importing OSM data](/examples#importing-osm-data) notebook for examples.
 
 ## Optimised packages
 
 Computational methods for network-based analysis rely extensively on shortest-path algorithms: these present substantial computational complexity due to nested-loops. For this reason, methods implemented in pure `Python`, i.e. [`NetworkX`](https://networkx.github.io/) or packages that depend on it for algorithmic analysis, can be prohibitively slow. Speed improvements can be found by running intensive algorithms against packages implemented in lower-level languages such as [`Graph-Tool`](https://graph-tool.skewed.de) or [`igraph`](https://igraph.org/python#docs), which wrap underlying optimised code libraries implemented in more performant languages such as `C++`. However, off-the-shelf network analysis packages are not ideal for application to urbanism; they do not ordinarily cater for localised distance thresholds, specialised centrality methods, shortest vs simplest-path heuristics, or calculation of land-use accessibilities and mixed-uses.
 
-`cityseer` evolved as a WIP package over the span of years, initially used for experimentation and comparative tests of centrality methods and landuse methods. Initially, computationally intensive algorithms were wrapped in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation and parallelisation. The use of `numba` made it feasible to scale these methods to large and, optionally, decomposed networks with significant numbers of nodes. More recent versions of `cityseer` have moved underlying algorithms from `numba` to `rust` which offers yet better performance, doesn't require a compilation step when running a function for the first time, and affords the use of more elegant design patterns.
+`cityseer` evolved as a WIP package over the span of years, initially used for experimentation and comparative tests of centrality methods and landuse methods during a PhD. Initially, computationally intensive algorithms were wrapped in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation and parallelisation. The use of `numba` made it feasible to scale these methods to large and, optionally, decomposed networks with significant numbers of nodes. More recent versions of `cityseer` have moved underlying algorithms from `numba` to `rust`, which offers yet better performance, doesn't require a compilation step when running a function for the first time, and affords the use of more elegant design patterns.
 
 ## _GeoPandas_
 

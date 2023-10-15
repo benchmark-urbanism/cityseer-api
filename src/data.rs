@@ -337,7 +337,7 @@ impl DataMap {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live(*netw_src_idx).unwrap() {
                     return;
                 }
                 /*
@@ -471,7 +471,7 @@ impl DataMap {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live(*netw_src_idx).unwrap() {
                     return;
                 }
                 // reachable
@@ -694,7 +694,7 @@ impl DataMap {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
                 // skip if not live
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live(*netw_src_idx).unwrap() {
                     return;
                 }
                 // generate the reachable classes and their respective distances

@@ -15,6 +15,8 @@ pub struct NodePayload {
     pub coord: Coord,
     #[pyo3(get)]
     pub live: bool,
+    #[pyo3(get)]
+    pub weight: f32,
 }
 #[pymethods]
 impl NodePayload {
@@ -133,29 +135,31 @@ impl NetworkStructure {
     fn progress(&self) -> usize {
         self.progress.as_ref().load(Ordering::Relaxed)
     }
-    fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool) -> usize {
+    fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool, weight: f32) -> usize {
         let new_node_idx = self.graph.add_node(NodePayload {
             node_key,
             coord: Coord::new(x, y),
             live,
+            weight,
         });
         new_node_idx.index().try_into().unwrap()
     }
-    pub fn get_node_payload(&self, node_idx: usize) -> Option<NodePayload> {
-        Some(
-            self.graph
-                .node_weight(NodeIndex::new(node_idx.try_into().unwrap()))?
-                .clone(),
-        )
-    }
-    pub fn is_node_live(&self, node_idx: usize) -> bool {
-        let node_payload = self.get_node_payload(node_idx);
-        if node_payload.is_some() {
-            if !node_payload.unwrap().live {
-                return false;
-            }
+    pub fn get_node_payload(&self, node_idx: usize) -> PyResult<NodePayload> {
+        let payload = self.graph.node_weight(NodeIndex::new(node_idx));
+        if !payload.is_some() {
+            return Err(exceptions::PyValueError::new_err(
+                "No payload for requested node idex.",
+            ));
         }
-        true
+        Ok(payload.unwrap().clone())
+    }
+    pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
+        let node_payload = self.get_node_payload(node_idx)?;
+        Ok(node_payload.weight)
+    }
+    pub fn is_node_live(&self, node_idx: usize) -> PyResult<bool> {
+        let node_payload = self.get_node_payload(node_idx)?;
+        Ok(node_payload.live)
     }
     pub fn node_count(&self) -> usize {
         self.graph.node_count().try_into().unwrap()
@@ -246,7 +250,7 @@ impl NetworkStructure {
         start_nd_idx: usize,
         end_nd_idx: usize,
         edge_idx: usize,
-    ) -> Option<EdgePayload> {
+    ) -> PyResult<EdgePayload> {
         let selected_edge = self
             .graph
             .edges_connecting(
@@ -254,11 +258,13 @@ impl NetworkStructure {
                 NodeIndex::new(end_nd_idx.try_into().unwrap()),
             )
             .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
-        if selected_edge.is_some() {
-            Some(selected_edge.unwrap().weight().clone())
-        } else {
-            None
-        }
+        if !selected_edge.is_some() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Edge not found for nodes {0}, {1}, and idx {2}.",
+                start_nd_idx, end_nd_idx, edge_idx
+            )));
+        };
+        Ok(selected_edge.unwrap().weight().clone())
     }
     pub fn validate(&self) -> PyResult<bool> {
         if self.node_count() == 0 {
@@ -622,10 +628,10 @@ mod tests {
         // c = 100m
         // all inner angles = 60º
         let mut ns = NetworkStructure::new();
-        let nd_a = ns.add_node("a".to_string(), 0.0, -86.60254, true);
-        let nd_b = ns.add_node("b".to_string(), -50.0, 0.0, true);
-        let nd_c = ns.add_node("c".to_string(), 50.0, 0.0, true);
-        let nd_d = ns.add_node("d".to_string(), 0.0, 86.60254, true);
+        let nd_a = ns.add_node("a".to_string(), 0.0, -86.60254, true, 1.0);
+        let nd_b = ns.add_node("b".to_string(), -50.0, 0.0, true, 1.0);
+        let nd_c = ns.add_node("c".to_string(), 50.0, 0.0, true, 1.0);
+        let nd_d = ns.add_node("d".to_string(), 0.0, 86.60254, true, 1.0);
         let e_a = ns.add_edge(
             nd_a,
             nd_b,

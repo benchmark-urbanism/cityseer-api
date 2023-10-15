@@ -12,9 +12,15 @@ The `Getting Started` guide from the [intro](/intro).
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/getting_started.ipynb" target="_blank">Github: getting_started.ipynb</a>
 
+## Graph Corrections Guide
+
+`Graph Corrections` guide.
+
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/graph_corrections.ipynb" target="_blank">Github: graph_corrections.ipynb</a>
+
 ## Graph Cleaning Guide
 
-`Graph Cleaning` as described in the [graph cleaning guide](/guide#graph-cleaning).
+`Graph Cleaning` guide.
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/graph_cleaning.ipynb" target="_blank">Github: graph_cleaning.ipynb</a>
 
@@ -26,15 +32,13 @@ Examples showing how to import OSM data as discussed in [OSM and NetworkX](/guid
 
 ## Centralities for London
 
-Computing network centralities for London:
+Computing network centralities for London with OS Open data.
 
-- OS Open data: <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_os_open.ipynb" target="_blank">Github: centrality_os_open.ipynb</a>
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_centralities.ipynb" target="_blank">Github: london_centralities.ipynb</a>
 
-- OSM data: <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/centrality/centrality_osm.ipynb" target="_blank">Github: centrality_osm.ipynb</a>
+## Landuse Accessibilities for London
 
-## Landuse Accessibility for London
-
-Computing landuse acccessibility to pubs and restaurants in London.
+Computing landuse acccessibilities to pubs and restaurants in London.
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/london_amenities.ipynb" target="_blank">Github: london_amenities.ipynb</a>
 

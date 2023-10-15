@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any, Union
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -188,7 +188,7 @@ def _recurse_edges(
 
 
 def street_continuity(
-    nx_multigraph: nx.MultiGraph, method: Union[str, tuple[str, str]]
+    nx_multigraph: nx.MultiGraph, method: str | tuple[str, str]
 ) -> tuple[nx.MultiGraph, StreetContinuityReport]:
     """
     Compute the street continuity for a given graph.
