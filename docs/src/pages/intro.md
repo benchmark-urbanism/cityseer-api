@@ -119,11 +119,15 @@ from cityseer.metrics import networks
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G_decomp, crs=3395)
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 nodes_gdf = networks.segment_centrality(
-    network_structure=network_structure,  # the network structure for which to compute the measures
-    nodes_gdf=nodes_gdf,  # the nodes GeoDataFrame, to which the results will be written
-    distances=[200, 400, 800, 1600],  # the distance thresholds for which to compute centralities
+    # the network structure for which to compute the measures
+    network_structure=network_structure,
+    # the nodes GeoDataFrame, to which the results will be written
+    nodes_gdf=nodes_gdf,
+    # the distance thresholds for which to compute centralities
+    distances=[200, 400, 800, 1600],
 )
-nodes_gdf.head()  # the results are now in the GeoDataFrame
+# the results are now in the GeoDataFrame
+nodes_gdf.head()
 ```
 
 ```python
@@ -167,18 +171,26 @@ data_gdf.head()
 # example easy-wrapper method for computing mixed-uses
 # this is a distance weighted form of hill diversity
 nodes_gdf, data_gdf = layers.compute_mixed_uses(
-    data_gdf,  # the source data
-    landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[200, 400, 800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    data_gdf,
+    # column in the dataframe which contains the landuse labels
+    landuse_column_label="categorical_landuses",
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[200, 400, 800, 1600],
 )
-print(nodes_gdf.columns)  # the GeoDataFrame will contain the results of the calculations
-print(nodes_gdf["cc_metric_q0_800_hill"])  # which can be retrieved as needed
+# the GeoDataFrame will contain the results of the calculations
+print(nodes_gdf.columns)
+# which can be retrieved as needed
+print(nodes_gdf["cc_metric_q0_800_hill"])
 ```
 
 ```python
-# for curiosity's sake - plot the assignments to see which edges the data points were assigned to
+# for curiosity's sake:
+# plot the assignments to see which edges the data points were assigned to
 plot.plot_assignment(network_structure, G_decomp, data_gdf, dpi=200, figsize=(4, 4))
 ```
 
@@ -210,15 +222,22 @@ _800m distance-weighted mixed-uses._
 ```python
 # compute landuse accessibilities for land-use types a, b, c
 nodes_gdf, data_gdf = layers.compute_accessibilities(
-    data_gdf,  # the source data
-    landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
-    accessibility_keys=["a", "b", "c"],  # the landuse categories for which to compute accessibilities
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[200, 400, 800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    data_gdf,
+    # column in the dataframe which contains the landuse labels
+    landuse_column_label="categorical_landuses",
+    # the landuse categories for which to compute accessibilities
+    accessibility_keys=["a", "b", "c"],
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[200, 400, 800, 1600],
 )
-# accessibilities are computed in both weighted and unweighted forms, e.g. for "a" and "b" landuse codes
-print(nodes_gdf[["cc_metric_a_800_weighted", "cc_metric_b_1600_non_weighted"]])  # and can be retrieved as needed
+# accessibilities are computed in both weighted and unweighted forms
+# e.g. for "a" and "b" landuse codes in weighted and non weighted, respectively
+print(nodes_gdf[["cc_metric_a_800_weighted", "cc_metric_b_1600_non_weighted"]])
 ```
 
 Aggregations can likewise be computed for numerical data. Let's generate some mock numerical data:
@@ -228,13 +247,19 @@ numerical_data_gdf = mock.mock_numerical_data(G_decomp, num_arrs=3)
 numerical_data_gdf.head()
 # compute stats for column mock_numerical_1
 nodes_gdf, numerical_data_gdf = layers.compute_stats(
-    numerical_data_gdf,  # the source data
-    stats_column_label="mock_numerical_1",  # numerical column to compute stats for
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    numerical_data_gdf,
+    # numerical column to compute stats for
+    stats_column_label="mock_numerical_1",
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[800, 1600],
 )
-# statistical aggregations are calculated for each requested column, and in the following forms:
+# statistical aggregations are calculated for each requested column,
+# and in the following forms:
 # max, min, sum, sum_weighted, mean, mean_weighted, variance, variance_weighted
 print(nodes_gdf["cc_metric_max_800"])
 print(nodes_gdf["cc_metric_mean_wt_800"])

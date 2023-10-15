@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+<section class="module">
 
 # io
 
@@ -14,7 +15,23 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_epsg_conversion</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">from_epsg_code</span><span class="p">:</span> <span class="nb">int</span>, </span><span class="param"><span class="n">to_epsg_code</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_epsg_conversion</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">from_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -71,7 +88,18 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_wgs_to_utm</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">force_zone_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_wgs_to_utm</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">force_zone_number</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -118,7 +146,30 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">buffered_point_poly</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">lng</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">buffer</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">polygon</span><span class="o">.</span><span class="n">Polygon</span><span class="p">,</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">polygon</span><span class="o">.</span><span class="n">Polygon</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>:</span></span>
+<span class="name">buffered_point_poly</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">lng</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">lat</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Polygon</span>
+  <span class="pr">Polygon</span>
+  <span class="pr">int</span>
+  <span class="pr">str</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -205,7 +256,27 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">fetch_osm_network</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">osm_request</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span>,</span><span class="param">	<span class="n">max_tries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span></span><span class="return-annotation">) -> <span class="n">requests</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Response</span> <span class="o">|</span> <span class="kc">None</span>:</span></span>
+<span class="name">fetch_osm_network</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">osm_request</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">timeout</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 300</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_tries</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 3</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Response | None</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -267,7 +338,65 @@ builds a graph automatically.
 
 
 <div class="content">
-<span class="name">osm_graph_from_poly</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">poly_geom</span><span class="p">:</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">polygon</span><span class="o">.</span><span class="n">Polygon</span>,</span><span class="param">	<span class="n">poly_epsg_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4326</span>,</span><span class="param">	<span class="n">to_epsg_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">buffer_dist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>,</span><span class="param">	<span class="n">custom_request</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">simplify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">remove_parallel</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">iron_edges</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">remove_disconnected</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span>,</span><span class="param">	<span class="n">max_tries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">osm_graph_from_poly</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">poly_geom</span>
+    <span class="pc">:</span>
+    <span class="pa"> shapely.geometry.polygon.Polygon</span>
+  </div>
+  <div class="param">
+    <span class="pn">poly_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 4326</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 15</span>
+  </div>
+  <div class="param">
+    <span class="pn">custom_request</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_parallel</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">iron_edges</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_disconnected</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">timeout</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 300</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_tries</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 3</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -427,7 +556,15 @@ out qt;
 
 
 <div class="content">
-<span class="name">nx_from_osm</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">osm_json</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_from_osm</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">osm_json</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -464,7 +601,28 @@ out qt;
 
 
 <div class="content">
-<span class="name">nx_from_osm_nx</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multidigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">node_attributes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">edge_attributes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_from_osm_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multidigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_attributes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_attributes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.001</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -537,7 +695,22 @@ out qt;
 
 
 <div class="content">
-<span class="name">nx_from_open_roads</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">open_roads_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">target_bbox</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">NoneType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">networkx</span><span class="o">.</span><span class="n">classes</span><span class="o">.</span><span class="n">multigraph</span><span class="o">.</span><span class="n">MultiGraph</span>:</span></span>
+<span class="name">nx_from_open_roads</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">open_roads_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | pathlib.Path</span>
+  </div>
+  <div class="param">
+    <span class="pn">target_bbox</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float] | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -584,7 +757,22 @@ out qt;
 
 
 <div class="content">
-<span class="name">network_structure_from_nx</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">crs</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">NetworkStructure</span><span class="p">]</span>:</span></span>
+<span class="name">network_structure_from_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | int</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -651,7 +839,20 @@ out qt;
 
 
 <div class="content">
-<span class="name">nx_from_geopandas</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nodes_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">edges_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_from_geopandas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -693,3 +894,4 @@ out qt;
 
 
 
+</section>

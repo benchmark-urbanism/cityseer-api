@@ -22,11 +22,11 @@
   }
 
   h1 {
-    @apply pt-12 pb-4 font-mono text-3xl font-medium;
+    @apply pt-12 pb-4 text-3xl font-normal;
   }
 
   h2 {
-    @apply pl-2 pt-6 pb-2 font-mono text-2xl font-normal;
+    @apply pt-6 pb-2 text-2xl font-normal;
   }
 
   h3 {
@@ -115,12 +115,12 @@
 
   @media only screen and (width <= 1200px) {
     h1 {
-      @apply pt-8 pb-2 text-2xl font-light;
+      @apply pt-8 pb-2 text-2xl font-normal;
     }
 
     h2,
     h3 {
-      @apply pt-6 pb-1 font-medium;
+      @apply pt-6 pb-1 font-light;
     }
 
     h2 {

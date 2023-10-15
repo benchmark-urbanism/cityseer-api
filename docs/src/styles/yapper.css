@@ -1,18 +1,23 @@
-.md-content {
-  @apply m-3 py-3;
+.module {
+  @apply m-3 py-3 text-sm font-normal;
 
   & p {
-    @apply px-1;
+    @apply px-1 leading-relaxed;
   }
 
-  & .title {
-    @apply pl-2 text-3xl font-medium;
+  @media only screen and (width <= 1200px) {
+    @apply leading-normal;
+  }
+
+  & h1 {
+    @apply pl-2 text-4xl font-medium font-mono;
   }
 
   & .class {
     @apply my-8 border-l-3 border-t-1 border-mid-grey pl-2;
 
-    & .title {
+    & h2 {
+      @apply font-mono;
     }
 
     & .attr {
@@ -23,28 +28,59 @@
   }
 
   & .function {
-    @apply my-4 border-l border-mid-grey bg-dark-grey px-0.5;
+    @apply my-4 border-l border-mid-grey bg-dark-grey px-0.5 flex flex-col;
+
+    & h2 {
+      @apply font-mono;
+    }
 
     & .decorator {
-      @apply text-sm font-medium p-1;
+      @apply text-sm font-medium font-mono p-1;
     }
 
     & .content {
-      @apply mb-2 text-sm flex items-start border-t-2 border-theme bg-darker-grey p-3 font-mono;
+      @apply flex mb-2 text-xs items-start border-t-2 border-theme bg-darker-grey p-3 font-mono font-light;
     }
 
     & .name {
+      @apply font-normal;
     }
 
     & .multiline {
       @apply flex-col;
+
+      & .pr {
+        @apply pl-2;
+      }
+
+      & .param {
+        @apply pl-2;
+      }
     }
 
     & .signature {
-      @apply flex;
+      @apply flex flex-wrap;
 
       & .param {
-        @apply px-0.5;
+        @apply font-light text-xs;
+
+        & .pn {
+        }
+
+        & .pc {
+          @apply text-xxs;
+        }
+
+        & .pa {
+          @apply font-extralight text-xxs;
+        }
+      }
+
+      & .pt {
+      }
+
+      & .pr {
+        @apply font-extralight text-xxs;
       }
     }
   }

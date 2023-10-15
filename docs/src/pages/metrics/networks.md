@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+<section class="module">
 
 # networks
 
@@ -57,7 +58,52 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 
 <div class="content">
-<span class="name">node_centrality_shortest</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">network_structure</span><span class="p">:</span> <span class="n">NetworkStructure</span>,</span><span class="param">	<span class="n">nodes_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">distances</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">betas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">compute_closeness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">compute_betweenness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">min_threshold_wt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>,</span><span class="param">	<span class="n">jitter_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">node_centrality_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">jitter_scale</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -183,7 +229,52 @@ network representations.
 
 
 <div class="content">
-<span class="name">node_centrality_simplest</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">network_structure</span><span class="p">:</span> <span class="n">NetworkStructure</span>,</span><span class="param">	<span class="n">nodes_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">distances</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">betas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">compute_closeness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">compute_betweenness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">min_threshold_wt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>,</span><span class="param">	<span class="n">jitter_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">node_centrality_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">jitter_scale</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -306,7 +397,52 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 
 
 <div class="content">
-<span class="name">segment_centrality</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">network_structure</span><span class="p">:</span> <span class="n">NetworkStructure</span>,</span><span class="param">	<span class="n">nodes_gdf</span><span class="p">:</span> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>,</span><span class="param">	<span class="n">distances</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">betas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">compute_closeness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">compute_betweenness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">min_threshold_wt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01831563888873418</span>,</span><span class="param">	<span class="n">jitter_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span></span><span class="return-annotation">) -> <span class="n">geopandas</span><span class="o">.</span><span class="n">geodataframe</span><span class="o">.</span><span class="n">GeoDataFrame</span>:</span></span>
+<span class="name">segment_centrality</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">jitter_scale</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
 </div>
 
 
@@ -420,3 +556,4 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 
 
 
+</section>

@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+<section class="module">
 
 # graphs
 
@@ -14,7 +15,18 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_simple_geoms</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">simplify_dist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_simple_geoms</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 5</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -61,7 +73,13 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_remove_filler_nodes</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_remove_filler_nodes</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -105,7 +123,28 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_remove_dangling_nodes</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">despine</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">remove_disconnected</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">cleanup_filler_nodes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_remove_dangling_nodes</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">despine</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_disconnected</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">cleanup_filler_nodes</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -172,7 +211,23 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_merge_parallel_edges</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">merge_edges_by_midline</span><span class="p">:</span> <span class="nb">bool</span>,</span><span class="param">	<span class="n">contains_buffer_dist</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_merge_parallel_edges</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_edges_by_midline</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool</span>
+  </div>
+  <div class="param">
+    <span class="pn">contains_buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -233,7 +288,13 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_snap_endpoints</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_snap_endpoints</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -270,7 +331,13 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_iron_edges</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_iron_edges</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -307,7 +374,48 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_consolidate_nodes</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">buffer_dist</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">5</span>,</span><span class="param">	<span class="n">neighbour_policy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">crawl</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">centroid_by_straightness</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">centroid_by_min_len_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">merge_edges_by_midline</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">contains_buffer_dist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_consolidate_nodes</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 5</span>
+  </div>
+  <div class="param">
+    <span class="pn">neighbour_policy</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">crawl</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">centroid_by_straightness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">centroid_by_min_len_factor</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_edges_by_midline</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">contains_buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -430,7 +538,28 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_split_opposing_geoms</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">buffer_dist</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span>,</span><span class="param">	<span class="n">merge_edges_by_midline</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">contains_buffer_dist</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">20</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_split_opposing_geoms</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 10</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_edges_by_midline</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">contains_buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 20</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -501,7 +630,18 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_decompose</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">decompose_max</span><span class="p">:</span> <span class="nb">float</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_decompose</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">decompose_max</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -569,7 +709,13 @@ plot.plot_nx(G_decomposed)
 
 
 <div class="content">
-<span class="name">nx_to_dual</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_to_dual</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -627,7 +773,18 @@ plot.plot_nx_primal_or_dual(G_simple,
 
 
 <div class="content">
-<span class="name">nx_weight_by_dissolved_edges</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">nx_multigraph</span><span class="p">:</span> <span class="n">Any</span>, </span><span class="param"><span class="n">dissolve_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span></span><span class="return-annotation">) -> <span class="n">Any</span>:</span></span>
+<span class="name">nx_weight_by_dissolved_edges</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">dissolve_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
+  </div>
+  <span class="pt">)</span>
+</div>
 </div>
 
 
@@ -669,3 +826,4 @@ plot.plot_nx_primal_or_dual(G_simple,
 
 
 
+</section>
