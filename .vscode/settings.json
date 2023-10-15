@@ -14,8 +14,10 @@
   "stylelint.packageManager": "pnpm",
   "stylelint.reportInvalidScopeDisables": true,
   "stylelint.reportNeedlessDisables": true,
-  "volar.codeLens.pugTools": true,
-  "volar.codeLens.scriptSetupTools": true,
+  "prettier.documentSelectors": ["**/*.astro"],
+  "[astro]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

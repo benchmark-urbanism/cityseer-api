@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.1.0'
+version = '4.2.0'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
@@ -69,10 +69,10 @@ allow_prereleases = false
 
 [tool.pdm.scripts]
 docstyle = "pydocstyle --config=pyproject.toml"
-build_docs = { shell = "pdm run docstyle && pdm run yapper" }
-docs_dev = { shell = "pdm run build_docs && npm run dev --prefix docs" }
-docs_build = { shell = "pdm run build_docs && npm run build --prefix docs" }
-docs_preview = { shell = "pdm run build_docs && npm run preview --prefix docs" }
+generate_docs = "python docs/generate_docs.py"
+docs_dev = { shell = "pdm run docstyle && pdm run generate_docs && npm run dev --prefix docs" }
+docs_build = { shell = "pdm run docstyle && pdm run generate_docs && npm run build --prefix docs" }
+docs_preview = { shell = "pdm run docstyle && pdm run generate_docs && npm run preview --prefix docs" }
 formatting = { shell = "black --config=pyproject.toml ./ && isort --settings-file=pyproject.toml ./" }
 typechecks = "pyright ."
 linting = "pylint --rcfile=pyproject.toml ./pysrc/cityseer"
@@ -101,6 +101,10 @@ dev = [
     "black>=22.12.0",
     "maturin>=1.1.0",
     "pip>=23.2",
+    "snakeviz>=2.2.0",
+    "pdoc>=14.1.0",
+    "docstring-parser>=0.15",
+    "dominate>=2.8.0",
 ]
 
 [build-system]
@@ -201,7 +205,7 @@ ignore = [
   "D212", # Multi-line docstring summary should start at the first line
 ]
 match = "(?!test_).*\\.py"
-match_dir = "^(?!(__pypackages__|.venv|build|demos|docs|tests)).*"
+match_dir = "^(?!(__pypackages__|temp|.venv|build|demos|docs|tests)).*"
 
 [tool.isort]
 profile = "black"
@@ -236,25 +240,3 @@ omit = [
   "pysrc/cityseer/tools/plot.py",
 ]
 
-[tool.yapper]
-package_root_relative_path = './pysrc'
-intro_template = """
----
-import Markdown from '@astrojs/markdown-component';
-import PageLayout from '@src/layouts/PageLayout.astro'
----
-<PageLayout>
-"""
-outro_template = """
-</PageLayout>
-"""
-module_map = [
-  { module = "cityseer.rustalgos", astro = "../docs/src/pages/rustalgos.astro" },
-  { module = "cityseer.metrics.observe", astro = "../docs/src/pages/metrics/observe.astro" },
-  { module = "cityseer.metrics.networks", astro = "../docs/src/pages/metrics/networks.astro" },
-  { module = "cityseer.metrics.layers", astro = "../docs/src/pages/metrics/layers.astro" },
-  { module = "cityseer.tools.graphs", astro = "../docs/src/pages/tools/graphs.astro" },
-  { module = "cityseer.tools.io", astro = "../docs/src/pages/tools/io.astro" },
-  { module = "cityseer.tools.plot", astro = "../docs/src/pages/tools/plot.astro" },
-  { module = "cityseer.tools.mock", astro = "../docs/src/pages/tools/mock.astro" },
-]

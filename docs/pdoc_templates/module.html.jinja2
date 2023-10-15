@@ -1,0 +1,182 @@
+{#
+DON'T INDENT -> CAUSES ISSUES FOR MARKDOWN OUTPUT
+PRESERVE WHITE SPACE AROUND MARKDOWN BLOCKS FOR PARSER
+#}
+{% extends "frame.html.jinja2" %}
+
+{% block content %}
+<section class="module">
+
+{% block module_info %}
+{% if module.namespace %}
+# {{ module.namespace }}.{{ module.name }}
+{% else %}
+# {{ module.name }}
+{% endif %}
+{{ docstring(module) }}
+{% endblock %}
+
+{% block module_contents %}
+{% for m in module.flattened_own_members if is_public(m) | trim %}
+{{ member(m) }}
+{% endfor %}
+{% endblock %}
+
+</section>
+{% endblock content %}
+{#
+End of content, beginning of helper macros.
+See https://pdoc.dev/docs/pdoc/render_helpers.html#DefaultMacroExtension for an explanation of defaultmacro.
+#}
+{% defaultmacro member(doc) %}
+{% if doc.kind == "class" %}
+{{ class(doc) }}
+{% elif doc.kind == "function" %}
+{{ function(doc) }}
+{% elif doc.kind == "module" %}
+{{ submodule(doc) }}
+{% else %}
+{{ variable(doc) }}
+{% endif %}
+{% enddefaultmacro %}
+
+{% defaultmacro class(cls) -%}
+<div class="class">
+{{ decorators(cls) }}
+{# SPACE FOR MARKDOWN PARSING #}
+
+## {{ cls.qualname }}
+
+{{ docstring(cls) }}
+
+{% for m in cls.own_members if m.kind != "class" and is_public(m) | trim %}
+
+{{ member(m) }} 
+{% endfor %}
+{% set inherited_members = inherited(cls) | trim %}
+{% if inherited_members %}
+<div class="inherited">
+<h5>Inherited Members</h5>
+<dl>
+{{ inherited_members }}
+</dl>
+</div>
+{% endif %}
+{{- bases(cls) -}}
+</div>
+{% enddefaultmacro %}
+
+{% defaultmacro bases(cls) %}
+{%- if cls.bases -%}
+<wbr>(
+{%- for base in cls.bases -%}
+<span class="base">{{ base[:2] | link(text=base[2]) }}</span>
+{%- if loop.nextitem %}, {% endif %}
+{%- endfor -%}
+)
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro default_value(var) -%}
+{%- if var.default_value_str -%}
+<span class="default_value">{{ var.default_value_str | escape | linkify }}</span>
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro annotation(var) %}
+{%- if var.annotation_str -%}
+<span class="annotation">{{ var.annotation_str | escape | linkify }}</span>
+{%- endif -%}
+{% enddefaultmacro %}
+
+{% defaultmacro decorators(doc) %}
+{% for d in doc.decorators if not d.startswith("@_") %}
+<div class="decorator">{{ d }}</div>
+{% endfor %}
+{% enddefaultmacro %}
+
+{% defaultmacro function(fn) -%}
+<div class="function">
+{# SPACE FOR MARKDOWN PARSING #}
+
+{% if fn.name == "__init__" %}
+## {{ ".".join(fn.qualname.split(".")[:-1]) }}
+{% else %}
+## {{ fn.name }}
+{% endif %}
+
+{{ decorators(fn) }}
+<div class="content">
+{% if fn.name == "__init__" %}
+<span class="name">{{ ".".join(fn.qualname.split(".")[:-1]) }}</span>
+{{- fn.signature_without_self | custom_format_signature | safe }}
+{% else %}
+<span class="name">{{ fn.name }}</span>
+{{- fn.signature | custom_format_signature | safe }}
+{% endif %}
+</div>
+{{ docstring(fn) }}
+</div>
+{% enddefaultmacro %}
+
+{% defaultmacro submodule(mod) -%}
+<span class="name">{{ mod.taken_from | link }}</span>
+{{ docstring(mod) }}
+{% enddefaultmacro %}
+
+{% defaultmacro variable(var) -%}
+<span class="name">{{ var.name }}</span>{{ annotation(var) }}{{ default_value(var) }}
+{{ docstring(doc) }}
+{% enddefaultmacro %}
+
+{% defaultmacro docstring(var) %}
+{% if var %}
+{% if var.docstring %}
+{{ var.docstring | custom_process_docstring | safe }}
+{% endif %}
+{% endif %}
+{% enddefaultmacro %}
+
+{% defaultmacro is_public(doc) %}
+{#
+This macro is a bit unconventional in that its output is not rendered, but treated as a boolean:
+Returning no text is interpreted as false, returning any other text is iterpreted as true.
+Implementing this as a macro makes it very easy to override with a custom template, see
+https://github.com/mitmproxy/pdoc/tree/main/examples/custom-template.
+#}
+{% if doc.name == "__init__" %}
+{# show all constructors #}
+true
+{% elif doc.name == "__doc__" %}
+{# We don't want to document __doc__ itself, https://github.com/mitmproxy/pdoc/issues/235 #}
+{% elif doc.kind == "module" and doc.fullname not in all_modules %}
+{# Skip modules that were manually excluded, https://github.com/mitmproxy/pdoc/issues/334 #}
+{% elif (doc.qualname or doc.name) is in(module.obj.__all__ or []) %}
+{# members starting with an underscore are still public if mentioned in __all__ #}
+true
+{% elif not doc.name.startswith("_") and (doc.kind != "variable" or doc.is_enum_member or doc.docstring) %}
+{# members not starting with an underscore are considered public by default #}
+true
+{% endif %}
+{% enddefaultmacro %}
+{# fmt: off #}
+
+{% defaultmacro inherited(cls) %}
+{% for base, members in cls.inherited_members.items() %}
+{% set m = None %}{# workaround for https://github.com/pallets/jinja/issues/1427 #}
+{% set member_html %}
+{% for m in members if is_public(m) | trim %}
+<dd id="{{ m.qualname }}" class="{{ m.kind }}">
+{{- m.taken_from | link(text=m.name.replace("__init__",base[1])) -}}
+</dd>
+{% endfor %}
+{% endset %}
+{# we may not have any public members, in which case we don't want to print anything. #}
+{% if member_html %}
+<div><dt>{{ base | link }}</dt>
+{{ member_html }}
+</div>
+{% endif %}
+{% endfor %}
+{% enddefaultmacro %}
+{# fmt: on #}

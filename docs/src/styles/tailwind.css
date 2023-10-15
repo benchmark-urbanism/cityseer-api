@@ -1,7 +1,5 @@
 @tailwind base;
-
 @tailwind components;
-
 @tailwind utilities;
 
 @layer base {
@@ -24,11 +22,11 @@
   }
 
   h1 {
-    @apply pt-12 pt-8 pb-4 text-4xl font-extralight;
+    @apply pt-12 pb-4 text-3xl font-normal;
   }
 
   h2 {
-    @apply pt-6 pb-2 text-3xl font-normal;
+    @apply pt-6 pb-2 text-2xl font-normal;
   }
 
   h3 {
@@ -115,14 +113,14 @@
     }
   }
 
-  @media only screen and (max-width: 1200px) {
+  @media only screen and (width <= 1200px) {
     h1 {
-      @apply pt-8 pb-2 text-2xl font-light;
+      @apply pt-8 pb-2 text-2xl font-normal;
     }
 
     h2,
     h3 {
-      @apply pt-6 pb-1 font-medium;
+      @apply pt-6 pb-1 font-light;
     }
 
     h2 {
@@ -196,7 +194,7 @@
 
 .box,
 blockquote {
-  @apply my-3 rounded border bg-dark-grey px-2;
+  @apply my-3 rounded border bg-dark-grey px-2 border-mid-grey;
 
   & p {
     @apply text-xs;
@@ -207,7 +205,7 @@ blockquote {
   }
 
   &.warning {
-    @apply border-[#136ece];
+    @apply border-theme;
   }
 }
 

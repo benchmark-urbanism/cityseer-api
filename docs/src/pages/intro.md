@@ -42,7 +42,7 @@ For documentations of older versions of `cityseer`, please refer to the docstrin
 # any networkX MultiGraph with 'x' and 'y' node attributes will do
 # here we'll use the cityseer mock module to generate an example networkX graph
 import networkx as nx
-from cityseer.tools import mock, graphs, plot
+from cityseer.tools import mock, graphs, plot, io
 
 G = mock.mock_graph()
 print(G)
@@ -59,9 +59,11 @@ The [`tools.graphs`](/tools/graphs) module contains a collection of convenience 
 
 There are generally two scenarios when creating a street network graph:
 
-1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. e.g. `G.add-edge(start_node, end_node, geom=a_linestring_geom)`.
+1. In the ideal case, if you have access to a high-quality street network dataset -- which keeps the topology of the network separate from the geometry of the streets -- then you would construct the network based on the topology while assigning the roadway geometries to the respective edges spanning the nodes. [OS Open Roads](https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-roads.html) is a good example of this type of dataset. Assigning the geometries to an edge involves A) casting the geometry to a [`shapely`](https://shapely.readthedocs.io) `LineString`, and B) assigning this geometry to the respective edge by adding the `LineString` geometry as a `geom` attribute. e.g. `G.add_edge(start_node, end_node, geom=a_linestring_geom)`.
 
-2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide#graph-cleaning) guide; in these cases, the [`graphs.nx_simple_geoms`](/tools/graphs#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nx-wgs_to_utm`](/tools/graphs#nx-wgs-to-utm) aids coordinate conversions; [`nx_remove_dangling_nodes`](/tools/graphs#nx-remove-dangling-nodes) removes remove roadway stubs, [`nx_remove_filler_nodes`](/tools/graphs#nx-remove-filler-nodes) strips-out filler nodes, and [`nx-consolidate-nodes`](/tools/graphs#nx-consolidate-nodes) assists in cleaning-up the network.
+2. In reality, most data-sources are not this refined and will represent roadway geometries by adding additional nodes to the network. For a variety of reasons, this is not ideal and you may want to follow the [`Graph Cleaning`](/guide#graph-cleaning) guide; in these cases, the [`graphs.nx_simple_geoms`](/tools/graphs#nx-simple-geoms) method can be used to generate the street geometries, after which several methods can be applied to clean and prepare the graph. For example, [`nx_wgs_to_utm`](/tools/graphs#nx-wgs-to-utm) aids coordinate conversions; [`nx_remove_dangling_nodes`](/tools/graphs#nx-remove-dangling-nodes) removes remove roadway stubs, [`nx_remove_filler_nodes`](/tools/graphs#nx-remove-filler-nodes) strips-out filler nodes, and [`nx_consolidate_nodes`](/tools/graphs#nx-consolidate-nodes) assists in cleaning-up the network.
+
+3. A third approach uses only minimal graph cleaning and compensates for messy network representations through algorithmic corrections. This is demonstrated in Graph Corrections example notebook on the [`Examples`](/examples#graph-corrections-guide) page.
 
 ## Example
 
@@ -103,7 +105,7 @@ _A dual graph (blue) plotted against the primal source graph (red). In this case
 
 After graph preparation and cleaning has been completed, the `networkX` graph can be transformed into data structures for efficiently computing centralities, land-use measures, or statistical aggregations.
 
-Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into GeoPandas [`GeoDataFrames`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`rustalgos.NetworkStructure`](/rustalgos#networkstructure), the latter of which is used by `cityseer` for efficiently computing the measures with the underlying `rust` algorithms.
+Use [network_structure_from_nx](/tools/graphs#network-structure-from-nx) to convert a `networkX` graph into GeoPandas [`GeoDataFrames`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html) and a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure), the latter of which is used by `cityseer` for efficiently computing the measures with the underlying `rust` algorithms.
 
 ### Network Centralities
 
@@ -114,14 +116,18 @@ from cityseer.metrics import networks
 
 # create a Network layer from the networkX graph
 # use a CRS EPSG code matching the projected coordinate reference system for your data
-nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G_decomp, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G_decomp, crs=3395)
 # the underlying method allows the computation of various centralities simultaneously, e.g.
 nodes_gdf = networks.segment_centrality(
-    network_structure=network_structure,  # the network structure for which to compute the measures
-    nodes_gdf=nodes_gdf,  # the nodes GeoDataFrame, to which the results will be written
-    distances=[200, 400, 800, 1600],  # the distance thresholds for which to compute centralities
+    # the network structure for which to compute the measures
+    network_structure=network_structure,
+    # the nodes GeoDataFrame, to which the results will be written
+    nodes_gdf=nodes_gdf,
+    # the distance thresholds for which to compute centralities
+    distances=[200, 400, 800, 1600],
 )
-nodes_gdf.head()  # the results are now in the GeoDataFrame
+# the results are now in the GeoDataFrame
+nodes_gdf.head()
 ```
 
 ```python
@@ -165,18 +171,26 @@ data_gdf.head()
 # example easy-wrapper method for computing mixed-uses
 # this is a distance weighted form of hill diversity
 nodes_gdf, data_gdf = layers.compute_mixed_uses(
-    data_gdf,  # the source data
-    landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[200, 400, 800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    data_gdf,
+    # column in the dataframe which contains the landuse labels
+    landuse_column_label="categorical_landuses",
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[200, 400, 800, 1600],
 )
-print(nodes_gdf.columns)  # the GeoDataFrame will contain the results of the calculations
-print(nodes_gdf["cc_metric_q0_800_hill"])  # which can be retrieved as needed
+# the GeoDataFrame will contain the results of the calculations
+print(nodes_gdf.columns)
+# which can be retrieved as needed
+print(nodes_gdf["cc_metric_q0_800_hill"])
 ```
 
 ```python
-# for curiosity's sake - plot the assignments to see which edges the data points were assigned to
+# for curiosity's sake:
+# plot the assignments to see which edges the data points were assigned to
 plot.plot_assignment(network_structure, G_decomp, data_gdf, dpi=200, figsize=(4, 4))
 ```
 
@@ -208,15 +222,22 @@ _800m distance-weighted mixed-uses._
 ```python
 # compute landuse accessibilities for land-use types a, b, c
 nodes_gdf, data_gdf = layers.compute_accessibilities(
-    data_gdf,  # the source data
-    landuse_column_label="categorical_landuses",  # column in the dataframe which contains the landuse labels
-    accessibility_keys=["a", "b", "c"],  # the landuse categories for which to compute accessibilities
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[200, 400, 800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    data_gdf,
+    # column in the dataframe which contains the landuse labels
+    landuse_column_label="categorical_landuses",
+    # the landuse categories for which to compute accessibilities
+    accessibility_keys=["a", "b", "c"],
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[200, 400, 800, 1600],
 )
-# accessibilities are computed in both weighted and unweighted forms, e.g. for "a" and "b" landuse codes
-print(nodes_gdf[["cc_metric_a_800_weighted", "cc_metric_b_1600_non_weighted"]])  # and can be retrieved as needed
+# accessibilities are computed in both weighted and unweighted forms
+# e.g. for "a" and "b" landuse codes in weighted and non weighted, respectively
+print(nodes_gdf[["cc_metric_a_800_weighted", "cc_metric_b_1600_non_weighted"]])
 ```
 
 Aggregations can likewise be computed for numerical data. Let's generate some mock numerical data:
@@ -226,13 +247,19 @@ numerical_data_gdf = mock.mock_numerical_data(G_decomp, num_arrs=3)
 numerical_data_gdf.head()
 # compute stats for column mock_numerical_1
 nodes_gdf, numerical_data_gdf = layers.compute_stats(
-    numerical_data_gdf,  # the source data
-    stats_column_label="mock_numerical_1",  # numerical column to compute stats for
-    nodes_gdf=nodes_gdf,  # nodes GeoDataFrame - the results are written here
-    network_structure=network_structure,  # measures will be computed relative to pedestrian distances over the network
-    distances=[800, 1600],  # distance thresholds for which you want to compute the measures
+    # the source data
+    numerical_data_gdf,
+    # numerical column to compute stats for
+    stats_column_label="mock_numerical_1",
+    # nodes GeoDataFrame - the results are written here
+    nodes_gdf=nodes_gdf,
+    # measures will be computed relative to pedestrian distances over the network
+    network_structure=network_structure,
+    # distance thresholds for which you want to compute the measures
+    distances=[800, 1600],
 )
-# statistical aggregations are calculated for each requested column, and in the following forms:
+# statistical aggregations are calculated for each requested column,
+# and in the following forms:
 # max, min, sum, sum_weighted, mean, mean_weighted, variance, variance_weighted
 print(nodes_gdf["cc_metric_max_800"])
 print(nodes_gdf["cc_metric_mean_wt_800"])
@@ -243,7 +270,7 @@ The landuse metrics and statistical aggregations are computed over the street ne
 Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_geopandas](/metrics/networks#nx-from-network-geopandas) method.
 
 ```python
-nx_multigraph_round_trip = graphs.nx_from_geopandas(
+nx_multigraph_round_trip = io.nx_from_geopandas(
     nodes_gdf,
     edges_gdf,
 )

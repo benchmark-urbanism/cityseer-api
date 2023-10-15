@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import string
-from typing import Any, Generator, Union, cast
+from typing import Any, Generator, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -248,7 +248,7 @@ def get_graph_extents(
     min_y: float = np.inf
     max_y: float = -np.inf
 
-    _node_idx: Union[int, str]
+    _node_idx: int | str
     node_data: dict[str, Any]
     for _node_idx, node_data in nx_multigraph.nodes(data=True):
         if node_data["x"] < min_x:

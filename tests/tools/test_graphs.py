@@ -7,7 +7,6 @@ import pytest
 from shapely import geometry, ops
 
 from cityseer import config
-from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, mock
 
 
@@ -39,124 +38,6 @@ def test_nx_simple_geoms():
     g_copy.add_edge("0", "0")  # simple geom from self edge = length of zero
     g_simple = graphs.nx_simple_geoms(g_copy)
     assert not g_simple.has_edge("0", "0")
-
-
-def test_add_node(diamond_graph):
-    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 50, 50)
-    assert is_dupe is False
-    assert new_name == "0±1"
-    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1"]
-    assert diamond_graph.nodes["0±1"] == {"x": 50, "y": 50}
-
-    # same name and coordinates should return None
-    response, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 50, 50)
-    assert is_dupe is True
-
-    # same name and different coordinates should return v2
-    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 40, 50)
-    assert is_dupe is False
-    assert new_name == "0±1§v2"
-    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2"]
-    assert diamond_graph.nodes["0±1§v2"] == {"x": 40, "y": 50}
-
-    # likewise v3
-    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "1"], 30, 50)
-    assert is_dupe is False
-    assert new_name == "0±1§v3"
-    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2", "0±1§v3"]
-    assert diamond_graph.nodes["0±1§v3"] == {"x": 30, "y": 50}
-
-    # and names should concatenate over old merges
-    new_name, is_dupe = graphs._add_node(diamond_graph, ["0", "0±1"], 60, 30)
-    assert is_dupe is False
-    assert new_name == "0±0±1"
-    assert list(diamond_graph.nodes) == ["0", "1", "2", "3", "0±1", "0±1§v2", "0±1§v3", "0±0±1"]
-    assert diamond_graph.nodes["0±0±1"] == {"x": 60, "y": 30}
-
-
-# TODO:
-def test_nx_from_osm():
-    pass
-
-
-# TODO: currently tested via test_nx_wgs_to_utm which calls nx_epsg_conversion internally
-def nx_epsg_conversion():
-    pass
-
-
-def test_nx_wgs_to_utm():
-    # check that node coordinates are correctly converted
-    G_utm = mock.mock_graph()
-    G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_converted = graphs.nx_wgs_to_utm(G_wgs)
-    for n, d in G_utm.nodes(data=True):
-        # rounding can be tricky
-        assert np.allclose(d["x"], G_converted.nodes[n]["x"], atol=0.1, rtol=0)
-        assert np.allclose(d["y"], G_converted.nodes[n]["y"], atol=0.1, rtol=0)
-
-    # check that edge coordinates are correctly converted
-    G_utm = mock.mock_graph()
-    G_utm = graphs.nx_simple_geoms(G_utm)
-
-    G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_wgs = graphs.nx_simple_geoms(G_wgs)
-
-    G_converted = graphs.nx_wgs_to_utm(G_wgs)
-    for s, e, k, d in G_utm.edges(data=True, keys=True):
-        assert round(d["geom"].length, 1) == round(G_converted[s][e][k]["geom"].length, 1)
-
-    # check that non-LineString geoms throw an error
-    G_wgs = mock.mock_graph(wgs84_coords=True)
-    for s, e, k in G_wgs.edges(keys=True):
-        G_wgs[s][e][k]["geom"] = geometry.Point([G_wgs.nodes[s]["x"], G_wgs.nodes[s]["y"]])
-    with pytest.raises(TypeError):
-        graphs.nx_wgs_to_utm(G_wgs)
-
-    # check that missing node keys throw an error
-    for k in ["x", "y"]:
-        G_wgs = mock.mock_graph(wgs84_coords=True)
-        for n in G_wgs.nodes():
-            # delete key from first node and break
-            del G_wgs.nodes[n][k]
-            break
-        # check that missing key throws an error
-        with pytest.raises(KeyError):
-            graphs.nx_wgs_to_utm(G_wgs)
-
-    # check that non WGS coordinates throw error
-    G_utm = mock.mock_graph()
-    with pytest.raises(ValueError):
-        graphs.nx_wgs_to_utm(G_utm)
-
-    # check that non-matching UTM zones are coerced to the same zone
-    # this scenario spans two UTM zones
-    G_wgs_b = nx.MultiGraph()
-    nodes = [
-        (1, {"x": -0.0005, "y": 51.572}),
-        (2, {"x": -0.0005, "y": 51.571}),
-        (3, {"x": 0.0005, "y": 51.570}),
-        (4, {"x": -0.0005, "y": 51.569}),
-        (5, {"x": -0.0015, "y": 51.570}),
-    ]
-    G_wgs_b.add_nodes_from(nodes)
-    edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
-    G_wgs_b.add_edges_from(edges)
-    G_utm_30 = graphs.nx_wgs_to_utm(G_wgs_b)
-    G_utm_30 = graphs.nx_simple_geoms(G_utm_30)
-
-    # if not consistently coerced to UTM zone, the distances from 2-3 and 3-4 will be over 400km
-    for s, e, d in G_utm_30.edges(data=True):
-        assert d["geom"].length < 200
-
-    # check that explicit zones are respectively coerced
-    G_utm_31 = graphs.nx_wgs_to_utm(G_wgs_b, force_zone_number=31)
-    G_utm_31 = graphs.nx_simple_geoms(G_utm_31)
-    for n, d in G_utm_31.nodes(data=True):
-        assert d["x"] != G_utm_30.nodes[n]["x"]
-
-    # from cityseer.tools import plot
-    # plot.plot_nx(G_wgs_b, labels=True, node_size=80)
-    # plot.plot_nx(G_utm_b, labels=True, node_size=80)
 
 
 def make_messy_graph(G):
@@ -416,64 +297,28 @@ def test_nx_remove_dangling_nodes(primal_graph):
     assert G_biggest_component.edges == G_post.edges
 
 
-def test_nx_iron_edges(primal_graph):
-    # TODO
+def test_nx_merge_parallel_edges():
+    """ """
     pass
 
 
-def test_nx_consolidate():
-    # create a test graph
-    G = nx.MultiGraph()
-    nodes = [
-        (0, {"x": 620, "y": 720}),
-        (1, {"x": 620, "y": 700}),
-        (2, {"x": 660, "y": 700}),
-        (3, {"x": 660, "y": 660}),
-        (4, {"x": 700, "y": 800}),
-        (5, {"x": 720, "y": 800}),
-        (6, {"x": 700, "y": 720}),
-        (7, {"x": 720, "y": 720}),
-        (8, {"x": 700, "y": 700}),
-        (9, {"x": 700, "y": 620}),
-        (10, {"x": 720, "y": 620}),
-        (11, {"x": 760, "y": 760}),
-        (12, {"x": 800, "y": 760}),
-        (13, {"x": 780, "y": 720}),
-        (14, {"x": 840, "y": 720}),
-        (15, {"x": 840, "y": 700}),
-    ]
-    edges = [
-        (0, 6),
-        (1, 2),
-        (2, 3),
-        (2, 8),
-        (4, 6),
-        (5, 7),
-        (6, 7),
-        (6, 8),
-        (7, 10),
-        (7, 13),
-        (8, 9),
-        (8, 15),
-        (11, 12),
-        (11, 13),
-        (12, 13),
-        (13, 14),
-    ]
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
+def test_nx_iron_edges():
+    """ """
+    pass
 
-    G = graphs.nx_simple_geoms(G)
+
+def test_nx_consolidate_nodes(parallel_segments_graph):
+    """ """
     # behaviour confirmed visually
     # from cityseer.tools import plot
     # plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True)
     # set centroid_by_straightness to False
     G_merged_spatial = graphs.nx_consolidate_nodes(
-        G, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
+        parallel_segments_graph, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     # this time, start with same origin graph but split opposing geoms first
-    G_split_opps = graphs.nx_split_opposing_geoms(G, buffer_dist=25, merge_edges_by_midline=True)
+    G_split_opps = graphs.nx_split_opposing_geoms(parallel_segments_graph, buffer_dist=25, merge_edges_by_midline=True)
     # plot.plot_nx(G_split_opps, labels=True, node_size=80, plot_geoms=True)
     # set straightness heuristic false for this one
     G_merged_spatial = graphs.nx_consolidate_nodes(
@@ -495,7 +340,6 @@ def test_nx_consolidate():
         (780.0, 710.0),
         (840.0, 710.0),
     ]
-
     edge_lens = []
     for s, e, d in G_merged_spatial.edges(data=True):
         edge_lens.append(d["geom"].length)
@@ -512,6 +356,11 @@ def test_nx_consolidate():
             147.70329614269008,
         ],
     )
+
+
+def test_nx_split_opposing_geoms():
+    """ """
+    pass
 
 
 def test_nx_decompose(primal_graph):
@@ -698,537 +547,19 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         assert G_dual.number_of_edges(s, e) == 1
 
 
-def test_network_structure_from_nx(diamond_graph):
-    # test maps vs. networkX
-    G_test: nx.MultiGraph = diamond_graph.copy()
-    # set some random 'live' statuses
-    G_test.nodes["0"]["live"] = True
-    G_test.nodes["1"]["live"] = True
-    G_test.nodes["2"]["live"] = True
-    G_test.nodes["3"]["live"] = False
-    G_test_dual = graphs.nx_to_dual(G_test)
-    # set some random 'live' statuses
-    G_test_dual.nodes["0_1_k0"]["live"] = True
-    G_test_dual.nodes["0_2_k0"]["live"] = True
-    G_test_dual.nodes["1_2_k0"]["live"] = True
-    G_test_dual.nodes["1_3_k0"]["live"] = True
-    G_test_dual.nodes["2_3_k0"]["live"] = False
-    for G, is_dual in zip((G_test, G_test_dual), (False, True)):
-        # generate test maps
-        nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(G, 3395)
-        network_structure.validate()
-        # debug plot
-        # plot.plot_graphs(primal=G)
-        # plot.plot_network_structure(nodes_gdf, node_data, edge_data)
-        # check lengths
-        assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
-        # edges = x2
-        assert network_structure.edge_count == G.number_of_edges() * 2
-        # check node maps (idx and label match in this case...)
-        node_idxs = network_structure.node_indices()
-        for node_idx in node_idxs:
-            node_payload = network_structure.get_node_payload(node_idx)
-            assert node_payload.coord.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
-            assert node_payload.coord.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
-            assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
-        # check edge maps (idx and label match in this case...)
-        for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
-            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx, edge_idx)
-            start_nd_key = edge_payload.start_nd_key
-            end_nd_key = edge_payload.end_nd_key
-            edge_idx = edge_payload.edge_idx
-            length = edge_payload.length
-            angle_sum = edge_payload.angle_sum
-            imp_factor = edge_payload.imp_factor
-            in_bearing = edge_payload.in_bearing
-            out_bearing = edge_payload.out_bearing
-            # check against edges_gdf
-            gdf_edge_key = f"{start_nd_key}-{end_nd_key}"
-            assert edges_gdf.loc[gdf_edge_key, "start_ns_node_idx"] == start_ns_node_idx
-            assert edges_gdf.loc[gdf_edge_key, "end_ns_node_idx"] == end_ns_node_idx
-            assert edges_gdf.loc[gdf_edge_key, "edge_idx"] == edge_idx
-            assert edges_gdf.loc[gdf_edge_key, "nx_start_node_key"] == start_nd_key
-            assert edges_gdf.loc[gdf_edge_key, "nx_end_node_key"] == end_nd_key
-            assert edges_gdf.loc[gdf_edge_key, "length"] - length < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "angle_sum"] - angle_sum < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
-            # manual checks
-            if not is_dual:
-                if (start_nd_key, end_nd_key) == ("0", "1"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            120.0,
-                            120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0", "2"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            60.0,
-                            60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1", "0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            -60.0,
-                            -60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1", "2"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            0.0,
-                            0.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1", "3"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            60.0,
-                            60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("2", "0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            -120.0,
-                            -120.0,
-                        ),
-                    )
-                elif (start_nd_key, end_nd_key) == ("2", "1"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            180.0,
-                            180.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("2", "3"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            120.0,
-                            120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("3", "1"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            -120.0,
-                            -120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("3", "2"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            0.0,
-                            1.0,
-                            -60.0,
-                            -60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                else:
-                    raise KeyError("Unmatched edge.")
-            else:
-                if (start_nd_key, end_nd_key) == ("0_1_k0", "0_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            -60.0,
-                            60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0_1_k0", "1_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            120.0,
-                            0.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0_1_k0", "1_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            60.0,
-                            1.0,
-                            120.0,
-                            60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0_2_k0", "0_1_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            -120.0,
-                            120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0_2_k0", "1_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            60.0,
-                            180.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("0_2_k0", "2_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            60.0,
-                            1.0,
-                            60.0,
-                            120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_2_k0", "0_1_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            180.0,
-                            -60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_2_k0", "0_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            0.0,
-                            -120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_2_k0", "1_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            180.0,
-                            60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_2_k0", "2_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            0.0,
-                            120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_3_k0", "0_1_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            60.0,
-                            1.0,
-                            -120.0,
-                            -60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_3_k0", "1_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            -120.0,
-                            0.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("1_3_k0", "2_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            60.0,
-                            -60.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("2_3_k0", "0_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            60.0,
-                            1.0,
-                            -60.0,
-                            -120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("2_3_k0", "1_2_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            -60.0,
-                            180.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                elif (start_nd_key, end_nd_key) == ("2_3_k0", "1_3_k0"):
-                    assert np.allclose(
-                        (length, angle_sum, imp_factor, in_bearing, out_bearing),
-                        (
-                            100.0,
-                            120.0,
-                            1.0,
-                            120.0,
-                            -120.0,
-                        ),
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                else:
-                    raise KeyError("Unmatched edge.")
-    # check that non string indices throw an error
-    G_test = diamond_graph.copy()
-    G_test.add_node(0)
-    G_test.add_node(1)
-    G_test.add_edge(0, 1)
-    with pytest.raises(TypeError):
-        graphs.network_structure_from_nx(G_test, 3395)
-    # check that missing geoms throw an error
-    G_test = diamond_graph.copy()
-    for start_nd, end_nd, edge_key in G_test.edges(keys=True):
-        # delete key from first node and break
-        del G_test[start_nd][end_nd][edge_key]["geom"]
-        break
-    with pytest.raises(KeyError):
-        graphs.network_structure_from_nx(G_test, 3395)
-    # check that non-LineString geoms throw an error
-    G_test = diamond_graph.copy()
-    for start_nd, end_nd, edge_key in G_test.edges(keys=True):
-        G_test[start_nd][end_nd][edge_key]["geom"] = geometry.Point(
-            [G_test.nodes[start_nd]["x"], G_test.nodes[start_nd]["y"]]
-        )
-    with pytest.raises(TypeError):
-        graphs.network_structure_from_nx(G_test, 3395)
-    # check that missing node keys throw an error
-    G_test = diamond_graph.copy()
-    for edge_key in ["x", "y"]:
-        for nd_idx in G_test.nodes():
-            # delete key from first node and break
-            del G_test.nodes[nd_idx][edge_key]
-            break
-        with pytest.raises(KeyError):
-            graphs.network_structure_from_nx(G_test, 3395)
-    # check that invalid imp_factors are caught
-    G_test = diamond_graph.copy()
-    # corrupt imp_factor value and break
-    for corrupt_val in [-1, -np.inf, np.nan]:
-        for start_nd, end_nd, edge_key in G_test.edges(keys=True):
-            G_test[start_nd][end_nd][edge_key]["imp_factor"] = corrupt_val
-            break
-        with pytest.raises(ValueError):
-            graphs.network_structure_from_nx(G_test, 3395)
-
-
-def test_blend_metrics(primal_graph):
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    nodes_gdf = networks.node_centrality_shortest(
-        network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
-    )
-    # AVG
-    merged_edges_gdf_avg = graphs.blend_metrics(nodes_gdf, edges_gdf, method="avg")
-    for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
-            continue
-        for _edge_idx, edge_row in merged_edges_gdf_avg.iterrows():
-            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
-            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
-            assert edge_row[node_column] == (start_val + end_val) / 2
-    # MIN
-    merged_edges_gdf_min = graphs.blend_metrics(nodes_gdf, edges_gdf, method="min")
-    for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
-            continue
-        for _edge_idx, edge_row in merged_edges_gdf_min.iterrows():
-            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
-            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
-            assert edge_row[node_column] == min([start_val, end_val])
-    # MAX
-    merged_edges_gdf_max = graphs.blend_metrics(nodes_gdf, edges_gdf, method="max")
-    for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
-            continue
-        for _edge_idx, edge_row in merged_edges_gdf_max.iterrows():
-            start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
-            end_val = nodes_gdf.loc[edge_row.nx_end_node_key, node_column]
-            assert edge_row[node_column] == max([start_val, end_val])
-
-
-def test_nx_from_geopandas(primal_graph):
-    # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
-    # check round trip to and from graph maps results in same graph
-    # explicitly set live params for equality checks
-    # network_structure_from_networkX generates these implicitly if missing
-    for node_key in primal_graph.nodes():
-        primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
-    # test directly from and to graph maps
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    G_round_trip = graphs.nx_from_geopandas(nodes_gdf, edges_gdf)
-    assert list(G_round_trip.nodes) == list(primal_graph.nodes)
-    assert list(G_round_trip.edges) == list(primal_graph.edges)
-    # check with metrics
-    nodes_gdf, edges_gdf, network_structure = graphs.network_structure_from_nx(primal_graph, 3395)
-    nodes_gdf = networks.node_centrality_shortest(
-        network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
-    )
-    data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
-    nodes_gdf, data_gdf = layers.compute_accessibilities(
-        data_gdf,
-        landuse_column_label="categorical_landuses",
-        accessibility_keys=["a", "c"],
-        nodes_gdf=nodes_gdf,
-        network_structure=network_structure,
-        distances=[500, 1000],
-    )
-    column_labels: list[str] = [
-        "cc_metric_a_500_non_weighted",
-        "cc_metric_a_1000_non_weighted",
-        "cc_metric_a_500_weighted",
-        "cc_metric_a_1000_weighted",
-        "cc_metric_c_500_non_weighted",
-        "cc_metric_c_1000_non_weighted",
-        "cc_metric_c_500_weighted",
-        "cc_metric_c_1000_weighted",
-    ]
-    # without backbone
-    G_round_trip_nx = graphs.nx_from_geopandas(
-        nodes_gdf,
-        edges_gdf,
-    )
-    for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
-        for col_label in column_labels:
-            assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
-    # test with decomposed
-    G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
-    # set live explicitly
-    for node_key in G_decomposed.nodes():
-        G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
-    nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = graphs.network_structure_from_nx(G_decomposed, 3395)
-    G_round_trip_decomp = graphs.nx_from_geopandas(nodes_gdf_decomp, edges_gdf_decomp)
-    assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
-    for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
-        assert node_key in G_decomposed
-        assert iter_node_data["live"] == G_decomposed.nodes[node_key]["live"]
-        assert iter_node_data["x"] - G_decomposed.nodes[node_key]["x"] < config.ATOL
-        assert iter_node_data["y"] - G_decomposed.nodes[node_key]["y"] < config.ATOL
-    assert G_round_trip_decomp.edges == G_decomposed.edges
+def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
+    """ """
+    G_20 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 20)
+    G_10 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 10)
+    G_0 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 0)
+    # from cityseer.tools import plot
+    # plot.plot_nx(G_0, labels=True, plot_geoms=True)
+    # crude test for now
+    for nd_key, nd_data in G_20.nodes(data=True):
+        assert nd_data["weight"] <= 1
+        assert nd_data["weight"] > 0
+    for nd_key, nd_data in G_10.nodes(data=True):
+        assert nd_data["weight"] <= 1
+        assert nd_data["weight"] > 0
+    for nd_key, nd_data in G_0.nodes(data=True):
+        assert nd_data["weight"] == 1

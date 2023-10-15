@@ -6,7 +6,7 @@ import Footer from '@src/components/Footer.astro'
 import RepoLink from '@src/components/RepoLink.astro'
 import StripeTitle from '@src/components/StripeTitle.astro'
 import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
-
+console.log(logoURL)
 import '@src/styles/tailwind.css'
 ---
 
@@ -14,40 +14,49 @@ import '@src/styles/tailwind.css'
   <Fragment slot="metaContent">
     <title>Cityseer API Docs</title>
   </Fragment>
-  <div id='home-container' class='w-full justify-center'>
-    <aside id='left-container'>
-      <div class='flex-auto flex flex-col items-center justify-center'>
-        <div class='flex-grow'></div>
-        <div class='max-w-sm object-contain'>
-          <img class='w-full h-full py-16 px-4' src={logoURL} alt='logo' />
+  <div id="home-container" class="w-full justify-center">
+    <aside id="left-container">
+      <div class="flex-auto flex flex-col items-center justify-center">
+        <div class="flex-grow"></div>
+        <div class="max-w-xs object-contain">
+          <img class="w-full h-full py-16 px-4" src={logoURL.src} alt="logo" />
         </div>
-        <a id='go-button' href='/intro' title='Get Started!'>
-          <button id='go-button'
-            class='border border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center shadow-sm shadow-black'>
-            <BookOpen class='w-8' />
+        <a id="go-button" href="/intro" title="Get Started!">
+          <button
+            id="go-button"
+            class="border border-theme bg-dark-grey text-theme rounded-full w-16 h-16 flex items-center justify-center shadow-sm shadow-black"
+          >
+            <BookOpen class="w-8" />
           </button>
-          <h2 class='leading-none py-4'>Documentation</h2>
+          <h2 class="leading-none py-4">Documentation</h2>
         </a>
-        <div class='py-8 flex flex-col items-center py-10'>
+        <div class="py-8 flex flex-col items-center py-10">
           <RepoLink />
         </div>
       </div>
       <StripeTitle />
     </aside>
-    <div id='right-container'>
-      <div class='flex-grow'></div>
+    <div id="right-container">
+      <div class="flex-grow"></div>
       <h1>Computational tools for urban analysis</h1>
       <h2>Morphological analysis</h2>
-      <p>Developed from the ground-up for urban analysis: assess the precursors to vibrant neighbourhoods using street
-        networks, mixed-uses, landuse accessibilities, and spatial statistics.</p>
+      <p>
+        Developed from the ground-up for urban analysis: assess the precursors to vibrant
+        neighbourhoods using street networks, mixed-uses, landuse accessibilities, and spatial
+        statistics.
+      </p>
       <h2>Pedestrian scale</h2>
-      <p>High-resolution analysis at the pedestrian scale with metrics computed at intervals along streetfronts:
-        use network distances and spatial impedances for enhanced contextual sensitivity.
+      <p>
+        High-resolution analysis at the pedestrian scale with metrics computed at intervals along
+        streetfronts: use network distances and spatial impedances for enhanced contextual
+        sensitivity.
       </p>
       <h2>Friendly & performant</h2>
-      <p>Python package with heavier algorithms implemented in paralellised `rust` code. I/O convenience methods for
-        NetworkX with advanced cleaning methods for OSM data. Generated metrics stored as GeoPandas for downstream
-        analysis.</p>
+      <p>
+        Python package with heavier algorithms implemented in paralellised `rust` code. I/O
+        convenience methods for NetworkX with advanced cleaning methods for OSM data. Generated
+        metrics stored as GeoPandas for downstream analysis.
+      </p>
       <Footer />
     </div>
   </div>

@@ -1,26 +1,30 @@
 """
-Functions for fetching and cleaning OSM data.
+Functions for fetching and converting graphs and network structures.
 """
 # pyright: reportUnknownVariableType=false
 # pyright: reportUnknownArgumentType=false
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 import fiona
+import geopandas as gpd
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
+import pandas as pd
 import requests
 import utm
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from shapely import geometry
 from tqdm import tqdm
 
-from cityseer import config
-from cityseer.tools import graphs
-from cityseer.tools.graphs import EdgeData, MultiDiGraph, NodeKey
+from cityseer import config, rustalgos
+from cityseer.tools import graphs, util
+from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +32,125 @@ logger = logging.getLogger(__name__)
 
 # type hack until networkx supports type-hinting
 MultiGraph = Any
+
+
+def nx_epsg_conversion(nx_multigraph: MultiGraph, from_epsg_code: int, to_epsg_code: int) -> MultiGraph:
+    """
+    Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS.
+
+    The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString`
+    geometries will also be converted.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional
+        `geom` edge attributes containing `LineString` geoms to be converted.
+    from_epsg_code: int
+        An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For
+        example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
+    to_epsg_code: int
+        An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For
+        example, [27700](https://epsg.io/27700) if converting to British National Grid.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate
+        system. Edge `geom` attributes will also be converted if found.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info(f"Converting networkX graph from EPSG code {from_epsg_code} to EPSG code {to_epsg_code}.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    test_crs = CRS.from_epsg(to_epsg_code)
+    if not test_crs.is_projected:
+        raise ValueError("The to_epsg_code parameter must be for a projected CRS")
+    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+    logger.info("Processing node x, y coordinates.")
+    nd_key: NodeKey
+    node_data: NodeData
+    for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        # x coordinate
+        if "x" not in node_data:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
+        x: float = node_data["x"]
+        # y coordinate
+        if "y" not in node_data:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
+        y: float = node_data["y"]
+        # be cognisant of parameter and return order, using always_xy for transformer
+        easting, northing = transformer.transform(x, y)  # pylint: disable=unpacking-non-sequence
+        # write back to graph
+        g_multi_copy.nodes[nd_key]["x"] = easting
+        g_multi_copy.nodes[nd_key]["y"] = northing
+    # if line geom property provided, then convert as well
+    logger.info("Processing edge geom coordinates, if present.")
+    start_nd_key: NodeKey
+    end_nd_key: NodeKey
+    edge_idx: int
+    edge_data: EdgeData
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
+    ):
+        # check if geom present - optional step
+        if "geom" in edge_data:
+            line_geom: geometry.LineString = edge_data["geom"]
+            if line_geom.geom_type != "LineString":
+                raise TypeError(f"Expecting LineString geometry but found {line_geom.geom_type} geometry.")
+            # convert
+            edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
+            # snap ends
+            edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
+            # write back to edge
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
+
+    return g_multi_copy
+
+
+def nx_wgs_to_utm(nx_multigraph: MultiGraph, force_zone_number: int | None = None) -> MultiGraph:
+    """
+    Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
+
+    Converts `x` and `y` node attributes from [WGS84](https://epsg.io/4326) `lng`, `lat` geographic coordinates to the
+    local UTM projected coordinate system. If edge `geom` attributes are found, the associated `LineString` geometries
+    will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all
+    other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans
+    a UTM boundary.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
+        attributes containing `LineString` geoms to be converted.
+    force_zone_number: int
+        An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
+        UTM zones may introduce substantial distortions in the results.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the local UTM coordinate system. If edge
+         `geom` attributes are present, these will also be converted.
+
+    """
+    # sample the first node for UTM
+    utm_zone_number = force_zone_number
+    nd_key = list(nx_multigraph.nodes())[0]
+    lng = nx_multigraph.nodes[nd_key]["x"]
+    lat = nx_multigraph.nodes[nd_key]["y"]
+    is_north = lat >= 0
+    is_south = lat < 0
+    utm_zone_number, _utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
+    if force_zone_number is not None:
+        utm_zone_number = force_zone_number
+    # or dictionary
+    crs = CRS.from_dict({"proj": "utm", "zone": utm_zone_number, "north": is_north, "south": is_south})
+    target_epsg = crs.to_epsg()
+    if not isinstance(target_epsg, int):
+        raise ValueError("Unable to extract an EPSG code from the provided network.")
+    return nx_epsg_conversion(nx_multigraph, 4326, target_epsg)
 
 
 def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.Polygon, geometry.Polygon, int, str]:
@@ -75,7 +198,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
     return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter  # type: ignore
 
 
-def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> Optional[requests.Response]:
+def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:
     """
     Fetches an OSM response.
 
@@ -101,7 +224,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         An OSM API response.
 
     """
-    osm_response: Optional[requests.Response] | None = None
+    osm_response: requests.Response | None = None
     while max_tries:
         osm_response = requests.get(
             "https://overpass-api.de/api/interpreter",
@@ -125,7 +248,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
-    to_epsg_code: Optional[int] = None,
+    to_epsg_code: int | None = None,
     buffer_dist: int = 15,
     custom_request: str | None = None,
     simplify: bool = True,
@@ -183,13 +306,13 @@ def osm_graph_from_poly(
     pedestrianised routes and walkways.
 
     If you wish to provide your own OSM request, then provide a valid OSM API request as a string. The string must
-    contain a `{geom_osm}` string formatting key. This allows for the geometry parameter passed to the OSM API to be
+    contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the OSM API to be
     injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use
     street name and highway reference information for cleaning purposes. See
     [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
 
-    For example, to return only drivable roads, then use a request similar to the following. Notice the `{geom_osm}`
-    formatting key and the use of `out qt;` instead of `out skel qt;`.
+    For example, to return only drivable roads, then use a request similar to the following. Notice the `geom_osm`
+    f-string interpolation key and the use of `out qt;` instead of `out skel qt;`.
 
     ```python
     custom_request = f'''
@@ -218,7 +341,7 @@ def osm_graph_from_poly(
     if custom_request is not None:
         if "geom_osm" not in custom_request:
             raise ValueError(
-                'The provided custom_request does not contain a "geom_osm" formatting key, i.e. (poly:"{geom_osm}") '
+                'The provided custom_request does not contain an f-string interpolation bracket for "geom_osm". '
                 "This key is required for interpolating the generated geometry into the request."
             )
         request = custom_request.format(geom_osm=geom_osm)
@@ -246,12 +369,12 @@ def osm_graph_from_poly(
     # generate the query
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
     # build graph
-    graph_wgs = graphs.nx_from_osm(osm_json=osm_response.text)  # type: ignore
+    graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
     if to_epsg_code is not None:
-        graph_crs = graphs.nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
+        graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
     else:
-        graph_crs = graphs.nx_wgs_to_utm(graph_wgs)
+        graph_crs = nx_wgs_to_utm(graph_wgs)
     # simplify
     if simplify:
         graph_crs = graphs.nx_simple_geoms(graph_crs)
@@ -271,10 +394,84 @@ def osm_graph_from_poly(
     return graph_crs
 
 
+def nx_from_osm(osm_json: str) -> MultiGraph:
+    """
+    Generate a `NetworkX` `MultiGraph` from [Open Street Map](https://www.openstreetmap.org) data.
+
+    Parameters
+    ----------
+    osm_json: str
+        A `json` string response from the [OSM overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
+        consisting of `nodes` and `ways`.
+
+    Returns
+    -------
+    MultiGraph
+        A `NetworkX` `MultiGraph` with `x` and `y` attributes in [WGS84](https://epsg.io/4326) `lng`, `lat` geographic
+        coordinates.
+
+    """
+    osm_network_data = json.loads(osm_json)
+    nx_multigraph: MultiGraph = nx.MultiGraph()
+    # deduplicate nodes based on x, y matches
+    xy_nd_map: dict[str, str] = {}  # from x y to original node index
+    nd_merge_map: dict[str, str] = {}  # from original node index to deduplicated node index
+
+    for elem in osm_network_data["elements"]:
+        if elem["type"] == "node":
+            # all nodes should be string type
+            nd_idx = str(elem["id"])
+            x = elem["lon"]
+            y = elem["lat"]
+            nd_x_y = f"{x}-{y}"
+            # when deduplicating, sometimes overlapping stairways / underpasses might share an x, y space...
+            if "tags" in elem and "level" in elem["tags"]:
+                nd_x_y = f'{nd_x_y}-{elem["tags"]["level"]}'
+            # only add if non-duplicate
+            if nd_x_y not in xy_nd_map:
+                xy_nd_map[nd_x_y] = nd_idx
+            else:
+                logger.warning(f"Merging node {nd_idx} into {xy_nd_map[nd_x_y]} due to identical x, y coords.")
+            # ok_nd_idx will correspond to deduplicated node index
+            ok_nd_idx = xy_nd_map[nd_x_y]
+            # track original node idx to deduplicated idx for reference when building edges
+            nd_merge_map[nd_idx] = ok_nd_idx
+            nx_multigraph.add_node(ok_nd_idx, x=x, y=y)
+
+    def get_merged_nd_keys(_idx: int) -> tuple[str, str]:
+        start_nd_key = str(elem["nodes"][_idx])
+        end_nd_key = str(elem["nodes"][_idx + 1])
+        return nd_merge_map[start_nd_key], nd_merge_map[end_nd_key]
+
+    for elem in osm_network_data["elements"]:
+        if elem["type"] == "way":
+            count = len(elem["nodes"])
+            if "tags" in elem:
+                tags = elem["tags"]
+                name = tags["name"] if "name" in tags else None
+                ref = tags["ref"] if "ref" in tags else None
+                highway = tags["highway"] if "highway" in tags else None
+                for idx in range(count - 1):
+                    start_nd_key, end_nd_key = get_merged_nd_keys(idx)
+                    nx_multigraph.add_edge(
+                        start_nd_key,
+                        end_nd_key,
+                        names=[name],
+                        routes=[ref],
+                        highways=[highway],
+                    )
+            else:
+                for idx in range(count - 1):
+                    start_nd_key, end_nd_key = get_merged_nd_keys(idx)
+                    nx_multigraph.add_edge(start_nd_key, end_nd_key)
+
+    return nx_multigraph
+
+
 def nx_from_osm_nx(
     nx_multidigraph: MultiDiGraph,
-    node_attributes: Optional[list[str] | tuple[str]] = None,
-    edge_attributes: Optional[list[str] | tuple[str]] = None,
+    node_attributes: list[str] | None = None,
+    edge_attributes: list[str] | None = None,
     tolerance: float = config.ATOL,
 ) -> MultiGraph:
     """
@@ -377,15 +574,15 @@ def nx_from_osm_nx(
         # orient LineString
         geom_coords = line_geom.coords
         if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
-            geom_coords = graphs.align_linestring_coords(geom_coords, (s_x, s_y))
+            geom_coords = util.align_linestring_coords(geom_coords, (s_x, s_y))
         # check starting and ending tolerances
         if not np.allclose((s_x, s_y), geom_coords[0][:2], atol=tolerance, rtol=0):
             raise ValueError("Starting node coordinates don't match LineString geometry starting coordinates.")
         if not np.allclose((e_x, e_y), geom_coords[-1][:2], atol=tolerance, rtol=0):
             raise ValueError("Ending node coordinates don't match LineString geometry ending coordinates.")
         # snap starting and ending coords to avoid rounding error issues
-        geom_coords = graphs.snap_linestring_startpoint(geom_coords, (s_x, s_y))
-        geom_coords = graphs.snap_linestring_endpoint(geom_coords, (e_x, e_y))
+        geom_coords = util.snap_linestring_startpoint(geom_coords, (s_x, s_y))
+        geom_coords = util.snap_linestring_endpoint(geom_coords, (e_x, e_y))
         g_multi.add_edge(start_nd_key, end_nd_key, key=edge_idx, geom=geometry.LineString(geom_coords))
         if edge_attributes is not None:
             for edge_att in edge_attributes:
@@ -400,8 +597,8 @@ BboxType = Union[tuple[int, int, int, int], tuple[float, float, float, float]]
 
 
 def nx_from_open_roads(
-    open_roads_path: Union[str, Path],
-    target_bbox: Optional[BboxType] = None,
+    open_roads_path: str | Path,
+    target_bbox: BboxType | None = None,
 ) -> nx.MultiGraph:
     """
     Generates a `networkX` `MultiGraph` from an OS Open Roads dataset.
@@ -486,6 +683,264 @@ def nx_from_open_roads(
     logger.info(f"Dropped {n_dropped} edges where not both start and end nodes were present.")
     logger.info("Running basic graph cleaning")
     g_multi = graphs.nx_remove_filler_nodes(g_multi)
-    g_multi = graphs.merge_parallel_edges(g_multi, True, 10)
+    g_multi = graphs.nx_merge_parallel_edges(g_multi, True, 10)
 
     return g_multi
+
+
+def network_structure_from_nx(
+    nx_multigraph: MultiGraph,
+    crs: str | int,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
+    """
+    Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+
+    Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
+    data maps.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    crs: str | int
+        CRS for initialising the returned structures. This is used for initialising the GeoPandas
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        A `GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys
+        will be used for the `GeoDataFrame` index.
+    edges_gdf: GeoDataFrame
+        A `GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`,
+        `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
+        attributes.
+    network_structure: rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info("Preparing node and edge arrays from networkX graph.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # prepare the network structure
+    network_structure = rustalgos.NetworkStructure()
+    # generate the network information
+    agg_node_data: dict[str, tuple[Any, ...]] = {}
+    agg_node_dual_data: dict[str, tuple[Any, Any, Any]] = {}
+    agg_edge_data: dict[str, tuple[Any, ...]] = {}
+    agg_edge_dual_data: list[str] = []
+    node_data: NodeData
+    # set nodes
+    for node_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        # node_key must be string
+        if not isinstance(node_key, str):
+            raise TypeError(f"Node key must be of type string but encountered {type(node_key)}")
+        if "x" not in node_data:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {node_key}.')
+        node_x: float = node_data["x"]
+        if "y" not in node_data:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {node_key}.')
+        node_y: float = node_data["y"]
+        is_live: bool = True
+        if "live" in node_data:
+            is_live = bool(node_data["live"])
+        weight = 1
+        if "weight" in node_data:
+            weight = node_data["weight"]
+        # set node
+        ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live, weight)
+        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
+        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+            agg_node_dual_data[node_key] = (
+                node_data["primal_edge_node_a"],
+                node_data["primal_edge_node_b"],
+                node_data["primal_edge_idx"],
+            )
+    # set edges
+    for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
+        # build edges
+        start_ns_node_idx, start_node_x, start_node_y, _, _, _ = agg_node_data[start_node_key]
+        end_node_key: str
+        for end_node_key in g_multi_copy.neighbors(start_node_key):
+            end_ns_node_idx, _, _, _, _, _ = agg_node_data[end_node_key]
+            # add the new edge index to the node's out edges
+            nx_edge_data: EdgeData
+            for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
+                if not "geom" in nx_edge_data:
+                    raise KeyError(
+                        f"No edge geom found for edge {start_node_key}-{end_node_key}: Please add an edge 'geom' "
+                        "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
+                        "automatically through the nx_simple_geoms() method."
+                    )
+                line_geom = nx_edge_data["geom"]
+                if line_geom.geom_type != "LineString":
+                    raise TypeError(
+                        f"Expecting LineString geometry but found {line_geom.geom_type} geom for edge "
+                        f"{start_node_key}-{end_node_key}."
+                    )
+                # cannot have zero or negative length - division by zero
+                line_len = line_geom.length
+                if not np.isfinite(line_len) or line_len <= 0:
+                    raise ValueError(
+                        f"Length {line_len} for edge {start_node_key}-{end_node_key} must be finite and positive."
+                    )
+                # check geom coordinates directionality (for bearings at index 5 / 6)
+                # flip if facing backwards direction
+                line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
+                # iterate the coordinates and calculate the angular change
+                angle_sum = util.measure_cumulative_angle(line_geom_coords)
+                if not np.isfinite(angle_sum) or angle_sum < 0:
+                    raise ValueError(
+                        f"Angle sum {angle_sum} for edge {start_node_key}-{end_node_key} must be finite and positive."
+                    )
+                # if imp_factor is set explicitly, then use
+                # fallback imp_factor of 1
+                imp_factor: float = 1
+                if "imp_factor" in nx_edge_data:
+                    # cannot have imp_factor less than zero (but == 0 is OK)
+                    imp_factor = nx_edge_data["imp_factor"]
+                    if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
+                        raise ValueError(
+                            f"Impedance factor: {imp_factor} for edge {start_node_key}-{end_node_key} must be finite "
+                            " and positive or positive infinity."
+                        )
+                # in bearing
+                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[0])
+                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
+                in_bearing: float = util.measure_bearing(xy_1, xy_2)
+                # out bearing
+                xy_3: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
+                xy_4: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
+                out_bearing: float = util.measure_bearing(xy_3, xy_4)
+                total_bearing = util.measure_bearing(xy_1, xy_4)
+                # set edge
+                ns_edge_idx = network_structure.add_edge(
+                    start_ns_node_idx,
+                    end_ns_node_idx,
+                    edge_idx,
+                    start_node_key,
+                    end_node_key,
+                    line_len,
+                    angle_sum,
+                    imp_factor,
+                    in_bearing,
+                    out_bearing,
+                )
+                # add to edge data
+                agg_edge_data[f"{start_node_key}-{end_node_key}"] = (
+                    ns_edge_idx,
+                    start_ns_node_idx,
+                    end_ns_node_idx,
+                    edge_idx,
+                    start_node_key,
+                    end_node_key,
+                    line_len,
+                    angle_sum,
+                    imp_factor,
+                    in_bearing,
+                    out_bearing,
+                    total_bearing,
+                    line_geom,
+                )
+                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+                    agg_edge_dual_data.append(nx_edge_data["primal_node_id"])
+    # create geopandas for node keys and data state
+    nodes_gdf = gpd.GeoDataFrame.from_dict(
+        agg_node_data,
+        orient="index",
+        columns=["ns_node_idx", "x", "y", "live", "weight", "geom"],
+        geometry="geom",
+        crs=crs,
+    )
+    edges_gdf = gpd.GeoDataFrame.from_dict(
+        agg_edge_data,
+        orient="index",
+        columns=[
+            "ns_edge_idx",
+            "start_ns_node_idx",
+            "end_ns_node_idx",
+            "edge_idx",
+            "nx_start_node_key",
+            "nx_end_node_key",
+            "length",
+            "angle_sum",
+            "imp_factor",
+            "in_bearing",
+            "out_bearing",
+            "total_bearing",
+            "geom",
+        ],
+        geometry="geom",
+        crs=crs,
+    )
+    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+        nodes_dual_gdf = pd.DataFrame.from_dict(
+            agg_node_dual_data,
+            orient="index",
+            columns=[
+                "primal_edge_node_a",
+                "primal_edge_node_b",
+                "primal_edge_idx",
+            ],
+        )
+        nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
+        edges_gdf["primal_node_id"] = agg_edge_dual_data
+    return nodes_gdf, edges_gdf, network_structure
+
+
+def nx_from_geopandas(
+    nodes_gdf: gpd.GeoDataFrame,
+    edges_gdf: gpd.GeoDataFrame,
+) -> MultiGraph:
+    """
+    Write nodes and edges `GeoDataFrames` to a `networkX` `MultiGraph`.
+
+    Parameters
+    ----------
+    nodes_gdf: GeoDataFrame
+        A `GeoDataFrame` with `live`, `weight`, and Point `geometry` attributes. The index will be used for the returned
+        `networkX` graph's node keys.
+    edges_gdf: GeoDataFrame
+        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+
+    Returns
+    -------
+    nx_multigraph: MultiGraph
+        A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.
+
+    """
+    logger.info("Populating node and edge map data to a networkX graph.")
+    g_multi_copy: MultiGraph = nx.MultiGraph()
+    g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
+    # after above so that errors caught first
+    logger.info("Unpacking node data.")
+    for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
+        g_multi_copy.nodes[nd_key]["x"] = nd_data.x
+        g_multi_copy.nodes[nd_key]["y"] = nd_data.y
+        g_multi_copy.nodes[nd_key]["live"] = nd_data.live
+        g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
+    logger.info("Unpacking edge data.")
+    for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
+        g_multi_copy.add_edge(
+            row_data.nx_start_node_key,
+            row_data.nx_end_node_key,
+            row_data.edge_idx,
+            length=row_data.length,
+            angle_sum=row_data.angle_sum,
+            imp_factor=row_data.imp_factor,
+            in_bearing=row_data.in_bearing,
+            out_bearing=row_data.out_bearing,
+            total_bearing=row_data.total_bearing,
+            geom=row_data.geom,
+        )
+    # unpack any metrics written to the nodes
+    metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]
+    if metrics_column_labels:
+        logger.info("Unpacking metrics to nodes.")
+        for metrics_column_label in metrics_column_labels:
+            for nd_key, node_row in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
+                g_multi_copy.nodes[nd_key][metrics_column_label] = node_row[metrics_column_label]
+
+    return g_multi_copy

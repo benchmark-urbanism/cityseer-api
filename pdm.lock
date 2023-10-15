@@ -6,7 +6,7 @@ groups = ["default", "dev"]
 cross_platform = true
 static_urls = false
 lock_version = "4.3"
-content_hash = "sha256:a8ee999fced4c3de5cd1d545c6bcc42196ac383cd0753a9fd78531d865fbc4c7"
+content_hash = "sha256:a2cfd0903b4ed8aea7570b39148ad70aa2152f44c7cab9b11a35085516a83fd7"
 
 [[package]]
 name = "anyio"
@@ -481,6 +481,16 @@ summary = "serialize all of Python"
 files = [
     {file = "dill-0.3.7-py3-none-any.whl", hash = "sha256:76b122c08ef4ce2eedcd4d1abd8e641114bfc6c2867f49f3c41facf65bf19f5e"},
     {file = "dill-0.3.7.tar.gz", hash = "sha256:cc1c8b182eb3013e24bd475ff2e9295af86c1a38eb1aff128dac8962a9ce3c03"},
+]
+
+[[package]]
+name = "docstring-parser"
+version = "0.15"
+requires_python = ">=3.6,<4.0"
+summary = "Parse Python docstrings in reST, Google and Numpydoc format"
+files = [
+    {file = "docstring_parser-0.15-py3-none-any.whl", hash = "sha256:d1679b86250d269d06a99670924d6bce45adc00b08069dae8c47d98e89b667a9"},
+    {file = "docstring_parser-0.15.tar.gz", hash = "sha256:48ddc093e8b1865899956fcc03b03e66bb7240c310fac5af81814580c55bf682"},
 ]
 
 [[package]]
@@ -1000,7 +1010,7 @@ files = [
 
 [[package]]
 name = "jupyterlab"
-version = "4.0.6"
+version = "4.0.7"
 requires_python = ">=3.8"
 summary = "JupyterLab computational environment"
 dependencies = [
@@ -1018,8 +1028,8 @@ dependencies = [
     "traitlets",
 ]
 files = [
-    {file = "jupyterlab-4.0.6-py3-none-any.whl", hash = "sha256:7d9dacad1e3f30fe4d6d4efc97fda25fbb5012012b8f27cc03a2283abcdee708"},
-    {file = "jupyterlab-4.0.6.tar.gz", hash = "sha256:6c43ae5a6a1fd2fdfafcb3454004958bde6da76331abb44cffc6f9e436b19ba1"},
+    {file = "jupyterlab-4.0.7-py3-none-any.whl", hash = "sha256:08683045117cc495531fdb39c22ababb9aaac6977a45e67cfad20046564c9c7c"},
+    {file = "jupyterlab-4.0.7.tar.gz", hash = "sha256:48792efd9f962b2bcda1f87d72168ff122c288b1d97d32109e4a11b33dc862be"},
 ]
 
 [[package]]
@@ -1446,7 +1456,7 @@ files = [
 
 [[package]]
 name = "osmnx"
-version = "1.6.0"
+version = "1.7.0"
 requires_python = ">=3.8"
 summary = "Download, model, analyze, and visualize street networks and other geospatial features from OpenStreetMap"
 dependencies = [
@@ -1458,8 +1468,8 @@ dependencies = [
     "shapely>=2.0",
 ]
 files = [
-    {file = "osmnx-1.6.0-py3-none-any.whl", hash = "sha256:2ca7bcf02c8ce0122c235b9bf6280b3261c206fd0ccc9c0bc6839553ee010f63"},
-    {file = "osmnx-1.6.0.tar.gz", hash = "sha256:719c4dc00c2b489ea9e71a382b9e032721db462d9955edbbf740cd799d93feb3"},
+    {file = "osmnx-1.7.0-py3-none-any.whl", hash = "sha256:f13cfab2c4c10ba239b9d72aca771627b642325cd23c03d83dd5c7dd5c7467df"},
+    {file = "osmnx-1.7.0.tar.gz", hash = "sha256:3ef575a7a77669b60b15b685cf5e7836a78fdd5449d3c29d8eb521f30dd9a5ac"},
 ]
 
 [[package]]
@@ -1552,6 +1562,21 @@ summary = "Utility library for gitignore style pattern matching of file paths."
 files = [
     {file = "pathspec-0.11.2-py3-none-any.whl", hash = "sha256:1d6ed233af05e679efb96b1851550ea95bbb64b7c490b0f5aa52996c11e92a20"},
     {file = "pathspec-0.11.2.tar.gz", hash = "sha256:e0d8d0ac2f12da61956eb2306b69f9469b42f4deb0f3cb6ed47b9cce9996ced3"},
+]
+
+[[package]]
+name = "pdoc"
+version = "14.1.0"
+requires_python = ">=3.8"
+summary = "API Documentation for Python Projects"
+dependencies = [
+    "Jinja2>=2.11.0",
+    "MarkupSafe",
+    "pygments>=2.12.0",
+]
+files = [
+    {file = "pdoc-14.1.0-py3-none-any.whl", hash = "sha256:e8869dffe21296b3bd5545b28e7f07cae0656082aca43f8915323187e541b126"},
+    {file = "pdoc-14.1.0.tar.gz", hash = "sha256:3a0bd921a05c39a82b1505089eb6dc99d857b71b856aa60d1aca4d9086d0e18c"},
 ]
 
 [[package]]
@@ -1731,7 +1756,7 @@ files = [
 
 [[package]]
 name = "pylint"
-version = "3.0.0"
+version = "3.0.1"
 requires_python = ">=3.8.0"
 summary = "python code static checker"
 dependencies = [
@@ -1746,8 +1771,8 @@ dependencies = [
     "tomlkit>=0.10.1",
 ]
 files = [
-    {file = "pylint-3.0.0-py3-none-any.whl", hash = "sha256:21da8ed1294f88d66c82eb3e624a0993291613548bb17fbccaa220c31c41293b"},
-    {file = "pylint-3.0.0.tar.gz", hash = "sha256:d22816c963816d7810b87afe0bdf5c80009e1078ecbb9c8f2e2a24d4430039b1"},
+    {file = "pylint-3.0.1-py3-none-any.whl", hash = "sha256:9c90b89e2af7809a1697f6f5f93f1d0e518ac566e2ac4d2af881a69c13ad01ea"},
+    {file = "pylint-3.0.1.tar.gz", hash = "sha256:81c6125637be216b4652ae50cc42b9f8208dfb725cdc7e04c48f6902f4dbdf40"},
 ]
 
 [[package]]
@@ -1788,15 +1813,15 @@ files = [
 
 [[package]]
 name = "pyright"
-version = "1.1.329"
+version = "1.1.331"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
     "nodeenv>=1.6.0",
 ]
 files = [
-    {file = "pyright-1.1.329-py3-none-any.whl", hash = "sha256:c16f88a7ac14ddd0513e62fec56d69c37e3c6b412161ad16aa23a9c7e3dabaf4"},
-    {file = "pyright-1.1.329.tar.gz", hash = "sha256:5baf82ff5ecb8c8b3ac400e8536348efbde0b94a09d83d5b440c0d143fd151a8"},
+    {file = "pyright-1.1.331-py3-none-any.whl", hash = "sha256:d200a01794e7f2a04d5042a6c3abee36ce92780287d3037edfc3604d45488f0e"},
+    {file = "pyright-1.1.331.tar.gz", hash = "sha256:c3e7b86154cac86c3bd61ea0f963143d001c201e246825aaabdddfcce5d04293"},
 ]
 
 [[package]]
@@ -2224,6 +2249,19 @@ summary = "Python 2 and 3 compatibility utilities"
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+
+[[package]]
+name = "snakeviz"
+version = "2.2.0"
+requires_python = ">=3.7"
+summary = "A web-based viewer for Python profiler output"
+dependencies = [
+    "tornado>=2.0",
+]
+files = [
+    {file = "snakeviz-2.2.0-py2.py3-none-any.whl", hash = "sha256:569e2d71c47f80a886aa6e70d6405cb6d30aa3520969ad956b06f824c5f02b8e"},
+    {file = "snakeviz-2.2.0.tar.gz", hash = "sha256:7bfd00be7ae147eb4a170a471578e1cd3f41f803238958b6b8efcf2c698a6aa9"},
 ]
 
 [[package]]
