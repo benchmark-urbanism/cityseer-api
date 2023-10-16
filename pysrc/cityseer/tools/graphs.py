@@ -1417,6 +1417,9 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
                 total_lens += edge_geom.length
                 total_lens += nb_edge_data["nearby_itx_lens"]
         # calculate ratio
-        g_multi_copy.nodes[nd_key]["weight"] = adjacent_lens / total_lens
+        weight = 1
+        if total_lens > dissolve_distance:
+            weight = adjacent_lens / total_lens
+        g_multi_copy.nodes[nd_key]["weight"] = weight
 
     return g_multi_copy
