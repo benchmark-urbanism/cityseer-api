@@ -638,9 +638,19 @@ def test_nx_from_geopandas(primal_graph):
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
-    G_round_trip = io.nx_from_geopandas(nodes_gdf, edges_gdf)
-    assert list(G_round_trip.nodes) == list(primal_graph.nodes)
-    assert list(G_round_trip.edges) == list(primal_graph.edges)
+    # G_round_trip = io.nx_from_geopandas(nodes_gdf, edges_gdf)
+    # assert list(G_round_trip.nodes) == list(primal_graph.nodes)
+    # assert list(G_round_trip.edges) == list(primal_graph.edges)
+    # check with  missings weights and live columns
+    for col in ["live", "weights"]:
+        nodes_gdf_miss = nodes_gdf.copy()
+        if col in nodes_gdf_miss.columns:
+            nodes_gdf_miss.drop(columns=[col], inplace=True)
+        G_round_trip_miss = io.nx_from_geopandas(nodes_gdf_miss, edges_gdf)
+        assert list(G_round_trip_miss.nodes) == list(primal_graph.nodes)
+        assert list(G_round_trip_miss.edges) == list(primal_graph.edges)
+        assert "live" in G_round_trip_miss.nodes["0"]
+        assert "weight" in G_round_trip_miss.nodes["0"]
     # check with metrics
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     nodes_gdf = networks.node_centrality_shortest(

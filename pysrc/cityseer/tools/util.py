@@ -51,19 +51,10 @@ def measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) 
 def measure_coords_angle(
     coords_1: npt.NDArray[np.float_], coords_2: npt.NDArray[np.float_], coords_3: npt.NDArray[np.float_]
 ) -> float:
-    """Measures angle between three coordinate pairs."""
-    # arctan2 is y / x order
-    a_1: float = measure_bearing(coords_2, coords_1)
-    a_2: float = measure_bearing(coords_3, coords_2)
-    angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
-    return angle
-
-
-def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
-    """Measures angle between two segment bearings per indices."""
-    coords_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
-    coords_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
-    coords_3: npt.NDArray[np.float_] = np.array(linestring_coords[idx_c])[:2]
+    """
+    Measures angle between three coordinate pairs.
+    Change is from one line segment to the next, so shares middle coord.
+    """
     # arctan2 is y / x order
     a_1: float = measure_bearing(coords_2, coords_1)
     a_2: float = measure_bearing(coords_3, coords_2)
@@ -72,8 +63,39 @@ def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx
     # A: npt.NDArray[np.float_] = coords_2 - coords_1
     # B: npt.NDArray[np.float_] = coords_3 - coords_2
     # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
-
     return angle
+
+
+def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
+    """Measures angle between two segment bearings per indices."""
+    coords_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
+    coords_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
+    coords_3: npt.NDArray[np.float_] = np.array(linestring_coords[idx_c])[:2]
+    return measure_coords_angle(coords_1, coords_2, coords_3)
+
+
+def measure_angle_diff_betw_linestrings(linestring_coords_a: ListCoordsType, linestring_coords_b: ListCoordsType):
+    """Measures the angular difference between the bearings of two sets of linestring coords."""
+
+    min_angle = np.inf
+    for flip_a in [True, False]:
+        _ls_coords_a = linestring_coords_a
+        if flip_a:
+            _ls_coords_a = list(reversed(linestring_coords_a))
+        for flip_b in [True, False]:
+            _ls_coords_b = linestring_coords_b
+            if flip_b:
+                _ls_coords_b = list(reversed(linestring_coords_b))
+            coords_1 = _ls_coords_a[0]
+            coords_2 = _ls_coords_a[-1]
+            coords_3 = _ls_coords_b[0]
+            coords_4 = _ls_coords_b[-1]
+            a_1 = measure_bearing(coords_2, coords_1)
+            a_2 = measure_bearing(coords_4, coords_3)
+            angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
+            min_angle = min(min_angle, angle)
+
+    return min_angle
 
 
 def measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:

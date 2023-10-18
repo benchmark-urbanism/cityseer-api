@@ -2,9 +2,72 @@
 from __future__ import annotations
 
 import pytest
+from shapely import geometry
 
 from cityseer.metrics import networks
 from cityseer.tools import io, util
+
+
+def test_measure_bearing():
+    """
+    right is zero, left is 180
+    up is positive, bottom is negative
+    """
+    assert util.measure_bearing([0, 0], [1, 0]) == 0
+    assert util.measure_bearing([0, 0], [1, 1]) == 45
+    assert util.measure_bearing([0, 0], [0, 1]) == 90
+    assert util.measure_bearing([0, 0], [-1, 0]) == 180
+    assert util.measure_bearing([0, 0], [-1, -1]) == -135
+    assert util.measure_bearing([0, 0], [0, -1]) == -90
+    assert util.measure_bearing([0, 0], [1, -1]) == -45
+
+
+def test_measure_coords_angle():
+    """ """
+    for coord_set, expected_angle in [
+        ([[0, 0], [1, 0], [2, 0]], 0),
+        ([[0, 0], [1, 0], [2, 1]], 45),
+        ([[0, 0], [1, 0], [1, 1]], 90),
+        ([[0, 0], [1, 0], [0, 1]], 135),
+    ]:
+        assert util.measure_coords_angle(coord_set[0], coord_set[1], coord_set[2]) == expected_angle
+        # flip order, angle should be the same
+        assert util.measure_coords_angle(coord_set[2], coord_set[1], coord_set[0]) == expected_angle
+
+
+def test_measure_linestring_angle():
+    """ """
+    for coord_set, expected_angle in [
+        ([[0, 0], [1, 0], [2, 0]], 0),
+        ([[0, 0], [1, 0], [2, 1]], 45),
+        ([[0, 0], [1, 0], [1, 1]], 90),
+        ([[0, 0], [1, 0], [0, 1]], 135),
+    ]:
+        assert util._measure_linestring_angle(coord_set, 0, 1, 2) == expected_angle
+        assert util._measure_linestring_angle(coord_set, 2, 1, 0) == expected_angle
+        # flip
+        assert util._measure_linestring_angle(list(reversed(coord_set)), 0, 1, 2) == expected_angle
+        assert util._measure_linestring_angle(list(reversed(coord_set)), 2, 1, 0) == expected_angle
+
+
+def test_measure_angle_diff_betw_linestrings():
+    """ """
+    coords_a = [[0, 0], [1, 0]]
+    coords_b = [[0, 0], [1, 1]]
+    coords_c = [[0, 0], [0, 1]]
+    assert util.measure_angle_diff_betw_linestrings(coords_a, coords_b) == 45
+    assert util.measure_angle_diff_betw_linestrings(coords_b, coords_a) == 45
+    #
+    assert util.measure_angle_diff_betw_linestrings(coords_a, coords_c) == 90
+    assert util.measure_angle_diff_betw_linestrings(coords_c, coords_a) == 90
+    #
+    assert util.measure_angle_diff_betw_linestrings(coords_b, coords_c) == 45
+    assert util.measure_angle_diff_betw_linestrings(coords_c, coords_b) == 45
+    # try reversed sets
+    assert util.measure_angle_diff_betw_linestrings(list(reversed(coords_a)), coords_b) == 45
+    assert util.measure_angle_diff_betw_linestrings(list(reversed(coords_b)), coords_a) == 45
+    assert util.measure_angle_diff_betw_linestrings(coords_a, list(reversed(coords_b))) == 45
+    assert util.measure_angle_diff_betw_linestrings(coords_b, list(reversed(coords_a))) == 45
 
 
 def test_add_node(diamond_graph):
