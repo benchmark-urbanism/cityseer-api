@@ -919,8 +919,14 @@ def nx_from_geopandas(
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
         g_multi_copy.nodes[nd_key]["x"] = nd_data.x
         g_multi_copy.nodes[nd_key]["y"] = nd_data.y
-        g_multi_copy.nodes[nd_key]["live"] = nd_data.live
-        g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
+        if hasattr(nd_data, "live"):
+            g_multi_copy.nodes[nd_key]["live"] = nd_data.live
+        else:
+            g_multi_copy.nodes[nd_key]["live"] = True
+        if hasattr(nd_data, "weight"):
+            g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
+        else:
+            g_multi_copy.nodes[nd_key]["weight"] = 1
     logger.info("Unpacking edge data.")
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
         g_multi_copy.add_edge(

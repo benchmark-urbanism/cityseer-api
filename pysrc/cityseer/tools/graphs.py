@@ -1352,13 +1352,15 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_dual
 
 
-def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
+def nx_weight_by_dissolved_edges(
+    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 15
+) -> MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
 
     This is used to control for unintended amplification of centrality measures where redundant network representations
-    (e.g. complicated intersections or duplicitious segments, i.e. street, sidewalk, cycleway, busway) tend to inflate
-    centrality scores. This method is intended for 'messier' network representations (e.g. OSM).
+    (e.g. duplicitious segments such as adjacent street, sidewalk, cycleway, busway) tend to inflate centrality scores.
+    This method is intended for 'messier' network representations (e.g. OSM).
 
     Parameters
     ----------
@@ -1367,6 +1369,9 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
         edge attributes containing `LineString` geoms.
     dissolve_distance: int
         A distance to use when buffering edges to calculate the weighting. 20m by default.
+    max_ang_diff: int
+        Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
+        `max_ang_diff`. 15 degrees by default.
 
     Returns
     -------
@@ -1402,6 +1407,10 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
             # get linestring
             edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
             nearby_edge_geom: geometry.LineString = edge_data["geom"]
+            # get angular difference
+            ang_diff = util.measure_angle_diff_betw_linestrings(edge_geom.coords, nearby_edge_geom.coords)
+            if ang_diff > max_ang_diff:
+                continue
             # find length of geom intersecting buff
             edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
             if edge_itx and edge_itx.geom_type == "LineString":
@@ -1417,6 +1426,9 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
                 total_lens += edge_geom.length
                 total_lens += nb_edge_data["nearby_itx_lens"]
         # calculate ratio
-        g_multi_copy.nodes[nd_key]["weight"] = adjacent_lens / total_lens
+        weight = 1
+        if total_lens > dissolve_distance:
+            weight = adjacent_lens / total_lens
+        g_multi_copy.nodes[nd_key]["weight"] = weight
 
     return g_multi_copy
