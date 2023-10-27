@@ -1352,9 +1352,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_dual
 
 
-def nx_weight_by_dissolved_edges(
-    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 15
-) -> MultiGraph:
+def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
 
@@ -1369,9 +1367,6 @@ def nx_weight_by_dissolved_edges(
         edge attributes containing `LineString` geoms.
     dissolve_distance: int
         A distance to use when buffering edges to calculate the weighting. 20m by default.
-    max_ang_diff: int
-        Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
-        `max_ang_diff`. 15 degrees by default.
 
     Returns
     -------
@@ -1380,6 +1375,8 @@ def nx_weight_by_dissolved_edges(
         locally 'dissolved' context.
 
     """
+    # note it is better to weight via edges than via nodes this is because offset / staggered nodes
+    # (intersections on one side of parallel road) might not otherwise trigger de-duplication via weights
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Generating node weights based on locally dissolved edges using a buffer of {dissolve_distance}m.")
@@ -1394,7 +1391,7 @@ def nx_weight_by_dissolved_edges(
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["nearby_itx_lens"] = 0
         # find nearby edges
         edge_geom = edge_data["geom"]
-        edge_geom_buff = edge_geom.buffer(dissolve_distance)
+        edge_geom_buff = edge_geom.buffer(dissolve_distance, cap_style=geometry.CAP_STYLE.square)
         edges_hits: list[int] = edges_tree.query(edge_geom_buff)
         for edge_hit_idx in edges_hits:
             edge_lookup = edge_lookups[edge_hit_idx]
@@ -1402,15 +1399,13 @@ def nx_weight_by_dissolved_edges(
             nearby_end_nd_key = edge_lookup["end_nd_key"]
             nearby_edge_idx = edge_lookup["edge_idx"]
             # don't add edges which share common nodes (directly adjacent)
+            # this is an important line because otherwise the measure becomes indiscriminate i.e. would apply to regular
+            # intersections without duplicitous edges - working against intention of this method
             if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [start_nd_key, end_nd_key]:
                 continue
             # get linestring
             edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
             nearby_edge_geom: geometry.LineString = edge_data["geom"]
-            # get angular difference
-            ang_diff = util.measure_angle_diff_betw_linestrings(edge_geom.coords, nearby_edge_geom.coords)
-            if ang_diff > max_ang_diff:
-                continue
             # find length of geom intersecting buff
             edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
             if edge_itx and edge_itx.geom_type == "LineString":
