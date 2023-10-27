@@ -579,9 +579,9 @@ def blend_metrics(
     Parameters
     ----------
     nodes_gdf: GeoDataFrame
-        A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+        A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).
     edges_gdf: GeoDataFrame
-        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).
     method: str
         The method used for determining the line value from the adjacent points. Must be one of "min", "max", or "avg".
 
