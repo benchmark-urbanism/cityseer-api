@@ -362,9 +362,9 @@ def plot_nx(
         Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to
         represent edges. Defaults to True.
     x_lim: tuple[float, float]
-        A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.
+        A tuple or list with the minimum and maximum `x` extents to be plotted. Defaults to None.
     y_lim: tuple[float, float]
-        A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.
+        A tuple or list with the minimum and maximum `y` extents to be plotted. Defaults to None.
     ax: plt.Axes
         An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.
     kwargs
