@@ -354,7 +354,6 @@ def osm_graph_from_poly(
         ["area"!="yes"]
         ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
         ["service"!~"parking_aisle|driveway|drive-through|slipway"] ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-        ["footway"!~"sidewalk|traffic_island|crossing"]
         ["indoor"!="yes"]
         ["level"!="-2"]
         ["level"!="-3"]
