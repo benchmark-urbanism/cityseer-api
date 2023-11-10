@@ -180,7 +180,7 @@ G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
 networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
-G_after = io.nx_from_geopandas(nodes_gdf, edges_gdf)
+G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):

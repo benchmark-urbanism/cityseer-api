@@ -30,6 +30,12 @@ Examples showing how to import OSM data as discussed in [OSM and NetworkX](/guid
 
 <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/osm_to_cityseer.ipynb" target="_blank">Github: osm_to_cityseer.ipynb</a>
 
+## Importing GeoPandas LineString data
+
+Example showing how to import `GeoPandas` LineString data. This approach is demonstrated for ingesting a `momepy` network which can then be used for centrality and landuse accessibility analysis.
+
+<a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/demos/momepy_to_cityseer.ipynb" target="_blank">Github: momepy_to_cityseer.ipynb</a>
+
 ## Centralities for London
 
 Computing network centralities for London with OS Open data.

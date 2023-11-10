@@ -53,7 +53,8 @@ def measure_coords_angle(
 ) -> float:
     """
     Measures angle between three coordinate pairs.
-    Change is from one line segment to the next, so shares middle coord.
+
+    Angular change is from one line segment to the next, across the intermediary coord.
     """
     # arctan2 is y / x order
     a_1: float = measure_bearing(coords_2, coords_1)
@@ -76,7 +77,6 @@ def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx
 
 def measure_angle_diff_betw_linestrings(linestring_coords_a: ListCoordsType, linestring_coords_b: ListCoordsType):
     """Measures the angular difference between the bearings of two sets of linestring coords."""
-
     min_angle = np.inf
     for flip_a in [True, False]:
         _ls_coords_a = linestring_coords_a

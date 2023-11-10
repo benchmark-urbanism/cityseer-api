@@ -788,7 +788,7 @@ plot.plot_nx_primal_or_dual(G_simple,
 </div>
 
 
- Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges. This is used to control for unintended amplification of centrality measures where redundant network representations (e.g. complicated intersections or duplicitious segments, i.e. street, sidewalk, cycleway, busway) tend to inflate centrality scores. This method is intended for 'messier' network representations (e.g. OSM).
+ Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges. This is used to control for unintended amplification of centrality measures where redundant network representations (e.g. duplicitious segments such as adjacent street, sidewalk, cycleway, busway) tend to inflate centrality scores. This method is intended for 'messier' network representations (e.g. OSM).
 ### Parameters
 <div class="param-set">
   <div class="def">
