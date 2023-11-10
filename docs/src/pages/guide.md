@@ -52,12 +52,12 @@ The following points may be helpful when using `OSMnx` and `cityseer` together:
 
 See the [Importing OSM data](/examples#importing-osm-data) notebook for examples.
 
+## GeoPandas
+
+[`GeoPandas`](https://geopandas.org/) adds support for spatial features and related operations to `Pandas` dataframes. However, dataframes can be slow for purposes of iteratively adding and removing rows, for which reason it is preferable to use `networkX` graphs for the graph cleaning and preparation stage of analysis. After graph preparation steps, `cityseer` uses `GeoDataFrame` structures for data state. The [`tools.io.nx_from_generic_geopandas`](/tools/io#nx-from-generic-geopandas) method can be used to convert `GeoPandas` LineString DataFrames --- such as those used by [`momepy`](http://docs.momepy.org) --- to and from `cityseer` compatible graphs.
+
 ## Optimised packages
 
 Computational methods for network-based analysis rely extensively on shortest-path algorithms: these present substantial computational complexity due to nested-loops. For this reason, methods implemented in pure `Python`, i.e. [`NetworkX`](https://networkx.github.io/) or packages that depend on it for algorithmic analysis, can be prohibitively slow. Speed improvements can be found by running intensive algorithms against packages implemented in lower-level languages such as [`Graph-Tool`](https://graph-tool.skewed.de) or [`igraph`](https://igraph.org/python#docs), which wrap underlying optimised code libraries implemented in more performant languages such as `C++`. However, off-the-shelf network analysis packages are not ideal for application to urbanism; they do not ordinarily cater for localised distance thresholds, specialised centrality methods, shortest vs simplest-path heuristics, or calculation of land-use accessibilities and mixed-uses.
 
 `cityseer` evolved as a WIP package over the span of years, initially used for experimentation and comparative tests of centrality methods and landuse methods during a PhD. Initially, computationally intensive algorithms were wrapped in [`numba`](https://numba.pydata.org/) for the sake of performant JIT compilation and parallelisation. The use of `numba` made it feasible to scale these methods to large and, optionally, decomposed networks with significant numbers of nodes. More recent versions of `cityseer` have moved underlying algorithms from `numba` to `rust`, which offers yet better performance, doesn't require a compilation step when running a function for the first time, and affords the use of more elegant design patterns.
-
-## _GeoPandas_
-
-[`GeoPandas`](https://geopandas.org/) adds support for spatial features and related operations to `Pandas` dataframes. However, dataframes can be slow for purposes of iteratively adding and removing rows, for which reason it is preferable to use `networkX` graphs for the graph cleaning and preparation stage of analysis. After graph preparation steps, `cityseer` uses `GeoDataFrame` structures for data state. It is relatively straight-forward to convert `GeoPandas` network and data representations --- such as those used by [`momepy`](http://docs.momepy.org) --- to and from `cityseer` compatible graphs or data structures. Efforts are ongoing to automate these forms of workflows. Stay tuned!
