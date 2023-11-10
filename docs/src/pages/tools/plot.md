@@ -467,7 +467,7 @@ plot.plot_nx_primal_or_dual(G_simple,
   </div>
   <div class="desc">
 
- A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.</div>
+ A tuple or list with the minimum and maximum `x` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -477,7 +477,7 @@ plot.plot_nx_primal_or_dual(G_simple,
   </div>
   <div class="desc">
 
- A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.</div>
+ A tuple or list with the minimum and maximum `y` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">

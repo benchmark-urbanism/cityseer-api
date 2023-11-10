@@ -163,7 +163,7 @@ def find_path(start_idx, target_idx, tree_map):
 def test_shortest_path_tree(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph, 3395)
     # prepare round-trip graph for checks
-    G_round_trip = io.nx_from_geopandas(nodes_gdf_p, edges_gdf_p)
+    G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:
@@ -348,7 +348,7 @@ def test_local_node_centrality_shortest(primal_graph):
     """
     # generate node and edge maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
-    G_round_trip = io.nx_from_geopandas(nodes_gdf, edges_gdf)
+    G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)
