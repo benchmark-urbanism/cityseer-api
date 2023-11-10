@@ -19,6 +19,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">from_epsg_code</span>
@@ -30,7 +32,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pc">:</span>
     <span class="pa"> int</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -40,7 +44,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">nx_multigraph</div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -71,7 +75,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -92,13 +96,17 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">force_zone_number</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -108,7 +116,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">nx_multigraph</div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -129,7 +137,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -208,8 +216,8 @@ layout: ../../layouts/PageLayout.astro
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">poly_wgs</div>
-    <div class="type">Polygon</div>
+    <div class="name"></div>
+    <div class="type">geometry.Polygon</div>
   </div>
   <div class="desc">
 
@@ -218,8 +226,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">poly_utm</div>
-    <div class="type">Polygon</div>
+    <div class="name"></div>
+    <div class="type">geometry.Polygon</div>
   </div>
   <div class="desc">
 
@@ -228,7 +236,7 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">utm_zone_number</div>
+    <div class="name"></div>
     <div class="type">int</div>
   </div>
   <div class="desc">
@@ -238,7 +246,7 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">utm_zone_letter</div>
+    <div class="name"></div>
     <div class="type">str</div>
   </div>
   <div class="desc">
@@ -395,7 +403,9 @@ builds a graph automatically.
     <span class="pc">:</span>
     <span class="pa"> int = 3</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -516,7 +526,7 @@ builds a graph automatically.
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -563,7 +573,9 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> str</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -584,7 +596,7 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -621,7 +633,9 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> float = 0.001</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -678,7 +692,7 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -738,7 +752,7 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -759,6 +773,8 @@ out qt;
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">crs</span>
@@ -774,12 +790,12 @@ out qt;
 </div>
 
 
- Transpose a `networkX` `MultiGraph` into a `GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
+ Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
 ### Parameters
 <div class="param-set">
   <div class="def">
     <div class="name">nx_multigraph</div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -799,27 +815,27 @@ out qt;
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">nodes_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
   </div>
   <div class="desc">
 
- A `GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index.</div>
+ A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">edges_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
   </div>
   <div class="desc">
 
- A `GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.</div>
+ A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">network_structure</div>
+    <div class="name"></div>
     <div class="type">rustalgos.NetworkStructure</div>
   </div>
   <div class="desc">
@@ -833,11 +849,11 @@ out qt;
 
 <div class="function">
 
-## nx_from_geopandas
+## nx_from_cityseer_geopandas
 
 
 <div class="content">
-<span class="name">nx_from_geopandas</span><div class="signature multiline">
+<span class="name">nx_from_cityseer_geopandas</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nodes_gdf</span>
@@ -849,42 +865,93 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
 
- Write nodes and edges `GeoDataFrames` to a `networkX` `MultiGraph`.
+ Write `cityseer` nodes and edges `GeoDataFrames` to a `networkX` `MultiGraph`. This method is intended for use with "circular" workflows, where a `cityseer` NetworkX graph has been converted into `cityseer` nodes and edges GeoDataFrames using [`network_structure_from_nx`](#network_structure_from_nx). Once metrics have been computed then this method can be used to convert the nodes and edges GeoDataFrames back into a `cityseer` compatible `networkX` graph with the computed metrics intact. This is useful when intending to visualise or export the metrics as a `networkX` graph.
+
+ If importing a generic `gpd.GeoDataFrame` LineString dataset, then use the [nx_from_generic_geopandas](#nx_from_generic_geopandas) instead.
 ### Parameters
 <div class="param-set">
   <div class="def">
     <div class="name">nodes_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="type">gpd.GeoDataFrame</div>
   </div>
   <div class="desc">
 
- A `GeoDataFrame` with `live`, `weight`, and Point `geometry` attributes. The index will be used for the returned `networkX` graph's node keys.</div>
+ A `gpd.GeoDataFrame` with `live`, `weight`, and Point `geometry` attributes. The index will be used for the returned `networkX` graph's node keys.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">edges_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="type">gpd.GeoDataFrame</div>
   </div>
   <div class="desc">
 
- An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
+ An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">nx_multigraph</div>
-    <div class="type">MultiGraph</div>
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
  A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## nx_from_generic_geopandas
+
+
+<div class="content">
+<span class="name">nx_from_generic_geopandas</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">gdf_network</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Converts a generic LineString `gpd.GeoDataFrame` to a `cityseer` compatible `networkX` `MultiGraph`. The `gpd.GeoDataFrame` should be provided in the "primal" form, where edges represent LineString geometries.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">gdf_network</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A LineString `gpd.GeoDataFrame`.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.</div>
 </div>
 
 

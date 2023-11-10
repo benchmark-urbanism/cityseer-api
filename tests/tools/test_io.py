@@ -629,7 +629,7 @@ def test_network_structure_from_nx(diamond_graph):
             io.network_structure_from_nx(G_test, 3395)
 
 
-def test_nx_from_geopandas(primal_graph):
+def test_nx_from_cityseer_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
     # explicitly set live params for equality checks
@@ -638,7 +638,7 @@ def test_nx_from_geopandas(primal_graph):
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
-    # G_round_trip = io.nx_from_geopandas(nodes_gdf, edges_gdf)
+    # G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     # assert list(G_round_trip.edges) == list(primal_graph.edges)
     # check with  missings weights and live columns
@@ -646,7 +646,7 @@ def test_nx_from_geopandas(primal_graph):
         nodes_gdf_miss = nodes_gdf.copy()
         if col in nodes_gdf_miss.columns:
             nodes_gdf_miss.drop(columns=[col], inplace=True)
-        G_round_trip_miss = io.nx_from_geopandas(nodes_gdf_miss, edges_gdf)
+        G_round_trip_miss = io.nx_from_cityseer_geopandas(nodes_gdf_miss, edges_gdf)
         assert list(G_round_trip_miss.nodes) == list(primal_graph.nodes)
         assert list(G_round_trip_miss.edges) == list(primal_graph.edges)
         assert "live" in G_round_trip_miss.nodes["0"]
@@ -676,7 +676,7 @@ def test_nx_from_geopandas(primal_graph):
         "cc_metric_c_1000_weighted",
     ]
     # without backbone
-    G_round_trip_nx = io.nx_from_geopandas(
+    G_round_trip_nx = io.nx_from_cityseer_geopandas(
         nodes_gdf,
         edges_gdf,
     )
@@ -689,7 +689,7 @@ def test_nx_from_geopandas(primal_graph):
     for node_key in G_decomposed.nodes():
         G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed, 3395)
-    G_round_trip_decomp = io.nx_from_geopandas(nodes_gdf_decomp, edges_gdf_decomp)
+    G_round_trip_decomp = io.nx_from_cityseer_geopandas(nodes_gdf_decomp, edges_gdf_decomp)
     assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
     for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
         assert node_key in G_decomposed
@@ -697,3 +697,22 @@ def test_nx_from_geopandas(primal_graph):
         assert iter_node_data["x"] - G_decomposed.nodes[node_key]["x"] < config.ATOL
         assert iter_node_data["y"] - G_decomposed.nodes[node_key]["y"] < config.ATOL
     assert G_round_trip_decomp.edges == G_decomposed.edges
+
+
+def test_nx_from_generic_geopandas(primal_graph):
+    """ """
+    # generate a GDF for testing with
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    generic_gdf = edges_gdf[["geom"]]
+    # generic_gdf has directed edges but nx_from_generic_geopandas will deduplicate
+    nx_from_generic = io.nx_from_generic_geopandas(generic_gdf)
+    assert len(nx_from_generic.edges) == len(primal_graph.edges)
+    # the single dangling node will be lost, so expect 56 instead of 57
+    assert len(nx_from_generic) == 56
+    total_lens_input = 0
+    for s, e, d in primal_graph.edges(data=True):
+        total_lens_input += d["geom"].length
+    total_lens_generic = 0
+    for s, e, d in nx_from_generic.edges(data=True):
+        total_lens_generic += d["geom"].length
+    assert total_lens_input - total_lens_generic < config.ATOL

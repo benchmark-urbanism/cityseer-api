@@ -267,10 +267,10 @@ print(nodes_gdf["cc_metric_mean_wt_800"])
 
 The landuse metrics and statistical aggregations are computed over the street network relative to the network, with results written to each node. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared.
 
-Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_geopandas](/metrics/networks#nx-from-network-geopandas) method.
+Data derived from metrics can be converted back into a `NetworkX` graph using the [nx_from_cityseer_geopandas](/tools/io#nx-from-cityseer-geopandas) method.
 
 ```python
-nx_multigraph_round_trip = io.nx_from_geopandas(
+nx_multigraph_round_trip = io.nx_from_cityseer_geopandas(
     nodes_gdf,
     edges_gdf,
 )

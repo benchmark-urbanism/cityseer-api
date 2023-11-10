@@ -59,7 +59,35 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Measures angle between three coordinate pairs.
+ Measures angle between three coordinate pairs. Angular change is from one line segment to the next, across the intermediary coord.
+
+</div>
+
+
+<div class="function">
+
+## measure_angle_diff_betw_linestrings
+
+
+<div class="content">
+<span class="name">measure_angle_diff_betw_linestrings</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">linestring_coords_a</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[typing.Union[tuple[float, float], tuple[float, float, float]]]</span>
+  </div>
+  <div class="param">
+    <span class="pn">linestring_coords_b</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[typing.Union[tuple[float, float], tuple[float, float, float]]]</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Measures the angular difference between the bearings of two sets of linestring coords.
 
 </div>
 
@@ -727,7 +755,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
+ A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).</div>
 </div>
 
 <div class="param-set">
@@ -737,7 +765,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
+ An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).</div>
 </div>
 
 <div class="param-set">

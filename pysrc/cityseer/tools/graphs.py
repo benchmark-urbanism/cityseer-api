@@ -1212,7 +1212,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     g_dual: MultiGraph = nx.MultiGraph()
     g_dual.graph["is_dual"] = True
 
-    def get_half_geoms(nx_multigraph_ref: MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):
+    def get_half_geoms(nx_multigraph_ref: MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):  # type: ignore
         """
         Split geom and orient half-geoms.
         """
