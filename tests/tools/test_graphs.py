@@ -352,9 +352,9 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     # behaviour confirmed visually
     # from cityseer.tools import plot
     # plot.plot_nx(G, labels=True, node_size=80, plot_geoms=True)
-    # set centroid_by_straightness to False
+    # set centroid_by_itx to False
     G_merged_spatial = graphs.nx_consolidate_nodes(
-        parallel_segments_graph, buffer_dist=25, crawl=True, centroid_by_straightness=False, merge_edges_by_midline=True
+        parallel_segments_graph, buffer_dist=25, crawl=True, centroid_by_itx=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     # this time, start with same origin graph but split opposing geoms first
@@ -362,7 +362,7 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     # plot.plot_nx(G_split_opps, labels=True, node_size=80, plot_geoms=True)
     # set straightness heuristic false for this one
     G_merged_spatial = graphs.nx_consolidate_nodes(
-        G_split_opps, buffer_dist=25, centroid_by_straightness=False, merge_edges_by_midline=True
+        G_split_opps, buffer_dist=25, centroid_by_itx=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
     assert G_merged_spatial.number_of_nodes() == 8
@@ -371,9 +371,9 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d["x"], d["y"]))
     assert node_coords == [
+        (660, 660),
         (620.0, 710.0),
         (660.0, 710.0),
-        (660.0, 660.0),
         (710.0, 800.0),
         (706.6666666666666, 713.3333333333334),
         (710.0, 620.0),
@@ -386,8 +386,8 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     assert np.allclose(
         edge_lens,
         [
-            40.0,
             50.0,
+            40.0,
             46.78556282539396,
             86.73074554171788,
             93.39283817414604,
