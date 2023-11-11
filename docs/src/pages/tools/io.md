@@ -364,32 +364,12 @@ builds a graph automatically.
     <span class="pa"> int | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">buffer_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 15</span>
-  </div>
-  <div class="param">
     <span class="pn">custom_request</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">simplify</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">remove_parallel</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">iron_edges</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">remove_disconnected</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
   </div>
@@ -470,36 +450,6 @@ builds a graph automatically.
   <div class="desc">
 
  Whether to automatically simplify the OSM graph. Set to False for manual cleaning.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">remove_parallel</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Ignored if simplify is False. Whether to remove parallel roadway segments.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">iron_edges</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the number of artefacts from segment kinks from merging `LineStrings`.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">remove_disconnected</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Ignored if simplify is False.  Whether to remove disconnected components from the network.</div>
 </div>
 
 <div class="param-set">

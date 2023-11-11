@@ -245,12 +245,8 @@ def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_epsg_code: int = 4326,
     to_epsg_code: int | None = None,
-    buffer_dist: int = 15,
     custom_request: str | None = None,
     simplify: bool = True,
-    remove_parallel: bool = True,
-    iron_edges: bool = True,
-    remove_disconnected: bool = True,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -278,13 +274,6 @@ def osm_graph_from_poly(
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
         Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
-    remove_parallel: bool
-        Ignored if simplify is False. Whether to remove parallel roadway segments.
-    iron_edges: bool
-        Ignored if simplify is False.  Whether to straighten the ends of street segments. This can help to reduce the
-        number of artefacts from segment kinks from merging `LineStrings`.
-    remove_disconnected: bool
-        Ignored if simplify is False.  Whether to remove disconnected components from the network.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -349,7 +338,9 @@ def osm_graph_from_poly(
         way["highway"]
         ["area"!="yes"]
         ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
-        ["service"!~"parking_aisle|driveway|drive-through|slipway"] ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+        ["footway"!="sidewalk"]
+        ["service"!~"parking_aisle|driveway|drive-through|slipway"]
+        ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
         ["indoor"!="yes"]
         ["level"!="-2"]
         ["level"!="-3"]
@@ -370,21 +361,15 @@ def osm_graph_from_poly(
         graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
     else:
         graph_crs = nx_wgs_to_utm(graph_wgs)
-    # simplify
+    graph_crs = graphs.nx_simple_geoms(graph_crs)
+    graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        graph_crs = graphs.nx_simple_geoms(graph_crs)
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=12, crawl=True)
+        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, neighbour_policy="indirect")
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        graph_crs = graphs.nx_remove_dangling_nodes(
-            graph_crs, despine=buffer_dist, remove_disconnected=remove_disconnected
-        )
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=buffer_dist, crawl=True)
-        if remove_parallel:
-            graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=buffer_dist)
-            graph_crs = graphs.nx_consolidate_nodes(
-                graph_crs, buffer_dist=buffer_dist, crawl=False, neighbour_policy="indirect"
-            )
-        if iron_edges:
-            graph_crs = graphs.nx_iron_edges(graph_crs)
+        graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
 

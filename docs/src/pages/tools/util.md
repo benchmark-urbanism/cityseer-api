@@ -119,30 +119,25 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## substring
+## measure_max_angle
 
 
 <div class="content">
-<span class="name">substring</span><div class="signature multiline">
+<span class="name">measure_max_angle</span><div class="signature">
   <span class="pt">(</span>
   <div class="param">
-    <span class="pn">geom</span>
+    <span class="pn">linestring_coords</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[typing.Union[tuple[float, float], tuple[float, float, float]]]</span>
   </div>
-  <div class="param">
-    <span class="pn">start_dist</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_dist</span>
-  </div>
-  <div class="param">
-    <span class="pn">normalized=False</span>
-  </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
 
- Temporary copy of shapely substring method until issue #1699 is fixed (re: z coords).
+ Measures the maximum angle along a LineString geom's coords.
 
 </div>
 

@@ -18,8 +18,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from shapely import coords, geometry, strtree
-from shapely.errors import GeometryTypeError
-from shapely.geometry import LineString
 from tqdm import tqdm
 
 from cityseer import config
@@ -107,75 +105,15 @@ def measure_cumulative_angle(linestring_coords: ListCoordsType) -> float:
     return angle_sum
 
 
-def substring(  # type: ignore # pylint: disable=too-many-return-statements
-    geom, start_dist, end_dist, normalized=False  # type: ignore
-):
-    """Temporary copy of shapely substring method until issue #1699 is fixed (re: z coords)."""
-    if not isinstance(geom, LineString):
-        raise GeometryTypeError(
-            "Can only calculate a substring of LineString geometries. " f"A {geom.geom_type} was provided."
-        )
+def measure_max_angle(linestring_coords: ListCoordsType) -> float:
+    """Measures the maximum angle along a LineString geom's coords."""
+    max_angle: float = 0
+    for c_idx in range(len(linestring_coords) - 2):
+        angle = _measure_linestring_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
+        if angle > max_angle:
+            max_angle = angle
 
-    # Filter out cases in which to return a point
-    if start_dist == end_dist:
-        return geom.interpolate(start_dist, normalized)  # type: ignore
-    if not normalized and start_dist >= geom.length and end_dist >= geom.length:
-        return geom.interpolate(geom.length, normalized)  # type: ignore
-    if not normalized and -start_dist >= geom.length and -end_dist >= geom.length:
-        return geom.interpolate(0, normalized)  # type: ignore
-    if normalized and start_dist >= 1 and end_dist >= 1:
-        return geom.interpolate(1, normalized)  # type: ignore
-    if normalized and -start_dist >= 1 and -end_dist >= 1:
-        return geom.interpolate(0, normalized)  # type: ignore
-
-    if normalized:
-        start_dist *= geom.length  # type: ignore
-        end_dist *= geom.length  # type: ignore
-
-    # Filter out cases where distances meet at a middle point from opposite ends.
-    if start_dist < 0 < end_dist and abs(start_dist) + end_dist == geom.length:  # type: ignore
-        return geom.interpolate(end_dist)  # type: ignore
-    if end_dist < 0 < start_dist and abs(end_dist) + start_dist == geom.length:  # type: ignore
-        return geom.interpolate(start_dist)  # type: ignore
-
-    start_point = geom.interpolate(start_dist)  # type: ignore
-    end_point = geom.interpolate(end_dist)  # type: ignore
-
-    if start_dist < 0:
-        start_dist = geom.length + start_dist  # Values may still be negative,# type: ignore
-    if end_dist < 0:  # but only in the out-of-range
-        end_dist = geom.length + end_dist  # sense, not the wrap-around sense.# type: ignore
-
-    reverse = start_dist > end_dist  # type: ignore
-    if reverse:
-        start_dist, end_dist = end_dist, start_dist  # type: ignore
-
-    if start_dist < 0:  # pylint: disable=consider-using-max-builtin
-        start_dist = 0  # to avoid duplicating the first vertex
-
-    if reverse:
-        vertex_list = [tuple(*end_point.coords)]  # type: ignore
-    else:
-        vertex_list = [tuple(*start_point.coords)]  # type: ignore
-
-    _coords = list(geom.coords)  # type: ignore
-    current_distance = 0
-    for p1, p2 in zip(_coords, _coords[1:]):  # pylint: disable=invalid-name # type: ignore
-        if start_dist < current_distance < end_dist:
-            vertex_list.append(p1)
-        elif current_distance >= end_dist:
-            break
-
-        current_distance += ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5  # type: ignore
-
-    if reverse:
-        vertex_list.append(tuple(*start_point.coords))  # type: ignore
-        # reverse direction result
-        vertex_list = reversed(vertex_list)  # type: ignore
-    else:
-        vertex_list.append(tuple(*end_point.coords))  # type: ignore
-
-    return LineString(vertex_list)
+    return max_angle
 
 
 def _snap_linestring_idx(
