@@ -361,8 +361,8 @@ def osm_graph_from_poly(
         graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
     else:
         graph_crs = nx_wgs_to_utm(graph_wgs)
-        graph_crs = graphs.nx_simple_geoms(graph_crs)
-        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+    graph_crs = graphs.nx_simple_geoms(graph_crs)
+    graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
         graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=12, crawl=True)
