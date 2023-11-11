@@ -131,7 +131,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">despine</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> int = 15</span>
   </div>
   <div class="param">
     <span class="pn">remove_disconnected</span>
@@ -163,11 +163,11 @@ side-effects as a function of varied node intensities when computing network cen
 <div class="param-set">
   <div class="def">
     <div class="name">despine</div>
-    <div class="type">bool</div>
+    <div class="type">int</div>
   </div>
   <div class="desc">
 
- The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur. Defaults to None.</div>
+ The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur.</div>
 </div>
 
 <div class="param-set">
@@ -382,7 +382,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 5</span>
+    <span class="pa"> float = 12</span>
   </div>
   <div class="param">
     <span class="pn">neighbour_policy</span>
@@ -395,14 +395,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pa"> bool = False</span>
   </div>
   <div class="param">
-    <span class="pn">centroid_by_straightness</span>
+    <span class="pn">centroid_by_itx</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">centroid_by_min_len_factor</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">merge_edges_by_midline</span>
@@ -412,7 +407,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 20</span>
+    <span class="pa"> int = 40</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -467,27 +462,17 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the buffer distance from the prior node. Defaults to True.</div>
+ Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the buffer distance from the prior node. Defaults to False.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">centroid_by_straightness</div>
+    <div class="name">centroid_by_itx</div>
     <div class="type">bool</div>
   </div>
   <div class="desc">
 
- Whether to use an intersection straightness heuristic to select new centroids. True by default.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">centroid_by_min_len_factor</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge lengths. Defaults to None.</div>
+ Whether to favour intersections when selecting the combined centroid of merged nodes. Intersections with two straight through-routes will be favoured if found, otherwise intersections with one straight through-route are used where available. True by default.</div>
 </div>
 
 <div class="param-set">
@@ -507,14 +492,14 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.</div>
+ The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently similar to be merged. This is run after node consolidation has completed.</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">MultiGraph</div>
+    <div class="type">nx.MultiGraph</div>
   </div>
   <div class="desc">
 
@@ -546,7 +531,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 10</span>
+    <span class="pa"> float = 12</span>
   </div>
   <div class="param">
     <span class="pn">merge_edges_by_midline</span>
@@ -556,7 +541,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 20</span>
+    <span class="pa"> float = 40</span>
   </div>
   <span class="pt">)</span>
 </div>
