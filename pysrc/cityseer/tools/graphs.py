@@ -238,7 +238,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 
 def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
-    despine: float | None = None,
+    despine: int = 15,
     remove_disconnected: bool = True,
     cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
@@ -250,9 +250,8 @@ def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    despine: bool
-        The maximum cutoff distance for removal of dead-ends. Use `None` or `0` where no despining should occur.
-        Defaults to None.
+    despine: int
+        The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur.
     remove_disconnected: bool
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
@@ -277,7 +276,7 @@ def nx_remove_dangling_nodes(
         # make a copy of the graph using the largest component
         g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
     # remove dangleres
-    if despine is not None and despine > 0:
+    if despine > 0:
         remove_nodes = []
         nd_key: NodeKey
         for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
@@ -465,9 +464,27 @@ def nx_iron_edges(
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
+        # only apply to non looping geoms otherwise issues occur
+        if start_nd_key == end_nd_key:
+            continue
         edge_geom: geometry.LineString = edge_data["geom"]
-        # for all changes - write over edge_geom and also update in place
+        start_point = edge_geom.coords[0]
+        end_point = edge_geom.coords[-1]
+        simpl_edge_geom = geometry.LineString([start_point, end_point])
+        max_angle = util.measure_max_angle(edge_geom.coords)
         total_angle = util.measure_cumulative_angle(edge_geom.coords)
+        # for all changes - write over edge_geom and also update in place
+        # remove erroneous switchbacks
+        if max_angle > 100:
+            edge_geom = simpl_edge_geom
+        # remove line geoms where cumulative length is greater than around 1.5 * shortest route (hypotenuse)
+        elif edge_geom.length > simpl_edge_geom.length * 1.8:
+            edge_geom = simpl_edge_geom
+        elif simpl_edge_geom.buffer(15).contains(edge_geom):
+            edge_geom = simpl_edge_geom
+        elif edge_geom.length < 50:
+            edge_geom = simpl_edge_geom
+        # subtle simplication
         if total_angle < 5:
             edge_geom = edge_geom.simplify(20, preserve_topology=False)
         elif total_angle < 10:
@@ -486,8 +503,7 @@ def nx_iron_edges(
 def _squash_adjacent(
     nx_multigraph: MultiGraph,
     node_group: set[NodeKey],
-    centroid_by_straightness: bool,
-    centroid_by_min_len_factor: float | None = 0.9,
+    centroid_by_itx: bool,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -499,71 +515,46 @@ def _squash_adjacent(
     - and / else, all nodes with aggregate adjacent edge lengths greater than centroid_by_min_len_factor as a factor of
     the node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined
     node.
-
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
-    if centroid_by_min_len_factor is not None and not 1 >= centroid_by_min_len_factor >= 0:
-        raise ValueError("centroid_by_min_len_factor should be a float between 0 and 1.")
     # remove any node keys no longer in the graph
-    node_group = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
-    # straightness basis - looks for intersections bridging relatively straight through routes
-    centroid_nodes: list[int] = []
-    if centroid_by_straightness is True:
-        for nd_key in node_group:
+    centroid_nodes_filter = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
+    # if using intersections, find straight-through routes and count
+    if centroid_by_itx:
+        crossings_2 = []
+        crossings_1 = []
+        for nd_key in centroid_nodes_filter:
+            crossings = 0
+            # compute node straight-through-angles
             nd_x_y = (nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
+            crossings = 0
             for nb_nd_key_a in nx.neighbors(nx_multigraph, nd_key):
                 for nb_edge_data_a in nx_multigraph[nd_key][nb_nd_key_a].values():
-                    geom_a_coords = util.align_linestring_coords(nb_edge_data_a["geom"].coords, nd_x_y, reverse=True)
+                    geom_a = nb_edge_data_a["geom"]
+                    geom_a_coords = util.align_linestring_coords(geom_a.coords, nd_x_y, reverse=True)
                     for nb_nd_key_b in nx.neighbors(nx_multigraph, nd_key):
                         if nb_nd_key_b == nb_nd_key_a:
                             continue
                         for nb_edge_data_b in nx_multigraph[nd_key][nb_nd_key_b].values():
-                            geom_b_coords = util.align_linestring_coords(
-                                nb_edge_data_b["geom"].coords, nd_x_y, reverse=False
-                            )
-                            # take the last linestring coordinates before / first coordinate after intersection
-                            angular_change = util.measure_coords_angle(
-                                geom_a_coords[-2][:2], nd_x_y, geom_b_coords[1][:2]
-                            )
-                            # if straight through - then prioritise this centroid
-                            if angular_change < 5:
-                                centroid_nodes.append(nd_key)
-                                continue
-    # if merging on a longest adjacent edges basis
-    if centroid_by_min_len_factor is not None:
-        # if nodes are pre-filtered by edge degrees, then use the filtered nodes as a starting point
-        if centroid_nodes:
-            node_pool = centroid_nodes.copy()
-            centroid_nodes = []  # reset
-        # else use the full original node group
-        else:
-            node_pool = node_group
-        agg_lens: list[int] = []
-        for nd_key in node_pool:
-            agg_len = 0
-            # iterate each node's neighbours, aggregating neighbouring edge lengths along the way
-            nb_nd_key: NodeKey
-            for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
-                nb_edge_data: EdgeData
-                for nb_edge_data in nx_multigraph[nd_key][nb_nd_key].values():
-                    agg_len += nb_edge_data["geom"].length
-            agg_lens.append(agg_len)
-        # find the longest
-        max_len: int = max(agg_lens)
-        # select all nodes with an agg_len within a small tolerance of longest
-        nd_key: NodeKey
-        agg_len: int
-        for nd_key, agg_len in zip(node_pool, agg_lens):
-            if agg_len >= max_len * centroid_by_min_len_factor:
-                centroid_nodes.append(nd_key)
-    # fallback
-    if not centroid_nodes:
-        centroid_nodes = node_group
+                            geom_b = nb_edge_data_b["geom"]
+                            geom_b_coords = util.align_linestring_coords(geom_b.coords, nd_x_y, reverse=False)
+                            angle_sum = util.measure_coords_angle(geom_a_coords[0][:2], nd_x_y, geom_b_coords[-1][:2])
+                            if angle_sum < 10:
+                                crossings += 1
+            if crossings / 2 >= 2:
+                crossings_2.append(nd_key)
+            elif crossings / 2 >= 1:
+                crossings_1.append(nd_key)
+        # favour nodes with two through routes
+        if crossings_2:
+            centroid_nodes_filter = crossings_2
+        elif crossings_1:
+            centroid_nodes_filter = crossings_1
     # prepare the names and geoms for filtered points to be used for the new centroid
     node_geoms = []
     coords_set: set[str] = set()
-    for nd_key in centroid_nodes:
+    for nd_key in centroid_nodes_filter:
         x: float = nx_multigraph.nodes[nd_key]["x"]
         y: float = nx_multigraph.nodes[nd_key]["y"]
         # in rare cases opposing geom splitting can cause overlaying nodes
@@ -656,13 +647,12 @@ def _squash_adjacent(
 
 def nx_consolidate_nodes(
     nx_multigraph: MultiGraph,
-    buffer_dist: float = 5,
+    buffer_dist: float = 12,
     neighbour_policy: str | None = None,
     crawl: bool = False,
-    centroid_by_straightness: bool = True,
-    centroid_by_min_len_factor: float | None = None,
+    centroid_by_itx: bool = True,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: int = 20,
+    contains_buffer_dist: int = 40,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -695,22 +685,21 @@ def nx_consolidate_nodes(
         None.
     crawl: bool
         Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the
-        buffer distance from the prior node. Defaults to True.
-    centroid_by_straightness: bool
-        Whether to use an intersection straightness heuristic to select new centroids. True by default.
-    centroid_by_min_len_factor: float
-        The minimum aggregate adjacent edge lengths an existing node should have to be considered when calculating the
-        centroid for the new node cluster. Expressed as a factor of the node with the greatest aggregate adjacent edge
-        lengths. Defaults to None.
+        buffer distance from the prior node. Defaults to False.
+    centroid_by_itx: bool
+        Whether to favour intersections when selecting the combined centroid of merged nodes. Intersections with two
+        straight through-routes will be favoured if found, otherwise intersections with one straight through-route are
+        used where available. True by default.
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently similar to be merged. This is run after node consolidation has completed.
 
     Returns
     -------
-    MultiGraph
+    nx.MultiGraph
         A `networkX` `MultiGraph` with consolidated nodes.
 
     Examples
@@ -728,7 +717,7 @@ def nx_consolidate_nodes(
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     if neighbour_policy is not None and neighbour_policy not in ("direct", "indirect"):
         raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
-    if crawl and buffer_dist > 25:
+    if crawl and buffer_dist >= 20:
         logger.warning("Be cautious with large buffer distances when using crawl!")
     _multi_graph: MultiGraph = nx_multigraph.copy()
     # create a nodes STRtree
@@ -778,7 +767,6 @@ def nx_consolidate_nodes(
                     processed_nodes,
                     recursive=crawl,
                 )
-
         return node_group
 
     # iterate origin graph (else node structure changes in place)
@@ -798,17 +786,15 @@ def nx_consolidate_nodes(
         )  # whether to recursively probe neighbours per distance
         # update removed nodes
         removed_nodes.update(node_group)
-        # consolidate if nodes have been identified within buffer and if these exceed min_node_threshold
-        _multi_graph = _squash_adjacent(
-            _multi_graph,
-            node_group,
-            centroid_by_straightness=centroid_by_straightness,
-            centroid_by_min_len_factor=centroid_by_min_len_factor,
-        )
+        # consolidate
+        if len(node_group) > 1:
+            _multi_graph = _squash_adjacent(
+                _multi_graph,
+                node_group,
+                centroid_by_itx=centroid_by_itx,
+            )
     # remove new filler nodes
     _multi_graph = nx_remove_filler_nodes(_multi_graph)
-    # remove wonky endings from consolidation process
-    _multi_graph = nx_iron_edges(_multi_graph)
     # remove parallel edges resulting from squashing nodes
     _multi_graph = nx_merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
 
@@ -817,9 +803,9 @@ def nx_consolidate_nodes(
 
 def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
-    buffer_dist: float = 10,
+    buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 20,
+    contains_buffer_dist: float = 40,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
@@ -920,9 +906,6 @@ def nx_split_opposing_geoms(
         # filter current_edges
         gapped_edges: list[EdgeMapping] = []
         for start_nd_key, end_nd_key, edge_idx, edge_geom in current_edges:
-            # skip direct neighbours
-            if start_nd_key == nd_key or end_nd_key == nd_key:  # pylint: disable=consider-using-in
-                continue
             # check whether the geom is truly within the buffer distance
             if edge_geom.distance(n_point) > buffer_dist:
                 continue
@@ -1122,7 +1105,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         for _ in range(cuts - 1):
             # create the split LineString geom for measuring the new length
             # switch back to shapely once bug resolved
-            line_segment: geometry.LineString = util.substring(line_geom, step, step + step_size)
+            line_segment: geometry.LineString = ops.substring(line_geom, step, step + step_size)
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
             # add the new node and edge
@@ -1149,7 +1132,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         # set the last edge manually to avoid rounding errors at end of LineString
         # the nodes already exist, so just add edge
         # switch back to shapely once bug resolved
-        line_segment = util.substring(line_geom, step, line_geom.length)
+        line_segment = ops.substring(line_geom, step, line_geom.length)
         edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
         g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **edge_data_copy)
 
@@ -1245,8 +1228,8 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         line_geom = geometry.LineString(line_geom_coords)
         # generate the two half geoms
         # switch back to shapely once bug resolved
-        a_half_geom: geometry.LineString = util.substring(line_geom, 0.0, 0.5, normalized=True)
-        b_half_geom: geometry.LineString = util.substring(line_geom, 0.5, 1.0, normalized=True)
+        a_half_geom: geometry.LineString = ops.substring(line_geom, 0.0, 0.5, normalized=True)
+        b_half_geom: geometry.LineString = ops.substring(line_geom, 0.5, 1.0, normalized=True)
         # check that nothing odd happened with new midpoint
         if not np.allclose(
             a_half_geom.coords[-1][:2],

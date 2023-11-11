@@ -70,6 +70,30 @@ def test_measure_angle_diff_betw_linestrings():
     assert util.measure_angle_diff_betw_linestrings(coords_b, list(reversed(coords_a))) == 45
 
 
+def test_measure_cumulative_angle():
+    """ """
+    for coord_set, expected_angle in [
+        ([[0, 0], [1, 0], [2, 0]], 0),
+        ([[0, 0], [1, 0], [2, 1]], 45),
+        ([[0, 0], [1, 0], [1, 1]], 90),
+        ([[0, 0], [1, 0], [0, 1]], 135),
+        ([[0, 0], [1, 0], [1, 1], [2, 1]], 180),
+    ]:
+        assert util.measure_cumulative_angle(coord_set) == expected_angle
+
+
+def test_measure_max_angle():
+    """ """
+    for coord_set, expected_angle in [
+        ([[0, 0], [1, 0], [2, 0]], 0),
+        ([[0, 0], [1, 0], [2, 1]], 45),
+        ([[0, 0], [1, 0], [1, 1]], 90),
+        ([[0, 0], [1, 0], [0, 1]], 135),
+        ([[0, 0], [1, 0], [1, 1], [2, 1]], 90),
+    ]:
+        assert util.measure_max_angle(coord_set) == expected_angle
+
+
 def test_add_node(diamond_graph):
     new_name, is_dupe = util.add_node(diamond_graph, ["0", "1"], 50, 50)
     assert is_dupe is False
