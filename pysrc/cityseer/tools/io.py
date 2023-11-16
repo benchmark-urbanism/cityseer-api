@@ -906,6 +906,7 @@ def nx_from_cityseer_geopandas(
     # after above so that errors caught first
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
+        nd_key = str(nd_key)
         g_multi_copy.nodes[nd_key]["x"] = nd_data.x
         g_multi_copy.nodes[nd_key]["y"] = nd_data.y
         if hasattr(nd_data, "live"):
@@ -917,10 +918,11 @@ def nx_from_cityseer_geopandas(
         else:
             g_multi_copy.nodes[nd_key]["weight"] = 1
     logger.info("Unpacking edge data.")
+    geom_key = edges_gdf.geometry.name
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
         g_multi_copy.add_edge(
-            row_data.nx_start_node_key,
-            row_data.nx_end_node_key,
+            str(row_data.nx_start_node_key),
+            str(row_data.nx_end_node_key),
             row_data.edge_idx,
             length=row_data.length,
             angle_sum=row_data.angle_sum,
@@ -928,7 +930,7 @@ def nx_from_cityseer_geopandas(
             in_bearing=row_data.in_bearing,
             out_bearing=row_data.out_bearing,
             total_bearing=row_data.total_bearing,
-            geom=row_data.geom,
+            geom=row_data[geom_key],
         )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]

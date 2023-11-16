@@ -683,6 +683,12 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
         for col_label in column_labels:
             assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
+    # check that arbitrary geom column name doesn't raise
+    edges_gdf = edges_gdf.rename_geometry("geommoeg")
+    G_round_trip_nx = io.nx_from_cityseer_geopandas(
+        nodes_gdf,
+        edges_gdf,
+    )
     # test with decomposed
     G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
     # set live explicitly
