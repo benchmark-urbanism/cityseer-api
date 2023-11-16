@@ -902,21 +902,18 @@ def nx_from_cityseer_geopandas(
     """
     logger.info("Populating node and edge map data to a networkX graph.")
     g_multi_copy = nx.MultiGraph()
-    g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
     # after above so that errors caught first
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
-        nd_key = str(nd_key)
-        g_multi_copy.nodes[nd_key]["x"] = nd_data.x
-        g_multi_copy.nodes[nd_key]["y"] = nd_data.y
         if hasattr(nd_data, "live"):
-            g_multi_copy.nodes[nd_key]["live"] = nd_data.live
+            live = nd_data.live
         else:
-            g_multi_copy.nodes[nd_key]["live"] = True
+            live = True
         if hasattr(nd_data, "weight"):
-            g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
+            weight = nd_data.weight
         else:
-            g_multi_copy.nodes[nd_key]["weight"] = 1
+            weight = 1
+        g_multi_copy.add_node(str(nd_key), x=nd_data.x, y=nd_data.y, live=live, weight=weight)
     logger.info("Unpacking edge data.")
     geom_key = edges_gdf.geometry.name
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
