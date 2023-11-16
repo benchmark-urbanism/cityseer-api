@@ -917,18 +917,22 @@ def nx_from_cityseer_geopandas(
     logger.info("Unpacking edge data.")
     geom_key = edges_gdf.geometry.name
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
-        g_multi_copy.add_edge(
-            str(row_data.nx_start_node_key),
-            str(row_data.nx_end_node_key),
-            row_data.edge_idx,
-            length=row_data.length,
-            angle_sum=row_data.angle_sum,
-            imp_factor=row_data.imp_factor,
-            in_bearing=row_data.in_bearing,
-            out_bearing=row_data.out_bearing,
-            total_bearing=row_data.total_bearing,
-            geom=row_data[geom_key],
-        )
+        start_nd_key = str(row_data.nx_start_node_key)
+        end_nd_key = str(row_data.nx_end_node_key)
+        # explicitly only add if not yet added (vs implicit behaviour)
+        if not g_multi_copy.has_edge(start_nd_key, end_nd_key, row_data.edge_idx):
+            g_multi_copy.add_edge(
+                start_nd_key,
+                end_nd_key,
+                row_data.edge_idx,
+                length=row_data.length,
+                angle_sum=row_data.angle_sum,
+                imp_factor=row_data.imp_factor,
+                in_bearing=row_data.in_bearing,
+                out_bearing=row_data.out_bearing,
+                total_bearing=row_data.total_bearing,
+                geom=row_data[geom_key],
+            )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]
     if metrics_column_labels:
