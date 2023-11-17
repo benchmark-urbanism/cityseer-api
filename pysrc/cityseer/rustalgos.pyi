@@ -538,6 +538,7 @@ def raos_quadratic_diversity(
 class AccessibilityResult:
     weighted: dict[int, npt.ArrayLike]
     unweighted: dict[int, npt.ArrayLike]
+    distance: dict[int, npt.ArrayLike]
 
 class MixedUsesResult:
     hill: dict[int, dict[int, npt.ArrayLike]] | None

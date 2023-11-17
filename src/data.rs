@@ -16,6 +16,8 @@ pub struct AccessibilityResult {
     weighted: HashMap<u32, Py<PyArray1<f32>>>,
     #[pyo3(get)]
     unweighted: HashMap<u32, Py<PyArray1<f32>>>,
+    #[pyo3(get)]
+    distance: HashMap<u32, Py<PyArray1<f32>>>,
 }
 #[pyclass]
 pub struct MixedUsesResult {
@@ -328,6 +330,20 @@ impl DataMap {
                     )
                 })
                 .collect();
+            let dists: HashMap<String, MetricResult> = accessibility_keys
+                .clone()
+                .into_iter()
+                .map(|acc_key| {
+                    (
+                        acc_key,
+                        MetricResult::new(
+                            distances.clone(),
+                            network_structure.node_count(),
+                            f32::INFINITY,
+                        ),
+                    )
+                })
+                .collect();
             // indices
             let node_indices: Vec<usize> = network_structure.node_indices();
             // iter
@@ -372,6 +388,12 @@ impl DataMap {
                             let val_wt = clipped_beta_wt(b, mcw, data_dist);
                             metrics_wt[&lu_class].metric[i][*netw_src_idx]
                                 .fetch_add(val_wt.unwrap(), Ordering::Relaxed);
+                            let current_dist =
+                                dists[&lu_class].metric[i][*netw_src_idx].load(Ordering::Relaxed);
+                            if data_dist < current_dist {
+                                dists[&lu_class].metric[i][*netw_src_idx]
+                                    .store(data_dist, Ordering::Relaxed);
+                            }
                         }
                     }
                 }
@@ -384,6 +406,7 @@ impl DataMap {
                     AccessibilityResult {
                         weighted: metrics_wt[acc_key].load(),
                         unweighted: metrics[acc_key].load(),
+                        distance: dists[acc_key].load(),
                     },
                 );
             }
