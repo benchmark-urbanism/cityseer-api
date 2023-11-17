@@ -374,6 +374,21 @@ builds a graph automatically.
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
+    <span class="pn">crawl_consolidate_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 12</span>
+  </div>
+  <div class="param">
+    <span class="pn">parallel_consolidate_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 15</span>
+  </div>
+  <div class="param">
+    <span class="pn">iron_edges</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
     <span class="pn">timeout</span>
     <span class="pc">:</span>
     <span class="pa"> int = 300</span>
@@ -450,6 +465,36 @@ builds a graph automatically.
   <div class="desc">
 
  Whether to automatically simplify the OSM graph. Set to False for manual cleaning.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">crawl_consolidate_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The buffer distance to use when doing the initial round of node consolidation. This consolidation step crawls neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">parallel_consolidate_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The buffer distance to use when looking for adjacent parallel roadways.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">iron_edges</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to iron the edges.</div>
 </div>
 
 <div class="param-set">

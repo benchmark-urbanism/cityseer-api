@@ -407,7 +407,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 40</span>
+    <span class="pa"> int = 25</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -541,7 +541,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 40</span>
+    <span class="pa"> float = 25</span>
   </div>
   <span class="pt">)</span>
 </div>

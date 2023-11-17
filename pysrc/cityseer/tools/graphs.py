@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 5) -> MultiGraph:
+def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
     """
     Inferring geometries from node to node.
 
@@ -38,8 +38,6 @@ def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 5) -> MultiG
     ----------
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes.
-    simplify_dist: int
-        Simplification distance to use for simplifying the linestring geometries.
 
     Returns
     -------
@@ -75,7 +73,6 @@ def nx_simple_geoms(nx_multigraph: MultiGraph, simplify_dist: int = 5) -> MultiG
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        seg: geometry.LineString = seg.simplify(simplify_dist)
         if start_nd_key == end_nd_key and seg.length == 0:
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
         else:
@@ -468,31 +465,25 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key:
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
-        start_point = edge_geom.coords[0]
-        end_point = edge_geom.coords[-1]
-        simpl_edge_geom = geometry.LineString([start_point, end_point])
-        max_angle = util.measure_max_angle(edge_geom.coords)
         total_angle = util.measure_cumulative_angle(edge_geom.coords)
-        # for all changes - write over edge_geom and also update in place
-        # remove erroneous switchbacks
-        if max_angle > 100:
-            edge_geom = simpl_edge_geom
-        # remove line geoms where cumulative length is greater than around 1.5 * shortest route (hypotenuse)
-        elif edge_geom.length > simpl_edge_geom.length * 1.8:
-            edge_geom = simpl_edge_geom
-        elif simpl_edge_geom.buffer(15).contains(edge_geom):
-            edge_geom = simpl_edge_geom
-        elif edge_geom.length < 50:
-            edge_geom = simpl_edge_geom
-        # subtle simplication
-        if total_angle < 5:
-            edge_geom = edge_geom.simplify(20, preserve_topology=False)
-        elif total_angle < 10:
-            edge_geom = edge_geom.simplify(10, preserve_topology=False)
-        elif total_angle < 20:
-            edge_geom = edge_geom.simplify(5, preserve_topology=False)
+        max_angle = util.measure_max_angle(edge_geom.coords)
+        # don't apply to longer geoms, e.g. rural roads
+        if edge_geom.length > 100:
+            edge_geom = edge_geom.simplify(4)
+        # if there is an angle greater than 95 then it is likely spurious
+        elif max_angle > 100:
+            edge_geom = edge_geom.simplify(16)
+        # preserve resolution for twisty roads
+        elif total_angle > 170:
+            edge_geom = edge_geom.simplify(4)
+        # look for spurious kinks
+        elif edge_geom.simplify(16).buffer(16).contains(edge_geom) and max_angle > 35:
+            edge_geom = edge_geom.simplify(16)
+        elif edge_geom.simplify(8).buffer(8).contains(edge_geom) and max_angle > 35:
+            edge_geom = edge_geom.simplify(8)
         else:
-            edge_geom = edge_geom.simplify(2, preserve_topology=True)
+            edge_geom = edge_geom.simplify(4)
+
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
@@ -652,7 +643,7 @@ def nx_consolidate_nodes(
     crawl: bool = False,
     centroid_by_itx: bool = True,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: int = 40,
+    contains_buffer_dist: int = 25,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -805,7 +796,7 @@ def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 40,
+    contains_buffer_dist: float = 25,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.

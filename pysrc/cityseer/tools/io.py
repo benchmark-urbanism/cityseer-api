@@ -247,6 +247,9 @@ def osm_graph_from_poly(
     to_epsg_code: int | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
+    crawl_consolidate_dist: int = 12,
+    parallel_consolidate_dist: int = 15,
+    iron_edges: bool = True,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -274,6 +277,13 @@ def osm_graph_from_poly(
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
         Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
+    crawl_consolidate_dist: int
+        The buffer distance to use when doing the initial round of node consolidation. This consolidation step crawls
+        neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.
+    parallel_consolidate_dist: int
+        The buffer distance to use when looking for adjacent parallel roadways.
+    iron_edges: bool
+        Whether to iron the edges.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -365,10 +375,11 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=12, crawl=True)
-        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, neighbour_policy="indirect")
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True)
+        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=parallel_consolidate_dist)
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=parallel_consolidate_dist)
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+    if iron_edges:
         graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
