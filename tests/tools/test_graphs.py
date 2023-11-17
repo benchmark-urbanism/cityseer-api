@@ -308,36 +308,30 @@ def test_nx_iron_edges():
     nx_multi.add_node(0, x=0, y=0)
     nx_multi.add_node(1, x=0, y=2)
     # 1 - straight line should be simplified
-    line_geom = geometry.LineString([[0, 0], [0, 100], [0, 200]])
+    line_geom = geometry.LineString([[0, 0], [0, 10], [0, 20]])
     nx_multi.add_edge(0, 1, geom=line_geom)
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 200.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 20.0)]
     # 2 - jogged line should be preserved
-    line_geom = geometry.LineString([[0, 0], [0, 100], [100, 100], [100, 200]])
+    line_geom = geometry.LineString([[0, 0], [0, 10], [10, 10], [10, 20]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 100.0), (100.0, 100.0), (100.0, 200.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 10.0), (10.0, 10.0), (10.0, 20.0)]
     # 3 sharply jogged line should be simplified
-    line_geom = geometry.LineString([[0, 0], [0, 100], [100, 50], [100, 200]])
+    line_geom = geometry.LineString([[0, 0], [10, 0], [15, 10], [15, 0]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (100.0, 200.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (15.0, 0.0)]
     # 4 folded back line should be simplified
-    line_geom = geometry.LineString([[0, 0], [0, 300], [0, 200]])
+    line_geom = geometry.LineString([[0, 0], [0, 30], [0, 20]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 200.0)]
-    # 5 short line should be simplified
-    line_geom = geometry.LineString([[0, 0], [10, 100], [0, 200]])
-    nx_multi[0][1][0]["geom"] = line_geom
-    nx_out = graphs.nx_iron_edges(nx_multi)
-    out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 200.0)]
-    # 6 loops should be left alone
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 20.0)]
+    # 5 loops should be left alone
     nx_multi = nx.MultiGraph()
     nx_multi.add_node(0, x=0, y=0)
     line_geom = geometry.LineString([[0, 0], [0, 100], [100, 100], [100, 0], [0, 0]])

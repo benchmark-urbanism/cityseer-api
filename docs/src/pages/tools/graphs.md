@@ -15,15 +15,10 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_simple_geoms</span><div class="signature multiline">
+<span class="name">nx_simple_geoms</span><div class="signature">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
-  </div>
-  <div class="param">
-    <span class="pn">simplify_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 5</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -40,16 +35,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="desc">
 
  A `networkX` `MultiGraph` with `x` and `y` node attributes.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">simplify_dist</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- Simplification distance to use for simplifying the linestring geometries.</div>
 </div>
 
 ### Returns
