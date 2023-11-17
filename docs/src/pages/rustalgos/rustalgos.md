@@ -2731,17 +2731,17 @@ datapoints are not located with high spatial precision.
 
  
 
+<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
+
+
+ 
+
 <span class="name">node_ys</span><span class="annotation">: list[float]</span>
 
 
  
 
 <span class="name">node_lives</span><span class="annotation">: list[bool]</span>
-
-
- 
-
-<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
 
 
  
