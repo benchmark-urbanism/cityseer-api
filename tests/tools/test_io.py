@@ -638,9 +638,9 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
-    # G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
-    # assert list(G_round_trip.nodes) == list(primal_graph.nodes)
-    # assert list(G_round_trip.edges) == list(primal_graph.edges)
+    G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
+    assert list(G_round_trip.nodes) == list(primal_graph.nodes)
+    assert list(G_round_trip.edges) == list(primal_graph.edges)
     # check with  missings weights and live columns
     for col in ["live", "weights"]:
         nodes_gdf_miss = nodes_gdf.copy()
@@ -683,6 +683,12 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     for node_key, node_row in nodes_gdf.iterrows():  # type: ignore
         for col_label in column_labels:
             assert G_round_trip_nx.nodes[node_key][col_label] == node_row[col_label]
+    # check that arbitrary geom column name doesn't raise
+    edges_gdf = edges_gdf.rename_geometry("geommoeg")
+    G_round_trip_nx = io.nx_from_cityseer_geopandas(
+        nodes_gdf,
+        edges_gdf,
+    )
     # test with decomposed
     G_decomposed = graphs.nx_decompose(primal_graph, decompose_max=20)
     # set live explicitly

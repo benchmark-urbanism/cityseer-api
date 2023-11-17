@@ -247,6 +247,9 @@ def osm_graph_from_poly(
     to_epsg_code: int | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
+    crawl_consolidate_dist: int = 12,
+    parallel_consolidate_dist: int = 15,
+    iron_edges: bool = True,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -274,6 +277,13 @@ def osm_graph_from_poly(
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
         Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
+    crawl_consolidate_dist: int
+        The buffer distance to use when doing the initial round of node consolidation. This consolidation step crawls
+        neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.
+    parallel_consolidate_dist: int
+        The buffer distance to use when looking for adjacent parallel roadways.
+    iron_edges: bool
+        Whether to iron the edges.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -365,10 +375,11 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=12, crawl=True)
-        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=15)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=15, neighbour_policy="indirect")
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True)
+        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=parallel_consolidate_dist)
+        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=parallel_consolidate_dist)
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+    if iron_edges:
         graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
@@ -902,34 +913,37 @@ def nx_from_cityseer_geopandas(
     """
     logger.info("Populating node and edge map data to a networkX graph.")
     g_multi_copy = nx.MultiGraph()
-    g_multi_copy.add_nodes_from(nodes_gdf.index.values.tolist())
     # after above so that errors caught first
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
-        g_multi_copy.nodes[nd_key]["x"] = nd_data.x
-        g_multi_copy.nodes[nd_key]["y"] = nd_data.y
         if hasattr(nd_data, "live"):
-            g_multi_copy.nodes[nd_key]["live"] = nd_data.live
+            live = nd_data.live
         else:
-            g_multi_copy.nodes[nd_key]["live"] = True
+            live = True
         if hasattr(nd_data, "weight"):
-            g_multi_copy.nodes[nd_key]["weight"] = nd_data.weight
+            weight = nd_data.weight
         else:
-            g_multi_copy.nodes[nd_key]["weight"] = 1
+            weight = 1
+        g_multi_copy.add_node(str(nd_key), x=nd_data.x, y=nd_data.y, live=live, weight=weight)
     logger.info("Unpacking edge data.")
+    geom_key = edges_gdf.geometry.name
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
-        g_multi_copy.add_edge(
-            row_data.nx_start_node_key,
-            row_data.nx_end_node_key,
-            row_data.edge_idx,
-            length=row_data.length,
-            angle_sum=row_data.angle_sum,
-            imp_factor=row_data.imp_factor,
-            in_bearing=row_data.in_bearing,
-            out_bearing=row_data.out_bearing,
-            total_bearing=row_data.total_bearing,
-            geom=row_data.geom,
-        )
+        start_nd_key = str(row_data.nx_start_node_key)
+        end_nd_key = str(row_data.nx_end_node_key)
+        # explicitly only add if not yet added (vs implicit behaviour)
+        if not g_multi_copy.has_edge(start_nd_key, end_nd_key, row_data.edge_idx):
+            g_multi_copy.add_edge(
+                start_nd_key,
+                end_nd_key,
+                row_data.edge_idx,
+                length=row_data.length,
+                angle_sum=row_data.angle_sum,
+                imp_factor=row_data.imp_factor,
+                in_bearing=row_data.in_bearing,
+                out_bearing=row_data.out_bearing,
+                total_bearing=row_data.total_bearing,
+                geom=row_data[geom_key],
+            )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]
     if metrics_column_labels:
