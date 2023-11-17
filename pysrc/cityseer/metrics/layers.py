@@ -193,7 +193,9 @@ def compute_accessibilities(
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three
+        columns will be returned for each input landuse class and distance combination; a simple count of reachable
+        locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
 
@@ -223,6 +225,8 @@ def compute_accessibilities(
     print(nodes_gdf["cc_metric_c_400_weighted"])
     # non-weighted form
     print(nodes_gdf["cc_metric_c_400_non_weighted"])
+    # nearest distance to landuse
+    print(nodes_gdf["cc_metric_c_400_distance"])
     ```
 
     """
@@ -253,9 +257,11 @@ def compute_accessibilities(
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
-            ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
             nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # type: ignore
+            ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
             nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # type: ignore
+            ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_distance")
+            nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
 

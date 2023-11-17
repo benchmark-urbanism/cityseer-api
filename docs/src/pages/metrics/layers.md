@@ -352,7 +352,7 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+ The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three columns will be returned for each input landuse class and distance combination; a simple count of reachable locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.</div>
 </div>
 
 <div class="param-set">
@@ -391,6 +391,8 @@ print(nodes_gdf.columns)
 print(nodes_gdf["cc_metric_c_400_weighted"])
 # non-weighted form
 print(nodes_gdf["cc_metric_c_400_non_weighted"])
+# nearest distance to landuse
+print(nodes_gdf["cc_metric_c_400_distance"])
 ```
 
 

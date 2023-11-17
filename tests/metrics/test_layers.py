@@ -82,6 +82,13 @@ def test_compute_accessibilities(primal_graph):
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
+                        acc_data_key_dist = config.prep_gdf_key(f"{acc_key}_{dist_key}_distance")
+                        assert np.allclose(
+                            nodes_gdf[acc_data_key_dist].values,
+                            accessibility_data[acc_key].distance[dist_key],
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
                 # most integrity checks happen in underlying method
                 with pytest.raises(ValueError):
                     nodes_gdf, data_gdf = layers.compute_accessibilities(
