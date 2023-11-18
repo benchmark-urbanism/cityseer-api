@@ -986,16 +986,16 @@ def generic_edges_geopandas_from_nx(
     logger.info("Preparing node and edge arrays from networkX graph.")
     agg_edge_data = []
     # set edges
-    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):
+    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
         agg_edge_data.append(
             {
                 "start_nd_key": start_nd_key,
                 "end_nd_key": end_nd_key,
                 "edge_idx": edge_idx,
-                "geom": edge_data["geom"],
+                "geom": edge_data["geom"],  # type: ignore
             }
         )
-    edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=crs, geometry="geom")
+    edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=crs, geometry="geom")  # type: ignore
 
     return edges_gdf
 
