@@ -58,9 +58,9 @@ def test_closest_intersections(box_graph):
 def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
     """Some tweaks for visual checks."""
     data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
-    data_gdf.geometry[18] = geometry.Point(701200, 5719400)
-    data_gdf.geometry[39] = geometry.Point(700750, 5720025)
-    data_gdf.geometry[26] = geometry.Point(700400, 5719525)
+    data_gdf.geometry.iloc[18] = geometry.Point(701200, 5719400)
+    data_gdf.geometry.iloc[39] = geometry.Point(700750, 5720025)
+    data_gdf.geometry.iloc[26] = geometry.Point(700400, 5719525)
 
     return data_gdf
 
