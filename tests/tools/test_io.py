@@ -705,9 +705,9 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     assert G_round_trip_decomp.edges == G_decomposed.edges
 
 
-def test_generic_edges_geopandas_from_nx(primal_graph):
+def test_geopandas_from_nx(primal_graph):
     """ """
-    edges_gdf = io.generic_edges_geopandas_from_nx(primal_graph, 3395)
+    edges_gdf = io.geopandas_from_nx(primal_graph, 3395)
     assert len(edges_gdf) == len(primal_graph.edges)
     for _idx, row_data in edges_gdf.iterrows():
         assert (

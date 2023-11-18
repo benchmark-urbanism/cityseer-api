@@ -955,7 +955,7 @@ def nx_from_cityseer_geopandas(
     return g_multi_copy
 
 
-def generic_edges_geopandas_from_nx(
+def geopandas_from_nx(
     nx_multigraph: nx.MultiGraph,
     crs: str | int,
 ) -> gpd.GeoDataFrame:
