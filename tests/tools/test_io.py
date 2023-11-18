@@ -705,6 +705,17 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     assert G_round_trip_decomp.edges == G_decomposed.edges
 
 
+def test_generic_edges_geopandas_from_nx(primal_graph):
+    """ """
+    edges_gdf = io.generic_edges_geopandas_from_nx(primal_graph, 3395)
+    assert len(edges_gdf) == len(primal_graph.edges)
+    for _idx, row_data in edges_gdf.iterrows():
+        assert (
+            row_data["geom"]
+            == primal_graph[row_data["start_nd_key"]][row_data["end_nd_key"]][row_data["edge_idx"]]["geom"]
+        )
+
+
 def test_nx_from_generic_geopandas(primal_graph):
     """ """
     # generate a GDF for testing with
