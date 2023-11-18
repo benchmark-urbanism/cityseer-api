@@ -651,12 +651,9 @@ def nx_consolidate_nodes(
     Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The
     algorithm proceeds in two steps:
 
-    Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing
-    edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
-    - The centroid of the node group;
-    - Else, all nodes of degree greater or equal to `cent_min_degree`;
-    - Else, all nodes with aggregate adjacent edge lengths greater than a factor of `centroid_by_min_len_factor` of the
-    node with the greatest aggregate length for adjacent edges.
+    Nodes within the buffer distance of each other are merged. If selecting `centroid_by_itx` then the new centroid
+    will try to use intersections to determine the new centroid for the nodes. It will first attempt to find
+    intersections with two through-routes, else will use intersections with one through-route.
 
     The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
     by a single new edge, with the new geometry selected from either:
