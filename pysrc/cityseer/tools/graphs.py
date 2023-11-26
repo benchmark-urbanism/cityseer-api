@@ -1398,4 +1398,3 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
         g_multi_copy.nodes[nd_key]["weight"] = weight
 
     return g_multi_copy
-
