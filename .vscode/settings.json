@@ -1,6 +1,5 @@
 {
   "eslint.enable": true,
-  "eslint.alwaysShowStatus": true,
   "eslint.validate": ["javascript", "javascriptreact", "vue"],
   "eslint.codeAction.disableRuleComment": {},
   "eslint.lintTask.enable": true,
@@ -25,21 +24,10 @@
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
   "notebook.lineNumbers": "on",
-  "python.formatting.provider": "black",
   "python.testing.pytestEnabled": true,
   "python.analysis.completeFunctionParens": true,
   "python.analysis.indexing": true,
   "python.analysis.autoImportCompletions": true,
-  "python.linting.pydocstyleEnabled": true,
-  "python.linting.pylintEnabled": true,
-  "python.linting.ignorePatterns": [
-    "**/site-packages/**/*.py",
-    ".vscode/*.py",
-    "**/__pypackages__/**/*.py",
-    "**/build/**/*.py",
-    "**/*temp*/**/*.py",
-    "**/*test*/**/*.py"
-  ],
   "python.languageServer": "Pylance",
   "python.analysis.autoSearchPaths": true,
   "python.analysis.stubPath": "stubs"
