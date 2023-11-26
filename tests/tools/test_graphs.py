@@ -597,3 +597,47 @@ def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
         assert nd_data["weight"] > 0
     for nd_key, nd_data in G_0.nodes(data=True):
         assert nd_data["weight"] == 1
+
+
+def test_nx_generate_isochrones(primal_graph):
+    """ """
+    # from cityseer.tools import plot
+    # plot.plot_nx(primal_graph, labels=True)
+
+    g_multi_copy = primal_graph.copy()
+    for start_nd_key, end_nd_key, edge_idx, edge_data in g_multi_copy.edges(data=True, keys=True):
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["wt"] = edge_data["geom"].length
+
+    distances = [200, 400, 800, 1600]
+    isochrones = graphs.nx_generate_isochrones(g_multi_copy, distances, "0", "wt")
+    assert isochrones["nodes_200"] == ["0", "31", "16", "1"]
+    assert isochrones["nodes_400"] == [
+        "0",
+        "31",
+        "16",
+        "1",
+        "19",
+        "32",
+        "4",
+        "33",
+        "17",
+        "2",
+        "35",
+        "18",
+        "22",
+        "3",
+        "9",
+        "34",
+    ]
+    # for visual confirmation
+    # import matplotlib.pyplot as plt
+    # for dist in distances:
+    #     fig, ax = plt.subplots()
+    #     x, y = isochrones[f"poly_{dist}"].exterior.xy
+    #     ax.plot(x, y)
+    #     ax.set_xlim([min(x) - 1, max(x) + 1])
+    #     ax.set_ylim([min(y) - 1, max(y) + 1])
+    #     for interior in isochrones[f"poly_{dist}"].interiors:
+    #         x, y = interior.xy
+    #         ax.plot(x, y)
+    #     plt.show()

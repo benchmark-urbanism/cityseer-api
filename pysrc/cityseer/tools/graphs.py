@@ -1398,3 +1398,65 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
         g_multi_copy.nodes[nd_key]["weight"] = weight
 
     return g_multi_copy
+
+
+def nx_generate_isochrones(
+    nx_multigraph: MultiGraph,
+    distances: list[int],
+    root_nd_key: str,
+    edge_wt_key: str,
+    line_buffer_dist: int = 20,
+) -> dict[str, Any]:
+    """
+    Generates a dictionary of reachable nodes and `shapely` geometry isochrones for specified distances.
+
+    The provided multigraph must have edge lengths unpacked to a specified key.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with an edge attribute corresponding to the lengths of the edge geoms.
+    distances: list[int]
+        A list of distances for which to generate isochrones.
+    root_nd_key: str
+        The node for which to generate the isochrone.
+    edge_wt_key: str
+        The edge attribute key where the edge length is stored.
+    line_buffer_dist: int
+        A distance to use when buffering edge `LineString` geometries when generating the isochrone.
+
+    Returns
+    -------
+    dict
+        A dictionary with keys corresponding to the nodes and polygons for the corresponding distances.
+
+    """
+    isochrone_data = {
+        "nd_key": root_nd_key,
+    }
+    # iter distances
+    for dist in distances:
+        # shortest paths
+        path_lengths = nx.single_source_dijkstra_path_length(
+            nx_multigraph, root_nd_key, cutoff=dist, weight=edge_wt_key
+        )
+        # extract geoms where within dist
+        reachable_edges = set()
+        edge_geoms = []
+        for nd_key, distance_to_node in path_lengths.items():
+            for neighbor_nd_key in nx_multigraph.neighbors(nd_key):
+                for edge_idx, edge_data in nx_multigraph[nd_key][neighbor_nd_key].items():
+                    sorted_nd_keys = sorted([nd_key, neighbor_nd_key])
+                    edge_key = f"{sorted_nd_keys[0]}-{sorted_nd_keys[1]}-{edge_idx}"
+                    if edge_key not in reachable_edges:
+                        if distance_to_node + edge_data[edge_wt_key] <= dist:
+                            reachable_edges.add(edge_key)
+                            edge_geoms.append(edge_data["geom"])
+        # save nodes
+        isochrone_data[f"nodes_{dist}"] = list(path_lengths.keys())
+        # save geom
+        multi_lines = geometry.MultiLineString(lines=edge_geoms)
+        isochrone = ops.unary_union(multi_lines.buffer(line_buffer_dist))
+        isochrone_data[f"poly_{dist}"] = isochrone
+
+    return isochrone_data

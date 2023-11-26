@@ -3,9 +3,8 @@
 
 [metadata]
 groups = ["default", "dev"]
-cross_platform = true
-static_urls = false
-lock_version = "4.3"
+strategy = ["cross_platform"]
+lock_version = "4.4"
 content_hash = "sha256:b29b9a0e2bc6aadd9d9f82a1d0ebaf99a11f37ca18da1d999a8e921cc6182f31"
 
 [[package]]
@@ -1008,7 +1007,7 @@ files = [
 
 [[package]]
 name = "jupyterlab"
-version = "4.0.8"
+version = "4.0.9"
 requires_python = ">=3.8"
 summary = "JupyterLab computational environment"
 dependencies = [
@@ -1026,8 +1025,8 @@ dependencies = [
     "traitlets",
 ]
 files = [
-    {file = "jupyterlab-4.0.8-py3-none-any.whl", hash = "sha256:2ff5aa2a51eb21df241d6011c236e88bd1ff9a5dbb75bebc54472f9c18bfffa4"},
-    {file = "jupyterlab-4.0.8.tar.gz", hash = "sha256:c4fe93f977bcc987bd395d7fae5ab02e0c042bf4e0f7c95196f3e2e578c2fb3a"},
+    {file = "jupyterlab-4.0.9-py3-none-any.whl", hash = "sha256:9f6f8e36d543fdbcc3df961a1d6a3f524b4a4001be0327a398f68fa4e534107c"},
+    {file = "jupyterlab-4.0.9.tar.gz", hash = "sha256:9ebada41d52651f623c0c9f069ddb8a21d6848e4c887d8e5ddc0613166ed5c0b"},
 ]
 
 [[package]]
@@ -1277,21 +1276,21 @@ files = [
 
 [[package]]
 name = "momepy"
-version = "0.6.0"
-requires_python = ">=3.8"
+version = "0.7.0"
+requires_python = ">=3.10"
 summary = "Urban Morphology Measuring Toolkit"
 dependencies = [
-    "geopandas>=0.8.0",
+    "geopandas>=0.12.0",
     "libpysal>=4.6.0",
-    "networkx>=2.3",
+    "networkx>=2.7",
     "packaging",
     "pandas!=1.5.0",
     "shapely>=2",
-    "tqdm>=4.27.0",
+    "tqdm>=4.63.0",
 ]
 files = [
-    {file = "momepy-0.6.0-py3-none-any.whl", hash = "sha256:41f98fa9d452605514bd2a68791efbafde550e5b0f4b07f7250b90598f53da43"},
-    {file = "momepy-0.6.0.tar.gz", hash = "sha256:b52cb4e957c0407bd28d7ef260da0288a0c1666e206726eafd12d5976156d42b"},
+    {file = "momepy-0.7.0-py3-none-any.whl", hash = "sha256:64e86db0f7a5512ac3f26e3c36a4f85a882e995f6e5a2819e3e5ce91d0a722bd"},
+    {file = "momepy-0.7.0.tar.gz", hash = "sha256:413ed9221dc4b2190621f8cb37789f09ea882f7e81dfbffd5731a22da6e61bab"},
 ]
 
 [[package]]
@@ -1813,15 +1812,15 @@ files = [
 
 [[package]]
 name = "pyright"
-version = "1.1.336"
+version = "1.1.337"
 requires_python = ">=3.7"
 summary = "Command line wrapper for pyright"
 dependencies = [
     "nodeenv>=1.6.0",
 ]
 files = [
-    {file = "pyright-1.1.336-py3-none-any.whl", hash = "sha256:8f6a8f365730c8d6c1af840d937371fd5cf0137b6e1827b8b066bc0bb7327aa6"},
-    {file = "pyright-1.1.336.tar.gz", hash = "sha256:f92d6d6845e4175833ea60dee5b1ef4d5d66663438fdaedccc1c3ba0f8efa3e3"},
+    {file = "pyright-1.1.337-py3-none-any.whl", hash = "sha256:8cbd4ef71797258f816a8393a758c9c91213479f472082d0e3a735ef7ab5f65a"},
+    {file = "pyright-1.1.337.tar.gz", hash = "sha256:81d81f839d1750385390c4c4a7b84b062ece2f9a078f87055d4d2a5914ef2a08"},
 ]
 
 [[package]]
