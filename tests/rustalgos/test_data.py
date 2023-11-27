@@ -116,10 +116,10 @@ def test_accessibility(primal_graph):
             b_wt = 0
             c_wt = 0
             z_wt = 0
-            a_dist = np.inf
-            b_dist = np.inf
-            c_dist = np.inf
-            z_dist = np.inf
+            a_dist = np.nan
+            b_dist = np.nan
+            c_dist = np.nan
+            z_dist = np.nan
             # iterate reachable
             reachable_entries = data_map.aggregate_to_src_idx(src_idx, network_structure, max_dist)
             for data_key, data_dist in reachable_entries.items():
@@ -131,22 +131,22 @@ def test_accessibility(primal_graph):
                     if data_class == "a":
                         a_nw += 1
                         a_wt += np.exp(-beta * data_dist)
-                        if data_dist < a_dist:
+                        if np.isnan(a_dist) or data_dist < a_dist:
                             a_dist = data_dist
                     elif data_class == "b":
                         b_nw += 1
                         b_wt += np.exp(-beta * data_dist)
-                        if data_dist < b_dist:
+                        if np.isnan(b_dist) or data_dist < b_dist:
                             b_dist = data_dist
                     elif data_class == "c":
                         c_nw += 1
                         c_wt += np.exp(-beta * data_dist)
-                        if data_dist < c_dist:
+                        if np.isnan(c_dist) or data_dist < c_dist:
                             c_dist = data_dist
                     elif data_class == "z":
                         z_nw += 1
                         z_wt += np.exp(-beta * data_dist)
-                        if data_dist < z_dist:
+                        if np.isnan(z_dist) or data_dist < z_dist:
                             z_dist = data_dist
             # assertions
             assert accessibilities["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
@@ -160,19 +160,19 @@ def test_accessibility(primal_graph):
             if np.isfinite(a_dist):
                 assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
             else:
-                assert np.isposinf(a_dist) and np.isposinf(accessibilities["a"].distance[dist][src_idx])
+                assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
             if np.isfinite(b_dist):
                 assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
             else:
-                assert np.isposinf(b_dist) and np.isposinf(accessibilities["b"].distance[dist][src_idx])
+                assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
             if np.isfinite(c_dist):
                 assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
             else:
-                assert np.isposinf(c_dist) and np.isposinf(accessibilities["c"].distance[dist][src_idx])
+                assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
             if np.isfinite(z_dist):
                 assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
             else:
-                assert np.isposinf(z_dist) and np.isposinf(accessibilities["z"].distance[dist][src_idx])
+                assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
             # check for deduplication
             assert z_nw in [0, 1]
             assert z_wt <= 1

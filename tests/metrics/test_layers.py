@@ -74,6 +74,7 @@ def test_compute_accessibilities(primal_graph):
                             accessibility_data[acc_key].unweighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
+                            equal_nan=True,
                         )
                         acc_data_key_wt = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
                         assert np.allclose(
@@ -81,6 +82,7 @@ def test_compute_accessibilities(primal_graph):
                             accessibility_data[acc_key].weighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
+                            equal_nan=True,
                         )
                         acc_data_key_dist = config.prep_gdf_key(f"{acc_key}_{dist_key}_distance")
                         assert np.allclose(
@@ -88,6 +90,7 @@ def test_compute_accessibilities(primal_graph):
                             accessibility_data[acc_key].distance[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
+                            equal_nan=True,
                         )
                 # most integrity checks happen in underlying method
                 with pytest.raises(ValueError):
