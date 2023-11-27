@@ -479,7 +479,7 @@ def compute_mixed_uses(
 
 def compute_stats(
     data_gdf: gpd.GeoDataFrame,
-    stats_column_label: str | list[str] | tuple[str],
+    stats_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
@@ -601,7 +601,7 @@ def compute_stats(
         raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
-        logger.info("Computing mixed-use measures.")
+        logger.info("Computing statistics.")
     # extract landuses
     stats_map: dict[str, float] = data_gdf[stats_column_label].to_dict()  # type: ignore
     # stats

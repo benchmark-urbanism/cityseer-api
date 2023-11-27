@@ -670,7 +670,7 @@ def nx_consolidate_nodes(
         The buffer distance to be used for consolidating nearby nodes. Defaults to 5.
     neighbour_policy: str
         Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to
-        None.
+        None which will consider all nodes.
     crawl: bool
         Whether the algorithm will recursively explore neighbours of neighbours if those neighbours are within the
         buffer distance from the prior node. Defaults to False.

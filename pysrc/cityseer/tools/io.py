@@ -955,6 +955,51 @@ def nx_from_cityseer_geopandas(
     return g_multi_copy
 
 
+def geopandas_from_nx(
+    nx_multigraph: nx.MultiGraph,
+    crs: str | int,
+) -> gpd.GeoDataFrame:
+    """
+    Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges.
+
+    Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when
+    inspecting or cleaning the network in QGIS. It can then be reimported with
+    [`nx_from_generic_geopandas`](#nx-from-generic-geopandas)
+
+    Parameters
+    ----------
+    nx_multigraph: nx.MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    crs: str | int
+        CRS for initialising the returned structures. This is used for initialising the GeoPandas
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        A `gpd.GeoDataFrame` with `edge_idx` and `geom` attributes.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info("Preparing node and edge arrays from networkX graph.")
+    agg_edge_data = []
+    # set edges
+    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
+        agg_edge_data.append(
+            {
+                "start_nd_key": start_nd_key,
+                "end_nd_key": end_nd_key,
+                "edge_idx": edge_idx,
+                "geom": edge_data["geom"],  # type: ignore
+            }
+        )
+    edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=crs, geometry="geom")  # type: ignore
+
+    return edges_gdf
+
+
 def nx_from_generic_geopandas(
     gdf_network: gpd.GeoDataFrame,  # type: ignore
 ) -> nx.MultiGraph:
