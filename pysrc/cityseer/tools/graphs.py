@@ -237,7 +237,6 @@ def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
     despine: int = 15,
     remove_disconnected: bool = True,
-    cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
@@ -252,9 +251,6 @@ def nx_remove_dangling_nodes(
     remove_disconnected: bool
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
-    cleanup_filler_nodes: bool
-        Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed.
-        If cleanup_filler_nodes is `True` then these will be removed.
 
     Returns
     -------
@@ -284,8 +280,7 @@ def nx_remove_dangling_nodes(
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
     # cleanup leftover fillers
-    if cleanup_filler_nodes:
-        g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
 
     return g_multi_copy
 
