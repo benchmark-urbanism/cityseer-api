@@ -253,8 +253,7 @@ def nx_remove_dangling_nodes(
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
     cleanup_filler_nodes: bool
-        Removal of dangling nodes can result in "filler nodes" of degree two where dangling streets were removed.
-        If cleanup_filler_nodes is `True` then these will be removed.
+        Whether to cleanup filler nodes. True by default.
 
     Returns
     -------
@@ -315,7 +314,8 @@ def nx_merge_parallel_edges(
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently adjacent to be merged.
 
     Returns
     -------
@@ -465,6 +465,7 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key:
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
+        simple_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
         total_angle = util.measure_cumulative_angle(edge_geom.coords)
         max_angle = util.measure_max_angle(edge_geom.coords)
         # don't apply to longer geoms, e.g. rural roads
@@ -473,6 +474,11 @@ def nx_iron_edges(
         # if there is an angle greater than 95 then it is likely spurious
         elif max_angle > 100:
             edge_geom = edge_geom.simplify(16)
+        # flatten if a relatively contained road but large angular change
+        elif simple_geom.buffer(20).contains(edge_geom) and total_angle > 45:
+            edge_geom = simple_geom
+        elif simple_geom.buffer(10).contains(edge_geom) and total_angle > 22.5:
+            edge_geom = simple_geom
         # preserve resolution for twisty roads
         elif total_angle > 170:
             edge_geom = edge_geom.simplify(4)
@@ -683,7 +689,7 @@ def nx_consolidate_nodes(
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
-        sufficiently similar to be merged. This is run after node consolidation has completed.
+        sufficiently adjacent to be merged. This is run after node consolidation has completed.
 
     Returns
     -------
@@ -793,7 +799,7 @@ def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 25,
+    contains_buffer_dist: int = 25,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
@@ -817,8 +823,9 @@ def nx_split_opposing_geoms(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    contains_buffer_dist: float
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+    contains_buffer_dist: int
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently adjacent to be merged.
 
     Returns
     -------
@@ -1323,7 +1330,9 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_dual
 
 
-def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: int = 20) -> MultiGraph:
+def nx_weight_by_dissolved_edges(
+    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 15
+) -> MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
 
@@ -1338,6 +1347,9 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
         edge attributes containing `LineString` geoms.
     dissolve_distance: int
         A distance to use when buffering edges to calculate the weighting. 20m by default.
+    max_ang_diff: int
+         Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
+         `max_ang_diff`. 15 degrees by default.
 
     Returns
     -------
@@ -1377,6 +1389,10 @@ def nx_weight_by_dissolved_edges(nx_multigraph: MultiGraph, dissolve_distance: i
             # get linestring
             edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
             nearby_edge_geom: geometry.LineString = edge_data["geom"]
+            # get angular difference
+            ang_diff = util.measure_angle_diff_betw_linestrings(edge_geom.coords, nearby_edge_geom.coords)
+            if ang_diff > max_ang_diff:
+                continue
             # find length of geom intersecting buff
             edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
             if edge_itx and edge_itx.geom_type == "LineString":

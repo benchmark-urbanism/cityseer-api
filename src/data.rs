@@ -339,7 +339,7 @@ impl DataMap {
                         MetricResult::new(
                             distances.clone(),
                             network_structure.node_count(),
-                            f32::INFINITY,
+                            f32::NAN,
                         ),
                     )
                 })
@@ -390,7 +390,7 @@ impl DataMap {
                                 .fetch_add(val_wt.unwrap(), Ordering::Relaxed);
                             let current_dist =
                                 dists[&lu_class].metric[i][*netw_src_idx].load(Ordering::Relaxed);
-                            if data_dist < current_dist {
+                            if current_dist.is_nan() || data_dist < current_dist {
                                 dists[&lu_class].metric[i][*netw_src_idx]
                                     .store(data_dist, Ordering::Relaxed);
                             }
