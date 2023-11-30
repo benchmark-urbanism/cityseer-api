@@ -310,7 +310,8 @@ def nx_merge_parallel_edges(
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently adjacent to be merged.
 
     Returns
     -------
@@ -678,7 +679,7 @@ def nx_consolidate_nodes(
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
-        sufficiently similar to be merged. This is run after node consolidation has completed.
+        sufficiently adjacent to be merged. This is run after node consolidation has completed.
 
     Returns
     -------
@@ -788,7 +789,7 @@ def nx_split_opposing_geoms(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
-    contains_buffer_dist: float = 25,
+    contains_buffer_dist: int = 25,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
@@ -812,8 +813,9 @@ def nx_split_opposing_geoms(
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
-    contains_buffer_dist: float
-        The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.
+    contains_buffer_dist: int
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently adjacent to be merged.
 
     Returns
     -------
