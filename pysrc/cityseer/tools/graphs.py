@@ -237,6 +237,7 @@ def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
     despine: int = 15,
     remove_disconnected: bool = True,
+    cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
@@ -251,6 +252,8 @@ def nx_remove_dangling_nodes(
     remove_disconnected: bool
         Whether to remove disconnected components. If set to `True`, only the largest connected component will be
         returned. Defaults to True.
+    cleanup_filler_nodes: bool
+        Whether to cleanup filler nodes. True by default.
 
     Returns
     -------
@@ -280,7 +283,8 @@ def nx_remove_dangling_nodes(
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
     # cleanup leftover fillers
-    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+    if cleanup_filler_nodes:
+        g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
 
     return g_multi_copy
 
@@ -461,6 +465,7 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key:
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
+        simple_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
         total_angle = util.measure_cumulative_angle(edge_geom.coords)
         max_angle = util.measure_max_angle(edge_geom.coords)
         # don't apply to longer geoms, e.g. rural roads
@@ -469,6 +474,11 @@ def nx_iron_edges(
         # if there is an angle greater than 95 then it is likely spurious
         elif max_angle > 100:
             edge_geom = edge_geom.simplify(16)
+        # flatten if a relatively contained road but large angular change
+        elif simple_geom.buffer(20).contains(edge_geom) and total_angle > 45:
+            edge_geom = simple_geom
+        elif simple_geom.buffer(10).contains(edge_geom) and total_angle > 22.5:
+            edge_geom = simple_geom
         # preserve resolution for twisty roads
         elif total_angle > 170:
             edge_geom = edge_geom.simplify(4)

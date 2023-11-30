@@ -30,5 +30,7 @@
   "python.analysis.autoImportCompletions": true,
   "python.languageServer": "Pylance",
   "python.analysis.autoSearchPaths": true,
-  "python.analysis.stubPath": "stubs"
+  "python.analysis.stubPath": "stubs",
+  "python.testing.pytestArgs": ["."],
+  "python.testing.unittestEnabled": false
 }

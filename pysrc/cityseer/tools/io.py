@@ -249,6 +249,7 @@ def osm_graph_from_poly(
     simplify: bool = True,
     crawl_consolidate_dist: int = 12,
     parallel_consolidate_dist: int = 15,
+    contains_buffer_dist: int = 50,
     iron_edges: bool = True,
     timeout: int = 300,
     max_tries: int = 3,
@@ -282,6 +283,9 @@ def osm_graph_from_poly(
         neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.
     parallel_consolidate_dist: int
         The buffer distance to use when looking for adjacent parallel roadways.
+    contains_buffer_dist: int
+        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
+        sufficiently adjacent to be merged.
     iron_edges: bool
         Whether to iron the edges.
     timeout: int
@@ -375,11 +379,27 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True)
-        graph_crs = graphs.nx_split_opposing_geoms(graph_crs, buffer_dist=parallel_consolidate_dist)
-        graph_crs = graphs.nx_consolidate_nodes(graph_crs, buffer_dist=parallel_consolidate_dist)
-    if iron_edges:
-        graph_crs = graphs.nx_iron_edges(graph_crs)
+        graph_crs = graphs.nx_consolidate_nodes(
+            graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True, contains_buffer_dist=contains_buffer_dist
+        )
+        graph_crs = graphs.nx_split_opposing_geoms(
+            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+        )
+        graph_crs = graphs.nx_consolidate_nodes(
+            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+        )
+        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        if iron_edges:
+            graph_crs = graphs.nx_iron_edges(graph_crs)
+        graph_crs = graphs.nx_split_opposing_geoms(
+            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+        )
+        graph_crs = graphs.nx_consolidate_nodes(
+            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+        )
+        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        if iron_edges:
+            graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
 
