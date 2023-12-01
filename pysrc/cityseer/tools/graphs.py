@@ -1331,7 +1331,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_weight_by_dissolved_edges(
-    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 15
+    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 45
 ) -> MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
@@ -1349,7 +1349,7 @@ def nx_weight_by_dissolved_edges(
         A distance to use when buffering edges to calculate the weighting. 20m by default.
     max_ang_diff: int
          Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
-         `max_ang_diff`. 15 degrees by default.
+         `max_ang_diff`. 45 degrees by default.
 
     Returns
     -------
