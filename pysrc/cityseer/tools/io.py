@@ -637,37 +637,37 @@ def nx_from_open_roads(
     # load the nodes
     with fiona.open(open_roads_path, layer=road_node_layer_key) as nodes:
         for node_data in nodes.values(bbox=target_bbox):
-            node_id: str = node_data["properties"]["id"]
+            node_id: str = node_data.properties["id"]
             x: float
             y: float
-            x, y = node_data["geometry"]["coordinates"]
+            x, y = node_data.geometry["coordinates"]
             g_multi.add_node(node_id, x=x, y=y)
     # load the edges
     n_dropped = 0
     with fiona.open(open_roads_path, layer=road_link_layer_key) as edges:
         for edge_data in edges.values(bbox=target_bbox):
             # x, y = edge_data['geometry']['coordinates']
-            props: dict = edge_data["properties"]  # type: ignore
-            start_nd: str = props["startNode"]
-            end_nd: str = props["endNode"]
+            props: dict = edge_data.properties  # type: ignore
+            start_nd: str = props["start_node"]
+            end_nd: str = props["end_node"]
             names: set[str] = set()
-            for name_key in ["name1", "name2"]:
+            for name_key in ["name_1", "name_2"]:
                 name: str | None = props[name_key]
                 if name is not None:
                     names.add(name)
             routes: set[str] = set()
-            for ref_key in ["roadClassificationNumber"]:
+            for ref_key in ["road_classification_number"]:
                 ref: str | None = props[ref_key]
                 if ref is not None:
                     routes.add(ref)
             highways: set[str] = set()
-            for highway_key in ["roadFunction", "roadClassification"]:  # 'formOfWay'
+            for highway_key in ["road_function", "road_classification"]:  # 'formOfWay'
                 highway: str | None = props[highway_key]
                 if highway is not None:
                     highways.add(highway)
-            if props["trunkRoad"]:
+            if props["trunk_road"]:
                 highways.add("Trunk Road")
-            if props["primaryRoute"]:
+            if props["primary_route"]:
                 highways.add("Primary Road")
             # filter out unwanted highway tags
             highways.difference_update(
@@ -681,7 +681,7 @@ def nx_from_open_roads(
                 }
             )
             # create the geometry
-            geom = geometry.LineString(edge_data["geometry"]["coordinates"])
+            geom = geometry.LineString(edge_data.geometry["coordinates"])
             geom: geometry.LineString = geom.simplify(5)
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
