@@ -608,6 +608,8 @@ BboxType = Union[tuple[int, int, int, int], tuple[float, float, float, float]]
 
 def nx_from_open_roads(
     open_roads_path: str | Path,
+    road_node_layer_key: str = "road_node",
+    road_link_layer_key: str = "road_link",
     target_bbox: BboxType | None = None,
 ) -> nx.MultiGraph:
     """
@@ -620,7 +622,10 @@ def nx_from_open_roads(
     target_bbox: tuple[int]
         A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
         dataset. Set to `None` for no bounding box.
-
+    road_node_layer_key: str
+        The `GPKG` layer key for the OS Open Roads road nodes layer. This may change from time to time.
+    road_link_layer_key: str
+        The `GPKG` layer key for the OS Open Roads road links layer. This may change from time to time.
     Returns
     -------
     nx.MultiGraph
@@ -629,42 +634,40 @@ def nx_from_open_roads(
     """
     # create a networkX multigraph
     g_multi = nx.MultiGraph()
-
     # load the nodes
-    with fiona.open(open_roads_path, layer="RoadNode") as nodes:
+    with fiona.open(open_roads_path, layer=road_node_layer_key) as nodes:
         for node_data in nodes.values(bbox=target_bbox):
-            node_id: str = node_data["properties"]["id"]
+            node_id: str = node_data.properties["id"]
             x: float
             y: float
-            x, y = node_data["geometry"]["coordinates"]
+            x, y = node_data.geometry["coordinates"]
             g_multi.add_node(node_id, x=x, y=y)
-
     # load the edges
     n_dropped = 0
-    with fiona.open(open_roads_path, layer="RoadLink") as edges:
+    with fiona.open(open_roads_path, layer=road_link_layer_key) as edges:
         for edge_data in edges.values(bbox=target_bbox):
             # x, y = edge_data['geometry']['coordinates']
-            props: dict = edge_data["properties"]  # type: ignore
-            start_nd: str = props["startNode"]
-            end_nd: str = props["endNode"]
+            props: dict = edge_data.properties  # type: ignore
+            start_nd: str = props["start_node"]
+            end_nd: str = props["end_node"]
             names: set[str] = set()
-            for name_key in ["name1", "name2"]:
+            for name_key in ["name_1", "name_2"]:
                 name: str | None = props[name_key]
                 if name is not None:
                     names.add(name)
             routes: set[str] = set()
-            for ref_key in ["roadClassificationNumber"]:
+            for ref_key in ["road_classification_number"]:
                 ref: str | None = props[ref_key]
                 if ref is not None:
                     routes.add(ref)
             highways: set[str] = set()
-            for highway_key in ["roadFunction", "roadClassification"]:  # 'formOfWay'
+            for highway_key in ["road_function", "road_classification"]:  # 'formOfWay'
                 highway: str | None = props[highway_key]
                 if highway is not None:
                     highways.add(highway)
-            if props["trunkRoad"]:
+            if props["trunk_road"]:
                 highways.add("Trunk Road")
-            if props["primaryRoute"]:
+            if props["primary_route"]:
                 highways.add("Primary Road")
             # filter out unwanted highway tags
             highways.difference_update(
@@ -678,7 +681,7 @@ def nx_from_open_roads(
                 }
             )
             # create the geometry
-            geom = geometry.LineString(edge_data["geometry"]["coordinates"])
+            geom = geometry.LineString(edge_data.geometry["coordinates"])
             geom: geometry.LineString = geom.simplify(5)
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
@@ -687,7 +690,6 @@ def nx_from_open_roads(
             g_multi.add_edge(
                 start_nd, end_nd, names=list(names), routes=list(routes), highways=list(highways), geom=geom
             )
-
     logger.info(f"Nodes: {g_multi.number_of_nodes()}")
     logger.info(f"Edges: {g_multi.number_of_edges()}")
     logger.info(f"Dropped {n_dropped} edges where not both start and end nodes were present.")
