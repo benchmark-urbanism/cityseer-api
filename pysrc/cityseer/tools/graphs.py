@@ -466,30 +466,19 @@ def nx_iron_edges(
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
         simple_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
-        total_angle = util.measure_cumulative_angle(edge_geom.coords)
+        # total_angle = util.measure_cumulative_angle(edge_geom.coords)
         max_angle = util.measure_max_angle(edge_geom.coords)
-        # don't apply to longer geoms, e.g. rural roads
-        if edge_geom.length > 100:
-            edge_geom = edge_geom.simplify(4)
         # if there is an angle greater than 95 then it is likely spurious
-        elif max_angle > 100:
-            edge_geom = edge_geom.simplify(16)
+        if max_angle > 100:
+            edge_geom = edge_geom.simplify(10)
+        # don't apply to longer geoms, e.g. rural roads
+        elif edge_geom.length > 150:
+            edge_geom = edge_geom.simplify(5)
         # flatten if a relatively contained road but large angular change
-        elif simple_geom.buffer(20).contains(edge_geom) and total_angle > 45:
+        elif simple_geom.buffer(15).contains(edge_geom) and max_angle > 60:
             edge_geom = simple_geom
-        elif simple_geom.buffer(10).contains(edge_geom) and total_angle > 22.5:
+        elif simple_geom.buffer(7.5).contains(edge_geom) and max_angle > 30:
             edge_geom = simple_geom
-        # preserve resolution for twisty roads
-        elif total_angle > 170:
-            edge_geom = edge_geom.simplify(4)
-        # look for spurious kinks
-        elif edge_geom.simplify(16).buffer(16).contains(edge_geom) and max_angle > 35:
-            edge_geom = edge_geom.simplify(16)
-        elif edge_geom.simplify(8).buffer(8).contains(edge_geom) and max_angle > 35:
-            edge_geom = edge_geom.simplify(8)
-        else:
-            edge_geom = edge_geom.simplify(4)
-
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
