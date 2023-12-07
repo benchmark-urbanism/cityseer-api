@@ -1329,6 +1329,8 @@ def nx_weight_by_dissolved_edges(
     (e.g. duplicitious segments such as adjacent street, sidewalk, cycleway, busway) tend to inflate centrality scores.
     This method is intended for 'messier' network representations (e.g. OSM).
 
+    > This method is only recommended for primal graph representations.
+
     Parameters
     ----------
     nx_multigraph: MultiGraph
@@ -1401,5 +1403,47 @@ def nx_weight_by_dissolved_edges(
         if total_lens > dissolve_distance:
             weight = adjacent_lens / total_lens
         g_multi_copy.nodes[nd_key]["weight"] = weight
+
+    return g_multi_copy
+
+
+def nx_generate_vis_lines(nx_multigraph: MultiGraph) -> MultiGraph:
+    """
+    Generates a `line_geom` property for nodes consisting `MultiLineString` geoms for visualisation purposes.
+
+    This method can be used if preferring to visualise the outputs as lines instead of points. The lines are assembled
+    from the adjacent half segments.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` graph. The nodes will have a new `line_geom` parameter containing `shapely` `MultiLineString`
+        geoms.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info("Preparing LineStrings for node visualisation.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # gather out edges
+    for nd_key, nd_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        line_geoms: list[geometry.LineString] = []
+        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):
+            for nb_edge_data in g_multi_copy[nd_key][nb_nd_key].values():
+                # slice nearest halves and gather
+                edge_geom = nb_edge_data["geom"]
+                edge_geom = geometry.LineString(
+                    util.align_linestring_coords(edge_geom.coords, (nd_data["x"], nd_data["y"]))
+                )
+                edge_slice = ops.substring(edge_geom, 0, 0.5, normalized=True)
+                line_geoms.append(edge_slice)
+        # build line geom
+        g_multi_copy.nodes[nd_key]["line_geom"] = geometry.MultiLineString(line_geoms)
 
     return g_multi_copy
