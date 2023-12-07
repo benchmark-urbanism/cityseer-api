@@ -563,8 +563,15 @@ def _squash_adjacent(
             raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
     # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
     for nd_key in node_group:
+        nd_data: NodeData = nx_multigraph.nodes[nd_key]
+        nd_xy = (nd_data["x"], nd_data["y"])
         # iterate the node's existing neighbours
         for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+            # no need to rewire the edge if the neighbour is the same as the new node
+            # this would otherwise result in a zero length edge
+            # the edge will be dropped once the nd_key is removed
+            if nb_nd_key == new_nd_name:
+                continue
             # if a neighbour is also going to be dropped, then no need to create new between edges
             # an exception exists when a geom is looped, in which case the neighbour is also the current node
             if nb_nd_key in node_group and nb_nd_key != nd_key:
@@ -581,8 +588,6 @@ def _squash_adjacent(
                         f"for edge {nd_key}-{nb_nd_key}."
                     )
                 # orient the LineString so that the geom starts from the node's x_y
-                nd_data: NodeData = nx_multigraph.nodes[nd_key]
-                nd_xy = (nd_data["x"], nd_data["y"])
                 line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
                 # update geom starting point to new parent node's coordinates
                 line_coords = util.snap_linestring_startpoint(line_coords, (new_cent.x, new_cent.y))
@@ -594,6 +599,8 @@ def _squash_adjacent(
                     target_nd_key = nb_nd_key
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
+                if new_edge_geom.length == 0:
+                    raise ValueError(f"Attempted to add a zero length edge from {new_nd_name} to {target_nd_key}")
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
