@@ -626,6 +626,7 @@ def nx_from_open_roads(
         The `GPKG` layer key for the OS Open Roads road nodes layer. This may change from time to time.
     road_link_layer_key: str
         The `GPKG` layer key for the OS Open Roads road links layer. This may change from time to time.
+
     Returns
     -------
     nx.MultiGraph
