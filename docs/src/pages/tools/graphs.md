@@ -172,7 +172,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Removal of dangling nodes can result in &quot;filler nodes&quot; of degree two where dangling streets were removed. If cleanup_filler_nodes is `True` then these will be removed.</div>
+ Whether to cleanup filler nodes. True by default.</div>
 </div>
 
 ### Returns
@@ -249,7 +249,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.</div>
+ The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
 </div>
 
 ### Returns
@@ -401,10 +401,7 @@ side-effects as a function of varied node intensities when computing network cen
 
  Consolidates nodes if they are within a buffer distance of each other. Several parameters provide more control over the conditions used for deciding whether or not to merge nodes. The algorithm proceeds in two steps:
 
- Nodes within the buffer distance of each other are merged. A new centroid will be determined and all existing edge endpoints will be updated accordingly. The new centroid for the merged nodes can be based on:
-- The centroid of the node group;
-- Else, all nodes of degree greater or equal to `cent_min_degree`;
-- Else, all nodes with aggregate adjacent edge lengths greater than a factor of `centroid_by_min_len_factor` of the node with the greatest aggregate length for adjacent edges.
+ Nodes within the buffer distance of each other are merged. If selecting `centroid_by_itx` then the new centroid will try to use intersections to determine the new centroid for the nodes. It will first attempt to find intersections with two through-routes, else will use intersections with one through-route.
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
@@ -437,7 +434,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether all nodes within the buffer distance are merged, or only &quot;direct&quot; or &quot;indirect&quot; neighbours. Defaults to None.</div>
+ Whether all nodes within the buffer distance are merged, or only &quot;direct&quot; or &quot;indirect&quot; neighbours. Defaults to None which will consider all nodes.</div>
 </div>
 
 <div class="param-set">
@@ -477,7 +474,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently similar to be merged. This is run after node consolidation has completed.</div>
+ The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged. This is run after node consolidation has completed.</div>
 </div>
 
 ### Returns
@@ -526,7 +523,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 25</span>
+    <span class="pa"> int = 25</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -572,11 +569,11 @@ side-effects as a function of varied node intensities when computing network cen
 <div class="param-set">
   <div class="def">
     <div class="name">contains_buffer_dist</div>
-    <div class="type">float</div>
+    <div class="type">int</div>
   </div>
   <div class="desc">
 
- The buffer distance to consider when checking if parallel edges are sufficiently similar to be merged.</div>
+ The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
 </div>
 
 ### Returns
@@ -753,12 +750,19 @@ plot.plot_nx_primal_or_dual(G_simple,
     <span class="pc">:</span>
     <span class="pa"> int = 20</span>
   </div>
+  <div class="param">
+    <span class="pn">max_ang_diff</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 45</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
  Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges. This is used to control for unintended amplification of centrality measures where redundant network representations (e.g. duplicitious segments such as adjacent street, sidewalk, cycleway, busway) tend to inflate centrality scores. This method is intended for 'messier' network representations (e.g. OSM).
+
+ > This method is only recommended for primal graph representations.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -780,6 +784,16 @@ plot.plot_nx_primal_or_dual(G_simple,
  A distance to use when buffering edges to calculate the weighting. 20m by default.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_ang_diff</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than `max_ang_diff`. 45 degrees by default.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -789,6 +803,49 @@ plot.plot_nx_primal_or_dual(G_simple,
   <div class="desc">
 
  A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the locally 'dissolved' context.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## nx_generate_vis_lines
+
+
+<div class="content">
+<span class="name">nx_generate_vis_lines</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Generates a `line_geom` property for nodes consisting `MultiLineString` geoms for visualisation purposes. This method can be used if preferring to visualise the outputs as lines instead of points. The lines are assembled from the adjacent half segments.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` graph. The nodes will have a new `line_geom` parameter containing `shapely` `MultiLineString` geoms.</div>
 </div>
 
 

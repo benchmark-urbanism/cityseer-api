@@ -312,7 +312,7 @@ def test_nx_iron_edges():
     nx_multi.add_edge(0, 1, geom=line_geom)
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 20.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 10.0), (0.0, 20.0)]
     # 2 - jogged line should be preserved
     line_geom = geometry.LineString([[0, 0], [0, 10], [10, 10], [10, 20]])
     nx_multi[0][1][0]["geom"] = line_geom
@@ -597,3 +597,8 @@ def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
         assert nd_data["weight"] > 0
     for nd_key, nd_data in G_0.nodes(data=True):
         assert nd_data["weight"] == 1
+
+
+def test_nx_generate_vis_lines(primal_graph):
+    """ """
+    graphs.nx_generate_vis_lines(primal_graph)

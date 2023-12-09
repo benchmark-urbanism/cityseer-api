@@ -746,7 +746,7 @@ been applied.
   <div class="param">
     <span class="pn">stats_column_label</span>
     <span class="pc">:</span>
-    <span class="pa"> str | list[str] | tuple[str]</span>
+    <span class="pa"> str</span>
   </div>
   <div class="param">
     <span class="pn">nodes_gdf</span>

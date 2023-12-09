@@ -466,30 +466,19 @@ def nx_iron_edges(
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
         simple_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
-        total_angle = util.measure_cumulative_angle(edge_geom.coords)
+        # total_angle = util.measure_cumulative_angle(edge_geom.coords)
         max_angle = util.measure_max_angle(edge_geom.coords)
-        # don't apply to longer geoms, e.g. rural roads
-        if edge_geom.length > 100:
-            edge_geom = edge_geom.simplify(4)
         # if there is an angle greater than 95 then it is likely spurious
-        elif max_angle > 100:
-            edge_geom = edge_geom.simplify(16)
+        if max_angle > 100:
+            edge_geom = edge_geom.simplify(10)
+        # don't apply to longer geoms, e.g. rural roads
+        elif edge_geom.length > 150:
+            edge_geom = edge_geom.simplify(5)
         # flatten if a relatively contained road but large angular change
-        elif simple_geom.buffer(20).contains(edge_geom) and total_angle > 45:
+        elif simple_geom.buffer(15).contains(edge_geom) and max_angle > 60:
             edge_geom = simple_geom
-        elif simple_geom.buffer(10).contains(edge_geom) and total_angle > 22.5:
+        elif simple_geom.buffer(7.5).contains(edge_geom) and max_angle > 30:
             edge_geom = simple_geom
-        # preserve resolution for twisty roads
-        elif total_angle > 170:
-            edge_geom = edge_geom.simplify(4)
-        # look for spurious kinks
-        elif edge_geom.simplify(16).buffer(16).contains(edge_geom) and max_angle > 35:
-            edge_geom = edge_geom.simplify(16)
-        elif edge_geom.simplify(8).buffer(8).contains(edge_geom) and max_angle > 35:
-            edge_geom = edge_geom.simplify(8)
-        else:
-            edge_geom = edge_geom.simplify(4)
-
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
@@ -574,8 +563,15 @@ def _squash_adjacent(
             raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
     # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
     for nd_key in node_group:
+        nd_data: NodeData = nx_multigraph.nodes[nd_key]
+        nd_xy = (nd_data["x"], nd_data["y"])
         # iterate the node's existing neighbours
         for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+            # no need to rewire the edge if the neighbour is the same as the new node
+            # this would otherwise result in a zero length edge
+            # the edge will be dropped once the nd_key is removed
+            if nb_nd_key == new_nd_name:
+                continue
             # if a neighbour is also going to be dropped, then no need to create new between edges
             # an exception exists when a geom is looped, in which case the neighbour is also the current node
             if nb_nd_key in node_group and nb_nd_key != nd_key:
@@ -592,8 +588,6 @@ def _squash_adjacent(
                         f"for edge {nd_key}-{nb_nd_key}."
                     )
                 # orient the LineString so that the geom starts from the node's x_y
-                nd_data: NodeData = nx_multigraph.nodes[nd_key]
-                nd_xy = (nd_data["x"], nd_data["y"])
                 line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
                 # update geom starting point to new parent node's coordinates
                 line_coords = util.snap_linestring_startpoint(line_coords, (new_cent.x, new_cent.y))
@@ -605,6 +599,8 @@ def _squash_adjacent(
                     target_nd_key = nb_nd_key
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
+                if new_edge_geom.length == 0:
+                    raise ValueError(f"Attempted to add a zero length edge from {new_nd_name} to {target_nd_key}")
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
@@ -1340,6 +1336,8 @@ def nx_weight_by_dissolved_edges(
     (e.g. duplicitious segments such as adjacent street, sidewalk, cycleway, busway) tend to inflate centrality scores.
     This method is intended for 'messier' network representations (e.g. OSM).
 
+    > This method is only recommended for primal graph representations.
+
     Parameters
     ----------
     nx_multigraph: MultiGraph
@@ -1412,5 +1410,47 @@ def nx_weight_by_dissolved_edges(
         if total_lens > dissolve_distance:
             weight = adjacent_lens / total_lens
         g_multi_copy.nodes[nd_key]["weight"] = weight
+
+    return g_multi_copy
+
+
+def nx_generate_vis_lines(nx_multigraph: MultiGraph) -> MultiGraph:
+    """
+    Generates a `line_geom` property for nodes consisting `MultiLineString` geoms for visualisation purposes.
+
+    This method can be used if preferring to visualise the outputs as lines instead of points. The lines are assembled
+    from the adjacent half segments.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` graph. The nodes will have a new `line_geom` parameter containing `shapely` `MultiLineString`
+        geoms.
+
+    """
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    logger.info("Preparing LineStrings for node visualisation.")
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # gather out edges
+    for nd_key, nd_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
+        line_geoms: list[geometry.LineString] = []
+        for nb_nd_key in nx.neighbors(g_multi_copy, nd_key):
+            for nb_edge_data in g_multi_copy[nd_key][nb_nd_key].values():
+                # slice nearest halves and gather
+                edge_geom = nb_edge_data["geom"]
+                edge_geom = geometry.LineString(
+                    util.align_linestring_coords(edge_geom.coords, (nd_data["x"], nd_data["y"]))
+                )
+                edge_slice = ops.substring(edge_geom, 0, 0.5, normalized=True)
+                line_geoms.append(edge_slice)
+        # build line geom
+        g_multi_copy.nodes[nd_key]["line_geom"] = geometry.MultiLineString(line_geoms)
 
     return g_multi_copy

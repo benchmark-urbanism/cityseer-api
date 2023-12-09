@@ -384,6 +384,11 @@ builds a graph automatically.
     <span class="pa"> int = 15</span>
   </div>
   <div class="param">
+    <span class="pn">contains_buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
     <span class="pn">iron_edges</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
@@ -485,6 +490,16 @@ builds a graph automatically.
   <div class="desc">
 
  The buffer distance to use when looking for adjacent parallel roadways.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">contains_buffer_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
 </div>
 
 <div class="param-set">
@@ -712,6 +727,16 @@ out qt;
     <span class="pa"> str | pathlib.Path</span>
   </div>
   <div class="param">
+    <span class="pn">road_node_layer_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'road_node'</span>
+  </div>
+  <div class="param">
+    <span class="pn">road_link_layer_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'road_link'</span>
+  </div>
+  <div class="param">
     <span class="pn">target_bbox</span>
   </div>
   <span class="pt">)-&gt;[</span>
@@ -741,6 +766,26 @@ out qt;
   <div class="desc">
 
  A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the dataset. Set to `None` for no bounding box.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">road_node_layer_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ The `GPKG` layer key for the OS Open Roads road nodes layer. This may change from time to time.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">road_link_layer_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ The `GPKG` layer key for the OS Open Roads road links layer. This may change from time to time.</div>
 </div>
 
 ### Returns
@@ -900,6 +945,68 @@ out qt;
   <div class="desc">
 
  A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## geopandas_from_nx
+
+
+<div class="content">
+<span class="name">geopandas_from_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | int</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges. Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with [`nx_from_generic_geopandas`](#nx-from-generic-geopandas)
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">crs</div>
+    <div class="type">str | int</div>
+  </div>
+  <div class="desc">
+
+ CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A `gpd.GeoDataFrame` with `edge_idx` and `geom` attributes.</div>
 </div>
 
 
