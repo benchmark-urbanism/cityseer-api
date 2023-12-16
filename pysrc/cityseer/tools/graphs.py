@@ -5,9 +5,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 
 """
 # workaround until networkx adopts types
-# pyright: reportUnknownVariableType=false
-# pyright: reportUnknownArgumentType=false
-# pyright: reportGeneralTypeIssues=false
+# pyright: basic
 
 from __future__ import annotations
 
@@ -525,7 +523,9 @@ def _squash_adjacent(
                         for nb_edge_data_b in nx_multigraph[nd_key][nb_nd_key_b].values():
                             geom_b = nb_edge_data_b["geom"]
                             geom_b_coords = util.align_linestring_coords(geom_b.coords, nd_x_y, reverse=False)
-                            angle_sum = util.measure_coords_angle(geom_a_coords[0][:2], nd_x_y, geom_b_coords[-1][:2])
+                            angle_sum = util.measure_coords_angle(
+                                geom_a_coords[0][:2], nd_x_y, geom_b_coords[-1][:2]  # type: ignore
+                            )
                             if angle_sum < 10:
                                 crossings += 1
             if crossings / 2 >= 2:
@@ -553,7 +553,7 @@ def _squash_adjacent(
     # set the new centroid from the centroid of the node group's Multipoint:
     new_cent: geometry.Point = geometry.MultiPoint(node_geoms).centroid
     # now that the centroid is known, add the new node
-    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)
+    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)  # type: ignore
     if is_dupe:
         # an edge case: if the potential duplicate was one of the node group then it doesn't need adding
         if new_nd_name in node_group:
@@ -1080,7 +1080,9 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
                 f"Expected LineString geometry but found {line_geom.geom_type} for edge {start_nd_key}-{end_nd_key}."
             )
         # check geom coordinates directionality - flip if facing backwards direction
-        line_geom_coords = util.snap_linestring_endpoints(nx_multigraph, start_nd_key, end_nd_key, line_geom.coords)
+        line_geom_coords = util.snap_linestring_endpoints(
+            nx_multigraph, start_nd_key, end_nd_key, line_geom.coords  # type:ignore
+        )
         line_geom: geometry.LineString = geometry.LineString(line_geom_coords)
         # see how many segments are necessary so as not to exceed decomposition max distance
         # note that a length less than the decompose threshold will result in a single 'sub'-string
@@ -1100,7 +1102,9 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             # get the x, y of the new end node
             x, y = line_segment.coords[-1]
             # add the new node and edge
-            new_nd_name, is_dupe = util.add_node(g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y)
+            new_nd_name, is_dupe = util.add_node(
+                g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y  # type:ignore
+            )
             if is_dupe:
                 raise ValueError(
                     f"Attempted to add a duplicate node at x: {x}, y:{y}. "
@@ -1235,7 +1239,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         # snap new midpoint to geom A's endpoint (i.e. no need to snap endpoint of geom A)
         mid_xy = a_half_geom_coords[-1][:2]
         # B side geom starts at mid and ends at B node
-        b_half_geom_coords = util.snap_linestring_startpoint(b_half_geom.coords, mid_xy)
+        b_half_geom_coords = util.snap_linestring_startpoint(b_half_geom.coords, mid_xy)  # type: ignore
         b_half_geom_coords = util.snap_linestring_endpoint(b_half_geom_coords, b_xy)
         # double check coords
         if (
@@ -1262,12 +1266,9 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         return f"{s_e[0]}_{s_e[1]}_k{edge_idx}"
 
     # add dual nodes
-    start_nd_key: NodeKey
-    end_nd_key: NodeKey
-    edge_idx: int
     logger.info("Preparing dual nodes")
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
-        nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
+        nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
     ):
         mid_point = edge_data["geom"].interpolate(0.5, normalized=True)  # type: ignore
         dual_node_key = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
@@ -1284,8 +1285,8 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         set_live(start_nd_key, end_nd_key, dual_node_key)
     # add dual edges
     logger.info("Preparing dual edges (splitting and welding geoms)")
-    for start_nd_key, end_nd_key, edge_idx in tqdm(
-        nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE
+    for start_nd_key, end_nd_key, edge_idx in tqdm(  # type: ignore
+        nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE  # type: ignore
     ):
         hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # get the first and second half geoms
