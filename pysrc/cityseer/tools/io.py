@@ -396,7 +396,6 @@ def osm_graph_from_poly(
             graph_crs,
             buffer_dist=parallel_consolidate_dist,
             contains_buffer_dist=contains_buffer_dist,
-            neighbour_policy="indirect",
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
@@ -408,7 +407,6 @@ def osm_graph_from_poly(
             graph_crs,
             buffer_dist=parallel_consolidate_dist,
             contains_buffer_dist=contains_buffer_dist,
-            neighbour_policy="indirect",
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
