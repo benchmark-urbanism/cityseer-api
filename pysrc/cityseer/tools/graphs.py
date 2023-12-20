@@ -234,7 +234,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 def nx_remove_dangling_nodes(
     nx_multigraph: MultiGraph,
     despine: int = 15,
-    remove_disconnected: bool = True,
+    remove_disconnected: int = 100,
     cleanup_filler_nodes: bool = True,
 ) -> MultiGraph:
     """
@@ -247,9 +247,9 @@ def nx_remove_dangling_nodes(
         edge attributes containing `LineString` geoms.
     despine: int
         The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur.
-    remove_disconnected: bool
-        Whether to remove disconnected components. If set to `True`, only the largest connected component will be
-        returned. Defaults to True.
+    remove_disconnected: int
+        Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to
+        keep all disconnected components.
     cleanup_filler_nodes: bool
         Whether to cleanup filler nodes. True by default.
 
@@ -261,14 +261,28 @@ def nx_remove_dangling_nodes(
 
     """
     logger.info("Removing dangling nodes.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    if remove_disconnected:
-        # finds connected components - this behaviour changed with networkx v2.4
-        connected_components: list[list[NodeKey]] = list(nx.algorithms.components.connected_components(g_multi_copy))
-        # sort by largest component
-        g_nodes: list[NodeKey] = sorted(connected_components, key=len, reverse=True)[0]
-        # make a copy of the graph using the largest component
-        g_multi_copy: MultiGraph = nx.MultiGraph(g_multi_copy.subgraph(g_nodes))
+    if remove_disconnected > len(nx_multigraph):
+        logger.warning(
+            f"An empty graph will be returned because the graph contains {len(nx_multigraph)} nodes, which is fewer "
+            f"specified by the remove_disconnected parameter, which is currently set to: {remove_disconnected}. "
+            "Decrease the remove_disconnected parameter or set to zero to retain graph components."
+        )
+    # finds connected components - this behaviour changed with networkx v2.4
+    connected_components: list[list[NodeKey]] = list(nx.algorithms.components.connected_components(nx_multigraph))
+    # keep connected components greater than remove_disconnected param
+    large_components = [component for component in connected_components if len(component) >= remove_disconnected]
+    large_subgraphs = [nx.MultiGraph(nx_multigraph.subgraph(component)) for component in large_components]
+    if not large_subgraphs:
+        logger.warning(
+            f"An empty graph will be returned because all graph components had fewer than {remove_disconnected} nodes. "
+            "Decrease the remove_disconnected parameter or set to zero to retain graph components."
+        )
+    # make a copy of the graph using the largest component
+    g_multi_copy = nx.MultiGraph()
+    for subgraph in large_subgraphs:
+        g_multi_copy.add_nodes_from(subgraph.nodes(data=True))
+        g_multi_copy.add_edges_from(subgraph.edges(data=True))
+
     # remove dangleres
     if despine > 0:
         remove_nodes = []

@@ -251,6 +251,7 @@ def osm_graph_from_poly(
     parallel_consolidate_dist: int = 15,
     contains_buffer_dist: int = 50,
     iron_edges: bool = True,
+    remove_disconnected: int = 100,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -288,6 +289,8 @@ def osm_graph_from_poly(
         sufficiently adjacent to be merged.
     iron_edges: bool
         Whether to iron the edges.
+    remove_disconnected: int
+        Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -379,7 +382,7 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
         graph_crs = graphs.nx_consolidate_nodes(
             graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True, contains_buffer_dist=contains_buffer_dist
         )
