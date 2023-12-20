@@ -384,13 +384,19 @@ def osm_graph_from_poly(
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=crawl_consolidate_dist,
+            crawl=True,
+            contains_buffer_dist=contains_buffer_dist,
         )
         graph_crs = graphs.nx_split_opposing_geoms(
             graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
         )
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=parallel_consolidate_dist,
+            contains_buffer_dist=contains_buffer_dist,
+            neighbour_policy="indirect",
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
@@ -399,7 +405,10 @@ def osm_graph_from_poly(
             graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
         )
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=parallel_consolidate_dist,
+            contains_buffer_dist=contains_buffer_dist,
+            neighbour_policy="indirect",
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
