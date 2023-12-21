@@ -32,6 +32,10 @@ pub struct CentralityShortestResult {
 #[pyclass]
 pub struct CentralitySimplestResult {
     #[pyo3(get)]
+    node_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
+    node_farness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    #[pyo3(get)]
     node_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
     #[pyo3(get)]
     node_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
@@ -408,6 +412,8 @@ impl NetworkStructure {
         // iter
         let result = py.allow_threads(move || {
             // metrics
+            let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
             let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
             let node_betweenness =
                 MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
@@ -439,6 +445,10 @@ impl NetworkStructure {
                             let distance = distances[i];
                             if node_visit.short_dist <= distance as f32 {
                                 let ang = 1.0 + (node_visit.simpl_dist / 180.0);
+                                node_density.metric[i][*src_idx]
+                                    .fetch_add(1.0 * wt, Ordering::Relaxed);
+                                node_farness.metric[i][*src_idx]
+                                    .fetch_add(ang * wt, Ordering::Relaxed);
                                 node_harmonic.metric[i][*src_idx]
                                     .fetch_add((1.0 / ang) * wt, Ordering::Relaxed);
                             }
@@ -466,6 +476,16 @@ impl NetworkStructure {
                 }
             });
             CentralitySimplestResult {
+                node_density: if compute_closeness {
+                    Some(node_density.load())
+                } else {
+                    None
+                },
+                node_farness: if compute_closeness {
+                    Some(node_farness.load())
+                } else {
+                    None
+                },
                 node_harmonic: if compute_closeness {
                     Some(node_harmonic.load())
                 } else {

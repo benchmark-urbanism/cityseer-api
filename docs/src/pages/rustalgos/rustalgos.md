@@ -2726,7 +2726,7 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_xs</span><span class="annotation">: list[float]</span>
+<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
 
 
  
@@ -2741,7 +2741,7 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
+<span class="name">node_xs</span><span class="annotation">: list[float]</span>
 
 
  
