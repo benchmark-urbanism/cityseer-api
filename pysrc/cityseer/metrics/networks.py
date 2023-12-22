@@ -178,7 +178,7 @@ def node_centrality_shortest(
                 nodes_gdf[data_key] = getattr(result, measure_name)[distance]
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key(f"node_hillier_{distance}")
-            nodes_gdf[data_key] = result.node_density[distance] / result.node_farness[distance]  # type: ignore
+            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for measure_name in ["node_betweenness", "node_betweenness_beta"]:
             for distance in distances:  # type: ignore
@@ -287,7 +287,7 @@ def node_centrality_simplest(
             nodes_gdf[data_key] = result.node_harmonic[distance]  # type: ignore
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key(f"node_hillier_simplest_{distance}")
-            nodes_gdf[data_key] = result.node_density[distance] / result.node_farness[distance]  # type: ignore
+            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key(f"node_farness_simplest_{distance}")
             nodes_gdf[data_key] = result.node_farness[distance]  # type: ignore

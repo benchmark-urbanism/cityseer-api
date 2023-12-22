@@ -45,7 +45,7 @@ def test_node_centrality_shortest(primal_graph):
                         )
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key(f"node_hillier_{distance}")],
-                        node_result_short.node_density[distance] / node_result_short.node_farness[distance],
+                        node_result_short.node_density[distance] ** 2 / node_result_short.node_farness[distance],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
@@ -103,7 +103,7 @@ def test_node_centrality_simplest(primal_graph):
                     )
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key(f"node_hillier_simplest_{distance}")],
-                        node_result_simplest.node_density[distance] / node_result_simplest.node_farness[distance],
+                        node_result_simplest.node_density[distance] ** 2 / node_result_simplest.node_farness[distance],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
