@@ -121,7 +121,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">remove_disconnected</span>
     <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
+    <span class="pa"> int = 100</span>
   </div>
   <div class="param">
     <span class="pn">cleanup_filler_nodes</span>
@@ -158,11 +158,11 @@ side-effects as a function of varied node intensities when computing network cen
 <div class="param-set">
   <div class="def">
     <div class="name">remove_disconnected</div>
-    <div class="type">bool</div>
+    <div class="type">int</div>
   </div>
   <div class="desc">
 
- Whether to remove disconnected components. If set to `True`, only the largest connected component will be returned. Defaults to True.</div>
+ Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to keep all disconnected components.</div>
 </div>
 
 <div class="param-set">

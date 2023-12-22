@@ -37,11 +37,28 @@ def test_node_centrality_shortest(primal_graph):
                 if _closeness is True:
                     for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
                         data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                        assert np.allclose(nodes_gdf[data_key], getattr(node_result_short, measure_name)[distance])
+                        assert np.allclose(
+                            nodes_gdf[data_key],
+                            getattr(node_result_short, measure_name)[distance],
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(f"node_hillier_{distance}")],
+                        node_result_short.node_density[distance] ** 2 / node_result_short.node_farness[distance],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
                 if _betweenness is True:
                     for measure_name in ["node_betweenness", "node_betweenness_beta"]:
                         data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                        assert np.allclose(nodes_gdf[data_key], getattr(node_result_short, measure_name)[distance])
+                        assert np.allclose(
+                            nodes_gdf[data_key],
+                            getattr(node_result_short, measure_name)[distance],
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
 
 
 def test_node_centrality_simplest(primal_graph):
@@ -70,22 +87,42 @@ def test_node_centrality_simplest(primal_graph):
             )
             for distance in distances:
                 if _closeness is True:
-                    data_key = config.prep_gdf_key(f"node_harmonic_simplest_{distance}")
                     assert np.allclose(
-                        nodes_gdf[data_key],
+                        nodes_gdf[config.prep_gdf_key(f"node_density_simplest_{distance}")],
+                        node_result_simplest.node_density[distance],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(f"node_farness_simplest_{distance}")],
+                        node_result_simplest.node_farness[distance],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(f"node_hillier_simplest_{distance}")],
+                        node_result_simplest.node_density[distance] ** 2 / node_result_simplest.node_farness[distance],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(f"node_harmonic_simplest_{distance}")],
                         node_result_simplest.node_harmonic[distance],
+                        equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 if _betweenness is True:
-                    for measure_name in ["node_betweenness_simplest"]:
-                        data_key = config.prep_gdf_key(f"node_betweenness_simplest_{distance}")
-                        assert np.allclose(
-                            nodes_gdf[data_key],
-                            node_result_simplest.node_betweenness[distance],
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(f"node_betweenness_simplest_{distance}")],
+                        node_result_simplest.node_betweenness[distance],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
 
 
 def test_segment_centrality(primal_graph):

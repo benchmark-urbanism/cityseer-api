@@ -4,9 +4,7 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 """
 # workaround until networkx adopts types
-# pyright: reportUnknownVariableType=false
-# pyright: reportUnknownArgumentType=false
-# pyright: reportGeneralTypeIssues=false
+# pyright: basic
 from __future__ import annotations
 
 import logging
@@ -34,9 +32,8 @@ NodeData = dict[str, Any]
 EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
 EdgeData = dict[str, Any]
 EdgeMapping = tuple[NodeKey, NodeKey, int, geometry.LineString]
-CoordsType = Union[tuple[float, float], tuple[float, float, float]]
-AnyCoordsType = Union[list[CoordsType], npt.NDArray[np.float_], coords.CoordinateSequence]
-ListCoordsType = list[CoordsType]
+CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float_]]
+ListCoordsType = Union[list[CoordsType], coords.CoordinateSequence]
 
 
 def measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) -> float:
@@ -84,10 +81,10 @@ def measure_angle_diff_betw_linestrings(linestring_coords_a: ListCoordsType, lin
             _ls_coords_b = linestring_coords_b
             if flip_b:
                 _ls_coords_b = list(reversed(linestring_coords_b))
-            coords_1 = _ls_coords_a[0]
-            coords_2 = _ls_coords_a[-1]
-            coords_3 = _ls_coords_b[0]
-            coords_4 = _ls_coords_b[-1]
+            coords_1 = np.array(_ls_coords_a[0])
+            coords_2 = np.array(_ls_coords_a[-1])
+            coords_3 = np.array(_ls_coords_b[0])
+            coords_4 = np.array(_ls_coords_b[-1])
             a_1 = measure_bearing(coords_2, coords_1)
             a_2 = measure_bearing(coords_4, coords_3)
             angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
@@ -117,7 +114,7 @@ def measure_max_angle(linestring_coords: ListCoordsType) -> float:
 
 
 def _snap_linestring_idx(
-    linestring_coords: AnyCoordsType,
+    linestring_coords: ListCoordsType,
     idx: int,
     x_y: CoordsType,
 ) -> ListCoordsType:
@@ -127,20 +124,20 @@ def _snap_linestring_idx(
     # check types
     if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
         raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    list_linestring_coords: ListCoordsType = list(linestring_coords)
+    list_linestring_coords: ListCoordsType = list(linestring_coords)  # type: ignore
     # check that the index is either 0 or -1
     if idx not in [0, -1]:
         raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
     # handle 3D
     coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
     coord[:2] = x_y
-    list_linestring_coords[idx] = tuple(coord)
+    list_linestring_coords[idx] = tuple(coord)  # type: ignore
 
     return list_linestring_coords
 
 
 def snap_linestring_startpoint(
-    linestring_coords: AnyCoordsType,
+    linestring_coords: ListCoordsType,
     x_y: CoordsType,
 ) -> ListCoordsType:
     """
@@ -163,7 +160,7 @@ def snap_linestring_startpoint(
 
 
 def snap_linestring_endpoint(
-    linestring_coords: AnyCoordsType,
+    linestring_coords: ListCoordsType,
     x_y: CoordsType,
 ) -> ListCoordsType:
     """
@@ -186,7 +183,7 @@ def snap_linestring_endpoint(
 
 
 def align_linestring_coords(
-    linestring_coords: AnyCoordsType,
+    linestring_coords: ListCoordsType,
     x_y: CoordsType,
     reverse: bool = False,
     tolerance: float = 0.5,
@@ -215,17 +212,17 @@ def align_linestring_coords(
     # check types
     if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
         raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords = list(linestring_coords)
+    linestring_coords = list(linestring_coords)  # type: ignore
     a_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
     b_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     # the target indices depend on whether reversed or not
     if not reverse:
         if a_dist > b_dist:
-            linestring_coords = linestring_coords[::-1]
+            linestring_coords = linestring_coords[::-1]  # type: ignore
         tol_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
     else:
         if a_dist < b_dist:
-            linestring_coords = linestring_coords[::-1]
+            linestring_coords = linestring_coords[::-1]  # type: ignore
         tol_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     if tol_dist > tolerance:
         raise ValueError(f"Closest side of edge geom is {tol_dist} from node, exceeding tolerance of {tolerance}.")
@@ -279,8 +276,8 @@ def snap_linestring_endpoints(
 
 
 def weld_linestring_coords(
-    linestring_coords_a: AnyCoordsType,
-    linestring_coords_b: AnyCoordsType,
+    linestring_coords_a: ListCoordsType,
+    linestring_coords_b: ListCoordsType,
     force_xy: CoordsType | None = None,
     tolerance: float = 0.01,
 ) -> ListCoordsType:
@@ -297,8 +294,8 @@ def weld_linestring_coords(
     for line_coords in [linestring_coords_a, linestring_coords_b]:
         if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords_a = list(linestring_coords_a)
-    linestring_coords_b = list(linestring_coords_b)
+    linestring_coords_a = list(linestring_coords_a)  # type: ignore
+    linestring_coords_b = list(linestring_coords_b)  # type: ignore
     # if both lists are empty, raise
     if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
         raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
@@ -325,11 +322,11 @@ def weld_linestring_coords(
     elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
         anchor_xy = linestring_coords_a[-1][:2]
         coords_a = linestring_coords_a
-        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)
+        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)  # type: ignore
     # case B: linestring_a has to be flipped to end at x, y
     elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
         anchor_xy = linestring_coords_a[0][:2]
-        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)
+        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)  # type: ignore
         coords_b = linestring_coords_b
     # case C: merge in the b -> a order (saves flipping both)
     elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
@@ -343,7 +340,7 @@ def weld_linestring_coords(
     if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
         raise ValueError(f"Unable to weld LineString geometries with the given tolerance of {tolerance}.")
     # drop the duplicate interleaving coordinate
-    return coords_a[:-1] + coords_b
+    return coords_a[:-1] + coords_b  # type: ignore
 
 
 class EdgeInfo:
@@ -538,11 +535,11 @@ def blend_metrics(
             continue
         # suffix is only applied for overlapping column names
         merged_edges_gdf = pd.merge(
-            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True
+            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True  # type: ignore
         )
         merged_edges_gdf = pd.merge(
             merged_edges_gdf,
-            nodes_gdf[[node_column]],
+            nodes_gdf[[node_column]],  # type: ignore
             left_on="nx_end_node_key",
             right_index=True,
             suffixes=("", "_end_nd"),

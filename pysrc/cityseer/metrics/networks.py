@@ -40,8 +40,9 @@ This effect is amplified for denser regions of the network.
 - Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment
 lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
 the contribution of a single edge segment at a four-way intersection would be duplicated three times.
-- Global closeness is strongly discouraged because it does not behave suitably for localised graphs. Harmonic
-closeness should be used instead.
+- The usual formulations of closeness or normalised closeness are discouraged because these do not behave
+suitably for localised graphs. Harmonic closeness or Hillier normalisation (which resembles a simplified form of 
+Improved Closeness Centrality proposed by Wasserman and Faust) should be used instead.
 - Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
 such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
 intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the
@@ -87,9 +88,7 @@ def node_centrality_shortest(
 
     :::note
     Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
-    manually specified. Consider use of
-    [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
-    network representations.
+    manually specified.
     :::
 
     Parameters
@@ -138,14 +137,16 @@ def node_centrality_shortest(
     | key                   | formula | notes |
     | ----------------------| :------:| ----- |
     | node_density          | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-    | node_farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-    | node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
-    | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form
+    | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
+    | node_hillier          | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
+    farness. This is also a simplified form of Improved Closeness Centrality. |
     | node_beta             | $$\sum_{j\neq{i}}^{n} \\ \exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
     This is a spatial impedance metric differentiated from other closeness centralities by the use of an
     explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
     increase. |
+    | node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
+    | node_farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
     | node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
     shortest-paths traversing each node $i$. |
     | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n} \\ \exp(-\beta\cdot d[j,k])$$ | Applies a
@@ -175,6 +176,9 @@ def node_centrality_shortest(
             for distance in distances:  # type: ignore
                 data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
                 nodes_gdf[data_key] = getattr(result, measure_name)[distance]
+        for distance in distances:  # type: ignore
+            data_key = config.prep_gdf_key(f"node_hillier_{distance}")
+            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for measure_name in ["node_betweenness", "node_betweenness_beta"]:
             for distance in distances:  # type: ignore
@@ -198,9 +202,7 @@ def node_centrality_simplest(
 
     :::note
     Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
-    manually specified. Consider use of
-    [`graphs.nx_weight_by_dissolved_edges`](/tools/graphs#nx-weight-by-dissolved-edges) when working with complex
-    network representations.
+    manually specified.
     :::
 
     Parameters
@@ -248,8 +250,12 @@ def node_centrality_simplest(
 
     | key                   | formula | notes |
     | ----------------------| :------:| ----- |
-    | node_harmonic_simplest    | $$\sum_{j\neq{i}}^{n}\frac{1}{Z_{(i,j)}}$$ | Harmonic closeness is an appropriate form
+    | node_density_simplest | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
+    | node_harmonic_simplest    | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
+    | node_hillier_simplest | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
+    farness. This is also a simplified form of Improved Closeness Centrality. |
+    | node_farness_simplest | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
     | node_betweenness_simplest | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing
     all shortest-paths traversing each node $i$. |
 
@@ -274,8 +280,17 @@ def node_centrality_simplest(
     )
     if compute_closeness is True:
         for distance in distances:  # type: ignore
+            data_key = config.prep_gdf_key(f"node_density_simplest_{distance}")
+            nodes_gdf[data_key] = result.node_density[distance]  # type: ignore
+        for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key(f"node_harmonic_simplest_{distance}")
             nodes_gdf[data_key] = result.node_harmonic[distance]  # type: ignore
+        for distance in distances:  # type: ignore
+            data_key = config.prep_gdf_key(f"node_hillier_simplest_{distance}")
+            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
+        for distance in distances:  # type: ignore
+            data_key = config.prep_gdf_key(f"node_farness_simplest_{distance}")
+            nodes_gdf[data_key] = result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key(f"node_betweenness_simplest_{distance}")

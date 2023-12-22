@@ -390,7 +390,6 @@ def test_local_node_centrality_shortest(primal_graph):
     betw_wt: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     dens: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    far_simpl_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
@@ -408,7 +407,7 @@ def test_local_node_centrality_shortest(primal_graph):
             # continue if exceeds max
             if np.isinf(to_short_dist):
                 continue
-            for d_idx in range(len(distances)):
+            for d_idx, _ in enumerate(distances):
                 dist_cutoff = distances[d_idx]
                 beta = betas[d_idx]
                 if to_short_dist <= dist_cutoff:
@@ -417,7 +416,6 @@ def test_local_node_centrality_shortest(primal_graph):
                     # aggregate values
                     dens[d_idx][src_idx] += 1
                     far_short_dist[d_idx][src_idx] += to_short_dist
-                    far_simpl_dist[d_idx][src_idx] += to_simpl_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
                     # cycles
@@ -605,6 +603,17 @@ def test_local_centrality_all(diamond_graph):
         compute_closeness=True,
         compute_betweenness=True,
     )
+    # node density
+    # additive nodes
+    assert np.allclose(node_result_simplest.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
+    # node farness
+    # additive angular distances
+    # additive 1 + (angle / 180)
+    assert np.allclose(node_result_simplest.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_farness[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_simplest.node_farness[250], [3.333, 3, 3, 3.333], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
     assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)

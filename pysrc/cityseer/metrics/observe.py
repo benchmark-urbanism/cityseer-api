@@ -7,8 +7,7 @@ in the [`networks`](/metrics/networks) module.
 
 """
 # workaround until networkx adopts types
-# pyright: reportUnknownVariableType=false
-# pyright: reportUnknownArgumentType=false
+# pyright: basic
 
 from __future__ import annotations
 
@@ -236,7 +235,7 @@ def street_continuity(
     edge_idx: int
     edge_data: dict[str, Any]
     for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
+        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE  # type: ignore
     ):
         # raise if the key doesn't exist
         if method not in edge_data:

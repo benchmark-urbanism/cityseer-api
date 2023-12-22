@@ -394,6 +394,11 @@ builds a graph automatically.
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
+    <span class="pn">remove_disconnected</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
     <span class="pn">timeout</span>
     <span class="pc">:</span>
     <span class="pa"> int = 300</span>
@@ -510,6 +515,16 @@ builds a graph automatically.
   <div class="desc">
 
  Whether to iron the edges.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_disconnected</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Remove disconnected components containing fewer nodes than specified. 100 nodes by default.</div>
 </div>
 
 <div class="param-set">

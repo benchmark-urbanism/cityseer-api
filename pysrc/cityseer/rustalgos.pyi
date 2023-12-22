@@ -369,6 +369,8 @@ class CentralityShortestResult:
     node_betweenness_beta: dict[int, npt.ArrayLike]
 
 class CentralitySimplestResult:
+    node_density: dict[int, npt.ArrayLike]
+    node_farness: dict[int, npt.ArrayLike]
     node_harmonic: dict[int, npt.ArrayLike]
     node_betweenness: dict[int, npt.ArrayLike]
 

@@ -1,8 +1,8 @@
 """
 Functions for fetching and converting graphs and network structures.
 """
-# pyright: reportUnknownVariableType=false
-# pyright: reportUnknownArgumentType=false
+# workaround until networkx adopts types
+# pyright: basic
 from __future__ import annotations
 
 import json
@@ -88,7 +88,7 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_epsg_code: int, to_eps
     edge_idx: int
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
+        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
     ):
         # check if geom present - optional step
         if "geom" in edge_data:
@@ -251,6 +251,7 @@ def osm_graph_from_poly(
     parallel_consolidate_dist: int = 15,
     contains_buffer_dist: int = 50,
     iron_edges: bool = True,
+    remove_disconnected: int = 100,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -288,6 +289,8 @@ def osm_graph_from_poly(
         sufficiently adjacent to be merged.
     iron_edges: bool
         Whether to iron the edges.
+    remove_disconnected: int
+        Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -352,6 +355,7 @@ def osm_graph_from_poly(
         way["highway"]
         ["area"!="yes"]
         ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
+        ["tunnel"!="yes"]
         ["footway"!="sidewalk"]
         ["service"!~"parking_aisle|driveway|drive-through|slipway"]
         ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
@@ -378,15 +382,20 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs)
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=crawl_consolidate_dist, crawl=True, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=crawl_consolidate_dist,
+            crawl=True,
+            contains_buffer_dist=contains_buffer_dist,
         )
         graph_crs = graphs.nx_split_opposing_geoms(
             graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
         )
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=parallel_consolidate_dist,
+            contains_buffer_dist=contains_buffer_dist,
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
@@ -395,7 +404,9 @@ def osm_graph_from_poly(
             graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
         )
         graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
+            graph_crs,
+            buffer_dist=parallel_consolidate_dist,
+            contains_buffer_dist=contains_buffer_dist,
         )
         graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
@@ -564,7 +575,7 @@ def nx_from_osm_nx(
     edge_idx: int
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multidigraph.edges(data=True, keys=True), disable=config.QUIET_MODE
+        nx_multidigraph.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
     ):
         edge_data = cast(EdgeData, edge_data)  # type: ignore
         s_x, s_y = _process_node(start_nd_key)
@@ -765,7 +776,7 @@ def network_structure_from_nx(
         # set node
         ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live, weight)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
-        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
             agg_node_dual_data[node_key] = (
                 node_data["primal_edge_node_a"],
                 node_data["primal_edge_node_b"],
@@ -857,7 +868,7 @@ def network_structure_from_nx(
                     total_bearing,
                     line_geom,
                 )
-                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
                     agg_edge_dual_data.append(nx_edge_data["primal_node_id"])
     # create geopandas for node keys and data state
     nodes_gdf = gpd.GeoDataFrame.from_dict(
@@ -888,7 +899,7 @@ def network_structure_from_nx(
         geometry="geom",
         crs=crs,
     )
-    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
+    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
         nodes_dual_gdf = pd.DataFrame.from_dict(
             agg_node_dual_data,
             orient="index",

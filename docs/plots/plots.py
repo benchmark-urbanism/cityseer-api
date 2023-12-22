@@ -98,7 +98,7 @@ lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
 poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer)
 graph_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
-graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, remove_parallel=True, iron_edges=True)
+graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, iron_edges=True)
 # plot buffer
 easting, northing = utm.from_latlon(lat, lng)[:2]
 buff = geometry.Point(easting, northing).buffer(750)
@@ -126,7 +126,7 @@ simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_1b.{FORMAT}")
 
 graph_utm = graphs.nx_simple_geoms(graph_raw)
 graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
-graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=15, remove_disconnected=True)
+graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=15, remove_disconnected=10)
 simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_2.{FORMAT}")
 # first pass of consolidation
 graph_utm = graphs.nx_consolidate_nodes(graph_utm, buffer_dist=15, crawl=True)
