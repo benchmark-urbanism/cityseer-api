@@ -83,7 +83,12 @@ fn calculate_visible_cells(
             }
         }
     }
-    let hillier = (density * density) as f32 / farness;
+    let hillier = if density > 0 {
+        (density * density) as f32 / farness
+    } else {
+        0.0
+    };
+
     (density, hillier, harmonic)
 }
 #[pymethods]
@@ -100,7 +105,7 @@ impl Viewshed {
     fn progress(&self) -> usize {
         self.progress.as_ref().load(Ordering::Relaxed)
     }
-    pub fn process_raster(
+    pub fn visibility_graph(
         &self,
         raster: PyReadonlyArray2<u8>,
         max_distance: f32,
@@ -155,5 +160,30 @@ impl Viewshed {
             .to_owned();
 
         Ok((array_u32, array_f32_a, array_f32_b))
+    }
+    pub fn viewshed(
+        &self,
+        raster: PyReadonlyArray2<u8>,
+        max_distance: f32,
+        start_x: usize,
+        start_y: usize,
+        py: Python,
+    ) -> PyResult<Py<PyArray2<u32>>> {
+        let raster_array = raster.as_array().to_owned();
+        let (height, width) = raster_array.dim();
+        let mut result_array = vec![0; height * width];
+        let raster_view = raster_array.view();
+        let (result_u32, _, _) =
+            calculate_visible_cells(raster_view, start_x, start_y, max_distance);
+        if result_u32 != 0 {
+            result_array[start_y * width + start_x] = 1;
+        }
+        // Convert the result array to a NumPy array
+        let numpy_array = Array2::from_shape_vec((height, width), result_array)
+            .unwrap()
+            .into_pyarray(py)
+            .to_owned();
+
+        Ok(numpy_array)
     }
 }

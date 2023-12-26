@@ -17,4 +17,9 @@ bldgs_gdf = visibility._buildings_from_osmnx(poly)
 crs = 27700
 bldgs_gdf = bldgs_gdf.to_crs(crs)
 resolution = 1  # for example, 1 meter
-visibility.viewsheds(bldgs_gdf, crs, "../../temp/test.tif")
+# %%
+# 5.59
+visibility.visibility_graph(bldgs_gdf, crs, "../../temp/test3.tif", distance=50)
+
+# %%
+visibility.viewshed(bldgs_gdf, crs, "../../temp/test_vs.tif", 10, 500, distance=50)
