@@ -5,7 +5,17 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:b29b9a0e2bc6aadd9d9f82a1d0ebaf99a11f37ca18da1d999a8e921cc6182f31"
+content_hash = "sha256:541b37aae6723e6e9f0e1342791301432e51838cadfda4ebe1e116ec1222f844"
+
+[[package]]
+name = "affine"
+version = "2.4.0"
+requires_python = ">=3.7"
+summary = "Matrices describing affine transformation of the plane"
+files = [
+    {file = "affine-2.4.0-py3-none-any.whl", hash = "sha256:8a3df80e2b2378aef598a83c1392efd47967afec4242021a0b06b4c7cbc61a92"},
+    {file = "affine-2.4.0.tar.gz", hash = "sha256:a24d818d6a836c131976d22f8c27b8d3ca32d0af64c1d8d29deb7bafa4da1eea"},
+]
 
 [[package]]
 name = "aiohttp"
@@ -2174,6 +2184,34 @@ files = [
 ]
 
 [[package]]
+name = "rasterio"
+version = "1.3.9"
+requires_python = ">=3.8"
+summary = "Fast and direct raster I/O for use with Numpy and SciPy"
+dependencies = [
+    "affine",
+    "attrs",
+    "certifi",
+    "click-plugins",
+    "click>=4.0",
+    "cligj>=0.5",
+    "numpy",
+    "setuptools",
+    "snuggs>=1.4.1",
+]
+files = [
+    {file = "rasterio-1.3.9-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:04247da9f4002587ac2bec967c3a72f63fc0e6654101c06850bae3d8131b700d"},
+    {file = "rasterio-1.3.9-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c9edce37b70f4cd4be5d3f5d314877e3130aeebb612120405cd28f83fe200865"},
+    {file = "rasterio-1.3.9-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:fd6a850a37840ba590ddcf7ff90ba007b1e231b04434d8b4ac5ce0f746ada91a"},
+    {file = "rasterio-1.3.9-cp310-cp310-win_amd64.whl", hash = "sha256:0c83156a44f8fda11876ff9f2ff1b602d7e7434447f7d621353f2929cefb1bf1"},
+    {file = "rasterio-1.3.9-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:0172dbd80bd9adc105ec2c9bd207dbd5519ea06b438a4d965c6290ae8ed6ff9f"},
+    {file = "rasterio-1.3.9-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:0ea5b42597d85868ee88c750cc33f2ae729e1b5e3fe28f99071f39e1417bf1c0"},
+    {file = "rasterio-1.3.9-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:be9b343bd08245df22115775dc9513c912afb4134d832662fa165d70cb805c34"},
+    {file = "rasterio-1.3.9-cp311-cp311-win_amd64.whl", hash = "sha256:06d53e2e0885f039f960beb7c861400b92ea3e0e5abc2c67483fb56b1e5cbc13"},
+    {file = "rasterio-1.3.9.tar.gz", hash = "sha256:fc6d0d290492fa1a5068711cfebb21cc936968891b7ed9da0690c8a7388885c5"},
+]
+
+[[package]]
 name = "referencing"
 version = "0.30.2"
 requires_python = ">=3.8"
@@ -2429,6 +2467,19 @@ summary = "This package provides 29 stemmers for 28 languages generated from Sno
 files = [
     {file = "snowballstemmer-2.2.0-py2.py3-none-any.whl", hash = "sha256:c8e1716e83cc398ae16824e5572ae04e0d9fc2c6b985fb0f900f5f0c96ecba1a"},
     {file = "snowballstemmer-2.2.0.tar.gz", hash = "sha256:09b16deb8547d3412ad7b590689584cd0fe25ec8db3be37788be3810cbf19cb1"},
+]
+
+[[package]]
+name = "snuggs"
+version = "1.4.7"
+summary = "Snuggs are s-expressions for Numpy"
+dependencies = [
+    "numpy",
+    "pyparsing>=2.1.6",
+]
+files = [
+    {file = "snuggs-1.4.7-py3-none-any.whl", hash = "sha256:988dde5d4db88e9d71c99457404773dabcc7a1c45971bfbe81900999942d9f07"},
+    {file = "snuggs-1.4.7.tar.gz", hash = "sha256:501cf113fe3892e14e2fee76da5cd0606b7e149c411c271898e6259ebde2617b"},
 ]
 
 [[package]]

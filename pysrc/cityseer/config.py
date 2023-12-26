@@ -63,7 +63,7 @@ RustResults = Union[
 
 
 def wrap_progress(
-    total: int, rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap, partial_func: Callable  # type: ignore
+    total: int, rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap | rustalgos.Viewshed, partial_func: Callable  # type: ignore
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 

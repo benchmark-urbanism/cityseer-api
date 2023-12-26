@@ -15,7 +15,8 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from shapely import coords, geometry, strtree
+from pyproj import Transformer
+from shapely import coords, geometry, ops, strtree
 from tqdm import tqdm
 
 from cityseer import config
@@ -556,3 +557,10 @@ def blend_metrics(
         merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
 
     return merged_edges_gdf
+
+
+def project_geom(poly: geometry.Polygon, from_epsg_code: int, to_epsg_code: int) -> geometry.Polygon:
+    """ """
+    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+
+    return ops.transform(transformer, poly)
