@@ -17,7 +17,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import requests
-import utm
 from pyproj import CRS, Transformer
 from shapely import geometry
 from tqdm import tqdm
@@ -105,7 +104,7 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_epsg_code: int, to_eps
     return g_multi_copy
 
 
-def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = None) -> nx.MultiGraph:
+def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Convert a graph from WGS84 geographic coordinates to UTM projected coordinates.
 
@@ -120,9 +119,6 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge
         attributes containing `LineString` geoms to be converted.
-    force_zone_number: int
-        An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched
-        UTM zones may introduce substantial distortions in the results.
 
     Returns
     -------
@@ -132,29 +128,18 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph, force_zone_number: int | None = 
 
     """
     # sample the first node for UTM
-    utm_zone_number = force_zone_number
     nd_key = list(nx_multigraph.nodes())[0]
-    lng = nx_multigraph.nodes[nd_key]["x"]
-    lat = nx_multigraph.nodes[nd_key]["y"]
-    is_north = lat >= 0
-    is_south = lat < 0
-    utm_zone_number, _utm_zone_letter = utm.from_latlon(lat, lng)[2:]  # zone number is position 2
-    if force_zone_number is not None:
-        utm_zone_number = force_zone_number
-    # or dictionary
-    crs = CRS.from_dict({"proj": "utm", "zone": utm_zone_number, "north": is_north, "south": is_south})
-    target_epsg = crs.to_epsg()
-    if not isinstance(target_epsg, int):
-        raise ValueError("Unable to extract an EPSG code from the provided network.")
-    return nx_epsg_conversion(nx_multigraph, 4326, target_epsg)
+    to_epsg_code = util.extract_utm_epsg_code(nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
+    return nx_epsg_conversion(nx_multigraph, 4326, to_epsg_code)
 
 
-def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.Polygon, geometry.Polygon, int, str]:
+def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = False) -> tuple[geometry.Polygon, int]:
     """
-    Buffer a point and return a `shapely` Polygon in WGS and UTM coordinates.
+    Buffer a point and return a `shapely` Polygon.
 
-    This function can be used to prepare a `poly_wgs` `Polygon` for passing to
-    [`osm_graph_from_poly()`](#osm-graph-from-poly).
+    This function can be used to prepare a buffered point `Polygon` for passing to
+    [`osm_graph_from_poly()`](#osm-graph-from-poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is
+    `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
 
     Parameters
     ----------
@@ -164,34 +149,24 @@ def buffered_point_poly(lng: float, lat: float, buffer: int) -> tuple[geometry.P
         The latitudinal WGS coordinate in degrees.
     buffer: int
         The buffer distance in metres.
+    projected: bool
+        Whether to project the returned polygon to a local UTM projected coordinate reference system.
 
     Returns
     -------
     geometry.Polygon
         A `shapely` `Polygon` in WGS coordinates.
-    geometry.Polygon
-        A `shapely` `Polygon` in UTM coordinates.
     int
-        The UTM zone number used for conversion.
-    str
-        The UTM zone letter used for conversion.
+        The UTM EPSG code.
 
     """
-    # cast the WGS coordinates to UTM prior to buffering
-    easting, northing, utm_zone_number, utm_zone_letter = utm.from_latlon(lat, lng)
-    logger.info(f"UTM conversion info: UTM zone number: {utm_zone_number}, UTM zone letter: {utm_zone_letter}")
-    # create a point, and then buffer
-    pnt = geometry.Point(easting, northing)
-    poly_utm: geometry.Polygon = pnt.buffer(buffer)
-    # convert back to WGS
-    # the polygon is too big for the OSM server, so have to use convex hull then later prune
-    coords = []
-    for easting, northing in poly_utm.convex_hull.exterior.coords:
-        lat, lng = utm.to_latlon(easting, northing, utm_zone_number, utm_zone_letter)
-        coords.append((lng, lat))
-    poly_wgs = geometry.Polygon(coords)
-
-    return poly_wgs, poly_utm, utm_zone_number, utm_zone_letter  # type: ignore
+    utm_epsg_code = util.extract_utm_epsg_code(lng, lat)
+    point_utm = util.project_geom(geometry.Point(lng, lat), 4326, utm_epsg_code)
+    poly_utm: geometry.Polygon = point_utm.buffer(buffer)
+    if projected:
+        return poly_utm, utm_epsg_code
+    else:
+        return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326
 
 
 def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:

@@ -91,6 +91,38 @@ fn calculate_visible_cells(
 
     (density, hillier, harmonic)
 }
+fn calculate_viewshed(
+    raster: ArrayView2<u8>,
+    start_x: usize,
+    start_y: usize,
+    max_distance: f32,
+) -> Vec<u32> {
+    let (height, width) = raster.dim();
+    let mut visibility = vec![0; height * width];
+    for target_y in (start_y as isize - max_distance as isize).max(0) as usize
+        ..(start_y as isize + max_distance as isize).min(height as isize) as usize
+    {
+        for target_x in (start_x as isize - max_distance as isize).max(0) as usize
+            ..(start_x as isize + max_distance as isize).min(width as isize) as usize
+        {
+            if target_y == start_y && target_x == start_x {
+                continue;
+            }
+            let distance = (((target_y as isize - start_y as isize).pow(2)
+                + (target_x as isize - start_x as isize).pow(2)) as f64)
+                .sqrt() as f32;
+            if distance > max_distance {
+                continue;
+            }
+            if line_of_sight(raster, start_x, start_y, target_x, target_y) {
+                visibility[target_y * width + target_x] = 1;
+            }
+        }
+    }
+
+    visibility
+}
+
 #[pymethods]
 impl Viewshed {
     #[new]
@@ -107,15 +139,15 @@ impl Viewshed {
     }
     pub fn visibility_graph(
         &self,
-        raster: PyReadonlyArray2<u8>,
-        max_distance: f32,
+        bldgs_rast: PyReadonlyArray2<u8>,
+        view_distance: f32,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<(Py<PyArray2<u32>>, Py<PyArray2<f32>>, Py<PyArray2<f32>>)> {
         // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let raster_array = raster.as_array().to_owned();
+        let raster_array = bldgs_rast.as_array().to_owned();
         let (height, width) = raster_array.dim();
         let viewsheds: Vec<(u32, f32, f32)> = py.allow_threads(move || {
             (0..height * width)
@@ -127,7 +159,7 @@ impl Viewshed {
                     let start_y = index / width;
                     let start_x = index % width;
                     let raster_view = raster_array.view();
-                    calculate_visible_cells(raster_view, start_x, start_y, max_distance)
+                    calculate_visible_cells(raster_view, start_x, start_y, view_distance)
                 })
                 .collect()
         });
@@ -163,27 +195,19 @@ impl Viewshed {
     }
     pub fn viewshed(
         &self,
-        raster: PyReadonlyArray2<u8>,
-        max_distance: f32,
-        start_x: usize,
-        start_y: usize,
+        bldgs_rast: PyReadonlyArray2<u8>,
+        view_distance: f32,
+        origin_x: usize,
+        origin_y: usize,
         py: Python,
     ) -> PyResult<Py<PyArray2<u32>>> {
-        let raster_array = raster.as_array().to_owned();
+        let raster_array = bldgs_rast.as_array();
         let (height, width) = raster_array.dim();
-        let mut result_array = vec![0; height * width];
-        let raster_view = raster_array.view();
-        let (result_u32, _, _) =
-            calculate_visible_cells(raster_view, start_x, start_y, max_distance);
-        if result_u32 != 0 {
-            result_array[start_y * width + start_x] = 1;
-        }
-        // Convert the result array to a NumPy array
-        let numpy_array = Array2::from_shape_vec((height, width), result_array)
+        let visibility = calculate_viewshed(raster_array, origin_x, origin_y, view_distance);
+        let numpy_array = Array2::from_shape_vec((height, width), visibility)
             .unwrap()
             .into_pyarray(py)
             .to_owned();
-
         Ok(numpy_array)
     }
 }

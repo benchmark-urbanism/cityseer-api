@@ -14,8 +14,9 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import utm
 from shapely import geometry
+
+from cityseer.tools import util
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -214,11 +215,9 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
         for node_idx, node_data in nx_multigraph.nodes(data=True):
             easting = node_data["x"]
             northing = node_data["y"]
-            # be cognisant of parameter and return order
-            # returns in lat, lng order
-            lat, lng = utm.to_latlon(easting, northing, 30, "U")
-            nx_multigraph.nodes[node_idx]["x"] = lng
-            nx_multigraph.nodes[node_idx]["y"] = lat
+            wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)
+            nx_multigraph.nodes[node_idx]["x"] = wgs_pnt.x
+            nx_multigraph.nodes[node_idx]["y"] = wgs_pnt.y
 
     return nx_multigraph
 

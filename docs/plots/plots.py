@@ -2,13 +2,10 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-import osmnx as ox
-import utm
 from matplotlib import colors
-from shapely import geometry
 
 from cityseer.metrics import layers, networks
-from cityseer.tools import graphs, io, mock, plot
+from cityseer.tools import graphs, io, mock, plot, util
 
 PLOT_RC_PATH = pathlib.Path(__file__).parent / "matplotlibrc"
 print(f"matplotlibrc path: {PLOT_RC_PATH}")
@@ -96,13 +93,12 @@ plot.plot_nx_primal_or_dual(
 # graph cleanup examples
 lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
-poly_wgs, _poly_utm, _utm_zone_number, _utm_zone_letter = io.buffered_point_poly(lng, lat, buffer)
+poly_wgs, _ = io.buffered_point_poly(lng, lat, buffer)
 graph_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
 graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, iron_edges=True)
 # plot buffer
-easting, northing = utm.from_latlon(lat, lng)[:2]
-buff = geometry.Point(easting, northing).buffer(750)
-min_x, min_y, max_x, max_y = buff.bounds
+buffered_point, _ = io.buffered_point_poly(lng, lat, 750, projected=True)
+min_x, min_y, max_x, max_y = buffered_point.bounds
 
 
 # reusable plot function

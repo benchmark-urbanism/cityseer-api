@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:541b37aae6723e6e9f0e1342791301432e51838cadfda4ebe1e116ec1222f844"
+content_hash = "sha256:1742ac29235cb575da53e6b8356d853711e30765c6310a286331ad2df6a86997"
 
 [[package]]
 name = "affine"
@@ -2704,14 +2704,6 @@ summary = "HTTP library with thread-safe connection pooling, file post, and more
 files = [
     {file = "urllib3-2.0.6-py3-none-any.whl", hash = "sha256:7a7c7003b000adf9e7ca2a377c9688bbc54ed41b985789ed576570342a375cd2"},
     {file = "urllib3-2.0.6.tar.gz", hash = "sha256:b19e1a85d206b56d7df1d5e683df4a7725252a964e3993648dd0fb5a1c157564"},
-]
-
-[[package]]
-name = "utm"
-version = "0.7.0"
-summary = "Bidirectional UTM-WGS84 converter for python"
-files = [
-    {file = "utm-0.7.0.tar.gz", hash = "sha256:3c9a3650e98bb6eecec535418d0dfd4db8f88c8ceaca112a0ff0787e116566e2"},
 ]
 
 [[package]]
