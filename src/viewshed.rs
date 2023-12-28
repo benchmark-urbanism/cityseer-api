@@ -83,13 +83,8 @@ fn calculate_visible_cells(
             }
         }
     }
-    let hillier = if density > 0 {
-        (density * density) as f32 / farness
-    } else {
-        0.0
-    };
 
-    (density, hillier, harmonic)
+    (density, farness, harmonic)
 }
 fn calculate_viewshed(
     raster: ArrayView2<u8>,
