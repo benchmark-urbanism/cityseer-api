@@ -793,5 +793,140 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+<div class="function">
+
+## project_geom
+
+
+<div class="content">
+<span class="name">project_geom</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">geom</span>
+  </div>
+  <div class="param">
+    <span class="pn">from_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_epsg_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Projects an input shapely geometry.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">geom</div>
+    <div class="type">shapely.geometry</div>
+  </div>
+  <div class="desc">
+
+ A GeoDataFrame containing building polygons.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">from_epsg_code</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The EPSG code from which to convert the projection.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">to_epsg_code</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The EPSG code into which to convert the projection.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">shapely.geometry</div>
+  </div>
+  <div class="desc">
+
+ A shapely geometry in the specified `to_epsg_code` projection.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## extract_utm_epsg_code
+
+
+<div class="content">
+<span class="name">extract_utm_epsg_code</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">lng</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">lat</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">int</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Finds the UTM coordinate reference system for a given longitude and latitude.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">lng</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The longitude for which to find the appropriate UTM EPSG code.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">lat</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The latitude for which to find the appropriate UTM EPSG code.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The EPSG coordinate reference code for the UTM projection.</div>
+</div>
+
+
+</div>
+
+
 
 </section>

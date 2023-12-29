@@ -2726,7 +2726,7 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
+<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
 
 
  
@@ -2736,12 +2736,12 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
+<span class="name">node_xs</span><span class="annotation">: list[float]</span>
 
 
  
 
-<span class="name">node_xs</span><span class="annotation">: list[float]</span>
+<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
 
 
  
@@ -2817,6 +2817,207 @@ datapoints are not located with high spatial precision.
 <span class="name">CentralitySegmentResult</span><div class="signature">
   <span class="pt">(</span>
   <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+</div>
+
+
+<div class="class">
+
+
+## Viewshed
+
+
+
+
+<div class="function">
+
+## Viewshed
+
+
+<div class="content">
+<span class="name">Viewshed</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## progress_init
+
+
+<div class="content">
+<span class="name">progress_init</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## progress
+
+
+<div class="content">
+<span class="name">progress</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">int</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## visibility_graph
+
+
+<div class="content">
+<span class="name">visibility_graph</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">bldgs_rast</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">Any]]</span>
+  <span class="pr">Any]]]</span>
+  <span class="pr">bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
+  <span class="pr">Any]]</span>
+  <span class="pr">Any]]]</span>
+  <span class="pr">bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
+  <span class="pr">Any]]</span>
+  <span class="pr">Any]]]</span>
+  <span class="pr">bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## viewshed
+
+
+<div class="content">
+<span class="name">viewshed</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">bldgs_rast</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_x</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_y</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">dtype[Any]]</span>
+  <span class="pr">dtype[Any]]]</span>
+  <span class="pr">bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pr">_NestedSequence[Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes</span>
+  <span class="pt">]</span>
 </div>
 </div>
 

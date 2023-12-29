@@ -215,7 +215,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
         for node_idx, node_data in nx_multigraph.nodes(data=True):
             easting = node_data["x"]
             northing = node_data["y"]
-            wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)
+            wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)  # type: ignore
             nx_multigraph.nodes[node_idx]["x"] = wgs_pnt.x
             nx_multigraph.nodes[node_idx]["y"] = wgs_pnt.y
 
