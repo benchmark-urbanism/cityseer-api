@@ -92,17 +92,12 @@ layout: ../../layouts/PageLayout.astro
 
 
 <div class="content">
-<span class="name">nx_wgs_to_utm</span><div class="signature multiline">
+<span class="name">nx_wgs_to_utm</span><div class="signature">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
     <span class="pc">:</span>
     <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
-  </div>
-  <div class="param">
-    <span class="pn">force_zone_number</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -121,16 +116,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="desc">
 
  A `networkX` `MultiGraph` with `x` and `y` node attributes in the WGS84 coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">force_zone_number</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- An optional UTM zone number for coercing all conversions to an explicit UTM zone. Use with caution: mismatched UTM zones may introduce substantial distortions in the results.</div>
 </div>
 
 ### Returns
@@ -171,17 +156,20 @@ layout: ../../layouts/PageLayout.astro
     <span class="pc">:</span>
     <span class="pa"> int</span>
   </div>
+  <div class="param">
+    <span class="pn">projected</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">Polygon</span>
-  <span class="pr">Polygon</span>
   <span class="pr">int</span>
-  <span class="pr">str</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Buffer a point and return a `shapely` Polygon in WGS and UTM coordinates. This function can be used to prepare a `poly_wgs` `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly).
+ Buffer a point and return a `shapely` Polygon. This function can be used to prepare a buffered point `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -213,6 +201,16 @@ layout: ../../layouts/PageLayout.astro
  The buffer distance in metres.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">projected</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to project the returned polygon to a local UTM projected coordinate reference system.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -227,31 +225,11 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">geometry.Polygon</div>
-  </div>
-  <div class="desc">
-
- A `shapely` `Polygon` in UTM coordinates.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
     <div class="type">int</div>
   </div>
   <div class="desc">
 
- The UTM zone number used for conversion.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- The UTM zone letter used for conversion.</div>
+ The UTM EPSG code.</div>
 </div>
 
 

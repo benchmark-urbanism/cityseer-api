@@ -230,6 +230,7 @@ if __name__ == "__main__":
         ("cityseer.metrics.observe", here / "src/pages/metrics/observe.md"),
         ("cityseer.metrics.networks", here / "src/pages/metrics/networks.md"),
         ("cityseer.metrics.layers", here / "src/pages/metrics/layers.md"),
+        ("cityseer.metrics.visibility", here / "src/pages/metrics/visibility.md"),
         ("cityseer.tools.graphs", here / "src/pages/tools/graphs.md"),
         ("cityseer.tools.io", here / "src/pages/tools/io.md"),
         ("cityseer.tools.plot", here / "src/pages/tools/plot.md"),

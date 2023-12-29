@@ -20,6 +20,7 @@ const navPaths = [
   '/metrics/observe',
   '/metrics/networks',
   '/metrics/layers',
+  '/metrics/visibility',
   '/rustalgos/rustalgos',
   '/attribution',
 ]
@@ -29,21 +30,21 @@ const navPaths = [
   <Fragment slot="metaContent">
     <title>{currentPath}</title>
   </Fragment>
-  <div id='cols'>
-    <div id='nav-col'>
-      <div class='flex flex-col items-end object-contain'>
-        <a href='/' title='home' class='hover:scale-105 transition-all object-contain'>
-          <img src={logoURL.src} alt='logo' class='w-full h-full max-w-xs py-10 px-4' />
+  <div id="cols">
+    <div id="nav-col">
+      <div class="flex flex-col items-end object-contain">
+        <a href="/" title="home" class="hover:scale-105 transition-all object-contain">
+          <img src={logoURL.src} alt="logo" class="w-full h-full max-w-xs py-10 px-4" />
         </a>
         <NavColumn client:visible navPaths={navPaths} currentPath={currentPath} />
-        <div class='flex-grow'></div>
-        <div class='self-start px-8 py-2'>
+        <div class="flex-grow"></div>
+        <div class="self-start px-8 py-2">
           <RepoLink />
         </div>
       </div>
       <StripeTitle />
     </div>
-    <div id='content-col'>
+    <div id="content-col">
       <slot />
       <Footer />
     </div>

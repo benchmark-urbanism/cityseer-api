@@ -4,6 +4,7 @@ mod common;
 mod data;
 mod diversity;
 mod graph;
+mod viewshed;
 
 #[pymodule]
 fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -44,6 +45,8 @@ fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<centrality::CentralityShortestResult>()?;
     m.add_class::<centrality::CentralitySimplestResult>()?;
     m.add_class::<centrality::CentralitySegmentResult>()?;
+    // VIEWSHED
+    m.add_class::<viewshed::Viewshed>()?;
     // let sys = PyModule::import(py, "sys")?;
     // sys.getattr("modules")?.set_item("rustalgos", rustalgos)?;
     Ok(())

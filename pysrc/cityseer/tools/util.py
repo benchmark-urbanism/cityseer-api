@@ -15,7 +15,10 @@ import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from shapely import coords, geometry, strtree
+from pyproj import Transformer
+from pyproj.aoi import AreaOfInterest
+from pyproj.database import query_utm_crs_info
+from shapely import coords, geometry, ops, strtree
 from tqdm import tqdm
 
 from cityseer import config
@@ -556,3 +559,59 @@ def blend_metrics(
         merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
 
     return merged_edges_gdf
+
+
+def project_geom(geom, from_epsg_code: int, to_epsg_code: int):
+    """
+    Projects an input shapely geometry.
+
+    Parameters
+    ----------
+    geom: shapely.geometry
+        A GeoDataFrame containing building polygons.
+    from_epsg_code: int
+        The EPSG code from which to convert the projection.
+    to_epsg_code: int
+        The EPSG code into which to convert the projection.
+
+    Returns
+    -------
+    shapely.geometry
+        A shapely geometry in the specified `to_epsg_code` projection.
+
+    """
+    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+
+    return ops.transform(transformer.transform, geom)
+
+
+def extract_utm_epsg_code(lng: float, lat: float) -> int:
+    """
+    Finds the UTM coordinate reference system for a given longitude and latitude.
+
+    Parameters
+    ----------
+    lng: float
+        The longitude for which to find the appropriate UTM EPSG code.
+    lat: float
+        The latitude for which to find the appropriate UTM EPSG code.
+
+    Returns
+    -------
+    int
+        The EPSG coordinate reference code for the UTM projection.
+
+    """
+    # Initialize WGS 84 projection (EPSG: 4326)
+    utm_crs_list = query_utm_crs_info(
+        datum_name="WGS 84",
+        area_of_interest=AreaOfInterest(
+            west_lon_degree=lng,
+            south_lat_degree=lat,
+            east_lon_degree=lng,
+            north_lat_degree=lat,
+        ),
+    )
+    if not utm_crs_list or not isinstance(int(utm_crs_list[0].code), int):
+        raise ValueError("Unable to extract an EPSG code from the provided network.")
+    return int(utm_crs_list[0].code)
