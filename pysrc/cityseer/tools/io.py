@@ -216,7 +216,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
 
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
-    poly_epsg_code: int | str = 4326,
+    poly_crs_code: int | str = 4326,
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
@@ -238,7 +238,7 @@ def osm_graph_from_poly(
     ----------
     poly_geom: shapely.Polygon
         A shapely Polygon representing the extents for which to fetch the OSM network.
-    poly_epsg_code: int | str
+    poly_crs_code: int | str
         An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
         using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
     to_crs_code: int | str
@@ -305,12 +305,12 @@ def osm_graph_from_poly(
     ```
 
     """
-    if poly_epsg_code is not None and not isinstance(poly_epsg_code, (int, str)):  # type: ignore
-        raise TypeError('Please provide "poly_epsg_code" parameter as int or str')
+    if poly_crs_code is not None and not isinstance(poly_crs_code, (int, str)):  # type: ignore
+        raise TypeError('Please provide "poly_crs_code" parameter as int or str')
     if to_crs_code is not None and not isinstance(to_crs_code, (int, str)):
         raise TypeError('Please provide "to_crs_code" parameter as int or str')
     # format for OSM query
-    in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
+    in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]
     geom_osm = str.join(" ", [f"{lat} {lng}" for lng, lat in coords])
     if custom_request is not None:

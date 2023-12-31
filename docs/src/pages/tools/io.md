@@ -332,7 +332,7 @@ builds a graph automatically.
     <span class="pa"> shapely.geometry.polygon.Polygon</span>
   </div>
   <div class="param">
-    <span class="pn">poly_epsg_code</span>
+    <span class="pn">poly_crs_code</span>
     <span class="pc">:</span>
     <span class="pa"> int | str = 4326</span>
   </div>
@@ -407,7 +407,7 @@ builds a graph automatically.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">poly_epsg_code</div>
+    <div class="name">poly_crs_code</div>
     <div class="type">int | str</div>
   </div>
   <div class="desc">

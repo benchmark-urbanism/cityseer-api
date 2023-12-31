@@ -155,7 +155,7 @@ def test_osm_graph_from_poly():
     # 32630 corresponds to UTM 30N
     poly_utm, utm_epsg = io.buffered_point_poly(LNG, LAT, BUFFER, projected=True)
     assert utm_epsg == 32630
-    network_from_utm = io.osm_graph_from_poly(poly_utm, poly_epsg_code=utm_epsg, simplify=False)
+    network_from_utm = io.osm_graph_from_poly(poly_utm, poly_crs_code=utm_epsg, simplify=False)
     # visual check for debugging
     # plot.plot_nx(network_from_utm)
     assert isinstance(network_from_utm, nx.MultiGraph)
