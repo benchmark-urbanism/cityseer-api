@@ -561,7 +561,7 @@ def blend_metrics(
     return merged_edges_gdf
 
 
-def project_geom(geom, from_epsg_code: int, to_epsg_code: int):
+def project_geom(geom, from_crs_code: int | str, to_crs_code: int | str):
     """
     Projects an input shapely geometry.
 
@@ -569,18 +569,18 @@ def project_geom(geom, from_epsg_code: int, to_epsg_code: int):
     ----------
     geom: shapely.geometry
         A GeoDataFrame containing building polygons.
-    from_epsg_code: int
+    from_crs_code: int | str
         The EPSG code from which to convert the projection.
-    to_epsg_code: int
+    to_crs_code: int | str
         The EPSG code into which to convert the projection.
 
     Returns
     -------
     shapely.geometry
-        A shapely geometry in the specified `to_epsg_code` projection.
+        A shapely geometry in the specified `to_crs_code` projection.
 
     """
-    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+    transformer = Transformer.from_crs(from_crs_code, to_crs_code, always_xy=True)
 
     return ops.transform(transformer.transform, geom)
 

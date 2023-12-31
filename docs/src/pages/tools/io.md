@@ -23,14 +23,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
-    <span class="pn">from_epsg_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -39,7 +39,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS. The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
+ Convert a graph from the `from_crs_code` EPSG CRS to the `to_crs_code` EPSG CRS. The `to_crs_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString` geometries will also be converted.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -48,13 +48,13 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.</div>
+ A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_crs_code` coordinate system. Optional `geom` edge attributes containing `LineString` geoms to be converted.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">from_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -63,8 +63,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -79,7 +79,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate system. Edge `geom` attributes will also be converted if found.</div>
+ A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_crs_code` coordinate system. Edge `geom` attributes will also be converted if found.</div>
 </div>
 
 
@@ -334,12 +334,12 @@ builds a graph automatically.
   <div class="param">
     <span class="pn">poly_epsg_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 4326</span>
+    <span class="pa"> int | str = 4326</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
+    <span class="pa"> int | str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">custom_request</span>
@@ -408,7 +408,7 @@ builds a graph automatically.
 <div class="param-set">
   <div class="def">
     <div class="name">poly_epsg_code</div>
-    <div class="type">int</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -417,8 +417,8 @@ builds a graph automatically.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 

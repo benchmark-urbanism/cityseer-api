@@ -17,9 +17,27 @@ BUFF_POLY_WGS = "POLYGON ((-0.124121086898852 51.519429403644374, -0.12414604650
 BUFF_POLY_UTM = "POLYGON ((699518.8923665844 5711511.241661096, 699517.9293119188 5711491.63823303, 699515.049422665 5711472.223596693, 699510.2804337308 5711453.184725645, 699503.6682730867 5711434.704974623, 699495.276619454 5711416.962313731, 699485.1862890449 5711400.127614492, 699473.494457257 5711384.3630042635, 699460.3137228217 5711369.8203048585, 699445.7710234171 5711356.639570423, 699430.0064131883 5711344.947738635, 699413.1717139496 5711334.8574082265, 699395.4290530575 5711326.465754594, 699376.9493020353 5711319.853593949, 699357.9104309876 5711315.084605015, 699338.4957946503 5711312.204715761, 699318.8923665844 5711311.241661096, 699299.2889385185 5711312.204715761, 699279.8743021812 5711315.084605015, 699260.8354311335 5711319.853593949, 699242.3556801113 5711326.465754594, 699224.6130192191 5711334.8574082265, 699207.7783199805 5711344.947738635, 699192.0137097517 5711356.639570423, 699177.4710103471 5711369.8203048585, 699164.2902759118 5711384.3630042635, 699152.5984441239 5711400.127614492, 699142.5081137147 5711416.962313731, 699134.1164600821 5711434.704974623, 699127.504299438 5711453.184725645, 699122.7353105037 5711472.223596693, 699119.85542125 5711491.63823303, 699118.8923665844 5711511.241661096, 699119.85542125 5711530.845089162, 699122.7353105037 5711550.259725499, 699127.504299438 5711569.298596547, 699134.1164600821 5711587.778347569, 699142.5081137147 5711605.521008461, 699152.5984441239 5711622.3557077, 699164.2902759118 5711638.1203179285, 699177.4710103471 5711652.6630173335, 699192.0137097517 5711665.843751769, 699207.7783199805 5711677.535583557, 699224.6130192191 5711687.6259139655, 699242.3556801113 5711696.017567598, 699260.8354311335 5711702.629728243, 699279.8743021812 5711707.398717177, 699299.2889385185 5711710.278606431, 699318.8923665844 5711711.241661096, 699338.4957946503 5711710.278606431, 699357.9104309876 5711707.398717177, 699376.9493020353 5711702.629728243, 699395.4290530575 5711696.017567598, 699413.1717139496 5711687.6259139655, 699430.0064131883 5711677.535583557, 699445.7710234171 5711665.843751769, 699460.3137228217 5711652.6630173335, 699473.494457257 5711638.1203179285, 699485.1862890449 5711622.3557077, 699495.276619454 5711605.521008461, 699503.6682730867 5711587.778347569, 699510.2804337308 5711569.298596547, 699515.049422665 5711550.259725499, 699517.9293119188 5711530.845089162, 699518.8923665844 5711511.241661096))"
 
 
-# TODO: currently tested via test_nx_wgs_to_utm which calls nx_epsg_conversion internally
-def nx_epsg_conversion():
-    pass
+def test_nx_epsg_conversion():
+    G_wgs = mock.mock_graph(wgs84_coords=True)
+    nd_data = G_wgs.nodes["0"]
+    utm_code = util.extract_utm_epsg_code(nd_data["x"], nd_data["y"])
+    G_utm = mock.mock_graph()
+    G_27700 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code=27700)
+    G_27700_2 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="27700")
+    G_27700_3 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="EPSG:27700")
+    for node_key in G_27700.nodes():
+        nd_1 = G_27700.nodes[node_key]
+        nd_2 = G_27700_2.nodes[node_key]
+        nd_3 = G_27700_3.nodes[node_key]
+        assert nd_1["x"] == nd_2["x"] == nd_3["x"]
+        assert nd_1["y"] == nd_2["y"] == nd_3["y"]
+    G_moll = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="ESRI:54009")
+    G_round = io.nx_epsg_conversion(G_moll, from_crs_code="ESRI:54009", to_crs_code=utm_code)
+    for node_key in G_utm.nodes():
+        nd_1 = G_utm.nodes[node_key]
+        nd_2 = G_round.nodes[node_key]
+        assert nd_1["x"] - nd_1["x"] <= config.ATOL
+        assert nd_1["y"] - nd_1["y"] <= config.ATOL
 
 
 def test_nx_wgs_to_utm():
@@ -148,7 +166,7 @@ def test_osm_graph_from_poly():
     assert list(network_from_utm.edges) == list(network_from_wgs.edges)
     # check that to CRS conversions are working
     # this will convert out graph to BNG - EPSG 27700
-    network_to_bng = io.osm_graph_from_poly(poly_wgs, to_epsg_code=27700, simplify=False)
+    network_to_bng = io.osm_graph_from_poly(poly_wgs, to_crs_code=27700, simplify=False)
     # networks should still match
     assert list(network_to_bng.nodes) == list(network_from_wgs.nodes)
     assert list(network_to_bng.edges) == list(network_from_wgs.edges)
@@ -159,11 +177,6 @@ def test_osm_graph_from_poly():
         bng_easting, bng_northing = transformer.transform(utm_nd_data["x"], utm_nd_data["y"])
         assert np.isclose(bng_nd_data["x"], bng_easting)
         assert np.isclose(bng_nd_data["y"], bng_northing)
-    # check that non-integer EPSG codes are caught
-    with pytest.raises(TypeError):
-        network_to_bng = io.osm_graph_from_poly(poly_wgs, to_epsg_code="27700")
-    with pytest.raises(TypeError):
-        network_to_bng = io.osm_graph_from_poly(poly_wgs, poly_epsg_code="27700")
 
 
 def test_nx_from_osm():

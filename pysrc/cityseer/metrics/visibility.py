@@ -50,32 +50,32 @@ def _prepare_path(out_path: str | Path) -> Path:
     return write_path
 
 
-def _prepare_epsg_code(bounds: tuple[float, float, float, float], to_epsg_code: int | None) -> int:
+def _prepare_epsg_code(bounds: tuple[float, float, float, float], to_crs_code: int | str | None) -> int | str:
     """
     Find a UTM EPSG code if no output EPSG code is provided.
     """
     bounds_geom = geometry.box(*bounds)
-    if to_epsg_code is None:
-        to_epsg_code = util.extract_utm_epsg_code(bounds_geom.centroid.x, bounds_geom.centroid.y)
-    return to_epsg_code
+    if to_crs_code is None:
+        to_crs_code = util.extract_utm_epsg_code(bounds_geom.centroid.x, bounds_geom.centroid.y)
+    return to_crs_code
 
 
 def _prepare_bldgs_rast(
     bldgs_gdf: gpd.GeoDataFrame,
     bounds: tuple[float, float, float, float],
-    from_epsg_code: int,
-    to_epsg_code: int,
+    from_crs_code: int | str,
+    to_crs_code: int | str,
     resolution: int,
 ) -> tuple[npt.ArrayLike, rasterio.Affine]:
     """
     Convert a buildings GeoDataFrame into a raster with accompanying Transform object.
     """
-    bldgs_gdf = bldgs_gdf.to_crs(to_epsg_code)  # type: ignore
+    bldgs_gdf = bldgs_gdf.to_crs(to_crs_code)  # type: ignore
     if not bldgs_gdf.crs.is_projected:
         raise ValueError("Buildings GeoDataFrame must be in a projected coordinate reference system.")
     # prepare extents from original bounds
     # i.e. don't use bldgs GDF because this will overshoot per building polys
-    projected_bounds = util.project_geom(geometry.box(*bounds), from_epsg_code, to_epsg_code)
+    projected_bounds = util.project_geom(geometry.box(*bounds), from_crs_code, to_crs_code)
     w, s = np.floor(projected_bounds.bounds[:2]).astype(int)
     e, n = np.floor(projected_bounds.bounds[2:]).astype(int)
     width = int(abs(e - w) / resolution)
@@ -94,8 +94,8 @@ def visibility_graph(
     bldgs_gdf: gpd.GeoDataFrame,
     bounds: tuple[float, float, float, float],
     out_path: str,
-    from_epsg_code: int,
-    to_epsg_code: int | None = None,
+    from_crs_code: int | str,
+    to_crs_code: int | str | None = None,
     view_distance: int = 100,
     resolution: int = 1,
 ):
@@ -110,13 +110,13 @@ def visibility_graph(
     bldgs_gdf: gpd.GeoDataFrame
         A GeoDataFrame containing building polygons.
     bounds: tuple[float, float, float, float]
-        A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.
+        A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.
     out_path: str
         An output path to which the generated TIFF images will be written. The pathname will be appended to correspond
         to the density, farness, and harmonic closeness measures.
-    from_epsg_code: int
+    from_crs_code: int | str
         The EPSG coordinate reference code corresponding to the input data.
-    to_epsg_code: int | None = None
+    to_crs_code: int | str | None = None
         An output EPSG coordinate reference code. `None` by default, in which case a UTM projection will be used.
     view_distance: int = 100
         The view distance within which to run the visibility analysis. 100m by default.
@@ -126,8 +126,8 @@ def visibility_graph(
 
     """
     write_path = _prepare_path(out_path)
-    to_epsg_code = _prepare_epsg_code(bounds, to_epsg_code)
-    bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_epsg_code, to_epsg_code, resolution)
+    to_crs_code = _prepare_epsg_code(bounds, to_crs_code)
+    bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_crs_code, to_crs_code, resolution)
     # run viewshed
     viewshed_struct = rustalgos.Viewshed()
     # convert distance to cells
@@ -149,7 +149,7 @@ def visibility_graph(
             width=bldgs_rast.shape[1],  # type: ignore
             count=1,
             dtype=np.float32,
-            crs=to_epsg_code,
+            crs=to_crs_code,
             transform=transform,
         ) as dst:
             dst.write(bands[band_idx], 1)  # type: ignore
@@ -158,7 +158,7 @@ def visibility_graph(
 def visibility_graph_from_osm(
     bounds_wgs: tuple[float, float, float, float],
     out_path: str,
-    to_epsg_code: int | None = None,
+    to_crs_code: int | str | None = None,
     view_distance: int = 100,
     resolution: int = 1,
 ) -> None:
@@ -171,11 +171,11 @@ def visibility_graph_from_osm(
     Parameters
     ----------
     bounds_wgs: tuple[float, float, float, float]
-        A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.
+        A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.
     out_path: str
         An output path to which the generated TIFF images will be written. The pathname will be appended to correspond
         to the density, farness, and harmonic closeness measures.
-    to_epsg_code: int | None = None
+    to_crs_code: int | str | None = None
         An output EPSG coordinate reference code. `None` by default, in which case a UTM projection will be used.
     view_distance: int = 100
         The view distance within which to run the visibility analysis. 100m by default.
@@ -187,7 +187,7 @@ def visibility_graph_from_osm(
     # get buildings for buffered extents
     bldgs_gdf = _buildings_from_osmnx(bounds_wgs)
     # run visibility graph
-    visibility_graph(bldgs_gdf, bounds_wgs, out_path, 4326, to_epsg_code, view_distance, resolution)
+    visibility_graph(bldgs_gdf, bounds_wgs, out_path, 4326, to_crs_code, view_distance, resolution)
 
 
 def viewshed(
@@ -196,8 +196,8 @@ def viewshed(
     origin_x: float,
     origin_y: float,
     out_path: str,
-    from_epsg_code: int,
-    to_epsg_code: int | None = None,
+    from_crs_code: int | str,
+    to_crs_code: int | str | None = None,
     view_distance: int = 100,
     resolution: int = 1,
 ):
@@ -209,17 +209,17 @@ def viewshed(
     bldgs_gdf: gpd.GeoDataFrame
         A GeoDataFrame containing building polygons.
     bounds: tuple[float, float, float, float]
-        A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.
+        A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.
     origin_x: float
-        An easting or longitude for the origin of the viewshed in the `from_epsg_code` coordinate reference system.
+        An easting or longitude for the origin of the viewshed in the `from_crs_code` coordinate reference system.
     origin_y: float
-        A northing or latitude for the origin of the viewshed in the `from_epsg_code` coordinate reference system.
+        A northing or latitude for the origin of the viewshed in the `from_crs_code` coordinate reference system.
     out_path: str
         An output path to which the generated TIFF images will be written. The pathname will be appended to correspond
         to the density, farness, and harmonic closeness measures.
-    from_epsg_code: int
+    from_crs_code: int | str
         The EPSG coordinate reference code corresponding to the input data.
-    to_epsg_code: int | None = None
+    to_crs_code: int | str | None = None
         An output EPSG coordinate reference code. `None` by default, in which case a UTM projection will be used.
     view_distance: int = 100
         The view distance within which to run the visibility analysis. 100m by default.
@@ -229,10 +229,10 @@ def viewshed(
 
     """
     write_path = _prepare_path(out_path)
-    to_epsg_code = _prepare_epsg_code(bounds, to_epsg_code)
-    bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_epsg_code, to_epsg_code, resolution)
+    to_crs_code = _prepare_epsg_code(bounds, to_crs_code)
+    bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_crs_code, to_crs_code, resolution)
     # prepare cell coordinates
-    point_projected = util.project_geom(geometry.Point(origin_x, origin_y), from_epsg_code, to_epsg_code)
+    point_projected = util.project_geom(geometry.Point(origin_x, origin_y), from_crs_code, to_crs_code)
     x_idx, y_idx = ~transform * (point_projected.x, point_projected.y)  # type: ignore
     x_idx = int(x_idx)
     y_idx = int(y_idx)
@@ -257,7 +257,7 @@ def viewshed(
         width=bldgs_rast.shape[1],  # type: ignore
         count=4,  # RGBA, so 4 channels
         dtype=np.uint8,
-        crs=to_epsg_code,
+        crs=to_crs_code,
         transform=transform,
     ) as dst:
         dst.write(rgb_arr[:, :, 0], 1)  # Red channel
@@ -271,7 +271,7 @@ def viewshed_from_osm(
     origin_lng: int,
     origin_lat: int,
     out_path: str,
-    to_epsg_code: int | None = None,
+    to_crs_code: int | str | None = None,
     view_distance: int = 100,
     resolution: int = 1,
 ) -> None:
@@ -281,7 +281,7 @@ def viewshed_from_osm(
     Parameters
     ----------
     bounds_wgs: tuple[float, float, float, float]
-        A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.
+        A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.
     origin_lng: float
         A longitude for the origin of the viewshed in WGS84 coordinates.
     origin_lat: float
@@ -289,7 +289,7 @@ def viewshed_from_osm(
     out_path: str
         An output path to which the generated TIFF images will be written. The pathname will be appended to correspond
         to the density, farness, and harmonic closeness measures.
-    to_epsg_code: int | None = None
+    to_crs_code: int | str | None = None
         An output EPSG coordinate reference code. `None` by default, in which case a UTM projection will be used.
     view_distance: int = 100
         The view distance within which to run the visibility analysis. 100m by default.
@@ -301,4 +301,4 @@ def viewshed_from_osm(
     # get buildings for buffered extents
     bldgs_gdf = _buildings_from_osmnx(bounds_wgs)
     # run viewshed
-    viewshed(bldgs_gdf, bounds_wgs, origin_lng, origin_lat, out_path, 4326, to_epsg_code, view_distance, resolution)
+    viewshed(bldgs_gdf, bounds_wgs, origin_lng, origin_lat, out_path, 4326, to_crs_code, view_distance, resolution)
