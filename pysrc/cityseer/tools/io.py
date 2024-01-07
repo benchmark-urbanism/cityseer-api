@@ -29,40 +29,39 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_epsg_code: int, to_epsg_code: int) -> nx.MultiGraph:
+def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, to_crs_code: int | str) -> nx.MultiGraph:
     """
-    Convert a graph from the `from_epsg_code` EPSG CRS to the `to_epsg_code` EPSG CRS.
+    Convert a graph from the `from_crs_code` EPSG CRS to the `to_crs_code` EPSG CRS.
 
-    The `to_epsg_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString`
+    The `to_crs_code` must be for a projected CRS. If edge `geom` attributes are found, the associated `LineString`
     geometries will also be converted.
 
     Parameters
     ----------
     nx_multigraph: nx.MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_epsg_code` coordinate system. Optional
+        A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_crs_code` coordinate system. Optional
         `geom` edge attributes containing `LineString` geoms to be converted.
-    from_epsg_code: int
+    from_crs_code: int | str
         An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For
         example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
-    to_epsg_code: int
+    to_crs_code: int | str
         An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For
         example, [27700](https://epsg.io/27700) if converting to British National Grid.
 
     Returns
     -------
     nx.MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_epsg_code` coordinate
+        A `networkX` `MultiGraph` with `x` and `y` node attributes converted to the specified `to_crs_code` coordinate
         system. Edge `geom` attributes will also be converted if found.
 
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    logger.info(f"Converting networkX graph from EPSG code {from_epsg_code} to EPSG code {to_epsg_code}.")
+    logger.info(f"Converting networkX graph from EPSG code {from_crs_code} to EPSG code {to_crs_code}.")
     g_multi_copy = nx_multigraph.copy()
-    test_crs = CRS.from_epsg(to_epsg_code)
-    if not test_crs.is_projected:
-        raise ValueError("The to_epsg_code parameter must be for a projected CRS")
-    transformer = Transformer.from_crs(from_epsg_code, to_epsg_code, always_xy=True)
+    if not CRS(to_crs_code).is_projected:
+        raise ValueError("The to_crs_code parameter must be for a projected CRS")
+    transformer = Transformer.from_crs(from_crs_code, to_crs_code, always_xy=True)
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
@@ -129,8 +128,8 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     # sample the first node for UTM
     nd_key = list(nx_multigraph.nodes())[0]
-    to_epsg_code = util.extract_utm_epsg_code(nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
-    return nx_epsg_conversion(nx_multigraph, 4326, to_epsg_code)
+    to_crs_code = util.extract_utm_epsg_code(nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
+    return nx_epsg_conversion(nx_multigraph, 4326, to_crs_code)
 
 
 def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = False) -> tuple[geometry.Polygon, int]:
@@ -217,8 +216,8 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
 
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
-    poly_epsg_code: int = 4326,
-    to_epsg_code: int | None = None,
+    poly_crs_code: int | str = 4326,
+    to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
     crawl_consolidate_dist: int = 12,
@@ -239,10 +238,10 @@ def osm_graph_from_poly(
     ----------
     poly_geom: shapely.Polygon
         A shapely Polygon representing the extents for which to fetch the OSM network.
-    poly_epsg_code: int
+    poly_crs_code: int | str
         An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
         using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
-    to_epsg_code: int
+    to_crs_code: int | str
         An optional integer representing a valid EPSG code for the generated network returned from this function. If
         this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
         system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
@@ -306,12 +305,12 @@ def osm_graph_from_poly(
     ```
 
     """
-    if poly_epsg_code is not None and not isinstance(poly_epsg_code, int):  # type: ignore
-        raise TypeError('Please provide "poly_epsg_code" parameter as int')
-    if to_epsg_code is not None and not isinstance(to_epsg_code, int):
-        raise TypeError('Please provide "to_epsg_code" parameter as int')
+    if poly_crs_code is not None and not isinstance(poly_crs_code, (int, str)):  # type: ignore
+        raise TypeError('Please provide "poly_crs_code" parameter as int or str')
+    if to_crs_code is not None and not isinstance(to_crs_code, (int, str)):
+        raise TypeError('Please provide "to_crs_code" parameter as int or str')
     # format for OSM query
-    in_transformer = Transformer.from_crs(poly_epsg_code, 4326, always_xy=True)
+    in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]
     geom_osm = str.join(" ", [f"{lat} {lng}" for lng, lat in coords])
     if custom_request is not None:
@@ -349,8 +348,8 @@ def osm_graph_from_poly(
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
     # cast to UTM
-    if to_epsg_code is not None:
-        graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_epsg_code)
+    if to_crs_code is not None:
+        graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_crs_code)
     else:
         graph_crs = nx_wgs_to_utm(graph_wgs)
     graph_crs = graphs.nx_simple_geoms(graph_crs)

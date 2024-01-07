@@ -33,14 +33,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">from_epsg_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
+    <span class="pa"> int | str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
@@ -76,7 +76,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.</div>
+ A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -91,8 +91,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">from_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -101,8 +101,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int | None = None</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str | None = None</div>
   </div>
   <div class="desc">
 
@@ -152,9 +152,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
+    <span class="pa"> int | str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
@@ -180,7 +180,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.</div>
+ A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -195,8 +195,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int | None = None</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str | None = None</div>
   </div>
   <div class="desc">
 
@@ -261,14 +261,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">from_epsg_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
+    <span class="pa"> int | str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
@@ -304,7 +304,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.</div>
+ A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -314,7 +314,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- An easting or longitude for the origin of the viewshed in the `from_epsg_code` coordinate reference system.</div>
+ An easting or longitude for the origin of the viewshed in the `from_crs_code` coordinate reference system.</div>
 </div>
 
 <div class="param-set">
@@ -324,7 +324,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A northing or latitude for the origin of the viewshed in the `from_epsg_code` coordinate reference system.</div>
+ A northing or latitude for the origin of the viewshed in the `from_crs_code` coordinate reference system.</div>
 </div>
 
 <div class="param-set">
@@ -339,8 +339,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">from_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -349,8 +349,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int | None = None</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str | None = None</div>
   </div>
   <div class="desc">
 
@@ -410,9 +410,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
+    <span class="pa"> int | str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
@@ -438,7 +438,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A tuple specifying the bounds corresponding to the provided `from_epsg_code` parameter.</div>
+ A tuple specifying the bounds corresponding to the provided `from_crs_code` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -473,8 +473,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int | None = None</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str | None = None</div>
   </div>
   <div class="desc">
 

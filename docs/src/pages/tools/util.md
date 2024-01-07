@@ -805,14 +805,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">geom</span>
   </div>
   <div class="param">
-    <span class="pn">from_epsg_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_epsg_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> int | str</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -833,8 +833,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">from_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -843,8 +843,8 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">to_epsg_code</div>
-    <div class="type">int</div>
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str</div>
   </div>
   <div class="desc">
 
@@ -859,7 +859,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A shapely geometry in the specified `to_epsg_code` projection.</div>
+ A shapely geometry in the specified `to_crs_code` projection.</div>
 </div>
 
 
