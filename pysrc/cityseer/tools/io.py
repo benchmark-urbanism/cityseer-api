@@ -1,6 +1,7 @@
 """
 Functions for fetching and converting graphs and network structures.
 """
+
 # workaround until networkx adopts types
 # pyright: basic
 from __future__ import annotations

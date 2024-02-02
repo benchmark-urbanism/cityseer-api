@@ -1,4 +1,5 @@
 """Rust based algorithms used from cityseer."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,6 +22,7 @@ class Coord:
         `y`: y coordinate.
         """
         ...
+
     def xy(self) -> tuple[float, float]:
         """
         Returns the `Coord` as a `tuple` of `x` and `y`.
@@ -30,9 +32,11 @@ class Coord:
         `xy`: tuple[float, float]
         """
         ...
+
     def validate(self) -> bool:
         """Validates the Coord."""
         ...
+
     def hypot(self, other_coord: Coord) -> float:
         """
         Returns the pythagorean distance from this `Coord` to another.
@@ -43,6 +47,7 @@ class Coord:
             The other coordinate to which to compute the Pythagorean distance.
         """
         ...
+
     def difference(self, other_coord: Coord) -> Coord:
         """
         Returns the vector of the spatial difference between this `Coord` and another.
@@ -403,6 +408,7 @@ class NetworkStructure:
             guide.
         """
         ...
+
     def get_node_payload(self, node_idx: int) -> NodePayload: ...
     def is_node_live(self, node_idx: int) -> bool: ...
     def node_count(self) -> int: ...
@@ -411,18 +417,22 @@ class NetworkStructure:
     def node_xs(self) -> list[float]:
         """`x` coordinates."""
         ...
+
     @property
     def node_ys(self) -> list[float]:
         """`y` coordinates."""
         ...
+
     @property
     def node_xys(self) -> list[tuple[float, float]]:
         """`x` and `y` node coordinates."""
         ...
+
     @property
     def node_lives(self) -> list[bool]:
         """`live` status indicators."""
         ...
+
     @property
     def edge_count(self) -> int: ...
     def add_edge(
@@ -479,11 +489,13 @@ class NetworkStructure:
 
         """
         ...
+
     def edge_references(self) -> list[tuple[int, int, int]]: ...
     def get_edge_payload(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> EdgePayload: ...
     def validate(self) -> bool:
         """Validate Network Structure."""
         ...
+
     def find_nearest(self, data_coord: Any, max_dist: float) -> tuple[int | None, float, int | None]: ...
     def road_distance(self, data_coord: Any, nd_a_idx: int, nd_b_idx: int) -> tuple[float, int | None, int | None]: ...
     def closest_intersections(
@@ -606,6 +618,7 @@ class DataMap:
             An optional key for each datapoint. Used for deduplication.
         """
         ...
+
     def entry_keys(self) -> list[str]: ...
     def get_entry(self, data_key: str) -> DataEntry | None: ...
     def get_data_coord(self, data_key: str) -> Coord | None: ...
