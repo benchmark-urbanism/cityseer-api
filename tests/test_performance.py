@@ -5,8 +5,7 @@ import os
 import timeit
 
 from cityseer import rustalgos
-from cityseer.metrics import networks
-from cityseer.tools import graphs
+from cityseer.tools import graphs, io
 
 
 def test_local_centrality_time(primal_graph):
@@ -70,7 +69,7 @@ def test_local_centrality_time(primal_graph):
     func_time = timeit.timeit(shortest_path_tree_wrapper, number=iters)
     print(f"shortest_path_tree_wrapper: {func_time} for {iters} iterations")
     assert func_time < 1
-    # shortest_path_tree_wrapper: 0.39821521303383633 for 10000 iterations
+    # shortest_path_tree_wrapper: 0.2906692470423877 for 10000 iterations
 
     def node_cent_wrapper():
         network_structure.local_node_centrality_shortest(
@@ -88,7 +87,7 @@ def test_local_centrality_time(primal_graph):
     func_time = timeit.timeit(node_cent_wrapper, number=iters)
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
     assert func_time < 5
-    # node_cent_wrapper: 3.1476474259980023 for 10000 iterations
+    # node_cent_wrapper: 3.5858502141200006 for 10000 iterations
 
     def segment_cent_wrapper():
         network_structure.local_segment_centrality(
@@ -106,7 +105,7 @@ def test_local_centrality_time(primal_graph):
     func_time = timeit.timeit(segment_cent_wrapper, number=iters)
     print(f"segment_cent_wrapper: {func_time} for {iters} iterations")
     assert func_time < 8
-    # segment_cent_wrapper: 6.5499420869746245 for 10000 iterations
+    # segment_cent_wrapper: 6.134561971062794 for 10000 iterations
 
 
 if __name__ == "__main__":
