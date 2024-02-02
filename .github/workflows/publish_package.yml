@@ -107,10 +107,10 @@ jobs:
         with:
           command: sdist
           args: --out dist
-      - name: Upload sdist
+      - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: sdist
+          name: wheels
           path: dist
   release:
     name: Release
@@ -129,5 +129,3 @@ jobs:
           path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository_url: https://pypi.org/legacy/

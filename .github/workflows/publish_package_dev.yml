@@ -108,10 +108,10 @@ jobs:
         with:
           command: sdist
           args: --out dist
-      - name: Upload sdist
+      - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: sdist
+          name: wheels
           path: dist
   release:
     name: Release
