@@ -9,8 +9,10 @@ use pyo3::exceptions;
 use pyo3::prelude::*;
 use rand::Rng;
 use rayon::prelude::*;
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::Ordering as AtomicOrdering;
 
 #[pyclass]
 pub struct CentralityShortestResult {
@@ -51,28 +53,245 @@ pub struct CentralitySegmentResult {
     #[pyo3(get)]
     segment_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
 }
+// NodeDistance for heap
+struct NodeDistance {
+    node_idx: usize,
+    distance: f32,
+}
+// Implement PartialOrd and Ord focusing on distance for comparison
+impl PartialOrd for NodeDistance {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        other.distance.partial_cmp(&self.distance)
+    }
+}
+impl Ord for NodeDistance {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
+// PartialEq to satisfy BinaryHeap requirements
+// can't derive PartialEq for f32, so use a custom approach
+impl PartialEq for NodeDistance {
+    fn eq(&self, other: &Self) -> bool {
+        self.node_idx == other.node_idx && (self.distance - other.distance).abs() < f32::EPSILON
+    }
+}
+// Implement Eq since we've provided a custom PartialEq
+impl Eq for NodeDistance {}
 
 #[pymethods]
 impl NetworkStructure {
-    pub fn shortest_path_tree(
+    /*
+    All shortest paths to max network distance from source node.
+
+    Returns impedances and predecessors for shortest paths from a source node to all other nodes within max
+    distance. Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns).
+
+    Prepares a shortest path tree map - loosely based on dijkstra's shortest path algo. Predecessor map is based on
+    impedance heuristic - which can be different from metres. Distance map in metres is used for defining max
+    distances and computing equivalent distance measures.
+    */
+    pub fn dijkstra_tree_shortest(
         &self,
         src_idx: usize,
         max_dist: u32,
-        angular: Option<bool>,
+        jitter_scale: Option<f32>,
+    ) -> (Vec<usize>, Vec<NodeVisit>) {
+        /* shortest path implementation */
+        let jitter_scale = jitter_scale.unwrap_or(0.0);
+        // hashmap of visited nodes
+        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
+        // vecs of visited nodes and edges
+        let mut visited_nodes: Vec<usize> = Vec::new();
+        // the starting node's impedance and distance will be zero
+        tree_map[src_idx].short_dist = 0.0;
+        tree_map[src_idx].discovered = true;
+        // min heap
+        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        // prime the min heap with the src node
+        active.push(NodeDistance {
+            node_idx: src_idx,
+            distance: 0.0,
+        });
+        // random number generator
+        let mut rng = rand::thread_rng();
+        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            tree_map[node_idx].visited = true;
+            visited_nodes.push(node_idx);
+            // visit all edges between the node and its neighbour
+            for edge_ref in self
+                .graph
+                .edges_directed(NodeIndex::new(node_idx), Direction::Outgoing)
+            {
+                let nb_nd_idx = edge_ref.target();
+                let edge_payload = edge_ref.weight();
+                // ignore self loops
+                if nb_nd_idx.index() == node_idx {
+                    continue;
+                }
+                /*
+                don't visit predecessor node
+                otherwise successive nodes revisit out-edges to previous (neighbour) nodes
+                */
+                if !tree_map[node_idx].pred.is_none()
+                    && nb_nd_idx.index() == tree_map[node_idx].pred.unwrap()
+                {
+                    continue;
+                }
+                /*
+                if the neighbouring node has already been discovered then it is a cycle
+                do before checking if visited and before checking distance cut-off because this node and the neighbour
+                can respectively be within max distance even if cumulative distance across this edge
+                (via non-shortest path) exceeds distance. In some cases all distances are run at once,
+                so keep behaviour consistent by designating the farthest node (but via the shortest distance)
+                as the cycle node
+                */
+                if !tree_map[nb_nd_idx.index()].pred.is_none() {
+                    // bump farther location
+                    // prevents mismatching if cycle exceeds threshold in one direction or another
+                    if tree_map[node_idx].short_dist <= tree_map[nb_nd_idx.index()].short_dist {
+                        tree_map[nb_nd_idx.index()].cycles += 0.5;
+                    } else {
+                        tree_map[node_idx].cycles += 0.5;
+                    }
+                }
+                // impedance and distance is previous plus new
+                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
+                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
+                // bail if distance is greater than threshold
+                // otherwise, add the next node to the heap
+                // use unjittered distance for this step
+                if short_total_dist > max_dist as f32 {
+                    continue;
+                } else if !tree_map[nb_nd_idx.index()].discovered {
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        distance: short_total_dist,
+                    });
+                }
+                // inject jitter
+                let mut jitter: f32 = 0.0;
+                if jitter_scale > 0.0 {
+                    jitter = rng.gen::<f32>() * jitter_scale;
+                }
+                /*
+                if impedance less than prior distances for this node then update shortest path
+                */
+                if short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist {
+                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist + jitter;
+                    tree_map[nb_nd_idx.index()].pred = Some(node_idx);
+                }
+            }
+        }
+        (visited_nodes, tree_map)
+    }
+    pub fn dijkstra_tree_simplest(
+        &self,
+        src_idx: usize,
+        max_dist: u32,
+        jitter_scale: Option<f32>,
+    ) -> (Vec<usize>, Vec<NodeVisit>) {
+        /* simplest path implementation */
+        let jitter_scale = jitter_scale.unwrap_or(0.0);
+        // hashmap of visited nodes
+        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
+        // vecs of visited nodes and edges
+        let mut visited_nodes: Vec<usize> = Vec::new();
+        // the starting node's impedance and distance will be zero
+        // tracks shortest path distance for search cut-off
+        tree_map[src_idx].short_dist = 0.0;
+        tree_map[src_idx].simpl_dist = 0.0;
+        tree_map[src_idx].discovered = true;
+        // prime the active heap with the src node
+        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        active.push(NodeDistance {
+            node_idx: src_idx,
+            distance: 0.0,
+        });
+        // random number generator
+        let mut rng = rand::thread_rng();
+        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            tree_map[node_idx].visited = true;
+            visited_nodes.push(node_idx);
+            // visit all edges between the node and its neighbour
+            for edge_ref in self
+                .graph
+                .edges_directed(NodeIndex::new(node_idx), Direction::Outgoing)
+            {
+                let nb_nd_idx = edge_ref.target();
+                let edge_payload = edge_ref.weight();
+                // ignore self loops
+                if nb_nd_idx.index() == node_idx {
+                    continue;
+                }
+                // ignore if visited
+                if tree_map[nb_nd_idx.index()].visited {
+                    continue;
+                }
+                // ignore if predecessors match
+                // this prevents short-cutting sharp turns through combination of two shallower turns
+                if !tree_map[node_idx].pred.is_none()
+                    && !tree_map[nb_nd_idx.index()].pred.is_none()
+                    && tree_map[node_idx].pred == tree_map[nb_nd_idx.index()].pred
+                {
+                    continue;
+                }
+                // impedance and distance is previous plus new
+                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
+                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
+                /*
+                angular impedance includes two parts:
+                A - turn from prior simplest-path route segment
+                B - angular change across current segment
+                */
+                let mut turn: f32 = 0.0;
+                if node_idx != src_idx {
+                    turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing + 180.0)
+                        % 360.0
+                        - 180.0)
+                        .abs();
+                }
+                let simpl_preceding_dist = turn + edge_payload.angle_sum;
+                let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
+                // bail if distance is greater than threshold
+                // otherwise, add the next node to the heap
+                // use unjittered distance for this step
+                if short_total_dist > max_dist as f32 {
+                    continue;
+                } else if !tree_map[nb_nd_idx.index()].discovered {
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        distance: simpl_total_dist,
+                    });
+                }
+                // inject jitter
+                let mut jitter: f32 = 0.0;
+                if jitter_scale > 0.0 {
+                    jitter = rng.gen::<f32>() * jitter_scale;
+                }
+                /*
+                if impedance less than prior distances for this node then update shortest path
+                */
+                if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist {
+                    tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
+                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
+                    tree_map[nb_nd_idx.index()].pred = Some(node_idx);
+                    tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
+                }
+            }
+        }
+        (visited_nodes, tree_map)
+    }
+    pub fn dijkstra_tree_segment(
+        &self,
+        src_idx: usize,
+        max_dist: u32,
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
-        /*
-        All shortest paths to max network distance from source node.
-
-        Returns impedances and predecessors for shortest paths from a source node to all other nodes within max
-        distance. Angular flag triggers check for sidestepping / cheating with angular impedances (sharp turns).
-
-        Prepares a shortest path tree map - loosely based on dijkstra's shortest path algo. Predecessor map is based on
-        impedance heuristic - which can be different from metres. Distance map in metres is used for defining max
-        distances and computing equivalent distance measures.
-        */
+        /* shortest path segment implementation */
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let angular = angular.unwrap_or(false);
         // hashmap of visited nodes
         let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
         // hashmap of visited edges
@@ -80,155 +299,86 @@ impl NetworkStructure {
         // vecs of visited nodes and edges
         let mut visited_nodes: Vec<usize> = Vec::new();
         let mut visited_edges: Vec<usize> = Vec::new();
-        // vec of active node indices
-        let mut active: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
         tree_map[src_idx].short_dist = 0.0;
-        tree_map[src_idx].simpl_dist = 0.0;
-        // prime the active vec with the src node
-        active.push(src_idx);
+        tree_map[src_idx].discovered = true;
+        // prime the active heap with the src node
+        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        active.push(NodeDistance {
+            node_idx: src_idx,
+            distance: 0.0,
+        });
         // random number generator
         let mut rng = rand::thread_rng();
-        // keep iterating while adding and removing until exploration complete within max dist
-        while active.len() > 0 {
-            // find the next active node with the currently smallest impedance
-            let mut min_nd_idx: Option<usize> = None;
-            let mut min_imp: f32 = f32::INFINITY;
-            for nd_idx in active.iter() {
-                let imp = if angular {
-                    tree_map[*nd_idx].simpl_dist
-                } else {
-                    tree_map[*nd_idx].short_dist
-                };
-                if imp < min_imp {
-                    min_imp = imp;
-                    min_nd_idx = Some(*nd_idx);
-                }
-            }
-            // select the nearest node
-            let active_nd_idx = NodeIndex::new(min_nd_idx.unwrap());
-            // remove from active vec
-            active.retain(|&x| x != active_nd_idx.index());
-            // mark as visited in tree map
-            tree_map[active_nd_idx.index()].visited = true;
-            visited_nodes.push(active_nd_idx.index());
-            // visit neighbours
-            for nb_nd_idx in self
+        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            tree_map[node_idx].visited = true;
+            visited_nodes.push(node_idx);
+            // visit all edges between the node and its neighbour
+            for edge_ref in self
                 .graph
-                .neighbors_directed(active_nd_idx, Direction::Outgoing)
+                .edges_directed(NodeIndex::new(node_idx), Direction::Outgoing)
             {
-                // visit all edges between the node and its neighbour
-                for edge_ref in self.graph.edges_connecting(active_nd_idx, nb_nd_idx) {
-                    let edge_idx = edge_ref.id();
-                    let edge_payload = edge_ref.weight();
-                    // don't follow self-loops
-                    if nb_nd_idx == active_nd_idx {
-                        // before continuing, add edge to active for segment methods
-                        visited_edges.push(edge_idx.index());
-                        edge_map[edge_idx.index()].visited = true;
-                        edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
-                        edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
-                        edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
-                        continue;
-                    }
-                    /*
-                    don't visit predecessor nodes
-                    otherwise successive nodes revisit out-edges to previous (neighbour) nodes
-                    */
-                    if !tree_map[active_nd_idx.index()].pred.is_none() {
-                        if nb_nd_idx.index() == tree_map[active_nd_idx.index()].pred.unwrap() {
-                            continue;
-                        }
-                    }
-                    /*
-                    only add edge to active if the neighbour node has not been processed previously
-                    i.e. single direction only - if a neighbour node has been processed it has already been explored
-                    */
-                    if !tree_map[nb_nd_idx.index()].visited {
-                        visited_edges.push(edge_idx.index());
-                        edge_map[edge_idx.index()].visited = true;
-                        edge_map[edge_idx.index()].start_nd_idx = Some(active_nd_idx.index());
-                        edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
-                        edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
-                    }
-                    if !angular {
-                        /*
-                        if edge has not been claimed AND the neighbouring node has already been discovered,
-                        then it is a cycle do before distance cutoff because this node and the neighbour can
-                        respectively be within max distance even if cumulative distance across this edge
-                        (via non-shortest path) exceeds distance. In some cases all distances are run at once,
-                        so keep behaviour consistent by designating the farthest node (but via the shortest distance)
-                        as the cycle node
-                        */
-                        if !tree_map[nb_nd_idx.index()].pred.is_none() {
-                            // bump farther location
-                            // prevents mismatching if cycle exceeds threshold in one direction or another
-                            if tree_map[active_nd_idx.index()].short_dist
-                                <= tree_map[nb_nd_idx.index()].short_dist
-                            {
-                                tree_map[nb_nd_idx.index()].cycles += 0.5;
-                            } else {
-                                tree_map[active_nd_idx.index()].cycles += 0.5;
-                            }
-                        }
-                    }
-                    // impedance and distance is previous plus new
-                    let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                    let short_total_dist: f32 =
-                        tree_map[active_nd_idx.index()].short_dist + short_preceding_dist;
-                    /*
-                    angular impedance include two parts:
-                    A - turn from prior simplest-path route segment
-                    B - angular change across current segment
-                    */
-                    let mut turn: f32 = 0.0;
-                    if active_nd_idx.index() != src_idx {
-                        turn = ((edge_payload.in_bearing
-                            - tree_map[active_nd_idx.index()].out_bearing
-                            + 180.0)
-                            % 360.0
-                            - 180.0)
-                            .abs()
-                    }
-                    let simpl_preceding_dist = turn + edge_payload.angle_sum;
-                    let simpl_total_dist =
-                        tree_map[active_nd_idx.index()].simpl_dist + simpl_preceding_dist;
-                    // add the neighbour to active if undiscovered but only if less than max shortest path threshold
-                    if !tree_map[nb_nd_idx.index()].visited && short_total_dist <= max_dist as f32 {
-                        active.push(nb_nd_idx.index());
-                    }
-                    // jitter is for injecting stochasticity, e.g. for rectlinear grids
-                    let mut jitter: f32 = 0.0;
-                    if jitter_scale > 0.0 {
-                        jitter = rng.gen::<f32>() * jitter_scale;
-                    }
-                    /*
-                    if impedance less than prior, update
-                    this will also happen for the first nodes that overshoot the boundary
-                    they will not be explored further because they have not been added to active
-                    */
-                    // shortest path heuristic differs for angular vs. not
-                    if (angular
-                        && simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist)
-                        || (!angular
-                            && short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist)
-                    {
-                        let origin_seg = if active_nd_idx.index() == src_idx {
-                            edge_idx.index()
-                        } else {
-                            tree_map[active_nd_idx.index()].origin_seg.unwrap()
-                        };
-                        // chain through origin segments
-                        // identifies which segment a particular shortest path originated from
-                        if let Some(nb_node_ref) = tree_map.get_mut(nb_nd_idx.index()) {
-                            nb_node_ref.simpl_dist = simpl_total_dist + jitter;
-                            nb_node_ref.short_dist = short_total_dist + jitter;
-                            nb_node_ref.pred = Some(active_nd_idx.index());
-                            nb_node_ref.out_bearing = edge_payload.out_bearing;
-                            nb_node_ref.origin_seg = Some(origin_seg);
-                            nb_node_ref.last_seg = Some(edge_idx.index());
-                        }
-                    }
+                let nb_nd_idx = edge_ref.target();
+                let edge_idx = edge_ref.id();
+                let edge_payload = edge_ref.weight();
+                // don't follow self-loops
+                if nb_nd_idx.index() == node_idx {
+                    // before continuing, add edge to active for segment methods
+                    visited_edges.push(edge_idx.index());
+                    edge_map[edge_idx.index()].visited = true;
+                    edge_map[edge_idx.index()].start_nd_idx = Some(node_idx);
+                    edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
+                    edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
+                    continue;
+                }
+                /*
+                only do visited check after checking for loops
+                only add edge to active if the neighbour node has not been processed previously
+                i.e. single direction only - if a neighbour node has been processed it has already been explored
+                */
+                if tree_map[nb_nd_idx.index()].visited {
+                    continue;
+                } else {
+                    visited_edges.push(edge_idx.index());
+                    edge_map[edge_idx.index()].visited = true;
+                    edge_map[edge_idx.index()].start_nd_idx = Some(node_idx);
+                    edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
+                    edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
+                }
+                // impedance and distance is previous plus new
+                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
+                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
+                // bail if distance is greater than threshold
+                // otherwise, add the next node to the heap
+                // use unjittered distance for this step
+                if short_total_dist > max_dist as f32 {
+                    continue;
+                } else if !tree_map[nb_nd_idx.index()].discovered {
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        distance: short_total_dist,
+                    });
+                }
+                // inject jitter
+                let mut jitter: f32 = 0.0;
+                if jitter_scale > 0.0 {
+                    jitter = rng.gen::<f32>() * jitter_scale;
+                }
+                /*
+                if impedance less than prior distances for this node then update shortest path
+                */
+                if short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist {
+                    let origin_seg = if node_idx == src_idx {
+                        edge_idx.index()
+                    } else {
+                        tree_map[node_idx].origin_seg.unwrap()
+                    };
+                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist + jitter;
+                    tree_map[nb_nd_idx.index()].pred = Some(node_idx);
+                    tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
+                    tree_map[nb_nd_idx.index()].origin_seg = Some(origin_seg);
+                    tree_map[nb_nd_idx.index()].last_seg = Some(edge_idx.index());
                 }
             }
         }
@@ -277,14 +427,14 @@ impl NetworkStructure {
             node_indices.par_iter().for_each(|src_idx| {
                 // progress
                 if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
                 // skip if not live
                 if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
-                let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                    self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
+                let (visited_nodes, tree_map) =
+                    self.dijkstra_tree_shortest(*src_idx, max_dist, jitter_scale);
                 for to_idx in visited_nodes.iter() {
                     let node_visit = tree_map[*to_idx].clone();
                     if to_idx == src_idx {
@@ -300,18 +450,18 @@ impl NetworkStructure {
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
                                 node_density.metric[i][*src_idx]
-                                    .fetch_add(1.0 * wt, Ordering::Relaxed);
+                                    .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
                                 node_farness.metric[i][*src_idx]
-                                    .fetch_add(node_visit.short_dist * wt, Ordering::Relaxed);
+                                    .fetch_add(node_visit.short_dist * wt, AtomicOrdering::Relaxed);
                                 node_cycles.metric[i][*src_idx]
-                                    .fetch_add(node_visit.cycles * wt, Ordering::Relaxed);
+                                    .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
                                 node_harmonic.metric[i][*src_idx].fetch_add(
                                     (1.0 / node_visit.short_dist) * wt,
-                                    Ordering::Relaxed,
+                                    AtomicOrdering::Relaxed,
                                 );
                                 node_beta.metric[i][*src_idx].fetch_add(
                                     (-beta * node_visit.short_dist).exp() * wt,
-                                    Ordering::Relaxed,
+                                    AtomicOrdering::Relaxed,
                                 );
                             }
                         }
@@ -330,10 +480,10 @@ impl NetworkStructure {
                                 let beta = betas[i];
                                 if node_visit.short_dist <= distance as f32 {
                                     node_betweenness.metric[i][inter_idx]
-                                        .fetch_add(1.0 * wt, Ordering::Acquire);
+                                        .fetch_add(1.0 * wt, AtomicOrdering::Acquire);
                                     node_betweenness_beta.metric[i][inter_idx].fetch_add(
                                         (-beta * node_visit.short_dist).exp() * wt,
-                                        Ordering::Acquire,
+                                        AtomicOrdering::Acquire,
                                     );
                                 }
                             }
@@ -423,14 +573,14 @@ impl NetworkStructure {
             node_indices.par_iter().for_each(|src_idx| {
                 // progress
                 if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
                 // skip if not live
                 if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
-                let (visited_nodes, _visited_edges, tree_map, _edge_map) =
-                    self.shortest_path_tree(*src_idx, max_dist, Some(true), jitter_scale);
+                let (visited_nodes, tree_map) =
+                    self.dijkstra_tree_simplest(*src_idx, max_dist, jitter_scale);
                 for to_idx in visited_nodes.iter() {
                     let node_visit = tree_map[*to_idx].clone();
                     if to_idx == src_idx {
@@ -446,11 +596,11 @@ impl NetworkStructure {
                             if node_visit.short_dist <= distance as f32 {
                                 let ang = 1.0 + (node_visit.simpl_dist / 180.0);
                                 node_density.metric[i][*src_idx]
-                                    .fetch_add(1.0 * wt, Ordering::Relaxed);
+                                    .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
                                 node_farness.metric[i][*src_idx]
-                                    .fetch_add(ang * wt, Ordering::Relaxed);
+                                    .fetch_add(ang * wt, AtomicOrdering::Relaxed);
                                 node_harmonic.metric[i][*src_idx]
-                                    .fetch_add((1.0 / ang) * wt, Ordering::Relaxed);
+                                    .fetch_add((1.0 / ang) * wt, AtomicOrdering::Relaxed);
                             }
                         }
                     }
@@ -467,7 +617,7 @@ impl NetworkStructure {
                                 let distance = distances[i];
                                 if node_visit.short_dist <= distance as f32 {
                                     node_betweenness.metric[i][inter_idx]
-                                        .fetch_add(1.0 * wt, Ordering::Acquire);
+                                        .fetch_add(1.0 * wt, AtomicOrdering::Acquire);
                                 }
                             }
                             inter_idx = tree_map[inter_idx].pred.unwrap();
@@ -556,14 +706,14 @@ impl NetworkStructure {
             node_indices.par_iter().for_each(|src_idx| {
                 // progress
                 if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
                 // skip if not live
                 if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
                 let (visited_nodes, visited_edges, tree_map, edge_map) =
-                    self.shortest_path_tree(*src_idx, max_dist, Some(false), jitter_scale);
+                    self.dijkstra_tree_segment(*src_idx, max_dist, jitter_scale);
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = edge_map[*edge_idx].clone();
                     let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();
@@ -633,20 +783,21 @@ impl NetworkStructure {
                                     c_imp = a_imp + (distance - a) * edge_payload.imp_factor;
                                 }
                                 segment_density.metric[i][*src_idx]
-                                    .fetch_add(c - a, Ordering::Relaxed);
+                                    .fetch_add(c - a, AtomicOrdering::Relaxed);
                                 let seg_harm = if a_imp < 1.0 {
                                     c_imp.ln()
                                 } else {
                                     c_imp.ln() - a_imp.ln()
                                 };
                                 segment_harmonic.metric[i][*src_idx]
-                                    .fetch_add(seg_harm, Ordering::Relaxed);
+                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
                                 let bet = if beta == 0.0 {
                                     c_imp - a_imp
                                 } else {
                                     ((-beta * c_imp).exp() - (-beta * a_imp).exp()) / -beta
                                 };
-                                segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
+                                segment_beta.metric[i][*src_idx]
+                                    .fetch_add(bet, AtomicOrdering::Relaxed);
                             }
                             if b == d {
                                 continue;
@@ -657,20 +808,21 @@ impl NetworkStructure {
                                     d_imp = b_imp + (distance - b) * edge_payload.imp_factor;
                                 }
                                 segment_density.metric[i][*src_idx]
-                                    .fetch_add(d - b, Ordering::Relaxed);
+                                    .fetch_add(d - b, AtomicOrdering::Relaxed);
                                 let seg_harm = if b_imp < 1.0 {
                                     d_imp.ln()
                                 } else {
                                     d_imp.ln() - b_imp.ln()
                                 };
                                 segment_harmonic.metric[i][*src_idx]
-                                    .fetch_add(seg_harm, Ordering::Relaxed);
+                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
                                 let bet = if beta == 0.0 {
                                     d_imp - b_imp
                                 } else {
                                     ((-beta * d_imp).exp() - (-beta * b_imp).exp()) / -beta
                                 };
-                                segment_beta.metric[i][*src_idx].fetch_add(bet, Ordering::Relaxed);
+                                segment_beta.metric[i][*src_idx]
+                                    .fetch_add(bet, AtomicOrdering::Relaxed);
                             }
                         }
                     }
@@ -762,7 +914,7 @@ impl NetworkStructure {
                                             + ((-beta * l_2).exp() - (-beta * l_1).exp()) / -beta
                                     };
                                     segment_betweenness.metric[i][inter_idx]
-                                        .fetch_add(auc, Ordering::Acquire);
+                                        .fetch_add(auc, AtomicOrdering::Acquire);
                                 }
                             }
                             inter_idx = tree_map[inter_idx].pred.unwrap();

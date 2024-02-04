@@ -160,7 +160,7 @@ def find_path(start_idx, target_idx, tree_map):
     return list(reversed(s_path))
 
 
-def test_shortest_path_tree(primal_graph, dual_graph):
+def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph, 3395)
     # prepare round-trip graph for checks
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
@@ -169,10 +169,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     for max_dist in [0, 500, 2000, 5000]:
         for src_idx in range(len(primal_graph)):
             # check shortest path maps
-            _visited_nodes, _visited_edges, tree_map, _edge_map = network_structure_p.shortest_path_tree(
+            _visited_nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
                 src_idx,
                 max_dist,
-                angular=False,
             )
             # compare against networkx dijkstra
             nx_dist, nx_path = nx.single_source_dijkstra(G_round_trip, str(src_idx), weight="length", cutoff=max_dist)
@@ -190,14 +189,13 @@ def test_shortest_path_tree(primal_graph, dual_graph):
                 if src_idx >= 49:
                     continue
                 # no jitter
-                _visited_nodes, _visited_edges, tree_map, _edge_map = network_structure_p.shortest_path_tree(
+                _visited_nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
                     src_idx,
                     max_dist,
-                    angular=False,
                 )
                 # with jitter
-                _visited_nodes_j, _visited_edges_j, tree_map_j, _edge_map_j = network_structure_j.shortest_path_tree(
-                    src_idx, max_dist, angular=False, jitter_scale=jitter
+                _visited_nodes_j, tree_map_j = network_structure_j.dijkstra_tree_shortest(
+                    src_idx, max_dist, jitter_scale=jitter
                 )
                 for to_idx in range(len(primal_graph)):
                     if to_idx >= 49:
@@ -211,9 +209,7 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # test all shortest distance calculations against networkX
     for src_idx in range(len(G_round_trip)):
         shortest_dists = nx.shortest_path_length(G_round_trip, str(src_idx), weight="length")
-        _visted_nodes, _visited_edges, tree_map, _edge_map = network_structure_p.shortest_path_tree(
-            src_idx, 5000, jitter_scale=0.0, angular=False
-        )
+        _visted_nodes, tree_map = network_structure_p.dijkstra_tree_shortest(src_idx, 5000, jitter_scale=0.0)
         for target_idx in range(len(G_round_trip)):
             if str(target_idx) not in shortest_dists:
                 continue
@@ -234,15 +230,13 @@ def test_shortest_path_tree(primal_graph, dual_graph):
         p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
         d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
         d_target_idx = nodes_gdf_d.index.tolist().index(d_target)
-        _visited_nodes_p, _visited_edges_p, tree_map_p, _edge_map_p = network_structure_p.shortest_path_tree(
+        _visited_nodes_p, tree_map_p = network_structure_p.dijkstra_tree_simplest(
             p_source_idx,
             5000,
-            angular=True,
         )
-        _visited_nodes_d, _visited_edges_d, tree_map_d, _edge_map_d = network_structure_d.shortest_path_tree(
+        _visited_nodes_d, tree_map_d = network_structure_d.dijkstra_tree_simplest(
             d_source_idx,
             5000,
-            angular=True,
         )
         assert tree_map_p[p_target_idx].simpl_dist - tree_map_d[d_target_idx].simpl_dist < config.ATOL
     # angular impedance should take a simpler but longer path - test basic case on dual
@@ -250,10 +244,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     src_idx = nodes_gdf_d.index.tolist().index("11_6_k0")
     target = nodes_gdf_d.index.tolist().index("39_40_k0")
     # SIMPLEST PATH: get simplest path tree using angular impedance
-    _visited_nodes_d2, _visited_edges_d2, tree_map_d2, _edge_map_d2 = network_structure_d.shortest_path_tree(
+    _visited_nodes_d2, tree_map_d2 = network_structure_d.dijkstra_tree_simplest(
         src_idx,
         5000,
-        angular=True,
     )
     # find path
     path = find_path(target, src_idx, tree_map_d2)
@@ -274,10 +267,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # get shortest path tree using non angular impedance
     # this should cut through central node
     # would otherwise have used outside periphery route if using simplest path
-    _visited_nodes_d3, _visited_edges_d3, tree_map_d3, _edge_map_d3 = network_structure_d.shortest_path_tree(
+    _visited_nodes_d3, tree_map_d3 = network_structure_d.dijkstra_tree_shortest(
         src_idx,
         5000,
-        angular=False,
     )
     # find path
     path = find_path(target, src_idx, tree_map_d3)
@@ -301,10 +293,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
     # NO SIDESTEPS - explicit check that sidesteps are prevented
     src_idx = nodes_gdf_d.index.tolist().index("10_43_k0")
     target = nodes_gdf_d.index.tolist().index("10_5_k0")
-    _visited_nodes_d4, _visited_edges_d4, tree_map_d4, _edge_map_d4 = network_structure_d.shortest_path_tree(
+    _visited_nodes_d4, tree_map_d4 = network_structure_d.dijkstra_tree_simplest(
         src_idx,
         5000,
-        angular=True,
     )
     # find path
     path = find_path(target, src_idx, tree_map_d4)
@@ -327,10 +318,9 @@ def test_shortest_path_tree(primal_graph, dual_graph):
             edges_gdf_d.loc[idx].in_bearing,
             edges_gdf_d.loc[idx].out_bearing,
         )
-    _visited_nodes_d5, _visited_edges_d5, tree_map_d5, _edge_map_d5 = network_structure_d.shortest_path_tree(
+    _visited_nodes_d5, tree_map_d5 = network_structure_d.dijkstra_tree_shortest(
         src_idx,
         5000,
-        angular=False,
     )
     # find path
     path = find_path(target, src_idx, tree_map_d5)
@@ -395,7 +385,7 @@ def test_local_node_centrality_shortest(primal_graph):
     cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     for src_idx in range(n_nodes):
         # get shortest path maps
-        visited_nodes, _visited_edges, tree_map, _edge_map = network_structure.shortest_path_tree(src_idx, 5000)
+        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(src_idx, 5000)
         for to_idx in visited_nodes:
             # skip self nodes
             if to_idx == src_idx:

@@ -502,8 +502,14 @@ class NetworkStructure:
         self, data_coord: Any, pred_map: list[int | None], last_nd_idx: int
     ) -> tuple[float, int | None, int | None]: ...
     def assign_to_network(self, data_coord: Any, max_dist: float) -> tuple[int | None, int | None]: ...
-    def shortest_path_tree(
-        self, src_idx: int, max_dist: int, angular: bool | None = None, jitter_scale: float | None = None
+    def dijkstra_tree_shortest(
+        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+    ) -> tuple[list[int], list[NodeVisit]]: ...
+    def dijkstra_tree_simplest(
+        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+    ) -> tuple[list[int], list[NodeVisit]]: ...
+    def dijkstra_tree_segment(
+        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]: ...
     def local_node_centrality_shortest(
         self,

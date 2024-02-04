@@ -60,6 +60,8 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub visited: bool,
     #[pyo3(get)]
+    pub discovered: bool,
+    #[pyo3(get)]
     pub pred: Option<usize>,
     #[pyo3(get)]
     pub short_dist: f32,
@@ -80,6 +82,7 @@ impl NodeVisit {
     pub fn new() -> Self {
         Self {
             visited: false,
+            discovered: false,
             pred: None,
             short_dist: f32::INFINITY,
             simpl_dist: f32::INFINITY,
@@ -692,12 +695,7 @@ mod tests {
             120.0,
             120.0,
         );
-        let (visited_nodes, visited_edges, tree_map, edge_map) =
-            ns.shortest_path_tree(0, 5, None, None);
-        let (visited_nodes, visited_edges, tree_map, edge_map) =
-            ns.shortest_path_tree(0, 5, None, Some(1.0));
-        let (visited_nodes, visited_edges, tree_map, edge_map) =
-            ns.shortest_path_tree(0, 5, None, Some(10.0));
+        let (visited_nodes, tree_map) = ns.dijkstra_tree_shortest(0, 5, None);
         // let close_result = ns.local_node_centrality_shortest(
         //     Some(vec![50]),
         //     None,
@@ -716,7 +714,6 @@ mod tests {
         //     None,
         //     None,
         // );
-        let a = 1;
         // assert_eq!(add(2, 2), 4);
     }
 }

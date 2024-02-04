@@ -45,6 +45,23 @@ def test_local_centrality_time(primal_graph):
     - Tests on using a List(Dict('x', 'y', etc.) structure proved almost four times slower, so sticking with arrays
     - Experiments with golang proved too complex re: bindings...
     - Ended up with rust
+
+    Rust
+    shortest_path_tree_wrapper: 0.28707868605852127 for 10000 iterations
+    node_cent_wrapper: 3.1882867829408497 for 10000 iterations
+    segment_cent_wrapper: 5.971783181885257 for 10000 iterations
+
+    Heap
+    shortest_path_tree_wrapper: 0.2747780899517238 for 10000 iterations
+    node_cent_wrapper: 3.095424270024523 for 10000 iterations
+    segment_cent_wrapper: 5.882331402972341 for 10000 iterations
+
+    Split functions
+    dijkstra_tree_shortest_wrapper: 0.11545719904825091 for 10000 iterations
+    dijkstra_tree_simplest_wrapper: 0.10305578005500138 for 10000 iterations
+    dijkstra_tree_segment_wrapper: 0.2831501439213753 for 10000 iterations
+    node_cent_wrapper: 3.0920922509394586 for 10000 iterations
+    segment_cent_wrapper: 5.607312946114689 for 10000 iterations
     """
 
     if "GITHUB_ACTIONS" in os.environ:
@@ -55,21 +72,47 @@ def test_local_centrality_time(primal_graph):
     # needs a large enough beta so that distance thresholds aren't encountered
     distances, _betas = rustalgos.pair_distances_and_betas(distances=[5000])
 
-    def shortest_path_tree_wrapper():
-        network_structure.shortest_path_tree(
+    def dijkstra_tree_shortest_wrapper():
+        network_structure.dijkstra_tree_shortest(
             src_idx=0,
             max_dist=5000,
-            angular=False,
         )
 
     # prime the function
-    shortest_path_tree_wrapper()
+    dijkstra_tree_shortest_wrapper()
     iters = 10000
     # time and report
-    func_time = timeit.timeit(shortest_path_tree_wrapper, number=iters)
-    print(f"shortest_path_tree_wrapper: {func_time} for {iters} iterations")
+    func_time = timeit.timeit(dijkstra_tree_shortest_wrapper, number=iters)
+    print(f"dijkstra_tree_shortest_wrapper: {func_time} for {iters} iterations")
     assert func_time < 1
-    # shortest_path_tree_wrapper: 0.2906692470423877 for 10000 iterations
+
+    def dijkstra_tree_simplest_wrapper():
+        network_structure.dijkstra_tree_simplest(
+            src_idx=0,
+            max_dist=5000,
+        )
+
+    # prime the function
+    dijkstra_tree_simplest_wrapper()
+    iters = 10000
+    # time and report
+    func_time = timeit.timeit(dijkstra_tree_simplest_wrapper, number=iters)
+    print(f"dijkstra_tree_simplest_wrapper: {func_time} for {iters} iterations")
+    assert func_time < 1
+
+    def dijkstra_tree_segment_wrapper():
+        network_structure.dijkstra_tree_segment(
+            src_idx=0,
+            max_dist=5000,
+        )
+
+    # prime the function
+    dijkstra_tree_segment_wrapper()
+    iters = 10000
+    # time and report
+    func_time = timeit.timeit(dijkstra_tree_segment_wrapper, number=iters)
+    print(f"dijkstra_tree_segment_wrapper: {func_time} for {iters} iterations")
+    assert func_time < 1
 
     def node_cent_wrapper():
         network_structure.local_node_centrality_shortest(
