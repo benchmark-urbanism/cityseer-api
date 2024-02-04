@@ -6,6 +6,7 @@ centrality methods (which do require further computational optimisation due to t
 in the [`networks`](/metrics/networks) module.
 
 """
+
 # workaround until networkx adopts types
 # pyright: basic
 

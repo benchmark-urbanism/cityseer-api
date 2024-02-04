@@ -36,9 +36,10 @@ def test_aggregate_to_src_idx(primal_graph):
                     )
                     # compare to manual checks on distances:
                     # get the network distances
-                    _nodes, _edges, tree_map, _edge_map = network_structure.shortest_path_tree(
-                        netw_src_idx, max_dist, angular
-                    )
+                    if angular is False:
+                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(netw_src_idx, max_dist)
+                    else:
+                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(netw_src_idx, max_dist)
                     # verify distances vs. the max
                     for data_key, data_entry in data_map.entries.items():
                         # nearest

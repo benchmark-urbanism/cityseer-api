@@ -20,7 +20,7 @@ The github repository is available at [github.com/benchmark-urbanism/cityseer-ap
 pip install cityseer
 ```
 
-Code tests are run against `python 3.10`, though the code base will generally be compatible with Python 3.8+.
+Code tests are run against Python versions `3.10` - `3.12`.
 
 ## Notebooks
 

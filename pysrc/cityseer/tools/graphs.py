@@ -4,6 +4,7 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
 """
+
 # workaround until networkx adopts types
 # pyright: basic
 

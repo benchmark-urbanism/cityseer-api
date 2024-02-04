@@ -207,8 +207,11 @@ impl DataMap {
         // this is for sifting out the closest entry point
         let mut nearest_ids: HashMap<String, (String, f32)> = HashMap::new();
         // shortest paths
-        let (_visited_nodes, _visited_edges, tree_map, _edge_map) = network_structure
-            .shortest_path_tree(netw_src_idx, max_dist, Some(angular), Some(jitter_scale));
+        let (_visited_nodes, tree_map) = if !angular {
+            network_structure.dijkstra_tree_shortest(netw_src_idx, max_dist, Some(jitter_scale))
+        } else {
+            network_structure.dijkstra_tree_simplest(netw_src_idx, max_dist, Some(jitter_scale))
+        };
         // iterate data entries
         for (data_key, data_val) in &self.entries {
             let mut nearest_total_dist = f32::INFINITY;

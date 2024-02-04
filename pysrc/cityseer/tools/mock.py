@@ -4,6 +4,7 @@ A collection of functions for the generation of mock data.
 This module is intended for project development and writing code tests, but may otherwise be useful for demonstration
 and utility purposes.
 """
+
 from __future__ import annotations
 
 import logging
