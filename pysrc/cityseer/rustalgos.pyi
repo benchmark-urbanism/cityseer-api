@@ -1,7 +1,7 @@
 """Rust based algorithms used from cityseer."""
 
 # pyright: basic
-# pylint: disable-all
+# pylint: disable=unused-argument,missing-function-docstring,unnecessary-ellipsis,missing-class-docstring
 
 from __future__ import annotations
 
@@ -388,9 +388,10 @@ class CentralitySegmentResult:
     segment_beta: dict[int, npt.ArrayLike]
     segment_betweenness: dict[int, npt.ArrayLike]
 
-class DiGraph: ...
+class DiGraph: ...  # pylint: disable=multiple-statements
 
 class NetworkStructure:
+    # pylint: disable=too-many-public-methods
     graph: DiGraph
     @classmethod
     def new(cls) -> NetworkStructure: ...
