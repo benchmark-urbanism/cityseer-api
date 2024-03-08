@@ -111,8 +111,7 @@ def measure_max_angle(linestring_coords: ListCoordsType) -> float:
     max_angle: float = 0
     for c_idx in range(len(linestring_coords) - 2):
         angle = _measure_linestring_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
-        if angle > max_angle:
-            max_angle = angle
+        max_angle = max(max_angle, angle)
 
     return max_angle
 

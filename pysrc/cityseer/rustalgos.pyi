@@ -1,5 +1,8 @@
 """Rust based algorithms used from cityseer."""
 
+# pyright: basic
+# pylint: disable-all
+
 from __future__ import annotations
 
 from typing import Any
@@ -404,8 +407,8 @@ class NetworkStructure:
             The node's `y` coordinate.
         live: bool
             The `live` node attribute identifying if this node falls within the areal boundary of interest as opposed to
-            those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in the
-            guide.
+            those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in
+            the guide.
         """
         ...
 

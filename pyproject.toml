@@ -180,7 +180,6 @@ exclude = [
   "docs",
   "**/temp/",
   "tests/",
-  "pysrc/cityseer/stubs",
   "dist",
   ".venv",
 ]
