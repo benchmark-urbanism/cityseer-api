@@ -888,6 +888,92 @@ def network_structure_from_nx(
     return nodes_gdf, edges_gdf, network_structure
 
 
+def network_structure_from_gpd(
+    nodes_gdf: gpd.GeoDataFrame,
+    edges_gdf: gpd.GeoDataFrame,
+) -> rustalgos.NetworkStructure:
+    """
+    Reassembles a `NetworkStructure` from cityseer nodes and edges GeoDataFrames.
+
+    This method is intended for use with "circular" workflows, where a `cityseer` NetworkX graph has been converted into
+    `cityseer` nodes and edges GeoDataFrames using [`network_structure_from_nx`](#network_structure_from_nx). If the
+    resultant GeoDataFrames are saved to disk and reloaded, then this method can be used to recreate the associated
+    `NetworkStructure` which is required for optimised (`rust`) functions.
+
+    Parameters
+    ----------
+    gpd.GeoDataFrame
+        A cityseer created nodes `gpd.GeoDataFrame` where the originating `networkX` graph's node keys have been saved
+        as the DataFrame index, and where the columns contain `x`, `y`, `live`, and `weight` attributes.
+    gpd.GeoDataFrame
+        A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`,
+        `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`
+        attributes.
+
+    Returns
+    -------
+    rustalgos.NetworkStructure
+        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    """
+    # prepare the network structure
+    network_structure = rustalgos.NetworkStructure()
+    # check column integrity
+    nodes_cols = [
+        "x",
+        "y",
+        "live",
+        "weight",
+    ]
+    for col in nodes_cols:
+        if col not in nodes_gdf.columns:
+            raise ValueError(f"Missing expected column in nodes GDF: {col}")
+    edges_cols = [
+        "start_ns_node_idx",
+        "end_ns_node_idx",
+        "edge_idx",
+        "nx_start_node_key",
+        "nx_end_node_key",
+        "length",
+        "angle_sum",
+        "imp_factor",
+        "in_bearing",
+        "out_bearing",
+    ]
+    for col in edges_cols:
+        if col not in edges_gdf.columns:
+            raise ValueError(f"Missing expected column in edges GDF: {col}")
+    # sort by network structure nodes and check for continuity
+    nodes_gdf_sorted = nodes_gdf.sort_values(by="ns_node_idx")
+    expected_range = list(range(len(nodes_gdf_sorted)))
+    actual_range = list(nodes_gdf_sorted["ns_node_idx"])
+    if actual_range != expected_range:
+        raise ValueError("ns_node_idx column should be continuous but seems to be missing rows.")
+    for nd_key, node_data in tqdm(nodes_gdf_sorted.iterrows(), disable=config.QUIET_MODE):
+        ns_node_idx = network_structure.add_node(
+            str(nd_key),
+            float(node_data["x"]),
+            float(node_data["y"]),
+            bool(node_data["live"]),
+            float(node_data["weight"]),
+        )
+        assert ns_node_idx == node_data["ns_node_idx"]
+    for _edge_key, edge_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
+        network_structure.add_edge(
+            int(edge_data["start_ns_node_idx"]),
+            int(edge_data["end_ns_node_idx"]),
+            int(edge_data["edge_idx"]),
+            str(edge_data["nx_start_node_key"]),
+            str(edge_data["nx_end_node_key"]),
+            float(edge_data["length"]),
+            float(edge_data["angle_sum"]),
+            float(edge_data["imp_factor"]),
+            float(edge_data["in_bearing"]),
+            float(edge_data["out_bearing"]),
+        )
+    network_structure.validate()
+    return network_structure
+
+
 def nx_from_cityseer_geopandas(
     nodes_gdf: gpd.GeoDataFrame,
     edges_gdf: gpd.GeoDataFrame,
