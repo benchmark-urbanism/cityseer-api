@@ -98,7 +98,7 @@ def assign_gdf_to_network(
         )
     # only compute if not already computed
     if calculate_assigned is True:
-        for data_key in data_map.entry_keys():
+        for data_key in data_map.entry_keys():  # pylint: disable=not-an-iterable
             data_coord = data_map.get_data_coord(data_key)
             nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
             if nearest_idx is not None:
@@ -253,7 +253,7 @@ def compute_accessibilities(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack accessibility data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
@@ -458,7 +458,7 @@ def compute_mixed_uses(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack mixed-uses data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
@@ -619,7 +619,7 @@ def compute_stats(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack the numerical arrays
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
     for dist_key in distances:
         nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_{dist_key}")] = result.sum[dist_key]  # type: ignore
         nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_wt_{dist_key}")] = result.sum_wt[  # type: ignore

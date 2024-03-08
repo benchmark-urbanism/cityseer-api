@@ -1,5 +1,8 @@
 """Rust based algorithms used from cityseer."""
 
+# pyright: basic
+# pylint: disable=unused-argument,missing-function-docstring,unnecessary-ellipsis,missing-class-docstring
+
 from __future__ import annotations
 
 from typing import Any
@@ -385,9 +388,10 @@ class CentralitySegmentResult:
     segment_beta: dict[int, npt.ArrayLike]
     segment_betweenness: dict[int, npt.ArrayLike]
 
-class DiGraph: ...
+class DiGraph: ...  # pylint: disable=multiple-statements
 
 class NetworkStructure:
+    # pylint: disable=too-many-public-methods
     graph: DiGraph
     @classmethod
     def new(cls) -> NetworkStructure: ...
@@ -404,8 +408,8 @@ class NetworkStructure:
             The node's `y` coordinate.
         live: bool
             The `live` node attribute identifying if this node falls within the areal boundary of interest as opposed to
-            those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in the
-            guide.
+            those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in
+            the guide.
         """
         ...
 

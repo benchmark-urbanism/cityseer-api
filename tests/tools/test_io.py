@@ -636,6 +636,38 @@ def test_network_structure_from_nx(diamond_graph):
             io.network_structure_from_nx(G_test, 3395)
 
 
+def test_network_structure_from_gpd(primal_graph):
+    G: nx.MultiGraph = primal_graph.copy()
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, 3395)
+    # round trip network structure
+    network_structure_round = io.network_structure_from_gpd(nodes_gdf, edges_gdf)
+    # node indices
+    assert network_structure.node_indices() == network_structure_round.node_indices()
+    # check node data consistency
+    for start_nd_idx in network_structure.node_indices():
+        node_data = network_structure.get_node_payload(start_nd_idx)
+        node_data_round = network_structure_round.get_node_payload(start_nd_idx)
+        assert node_data.coord.x == node_data_round.coord.x
+        assert node_data.coord.y == node_data_round.coord.y
+        assert node_data.node_key == node_data_round.node_key
+        assert node_data.live == node_data_round.live
+        assert node_data.weight == node_data_round.weight
+    # edge indices
+    assert network_structure.edge_references() == network_structure_round.edge_references()
+    # check edge data consistency
+    for start_nd_idx, end_nd_idx, edge_idx in network_structure.edge_references():
+        edge_data = network_structure.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+        edge_data_round = network_structure_round.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+        assert edge_data.edge_idx == edge_data_round.edge_idx
+        assert edge_data.start_nd_key == edge_data_round.start_nd_key
+        assert edge_data.end_nd_key == edge_data_round.end_nd_key
+        assert edge_data.length == edge_data_round.length
+        assert edge_data.angle_sum == edge_data_round.angle_sum
+        assert edge_data.imp_factor == edge_data_round.imp_factor
+        assert edge_data.in_bearing == edge_data_round.in_bearing
+        assert edge_data.out_bearing == edge_data_round.out_bearing
+
+
 def test_nx_from_cityseer_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
