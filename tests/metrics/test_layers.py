@@ -68,7 +68,7 @@ def test_compute_accessibilities(primal_graph):
                 )
                 for acc_key in key_set:
                     for dist_key in distances:
-                        acc_data_key_nw = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
+                        acc_data_key_nw = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
                         assert np.allclose(
                             nodes_gdf[acc_data_key_nw].values,
                             accessibility_data[acc_key].unweighted[dist_key],
@@ -76,7 +76,7 @@ def test_compute_accessibilities(primal_graph):
                             rtol=config.RTOL,
                             equal_nan=True,
                         )
-                        acc_data_key_wt = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
+                        acc_data_key_wt = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
                         assert np.allclose(
                             nodes_gdf[acc_data_key_wt].values,
                             accessibility_data[acc_key].weighted[dist_key],
@@ -84,14 +84,17 @@ def test_compute_accessibilities(primal_graph):
                             rtol=config.RTOL,
                             equal_nan=True,
                         )
-                        acc_data_key_dist = config.prep_gdf_key(f"{acc_key}_{dist_key}_distance")
-                        assert np.allclose(
-                            nodes_gdf[acc_data_key_dist].values,
-                            accessibility_data[acc_key].distance[dist_key],
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                            equal_nan=True,
-                        )
+                        acc_data_key_dist = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
+                        if dist_key == max(distances):
+                            assert np.allclose(
+                                nodes_gdf[acc_data_key_dist].values,
+                                accessibility_data[acc_key].distance[dist_key],
+                                atol=config.ATOL,
+                                rtol=config.RTOL,
+                                equal_nan=True,
+                            )
+                        else:
+                            assert acc_data_key_dist not in nodes_gdf.columns
                 # most integrity checks happen in underlying method
                 with pytest.raises(ValueError):
                     nodes_gdf, data_gdf = layers.compute_accessibilities(
@@ -145,28 +148,28 @@ def test_compute_mixed_uses(primal_graph):
             )
             for dist_key in distances:
                 for q_key in [0, 1, 2]:
-                    hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}_{dist_key}")
+                    hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=angular, weighted=False)
                     assert np.allclose(
                         nodes_gdf[hill_nw_data_key].values,
                         mu_data.hill[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                    hill_wt_data_key = config.prep_gdf_key(f"hill_wt_q{q_key}_{dist_key}")
+                    hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=angular, weighted=True)
                     assert np.allclose(
                         nodes_gdf[hill_wt_data_key].values,
                         mu_data.hill_weighted[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                shannon_data_key = config.prep_gdf_key(f"shannon_{dist_key}")
+                shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular=angular)
                 assert np.allclose(
                     nodes_gdf[shannon_data_key].values,
                     mu_data.shannon[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
-                gini_data_key = config.prep_gdf_key(f"gini_{dist_key}")
+                gini_data_key = config.prep_gdf_key("gini", dist_key, angular=angular)
                 assert np.allclose(
                     nodes_gdf[gini_data_key].values,
                     mu_data.gini[dist_key],
@@ -194,6 +197,7 @@ def test_compute_stats(primal_graph):
                 network_structure,
                 max_assign_dist,
                 distances=distances,
+                angular=angular,
             )
             # generate stats
             # compare to manual
@@ -202,73 +206,74 @@ def test_compute_stats(primal_graph):
                 network_structure,
                 numerical_map=numerical_map,
                 distances=distances,
+                angular=angular,
             )
             for dist_key in distances:
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_sum_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_sum", dist_key, angular=angular, weighted=False)],
                     stats_result.sum[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_sum_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_sum", dist_key, angular=angular, weighted=True)],
                     stats_result.sum_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_mean_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_mean", dist_key, angular=angular, weighted=False)],
                     stats_result.mean[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_mean_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_mean", dist_key, angular=angular, weighted=True)],
                     stats_result.mean_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_count_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_count", dist_key, angular=angular, weighted=False)],
                     stats_result.count[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_count_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_count", dist_key, angular=angular, weighted=True)],
                     stats_result.count_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_var_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_var", dist_key, angular=angular, weighted=False)],
                     stats_result.variance[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_var_wt_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_var", dist_key, angular=angular, weighted=True)],
                     stats_result.variance_wt[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_max_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_max", dist_key, angular=angular, weighted=False)],
                     stats_result.max[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key(f"mock_numerical_1_min_{dist_key}")],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_min", dist_key, angular=angular, weighted=False)],
                     stats_result.min[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,

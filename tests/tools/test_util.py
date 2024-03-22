@@ -135,7 +135,7 @@ def test_blend_metrics(primal_graph):
     # AVG
     merged_edges_gdf_avg = util.blend_metrics(nodes_gdf, edges_gdf, method="avg")
     for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
+        if not node_column.startswith("cc_"):
             continue
         for _edge_idx, edge_row in merged_edges_gdf_avg.iterrows():
             start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
@@ -144,7 +144,7 @@ def test_blend_metrics(primal_graph):
     # MIN
     merged_edges_gdf_min = util.blend_metrics(nodes_gdf, edges_gdf, method="min")
     for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
+        if not node_column.startswith("cc_"):
             continue
         for _edge_idx, edge_row in merged_edges_gdf_min.iterrows():
             start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]
@@ -153,7 +153,7 @@ def test_blend_metrics(primal_graph):
     # MAX
     merged_edges_gdf_max = util.blend_metrics(nodes_gdf, edges_gdf, method="max")
     for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
+        if not node_column.startswith("cc_"):
             continue
         for _edge_idx, edge_row in merged_edges_gdf_max.iterrows():
             start_val = nodes_gdf.loc[edge_row.nx_start_node_key, node_column]

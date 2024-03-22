@@ -146,7 +146,7 @@ def compute_accessibilities(
     accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
         schema used for the `landuse_labels` parameter, e.g. "pub". The calculations will be performed in both
-        `weighted` and `non_weighted` variants.
+        weighted `wt` and non_weighted `nw` variants.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
@@ -203,7 +203,7 @@ def compute_accessibilities(
     --------
     ```python
     from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
+    from cityseer.tools import mock, graphs, io
 
     # prepare a mock graph
     G = mock.mock_graph()
@@ -222,11 +222,11 @@ def compute_accessibilities(
     )
     print(nodes_gdf.columns)
     # weighted form
-    print(nodes_gdf["cc_metric_c_400_weighted"])
+    print(nodes_gdf["cc_c_400_wt"])
     # non-weighted form
-    print(nodes_gdf["cc_metric_c_400_non_weighted"])
+    print(nodes_gdf["cc_c_400_nw"])
     # nearest distance to landuse
-    print(nodes_gdf["cc_metric_c_400_distance"])
+    print(nodes_gdf["cc_c_nearest_max_800"])
     ```
 
     """
@@ -256,12 +256,13 @@ def compute_accessibilities(
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
     for acc_key in accessibility_keys:
         for dist_key in distances:
-            ac_nw_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_non_weighted")
+            ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
             nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # type: ignore
-            ac_wt_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_weighted")
+            ac_wt_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
             nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # type: ignore
-            ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_{dist_key}_distance")
-            nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
+            if dist_key == max(distances):
+                ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
+                nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -398,14 +399,14 @@ def compute_mixed_uses(
     transformation of Gini-Simpson diversity into units of effective species.|
 
     :::note
-    `hill_branch_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+    `hill_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
     `q=2` for increasingly crude landuse classifications schemas.
     :::
 
     A worked example:
     ```python
     from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
+    from cityseer.tools import mock, graphs, io
 
     # prepare a mock graph
     G = mock.mock_graph()
@@ -424,7 +425,7 @@ def compute_mixed_uses(
     # the data is written to the GeoDataFrame
     print(nodes_gdf.columns)
     # access accordingly, e.g. hill diversity at q=0 and 800m
-    print(nodes_gdf["cc_metric_hill_q0_800"])
+    print(nodes_gdf["cc_hill_q0_800_nw"])
     ```
     :::warning
     Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
@@ -462,16 +463,16 @@ def compute_mixed_uses(
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
-                hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}_{dist_key}")
+                hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=False)
                 nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
             if compute_hill_weighted:
-                hill_wt_data_key = config.prep_gdf_key(f"hill_wt_q{q_key}_{dist_key}")
+                hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=True)
                 nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
         if compute_shannon:
-            shannon_data_key = config.prep_gdf_key(f"shannon_{dist_key}")
+            shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
             nodes_gdf[shannon_data_key] = result.shannon[dist_key]  # type: ignore
         if compute_gini:
-            gini_data_key = config.prep_gdf_key(f"gini_{dist_key}")
+            gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
             nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
@@ -564,7 +565,7 @@ def compute_stats(
 
     ```python
     from cityseer.metrics import networks, layers
-    from cityseer.tools import mock, graphs
+    from cityseer.tools import mock, graphs, io
 
     # prepare a mock graph
     G = mock.mock_graph()
@@ -582,18 +583,18 @@ def compute_stats(
     )
     print(nodes_gdf.columns)
     # weighted form
-    print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])
+    print(nodes_gdf["cc_mock_numerical_1_mean_400_wt"])
     # non-weighted form
-    print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])
+    print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
     ```
 
     :::note
     The following stat types will be available for each `stats_key` for each of the
     computed distances:
     - `max` and `min`
-    - `sum` and `sum_weighted`
-    - `mean` and `mean_weighted`
-    - `variance` and `variance_weighted`
+    - `sum` and `sum_wt`
+    - `mean` and `mean_wt`
+    - `variance` and `variance_wt`
     :::
 
     """
@@ -621,27 +622,25 @@ def compute_stats(
     # unpack the numerical arrays
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
     for dist_key in distances:
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_{dist_key}")] = result.sum[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_sum_wt_{dist_key}")] = result.sum_wt[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_mean_{dist_key}")] = result.mean[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_mean_wt_{dist_key}")] = result.mean_wt[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_count_{dist_key}")] = result.count[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_count_wt_{dist_key}")] = result.count_wt[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_var_{dist_key}")] = result.variance[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_var_wt_{dist_key}")] = result.variance_wt[  # type: ignore
-            dist_key
-        ]
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_max_{dist_key}")] = result.max[dist_key]  # type: ignore
-        nodes_gdf[config.prep_gdf_key(f"{stats_column_label}_min_{dist_key}")] = result.min[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.sum[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
+        nodes_gdf[k] = result.sum_wt[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.mean[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
+        nodes_gdf[k] = result.mean_wt[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.count[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
+        nodes_gdf[k] = result.count_wt[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.variance[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
+        nodes_gdf[k] = result.variance_wt[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.max[dist_key]  # type: ignore
+        k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular, weighted=False)
+        nodes_gdf[k] = result.min[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf

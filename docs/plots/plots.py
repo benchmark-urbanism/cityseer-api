@@ -35,8 +35,8 @@ nodes_gdf, data_gdf = layers.compute_mixed_uses(
     distances=[400, 800],
 )
 # custom colourmap
-segment_harmonic_vals = nodes_gdf["cc_metric_segment_harmonic_800"]
-mixed_uses_vals = nodes_gdf["cc_metric_hill_wt_q0_800"]
+segment_harmonic_vals = nodes_gdf["cc_seg_harmonic_800"]
+mixed_uses_vals = nodes_gdf["cc_hill_q0_800_wt"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 segment_harmonic_cols = cmap(segment_harmonic_vals)
@@ -180,7 +180,7 @@ G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
-    vals.append(data["cc_metric_node_beta_800"])
+    vals.append(data["cc_beta_800"])
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list(
     "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]

@@ -374,7 +374,7 @@ def plot_nx(
     Examples
     --------
     ```py
-    from cityseer.tools import mock, graphs, plot
+    from cityseer.tools import mock, graphs, plot, io
     from cityseer.metrics import networks
     from matplotlib import colors
 
@@ -382,15 +382,17 @@ def plot_nx(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    nodes_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
-    networks.node_centrality(
-        measures=["node_beta"], network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800]
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+    networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=[800]
     )
-    G_after = graphs.nx_from_network_structure(nodes_gdf, network_structure, G)
+    G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # let's extract and normalise the values
     vals = []
     for node, data in G_after.nodes(data=True):
-        vals.append(data["cc_metric_node_beta_800"])
+        vals.append(data["cc_beta_800"])
     # let's create a custom colourmap using matplotlib
     cmap = colors.LinearSegmentedColormap.from_list(
         "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]

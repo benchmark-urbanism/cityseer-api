@@ -137,7 +137,7 @@ from matplotlib import colors
 # custom colourmap
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 # normalise the values
-segment_harmonic_vals = nodes_gdf["cc_metric_segment_harmonic_800"]
+segment_harmonic_vals = nodes_gdf["cc_seg_harmonic_800"]
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 # cast against the colour map
 segment_harmonic_cols = cmap(segment_harmonic_vals)
@@ -185,7 +185,7 @@ nodes_gdf, data_gdf = layers.compute_mixed_uses(
 # the GeoDataFrame will contain the results of the calculations
 print(nodes_gdf.columns)
 # which can be retrieved as needed
-print(nodes_gdf["cc_metric_q0_800_hill"])
+print(nodes_gdf["cc_hill_q0_800_nw"])
 ```
 
 ```python
@@ -202,7 +202,7 @@ _Data assignment becomes more precise on a decomposed Network Layer._
 
 ```python
 # plot distance-weighted "hill" numbers mixed uses
-mixed_uses_vals = nodes_gdf["cc_metric_q0_800_hill_weighted"]
+mixed_uses_vals = nodes_gdf["cc_hill_q0_800_wt"]
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
 plot.plot_assignment(
@@ -237,7 +237,7 @@ nodes_gdf, data_gdf = layers.compute_accessibilities(
 )
 # accessibilities are computed in both weighted and unweighted forms
 # e.g. for "a" and "b" landuse codes in weighted and non weighted, respectively
-print(nodes_gdf[["cc_metric_a_800_weighted", "cc_metric_b_1600_non_weighted"]])
+print(nodes_gdf[["cc_a_800_wt", "cc_b_1600_nw"]])
 ```
 
 Aggregations can likewise be computed for numerical data. Let's generate some mock numerical data:
@@ -260,9 +260,9 @@ nodes_gdf, numerical_data_gdf = layers.compute_stats(
 )
 # statistical aggregations are calculated for each requested column,
 # and in the following forms:
-# max, min, sum, sum_weighted, mean, mean_weighted, variance, variance_weighted
-print(nodes_gdf["cc_metric_max_800"])
-print(nodes_gdf["cc_metric_mean_wt_800"])
+# max, min, sum, sum_wt, mean, mean_wt, variance, variance_wt
+print(nodes_gdf["cc_mock_numerical_1_max_800"])
+print(nodes_gdf["cc_mock_numerical_1_mean_800_wt"])
 ```
 
 The landuse metrics and statistical aggregations are computed over the street network relative to the network, with results written to each node. The mixed-use, accessibility, and statistical aggregations can therefore be compared directly to centrality computations from the same locations, and can be correlated or otherwise compared.

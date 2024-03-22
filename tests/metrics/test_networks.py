@@ -33,29 +33,38 @@ def test_node_centrality_shortest(primal_graph):
             node_result_short = network_structure.local_node_centrality_shortest(
                 betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
             )
-            for distance in distances:
+            for dist_key in distances:
                 if _closeness is True:
-                    for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
-                        data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                    for measure_key, attr_key in [
+                        ("beta", "node_beta"),
+                        ("cycles", "node_cycles"),
+                        ("density", "node_density"),
+                        ("farness", "node_farness"),
+                        ("harmonic", "node_harmonic"),
+                    ]:
+                        data_key = config.prep_gdf_key(measure_key, dist_key)
                         assert np.allclose(
                             nodes_gdf[data_key],
-                            getattr(node_result_short, measure_name)[distance],
+                            getattr(node_result_short, attr_key)[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_hillier_{distance}")],
-                        node_result_short.node_density[distance] ** 2 / node_result_short.node_farness[distance],
+                        nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
+                        node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 if _betweenness is True:
-                    for measure_name in ["node_betweenness", "node_betweenness_beta"]:
-                        data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
+                    for measure_key, attr_key in [
+                        ("betweenness", "node_betweenness"),
+                        ("betweenness_beta", "node_betweenness_beta"),
+                    ]:
+                        data_key = config.prep_gdf_key(measure_key, dist_key)
                         assert np.allclose(
                             nodes_gdf[data_key],
-                            getattr(node_result_short, measure_name)[distance],
+                            getattr(node_result_short, attr_key)[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
@@ -85,40 +94,31 @@ def test_node_centrality_simplest(primal_graph):
             node_result_simplest = network_structure.local_node_centrality_simplest(
                 betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
             )
-            for distance in distances:
+            for dist_key in distances:
                 if _closeness is True:
+                    for measure_key, attr_key in [
+                        ("density", "node_density"),
+                        ("farness", "node_farness"),
+                        ("harmonic", "node_harmonic"),
+                    ]:
+                        assert np.allclose(
+                            nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
+                            getattr(node_result_simplest, attr_key)[dist_key],
+                            equal_nan=True,
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_density_simplest_{distance}")],
-                        node_result_simplest.node_density[distance],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_farness_simplest_{distance}")],
-                        node_result_simplest.node_farness[distance],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_hillier_simplest_{distance}")],
-                        node_result_simplest.node_density[distance] ** 2 / node_result_simplest.node_farness[distance],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_harmonic_simplest_{distance}")],
-                        node_result_simplest.node_harmonic[distance],
+                        nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
+                        node_result_simplest.node_density[dist_key] ** 2 / node_result_simplest.node_farness[dist_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 if _betweenness is True:
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"node_betweenness_simplest_{distance}")],
-                        node_result_simplest.node_betweenness[distance],
+                        nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],
+                        node_result_simplest.node_betweenness[dist_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
@@ -149,12 +149,15 @@ def test_segment_centrality(primal_graph):
             segment_result = network_structure.local_segment_centrality(
                 betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
             )
-            for distance in distances:
+            for dist_key in distances:
                 if _closeness is True:
-                    for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:
-                        data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                        assert np.allclose(nodes_gdf[data_key], getattr(segment_result, measure_name)[distance])
+                    for measure_key, attr_key in [
+                        ("seg_density", "segment_density"),
+                        ("seg_harmonic", "segment_harmonic"),
+                        ("seg_beta", "segment_beta"),
+                    ]:
+                        data_key = config.prep_gdf_key(measure_key, dist_key)
+                        assert np.allclose(nodes_gdf[data_key], getattr(segment_result, attr_key)[dist_key])
                 if _betweenness is True:
-                    for measure_name in ["segment_betweenness"]:
-                        data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                        assert np.allclose(nodes_gdf[data_key], getattr(segment_result, measure_name)[distance])
+                    data_key = config.prep_gdf_key("seg_betweenness", dist_key)
+                    assert np.allclose(nodes_gdf[data_key], getattr(segment_result, "segment_betweenness")[dist_key])
