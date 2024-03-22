@@ -266,14 +266,14 @@ def test_compute_stats(primal_graph):
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_max", dist_key, angular=angular, weighted=False)],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_max", dist_key, angular=angular)],
                     stats_result.max[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,
                     equal_nan=True,
                 )
                 assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_min", dist_key, angular=angular, weighted=False)],
+                    nodes_gdf[config.prep_gdf_key("mock_numerical_1_min", dist_key, angular=angular)],
                     stats_result.min[dist_key],
                     atol=config.ATOL,
                     rtol=config.RTOL,

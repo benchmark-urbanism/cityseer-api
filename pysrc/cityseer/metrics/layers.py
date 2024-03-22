@@ -638,9 +638,9 @@ def compute_stats(
         nodes_gdf[k] = result.variance[dist_key]  # type: ignore
         k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
         nodes_gdf[k] = result.variance_wt[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular, weighted=False)
+        k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
         nodes_gdf[k] = result.max[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular, weighted=False)
+        k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
         nodes_gdf[k] = result.min[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
