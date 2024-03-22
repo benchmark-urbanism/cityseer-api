@@ -260,7 +260,7 @@ nodes_gdf, numerical_data_gdf = layers.compute_stats(
 )
 # statistical aggregations are calculated for each requested column,
 # and in the following forms:
-# max, min, sum, sum_wt, mean, mean_wt, variance, variance_wt
+# max, min, sum_nw, sum_wt, mean_nw, mean_wt, variance_nw, variance_wt
 print(nodes_gdf["cc_mock_numerical_1_max_800"])
 print(nodes_gdf["cc_mock_numerical_1_mean_800_wt"])
 ```

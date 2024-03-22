@@ -369,12 +369,12 @@ def segment_centrality(
 
     | key                 | formula | notes |
     | ------------------- | :-----: |------ |
-    | segment_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
-    | segment_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
+    | seg_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
+    | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
     harmonic closeness centrality applied to edge lengths. |
-    | segment_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long
+    | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long
     continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
-    | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
+    | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
     on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
     """
