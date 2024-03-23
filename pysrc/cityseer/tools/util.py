@@ -112,7 +112,6 @@ def measure_max_angle(linestring_coords: ListCoordsType) -> float:
     for c_idx in range(len(linestring_coords) - 2):
         angle = _measure_linestring_angle(linestring_coords, c_idx, c_idx + 1, c_idx + 2)
         max_angle = max(max_angle, angle)
-
     return max_angle
 
 
@@ -534,7 +533,7 @@ def blend_metrics(
         raise ValueError('Method should be one of "min", "max", or "avg"')
     merged_edges_gdf = edges_gdf.copy()
     for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_metric"):
+        if not node_column.startswith("cc_"):
             continue
         # suffix is only applied for overlapping column names
         merged_edges_gdf = pd.merge(

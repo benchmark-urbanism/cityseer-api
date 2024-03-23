@@ -136,20 +136,20 @@ def node_centrality_shortest(
 
     | key                   | formula | notes |
     | ----------------------| :------:| ----- |
-    | node_density          | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-    | node_harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
+    | density          | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
+    | harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-    | node_hillier          | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
+    | hillier          | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
     farness. This is also a simplified form of Improved Closeness Centrality. |
-    | node_beta             | $$\sum_{j\neq{i}}^{n} \\ \exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
+    | beta             | $$\sum_{j\neq{i}}^{n} \\ \exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index.
     This is a spatial impedance metric differentiated from other closeness centralities by the use of an
     explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances
     increase. |
-    | node_cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
-    | node_farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-    | node_betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
+    | cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
+    | farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
+    | betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all
     shortest-paths traversing each node $i$. |
-    | node_betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n} \\ \exp(-\beta\cdot d[j,k])$$ | Applies a
+    | betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n} \\ \exp(-\beta\cdot d[j,k])$$ | Applies a
     spatial impedance decay function to betweenness centrality. $d$ represents the full distance from
     any $j$ to $k$ node pair passing through node $i$. |
 
@@ -172,18 +172,27 @@ def node_centrality_shortest(
     )
     # unpack
     if compute_closeness is True:
-        for measure_name in ["node_beta", "node_cycles", "node_density", "node_farness", "node_harmonic"]:
+        for measure_key, attr_key in [
+            ("beta", "node_beta"),
+            ("cycles", "node_cycles"),
+            ("density", "node_density"),
+            ("farness", "node_farness"),
+            ("harmonic", "node_harmonic"),
+        ]:
             for distance in distances:  # type: ignore
-                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
+                data_key = config.prep_gdf_key(measure_key, distance)
+                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_hillier_{distance}")
+            data_key = config.prep_gdf_key("hillier", distance)
             nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
-        for measure_name in ["node_betweenness", "node_betweenness_beta"]:
+        for measure_key, attr_key in [
+            ("betweenness", "node_betweenness"),
+            ("betweenness_beta", "node_betweenness_beta"),
+        ]:
             for distance in distances:  # type: ignore
-                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
+                data_key = config.prep_gdf_key(measure_key, distance)
+                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
     return nodes_gdf
 
 
@@ -250,13 +259,13 @@ def node_centrality_simplest(
 
     | key                   | formula | notes |
     | ----------------------| :------:| ----- |
-    | node_density_simplest | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-    | node_harmonic_simplest    | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
+    | density_ang | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
+    | harmonic_ang    | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form
     of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-    | node_hillier_simplest | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
+    | hillier_ang | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by
     farness. This is also a simplified form of Improved Closeness Centrality. |
-    | node_farness_simplest | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-    | node_betweenness_simplest | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing
+    | farness_ang | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
+    | betweenness_ang | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing
     all shortest-paths traversing each node $i$. |
 
     The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular`
@@ -280,20 +289,20 @@ def node_centrality_simplest(
     )
     if compute_closeness is True:
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_density_simplest_{distance}")
+            data_key = config.prep_gdf_key("density", distance, angular=True)
             nodes_gdf[data_key] = result.node_density[distance]  # type: ignore
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_harmonic_simplest_{distance}")
+            data_key = config.prep_gdf_key("harmonic", distance, angular=True)
             nodes_gdf[data_key] = result.node_harmonic[distance]  # type: ignore
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_hillier_simplest_{distance}")
+            data_key = config.prep_gdf_key("hillier", distance, angular=True)
             nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_farness_simplest_{distance}")
+            data_key = config.prep_gdf_key("farness", distance, angular=True)
             nodes_gdf[data_key] = result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for distance in distances:  # type: ignore
-            data_key = config.prep_gdf_key(f"node_betweenness_simplest_{distance}")
+            data_key = config.prep_gdf_key("betweenness", distance, angular=True)
             nodes_gdf[data_key] = result.node_betweenness[distance]  # type: ignore
     return nodes_gdf
 
@@ -360,12 +369,12 @@ def segment_centrality(
 
     | key                 | formula | notes |
     | ------------------- | :-----: |------ |
-    | segment_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
-    | segment_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
+    | seg_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
+    | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
     harmonic closeness centrality applied to edge lengths. |
-    | segment_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long
+    | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long
     continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
-    | segment_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
+    | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
     on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
     """
@@ -385,13 +394,16 @@ def segment_centrality(
         total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     if compute_closeness is True:
-        for measure_name in ["segment_density", "segment_harmonic", "segment_beta"]:
+        for measure_key, attr_key in [
+            ("seg_density", "segment_density"),
+            ("seg_harmonic", "segment_harmonic"),
+            ("seg_beta", "segment_beta"),
+        ]:
             for distance in distances:  # type: ignore
-                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
+                data_key = config.prep_gdf_key(measure_key, distance)
+                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
     if compute_betweenness is True:
-        for measure_name in ["segment_betweenness"]:
-            for distance in distances:  # type: ignore
-                data_key = config.prep_gdf_key(f"{measure_name}_{distance}")
-                nodes_gdf[data_key] = getattr(result, measure_name)[distance]
+        for distance in distances:  # type: ignore
+            data_key = config.prep_gdf_key("seg_betweenness", distance)
+            nodes_gdf[data_key] = getattr(result, "segment_betweenness")[distance]
     return nodes_gdf

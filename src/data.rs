@@ -333,6 +333,7 @@ impl DataMap {
                     )
                 })
                 .collect();
+            let max_dist = distances.iter().max().copied().unwrap();
             let dists: HashMap<String, MetricResult> = accessibility_keys
                 .clone()
                 .into_iter()
@@ -340,7 +341,8 @@ impl DataMap {
                     (
                         acc_key,
                         MetricResult::new(
-                            distances.clone(),
+                            // single dist
+                            vec![max_dist],
                             network_structure.node_count(),
                             f32::NAN,
                         ),
@@ -391,11 +393,14 @@ impl DataMap {
                             let val_wt = clipped_beta_wt(b, mcw, data_dist);
                             metrics_wt[&lu_class].metric[i][*netw_src_idx]
                                 .fetch_add(val_wt.unwrap(), Ordering::Relaxed);
-                            let current_dist =
-                                dists[&lu_class].metric[i][*netw_src_idx].load(Ordering::Relaxed);
-                            if current_dist.is_nan() || data_dist < current_dist {
-                                dists[&lu_class].metric[i][*netw_src_idx]
-                                    .store(data_dist, Ordering::Relaxed);
+                            if d == max_dist {
+                                // there is a single max dist so use 0 for index
+                                let current_dist = dists[&lu_class].metric[0][*netw_src_idx]
+                                    .load(Ordering::Relaxed);
+                                if current_dist.is_nan() || data_dist < current_dist {
+                                    dists[&lu_class].metric[0][*netw_src_idx]
+                                        .store(data_dist, Ordering::Relaxed);
+                                }
                             }
                         }
                     }

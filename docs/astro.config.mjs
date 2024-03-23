@@ -42,6 +42,17 @@ function admonitionRemarkPlugin() {
   }
 }
 
+function replaceUnderscoresInIds() {
+  return (tree) => {
+    visit(tree, 'element', (node) => {
+      if (node.tagName && /^h[1-6]$/.test(node.tagName) && node.properties && node.properties.id) {
+        // Replace underscores with dashes in the id property
+        node.properties.id = node.properties.id.replace(/_/g, '-')
+      }
+    })
+  }
+}
+
 export default defineConfig({
   root: '.',
   srcDir: './src',
@@ -78,12 +89,7 @@ export default defineConfig({
     ],
     rehypePlugins: [
       rehypeSlug,
-      [
-        rehypeKatex,
-        {
-          output: 'htmlAndMathml',
-        },
-      ],
+      replaceUnderscoresInIds,
       [
         rehypeAutolinkHeadings,
         {
@@ -95,7 +101,7 @@ export default defineConfig({
                 'svg',
                 {
                   xmlns: 'http://www.w3.org/2000/svg',
-                  viewbox: '0 0 20 20',
+                  viewBox: '0 0 20 20',
                   ariaHidden: 'true',
                   width: '15px',
                   height: '15px',
@@ -112,6 +118,12 @@ export default defineConfig({
               ),
             ]
           },
+        },
+      ],
+      [
+        rehypeKatex,
+        {
+          output: 'htmlAndMathml',
         },
       ],
       [

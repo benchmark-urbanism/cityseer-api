@@ -1,15 +1,14 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
+
 <section class="module">
 
 # layers
 
-
 <div class="function">
 
 ## assign_gdf_to_network
-
 
 <div class="content">
 <span class="name">assign_gdf_to_network</span><div class="signature multiline">
@@ -41,9 +40,10 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
 
- Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
 ### Parameters
+
 <div class="param-set">
   <div class="def">
     <div class="name">data_gdf</div>
@@ -51,7 +51,8 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+
 </div>
 
 <div class="param-set">
@@ -61,7 +62,8 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+
 </div>
 
 <div class="param-set">
@@ -71,7 +73,8 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+
 </div>
 
 <div class="param-set">
@@ -81,10 +84,12 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+
 </div>
 
 ### Returns
+
 <div class="param-set">
   <div class="def">
     <div class="name">data_map</div>
@@ -92,7 +97,8 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.DataMap`](/rustalgos#datamap) instance.</div>
+A [`rustalgos.DataMap`](/rustalgos#datamap) instance.</div>
+
 </div>
 
 <div class="param-set">
@@ -102,7 +108,8 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+
 </div>
 
 ### Notes
@@ -130,11 +137,9 @@ representation of variations of metrics along street-fronts.
 
 </div>
 
-
 <div class="function">
 
 ## compute_accessibilities
-
 
 <div class="content">
 <span class="name">compute_accessibilities</span><div class="signature multiline">
@@ -211,9 +216,10 @@ representation of variations of metrics along street-fronts.
 </div>
 </div>
 
+Compute land-use accessibilities for the specified land-use classification keys over the street network. The landuses are aggregated and computed over the street network relative to the network nodes, with the implication that the measures are generated from the same locations as those used for centrality computations.
 
- Compute land-use accessibilities for the specified land-use classification keys over the street network. The landuses are aggregated and computed over the street network relative to the network nodes, with the implication that the measures are generated from the same locations as those used for centrality computations.
 ### Parameters
+
 <div class="param-set">
   <div class="def">
     <div class="name">data_gdf</div>
@@ -221,7 +227,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+
 </div>
 
 <div class="param-set">
@@ -231,7 +238,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc.</div>
+The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc.</div>
+
 </div>
 
 <div class="param-set">
@@ -241,7 +249,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;pub&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants.</div>
+Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;pub&quot;. The calculations will be performed in both `weighted` and `non_weighted` variants.</div>
+
 </div>
 
 <div class="param-set">
@@ -251,7 +260,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+
 </div>
 
 <div class="param-set">
@@ -261,7 +271,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+
 </div>
 
 <div class="param-set">
@@ -271,7 +282,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+
 </div>
 
 <div class="param-set">
@@ -281,7 +293,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -291,7 +304,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -301,7 +315,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+
 </div>
 
 <div class="param-set">
@@ -311,7 +326,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+
 </div>
 
 <div class="param-set">
@@ -321,7 +337,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+
 </div>
 
 <div class="param-set">
@@ -331,7 +348,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+
 </div>
 
 <div class="param-set">
@@ -341,10 +359,12 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+
 </div>
 
 ### Returns
+
 <div class="param-set">
   <div class="def">
     <div class="name">nodes_gdf</div>
@@ -352,7 +372,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three columns will be returned for each input landuse class and distance combination; a simple count of reachable locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.</div>
+The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three columns will be returned for each input landuse class and distance combination; a simple count of reachable locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.</div>
+
 </div>
 
 <div class="param-set">
@@ -362,7 +383,8 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+
 </div>
 
 ### Notes
@@ -388,21 +410,18 @@ nodes_gdf, landuses_gdf = layers.compute_accessibilities(
 )
 print(nodes_gdf.columns)
 # weighted form
-print(nodes_gdf["cc_metric_c_400_weighted"])
+print(nodes_gdf["cc_400_wt"])
 # non-weighted form
-print(nodes_gdf["cc_metric_c_400_non_weighted"])
+print(nodes_gdf["cc_400_nw"])
 # nearest distance to landuse
-print(nodes_gdf["cc_metric_c_400_distance"])
+print(nodes_gdf["cc_distance"])
 ```
 
-
 </div>
-
 
 <div class="function">
 
 ## compute_mixed_uses
-
 
 <div class="content">
 <span class="name">compute_mixed_uses</span><div class="signature multiline">
@@ -494,13 +513,14 @@ print(nodes_gdf["cc_metric_c_400_distance"])
 </div>
 </div>
 
+Compute landuse metrics. This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill and hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used to configure which classes of measures should run.
 
- Compute landuse metrics. This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill and hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used to configure which classes of measures should run.
+See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
 
- See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
+The data is aggregated and computed over the street network, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `node_gdf` `GeoDataFrame` used for centrality methods, and which will display the calculated metrics under correspondingly labelled columns.
 
- The data is aggregated and computed over the street network, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same `node_gdf` `GeoDataFrame` used for centrality methods, and which will display the calculated metrics under correspondingly labelled columns.
 ### Parameters
+
 <div class="param-set">
   <div class="def">
     <div class="name">data_gdf</div>
@@ -508,7 +528,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+
 </div>
 
 <div class="param-set">
@@ -518,7 +539,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.</div>
+The column label from which to take landuse categories, e.g. a column labelled &quot;landuse_categories&quot; might contain &quot;shop&quot;, &quot;pub&quot;, &quot;school&quot;, etc., landuse categories.</div>
+
 </div>
 
 <div class="param-set">
@@ -528,7 +550,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+
 </div>
 
 <div class="param-set">
@@ -538,7 +561,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+
 </div>
 
 <div class="param-set">
@@ -548,7 +572,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+
 </div>
 
 <div class="param-set">
@@ -558,7 +583,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
+Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
+
 </div>
 
 <div class="param-set">
@@ -568,7 +594,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
+Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
+
 </div>
 
 <div class="param-set">
@@ -578,7 +605,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Compute shannon entropy. Hill diversity of q=1 is generally preferable.</div>
+Compute shannon entropy. Hill diversity of q=1 is generally preferable.</div>
+
 </div>
 
 <div class="param-set">
@@ -588,7 +616,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.</div>
+Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.</div>
+
 </div>
 
 <div class="param-set">
@@ -598,7 +627,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -608,7 +638,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -618,7 +649,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+
 </div>
 
 <div class="param-set">
@@ -628,7 +660,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+
 </div>
 
 <div class="param-set">
@@ -638,7 +671,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+
 </div>
 
 <div class="param-set">
@@ -648,7 +682,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+
 </div>
 
 <div class="param-set">
@@ -658,10 +693,12 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+
 </div>
 
 ### Returns
+
 <div class="param-set">
   <div class="def">
     <div class="name">nodes_gdf</div>
@@ -669,7 +706,8 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.</div>
+The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.</div>
+
 </div>
 
 <div class="param-set">
@@ -679,24 +717,26 @@ print(nodes_gdf["cc_metric_c_400_distance"])
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
+
 </div>
 
 ### Notes
 
-| key | formula | notes |
-|-----|:-------:|-------|
-| hill | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
-| hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)|
-| shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
-| gini | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
+| key     |                                                              formula                                                               | notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------- | :--------------------------------------------------------------------------------------------------------------------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hill    | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses. |
+| hill_wt |         $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$          | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)                                       |
+| shannon |                                               $$ -\sum*{i}^{S}\ p*{i}\ log\ p\_{i}$$                                               | Shannon diversity (or*information entropy*) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.                                                                                                                                                                                                                                                               |
+| gini    |                                                   $$ 1 - \sum*{i}^{S} p*{i}^2$$                                                    | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.                                          |
 
 :::note
 `hill_branch_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
 `q=2` for increasingly crude landuse classifications schemas.
 :::
 
- A worked example:
+A worked example:
+
 ```python
 from cityseer.metrics import networks, layers
 from cityseer.tools import mock, graphs
@@ -718,7 +758,7 @@ nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
 # the data is written to the GeoDataFrame
 print(nodes_gdf.columns)
 # access accordingly, e.g. hill diversity at q=0 and 800m
-print(nodes_gdf["cc_metric_hill_q0_800"])
+print(nodes_gdf["cc_hill_q0_800"])
 ```
 
 :::warning
@@ -729,11 +769,9 @@ been applied.
 
 </div>
 
-
 <div class="function">
 
 ## compute_stats
-
 
 <div class="content">
 <span class="name">compute_stats</span><div class="signature multiline">
@@ -805,9 +843,10 @@ been applied.
 </div>
 </div>
 
+Compute numerical statistics over the street network. This function wraps the underlying `rust` optimised function for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
 
- Compute numerical statistics over the street network. This function wraps the underlying `rust` optimised function for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.
 ### Parameters
+
 <div class="param-set">
   <div class="def">
     <div class="name">data_gdf</div>
@@ -815,7 +854,8 @@ been applied.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+
 </div>
 
 <div class="param-set">
@@ -825,7 +865,8 @@ been applied.
   </div>
   <div class="desc">
 
- The column label corresponding to the column in `data_gdf` from which to take numerical information.</div>
+The column label corresponding to the column in `data_gdf` from which to take numerical information.</div>
+
 </div>
 
 <div class="param-set">
@@ -835,7 +876,8 @@ been applied.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+
 </div>
 
 <div class="param-set">
@@ -845,7 +887,8 @@ been applied.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+
 </div>
 
 <div class="param-set">
@@ -855,7 +898,8 @@ been applied.
   </div>
   <div class="desc">
 
- The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
+
 </div>
 
 <div class="param-set">
@@ -865,7 +909,8 @@ been applied.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -875,7 +920,8 @@ been applied.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+
 </div>
 
 <div class="param-set">
@@ -885,7 +931,8 @@ been applied.
   </div>
   <div class="desc">
 
- An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+
 </div>
 
 <div class="param-set">
@@ -895,7 +942,8 @@ been applied.
   </div>
   <div class="desc">
 
- Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</div>
+
 </div>
 
 <div class="param-set">
@@ -905,7 +953,8 @@ been applied.
   </div>
   <div class="desc">
 
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+
 </div>
 
 <div class="param-set">
@@ -915,7 +964,8 @@ been applied.
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+
 </div>
 
 <div class="param-set">
@@ -925,10 +975,12 @@ been applied.
   </div>
   <div class="desc">
 
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+
 </div>
 
 ### Returns
+
 <div class="param-set">
   <div class="def">
     <div class="name">nodes_gdf</div>
@@ -936,7 +988,8 @@ been applied.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+
 </div>
 
 <div class="param-set">
@@ -946,12 +999,13 @@ been applied.
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+
 </div>
 
 ### Notes
 
- A worked example:
+A worked example:
 
 ```python
 from cityseer.metrics import networks, layers
@@ -973,23 +1027,21 @@ nodes_gdf, numerical_gdf = layers.compute_stats(
 )
 print(nodes_gdf.columns)
 # weighted form
-print(nodes_gdf["cc_metric_mock_numerical_1_mean_wt_400"])
+print(nodes_gdf["cc_mock_numerical_1_mean_wt_400"])
 # non-weighted form
-print(nodes_gdf["cc_metric_mock_numerical_1_sum_200"])
+print(nodes_gdf["cc_mock_numerical_1_sum_200"])
 ```
-
 
 :::note
 The following stat types will be available for each `stats_key` for each of the
 computed distances:
+
 - `max` and `min`
 - `sum` and `sum_weighted`
 - `mean` and `mean_weighted`
 - `variance` and `variance_weighted`
-:::
+  :::
 
 </div>
-
-
 
 </section>

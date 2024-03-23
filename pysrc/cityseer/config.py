@@ -14,11 +14,18 @@ from cityseer import rustalgos
 np.seterr(invalid="ignore")
 
 
-def prep_gdf_key(key: str) -> str:
+def prep_gdf_key(key: str, dist: int, angular: bool = False, weighted: bool | None = None) -> str:
     """Format a column label for GeoPandas."""
     key = key.replace(".0", "")
     key = key.replace(".0_", "_")
-    return f"cc_metric_{key}"
+    key = f"cc_{key}_{dist}"
+    if angular is True:
+        key += "_ang"
+    if weighted is True:
+        key += "_wt"
+    elif weighted is False:
+        key += "_nw"
+    return key
 
 
 def check_quiet() -> bool:

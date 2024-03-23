@@ -1038,7 +1038,7 @@ def nx_from_cityseer_geopandas(
                 geom=row_data[geom_key],
             )
     # unpack any metrics written to the nodes
-    metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_metric")]
+    metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_")]
     if metrics_column_labels:
         logger.info("Unpacking metrics to nodes.")
         for metrics_column_label in metrics_column_labels:

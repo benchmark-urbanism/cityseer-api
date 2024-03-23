@@ -158,22 +158,28 @@ def test_accessibility(primal_graph):
             assert accessibilities["b"].weighted[dist][src_idx] - b_wt < config.ATOL
             assert accessibilities["c"].weighted[dist][src_idx] - c_wt < config.ATOL
             assert accessibilities["z"].weighted[dist][src_idx] - z_wt < config.ATOL
-            if np.isfinite(a_dist):
-                assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
+            if dist == max(distances):
+                if np.isfinite(a_dist):
+                    assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
+                else:
+                    assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
+                if np.isfinite(b_dist):
+                    assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
+                else:
+                    assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
+                if np.isfinite(c_dist):
+                    assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
+                else:
+                    assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
+                if np.isfinite(z_dist):
+                    assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
+                else:
+                    assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
             else:
-                assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
-            if np.isfinite(b_dist):
-                assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
-            else:
-                assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
-            if np.isfinite(c_dist):
-                assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
-            else:
-                assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
-            if np.isfinite(z_dist):
-                assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
-            else:
-                assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
+                assert dist not in accessibilities["a"].distance
+                assert dist not in accessibilities["b"].distance
+                assert dist not in accessibilities["c"].distance
+                assert dist not in accessibilities["z"].distance
             # check for deduplication
             assert z_nw in [0, 1]
             assert z_wt <= 1

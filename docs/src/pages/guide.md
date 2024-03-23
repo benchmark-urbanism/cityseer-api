@@ -33,9 +33,9 @@ Good sources of street network data, such as the Ordnance Survey's [OS Open Road
 
 When a high-quality source is available, it is best not to attempt additional clean-up unless there is a particular reason. On the other hand, many indispensable sources of network information, particularly Open Street Map data, can be particularly messy for network analysis purposes.
 
-`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which may otherwise confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible. These are demonstrated in the [`Graph Cleaning`](/examples#graph-cleaning-guide) example notebook.
+`cityseer` uses customisable graph cleaning methods that reduce topological idiosyncrasies which may otherwise confound centrality measures. It can, for example, remove dual carriageways while merging nodes and roadways in a manner that is as 'tidy' as possible. These are demonstrated in the [`Graph Cleaning`](https://benchmark-urbanism.github.io/cityseer-examples/examples/graph_cleaning.html) guide.
 
-There are still situations where it can be difficult to automate network cleaning, especially when using the same workflows across different cities. Each city tends to have its own quirks, and for this reason it can be preferable to retain the unsimplified representation but to control for algorithmic artefacts encountered for centrality computations by using other methods. These are demonstrated in the [`Graph Corrections`](/examples#graph-corrections-guide) example notebook.
+There are still situations where it can be difficult to automate network cleaning, especially when using the same workflows across different cities. Each city tends to have its own quirks, and for this reason it can be preferable to retain the unsimplified representation but to control for algorithmic artefacts encountered for centrality computations by using other methods. These are demonstrated in the [`OSM Strategies`](https://benchmark-urbanism.github.io/cityseer-examples/examples/graph_corrections.html) guide.
 
 ## OSM and NetworkX
 
@@ -50,7 +50,7 @@ The following points may be helpful when using `OSMnx` and `cityseer` together:
   - `cityseer` graph simplification and consolidation workflows will give different results to those employed in `OSMnx`. If you're using `OSMnx` to ingest networks from `OSM` but wish to simplify and consolidate the network as part of a `cityseer` workflow, set the `OSMnx` `simplify` argument to `False` so that the network is not automatically simplified.
 - `cityseer` uses internal validation workflows to check that the geometries associated with an edge remain connected to the coordinates of the nodes on either side. If performing graph manipulation outside of `cityseer` before conversion, the conversion function may complain of disconnected geometries. In these cases, you may need to relax the tolerance parameter used for error checking upon conversion to a `cityseer` `MultiGraph`, in which case geometries disconnected from their end-nodes (within the tolerance parameter) will be "snapped" to meet their endpoints as part of the conversion process.
 
-See the [Importing OSM data](/examples#importing-osm-data) notebook for examples.
+See the [OSM - cityseer](https://benchmark-urbanism.github.io/cityseer-examples/examples/osm_to_cityseer.html) guide.
 
 ## GeoPandas
 

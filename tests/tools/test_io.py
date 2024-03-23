@@ -705,14 +705,14 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         distances=[500, 1000],
     )
     column_labels: list[str] = [
-        "cc_metric_a_500_non_weighted",
-        "cc_metric_a_1000_non_weighted",
-        "cc_metric_a_500_weighted",
-        "cc_metric_a_1000_weighted",
-        "cc_metric_c_500_non_weighted",
-        "cc_metric_c_1000_non_weighted",
-        "cc_metric_c_500_weighted",
-        "cc_metric_c_1000_weighted",
+        "cc_a_500_nw",
+        "cc_a_1000_nw",
+        "cc_a_500_wt",
+        "cc_a_1000_wt",
+        "cc_c_500_nw",
+        "cc_c_1000_nw",
+        "cc_c_500_wt",
+        "cc_c_1000_wt",
     ]
     # without backbone
     G_round_trip_nx = io.nx_from_cityseer_geopandas(
