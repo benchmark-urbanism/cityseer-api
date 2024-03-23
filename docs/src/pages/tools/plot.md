@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 
 # plot
 
-Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible. See the demos section for examples.
+Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 
 <div class="class">
 

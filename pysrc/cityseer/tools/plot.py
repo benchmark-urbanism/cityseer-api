@@ -4,7 +4,6 @@ Convenience methods for plotting graphs within the cityseer API context.
 Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and
 [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification
 of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
-See the demos section for examples.
 """
 
 # workaround until networkx adopts types
@@ -684,7 +683,8 @@ def plot_scatter(
     face_colour: str = "#111",
 ) -> Any:
     """
-    Convenience plotting function for plotting outputs from examples in demo notebooks.
+    Convenience plotting function for plotting outputs from examples in the
+    [Cityseer Guide](https://benchmark-urbanism.github.io/cityseer-examples/).
 
     Parameters
     ----------
@@ -776,7 +776,8 @@ def plot_nx_edges(
     invert_plot_order: bool = False,
 ):
     """
-    Convenience plotting function for plotting edge outputs from examples in demo notebooks.
+    Convenience plotting function for plotting outputs from examples in the
+    [Cityseer Guide](https://benchmark-urbanism.github.io/cityseer-examples/).
 
     Parameters
     ----------

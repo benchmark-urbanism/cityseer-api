@@ -16,7 +16,7 @@ Code tests are run against Python versions `3.10` - `3.12`.
 
 ## Notebooks
 
-The getting started guide and a growing collection of other examples is available via the [`Cityseer Examples`](https://benchmark-urbanism/cityseer-examples/) page. The examples include workflows showing how to run graph cleaning, network centralities, and land-use accessibility analysis for some real-world situations.
+The getting started guide and a growing collection of other examples is available via the [`Cityseer Examples`](https://benchmark-urbanism.github.io/cityseer-examples/) site. The examples include workflows showing how to run graph cleaning, network centralities, and land-use accessibility analysis for some real-world situations.
 
 ## Old versions
 
