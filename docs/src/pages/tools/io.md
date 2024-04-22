@@ -853,7 +853,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index.</div>
+ A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) then the corresponding primal edge `LineString` geometry will be set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual node `Point` geometry will be saved in `WKT` format to the `dual_node` column.</div>
 </div>
 
 <div class="param-set">
@@ -866,6 +866,68 @@ out qt;
  A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">rustalgos.NetworkStructure</div>
+  </div>
+  <div class="desc">
+
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## network_structure_from_gpd
+
+
+<div class="content">
+<span class="name">network_structure_from_gpd</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Reassembles a `NetworkStructure` from cityseer nodes and edges GeoDataFrames. This method is intended for use with "circular" workflows, where a `cityseer` NetworkX graph has been converted into `cityseer` nodes and edges GeoDataFrames using [`network_structure_from_nx`](#network_structure_from_nx). If the resultant GeoDataFrames are saved to disk and reloaded, then this method can be used to recreate the associated `NetworkStructure` which is required for optimised (`rust`) functions.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A cityseer created nodes `gpd.GeoDataFrame` where the originating `networkX` graph's node keys have been saved as the DataFrame index, and where the columns contain `x`, `y`, `live`, and `weight` attributes.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">edges_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing` attributes.</div>
+</div>
+
+### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>

@@ -1875,11 +1875,11 @@ datapoints are not located with high spatial precision.
 
 <div class="function">
 
-## shortest_path_tree
+## dijkstra_tree_shortest
 
 
 <div class="content">
-<span class="name">shortest_path_tree</span><div class="signature multiline">
+<span class="name">dijkstra_tree_shortest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -1895,9 +1895,78 @@ datapoints are not located with high spatial precision.
     <span class="pa"> int</span>
   </div>
   <div class="param">
-    <span class="pn">angular</span>
+    <span class="pn">jitter_scale</span>
     <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">ist[int]</span>
+  <span class="pr">NodeVisit</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## dijkstra_tree_simplest
+
+
+<div class="content">
+<span class="name">dijkstra_tree_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">src_idx</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">jitter_scale</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">ist[int]</span>
+  <span class="pr">NodeVisit</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## dijkstra_tree_segment
+
+
+<div class="content">
+<span class="name">dijkstra_tree_segment</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">src_idx</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -2726,22 +2795,22 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_xs</span><span class="annotation">: list[float]</span>
-
-
- 
-
 <span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
 
 
  
 
-<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
+<span class="name">node_ys</span><span class="annotation">: list[float]</span>
 
 
  
 
-<span class="name">node_ys</span><span class="annotation">: list[float]</span>
+<span class="name">node_xs</span><span class="annotation">: list[float]</span>
+
+
+ 
+
+<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
 
 
  

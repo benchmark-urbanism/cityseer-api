@@ -683,8 +683,7 @@ def plot_scatter(
     face_colour: str = "#111",
 ) -> Any:
     """
-    Convenience plotting function for plotting outputs from examples in the
-    [Cityseer Guide](https://benchmark-urbanism.github.io/cityseer-examples/).
+    Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 
     Parameters
     ----------
@@ -776,8 +775,7 @@ def plot_nx_edges(
     invert_plot_order: bool = False,
 ):
     """
-    Convenience plotting function for plotting outputs from examples in the
-    [Cityseer Guide](https://benchmark-urbanism.github.io/cityseer-examples/).
+    Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 
     Parameters
     ----------
