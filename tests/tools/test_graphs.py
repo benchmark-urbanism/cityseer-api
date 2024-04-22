@@ -496,11 +496,14 @@ def test_nx_to_dual(primal_graph, diamond_graph):
     assert G_dual.number_of_nodes() == 5
     assert G_dual.number_of_edges() == 8
     # the new dual nodes have three edges each, except for the midspan which now has four redges
-    for n in G_dual.nodes():
+    for n, d in G_dual.nodes(data=True):
         if n == "1_2_k0":
             assert nx.degree(G_dual, n) == 4
         else:
             assert nx.degree(G_dual, n) == 3
+        # check that the primal geoms were copied to dual nodes
+        primal_geom = G[d["primal_edge_node_a"]][d["primal_edge_node_b"]][d["primal_edge_idx"]]["geom"]
+        assert d["primal_edge"] == primal_geom
     for start, end, d in G_dual.edges(data=True):
         # the new geoms should also be 100m length (split 50m x 2)
         assert round(d["geom"].length) == 100

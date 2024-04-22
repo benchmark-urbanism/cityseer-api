@@ -1175,12 +1175,10 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding
         to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live`
         attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set
-        to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal `geom` edge attributes will be
-        split and welded to form the new dual `geom` edge attributes. `primal_edge_node_a`, `primal_edge_node_b`, and
-        `primal_edge_idx` attributes will be added to the new (dual) nodes, and a `primal_node_id` edge attribute
-        will be added to the new (dual) edges. This is useful for welding the primal geometry to the dual
-        representations where useful for purposes such as visualisation, or otherwise welding downstream metrics to
-        source (primal) geometries.
+        to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal edges will be split and welded
+        to form the new dual `geom` edges. The primal `LineString` `geom` will be saved to the dual node's `primal_edge`
+        attribute. `primal_edge_node_a`, `primal_edge_node_b`, and `primal_edge_idx` attributes will be added to the new
+        (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges.
 
     Examples
     --------
@@ -1285,13 +1283,15 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
         nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
     ):
-        mid_point = edge_data["geom"].interpolate(0.5, normalized=True)  # type: ignore
+        primal_geom = edge_data["geom"]
+        mid_point = primal_geom.interpolate(0.5, normalized=True)  # type: ignore
         dual_node_key = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # create a new dual node corresponding to the current primal edge
         g_dual.add_node(
             dual_node_key,
             x=mid_point.x,
             y=mid_point.y,
+            primal_edge=primal_geom,
             primal_edge_node_a=start_nd_key,
             primal_edge_node_b=end_nd_key,
             primal_edge_idx=edge_idx,

@@ -220,6 +220,14 @@ def test_network_structure_from_nx(diamond_graph):
         assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
+        # dual specific checks
+        if is_dual is True:
+            # check that primal geom is copied across
+            for _row_idx, row in nodes_gdf.iterrows():  # type: ignore
+                assert (
+                    row["primal_edge"]
+                    == G_test[row["primal_edge_node_a"]][row["primal_edge_node_b"]][row["primal_edge_idx"]]["geom"]
+                )
         # check node maps (idx and label match in this case...)
         node_idxs = network_structure.node_indices()
         for node_idx in node_idxs:

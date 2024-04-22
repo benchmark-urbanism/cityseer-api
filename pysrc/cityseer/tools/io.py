@@ -709,7 +709,10 @@ def network_structure_from_nx(
     -------
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys
-        will be used for the `GeoDataFrame` index.
+        will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with
+        [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) then the corresponding primal edge `LineString` geometry will be
+        set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual
+        node `Point` geometry will be saved in `WKT` format to the `dual_node` column.
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`
         ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
@@ -726,7 +729,7 @@ def network_structure_from_nx(
     network_structure = rustalgos.NetworkStructure()
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
-    agg_node_dual_data: dict[str, tuple[Any, Any, Any]] = {}
+    agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}
     agg_edge_data: dict[str, tuple[Any, ...]] = {}
     agg_edge_dual_data: list[str] = []
     node_data: NodeData
@@ -752,6 +755,7 @@ def network_structure_from_nx(
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
             agg_node_dual_data[node_key] = (
+                node_data["primal_edge"],
                 node_data["primal_edge_node_a"],
                 node_data["primal_edge_node_b"],
                 node_data["primal_edge_idx"],
@@ -878,13 +882,18 @@ def network_structure_from_nx(
             agg_node_dual_data,
             orient="index",
             columns=[
+                "primal_edge",
                 "primal_edge_node_a",
                 "primal_edge_node_b",
                 "primal_edge_idx",
             ],
         )
-        nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
         edges_gdf["primal_node_id"] = agg_edge_dual_data
+        nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
+        nodes_gdf.set_geometry("primal_edge", inplace=True)
+        nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()  # type: ignore
+        nodes_gdf.drop(columns=["geom"], inplace=True)
+
     return nodes_gdf, edges_gdf, network_structure
 
 
@@ -902,10 +911,10 @@ def network_structure_from_gpd(
 
     Parameters
     ----------
-    gpd.GeoDataFrame
+    nodes_gdf: gpd.GeoDataFrame
         A cityseer created nodes `gpd.GeoDataFrame` where the originating `networkX` graph's node keys have been saved
         as the DataFrame index, and where the columns contain `x`, `y`, `live`, and `weight` attributes.
-    gpd.GeoDataFrame
+    edges_gdf: gpd.GeoDataFrame
         A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`,
         `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`
         attributes.
@@ -914,6 +923,7 @@ def network_structure_from_gpd(
     -------
     rustalgos.NetworkStructure
         A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+
     """
     # prepare the network structure
     network_structure = rustalgos.NetworkStructure()
