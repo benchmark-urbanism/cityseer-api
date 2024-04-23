@@ -891,6 +891,7 @@ def network_structure_from_nx(
         edges_gdf["primal_node_id"] = agg_edge_dual_data
         nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
         nodes_gdf.set_geometry("primal_edge", inplace=True)
+        nodes_gdf.set_crs(crs, inplace=True)
         nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()  # type: ignore
         nodes_gdf.drop(columns=["geom"], inplace=True)
 
