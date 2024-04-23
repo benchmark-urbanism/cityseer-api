@@ -220,6 +220,8 @@ def test_network_structure_from_nx(diamond_graph):
         assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
+        # CRS check
+        assert nodes_gdf.crs.to_epsg() == 3395
         # dual specific checks
         if is_dual is True:
             # check that primal geom is copied across
