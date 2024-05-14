@@ -1142,10 +1142,13 @@ def nx_from_generic_geopandas(
         edge_geom = edge_row[geom_key]
         coords_a = edge_geom.coords[0]
         node_key_a = _node_key(coords_a)
-        if node_key_a not in g_multi:
-            g_multi.add_node(node_key_a, x=coords_a[0], y=coords_a[1])
         coords_b = edge_geom.coords[-1]
         node_key_b = _node_key(coords_b)
+        # drop short self-loops
+        if node_key_a == node_key_b and edge_geom.length < 5:
+            continue
+        if node_key_a not in g_multi:
+            g_multi.add_node(node_key_a, x=coords_a[0], y=coords_a[1])
         if node_key_b not in g_multi:
             g_multi.add_node(node_key_b, x=coords_b[0], y=coords_b[1])
         g_multi.add_edge(node_key_a, node_key_b, momepy_edge_idx=edge_idx, geom=edge_geom)
