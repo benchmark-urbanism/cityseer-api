@@ -294,7 +294,6 @@ impl DataMap {
         py: Python,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
         let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
-        let max_dist: u32 = distances.iter().max().unwrap().clone();
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",

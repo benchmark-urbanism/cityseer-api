@@ -268,9 +268,9 @@ def snap_linestring_endpoints(
     e_xy = (end_nd_data["x"], end_nd_data["y"])
     # align and snap edge geom
     linestring_coords = align_linestring_coords(linestring_coords, s_xy, tolerance=tolerance)
-    if not np.allclose(linestring_coords[0], s_xy, atol=tolerance, rtol=0):
+    if not np.allclose(linestring_coords[0][:2], s_xy, atol=tolerance, rtol=0):
         raise ValueError("Linestring geometry does not match starting node coordinates.")
-    if not np.allclose(linestring_coords[-1], e_xy, atol=tolerance, rtol=0):
+    if not np.allclose(linestring_coords[-1][:2], e_xy, atol=tolerance, rtol=0):
         raise ValueError("Linestring geometry does not match ending node coordinates.")
     linestring_coords = snap_linestring_startpoint(linestring_coords, s_xy)
     linestring_coords = snap_linestring_endpoint(linestring_coords, e_xy)
