@@ -668,7 +668,7 @@ def nx_from_open_roads(
             )
             # create the geometry
             geom = geometry.LineString(edge_data.geometry["coordinates"])
-            geom: geometry.LineString = geom.simplify(5)
+            geom: geometry.LineString = geom.simplify(5)  # type: ignore
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
                 n_dropped += 1

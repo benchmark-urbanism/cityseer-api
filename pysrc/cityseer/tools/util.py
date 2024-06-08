@@ -35,7 +35,7 @@ NodeKey = str
 NodeData = dict[str, Any]
 EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
 EdgeData = dict[str, Any]
-EdgeMapping = tuple[NodeKey, NodeKey, int, geometry.LineString]
+EdgeMapping = tuple[NodeKey, NodeKey, int, dict[Any, Any]]
 CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float_]]
 ListCoordsType = Union[list[CoordsType], coords.CoordinateSequence]
 
