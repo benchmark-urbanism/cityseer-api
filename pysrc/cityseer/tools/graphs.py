@@ -532,6 +532,9 @@ def _squash_adjacent(
     """
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
+    # nothing to do for single node group
+    if len(node_group) < 2:
+        return nx_multigraph
     # remove any node keys no longer in the graph
     centroid_nodes_filter = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
     # if using intersections, find straight-through routes and count
@@ -929,6 +932,8 @@ def nx_split_opposing_geoms(
         tags.update(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
     edges_tree, edge_lookups = util.create_edges_strtree(_multi_graph)
+    # node groups
+    node_groups: list[set] = []
     # iter
     logger.info("Splitting opposing edges.")
     # iterate origin graph (else node structure changes in place)
@@ -972,19 +977,20 @@ def nx_split_opposing_geoms(
             # check whether the geom is truly within the buffer distance
             if edge_geom.distance(n_point) > buffer_dist:
                 continue
-            # handle motorways
             gapped_edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
         # abort if no gapped edges
         if not gapped_edges:
             continue
         # prepare the root node's point geom
         n_geom = geometry.Point(nd_data["x"], nd_data["y"])
+        # nodes for squashing
+        node_group = set([nd_key])
         # iter gapped edges
         for start_nd_key, end_nd_key, edge_idx, edge_data in gapped_edges:
             edge_geom = edge_data["geom"]
-            # don't proceed with splits for short geoms
-            if edge_geom.length < buffer_dist:
-                continue
+            # don't proceed with splits for short geoms??
+            # if edge_geom.length < 5:
+            #     continue
             # get hwy keys
             hwy_keys = set()
             if "highways" in edge_data:
@@ -1008,9 +1014,6 @@ def nx_split_opposing_geoms(
             new_edge_geom_a: geometry.LineString
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms  # type: ignore
-            # don't proceed with split for overly short split segments
-            if new_edge_geom_a.length < buffer_dist or new_edge_geom_b.length < buffer_dist:
-                continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = util.add_node(
                 _multi_graph, [start_nd_key, nd_key, end_nd_key], x=nearest_point.x, y=nearest_point.y
@@ -1018,6 +1021,8 @@ def nx_split_opposing_geoms(
             # continue if a node already exists at this location
             if is_dupe:
                 continue
+            node_group.update([new_nd_name])
+            # copy edge data
             edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
             _multi_graph.add_edge(start_nd_key, new_nd_name, **edge_data_copy)
             _multi_graph.add_edge(end_nd_key, new_nd_name, **edge_data_copy)
@@ -1078,6 +1083,15 @@ def nx_split_opposing_geoms(
             # drop the old edge from _multi_graph
             if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
                 _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
+        node_groups.append(node_group)
+    # iter and squash
+    logger.info("Squashing opposing nodes")
+    for node_group in node_groups:
+        _multi_graph = _squash_adjacent(
+            _multi_graph,
+            node_group,
+            centroid_by_itx=False,
+        )
     # squashing nodes can result in edge duplicates
     deduped_graph = nx_merge_parallel_edges(
         _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags

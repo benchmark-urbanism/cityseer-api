@@ -410,7 +410,8 @@ def add_node(
     """
     # suggest a name based on the given names
     if len(nodes_names) == 1:
-        new_nd_name = str(nodes_names[0])
+        # catch sets
+        new_nd_name = str(list(nodes_names)[0])
     # if concatenating existing nodes, suggest a name based on a combination of existing names
     else:
         names = []
