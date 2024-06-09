@@ -306,6 +306,7 @@ def nx_merge_parallel_edges(
     nx_multigraph: MultiGraph,
     merge_edges_by_midline: bool,
     contains_buffer_dist: int,
+    osm_hwy_target_tags: list[str] | None = None,
 ) -> MultiGraph:
     """
     Check a MultiGraph for duplicate edges; which, if found, will be merged.
@@ -329,6 +330,9 @@ def nx_merge_parallel_edges(
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
         sufficiently adjacent to be merged.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
+        containing a tag matching one of the target OSM highway tags will be consolidated.
 
     Returns
     -------
@@ -344,6 +348,12 @@ def nx_merge_parallel_edges(
     # don't use copy() - add nodes only
     deduped_graph: MultiGraph = nx.MultiGraph()
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
+    # if using OSM tags heuristic
+    tags = set()
+    if osm_hwy_target_tags is not None:
+        if not isinstance(osm_hwy_target_tags, (list, set, tuple)):
+            raise ValueError("OSM target tags should be provided as a `list` of `str`.")
+        tags.update(osm_hwy_target_tags)
     # iter the edges
     start_nd_key: NodeKey
     end_nd_key: NodeKey
@@ -370,9 +380,14 @@ def nx_merge_parallel_edges(
             # process longer geoms
             longer_geoms: list[geometry.LineString] = []
             for edge_geom, edge_data in zip(edge_geoms, edges_data):
+                # get hwy keys
+                hwy_keys = set()
+                if "highways" in edge_data:
+                    hwy_keys.update(edge_data["highways"])
                 # discard distinct edges where the buffer of the shorter contains the longer
                 is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
-                if is_contained:
+                # if controlling by tags: check for itx
+                if (tags and hwy_keys.intersection(tags) and is_contained) or (not tags and is_contained):
                     edge_info.gather_edge_info(edge_data)
                     longer_geoms.append(edge_geom)
                 else:
@@ -653,6 +668,16 @@ def _squash_adjacent(
     return nx_multigraph
 
 
+def _gather_osm_hwy_tags(nx_multigraph: MultiGraph, nd_key: NodeKey):
+    # gather roadway descriptions
+    nb_hwy_keys = set()
+    for nb_nd_key in nx_multigraph.neighbors(nd_key):
+        for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+            if "highways" in edge_data:
+                nb_hwy_keys.update(set(edge_data["highways"]))
+    return nb_hwy_keys
+
+
 def nx_consolidate_nodes(
     nx_multigraph: MultiGraph,
     buffer_dist: float = 12,
@@ -661,6 +686,7 @@ def nx_consolidate_nodes(
     centroid_by_itx: bool = True,
     merge_edges_by_midline: bool = True,
     contains_buffer_dist: int = 25,
+    osm_hwy_target_tags: list[str] | None = None,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -701,6 +727,9 @@ def nx_consolidate_nodes(
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
         sufficiently adjacent to be merged. This is run after node consolidation has completed.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
+        containing a tag matching one of the target OSM highway tags will be consolidated.
 
     Returns
     -------
@@ -731,6 +760,12 @@ def nx_consolidate_nodes(
     logger.info("Consolidating nodes.")
     # keep track of removed nodes
     removed_nodes: set[NodeKey] = set()
+    # if using OSM tags heuristic
+    tags = set()
+    if osm_hwy_target_tags is not None:
+        if not isinstance(osm_hwy_target_tags, (list, set, tuple)):
+            raise ValueError("OSM target tags should be provided as a `list` of `str`.")
+        tags.update(osm_hwy_target_tags)
 
     def recursive_squash(
         nd_key: NodeKey,
@@ -759,6 +794,9 @@ def nx_consolidate_nodes(
                     continue
                 if neighbour_policy == "direct" and j_nd_key not in neighbours:
                     continue
+            nb_hwy_keys = _gather_osm_hwy_tags(nx_multigraph, j_nd_key)
+            if tags and not nb_hwy_keys.intersection(tags):
+                continue
             # otherwise add the node
             node_group.add(j_nd_key)
             # if recursive, follow the chain
@@ -781,6 +819,9 @@ def nx_consolidate_nodes(
         # skip if already consolidated from an adjacent node, or if the node's degree doesn't meet min_node_degree
         if nd_key in removed_nodes:
             continue
+        nb_hwy_keys = _gather_osm_hwy_tags(nx_multigraph, nd_key)
+        if tags and not nb_hwy_keys.intersection(tags):
+            continue
         node_group = recursive_squash(
             nd_key,  # node nd_key
             nd_data["x"],  # x point for buffer
@@ -801,7 +842,9 @@ def nx_consolidate_nodes(
     # remove new filler nodes
     _multi_graph = nx_remove_filler_nodes(_multi_graph)
     # remove parallel edges resulting from squashing nodes
-    _multi_graph = nx_merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
+    _multi_graph = nx_merge_parallel_edges(
+        _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags
+    )
 
     return _multi_graph
 
@@ -811,7 +854,7 @@ def nx_split_opposing_geoms(
     buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
     contains_buffer_dist: int = 25,
-    skip_unmatched_osm_hwy_keys: bool = True,
+    osm_hwy_target_tags: list[str] | None = None,
 ) -> MultiGraph:
     """
     Split edges opposite nodes on parallel edge segments if within a buffer distance.
@@ -838,9 +881,9 @@ def nx_split_opposing_geoms(
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
         sufficiently adjacent to be merged.
-    skip_unmatched_osm_hwy_keys: bool
-        `True` by default. When `True`, and if OpenStreetMap `highway` tags are avaiable, then the opposite edge will
-        only be split if opposing edges have intersecting `highway` tags.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
+        containing a tag matching one of the target OSM highway tags will be consolidated.
 
     Returns
     -------
@@ -878,6 +921,12 @@ def nx_split_opposing_geoms(
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     _multi_graph: MultiGraph = nx_multigraph.copy()
+    # if using OSM tags heuristic
+    tags = set()
+    if osm_hwy_target_tags is not None:
+        if not isinstance(osm_hwy_target_tags, (list, set, tuple)):
+            raise ValueError("OSM target tags should be provided as a `list` of `str`.")
+        tags.update(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
     edges_tree, edge_lookups = util.create_edges_strtree(_multi_graph)
     # iter
@@ -888,6 +937,10 @@ def nx_split_opposing_geoms(
     for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
         # don't split opposing geoms from nodes of degree 1
         if nx.degree(_multi_graph, nd_key) < 2:
+            continue
+        # check tags
+        nb_hwy_keys = _gather_osm_hwy_tags(nx_multigraph, nd_key)
+        if tags and not nb_hwy_keys.intersection(tags):
             continue
         # get all other edges within the buffer distance
         # the spatial index using bounding boxes, so further filtering is required (see further down)
@@ -924,12 +977,6 @@ def nx_split_opposing_geoms(
         # abort if no gapped edges
         if not gapped_edges:
             continue
-        # gather roadway descriptions
-        nb_hwy_keys = set()
-        for nb_nd_key in _multi_graph.neighbors(nd_key):
-            for edge_data in _multi_graph[nd_key][nb_nd_key].values():
-                if "highways" in edge_data:
-                    nb_hwy_keys.update(set(edge_data["highways"]))
         # prepare the root node's point geom
         n_geom = geometry.Point(nd_data["x"], nd_data["y"])
         # iter gapped edges
@@ -943,9 +990,8 @@ def nx_split_opposing_geoms(
             if "highways" in edge_data:
                 hwy_keys.update(edge_data["highways"])
             # check for itx
-            if skip_unmatched_osm_hwy_keys is True and nb_hwy_keys or hwy_keys:
-                if not nb_hwy_keys.intersection(hwy_keys):
-                    continue
+            if tags and not hwy_keys.intersection(tags):
+                continue
             # project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
@@ -1033,7 +1079,9 @@ def nx_split_opposing_geoms(
             if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
                 _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
     # squashing nodes can result in edge duplicates
-    deduped_graph = nx_merge_parallel_edges(_multi_graph, merge_edges_by_midline, contains_buffer_dist)
+    deduped_graph = nx_merge_parallel_edges(
+        _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags
+    )
 
     return deduped_graph
 
