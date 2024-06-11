@@ -989,6 +989,7 @@ def nx_split_opposing_geoms(
         for start_nd_key, end_nd_key, edge_idx, edge_data in gapped_edges:
             edge_geom = edge_data["geom"]
             # don't proceed with splits for short geoms??
+            # not necessarily desirable behaviour
             # if edge_geom.length < 5:
             #     continue
             # get hwy keys
