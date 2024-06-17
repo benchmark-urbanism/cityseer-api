@@ -503,9 +503,7 @@ def nx_iron_edges(
         elif edge_geom.length > 150:
             edge_geom = edge_geom.simplify(5)  # type: ignore
         # flatten if a relatively contained road but large angular change
-        elif simple_geom.buffer(15).contains(edge_geom) and max_angle > 60:
-            edge_geom = simple_geom
-        elif simple_geom.buffer(7.5).contains(edge_geom) and max_angle > 30:
+        elif simple_geom.buffer(15).contains(edge_geom) and max_angle > 20:
             edge_geom = simple_geom
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
     # straightening parallel edges can create duplicates
@@ -545,7 +543,6 @@ def _squash_adjacent(
             crossings = 0
             # compute node straight-through-angles
             nd_x_y = (nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
-            crossings = 0
             for nb_nd_key_a in nx.neighbors(nx_multigraph, nd_key):
                 for nb_edge_data_a in nx_multigraph[nd_key][nb_nd_key_a].values():
                     geom_a = nb_edge_data_a["geom"]

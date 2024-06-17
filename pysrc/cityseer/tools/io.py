@@ -328,8 +328,7 @@ def osm_graph_from_poly(
         (
         way["highway"]
         ["area"!="yes"]
-        ["highway"!~"motorway|motorway_link|bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
-        ["tunnel"!="yes"]
+        ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
         ["footway"!="sidewalk"]
         ["service"!~"parking_aisle|driveway|drive-through|slipway"]
         ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
@@ -357,32 +356,31 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
-        graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs,
-            buffer_dist=crawl_consolidate_dist,
-            crawl=True,
-            contains_buffer_dist=contains_buffer_dist,
-        )
-        graph_crs = graphs.nx_split_opposing_geoms(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
-        )
-        graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs,
-            buffer_dist=parallel_consolidate_dist,
-            contains_buffer_dist=contains_buffer_dist,
-        )
-        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        if iron_edges:
-            graph_crs = graphs.nx_iron_edges(graph_crs)
-        graph_crs = graphs.nx_split_opposing_geoms(
-            graph_crs, buffer_dist=parallel_consolidate_dist, contains_buffer_dist=contains_buffer_dist
-        )
-        graph_crs = graphs.nx_consolidate_nodes(
-            graph_crs,
-            buffer_dist=parallel_consolidate_dist,
-            contains_buffer_dist=contains_buffer_dist,
-        )
-        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        for hwy_keys, split_dist, consol_dist, cent_by_itx in [
+            (["motorway"], 30, 15, False),
+            (["trunk"], parallel_consolidate_dist, crawl_consolidate_dist, True),
+            (["primary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
+            (["secondary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
+            (["tertiary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
+            (["residential"], parallel_consolidate_dist, crawl_consolidate_dist, True),
+            (None, parallel_consolidate_dist, crawl_consolidate_dist, False),
+        ]:
+            contains_buffer_dist = max(split_dist, 25)
+            graph_crs = graphs.nx_split_opposing_geoms(
+                graph_crs,
+                buffer_dist=split_dist,
+                osm_hwy_target_tags=hwy_keys,
+                contains_buffer_dist=contains_buffer_dist,
+            )
+            graph_crs = graphs.nx_consolidate_nodes(
+                graph_crs,
+                buffer_dist=consol_dist,
+                crawl=True,
+                osm_hwy_target_tags=hwy_keys,
+                centroid_by_itx=cent_by_itx,
+                contains_buffer_dist=contains_buffer_dist,
+            )
+            graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         if iron_edges:
             graph_crs = graphs.nx_iron_edges(graph_crs)
 

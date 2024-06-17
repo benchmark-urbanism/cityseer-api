@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:9cd8f5217f9f67fd5c6c02b678acb5f3b096d3d1035138003b7ff130c4f62d6c"
+content_hash = "sha256:8766745ef09cd3bdc1efffaac3334bf6cc1336316cc01323d29f9f89fd26a446"
 
 [[package]]
 name = "affine"
@@ -2982,6 +2982,15 @@ groups = ["default", "dev"]
 files = [
     {file = "urllib3-2.2.1-py3-none-any.whl", hash = "sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d"},
     {file = "urllib3-2.2.1.tar.gz", hash = "sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19"},
+]
+
+[[package]]
+name = "utm"
+version = "0.7.0"
+summary = "Bidirectional UTM-WGS84 converter for python"
+groups = ["dev"]
+files = [
+    {file = "utm-0.7.0.tar.gz", hash = "sha256:3c9a3650e98bb6eecec535418d0dfd4db8f88c8ceaca112a0ff0787e116566e2"},
 ]
 
 [[package]]
