@@ -35,7 +35,7 @@ NodeKey = str
 NodeData = dict[str, Any]
 EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
 EdgeData = dict[str, Any]
-EdgeMapping = tuple[NodeKey, NodeKey, int, geometry.LineString]
+EdgeMapping = tuple[NodeKey, NodeKey, int, dict[Any, Any]]
 CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float_]]
 ListCoordsType = Union[list[CoordsType], coords.CoordinateSequence]
 
@@ -410,7 +410,8 @@ def add_node(
     """
     # suggest a name based on the given names
     if len(nodes_names) == 1:
-        new_nd_name = str(nodes_names[0])
+        # catch sets
+        new_nd_name = str(list(nodes_names)[0])
     # if concatenating existing nodes, suggest a name based on a combination of existing names
     else:
         names = []
