@@ -594,13 +594,14 @@ impl NetworkStructure {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             if node_visit.short_dist <= distance as f32 {
-                                let ang = 1.0 + (node_visit.simpl_dist / 180.0);
+                                let ang = node_visit.simpl_dist / 180.0;
                                 node_density.metric[i][*src_idx]
                                     .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
                                 node_farness.metric[i][*src_idx]
                                     .fetch_add(ang * wt, AtomicOrdering::Relaxed);
+                                // add 1 for harmonic to catch potential division by zero
                                 node_harmonic.metric[i][*src_idx]
-                                    .fetch_add((1.0 / ang) * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add((1.0 / (1.0 + ang)) * wt, AtomicOrdering::Relaxed);
                             }
                         }
                     }

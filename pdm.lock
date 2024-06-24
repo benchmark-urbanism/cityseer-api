@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:8766745ef09cd3bdc1efffaac3334bf6cc1336316cc01323d29f9f89fd26a446"
+content_hash = "sha256:919e76582ff39a8ae97281d3889d86314912f971445e323eac85499f9ccde2a3"
 
 [[package]]
 name = "affine"
