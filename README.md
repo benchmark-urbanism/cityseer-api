@@ -36,6 +36,5 @@ The `cityseer-api` `Python` package addresses a range of issues specific to comp
 
 ## Development
 
+`brew install pdm rust rust-analyzer rustfmt`
 `pdm install`
-`python -m ensurepip --default-pip`
-`brew install rust rust-analyzer rustfmt`
