@@ -268,7 +268,7 @@ def test_nx_remove_filler_nodes(primal_graph):
 def test_nx_remove_dangling_nodes(primal_graph):
     G_messy = make_messy_graph(primal_graph)
     # no despining or disconnected components removal
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=0, cleanup_filler_nodes=False)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=0)
     assert G_post.nodes == G_messy.nodes
     assert G_post.edges == G_messy.edges
     # check that all single neighbour nodes have been removed if geom less than despine distance
@@ -283,7 +283,7 @@ def test_nx_remove_dangling_nodes(primal_graph):
     # check that disconnected components are removed
     # this behaviour changed in networkx 2.4
     # use 10 nodes for remove disconnected (this is a small graph)
-    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=10, cleanup_filler_nodes=False)
+    G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=10)
     pre_components = list(nx.algorithms.components.connected_components(G_messy))
     post_components = list(nx.algorithms.components.connected_components(G_post))
     assert len(pre_components) != 1
@@ -308,30 +308,24 @@ def test_nx_iron_edges():
     nx_multi = nx.MultiGraph()
     nx_multi.add_node(0, x=0, y=0)
     nx_multi.add_node(1, x=0, y=2)
-    # 1 - straight line should be simplified
-    line_geom = geometry.LineString([[0, 0], [0, 10], [0, 20]])
+    # 1 - jogged line should be preserved
+    line_geom = geometry.LineString([[0, 0], [0, 50], [50, 50], [50, 100]])
     nx_multi.add_edge(0, 1, geom=line_geom)
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 10.0), (0.0, 20.0)]
-    # 2 - jogged line should be preserved
-    line_geom = geometry.LineString([[0, 0], [0, 10], [10, 10], [10, 20]])
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 50.0), (50.0, 50.0), (50.0, 100.0)]
+    # 2 sharply jogged line should be simplified
+    line_geom = geometry.LineString([[0, 0], [50, 0], [75, 5], [75, 0]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (10.0, 20.0)]
-    # 3 sharply jogged line should be simplified
-    line_geom = geometry.LineString([[0, 0], [10, 0], [15, 10], [15, 0]])
+    assert list(out_geom.coords) == [(0.0, 0.0), (75.0, 0.0)]
+    # 3 folded back line should be simplified
+    line_geom = geometry.LineString([[0, 0], [0, 55], [0, 50]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (15.0, 0.0)]
-    # 4 folded back line should be simplified
-    line_geom = geometry.LineString([[0, 0], [0, 30], [0, 20]])
-    nx_multi[0][1][0]["geom"] = line_geom
-    nx_out = graphs.nx_iron_edges(nx_multi)
-    out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 20.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 50.0)]
     # 5 loops should be left alone
     nx_multi = nx.MultiGraph()
     nx_multi.add_node(0, x=0, y=0)
@@ -346,6 +340,7 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     """ """
     # behaviour confirmed visually
     # from cityseer.tools import plot
+
     # plot.plot_nx(parallel_segments_graph, labels=True, node_size=80, plot_geoms=True)
     # set centroid_by_itx to False
     G_merged_spatial = graphs.nx_consolidate_nodes(
@@ -360,13 +355,15 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
         G_split_opps, buffer_dist=25, centroid_by_itx=False, merge_edges_by_midline=True
     )
     # plot.plot_nx(G_merged_spatial, labels=True, node_size=80, plot_geoms=True)
-    assert G_merged_spatial.number_of_nodes() == 8
-    assert G_merged_spatial.number_of_edges() == 8
+    assert G_merged_spatial.number_of_nodes() == 10
+    assert G_merged_spatial.number_of_edges() == 10
     node_coords = []
     for n, d in G_merged_spatial.nodes(data=True):
         node_coords.append((d["x"], d["y"]))
     assert node_coords == [
         (660, 660),
+        (760, 760),
+        (800, 760),
         (660.0, 710.0),
         (780.0, 710.0),
         (620.0, 710.0),
@@ -380,7 +377,7 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
         edge_lens.append(d["geom"].length)
     assert np.allclose(
         edge_lens,
-        [50.0, 40.0, 50.0, 70.0, 60.0, 147.70329614269008, 90.0, 90.0],
+        [50.0, 40.0, 53.85164807134504, 53.85164807134504, 40.0, 50.0, 70.0, 60.0, 90.0, 90.0],
     )
 
 

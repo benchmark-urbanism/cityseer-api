@@ -590,7 +590,7 @@ def plot_network_structure(
     _open_plots_reset()
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
-    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))
+    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
     # set extents
     xs_arr = np.array(network_structure.node_xs)
     ys_arr = np.array(network_structure.node_ys)

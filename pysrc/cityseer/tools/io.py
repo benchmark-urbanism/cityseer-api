@@ -59,7 +59,7 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Converting networkX graph from EPSG code {from_crs_code} to EPSG code {to_crs_code}.")
-    g_multi_copy = nx_multigraph.copy()
+    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
     if not CRS(to_crs_code).is_projected:
         raise ValueError("The to_crs_code parameter must be for a projected CRS")
     transformer = Transformer.from_crs(from_crs_code, to_crs_code, always_xy=True)
@@ -221,8 +221,6 @@ def osm_graph_from_poly(
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
-    crawl_consolidate_dist: int = 12,
-    parallel_consolidate_dist: int = 15,
     contains_buffer_dist: int = 50,
     iron_edges: bool = True,
     remove_disconnected: int = 100,
@@ -252,12 +250,7 @@ def osm_graph_from_poly(
         An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
-        Whether to automatically simplify the OSM graph. Set to False for manual cleaning.
-    crawl_consolidate_dist: int
-        The buffer distance to use when doing the initial round of node consolidation. This consolidation step crawls
-        neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.
-    parallel_consolidate_dist: int
-        The buffer distance to use when looking for adjacent parallel roadways.
+        Whether to automatically simplify the OSM graph.
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
         sufficiently adjacent to be merged.
@@ -278,31 +271,36 @@ def osm_graph_from_poly(
 
     Examples
     --------
-    The default OSM request will attempt to find all walkable routes. It will ignore motorways and will try to work with
-    pedestrianised routes and walkways.
-
-    If you wish to provide your own OSM request, then provide a valid OSM API request as a string. The string must
-    contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the OSM API to be
-    injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use
-    street name and highway reference information for cleaning purposes. See
+    If you wish to provide your own OSM request, then provide a valid OSM API request to the `custom_request` parameter.
+    The string must contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the
+    OSM API to be injected into the request. It is also recommended to not use the `skel` output option so that
+    `cityseer` can use street name and highway reference information for cleaning purposes. See
     [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
 
-    For example, to return only drivable roads, then use a request similar to the following. Notice the `geom_osm`
-    f-string interpolation key and the use of `out qt;` instead of `out skel qt;`.
+    The following is the default query which you can adapt for your purposes. Notice the `geom_osm` f-string
+    interpolation key (for injecting the geometry) and the use of `out qt;` instead of `out skel qt;`.
 
     ```python
-    custom_request = f'''
+    /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
     [out:json];
     (
     way["highway"]
     ["area"!="yes"]
-    ["highway"!~"footway|pedestrian|steps|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction"]
+    ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|
+        platform|construction|emergency_bay|rest_area"]
+    ["footway"!="sidewalk"]
+    ["service"!~"parking_aisle|driveway|drive-through|slipway"]
+    ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+    ["indoor"!="yes"]
+    ["level"!="-2"]
+    ["level"!="-3"]
+    ["level"!="-4"]
+    ["level"!="-5"]
     (poly:"{geom_osm}");
     );
     out body;
     >;
     out qt;
-    '''
     ```
 
     """
@@ -318,7 +316,7 @@ def osm_graph_from_poly(
         if "geom_osm" not in custom_request:
             raise ValueError(
                 'The provided custom_request does not contain an f-string interpolation bracket for "geom_osm". '
-                "This key is required for interpolating the generated geometry into the request."
+                "This key is required for interpolating the generated geometry into the request. See the documentation."
             )
         request = custom_request.format(geom_osm=geom_osm)
     else:
@@ -356,33 +354,40 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
-        for hwy_keys, split_dist, consol_dist, cent_by_itx in [
-            (["motorway"], 30, 15, False),
-            (["trunk"], parallel_consolidate_dist, crawl_consolidate_dist, True),
-            (["primary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
-            (["secondary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
-            (["tertiary"], parallel_consolidate_dist, crawl_consolidate_dist, True),
-            (["residential"], parallel_consolidate_dist, crawl_consolidate_dist, True),
-            (None, parallel_consolidate_dist, crawl_consolidate_dist, False),
+        for hwy_keys, matched_only, split_dist, consol_dist, cent_by_itx in [
+            (["motorway"], True, 60, 30, False),
+            (["trunk"], True, 40, 20, False),
+            (["primary"], True, 40, 20, False),
+            (["secondary"], True, 30, 15, False),
+            (["tertiary"], True, 30, 15, False),
+            (["residential"], True, 20, 12, True),
+            (["motorway"], False, 30, 20, False),
+            (["trunk", "primary"], False, 20, 15, False),
+            (["secondary", "tertiary"], False, 15, 12, False),
+            (None, False, 12, 10, True),
         ]:
             contains_buffer_dist = max(split_dist, 25)
             graph_crs = graphs.nx_split_opposing_geoms(
                 graph_crs,
                 buffer_dist=split_dist,
+                prioritise_by_hwy_tag=True,
                 osm_hwy_target_tags=hwy_keys,
+                osm_matched_tags_only=matched_only,
                 contains_buffer_dist=contains_buffer_dist,
             )
             graph_crs = graphs.nx_consolidate_nodes(
                 graph_crs,
                 buffer_dist=consol_dist,
                 crawl=True,
-                osm_hwy_target_tags=hwy_keys,
                 centroid_by_itx=cent_by_itx,
+                prioritise_by_hwy_tag=True,
                 contains_buffer_dist=contains_buffer_dist,
+                osm_hwy_target_tags=hwy_keys,
+                osm_matched_tags_only=matched_only,
             )
             graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        if iron_edges:
-            graph_crs = graphs.nx_iron_edges(graph_crs)
+    if iron_edges:
+        graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
 
@@ -441,17 +446,17 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
             count = len(elem["nodes"])
             if "tags" in elem:
                 tags = elem["tags"]
-                name = tags["name"] if "name" in tags else None
-                ref = tags["ref"] if "ref" in tags else None
-                highway = tags["highway"] if "highway" in tags else None
+                name = [tags["name"].lower()] if "name" in tags else []
+                ref = [tags["ref"].lower()] if "ref" in tags else []
+                highway = [tags["highway"].lower()] if "highway" in tags else []
                 for idx in range(count - 1):
                     start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(
                         start_nd_key,
                         end_nd_key,
-                        names=[name],
-                        routes=[ref],
-                        highways=[highway],
+                        names=name,
+                        routes=ref,
+                        highways=highway,
                     )
             else:
                 for idx in range(count - 1):
@@ -807,12 +812,12 @@ def network_structure_from_nx(
                             " and positive or positive infinity."
                         )
                 # in bearing
-                xy_1: npt.NDArray[np.float_] = np.array(line_geom_coords[0])
-                xy_2: npt.NDArray[np.float_] = np.array(line_geom_coords[1])
+                xy_1: npt.NDArray[np.float64] = np.array(line_geom_coords[0])
+                xy_2: npt.NDArray[np.float64] = np.array(line_geom_coords[1])
                 in_bearing: float = util.measure_bearing(xy_1, xy_2)
                 # out bearing
-                xy_3: npt.NDArray[np.float_] = np.array(line_geom_coords[-2])
-                xy_4: npt.NDArray[np.float_] = np.array(line_geom_coords[-1])
+                xy_3: npt.NDArray[np.float64] = np.array(line_geom_coords[-2])
+                xy_4: npt.NDArray[np.float64] = np.array(line_geom_coords[-1])
                 out_bearing: float = util.measure_bearing(xy_3, xy_4)
                 total_bearing = util.measure_bearing(xy_1, xy_4)
                 # set edge
@@ -1089,14 +1094,10 @@ def geopandas_from_nx(
     agg_edge_data = []
     # set edges
     for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
-        agg_edge_data.append(
-            {
-                "start_nd_key": start_nd_key,
-                "end_nd_key": end_nd_key,
-                "edge_idx": edge_idx,
-                "geom": edge_data["geom"],  # type: ignore
-            }
-        )
+        edge_data["start_nd_key"] = start_nd_key
+        edge_data["end_nd_key"] = end_nd_key
+        edge_data["edge_idx"] = edge_idx
+        agg_edge_data.append(edge_data)
     edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=crs, geometry="geom")  # type: ignore
 
     return edges_gdf
@@ -1104,6 +1105,7 @@ def geopandas_from_nx(
 
 def nx_from_generic_geopandas(
     gdf_network: gpd.GeoDataFrame,  # type: ignore
+    drop_self_loops_dist: int = 50,
 ) -> nx.MultiGraph:
     """
     Converts a generic LineString `gpd.GeoDataFrame` to a `cityseer` compatible `networkX` `MultiGraph`.
@@ -1114,6 +1116,8 @@ def nx_from_generic_geopandas(
     ----------
     gdf_network: gpd.GeoDataFrame
         A LineString `gpd.GeoDataFrame`.
+    drop_self_loops_dist: int
+        Drop looping street segments shorter than specified distance. 20m by default.
 
     Returns
     -------
@@ -1126,30 +1130,43 @@ def nx_from_generic_geopandas(
         raise ValueError("The GeoDataframe CRS must be projected, i.e. not geographic.")
     g_multi = nx.MultiGraph()
 
-    def _node_key(node_coords: list[float]):
-        x = round(node_coords[0], 3)
-        y = round(node_coords[1], 3)
+    def _node_key(node_coords):
         if len(node_coords) == 3:
-            z = round(node_coords[2], 3)
+            x, y, z = node_coords
             return f"x{x}-y{y}-z{z}"
+        x, y = node_coords
         return f"x{x}-y{y}"
 
     geom_key = gdf_network.geometry.name
-    for edge_idx, edge_row in gdf_network.iterrows():
+    for edge_idx, edge_row in tqdm(gdf_network.iterrows(), total=len(gdf_network), disable=config.QUIET_MODE):
         # generate start and ending nodes
         edge_geom = edge_row[geom_key]
+        # round to 1cm - assumes 1m units
+        if len(edge_geom.coords[0]) == 3:
+            edge_geom = geometry.LineString(
+                [[round(c[0], 1), round(c[1], 1), round(c[2], 1)] for c in edge_geom.coords]
+            )
+        else:
+            edge_geom = geometry.LineString([[round(c[0], 1), round(c[1], 1)] for c in edge_geom.coords])
+        # extract node keys
         coords_a = edge_geom.coords[0]
         node_key_a = _node_key(coords_a)
         coords_b = edge_geom.coords[-1]
         node_key_b = _node_key(coords_b)
         # drop short self-loops
-        if node_key_a == node_key_b and edge_geom.length < 5:
+        if node_key_a == node_key_b and edge_geom.length < drop_self_loops_dist:
             continue
+        # add nodes
         if node_key_a not in g_multi:
             g_multi.add_node(node_key_a, x=coords_a[0], y=coords_a[1])
         if node_key_b not in g_multi:
             g_multi.add_node(node_key_b, x=coords_b[0], y=coords_b[1])
-        g_multi.add_edge(node_key_a, node_key_b, momepy_edge_idx=edge_idx, geom=edge_geom)
+        # add edge
+        props = dict(edge_row)
+        for k in ["geom", "geometry"]:
+            if k in props:
+                del props[k]
+        g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)
 
     # deduplicate
     g_multi = graphs.nx_merge_parallel_edges(g_multi, merge_edges_by_midline=True, contains_buffer_dist=1)

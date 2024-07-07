@@ -204,6 +204,8 @@ def node_centrality_simplest(
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    angular_scaling_unit: float = 180,
+    farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -240,6 +242,13 @@ def node_centrality_simplest(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    angular_scaling_unit: float
+        The number by which to divide angular distances for scaling. 180 by default. For example, if the cumulative
+        angular distance for a given route is 360 then this will be scaled per 360 / 180 = 2.
+    farness_scaling_offset: float
+        A number by which to offset the scaled angular distance for computing farness. 1 by default. For example, if the
+        scaled angular distance is 2, then an offset of 1 will be applied as 1 + 2 = 3. This offset is only applied when
+        calculating farness. Harmonic closeness always uses an offset of 1 to prevent division by zero.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -281,6 +290,8 @@ def node_centrality_simplest(
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
+        angular_scaling_unit=angular_scaling_unit,
+        farness_scaling_offset=farness_scaling_offset,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
