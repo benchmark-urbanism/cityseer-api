@@ -594,6 +594,13 @@ def test_local_centrality_all(diamond_graph):
         compute_closeness=True,
         compute_betweenness=True,
     )
+    node_result_simplest_0_180 = network_structure.local_node_centrality_simplest(
+        distances,
+        compute_closeness=True,
+        compute_betweenness=True,
+        farness_scaling_offset=0,
+        angular_scaling_unit=180,
+    )
     # node density
     # additive nodes
     assert np.allclose(node_result_simplest.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -605,11 +612,21 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_simplest.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_simplest.node_farness[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_simplest.node_farness[250], [3.333, 3, 3, 3.333], atol=config.ATOL, rtol=config.RTOL)
+    # custom scaling
+    assert np.allclose(node_result_simplest_0_180.node_farness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        node_result_simplest_0_180.node_farness[250], [0.333, 0, 0, 0.333], atol=config.ATOL, rtol=config.RTOL
+    )
     # node harmonic angular
     # additive 1 / (1 + (to_imp / 180))
     assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_simplest.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_simplest.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
+    # should be the same
+    assert np.allclose(node_result_simplest_0_180.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        node_result_simplest_0_180.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL
+    )
     # node betweenness angular
     # additive 1 per node en simplest route
     assert np.allclose(node_result_simplest.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -651,7 +668,8 @@ def test_local_centrality_all(diamond_graph):
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
-    # additive 1 / (1 + (to_imp / 180))
+    # make sure the angle is at least 1 to avoid infinity for 0 angular distance summation
+    # additive 1 / (1 + to_imp / 180)
     assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(
         node_result_simplest.node_harmonic[150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL

@@ -532,6 +532,8 @@ class NetworkStructure:
         compute_closeness: bool | None = True,
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
+        angular_scaling_unit: float | None = None,
+        farness_scaling_offset: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult: ...

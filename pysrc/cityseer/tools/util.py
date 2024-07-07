@@ -36,11 +36,11 @@ NodeData = dict[str, Any]
 EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
 EdgeData = dict[str, Any]
 EdgeMapping = tuple[NodeKey, NodeKey, int, dict[Any, Any]]
-CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float_]]
+CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float64]]
 ListCoordsType = Union[list[CoordsType], coords.CoordinateSequence]
 
 
-def measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) -> float:
+def measure_bearing(xy_1: npt.NDArray[np.float64], xy_2: npt.NDArray[np.float64]) -> float:
     """Measures the angular bearing between two coordinate pairs."""
     y_1, x_1 = xy_1[::-1]
     y_2, x_2 = xy_2[::-1]
@@ -48,7 +48,7 @@ def measure_bearing(xy_1: npt.NDArray[np.float_], xy_2: npt.NDArray[np.float_]) 
 
 
 def measure_coords_angle(
-    coords_1: npt.NDArray[np.float_], coords_2: npt.NDArray[np.float_], coords_3: npt.NDArray[np.float_]
+    coords_1: npt.NDArray[np.float64], coords_2: npt.NDArray[np.float64], coords_3: npt.NDArray[np.float64]
 ) -> float:
     """
     Measures angle between three coordinate pairs.
@@ -60,17 +60,17 @@ def measure_coords_angle(
     a_2: float = measure_bearing(coords_3, coords_2)
     angle = np.abs((a_2 - a_1 + 180) % 360 - 180)
     # alternative
-    # A: npt.NDArray[np.float_] = coords_2 - coords_1
-    # B: npt.NDArray[np.float_] = coords_3 - coords_2
+    # A: npt.NDArray[np.float64] = coords_2 - coords_1
+    # B: npt.NDArray[np.float64] = coords_3 - coords_2
     # alt_angle = np.abs(np.degrees(np.math.atan2(np.linalg.det([A, B]), np.dot(A, B))))
     return angle
 
 
 def _measure_linestring_angle(linestring_coords: ListCoordsType, idx_a: int, idx_b: int, idx_c: int) -> float:
     """Measures angle between two segment bearings per indices."""
-    coords_1: npt.NDArray[np.float_] = np.array(linestring_coords[idx_a])[:2]
-    coords_2: npt.NDArray[np.float_] = np.array(linestring_coords[idx_b])[:2]
-    coords_3: npt.NDArray[np.float_] = np.array(linestring_coords[idx_c])[:2]
+    coords_1: npt.NDArray[np.float64] = np.array(linestring_coords[idx_a])[:2]
+    coords_2: npt.NDArray[np.float64] = np.array(linestring_coords[idx_b])[:2]
+    coords_3: npt.NDArray[np.float64] = np.array(linestring_coords[idx_c])[:2]
     return measure_coords_angle(coords_1, coords_2, coords_3)
 
 
@@ -227,7 +227,10 @@ def align_linestring_coords(
             linestring_coords = linestring_coords[::-1]  # type: ignore
         tol_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     if tol_dist > tolerance:
-        raise ValueError(f"Closest side of edge geom is {tol_dist} from node, exceeding tolerance of {tolerance}.")
+        raise ValueError(
+            f"Closest side of edge geom {linestring_coords} is {tol_dist} from node {x_y}, "
+            f"exceeding tolerance of {tolerance}."
+        )
     # otherwise no flipping is required and the coordinates can simply be returned
     return linestring_coords
 
@@ -269,9 +272,9 @@ def snap_linestring_endpoints(
     # align and snap edge geom
     linestring_coords = align_linestring_coords(linestring_coords, s_xy, tolerance=tolerance)
     if not np.allclose(linestring_coords[0][:2], s_xy, atol=tolerance, rtol=0):
-        raise ValueError("Linestring geometry does not match starting node coordinates.")
+        raise ValueError(f"Linestring geometry {linestring_coords} does not match starting node coordinates {s_xy}.")
     if not np.allclose(linestring_coords[-1][:2], e_xy, atol=tolerance, rtol=0):
-        raise ValueError("Linestring geometry does not match ending node coordinates.")
+        raise ValueError(f"Linestring geometry {linestring_coords} does not match ending node coordinates {e_xy}.")
     linestring_coords = snap_linestring_startpoint(linestring_coords, s_xy)
     linestring_coords = snap_linestring_endpoint(linestring_coords, e_xy)
     return linestring_coords
@@ -372,16 +375,22 @@ class EdgeInfo:
         self._names = []
         self._refs = []
         self._highways = []
+        self.props = {}
 
     def gather_edge_info(self, edge_data: dict[str, Any]):
         """Gather edge data from provided edge_data."""
         # agg names, routes, highway attributes if present
-        if "names" in edge_data:
-            self._names += edge_data["names"]
-        if "routes" in edge_data:
-            self._refs += edge_data["routes"]
-        if "highways" in edge_data:
-            self._highways += edge_data["highways"]
+        for k, v in edge_data.items():
+            if k in ["geom", "geometry"]:
+                continue
+            if k == "names":
+                self._names += edge_data["names"]
+            elif k == "routes":
+                self._refs += edge_data["routes"]
+            elif k == "highways":
+                self._highways += edge_data["highways"]
+            elif k not in self.props:
+                self.props[k] = v
 
     def set_edge_info(
         self,
@@ -394,6 +403,8 @@ class EdgeInfo:
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
         nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
+        for k, v in self.props.items():
+            nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v
 
 
 def add_node(

@@ -540,6 +540,8 @@ impl NetworkStructure {
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        angular_scaling_unit: Option<f32>,
+        farness_scaling_offset: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
@@ -556,6 +558,9 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+        // angular scaling
+        let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
+        let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
         // track progress
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
@@ -594,13 +599,16 @@ impl NetworkStructure {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             if node_visit.short_dist <= distance as f32 {
-                                let ang = 1.0 + (node_visit.simpl_dist / 180.0);
                                 node_density.metric[i][*src_idx]
                                     .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
+                                let far_ang = farness_scaling_offset
+                                    + (node_visit.simpl_dist / angular_scaling_unit);
                                 node_farness.metric[i][*src_idx]
-                                    .fetch_add(ang * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
+                                // scaling offset is 1 for harmonic to catch potential division by zero
+                                let harm_ang = 1.0 + (node_visit.simpl_dist / angular_scaling_unit);
                                 node_harmonic.metric[i][*src_idx]
-                                    .fetch_add((1.0 / ang) * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
                             }
                         }
                     }
