@@ -1166,6 +1166,20 @@ def nx_from_generic_geopandas(
         for k in ["geom", "geometry"]:
             if k in props:
                 del props[k]
+        # names, routes, highways
+        for k in ["names", "routes", "highways"]:
+            if not k in props:
+                props[k] = []  # type: ignore
+            else:
+                prop = props[k]
+                if isinstance(prop, str):
+                    prop = prop.strip("()[] ,'\"")
+                    prop = prop.split(",")
+                    prop = [p.strip("\" '") for p in prop]
+                    prop = [p for p in prop if p not in ["", " ", None]]
+                if not isinstance(prop, (tuple, list)):
+                    raise TypeError(f"Expected key {k} to be a list type to retain compatibility with OSM workflows.")
+                props[k] = prop  # type: ignore
         g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)
 
     # deduplicate
