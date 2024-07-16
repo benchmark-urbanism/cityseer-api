@@ -304,7 +304,7 @@ def _extract_tags_to_set(
     if tags_list is not None:
         if not isinstance(tags_list, (list, set, tuple)):
             raise ValueError(f"Tags should be provided as a `list` of `str` instead of {type(tags_list)}.")
-        tags_list = [t.lower() for t in tags_list]
+        tags_list = [t.strip().lower() for t in tags_list if t not in ["", " ", None]]
         tags.update(tags_list)
     return tags
 

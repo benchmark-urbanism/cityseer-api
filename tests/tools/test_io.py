@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import pytest
-from pyproj import CRS, Transformer
+from pyproj import Transformer
 from shapely import geometry, wkt
 
 from cityseer import config
@@ -782,3 +782,25 @@ def test_nx_from_generic_geopandas(primal_graph):
     for s, e, d in nx_from_generic.edges(data=True):
         total_lens_generic += d["geom"].length
     assert total_lens_input - total_lens_generic < config.ATOL
+    # test OSM keys
+    out_gpd = io.geopandas_from_nx(primal_graph, crs=3395)
+    out_gpd["names"] = ""
+    out_gpd["names"].iloc[0] = "(boo,)"
+    out_gpd["routes"] = ""
+    out_gpd["routes"].iloc[0] = "(boo,)"
+    out_gpd["highways"] = ""
+    out_gpd["highways"].iloc[0] = "boo"
+    out_gpd["highways"].iloc[1] = "boo,"
+    out_gpd["highways"].iloc[2] = "(boo)"
+    out_gpd["highways"].iloc[3] = "(boo,)"
+    out_gpd["highways"].iloc[4] = "(boo),"
+    out_gpd["highways"].iloc[5] = "(boo, baa)"
+    in_G = io.nx_from_generic_geopandas(out_gpd)
+    G = graphs.nx_remove_filler_nodes(in_G)
+    for s, e in G.edges():
+        hwy = G[s][e][0]["highways"]
+        assert isinstance(hwy, list)
+        if len(hwy) == 2:
+            assert hwy == ["boo", "baa"]
+        elif len(hwy) == 1:
+            assert hwy == ["boo"]

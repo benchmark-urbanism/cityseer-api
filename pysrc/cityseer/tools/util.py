@@ -357,18 +357,18 @@ class EdgeInfo:
 
     @property
     def names(self):
-        """Returns a set of street names."""
-        return tuple(set(self._names))
+        """Returns a list of street names."""
+        return list(set(self._names))
 
     @property
     def routes(self):
-        """Returns a set of routes - e.g. route numbers."""
-        return tuple(set(self._refs))
+        """Returns a list of routes - e.g. route numbers."""
+        return list(set(self._refs))
 
     @property
     def highways(self):
-        """Returns a set of highway types - e.g. footway."""
-        return tuple(set(self._highways))
+        """Returns a list of highway types - e.g. footway."""
+        return list(set(self._highways))
 
     def __init__(self):
         """Initialises a network information structure."""
