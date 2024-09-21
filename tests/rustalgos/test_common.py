@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from cityseer import config, rustalgos
 from cityseer.tools import mock
 
@@ -67,7 +66,7 @@ def test_check_categorical_data(primal_graph):
 
 def test_distances_from_betas():
     # some basic checks using float form
-    for b, d in zip([0.04, 0.0025], [100, 1600]):
+    for b, d in zip([0.04, 0.0025], [100, 1600], strict=False):
         # simple straight check against corresponding distance
         assert rustalgos.distances_from_betas([b]) == [d]
         # circular check
@@ -98,7 +97,7 @@ def test_distances_from_betas():
 
 def test_betas_from_distances():
     # some basic checks
-    for dist, b in zip([100, 1600], [0.04, 0.0025]):
+    for dist, b in zip([100, 1600], [0.04, 0.0025], strict=False):
         # simple straight check against corresponding distance
         assert np.allclose(rustalgos.betas_from_distances([dist]), [b], atol=config.ATOL, rtol=config.RTOL)
         # circular check
@@ -187,7 +186,7 @@ def test_clipped_beta_wt():
         # calculate curve thresholds
         max_curve_wts = rustalgos.clip_wts_curve(distances, betas, spatial_tolerance)
         # iter
-        for dist, beta, max_wt in zip(distances, betas, max_curve_wts):
+        for dist, beta, max_wt in zip(distances, betas, max_curve_wts, strict=False):
             # try a range of datapoint distances
             for data_dist in [0, 25, 50, 100, 400, 800, 1600]:
                 # continue if data distance exceeds current distance threshold - these are ignored in computations

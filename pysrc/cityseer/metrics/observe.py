@@ -18,10 +18,9 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
-from tqdm import tqdm
-
 from cityseer import config
 from cityseer.tools import graphs
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -158,7 +157,7 @@ def _recurse_edges(
     nested_match_targets: list[str | None] = nested_edge_data[_method]
     nested_match_targets = [nmt.lower() for nmt in nested_match_targets if nmt is not None]
     # bail if this edge info (e.g. street name) doesn't intersect with the previous
-    if not _match_target.lower() in nested_match_targets:
+    if _match_target.lower() not in nested_match_targets:
         return
     _continuity_report.entries[_report_key].add_edge(
         length=nested_edge_data["geom"].length, start_nd_key=_a_nd_key, end_nd_key=_b_nd_key, edge_idx=_edge_idx
@@ -173,7 +172,7 @@ def _recurse_edges(
     # recurse into neighbours
     for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
         nested_edge_idx: int
-        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key].keys():
+        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:
             _recurse_edges(
                 _nx_multigraph,
                 _method,
@@ -221,7 +220,7 @@ def street_continuity(
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 
-    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
+    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
     # check intended method keys
     available_targets = ["names", "routes", "highways"]
     if method not in available_targets:
@@ -236,7 +235,8 @@ def street_continuity(
     edge_idx: int
     edge_data: dict[str, Any]
     for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE  # type: ignore
+        nx_multi_copy.edges(keys=True, data=True),  # type: ignore
+        disable=config.QUIET_MODE,
     ):
         # raise if the key doesn't exist
         if method not in edge_data:

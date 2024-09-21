@@ -11,7 +11,7 @@ of behaviour in code tests. Users are encouraged to use matplotlib or other plot
 from __future__ import annotations
 
 import logging
-from typing import Any, Union
+from typing import Any
 
 import geopandas as gpd
 import matplotlib as mpl
@@ -50,7 +50,7 @@ class ColourMap:
 
 COLOUR_MAP = ColourMap()
 
-ColourType = Union[str, npt.ArrayLike]
+ColourType = str | npt.ArrayLike
 
 
 def _open_plots_reset():
@@ -95,24 +95,24 @@ def plot_nx_primal_or_dual(  # noqa
     primal_node_colour: str | float | ndarray
         Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order
         and number of nodes in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     primal_edge_colour: str | float | ndarray
         Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order
         and number of edges in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     dual_node_size:  int
         The diameter for the dual graph's nodes.
     dual_node_colour: str | float | ndarray
         Dual node colour or colours. When passing a list of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     dual_edge_colour: str | float | ndarray
         Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order
         and number of edges in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     primal_edge_width: float
         Linewidths for the primal edge. Defaults to None.
@@ -139,12 +139,11 @@ def plot_nx_primal_or_dual(  # noqa
 
     ```py
     from cityseer.tools import mock, graphs, plot
+
     G = mock.mock_graph()
     G_simple = graphs.nx_simple_geoms(G)
     G_dual = graphs.nx_to_dual(G_simple)
-    plot.plot_nx_primal_or_dual(G_simple,
-                                G_dual,
-                                plot_geoms=False)
+    plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
     ```
     ![Example primal and dual graph plot.](/images/graph_dual.png)
     _A dual graph in blue overlaid on the source primal graph in red._
@@ -173,7 +172,7 @@ def plot_nx_primal_or_dual(  # noqa
         _edge_style: str,
         _edge_width: int | float | None,
     ) -> None:
-        if not len(_graph):  # pylint: disable=len-as-condition
+        if not len(_graph):
             raise ValueError("Graph contains no nodes to plot.")
         if not isinstance(_node_size, int) or _node_size < 1:
             raise ValueError("Node sizes should be a positive integer.")
@@ -183,29 +182,20 @@ def plot_nx_primal_or_dual(  # noqa
                     "A list, tuple, or array of node colours should match the number of nodes in the graph."
                 )
         else:
-            if _is_primal:
-                _node_colour = COLOUR_MAP.secondary
-            else:
-                _node_colour = COLOUR_MAP.info
+            _node_colour = COLOUR_MAP.secondary if _is_primal else COLOUR_MAP.info
         if _edge_colour is not None:
             if isinstance(_edge_colour, np.ndarray) and len(_edge_colour) != len(_graph.edges()):
                 raise ValueError(
                     "A list, tuple, or array of edge colours should match the number of edges in the graph."
                 )
         else:
-            if _is_primal:
-                _edge_colour = "w"
-            else:
-                _edge_colour = COLOUR_MAP.accent
+            _edge_colour = "w" if _is_primal else COLOUR_MAP.accent
         # edge width
         if _edge_width is not None:
-            if not isinstance(_edge_width, (int, float)):
+            if not isinstance(_edge_width, int | float):
                 raise ValueError("Edge widths should be an int or float.")
         else:
-            if _is_primal:
-                _edge_width = 1.5
-            else:
-                _edge_width = 0.5
+            _edge_width = 1.5 if _is_primal else 0.5
         pos = {}
         node_list = []
         # setup a node colour list if nodes are individually coloured, this is for filtering by extents
@@ -214,12 +204,10 @@ def plot_nx_primal_or_dual(  # noqa
         node_key: NodeKey
         node_data: NodeData
         for n_idx, (node_key, node_data) in enumerate(_graph.nodes(data=True)):
-            if x_lim is not None:
-                if node_data["x"] < x_lim[0] or node_data["x"] > x_lim[1]:
-                    continue
-            if y_lim is not None:
-                if node_data["y"] < y_lim[0] or node_data["y"] > y_lim[1]:
-                    continue
+            if x_lim is not None and (node_data["x"] < x_lim[0] or node_data["x"] > x_lim[1]):
+                continue
+            if y_lim is not None and (node_data["y"] < y_lim[0] or node_data["y"] > y_lim[1]):
+                continue
             # add to the pos dictionary regardless (otherwise nx.draw throws an error)
             pos[node_key] = (node_data["x"], node_data["y"])
             # add to the node list
@@ -253,7 +241,7 @@ def plot_nx_primal_or_dual(  # noqa
                         f"Can't plot geoms because a 'geom' key can't be found for edge {start_node_key} to "
                         f"{end_node_key}. Use the nx_simple_geoms() method if you need to create geoms for a graph."
                     ) from err
-                edge_geoms.append(tuple(zip(x_arr, y_arr)))  # type: ignore
+                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=False)))  # type: ignore
             else:
                 edge_list.append((start_node_key, end_node_key))
         # plot geoms manually if required
@@ -351,7 +339,7 @@ def plot_nx(
     node_colour: str | float | ndarray
         Node colour or colours. When passing an iterable of colours, the number of colours should match the order and
         number of nodes in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     edge_colour: str | float | ndarray
         Edges colour as a `matplotlib` compatible colour string. Defaults to None.
@@ -382,11 +370,7 @@ def plot_nx(
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
-    networks.node_centrality_shortest(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf,
-        distances=[800]
-    )
+    networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
     G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # let's extract and normalise the values
     vals = []
@@ -454,7 +438,7 @@ def plot_assignment(
     node_colour: str | float | ndarray
         Node colour or colours. When passing a list of colours, the number of colours should match the order and number
         of nodes in the MultiGraph. The colours are passed to the underlying
-        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long
+        [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)
         method and should be formatted accordingly. Defaults to None.
     node_labels: bool
         Whether to plot the node labels. Defaults to False.
@@ -474,7 +458,7 @@ def plot_assignment(
     _open_plots_reset()
     plt.figure(**kwargs)  # type: ignore
 
-    if isinstance(node_colour, (list, tuple, np.ndarray)):
+    if isinstance(node_colour, list | tuple | np.ndarray):
         if not (len(node_colour) == 1 or len(node_colour) == len(nx_multigraph)):
             raise ValueError(
                 "Node colours should either be a single colour or a list or tuple of colours matching "
@@ -873,7 +857,7 @@ def plot_nx_edges(
                 continue
             if np.any(ys < min_y) or np.any(ys > max_y):
                 continue
-            plot_geoms.append(tuple(zip(xs, ys)))
+            plot_geoms.append(tuple(zip(xs, ys, strict=False)))
             plot_colours.append(cmap(colours[idx]))  # type: ignore
             plot_lws.append(sizes[idx])  # type: ignore
         lines = LineCollection(
@@ -891,7 +875,7 @@ def plot_nx_edges(
         plot_lws = []
         # extract sorted counts by decreasing order
         labels_info = dict(sorted(labels_info.items(), key=lambda item: item[1]["count"], reverse=True))
-        label_keys = [k for k in labels_info.keys() if k != "other"]
+        label_keys = [k for k in labels_info if k != "other"]
         label_counts = [v["count"] for k, v in labels_info.items() if k != "other"]
         # clip by maximum categoricals
         if len(label_keys) > max_n_categorical:
@@ -924,7 +908,7 @@ def plot_nx_edges(
                     continue
                 if np.any(ys < min_y) or np.any(ys > max_y):
                     continue
-                plot_geoms.append(tuple(zip(xs, ys)))
+                plot_geoms.append(tuple(zip(xs, ys, strict=False)))
                 plot_colours.append(item_c)
                 plot_lws.append(item_lw)
         lines = LineCollection(

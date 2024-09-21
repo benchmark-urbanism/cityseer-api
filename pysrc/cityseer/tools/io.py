@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Union, cast
+from typing import Any, cast
 
 import fiona
 import geopandas as gpd
@@ -18,13 +18,12 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import requests
-from pyproj import CRS, Transformer
-from shapely import geometry
-from tqdm import tqdm
-
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, util
 from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
+from pyproj import CRS, Transformer
+from shapely import geometry
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
         y: float = node_data["y"]
         # be cognisant of parameter and return order, using always_xy for transformer
-        easting, northing = transformer.transform(x, y)  # pylint: disable=unpacking-non-sequence
+        easting, northing = transformer.transform(x, y)
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
@@ -87,7 +86,8 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
     edge_idx: int
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
+        g_multi_copy.edges(data=True, keys=True),  # type: ignore
+        disable=config.QUIET_MODE,  # type: ignore
     ):
         # check if geom present - optional step
         if "geom" in edge_data:
@@ -209,7 +209,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         max_tries -= 1
     if osm_response is None:
         raise requests.RequestException("None response. Unsuccessful OSM API request.")
-    if not osm_response.status_code == 200:
+    if osm_response.status_code != 200:
         osm_response.raise_for_status()
 
     return osm_response
@@ -304,9 +304,9 @@ def osm_graph_from_poly(
     ```
 
     """
-    if poly_crs_code is not None and not isinstance(poly_crs_code, (int, str)):  # type: ignore
+    if poly_crs_code is not None and not isinstance(poly_crs_code, int | str):  # type: ignore
         raise TypeError('Please provide "poly_crs_code" parameter as int or str')
-    if to_crs_code is not None and not isinstance(to_crs_code, (int, str)):
+    if to_crs_code is not None and not isinstance(to_crs_code, int | str):
         raise TypeError('Please provide "to_crs_code" parameter as int or str')
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
@@ -518,9 +518,9 @@ def nx_from_osm_nx(
     """
     if not isinstance(nx_multidigraph, nx.MultiDiGraph):
         raise TypeError("This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.")
-    if node_attributes is not None and not isinstance(node_attributes, (list, tuple)):
+    if node_attributes is not None and not isinstance(node_attributes, list | tuple):
         raise TypeError("Node attributes to be copied should be provided as either a list or tuple of attribute keys.")
-    if edge_attributes is not None and not isinstance(edge_attributes, (list, tuple)):
+    if edge_attributes is not None and not isinstance(edge_attributes, list | tuple):
         raise TypeError("Edge attributes to be copied should be provided as either a list or tuple of attribute keys.")
     logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
     # target MultiGraph
@@ -552,7 +552,8 @@ def nx_from_osm_nx(
     edge_idx: int
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multidigraph.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
+        nx_multidigraph.edges(data=True, keys=True),  # type: ignore
+        disable=config.QUIET_MODE,  # type: ignore
     ):
         edge_data = cast(EdgeData, edge_data)  # type: ignore
         s_x, s_y = _process_node(start_nd_key)
@@ -591,7 +592,7 @@ def nx_from_osm_nx(
     return g_multi
 
 
-BboxType = Union[tuple[int, int, int, int], tuple[float, float, float, float]]
+BboxType = tuple[int, int, int, int] | tuple[float, float, float, float]
 
 
 def nx_from_open_roads(
@@ -706,7 +707,7 @@ def network_structure_from_nx(
         edge attributes containing `LineString` geoms.
     crs: str | int
         CRS for initialising the returned structures. This is used for initialising the GeoPandas
-        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).
 
     Returns
     -------
@@ -773,7 +774,7 @@ def network_structure_from_nx(
             # add the new edge index to the node's out edges
             nx_edge_data: EdgeData
             for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
-                if not "geom" in nx_edge_data:
+                if "geom" not in nx_edge_data:
                     raise KeyError(
                         f"No edge geom found for edge {start_node_key}-{end_node_key}: Please add an edge 'geom' "
                         "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
@@ -1023,14 +1024,8 @@ def nx_from_cityseer_geopandas(
     # after above so that errors caught first
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
-        if hasattr(nd_data, "live"):
-            live = nd_data.live
-        else:
-            live = True
-        if hasattr(nd_data, "weight"):
-            weight = nd_data.weight
-        else:
-            weight = 1
+        live = nd_data.live if hasattr(nd_data, "live") else True
+        weight = nd_data.weight if hasattr(nd_data, "weight") else 1
         g_multi_copy.add_node(str(nd_key), x=nd_data.x, y=nd_data.y, live=live, weight=weight)
     logger.info("Unpacking edge data.")
     geom_key = edges_gdf.geometry.name
@@ -1080,7 +1075,7 @@ def geopandas_from_nx(
         edge attributes containing `LineString` geoms.
     crs: str | int
         CRS for initialising the returned structures. This is used for initialising the GeoPandas
-        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long
+        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).
 
     Returns
     -------
@@ -1168,7 +1163,7 @@ def nx_from_generic_geopandas(
                 del props[k]
         # names, routes, highways
         for k in ["names", "routes", "highways"]:
-            if not k in props:
+            if k not in props:
                 props[k] = []  # type: ignore
             else:
                 prop = props[k]
@@ -1177,7 +1172,7 @@ def nx_from_generic_geopandas(
                     prop = prop.split(",")
                     prop = [p.strip("\" '") for p in prop]
                     prop = [p for p in prop if p not in ["", " ", None]]
-                if not isinstance(prop, (tuple, list)):
+                if not isinstance(prop, tuple | list):
                     raise TypeError(f"Expected key {k} to be a list type to retain compatibility with OSM workflows.")
                 props[k] = prop  # type: ignore
         g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)

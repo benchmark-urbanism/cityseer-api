@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from scipy.stats import entropy
-
 from cityseer import config, rustalgos
 from cityseer.tools import mock
+from scipy.stats import entropy
 
 
 def test_hill_diversity():
@@ -57,8 +56,10 @@ def hill_diversity_pairwise_distance_wt(
     class_distances,
     q: np.float32,
     beta: np.float32,
-    max_curve_wt: np.float32 = np.float32(1.0),
+    max_curve_wt: np.float32 | None = None,
 ) -> np.float32:
+    if max_curve_wt is None:
+        max_curve_wt = np.float32(1.0)
     if len(class_counts) != len(class_distances):
         raise ValueError("Mismatching number of unique class counts and respective class distances.")
     if beta < 0:
@@ -156,7 +157,7 @@ def test_gini_simpson_diversity():
     USED FOR RESEARCH PURPOSES ONLY
     """
     # just run for now to check against unexpectedly thrown errors
-    for counts, probs in mock.mock_species_data():
+    for counts, _probs in mock.mock_species_data():
         assert np.allclose(
             rustalgos.gini_simpson_diversity(counts),
             gini_simpson_diversity(np.array(counts)),
@@ -177,9 +178,13 @@ def test_shannon_diversity():
 def raos_quadratic_diversity(
     class_counts,
     wt_matrix,
-    alpha: np.float32 = np.float32(1),
-    beta: np.float32 = np.float32(1),
+    alpha: np.float32 | None = None,
+    beta: np.float32 | None = None,
 ) -> np.float32:
+    if alpha is None:
+        alpha = np.float32(1)
+    if beta is None:
+        beta = np.float32(1)
     if len(class_counts) != len(wt_matrix):
         raise ValueError("Mismatching number of unique class counts and respective class taxonomy tiers.")
     if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:

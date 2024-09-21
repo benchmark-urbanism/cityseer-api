@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import logging
 import string
-from typing import Any, Generator, cast
+from collections.abc import Generator
+from typing import Any, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -46,6 +47,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     --------
     ```python
     from cityseer.tools import mock, plot
+
     nx_multigraph = mock.mock_graph()
     plot.plot_nx(nx_multigraph)
     ```
@@ -346,7 +348,7 @@ def mock_landuse_categorical_data(
         else:
             class_key = int(np.random.randint(0, len(random_class_str)))
             cl_codes.append(random_class_str[class_key])
-    data_gpd["categorical_landuses"] = cl_codes  # pylint: disable=unsupported-assignment-operation
+    data_gpd["categorical_landuses"] = cl_codes
 
     return data_gpd
 
@@ -398,7 +400,7 @@ def mock_numerical_data(
         # set last five items to max - this is for duplicate checking
         num_max = np.nanmax(num_arr)
         num_arr[-5:] = num_max
-        data_gpd[f"mock_numerical_{idx}"] = num_arr  # pylint: disable=unsupported-assignment-operation
+        data_gpd[f"mock_numerical_{idx}"] = num_arr
     return data_gpd
 
 
@@ -431,9 +433,9 @@ def mock_species_data(
 
     for counts, probs in mock.mock_species_data():
         cs = [c for c in counts]
-        print(f'c = {cs}')
+        print(f"c = {cs}")
         ps = [round(p, 3) for p in probs]
-        print(f'p = {ps}')
+        print(f"p = {ps}")
 
     # c = [1]
     # p = [1.0]

@@ -9,7 +9,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any, Union
+from typing import Any
 
 import geopandas as gpd
 import networkx as nx
@@ -33,11 +33,11 @@ MultiDiGraph = Any
 # coords can be 2d or 3d
 NodeKey = str
 NodeData = dict[str, Any]
-EdgeType = Union[tuple[NodeKey, NodeKey], tuple[NodeKey, NodeKey, int]]
+EdgeType = tuple[NodeKey, NodeKey] | tuple[NodeKey, NodeKey, int]
 EdgeData = dict[str, Any]
 EdgeMapping = tuple[NodeKey, NodeKey, int, dict[Any, Any]]
-CoordsType = Union[tuple[float, float], tuple[float, float, float], npt.NDArray[np.float64]]
-ListCoordsType = Union[list[CoordsType], coords.CoordinateSequence]
+CoordsType = tuple[float, float] | tuple[float, float, float] | npt.NDArray[np.float64]
+ListCoordsType = list[CoordsType] | coords.CoordinateSequence
 
 
 def measure_bearing(xy_1: npt.NDArray[np.float64], xy_2: npt.NDArray[np.float64]) -> float:
@@ -124,7 +124,7 @@ def _snap_linestring_idx(
     Snaps a LineString's coordinate at the specified index to the provided x_y coordinate.
     """
     # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
+    if not isinstance(linestring_coords, list | np.ndarray | coords.CoordinateSequence):
         raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
     list_linestring_coords: ListCoordsType = list(linestring_coords)  # type: ignore
     # check that the index is either 0 or -1
@@ -212,7 +212,7 @@ def align_linestring_coords(
 
     """
     # check types
-    if not isinstance(linestring_coords, (list, np.ndarray, coords.CoordinateSequence)):
+    if not isinstance(linestring_coords, list | np.ndarray | coords.CoordinateSequence):
         raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
     linestring_coords = list(linestring_coords)  # type: ignore
     a_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
@@ -297,7 +297,7 @@ def weld_linestring_coords(
     """
     # check types
     for line_coords in [linestring_coords_a, linestring_coords_b]:
-        if not isinstance(line_coords, (list, np.ndarray, coords.CoordinateSequence)):
+        if not isinstance(line_coords, list | np.ndarray | coords.CoordinateSequence):
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
     linestring_coords_a = list(linestring_coords_a)  # type: ignore
     linestring_coords_b = list(linestring_coords_b)  # type: ignore
@@ -549,7 +549,10 @@ def blend_metrics(
             continue
         # suffix is only applied for overlapping column names
         merged_edges_gdf = pd.merge(
-            merged_edges_gdf, nodes_gdf[[node_column]], left_on="nx_start_node_key", right_index=True  # type: ignore
+            merged_edges_gdf,
+            nodes_gdf[[node_column]],
+            left_on="nx_start_node_key",
+            right_index=True,  # type: ignore
         )
         merged_edges_gdf = pd.merge(
             merged_edges_gdf,

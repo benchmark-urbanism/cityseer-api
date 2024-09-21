@@ -5,11 +5,9 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import pytest
-from shapely import geometry
-
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, io, mock
+from shapely import geometry
 
 
 def test_find_nearest(primal_graph):
@@ -137,7 +135,7 @@ def test_assign_to_network(primal_graph):
         assert n == targets[target_idx][1] and n_n == targets[target_idx][2]
         # should be None
         n, n_n = network_structure.assign_to_network(data_coord, 0)
-        assert n == None and n_n == None
+        assert n is None and n_n is None
 
     # from cityseer.tools import plot
     # from cityseer.metrics import layers
@@ -227,7 +225,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     primal_targets = ("15", "20", "37")
     dual_sources = ("0_1_k0", "0_16_k0", "0_31_k0")
     dual_targets = ("13_15_k0", "17_20_k0", "36_37_k0")
-    for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets):
+    for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets, strict=False):
         p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
         d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
         d_target_idx = nodes_gdf_d.index.tolist().index(d_target)
@@ -393,7 +391,6 @@ def test_local_node_centrality_shortest(primal_graph):
                 continue
             # get shortest / simplest distances
             to_short_dist = tree_map[to_idx].short_dist
-            to_simpl_dist = tree_map[to_idx].simpl_dist
             n_cycles = tree_map[to_idx].cycles
             # continue if exceeds max
             if np.isinf(to_short_dist):
@@ -515,7 +512,7 @@ def test_local_centrality_all(diamond_graph):
     _nodes_gdf_d, _edges_gdf_d, network_structure_dual = io.network_structure_from_nx(diamond_graph_dual, 3395)
     # setup distances and betas
     distances = [50, 150, 250]
-    betas = rustalgos.betas_from_distances(distances)
+    rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
     node_result_short = network_structure.local_node_centrality_shortest(
         distances,

@@ -968,7 +968,7 @@ this assumes segments are relatively straight, overly complex to subdivide segme
 # only a single case existing for angular version so no need for abstracted functions
 # there are three scenarios:
 # 1) e is the predecessor for f
-if n_nd_idx == src_idx or preds[m_nd_idx] == n_nd_idx:  # pylint: disable=consider-using-in
+if n_nd_idx == src_idx or preds[m_nd_idx] == n_nd_idx:
 e = short_dist[n_nd_idx]
 f = short_dist[m_nd_idx]
 # if travelling via n, then m = n_imp + seg_ang
@@ -978,7 +978,7 @@ f = short_dist[m_nd_idx]
 # i.e. exit impedance minus half segment impedance
 ang = m_simpl_dist - seg_ang / 2
 # 2) f is the predecessor for e
-elif m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx:  # pylint: disable=consider-using-in
+elif m_nd_idx == src_idx or preds[n_nd_idx] == m_nd_idx:
 e = short_dist[m_nd_idx]
 f = short_dist[n_nd_idx]
 ang = n_simpl_dist - seg_ang / 2  # per above

@@ -2,10 +2,9 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import colors
-
 from cityseer.metrics import layers, networks
-from cityseer.tools import graphs, io, mock, plot, util
+from cityseer.tools import graphs, io, mock, plot
+from matplotlib import colors
 
 PLOT_RC_PATH = pathlib.Path(__file__).parent / "matplotlibrc"
 print(f"matplotlibrc path: {PLOT_RC_PATH}")
@@ -166,8 +165,6 @@ plot.plot_assignment(
 )
 
 # PLOT MODULE
-from cityseer.tools import graphs, mock, plot
-
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
 # generate a MultiGraph and compute gravity
@@ -179,7 +176,7 @@ networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
-for node, data in G_after.nodes(data=True):
+for _node, data in G_after.nodes(data=True):
     vals.append(data["cc_beta_800"])
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list(

@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
 from cityseer import config, rustalgos
 from cityseer.metrics import networks
 from cityseer.tools import io
@@ -168,4 +166,4 @@ def test_segment_centrality(primal_graph):
                         assert np.allclose(nodes_gdf[data_key], getattr(segment_result, attr_key)[dist_key])
                 if _betweenness is True:
                     data_key = config.prep_gdf_key("seg_betweenness", dist_key)
-                    assert np.allclose(nodes_gdf[data_key], getattr(segment_result, "segment_betweenness")[dist_key])
+                    assert np.allclose(nodes_gdf[data_key], segment_result.segment_betweenness[dist_key])

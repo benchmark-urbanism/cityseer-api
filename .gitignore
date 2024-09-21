@@ -10,9 +10,8 @@ cityseer/_version.py
 # temporary working directories
 **/temp/**
 
-# pdm
-.pdm-python
-__pypackages__/
+# uv
+uv.lock
 
 # Dev
 .idea/

@@ -3,13 +3,12 @@ from __future__ import annotations
 import os
 import threading
 import time
+from collections.abc import Callable
 from queue import Queue
-from typing import Callable, Union
 
 import numpy as np
-from tqdm import tqdm
-
 from cityseer import rustalgos
+from tqdm import tqdm
 
 np.seterr(invalid="ignore")
 
@@ -32,10 +31,10 @@ def check_quiet() -> bool:
     """Check whether to enable quiet mode."""
     if "GCP_PROJECT" in os.environ:
         return True
-    if "CITYSEER_QUIET_MODE" in os.environ:
-        if os.environ["CITYSEER_QUIET_MODE"].lower() in ["true", "1"]:
-            return True
-    return False
+    return "CITYSEER_QUIET_MODE" in os.environ and os.environ["CITYSEER_QUIET_MODE"].lower() in [
+        "true",
+        "1",
+    ]
 
 
 QUIET_MODE = check_quiet()
@@ -43,10 +42,10 @@ QUIET_MODE = check_quiet()
 
 def check_debug() -> bool:
     """Check whether to enable debug mode."""
-    if "CITYSEER_DEBUG_MODE" in os.environ:
-        if os.environ["CITYSEER_DEBUG_MODE"].lower() in ["true", "1"]:
-            return True
-    return False
+    return "CITYSEER_DEBUG_MODE" in os.environ and os.environ["CITYSEER_DEBUG_MODE"].lower() in [
+        "true",
+        "1",
+    ]
 
 
 DEBUG_MODE: bool = check_debug()
@@ -59,14 +58,14 @@ ATOL: float = 0.001
 RTOL: float = 0.0001
 
 
-RustResults = Union[
-    rustalgos.CentralityShortestResult,
-    rustalgos.CentralitySimplestResult,
-    rustalgos.CentralitySegmentResult,
-    rustalgos.AccessibilityResult,
-    rustalgos.MixedUsesResult,
-    rustalgos.StatsResult,
-]
+RustResults = (
+    rustalgos.CentralityShortestResult
+    | rustalgos.CentralitySimplestResult
+    | rustalgos.CentralitySegmentResult
+    | rustalgos.AccessibilityResult
+    | rustalgos.MixedUsesResult
+    | rustalgos.StatsResult
+)
 
 
 def wrap_progress(

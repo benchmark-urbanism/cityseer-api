@@ -41,7 +41,7 @@ This effect is amplified for denser regions of the network.
 lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
 the contribution of a single edge segment at a four-way intersection would be duplicated three times.
 - The usual formulations of closeness or normalised closeness are discouraged because these do not behave
-suitably for localised graphs. Harmonic closeness or Hillier normalisation (which resembles a simplified form of 
+suitably for localised graphs. Harmonic closeness or Hillier normalisation (which resembles a simplified form of
 Improved Closeness Centrality proposed by Wasserman and Faust) should be used instead.
 - Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
 such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
@@ -59,7 +59,6 @@ from functools import partial
 from typing import Any
 
 import geopandas as gpd
-
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
@@ -383,7 +382,7 @@ def segment_centrality(
     | seg_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
     | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
     harmonic closeness centrality applied to edge lengths. |
-    | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long
+    | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A
     continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
     | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
     on shortest paths between all nodes $j$ and $k$ passing through $i$. |
@@ -416,5 +415,5 @@ def segment_centrality(
     if compute_betweenness is True:
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("seg_betweenness", distance)
-            nodes_gdf[data_key] = getattr(result, "segment_betweenness")[distance]
+            nodes_gdf[data_key] = result.segment_betweenness[distance]  # type: ignore
     return nodes_gdf

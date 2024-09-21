@@ -1,7 +1,6 @@
 """Rust based algorithms used from cityseer."""
 
 # pyright: basic
-# pylint: disable=unused-argument,missing-function-docstring,unnecessary-ellipsis,missing-class-docstring
 
 from __future__ import annotations
 
@@ -112,6 +111,7 @@ def distances_from_betas(betas: list[float], min_threshold_wt: float | None = No
     --------
     ```python
     from cityseer.metrics import networks
+
     # a list of betas
     distances = [400, 200]
     # convert to betas
@@ -162,6 +162,7 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     --------
     ```python
     from cityseer import rustalgos
+
     # a list of betas
     betas = [0.01, 0.02]
     # convert to distance thresholds
@@ -214,7 +215,9 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     ...
 
 def pair_distances_and_betas(
-    distances: list[int] | None = None, betas: list[float] | None = None, min_threshold_wt: float | None = None
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    min_threshold_wt: float | None = None,
 ) -> tuple[list[int], list[float]]:
     r"""
     Pair distances and betas, where one or the other parameter is provided.
@@ -280,14 +283,14 @@ def avg_distances_for_betas(betas: list[float], min_threshold_wt: float | None =
     import numpy as np
 
     distances = [100, 200, 400, 800, 1600]
-    print('distances', distances)
+    print("distances", distances)
     # distances [ 100  200  400  800 1600]
 
     betas = networks.beta_from_distance(distances)
-    print('betas', betas)
+    print("betas", betas)
     # betas [0.04   0.02   0.01   0.005  0.0025]
 
-    print('avg', networks.avg_distance_for_beta(betas))
+    print("avg", networks.avg_distance_for_beta(betas))
     # avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
     ```
 
@@ -388,10 +391,9 @@ class CentralitySegmentResult:
     segment_beta: dict[int, npt.ArrayLike]
     segment_betweenness: dict[int, npt.ArrayLike]
 
-class DiGraph: ...  # pylint: disable=multiple-statements
+class DiGraph: ...
 
 class NetworkStructure:
-    # pylint: disable=too-many-public-methods
     graph: DiGraph
     @classmethod
     def new(cls) -> NetworkStructure: ...
@@ -550,10 +552,18 @@ class NetworkStructure:
 
 def hill_diversity(class_counts: list[int], q: float) -> float: ...
 def hill_diversity_branch_distance_wt(
-    class_counts: list[int], class_distances: list[float], q: float, beta: float, max_curve_wt: float
+    class_counts: list[int],
+    class_distances: list[float],
+    q: float,
+    beta: float,
+    max_curve_wt: float,
 ) -> float: ...
 def hill_diversity_pairwise_distance_wt(
-    class_counts: list[int], class_distances: list[float], q: float, beta: float, max_curve_wt: float
+    class_counts: list[int],
+    class_distances: list[float],
+    q: float,
+    beta: float,
+    max_curve_wt: float,
 ) -> float: ...
 def gini_simpson_diversity(class_counts: list[int]) -> float: ...
 def shannon_diversity(class_counts: list[int]) -> float: ...
@@ -698,5 +708,10 @@ class Viewshed:
         self, bldgs_rast: npt.ArrayLike, view_distance: int, pbar_disabled: bool = False
     ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: ...
     def viewshed(
-        self, bldgs_rast: npt.ArrayLike, view_distance: int, origin_x: int, origin_y: int, pbar_disabled: bool = False
+        self,
+        bldgs_rast: npt.ArrayLike,
+        view_distance: int,
+        origin_x: int,
+        origin_y: int,
+        pbar_disabled: bool = False,
     ) -> npt.ArrayLike: ...

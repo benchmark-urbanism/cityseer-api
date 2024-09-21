@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from cityseer import config
 from cityseer.metrics import layers
 from cityseer.tools import io, mock
@@ -188,7 +187,7 @@ def test_compute_stats(primal_graph):
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
     # test against manual implementation over underlying method
     distances = [400, 800]
-    for data_id_col in [None, "data_id"]:
+    for _data_id_col in [None, "data_id"]:
         for angular in [False, True]:
             nodes_gdf, data_gdf = layers.compute_stats(
                 data_gdf,

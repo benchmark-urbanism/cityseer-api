@@ -6,7 +6,6 @@ import string
 import networkx as nx
 import numpy as np
 import pytest
-
 from cityseer import config
 from cityseer.tools import mock
 
@@ -25,8 +24,8 @@ def test_mock_graph(primal_graph):
             0: 0,
         }
         for _node_key, node_data in graph.nodes(data=True):  # type: ignore
-            assert "x" in node_data and isinstance(node_data["y"], (int, float))
-            assert "y" in node_data and isinstance(node_data["y"], (int, float))
+            assert "x" in node_data and isinstance(node_data["y"], int | float)
+            assert "y" in node_data and isinstance(node_data["y"], int | float)
     # from cityseer.tools import plot
     # plot.plot_nx(G)
 

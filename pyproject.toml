@@ -36,18 +36,18 @@ classifiers = [
   "Programming Language :: Rust",
 ]
 dependencies = [
-    "matplotlib>=3.5.1",
-    "networkx>=2.8.8",
-    "pyproj>=3.3.0",
-    "requests>=2.27.1",
-    "scikit-learn>=1.0.2",
-    "tqdm>=4.63.1",
-    "shapely>=2.0.2",
-    "numpy>=1.23.3",
-    "geopandas>=0.12.2",
-    "rasterio>=1.3.9",
-    "pyarrow>=16.0.0",
-    "fiona>=1.9.6",
+  "matplotlib>=3.5.1",
+  "networkx>=2.8.8",
+  "pyproj>=3.3.0",
+  "requests>=2.27.1",
+  "scikit-learn>=1.0.2",
+  "tqdm>=4.63.1",
+  "shapely>=2.0.2",
+  "numpy>=1.23.3",
+  "geopandas>=0.12.2",
+  "rasterio>=1.3.9",
+  "pyarrow>=16.0.0",
+  "fiona>=1.9.6",
 ]
 
 [project.urls]
@@ -57,61 +57,36 @@ repository = "https://github.com/benchmark-urbanism/cityseer-api"
 
 [tool.maturin]
 python-source = "pysrc"
-module-name='cityseer.rustalgos'
+module-name = 'cityseer.rustalgos'
 features = ["pyo3/extension-module"]
 
-# [[tool.pdm.source]]
-# url = "https://test.pypi.org/simple"
-# name = "test"
-# verify_ssl = true
-
-[tool.pdm]
-allow-prereleases = false
-python = "3.12"
-
-[tool.ruff.lint]
-select = ["NPY201"]
-
-[tool.pdm.scripts]
-docstyle = "pydocstyle --config=pyproject.toml"
+# ruff pending script support
+# https://github.com/astral-sh/uv/issues/5903#issuecomment-2360856896
+[tool.scripts]
 generate_docs = "python docs/generate_docs.py"
-docs_dev = { shell = "pdm run docstyle && pdm run generate_docs && npm run dev --prefix docs" }
-docs_build = { shell = "pdm run docstyle && pdm run generate_docs && npm run build --prefix docs" }
-docs_preview = { shell = "pdm run docstyle && pdm run generate_docs && npm run preview --prefix docs" }
-formatting = { shell = "black --config=pyproject.toml ./ && isort --settings-file=pyproject.toml ./" }
-typechecks = "pyright ."
-linting = "pylint --rcfile=pyproject.toml ./pysrc/cityseer"
-tests = "pytest ./tests"
-# coverage can't trace jitted files
-coverage_run = "coverage run pytest"
-coverage_report = { shell = "coverage report --show-missing --skip-empty && coverage lcov" }
-verify_project = { shell = "pdm run formatting && pdm run linting && pdm run typechecks && pdm run tests" }
+docs_dev = { shell = "uv run docstyle && uv run generate_docs && npm run dev --prefix docs" }
+docs_build = { shell = "uv run docstyle && uv run generate_docs && npm run build --prefix docs" }
+docs_preview = { shell = "uv run docstyle && uv run generate_docs && npm run preview --prefix docs" }
+verify_project = { shell = "ruff format && ruff check && pyright . && pytest ./tests" }
 
-[tool.pdm.dev-dependencies]
-dev = [
-    "pytest>=7.2.0",
-    "osmnx>=1.3.0",
-    "momepy>=0.5.4",
-    "pylint>=2.15.9",
-    "isort>=5.11.4",
-    "pydocstyle>=6.1.1",
-    "jupyter-black>=0.3.3",
-    "coverage>=7.0.1",
-    "pandas-stubs>=1.5.2.221213",
-    "types-requests>=2.28.11.7",
-    "jupyterlab>=3.5.2",
-    "jupyter>=1.0.0",
-    "pyright>=1.1.286",
-    "yapper>=0.4.0",
-    "black>=22.12.0",
-    "maturin>=1.1.0",
-    "pip>=23.2",
-    "snakeviz>=2.2.0",
-    "pdoc>=14.1.0",
-    "docstring-parser>=0.15",
-    "dominate>=2.8.0",
-    "utm>=0.7.0",
-    "ruff>=0.5.1",
+[tool.uv]
+dev-dependencies = [
+  "pytest>=7.2.0",
+  "osmnx>=1.3.0",
+  "momepy>=0.5.4",
+  "pandas-stubs>=1.5.2.221213",
+  "types-requests>=2.28.11.7",
+  "jupyterlab>=3.5.2",
+  "jupyter>=1.0.0",
+  "yapper>=0.4.0",
+  "maturin>=1.1.0",
+  "pip>=23.2",
+  "pdoc>=14.1.0",
+  "docstring-parser>=0.15",
+  "dominate>=2.8.0",
+  "utm>=0.7.0",
+  "ruff>=0.5.1",
+  "pyright>=1.1.380",
 ]
 
 [build-system]
@@ -121,62 +96,37 @@ build-backend = "maturin"
 [tool.setuptools]
 packages = ["cityseer"]
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-color = true
+indent-width = 4
 
-[tool.pylint.master]
-disable = [
-  "too-many-branches",
-  "too-many-statements",
-  "too-many-locals",
-  "too-many-nested-blocks",
-  "too-many-arguments",
-  "too-many-instance-attributes",
-  "too-many-lines",
-  "too-few-public-methods",
-  "missing-module-docstring",
-  "no-name-in-module",
-  "pointless-string-statement",
-  "logging-fstring-interpolation",
-  "R0801",
+[tool.ruff.lint]
+select = [
+  # pycodestyle
+  "E",
+  # Pyflakes
+  "F",
+  # pyupgrade
+  "UP",
+  # flake8-bugbear
+  "B",
+  # flake8-simplify
+  "SIM",
+  # isort
+  "I",
 ]
-extension-pkg-allow-list=['cityseer.rustalgos']
-jobs = 0
-output-format = "colorized"
+fixable = ["ALL"]
 
-[tool.pylint.basic]
-good-names = [
-  "a",
-  "b",
-  "c",
-  "d",
-  "e",
-  "f",
-  "i",
-  "j",
-  "m",
-  "n",
-  "q",
-  "x",
-  "y",
-  "ax",
-  "js",
-  "mu",
-  "qs",
-  "xs",
-  "ys",
-  "wt",
-]
-
-[tool.pylint.design]
-max-args = 10
-
-[tool.pylint.format]
-max-line-length = 120
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
 
 [tool.pyright]
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 include = ["pysrc/cityseer"]
 exclude = [
   "**/node_modules",
@@ -199,50 +149,9 @@ reportUnknownMemberType = false
 reportMissingTypeStubs = false
 reportUnnecessaryIsInstance = false
 
-[tool.pydocstyle]
-# http://www.pydocstyle.org/en/stable/error_codes.html
-ignore = [
-  "D100", # Missing docstring in public module
-  "D104", # Missing docstring in public package
-  "D200", # One-line docstring should fit on one line with quotes
-  "D203", # 1 blank line required before class docstring
-  "D401", # First line should be in imperative mood.
-  "D403", # First word of the first line should be properly capitalized
-  "D212", # Multi-line docstring summary should start at the first line
-]
-match = "(?!test_).*\\.py"
-match_dir = "^(?!(__pypackages__|temp|.venv|build|demos|docs|tests)).*"
-
-[tool.isort]
-profile = "black"
-skip_gitignore = true
-line_length = 120
-known_first_party = ["cityseer"]
-atomic = true
-filter_files = true
-src_paths = ["pysrc/cityseer", "demos", "tests", "docs"]
-
 [tool.pytest.ini_options]
 console_output_style = "count"
 log_cli = true
 log_cli_level = "INFO"
 testpaths = ["tests"]
 addopts = "--ignore=tests/test_performance.py --ignore=temp/"
-
-[tool.coverage.run]
-source = ["pysrc/cityseer"]
-branch = true
-omit = [
-  "**/__init__.py",
-  "pysrc/cityseer/config.py",
-  "pysrc/cityseer/tools/plot.py",
-]
-
-[tool.coverage.report]
-include = ["cityseer/**"]
-omit = [
-  "**/__init__.py",
-  "pysrc/cityseer/config.py",
-  "pysrc/cityseer/tools/plot.py",
-]
-

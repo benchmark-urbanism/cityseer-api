@@ -19,11 +19,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install and verify
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      - name: Verify project
         run: |
-          pip install pdm
-          pdm install
-          pdm run verify_project
+          uv sync
+          ruff format
+          ruff check
+          pyright .
+          uv build
+          pytest ./tests
   linux:
     runs-on: ubuntu-latest
     needs: check
