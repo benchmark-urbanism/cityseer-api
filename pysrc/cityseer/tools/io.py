@@ -18,12 +18,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import requests
-from cityseer import config, rustalgos
-from cityseer.tools import graphs, util
-from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
 from pyproj import CRS, Transformer
 from shapely import geometry
 from tqdm import tqdm
+
+from cityseer import config, rustalgos
+from cityseer.tools import graphs, util
+from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

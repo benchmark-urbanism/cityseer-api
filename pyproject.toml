@@ -62,11 +62,11 @@ features = ["pyo3/extension-module"]
 
 # ruff pending script support
 # https://github.com/astral-sh/uv/issues/5903#issuecomment-2360856896
-[tool.scripts]
+[tool.poe.tasks]
 generate_docs = "python docs/generate_docs.py"
-docs_dev = { shell = "uv run docstyle && uv run generate_docs && npm run dev --prefix docs" }
-docs_build = { shell = "uv run docstyle && uv run generate_docs && npm run build --prefix docs" }
-docs_preview = { shell = "uv run docstyle && uv run generate_docs && npm run preview --prefix docs" }
+docs_dev = { shell = "uv run generate_docs && npm run dev --prefix docs" }
+docs_build = { shell = "uv run generate_docs && npm run build --prefix docs" }
+docs_preview = { shell = "uv run generate_docs && npm run preview --prefix docs" }
 verify_project = { shell = "ruff format && ruff check && pyright . && pytest ./tests" }
 
 [tool.uv]
@@ -87,6 +87,7 @@ dev-dependencies = [
   "utm>=0.7.0",
   "ruff>=0.5.1",
   "pyright>=1.1.380",
+  "poethepoet>=0.29.0",
 ]
 
 [build-system]

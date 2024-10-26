@@ -24,11 +24,7 @@ jobs:
       - name: Verify project
         run: |
           uv sync
-          ruff format
-          ruff check
-          pyright .
-          uv build
-          pytest ./tests
+          poe verify_project
   linux:
     runs-on: ubuntu-latest
     needs: check

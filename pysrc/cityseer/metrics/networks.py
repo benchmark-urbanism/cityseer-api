@@ -59,6 +59,7 @@ from functools import partial
 from typing import Any
 
 import geopandas as gpd
+
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)

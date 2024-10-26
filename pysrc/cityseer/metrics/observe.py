@@ -18,9 +18,10 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from tqdm import tqdm
+
 from cityseer import config
 from cityseer.tools import graphs
-from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

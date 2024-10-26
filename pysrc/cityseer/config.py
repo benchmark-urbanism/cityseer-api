@@ -7,8 +7,9 @@ from collections.abc import Callable
 from queue import Queue
 
 import numpy as np
-from cityseer import rustalgos
 from tqdm import tqdm
+
+from cityseer import rustalgos
 
 np.seterr(invalid="ignore")
 

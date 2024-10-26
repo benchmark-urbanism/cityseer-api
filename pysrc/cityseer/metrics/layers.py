@@ -4,6 +4,7 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)

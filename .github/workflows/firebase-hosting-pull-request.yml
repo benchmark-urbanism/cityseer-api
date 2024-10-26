@@ -13,7 +13,7 @@ jobs:
       - name: Build docs
         run: |
           uv sync --dev
-          python docs/generate_docs.py
+          poe generate_docs
       - run: cd docs && npm install && npm run build && cd ..
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
