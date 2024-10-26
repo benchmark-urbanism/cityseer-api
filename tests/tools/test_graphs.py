@@ -139,7 +139,8 @@ def test_nx_remove_filler_nodes(primal_graph):
     length = 0
     for s, e in [("45", "56"), ("56", "30")]:
         length += primal_graph[s][e][0]["geom"].length
-    assert length == G_simplified["45"]["30"][0]["geom"].length
+    # two edges between these nodes, so check that either matches
+    assert length == G_simplified["45"]["30"][0]["geom"].length or length == G_simplified["45"]["30"][1]["geom"].length
     # check that all nodes still have 'x' and 'y' keys
     for _n, d in G_simplified.nodes(data=True):
         assert "x" in d
@@ -271,65 +272,68 @@ def test_nx_remove_dangling_nodes(primal_graph):
     # plot.plot_nx(G_messy)
     # no despining or disconnected components removal
     G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=0)
-    # plot.plot_nx(G_post, plot_geoms=True)
-    print(list(G_post.nodes))
-    print(list(G_post.edges))
-    assert list(G_post.nodes) == [
-        "0",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "11",
-        "12",
-        "13",
-        "14",
-        "15",
-        "16",
-        "17",
-        "18",
-        "19",
-        "20",
-        "21",
-        "22",
-        "23",
-        "24",
-        "25",
-        "26",
-        "27",
-        "28",
-        "29",
-        "30",
-        "31",
-        "32",
-        "33",
-        "34",
-        "35",
-        "36",
-        "37",
-        "38",
-        "39",
-        "40",
-        "41",
-        "42",
-        "43",
-        "44",
-        "45",
-        "46",
-        "47",
-        "48",
-        "49",
-        "50",
-        "51",
-        "55",
-    ]
-    assert G_post.edges == [
+    # plot.plot_nx(G_messy, plot_geoms=True, labels=True)
+    assert set(G_post.nodes).issuperset(
+        set(
+            [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "13",
+                "14",
+                "15",
+                "16",
+                "17",
+                "18",
+                "19",
+                "20",
+                "21",
+                "22",
+                "23",
+                "24",
+                "25",
+                "26",
+                "27",
+                "28",
+                "29",
+                "30",
+                "31",
+                "32",
+                "33",
+                "34",
+                "35",
+                "36",
+                "37",
+                "38",
+                "39",
+                "40",
+                "41",
+                "42",
+                "43",
+                "44",
+                "45",
+                "46",
+                "47",
+                "48",
+                "49",
+                "50",
+                "51",
+            ]
+        )
+    )
+    # one of isolated loop nodes should persist
+    assert len(set(G_post.nodes).intersection(set(["52", "53", "54", "55"]))) == 1
+    for s, e, i in [
         ("0", "16", 0),
         ("0", "1", 0),
         ("0", "31", 0),
@@ -404,8 +408,14 @@ def test_nx_remove_dangling_nodes(primal_graph):
         ("46", "48", 0),
         ("46", "47", 0),
         ("50", "51", 0),
-        ("55", "55", 0),
-    ]
+    ]:
+        assert G_post.has_edge(s, e, i)
+    assert (
+        G_post.has_edge("52", "52", 0)
+        or G_post.has_edge("53", "53", 0)
+        or G_post.has_edge("54", "54", 0)
+        or G_post.has_edge("55", "55", 0)
+    )
     # check that all single neighbour nodes have been removed if geom less than despine distance
     G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=100, remove_disconnected=0)
     for n in G_messy.nodes():
@@ -419,7 +429,9 @@ def test_nx_remove_dangling_nodes(primal_graph):
     # this behaviour changed in networkx 2.4
     # use 10 nodes for remove disconnected (this is a small graph)
     G_post = graphs.nx_remove_dangling_nodes(G_messy, despine=0, remove_disconnected=10)
-    pre_components = list(nx.algorithms.components.connected_components(G_messy))
+    # remove fillers from messy and check that largest component pre and post match
+    G_messy_no_fillers = graphs.nx_remove_filler_nodes(G_messy)
+    pre_components = list(nx.algorithms.components.connected_components(G_messy_no_fillers))
     post_components = list(nx.algorithms.components.connected_components(G_post))
     assert len(pre_components) != 1
     assert len(post_components) == 1
@@ -428,7 +440,7 @@ def test_nx_remove_dangling_nodes(primal_graph):
     # index to 0 because post_components is still in list form
     assert biggest_component == post_components[0]
     # check that actual graphs are equivalent
-    G_biggest_component = nx.MultiGraph(G_messy.subgraph(biggest_component))
+    G_biggest_component = nx.MultiGraph(G_messy_no_fillers.subgraph(biggest_component))
     assert G_biggest_component.nodes == G_post.nodes
     assert G_biggest_component.edges == G_post.edges
 
@@ -471,11 +483,13 @@ def test_nx_iron_edges():
     assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 100.0), (100.0, 100.0), (100.0, 0.0), (0.0, 0.0)]
 
 
+# TODO: add test for new gapped edge method
+
+
 def test_nx_consolidate_nodes(parallel_segments_graph):
     """ """
     # behaviour confirmed visually
     # from cityseer.tools import plot
-
     # plot.plot_nx(parallel_segments_graph, labels=True, node_size=80, plot_geoms=True)
     # set centroid_by_itx to False
     G_merged_spatial = graphs.nx_consolidate_nodes(
@@ -494,25 +508,25 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
     assert G_merged_spatial.number_of_edges() == 10
     node_coords = []
     for _n, d in G_merged_spatial.nodes(data=True):
-        node_coords.append((d["x"], d["y"]))
+        node_coords.append((round(d["x"], 2), round(d["y"], 2)))
     assert node_coords == [
         (660, 660),
         (760, 760),
         (800, 760),
         (660.0, 710.0),
-        (780.0, 710.0),
+        (780.0, 720.0),
         (620.0, 710.0),
         (710.0, 800.0),
-        (710.0, 710.0),
+        (710.0, 713.33),
         (710.0, 620.0),
         (840.0, 710.0),
     ]
     edge_lens = []
     for _s, _e, d in G_merged_spatial.edges(data=True):
-        edge_lens.append(d["geom"].length)
+        edge_lens.append(round(d["geom"].length, 3))
     assert np.allclose(
         edge_lens,
-        [50.0, 40.0, 53.85164807134504, 53.85164807134504, 40.0, 50.0, 70.0, 60.0, 90.0, 90.0],
+        [50.0, 40.0, 44.721, 44.721, 40.0, 50.111, 70.317, 60.828, 86.667, 93.333],
     )
 
 

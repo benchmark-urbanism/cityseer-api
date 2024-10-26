@@ -967,10 +967,10 @@ def nx_snap_gapped_endings(
         # extract the start node, end node, geom
         node_keys: list = []
         for node_hit_idx in node_hits:
-            j_nd_key = node_lookups[node_hit_idx]["nd_key"]
+            j_nd_key = node_lookups[node_hit_idx]["nd_key"]  # type: ignore
             if j_nd_key == nd_key:
                 continue
-            j_nd_degree = node_lookups[node_hit_idx]["nd_degree"]
+            j_nd_degree = node_lookups[node_hit_idx]["nd_degree"]  # type: ignore
             if j_nd_degree == 1:
                 node_keys.append(j_nd_key)
         # abort if no gapped nodes
@@ -1011,7 +1011,7 @@ def nx_snap_gapped_endings(
                 end_nd_key = edge_lookup["end_nd_key"]
                 edge_idx = edge_lookup["edge_idx"]
                 edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
-                if edge_geom.crosses(new_geom):
+                if edge_geom.crosses(new_geom):  # type: ignore
                     bail = True
                     break
             if bail:
@@ -1186,7 +1186,7 @@ def nx_split_opposing_geoms(
         for start_nd_key, end_nd_key, edge_idx, edge_data in current_edges:
             edge_geom = edge_data["geom"]
             # check whether the geom is truly within the buffer distance
-            if edge_geom.distance(n_point) > buffer_dist:
+            if edge_geom.distance(n_point) > buffer_dist:  # type: ignore
                 continue
             gapped_edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
         # abort if no gapped edges
@@ -1223,11 +1223,12 @@ def nx_split_opposing_geoms(
             # project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
-            nearest_point: geometry.Point = ops.nearest_points(n_geom, edge_geom)[-1]
+            nearest_point: geometry.Point = ops.nearest_points(n_geom, edge_geom)[-1]  # type: ignore
             # if a valid nearest point has been found, go ahead and split the geom
             # use a snap because rounding precision errors will otherwise cause issues
             split_geoms: geometry.GeometryCollection = ops.split(
-                ops.snap(edge_geom, nearest_point, 0.01), nearest_point
+                ops.snap(edge_geom, nearest_point, 0.01),  # type: ignore
+                nearest_point,  # type: ignore
             )
             # in some cases the line will be pointing away, but is still near enough to be within max
             # in these cases a single geom will be returned
@@ -1316,9 +1317,9 @@ def nx_split_opposing_geoms(
                 ),
             ]
             # drop the old edge from _multi_graph
-            if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
-                _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
-        node_groups.append(list(node_group))
+            if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):  # type: ignore
+                _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)  # type: ignore
+        node_groups.append(list(node_group))  # type: ignore
     # iter and squash
     if squash_nodes is True:
         logger.info("Squashing opposing nodes")
@@ -1331,7 +1332,7 @@ def nx_split_opposing_geoms(
             )
     else:
         for node_group in node_groups:
-            origin_nd_key = node_group.pop(0)
+            origin_nd_key = node_group.pop()
             template = None
             for new_nd_key in node_group:
                 origin_nd_data = _multi_graph.nodes[origin_nd_key]
@@ -1351,14 +1352,14 @@ def nx_split_opposing_geoms(
                     template = template.union(new_geom.buffer(10, cap_style=BufferCapStyle.flat))
                 # don't add new edges that would criss cross existing
                 bail = False
-                edge_hits = edges_tree.query(new_geom)
+                edge_hits = edges_tree.query(new_geom)  # type: ignore
                 for edge_hit_idx in edge_hits:
                     edge_lookup = edge_lookups[edge_hit_idx]
                     start_nd_key = edge_lookup["start_nd_key"]
                     end_nd_key = edge_lookup["end_nd_key"]
                     edge_idx = edge_lookup["edge_idx"]
                     edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
-                    if edge_geom.crosses(new_geom):
+                    if edge_geom.crosses(new_geom):  # type: ignore
                         bail = True
                         break
                 if bail:
