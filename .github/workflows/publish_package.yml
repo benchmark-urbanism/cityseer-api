@@ -20,7 +20,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
       - name: Verify project
         run: |
-          uv sync
+          uv sync --dev
           poe verify_project
   linux:
     runs-on: ubuntu-latest
