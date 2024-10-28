@@ -1386,7 +1386,11 @@ def nx_split_opposing_geoms(
     return deduped_graph
 
 
-def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
+def nx_decompose(
+    nx_multigraph: MultiGraph,
+    decompose_max: float,
+    osm_hwy_target_tags: list[str] | None = None,
+) -> MultiGraph:
     """
     Decomposes a graph so that no edge is longer than a set maximum.
 
@@ -1404,9 +1408,12 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-
     decompose_max: float
         The maximum length threshold for decomposed edges.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
+        containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with
+        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
 
     Returns
     -------
@@ -1438,11 +1445,18 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # if using OSM tags heuristic
+    hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # note -> write to a duplicated graph to avoid in-place errors
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_data in tqdm(nx_multigraph.edges(data=True), disable=config.QUIET_MODE):
+        # hwy tags
+        if osm_hwy_target_tags:
+            edge_hwy_tags = _tags_from_edge_key(edge_data, "highways")
+            if not hwy_tags.intersection(edge_hwy_tags):
+                continue
         # test for x, y in start coordinates
         if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
