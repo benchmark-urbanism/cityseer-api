@@ -1332,7 +1332,7 @@ def nx_split_opposing_geoms(
             )
     else:
         for node_group in node_groups:
-            origin_nd_key = node_group.pop()
+            origin_nd_key = node_group.pop(0)  # type: ignore
             template = None
             for new_nd_key in node_group:
                 origin_nd_data = _multi_graph.nodes[origin_nd_key]
