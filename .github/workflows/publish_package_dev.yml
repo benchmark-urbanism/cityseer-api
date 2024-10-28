@@ -22,7 +22,7 @@ jobs:
       - name: Verify project
         run: |
           uv sync --dev
-          poe verify_project
+          uv run poe verify_project
   linux:
     runs-on: ubuntu-latest
     needs: check
