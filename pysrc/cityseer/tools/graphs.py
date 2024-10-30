@@ -534,6 +534,8 @@ def nx_iron_edges(
     """
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # create an edges STRtree (nodes and edges)
+    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
@@ -543,19 +545,44 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key:
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
-        max_angle = util.measure_max_angle(edge_geom.coords)
-        straight_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
-        # don't apply to longer geoms, e.g. rural roads
-        if edge_geom.length > 400:
-            edge_geom = edge_geom.simplify(5)  # type: ignore
-        # if there is an angle greater than 95 then it is likely spurious
-        elif max_angle > 100 or straight_geom.buffer(10).contains(edge_geom) and max_angle > 20:
-            edge_geom = edge_geom.simplify(10)  # type: ignore
-        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+        hits = edges_tree.query(edge_geom, predicate="crosses")
+        if hits:
+            g_multi_copy.remove_edge(start_nd_key, end_nd_key, edge_idx)
+            continue
+        line_coords = simplify_line_by_angle(edge_geom.coords, 100)
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
 
     return g_multi_copy
+
+
+def simplify_line_by_angle(coords, simplify_line_angles):
+    # Continue simplifying until no angles exceed the threshold
+    while True:
+        angles_exceeding_threshold = False
+        new_coords = [coords[0]]  # Start with the first point
+
+        # Iterate through the points to calculate angles
+        for i in range(1, len(coords) - 1):
+            p1, p2, p3 = coords[i - 1], coords[i], coords[i + 1]
+            angle = util.measure_coords_angle(p1, p2, p3)
+
+            # If angle exceeds the threshold, mark the middle point for deletion
+            if angle > simplify_line_angles:
+                angles_exceeding_threshold = True
+                continue  # Skip adding this point
+            new_coords.append(p2)  # Otherwise, keep the point
+
+        new_coords.append(coords[-1])  # Always keep the last point
+
+        # Check if we made any modifications
+        if not angles_exceeding_threshold:
+            break  # Exit loop if no angles exceeded the threshold
+        coords = new_coords  # Update coords with modified list
+
+    # Return a new LineString with simplified coordinates
+    return new_coords
 
 
 def _squash_adjacent(
@@ -563,6 +590,7 @@ def _squash_adjacent(
     node_group: set[NodeKey],
     centroid_by_itx: bool,
     prioritise_by_hwy_tag: bool,
+    simplify_line_angles: int | None = None,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -695,10 +723,14 @@ def _squash_adjacent(
                     target_nd_key = new_nd_name
                 else:
                     target_nd_key = nb_nd_key
+                # simplify to handle new kinks
+                if simplify_line_angles is not None:
+                    line_coords = simplify_line_by_angle(line_coords, simplify_line_angles)
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
                 if new_edge_geom.length == 0:
-                    raise ValueError(f"Attempted to add a zero length edge from {new_nd_name} to {target_nd_key}")
+                    logger.warning(f"Skipping zero length edge from {new_nd_name} to {target_nd_key}")
+                    continue
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
@@ -747,6 +779,7 @@ def nx_consolidate_nodes(
     contains_buffer_dist: int = 25,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
+    simplify_line_angles: int | None = None,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -920,10 +953,13 @@ def nx_consolidate_nodes(
                 node_group,
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
+                simplify_line_angles=simplify_line_angles,
             )
     # remove parallel edges resulting from squashing nodes
     _multi_graph = nx_merge_parallel_edges(
-        _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags, osm_matched_tags_only
+        _multi_graph,
+        merge_edges_by_midline,
+        contains_buffer_dist,
     )
 
     return _multi_graph
@@ -1041,6 +1077,8 @@ def nx_split_opposing_geoms(
     min_node_degree: int = 2,
     max_node_degree: int | None = None,
     squash_nodes: bool = True,
+    centroid_by_itx: bool = False,
+    simplify_line_angles: int | None = None,
 ) -> nx.MultiGraph:
     """
     Split edges in near proximity to nodes, then weld the resultant node group together, updating edges in the process.
@@ -1327,15 +1365,16 @@ def nx_split_opposing_geoms(
             _multi_graph = _squash_adjacent(
                 _multi_graph,
                 node_group,
-                centroid_by_itx=True,
+                centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
+                simplify_line_angles=simplify_line_angles,
             )
     else:
         for node_group in node_groups:
             origin_nd_key = node_group.pop(0)  # type: ignore
             template = None
+            origin_nd_data = _multi_graph.nodes[origin_nd_key]
             for new_nd_key in node_group:
-                origin_nd_data = _multi_graph.nodes[origin_nd_key]
                 new_nd_data = _multi_graph.nodes[new_nd_key]
                 new_geom = geometry.LineString(
                     [
@@ -1379,8 +1418,6 @@ def nx_split_opposing_geoms(
         _multi_graph,
         merge_edges_by_midline,
         contains_buffer_dist,
-        osm_hwy_target_tags,
-        osm_matched_tags_only,
     )
 
     return deduped_graph
@@ -1695,7 +1732,10 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
         s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
         # process either side
         for n_side, m_side, half_geom in zip(
-            [start_nd_key, end_nd_key], [end_nd_key, start_nd_key], [s_half_geom, e_half_geom], strict=False
+            [start_nd_key, end_nd_key],
+            [end_nd_key, start_nd_key],
+            [s_half_geom, e_half_geom],
+            strict=False,
         ):
             # add the spoke edges on the dual
             nb_nd_key: NodeKey
@@ -1785,7 +1825,10 @@ def nx_weight_by_dissolved_edges(
             # don't add edges which share common nodes (directly adjacent)
             # this is an important line because otherwise the measure becomes indiscriminate i.e. would apply to regular
             # intersections without duplicitous edges - working against intention of this method
-            if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [start_nd_key, end_nd_key]:
+            if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [
+                start_nd_key,
+                end_nd_key,
+            ]:
                 continue
             # get linestring
             edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
