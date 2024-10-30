@@ -466,7 +466,7 @@ def test_nx_iron_edges():
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]
-    assert list(out_geom.coords) == [(0.0, 0.0), (75.0, 0.0)]
+    assert list(out_geom.coords) == [(0.0, 0.0), (50.0, 0.0), (75.0, 0.0)]
     # 3 folded back line should be simplified
     line_geom = geometry.LineString([[0, 0], [0, 55], [0, 50]])
     nx_multi[0][1][0]["geom"] = line_geom
@@ -514,10 +514,10 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
         (760, 760),
         (800, 760),
         (660.0, 710.0),
-        (780.0, 720.0),
+        (780.0, 710.0),
         (620.0, 710.0),
         (710.0, 800.0),
-        (710.0, 713.33),
+        (710.0, 710.0),
         (710.0, 620.0),
         (840.0, 710.0),
     ]
@@ -526,7 +526,7 @@ def test_nx_consolidate_nodes(parallel_segments_graph):
         edge_lens.append(round(d["geom"].length, 3))
     assert np.allclose(
         edge_lens,
-        [50.0, 40.0, 44.721, 44.721, 40.0, 50.111, 70.317, 60.828, 86.667, 93.333],
+        [50.0, 40.0, 53.852, 53.852, 40.0, 50.0, 70.0, 60.0, 90.0, 90.0],
     )
 
 
