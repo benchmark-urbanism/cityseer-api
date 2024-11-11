@@ -1,9 +1,9 @@
 [project]
 name = "cityseer"
-version = '4.16.0b5'
+version = '4.16.0b6'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.10, <3.13"
+requires-python = ">=3.10, <3.14"
 license = { text = "AGPL-3.0" }
 keywords = [
   "network-topology",

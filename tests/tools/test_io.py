@@ -784,16 +784,16 @@ def test_nx_from_generic_geopandas(primal_graph):
     # test OSM keys
     out_gpd = io.geopandas_from_nx(primal_graph, crs=3395)
     out_gpd["names"] = ""
-    out_gpd["names"].iloc[0] = "(boo,)"
+    out_gpd.loc[0, "names"] = "(boo,)"
     out_gpd["routes"] = ""
-    out_gpd["routes"].iloc[0] = "(boo,)"
+    out_gpd.loc[0, "routes"] = "(boo,)"
     out_gpd["highways"] = ""
-    out_gpd["highways"].iloc[0] = "boo"
-    out_gpd["highways"].iloc[1] = "boo,"
-    out_gpd["highways"].iloc[2] = "(boo)"
-    out_gpd["highways"].iloc[3] = "(boo,)"
-    out_gpd["highways"].iloc[4] = "(boo),"
-    out_gpd["highways"].iloc[5] = "(boo, baa)"
+    out_gpd.loc[0, "highways"] = "boo"
+    out_gpd.loc[1, "highways"] = "boo,"
+    out_gpd.loc[2, "highways"] = "(boo)"
+    out_gpd.loc[3, "highways"] = "(boo,)"
+    out_gpd.loc[4, "highways"] = "(boo),"
+    out_gpd.loc[5, "highways"] = "(boo, baa)"
     in_G = io.nx_from_generic_geopandas(out_gpd)
     G = graphs.nx_remove_filler_nodes(in_G)
     for s, e in G.edges():

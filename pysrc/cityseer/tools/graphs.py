@@ -546,7 +546,7 @@ def nx_iron_edges(
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
         hits = edges_tree.query(edge_geom, predicate="crosses")
-        if hits:
+        if hits.size > 0:
             g_multi_copy.remove_edge(start_nd_key, end_nd_key, edge_idx)
             continue
         line_coords = simplify_line_by_angle(edge_geom.coords, 100)
@@ -973,7 +973,8 @@ def nx_snap_gapped_endings(
 ) -> nx.MultiGraph:
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    _multi_graph = nx_multigraph.copy()
+    _multi_graph: nx.MultiGraph
+    _multi_graph = nx_multigraph.copy()  # type: ignore
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
