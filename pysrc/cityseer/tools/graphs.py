@@ -15,12 +15,11 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
-from shapely import BufferCapStyle, geometry, ops
-from tqdm import tqdm
-
 from cityseer import config
 from cityseer.tools import util
 from cityseer.tools.util import EdgeData, ListCoordsType, MultiGraph, NodeData, NodeKey
+from shapely import BufferCapStyle, geometry, ops
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1247,7 +1246,7 @@ def nx_split_opposing_geoms(
             shared_nodes.add(end_nd_key)
             distinct_edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
         # iter gapped edges
-        for start_nd_key, end_nd_key, edge_idx, edge_data in gapped_edges:
+        for start_nd_key, end_nd_key, edge_idx, edge_data in distinct_edges:
             edge_geom = edge_data["geom"]
             # hwy tags
             if osm_hwy_target_tags:
@@ -1392,7 +1391,7 @@ def nx_split_opposing_geoms(
                     template = template.union(new_geom.buffer(10, cap_style=BufferCapStyle.flat))
                 # don't add new edges that would criss cross existing
                 bail = False
-                new_end_pnt = geometry.Point(origin_nd_data["x"], origin_nd_data["y"])
+                new_end_pnt = geometry.Point(new_nd_data["x"], new_nd_data["y"])
                 edge_hits = edges_tree.query(new_geom)  # type: ignore
                 for edge_hit_idx in edge_hits:
                     edge_lookup = edge_lookups[edge_hit_idx]
@@ -1400,7 +1399,8 @@ def nx_split_opposing_geoms(
                     end_nd_key = edge_lookup["end_nd_key"]
                     edge_idx = edge_lookup["edge_idx"]
                     edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
-                    if round(new_end_pnt.distance(edge_geom), 3) > 0:  # type: ignore
+                    # use distance to catch "crossing" where curved geoms lead to issues
+                    if new_geom.crosses(edge_geom) and round(new_end_pnt.distance(edge_geom), 3) > 0:  # type: ignore
                         bail = True
                         break
                 if bail:
