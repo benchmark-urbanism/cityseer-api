@@ -15,11 +15,12 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from shapely import BufferCapStyle, geometry, ops
+from tqdm import tqdm
+
 from cityseer import config
 from cityseer.tools import util
 from cityseer.tools.util import EdgeData, ListCoordsType, MultiGraph, NodeData, NodeKey
-from shapely import BufferCapStyle, geometry, ops
-from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
