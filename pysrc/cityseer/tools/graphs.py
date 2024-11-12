@@ -1392,6 +1392,7 @@ def nx_split_opposing_geoms(
                     template = template.union(new_geom.buffer(10, cap_style=BufferCapStyle.flat))
                 # don't add new edges that would criss cross existing
                 bail = False
+                new_end_pnt = geometry.Point(origin_nd_data["x"], origin_nd_data["y"])
                 edge_hits = edges_tree.query(new_geom)  # type: ignore
                 for edge_hit_idx in edge_hits:
                     edge_lookup = edge_lookups[edge_hit_idx]
@@ -1399,7 +1400,7 @@ def nx_split_opposing_geoms(
                     end_nd_key = edge_lookup["end_nd_key"]
                     edge_idx = edge_lookup["edge_idx"]
                     edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
-                    if edge_geom.crosses(new_geom):  # type: ignore
+                    if round(new_end_pnt.distance(edge_geom), 3) > 0:  # type: ignore
                         bail = True
                         break
                 if bail:
