@@ -623,14 +623,28 @@ def _squash_adjacent(
                 break
         # # filter by hwy tags if provided
         if prioritise_tag is not None:
+            # extract nodes intersecting prioritised tag
             hwy_tags_filtered = []
             for nd_key in node_group:
                 nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
                 if prioritise_tag in nb_hwy_tags:
-                    hwy_tags_filtered.append(nd_key)
-            centroid_nodes_filter = hwy_tags_filtered
+                    # count edges which explicitly have tag
+                    nb_tag_count = 0
+                    for nb_nd_key in nx.all_neighbors(nx_multigraph, nd_key):
+                        # can be multiple edges
+                        for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                            edges_tags = _tags_from_edge_key(edge_data, "highways")
+                            if prioritise_tag in edges_tags:
+                                nb_tag_count += 1
+                    hwy_tags_filtered.append((nd_key, nb_tag_count))
+            # if also prioritising by itx
+            if hwy_tags_filtered and centroid_by_itx:
+                max_nb_count = max([n[1] for n in hwy_tags_filtered])
+                centroid_nodes_filter = [n[0] for n in hwy_tags_filtered if n[1] == max_nb_count]
+            elif hwy_tags_filtered:
+                centroid_nodes_filter = [n[0] for n in hwy_tags_filtered]
     # if using intersections, find straight-through routes and count
-    if centroid_by_itx:
+    elif centroid_by_itx:
         crossings_2 = []
         crossings_1 = []
         for nd_key in centroid_nodes_filter:
@@ -729,7 +743,6 @@ def _squash_adjacent(
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
                 if new_edge_geom.length == 0:
-                    logger.warning(f"Skipping zero length edge from {new_nd_name} to {target_nd_key}")
                     continue
                 # check that a duplicate is not being added
                 dupe = False
