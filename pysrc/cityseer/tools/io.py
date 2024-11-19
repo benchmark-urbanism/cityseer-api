@@ -366,11 +366,13 @@ def osm_graph_from_poly(
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
-    # cast to UTM
-    if to_crs_code is not None:
-        graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_crs_code)
-    else:
-        graph_crs = nx_wgs_to_utm(graph_wgs)
+    # extract CRS code if necessary
+    if to_crs_code is None:
+        # need CRS code so do this manually
+        nd_key = list(graph_wgs.nodes())[0]
+        to_crs_code = util.extract_utm_epsg_code(graph_wgs.nodes[nd_key]["x"], graph_wgs.nodes[nd_key]["y"])
+    # project
+    graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_crs_code)
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
@@ -383,6 +385,7 @@ def osm_graph_from_poly(
             },
         )
         park_area_gdf = _extract_gdf(parks_gdf)
+        park_area_gdf = park_area_gdf.to_crs(to_crs_code)
         # plazas
         plazas_gdf = ox.features_from_polygon(
             geom_wgs,
@@ -391,6 +394,7 @@ def osm_graph_from_poly(
             },
         )
         plaza_area_gdf = _extract_gdf(plazas_gdf)
+        plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
         # use STR Tree for performance
         parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
         plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
