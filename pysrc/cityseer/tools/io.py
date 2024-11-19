@@ -16,10 +16,12 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+import osmnx as ox
 import pandas as pd
 import requests
 from pyproj import CRS, Transformer
 from shapely import geometry
+from shapely.strtree import STRtree
 from tqdm import tqdm
 
 from cityseer import config, rustalgos
@@ -216,14 +218,41 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
     return osm_response
 
 
+def _extract_gdf(gdf):
+    # extract ways and convert to polys
+    # not interested in segments - which are captured separately from network query
+    # but do want squares etc. described as ways - hence buffer and reverse buffer
+    if "element_type" in gdf.index.names and "way" in gdf.index.get_level_values("element_type"):
+        ways_gdf = gdf.xs("way", level="element_type", drop_level=True)
+        ways_gdf = ways_gdf.explode(index_parts=False).reset_index(drop=True)
+        ways_gdf = ways_gdf[ways_gdf.geometry.type == "Polygon"]
+    else:
+        ways_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
+    # extract relations
+    if "element_type" in gdf.index.names and "relation" in gdf.index.get_level_values("element_type"):
+        relations_gdf = gdf.xs("relation", level="element_type", drop_level=True)
+        relations_gdf = relations_gdf.explode(index_parts=False).reset_index(drop=True)
+        relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
+    else:
+        relations_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
+    # combine
+    combined_gdf = pd.concat([ways_gdf, relations_gdf])
+    combined_geom = combined_gdf.union_all()  # type: ignore
+    # extract geoms and explode
+    combined_gdf = gpd.GeoDataFrame({"geometry": [combined_geom]}, crs=combined_gdf.crs)  # type: ignore
+    area_gdf = combined_gdf.explode(index_parts=False).reset_index(drop=True)
+    area_gdf = area_gdf[area_gdf.geometry.type == "Polygon"]
+    area_gdf = area_gdf[~area_gdf.geometry.is_empty]
+    area_gdf = area_gdf[area_gdf.geometry.is_valid]
+    return area_gdf
+
+
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_crs_code: int | str = 4326,
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
-    contains_buffer_dist: int = 50,
-    iron_edges: bool = True,
     remove_disconnected: int = 100,
     timeout: int = 300,
     max_tries: int = 3,
@@ -252,11 +281,6 @@ def osm_graph_from_poly(
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
         Whether to automatically simplify the OSM graph.
-    contains_buffer_dist: int
-        The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
-        sufficiently adjacent to be merged.
-    iron_edges: bool
-        Whether to iron the edges.
     remove_disconnected: int
         Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     timeout: int
@@ -284,20 +308,17 @@ def osm_graph_from_poly(
     ```python
     /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
     [out:json];
-    (
-    way["highway"]
-    ["area"!="yes"]
-    ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|
-        platform|construction|emergency_bay|rest_area"]
-    ["footway"!="sidewalk"]
-    ["service"!~"parking_aisle|driveway|drive-through|slipway"]
-    ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-    ["indoor"!="yes"]
-    ["level"!="-2"]
-    ["level"!="-3"]
-    ["level"!="-4"]
-    ["level"!="-5"]
-    (poly:"{geom_osm}");
+    (way["highway"]
+        ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|
+            emergency_bay|rest_area|disused|path|corridor|ladder|bus_stop|elevator|services"]
+        ["area"!="yes"]
+        ["footway"!="sidewalk"]
+        ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+        ["indoor"!="yes"]
+        ["level"!="-2"]
+        ["level"!="-3"]
+        ["level"!="-4"]
+        ["level"!="-5"](poly:"{geom_osm}");
     );
     out body;
     >;
@@ -312,6 +333,7 @@ def osm_graph_from_poly(
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]
+    geom_wgs = geometry.Polygon(shell=coords)
     geom_osm = str.join(" ", [f"{lat} {lng}" for lng, lat in coords])
     if custom_request is not None:
         if "geom_osm" not in custom_request:
@@ -324,19 +346,17 @@ def osm_graph_from_poly(
         request = f"""
         /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
         [out:json];
-        (
-        way["highway"]
-        ["area"!="yes"]
-        ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|construction|emergency_bay|rest_area"]
-        ["footway"!="sidewalk"]
-        ["service"!~"parking_aisle|driveway|drive-through|slipway"]
-        ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
-        ["indoor"!="yes"]
-        ["level"!="-2"]
-        ["level"!="-3"]
-        ["level"!="-4"]
-        ["level"!="-5"]
-        (poly:"{geom_osm}");
+        (way["highway"]
+            ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|emergency_bay|
+                rest_area|disused|path|corridor|ladder|bus_stop|elevator|services"]
+            ["area"!="yes"]
+            ["footway"!="sidewalk"]
+            ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+            ["indoor"!="yes"]
+            ["level"!="-2"]
+            ["level"!="-3"]
+            ["level"!="-4"]
+            ["level"!="-5"](poly:"{geom_osm}");
         );
         out body;
         >;
@@ -354,41 +374,140 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, remove_disconnected=remove_disconnected)
-        for hwy_keys, matched_only, split_dist, consol_dist, cent_by_itx in [
-            (["motorway"], True, 60, 30, False),
-            (["trunk"], True, 40, 20, False),
-            (["primary"], True, 40, 20, False),
-            (["secondary"], True, 30, 15, False),
-            (["tertiary"], True, 30, 15, False),
-            (["residential"], True, 20, 12, True),
-            (["motorway"], False, 30, 20, False),
-            (["trunk", "primary"], False, 20, 15, False),
-            (["secondary", "tertiary"], False, 15, 12, False),
-            (None, False, 12, 10, True),
-        ]:
-            contains_buffer_dist = max(split_dist, 25)
+        # parks
+        parks_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "landuse": ["cemetery", "forest"],
+                "leisure": ["park", "garden", "sports_centre"],
+            },
+        )
+        park_area_gdf = _extract_gdf(parks_gdf)
+        # plazas
+        plazas_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "highway": ["pedestrian"],
+            },
+        )
+        plaza_area_gdf = _extract_gdf(plazas_gdf)
+        # use STR Tree for performance
+        parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
+        plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
+        # iter edges to find edges for marking
+        for start_node_key, end_node_key, edge_key, edge_data in tqdm(
+            graph_crs.edges(keys=True, data=True), total=graph_crs.number_of_edges()
+        ):
+            edge_geom = edge_data["geom"]
+            if "footway" in edge_data["highways"]:
+                # mark park footways
+                itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+                if len(itx):
+                    idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("footway")
+                    graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_green"
+                # mark plaza footways
+                else:
+                    itx = plaza_str_tree.query(edge_geom, predicate="intersects")
+                    if len(itx):
+                        idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("footway")
+                        graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_pedestrian"
+            # mark green / cemetries etc. service roads
+            if "service" in edge_data["highways"]:
+                itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+                if len(itx):
+                    idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("service")
+                    graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
+        #
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
+        # clean by highway types - leave motorway and trunk as is
+        for dist, tags, simplify_line_angles in (
+            (24, ["primary"], 45),  # , "primary_link"
+            (20, ["primary", "secondary"], 45),  # , "secondary_link"
+            (16, ["primary", "secondary", "tertiary"], 45),  # , "tertiary_link"
+        ):
             graph_crs = graphs.nx_split_opposing_geoms(
                 graph_crs,
-                buffer_dist=split_dist,
+                buffer_dist=dist,
+                squash_nodes=True,
+                osm_hwy_target_tags=tags,
+                centroid_by_itx=True,
                 prioritise_by_hwy_tag=True,
-                osm_hwy_target_tags=hwy_keys,
-                osm_matched_tags_only=matched_only,
-                contains_buffer_dist=contains_buffer_dist,
+                simplify_line_angles=simplify_line_angles,
+            )
+        for dist, tags, simplify_line_angles in (
+            (18, ["primary"], 95),  # , "primary_link"
+            (16, ["primary", "secondary"], 95),  # , "secondary_link"
+            (14, ["primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
+        ):
+            graph_crs = graphs.nx_consolidate_nodes(
+                graph_crs,
+                buffer_dist=dist,
+                crawl=True,
+                osm_hwy_target_tags=tags,
+                centroid_by_itx=True,
+                prioritise_by_hwy_tag=True,
+                simplify_line_angles=simplify_line_angles,
+            )
+            graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        # do smaller scale cleaning
+        tags = [
+            "primary",
+            "secondary",
+            "tertiary",
+            "residential",
+            "service",
+            "cycleway",
+            "busway",
+            "footway",
+            "living_street",
+        ]
+        dists = [6, 12]
+        simplify_angles = 95
+        #
+        for dist in dists:
+            graph_crs = graphs.nx_split_opposing_geoms(
+                graph_crs,
+                buffer_dist=dist,
+                squash_nodes=True,
+                centroid_by_itx=True,
+                osm_hwy_target_tags=tags,
+                simplify_line_angles=simplify_angles,
             )
             graph_crs = graphs.nx_consolidate_nodes(
                 graph_crs,
-                buffer_dist=consol_dist,
+                buffer_dist=dist,
                 crawl=True,
-                centroid_by_itx=cent_by_itx,
+                centroid_by_itx=True,
+                osm_hwy_target_tags=tags,
                 prioritise_by_hwy_tag=True,
-                contains_buffer_dist=contains_buffer_dist,
-                osm_hwy_target_tags=hwy_keys,
-                osm_matched_tags_only=matched_only,
+                simplify_line_angles=simplify_angles,
             )
-            graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-    if iron_edges:
-        graph_crs = graphs.nx_iron_edges(graph_crs)
+        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
+        # snap gapped endings - don't clean danglers before this
+        graph_crs = graphs.nx_snap_gapped_endings(
+            graph_crs,
+            buffer_dist=20,
+            # not main roads
+            osm_hwy_target_tags=[
+                "residential",
+                "service",
+                "cycleway",
+                "busway",
+                "footway",
+                "living_street",
+            ],
+        )
+        # snap gapped endings / roaods - don't clean danglers before this
+        # look for degree 1 dead-ends and link to nearby edges
+        graph_crs = graphs.nx_split_opposing_geoms(
+            graph_crs,
+            buffer_dist=25,
+            min_node_degree=1,
+            max_node_degree=1,
+            squash_nodes=False,
+        )
+        # remove longer danglers
+        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=20)
 
     return graph_crs
 
