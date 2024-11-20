@@ -2,6 +2,7 @@
 """
 Visibility and viewshed analysis.
 """
+
 from __future__ import annotations
 
 from functools import partial
@@ -43,7 +44,7 @@ def _prepare_path(out_path: str | Path) -> Path:
     if not write_path.parent.exists():
         raise ValueError(f"Directory {write_path.parent.resolve()} does not exist")
     if write_path.is_dir():
-        raise IOError("Specified write path is a directory but should be a file name")
+        raise OSError("Specified write path is a directory but should be a file name")
     # remove file extension
     write_path = Path(write_path.parent / write_path.stem)
 

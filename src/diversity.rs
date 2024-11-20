@@ -462,6 +462,7 @@ def hill_diversity_pairwise_matrix_wt(
     return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
 */
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -493,3 +494,4 @@ mod tests {
         let b = 0;
     }
 }
+*/

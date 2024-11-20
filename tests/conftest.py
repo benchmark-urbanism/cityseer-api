@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import networkx as nx
 import pytest
-
 from cityseer.tools import graphs
 from cityseer.tools.mock import mock_graph
 

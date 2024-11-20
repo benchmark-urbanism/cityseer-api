@@ -1,13 +1,10 @@
 # pyright: basic
 from __future__ import annotations
 
-import networkx as nx
 import numpy as np
-import pytest
-
 from cityseer import config, rustalgos
-from cityseer.metrics import layers, networks
-from cityseer.tools import graphs, io, mock
+from cityseer.metrics import layers
+from cityseer.tools import io, mock
 
 
 def test_aggregate_to_src_idx(primal_graph):
@@ -106,7 +103,7 @@ def test_accessibility(primal_graph):
     )
     # test manual metrics against all nodes
     betas = rustalgos.betas_from_distances(distances)
-    for dist, beta in zip(distances, betas):
+    for dist, beta in zip(distances, betas, strict=False):
         for src_idx in network_structure.node_indices():  # type: ignore
             # aggregate
             a_nw = 0
@@ -238,7 +235,7 @@ def test_mixed_uses(primal_graph):
             reachable_entries = data_map.aggregate_to_src_idx(
                 netw_src_idx, network_structure, max_dist, angular=angular
             )
-            for dist_cutoff, beta in zip(distances, betas):
+            for dist_cutoff, beta in zip(distances, betas, strict=False):
                 class_agg = dict()
                 # iterate reachable
                 for data_key, data_dist in reachable_entries.items():

@@ -15,12 +15,12 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
-from shapely import geometry, ops
+from shapely import BufferCapStyle, geometry, ops
 from tqdm import tqdm
 
 from cityseer import config
 from cityseer.tools import util
-from cityseer.tools.util import EdgeData, EdgeMapping, ListCoordsType, MultiGraph, NodeData, NodeKey
+from cityseer.tools.util import EdgeData, ListCoordsType, MultiGraph, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
     removed_nodes: set[NodeKey] = set()
     # iterates the original graph, but changes are written to the copied version (to avoid in-place snafus)
     nd_key: NodeKey
-    for nd_key in tqdm(nx_multigraph.nodes(), disable=config.QUIET_MODE):
+    for nd_key in tqdm(sorted(nx_multigraph.nodes()), disable=config.QUIET_MODE):
         # some nodes will already have been removed
         if nd_key in removed_nodes:
             continue
@@ -127,7 +127,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
         if nx.degree(nx_multigraph, nd_key) == 2:
             # pick the first neighbour and follow the chain until a non-simple node is encountered
             # this will become the starting point of the chain of simple nodes to be consolidated
-            nbs: list[NodeKey] = list(nx.neighbors(nx_multigraph, nd_key))
+            nbs: list[NodeKey] = sorted(list(nx.neighbors(nx_multigraph, nd_key)))
             # catch the edge case where the a single dead-end node has two out-edges to a single neighbour
             if len(nbs) == 1:
                 continue
@@ -147,7 +147,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                 # probe neighbours in one-direction only - i.e. don't backtrack
                 nb_a: NodeKey
                 nb_b: NodeKey
-                nb_a, nb_b = list(nx.neighbors(nx_multigraph, nb_nd_key))
+                nb_a, nb_b = sorted(list(nx.neighbors(nx_multigraph, nb_nd_key)))
                 if nb_a == next_link_nd:
                     next_link_nd = nb_nd_key
                     nb_nd_key = nb_b
@@ -195,13 +195,13 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                 # get the next set of neighbours
                 # in the above-mentioned edge-case, a single dead-end node with two edges back to a start node
                 # will only have one neighbour
-                new_nbs: list[NodeKey] = list(nx.neighbors(nx_multigraph, next_link_nd))
+                new_nbs: list[NodeKey] = sorted(list(nx.neighbors(nx_multigraph, next_link_nd)))
                 if len(new_nbs) == 1:
                     trailing_nd = next_link_nd
                     next_link_nd = new_nbs[0]
                 # but in almost all cases there will be two neighbours, one of which will be the previous node
                 else:
-                    nb_a, nb_b = list(nx.neighbors(nx_multigraph, next_link_nd))
+                    nb_a, nb_b = sorted(list(nx.neighbors(nx_multigraph, next_link_nd)))
                     # proceed to the new_next node
                     if nb_a == trailing_nd:
                         trailing_nd = next_link_nd
@@ -281,7 +281,7 @@ def nx_remove_dangling_nodes(
         g_multi_copy.add_nodes_from(subgraph.nodes(data=True))
         g_multi_copy.add_edges_from(subgraph.edges(data=True))
 
-    # remove dangleres
+    # remove danglers
     if despine > 0:
         remove_nodes = []
         nd_key: NodeKey
@@ -293,6 +293,8 @@ def nx_remove_dangling_nodes(
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
+    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+
     return g_multi_copy
 
 
@@ -302,7 +304,7 @@ def _extract_tags_to_set(
     """Converts a `list` of `str` tags to a `set` of small caps `str`."""
     tags = set()
     if tags_list is not None:
-        if not isinstance(tags_list, (list, set, tuple)):
+        if not isinstance(tags_list, list | set | tuple):
             raise ValueError(f"Tags should be provided as a `list` of `str` instead of {type(tags_list)}.")
         tags_list = [t.strip().lower() for t in tags_list if t not in ["", " ", None]]
         tags.update(tags_list)
@@ -419,7 +421,7 @@ def nx_merge_parallel_edges(
             edge_info.gather_edge_info(shortest_data)
             # process longer geoms
             longer_geoms: list[geometry.LineString] = []
-            for edge_geom, edge_data in zip(edge_geoms, edges_data):
+            for edge_geom, edge_data in zip(edge_geoms, edges_data, strict=False):
                 # where the buffer of the shorter contains the longer
                 is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
                 # hwy tags
@@ -532,6 +534,8 @@ def nx_iron_edges(
     """
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # create an edges STRtree (nodes and edges)
+    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
@@ -541,22 +545,44 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key:
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
-        max_angle = util.measure_max_angle(edge_geom.coords)
-        straight_geom = geometry.LineString([edge_geom.coords[0], edge_geom.coords[-1]])
-        # don't apply to longer geoms, e.g. rural roads
-        if edge_geom.length > 400:
-            edge_geom = edge_geom.simplify(5)  # type: ignore
-        # if there is an angle greater than 95 then it is likely spurious
-        elif max_angle > 100:
-            edge_geom = edge_geom.simplify(10)  # type: ignore
-        # flatten if relatively straight but with kinks
-        elif straight_geom.buffer(10).contains(edge_geom) and max_angle > 20:
-            edge_geom = edge_geom.simplify(10)  # type: ignore
-        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
+        hits = edges_tree.query(edge_geom, predicate="crosses")
+        if hits.size > 0:
+            g_multi_copy.remove_edge(start_nd_key, end_nd_key, edge_idx)
+            continue
+        line_coords = simplify_line_by_angle(edge_geom.coords, 100)
+        g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
 
     return g_multi_copy
+
+
+def simplify_line_by_angle(coords, simplify_line_angles):
+    # Continue simplifying until no angles exceed the threshold
+    while True:
+        angles_exceeding_threshold = False
+        new_coords = [coords[0]]  # Start with the first point
+
+        # Iterate through the points to calculate angles
+        for i in range(1, len(coords) - 1):
+            p1, p2, p3 = coords[i - 1], coords[i], coords[i + 1]
+            angle = util.measure_coords_angle(p1, p2, p3)
+
+            # If angle exceeds the threshold, mark the middle point for deletion
+            if angle > simplify_line_angles:
+                angles_exceeding_threshold = True
+                continue  # Skip adding this point
+            new_coords.append(p2)  # Otherwise, keep the point
+
+        new_coords.append(coords[-1])  # Always keep the last point
+
+        # Check if we made any modifications
+        if not angles_exceeding_threshold:
+            break  # Exit loop if no angles exceeded the threshold
+        coords = new_coords  # Update coords with modified list
+
+    # Return a new LineString with simplified coordinates
+    return new_coords
 
 
 def _squash_adjacent(
@@ -564,6 +590,7 @@ def _squash_adjacent(
     node_group: set[NodeKey],
     centroid_by_itx: bool,
     prioritise_by_hwy_tag: bool,
+    simplify_line_angles: int | None = None,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -596,14 +623,28 @@ def _squash_adjacent(
                 break
         # # filter by hwy tags if provided
         if prioritise_tag is not None:
+            # extract nodes intersecting prioritised tag
             hwy_tags_filtered = []
             for nd_key in node_group:
                 nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
                 if prioritise_tag in nb_hwy_tags:
-                    hwy_tags_filtered.append(nd_key)
-            centroid_nodes_filter = hwy_tags_filtered
+                    # count edges which explicitly have tag
+                    nb_tag_count = 0
+                    for nb_nd_key in nx.all_neighbors(nx_multigraph, nd_key):
+                        # can be multiple edges
+                        for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                            edges_tags = _tags_from_edge_key(edge_data, "highways")
+                            if prioritise_tag in edges_tags:
+                                nb_tag_count += 1
+                    hwy_tags_filtered.append((nd_key, nb_tag_count))
+            # if also prioritising by itx
+            if hwy_tags_filtered and centroid_by_itx:
+                max_nb_count = max([n[1] for n in hwy_tags_filtered])
+                centroid_nodes_filter = [n[0] for n in hwy_tags_filtered if n[1] == max_nb_count]
+            elif hwy_tags_filtered:
+                centroid_nodes_filter = [n[0] for n in hwy_tags_filtered]
     # if using intersections, find straight-through routes and count
-    if centroid_by_itx:
+    elif centroid_by_itx:
         crossings_2 = []
         crossings_1 = []
         for nd_key in centroid_nodes_filter:
@@ -621,7 +662,9 @@ def _squash_adjacent(
                             geom_b = nb_edge_data_b["geom"]
                             geom_b_coords = util.align_linestring_coords(geom_b.coords, nd_x_y, reverse=False)
                             angle_sum = util.measure_coords_angle(
-                                geom_a_coords[0][:2], nd_x_y, geom_b_coords[-1][:2]  # type: ignore
+                                geom_a_coords[0][:2],  # type: ignore
+                                nd_x_y,  # type: ignore
+                                geom_b_coords[-1][:2],  # type: ignore
                             )
                             if angle_sum < 10:
                                 crossings += 1
@@ -694,10 +737,13 @@ def _squash_adjacent(
                     target_nd_key = new_nd_name
                 else:
                     target_nd_key = nb_nd_key
+                # simplify to handle new kinks
+                if simplify_line_angles is not None:
+                    line_coords = simplify_line_by_angle(line_coords, simplify_line_angles)
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
                 if new_edge_geom.length == 0:
-                    raise ValueError(f"Attempted to add a zero length edge from {new_nd_name} to {target_nd_key}")
+                    continue
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
@@ -746,6 +792,7 @@ def nx_consolidate_nodes(
     contains_buffer_dist: int = 25,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
+    simplify_line_angles: int | None = None,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -895,9 +942,8 @@ def nx_consolidate_nodes(
             continue
         # get this nodes neighbouring edge hwy tags
         nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
-        if osm_hwy_target_tags:
-            if not hwy_tags.intersection(nb_hwy_tags):
-                continue
+        if osm_hwy_target_tags and not hwy_tags.intersection(nb_hwy_tags):
+            continue
         # get name tags for matching against potential matches
         nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
         # recurse
@@ -920,34 +966,151 @@ def nx_consolidate_nodes(
                 node_group,
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
+                simplify_line_angles=simplify_line_angles,
             )
     # remove parallel edges resulting from squashing nodes
     _multi_graph = nx_merge_parallel_edges(
-        _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags, osm_matched_tags_only
+        _multi_graph,
+        merge_edges_by_midline,
+        contains_buffer_dist,
     )
 
     return _multi_graph
 
 
+def nx_snap_gapped_endings(
+    nx_multigraph: nx.MultiGraph,
+    buffer_dist: float = 12,
+    osm_hwy_target_tags: list[str] | None = None,
+    osm_matched_tags_only: bool = False,
+) -> nx.MultiGraph:
+    if not isinstance(nx_multigraph, nx.MultiGraph):
+        raise TypeError("This method requires an undirected networkX MultiGraph.")
+    _multi_graph: nx.MultiGraph
+    _multi_graph = nx_multigraph.copy()  # type: ignore
+    # if using OSM tags heuristic
+    hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
+    # create an edges STRtree (nodes and edges)
+    nodes_tree, node_lookups = util.create_nodes_strtree(_multi_graph)
+    # create an edges STRtree (nodes and edges)
+    edges_tree, edge_lookups = util.create_edges_strtree(_multi_graph)
+    # iter
+    logger.info("Snapping gapped endings.")
+    # iterate origin graph
+    for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
+        # don't split opposing geoms from nodes of degree 1
+        nd_degree = nx.degree(nx_multigraph, nd_key)
+        if nd_degree != 1:
+            continue
+        # check tags
+        if osm_hwy_target_tags:
+            nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+            if not hwy_tags.intersection(nb_hwy_tags):
+                continue
+        # get name tags for matching against potential gapped edges
+        nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        # get all other nodes within the buffer distance
+        # the spatial index using bounding boxes, so further filtering is required (see further down)
+        n_point = geometry.Point(nd_data["x"], nd_data["y"])
+        # spatial query from point returns all buffers with buffer_dist
+        node_hits: list[dict] = nodes_tree.query(n_point.buffer(buffer_dist))  # type: ignore
+        # extract the start node, end node, geom
+        node_keys: list = []
+        for node_hit_idx in node_hits:
+            j_nd_key = node_lookups[node_hit_idx]["nd_key"]  # type: ignore
+            if j_nd_key == nd_key:
+                continue
+            j_nd_degree = node_lookups[node_hit_idx]["nd_degree"]  # type: ignore
+            if j_nd_degree == 1:
+                node_keys.append(j_nd_key)
+        # abort if no gapped nodes
+        if not node_keys:
+            continue
+        # prepare the root node's point geom
+        n_geom = geometry.Point(nd_data["x"], nd_data["y"])
+        # iter gapped edges
+        for j_nd_key in node_keys:
+            # check distance
+            j_nd_data = nx_multigraph.nodes[j_nd_key]
+            j_geom = geometry.Point(j_nd_data["x"], j_nd_data["y"])
+            if n_geom.distance(j_geom) > buffer_dist:
+                continue
+            # hwy tags
+            if osm_hwy_target_tags:
+                edge_hwy_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "highways")
+                if not hwy_tags.intersection(edge_hwy_tags):
+                    continue
+            # names tags
+            if osm_matched_tags_only is True:
+                edge_name_tags = _gather_nb_name_tags(nx_multigraph, j_nd_key)
+                if not nb_name_tags.intersection(edge_name_tags):
+                    continue
+            # create new geom
+            new_geom = geometry.LineString(
+                [
+                    [nd_data["x"], nd_data["y"]],
+                    [j_nd_data["x"], j_nd_data["y"]],
+                ]
+            )
+            # don't add new edges that would criss cross existing
+            bail = False
+            edge_hits = edges_tree.query(new_geom)
+            for edge_hit_idx in edge_hits:
+                edge_lookup = edge_lookups[edge_hit_idx]
+                start_nd_key = edge_lookup["start_nd_key"]
+                end_nd_key = edge_lookup["end_nd_key"]
+                edge_idx = edge_lookup["edge_idx"]
+                edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                if edge_geom.crosses(new_geom):  # type: ignore
+                    bail = True
+                    break
+            if bail:
+                continue
+            # add new edge
+            if not _multi_graph.has_edge(nd_key, j_nd_key):
+                _multi_graph.add_edge(
+                    nd_key,
+                    j_nd_key,
+                    names=[],
+                    routes=[],
+                    highways=[],
+                    geom=new_geom,
+                )
+
+    return _multi_graph
+
+
 def nx_split_opposing_geoms(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     buffer_dist: float = 12,
     merge_edges_by_midline: bool = True,
     contains_buffer_dist: int = 25,
     prioritise_by_hwy_tag: bool = False,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
-) -> MultiGraph:
+    min_node_degree: int = 2,
+    max_node_degree: int | None = None,
+    squash_nodes: bool = True,
+    centroid_by_itx: bool = False,
+    simplify_line_angles: int | None = None,
+) -> nx.MultiGraph:
     """
-    Split edges opposite nodes on parallel edge segments if within a buffer distance.
+    Split edges in near proximity to nodes, then weld the resultant node group together, updating edges in the process.
 
-    This facilitates merging parallel roadways through subsequent use of
-    [`nx_consolidate-nodes`](#nx-consolidate-nodes).
+    This is primarily intended for merging parallel roadways when used with the default `min_node_degree=2`. When an
+    edge geometry is within the specified `buffer_dist` of a node (with the specified `min_node_degree`) then the edge
+    geom is split and a new node is inserted. The new node is then merged with the node which triggered the split, with
+    edge geometries updated accordingly.
+
+    Dead-end segments can be projected to nearby edge geometries if lowering `min_node_degree` to `1`. This is useful
+    for connecting disjointed OSM pedestrian segments to nearby roadway geometries. Consider using with
+    `max_node_degree=1` and `osm_hwy_target_tags` set to `['footway']` to restrict the behaviour to dead-end pedestrian
+    routes.
 
     The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced
-        by a single new edge, with the new geometry selected from either:
+    by a single new edge, with the new geometry selected from either:
         - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-        - Else, the shortest edge, with longer edges discarded;
+        - Else, the shortest edge, with longer edges discarded.
     See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
 
     Parameters
@@ -974,6 +1137,13 @@ def nx_split_opposing_geoms(
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
         via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+    min_node_degree: int
+        Only project nodes with at least node degree of `min_node_degree`.
+    max_node_degree: int
+        Only project nodes with at most node degree of `max_node_degree`.
+    squash_nodes: bool
+        Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then
+        a line will be added instead. Defaults to `True`.
 
     Returns
     -------
@@ -986,15 +1156,15 @@ def nx_split_opposing_geoms(
         return "-".join(sorted([str(start_nd_key), str(end_nd_key)])) + f"-k{edge_idx}"
 
     # where edges are deleted, keep track of new children edges
-    edge_children: dict[str, list[EdgeMapping]] = {}
+    edge_children: dict[str, list] = {}
 
     # recursive function for retrieving nested layers of successively replaced edges
     def recurse_child_keys(
         _start_nd_key: NodeKey,
         _end_nd_key: NodeKey,
         _edge_idx: int,
-        _edge_data: dict[Any, Any],
-        current_edges: list[EdgeMapping],
+        _edge_data: dict,
+        current_edges: list,
     ):
         """
         Recursively checks if an edge has been replaced by children, if so, use children instead.
@@ -1010,7 +1180,7 @@ def nx_split_opposing_geoms(
 
     if not isinstance(nx_multigraph, nx.MultiGraph):
         raise TypeError("This method requires an undirected networkX MultiGraph.")
-    _multi_graph: MultiGraph = nx_multigraph.copy()
+    _multi_graph = nx_multigraph.copy()
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
@@ -1021,10 +1191,11 @@ def nx_split_opposing_geoms(
     logger.info("Splitting opposing edges.")
     # iterate origin graph (else node structure changes in place)
     nd_key: NodeKey
-    nd_data: NodeData
     for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
-        # don't split opposing geoms from nodes of degree 1
-        if nx.degree(_multi_graph, nd_key) < 2:
+        nd_degree = nx.degree(_multi_graph, nd_key)
+        if nd_degree < min_node_degree:
+            continue
+        if max_node_degree is not None and nd_degree > max_node_degree:
             continue
         # check tags
         if osm_hwy_target_tags:
@@ -1033,35 +1204,41 @@ def nx_split_opposing_geoms(
                 continue
         # get name tags for matching against potential gapped edges
         nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        # neighbours for filtering out
+        neighbours = list(nx.neighbors(nx_multigraph, nd_key))
         # get all other edges within the buffer distance
         # the spatial index using bounding boxes, so further filtering is required (see further down)
-        # furthermore, successive iterations may remove old edges, so keep track of removed parent vs new child edges
+        # furthermore, successive iterations may remove old edges
+        # so keep track of removed parent vs new child edges
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
         # spatial query from point returns all buffers with buffer_dist
         edge_hits: list[int] = edges_tree.query(n_point.buffer(buffer_dist))  # type: ignore
         # extract the start node, end node, geom
-        edges: list[EdgeMapping] = []
+        edges: list = []
         for edge_hit_idx in edge_hits:
             edge_lookup = edge_lookups[edge_hit_idx]
             start_nd_key = edge_lookup["start_nd_key"]
             end_nd_key = edge_lookup["end_nd_key"]
             edge_idx = edge_lookup["edge_idx"]
-            edge_data: dict[Any, Any] = nx_multigraph[start_nd_key][end_nd_key][edge_idx]
-            # don't add neighbouring edges
+            edge_data: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]
+            # don't add attached edge
             if nd_key in (start_nd_key, end_nd_key):
+                continue
+            # don't add neighbouring edges
+            if start_nd_key in neighbours or end_nd_key in neighbours:
                 continue
             edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
         # review gapped edges
         # if already removed, get the new child edges
-        current_edges: list[EdgeMapping] = []
+        current_edges: list = []
         for start_nd_key, end_nd_key, edge_idx, edge_data in edges:
             recurse_child_keys(start_nd_key, end_nd_key, edge_idx, edge_data, current_edges)
         # check that edges are within buffer
-        gapped_edges: list[EdgeMapping] = []
+        gapped_edges: list = []
         for start_nd_key, end_nd_key, edge_idx, edge_data in current_edges:
             edge_geom = edge_data["geom"]
             # check whether the geom is truly within the buffer distance
-            if edge_geom.distance(n_point) > buffer_dist:
+            if edge_geom.distance(n_point) > buffer_dist:  # type: ignore
                 continue
             gapped_edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
         # abort if no gapped edges
@@ -1070,9 +1247,20 @@ def nx_split_opposing_geoms(
         # prepare the root node's point geom
         n_geom = geometry.Point(nd_data["x"], nd_data["y"])
         # nodes for squashing
-        node_group = set([nd_key])
-        # iter gapped edges
+        node_group = [nd_key]
+        # sort gapped edges by distance
+        gapped_edges = sorted(gapped_edges, key=lambda edge: n_point.distance(edge[3]["geom"]))
+        # unique edges not sharing a node - i.e. only pierce nearest rather than in multiple directions
+        shared_nodes = set()
+        distinct_edges = []
         for start_nd_key, end_nd_key, edge_idx, edge_data in gapped_edges:
+            if start_nd_key in shared_nodes or end_nd_key in shared_nodes:
+                continue
+            shared_nodes.add(start_nd_key)
+            shared_nodes.add(end_nd_key)
+            distinct_edges.append((start_nd_key, end_nd_key, edge_idx, edge_data))
+        # iter gapped edges
+        for start_nd_key, end_nd_key, edge_idx, edge_data in distinct_edges:
             edge_geom = edge_data["geom"]
             # hwy tags
             if osm_hwy_target_tags:
@@ -1087,11 +1275,12 @@ def nx_split_opposing_geoms(
             # project a point and split the opposing geom
             # ops.nearest_points returns tuple of nearest from respective input geoms
             # want the nearest point on the line at index 1
-            nearest_point: geometry.Point = ops.nearest_points(n_geom, edge_geom)[-1]
+            nearest_point: geometry.Point = ops.nearest_points(n_geom, edge_geom)[-1]  # type: ignore
             # if a valid nearest point has been found, go ahead and split the geom
             # use a snap because rounding precision errors will otherwise cause issues
             split_geoms: geometry.GeometryCollection = ops.split(
-                ops.snap(edge_geom, nearest_point, 0.01), nearest_point
+                ops.snap(edge_geom, nearest_point, 0.01),  # type: ignore
+                nearest_point,  # type: ignore
             )
             # in some cases the line will be pointing away, but is still near enough to be within max
             # in these cases a single geom will be returned
@@ -1102,18 +1291,21 @@ def nx_split_opposing_geoms(
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms  # type: ignore
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = util.add_node(
-                _multi_graph, [start_nd_key, nd_key, end_nd_key], x=nearest_point.x, y=nearest_point.y
+                _multi_graph,
+                [start_nd_key, nd_key, end_nd_key],
+                x=nearest_point.x,
+                y=nearest_point.y,
             )
             # continue if a node already exists at this location
             if is_dupe:
                 continue
-            node_group.update([new_nd_name])
+            node_group.append(new_nd_name)
             # copy edge data
             edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
             _multi_graph.add_edge(start_nd_key, new_nd_name, **edge_data_copy)
             _multi_graph.add_edge(end_nd_key, new_nd_name, **edge_data_copy)
             # get starting geom for orientation
-            s_nd_data: NodeData = _multi_graph.nodes[start_nd_key]
+            s_nd_data = _multi_graph.nodes[start_nd_key]
             s_nd_geom = geometry.Point(s_nd_data["x"], s_nd_data["y"])
             if np.allclose(
                 s_nd_geom.coords,
@@ -1163,31 +1355,95 @@ def nx_split_opposing_geoms(
             # add the new edges to the edge_children dictionary
             edge_key = make_edge_key(start_nd_key, end_nd_key, edge_idx)
             edge_children[edge_key] = [
-                (start_nd_key, new_nd_name, s_k, _multi_graph[start_nd_key][new_nd_name][s_k]),
-                (end_nd_key, new_nd_name, e_k, _multi_graph[end_nd_key][new_nd_name][e_k]),
+                (
+                    start_nd_key,
+                    new_nd_name,
+                    s_k,
+                    _multi_graph[start_nd_key][new_nd_name][s_k],
+                ),
+                (
+                    end_nd_key,
+                    new_nd_name,
+                    e_k,
+                    _multi_graph[end_nd_key][new_nd_name][e_k],
+                ),
             ]
             # drop the old edge from _multi_graph
-            if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
-                _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)
-        node_groups.append(node_group)
+            if _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):  # type: ignore
+                _multi_graph.remove_edge(start_nd_key, end_nd_key, edge_idx)  # type: ignore
+        node_groups.append(list(node_group))  # type: ignore
     # iter and squash
-    logger.info("Squashing opposing nodes")
-    for node_group in node_groups:
-        _multi_graph = _squash_adjacent(
-            _multi_graph,
-            node_group,
-            centroid_by_itx=False,
-            prioritise_by_hwy_tag=prioritise_by_hwy_tag,
-        )
+    if squash_nodes is True:
+        logger.info("Squashing opposing nodes")
+        for node_group in node_groups:
+            _multi_graph = _squash_adjacent(
+                _multi_graph,
+                node_group,
+                centroid_by_itx=centroid_by_itx,
+                prioritise_by_hwy_tag=prioritise_by_hwy_tag,
+                simplify_line_angles=simplify_line_angles,
+            )
+    else:
+        for node_group in node_groups:
+            origin_nd_key = node_group.pop(0)  # type: ignore
+            template = None
+            origin_nd_data = _multi_graph.nodes[origin_nd_key]
+            for new_nd_key in node_group:
+                new_nd_data = _multi_graph.nodes[new_nd_key]
+                new_geom = geometry.LineString(
+                    [
+                        [origin_nd_data["x"], origin_nd_data["y"]],
+                        [new_nd_data["x"], new_nd_data["y"]],
+                    ]
+                )
+                # don't add overly similar new edges
+                if template is None:
+                    template = new_geom.buffer(5, cap_style=BufferCapStyle.flat)
+                elif template.contains(new_geom):
+                    continue
+                else:
+                    template = template.union(new_geom.buffer(10, cap_style=BufferCapStyle.flat))
+                # don't add new edges that would criss cross existing
+                bail = False
+                new_end_pnt = geometry.Point(new_nd_data["x"], new_nd_data["y"])
+                edge_hits = edges_tree.query(new_geom)  # type: ignore
+                for edge_hit_idx in edge_hits:
+                    edge_lookup = edge_lookups[edge_hit_idx]
+                    start_nd_key = edge_lookup["start_nd_key"]
+                    end_nd_key = edge_lookup["end_nd_key"]
+                    edge_idx = edge_lookup["edge_idx"]
+                    edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                    # use distance to catch "crossing" where curved geoms lead to issues
+                    if new_geom.crosses(edge_geom) and round(new_end_pnt.distance(edge_geom), 3) > 0:  # type: ignore
+                        bail = True
+                        break
+                if bail:
+                    continue
+                # add
+                if not _multi_graph.has_edge(origin_nd_key, new_nd_key):
+                    _multi_graph.add_edge(
+                        origin_nd_key,
+                        new_nd_key,
+                        names=[],
+                        routes=[],
+                        highways=[],
+                        geom=new_geom,
+                    )
     # squashing nodes can result in edge duplicates
     deduped_graph = nx_merge_parallel_edges(
-        _multi_graph, merge_edges_by_midline, contains_buffer_dist, osm_hwy_target_tags, osm_matched_tags_only
+        _multi_graph,
+        merge_edges_by_midline,
+        contains_buffer_dist,
     )
 
     return deduped_graph
 
 
-def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
+def nx_decompose(
+    nx_multigraph: MultiGraph,
+    decompose_max: float,
+    osm_hwy_target_tags: list[str] | None = None,
+) -> MultiGraph:
     """
     Decomposes a graph so that no edge is longer than a set maximum.
 
@@ -1205,9 +1461,12 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-
     decompose_max: float
         The maximum length threshold for decomposed edges.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
+        containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with
+        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
 
     Returns
     -------
@@ -1239,11 +1498,18 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # if using OSM tags heuristic
+    hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # note -> write to a duplicated graph to avoid in-place errors
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_data: EdgeData
     for start_nd_key, end_nd_key, edge_data in tqdm(nx_multigraph.edges(data=True), disable=config.QUIET_MODE):
+        # hwy tags
+        if osm_hwy_target_tags:
+            edge_hwy_tags = _tags_from_edge_key(edge_data, "highways")
+            if not hwy_tags.intersection(edge_hwy_tags):
+                continue
         # test for x, y in start coordinates
         if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
             raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
@@ -1264,7 +1530,10 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             )
         # check geom coordinates directionality - flip if facing backwards direction
         line_geom_coords = util.snap_linestring_endpoints(
-            nx_multigraph, start_nd_key, end_nd_key, line_geom.coords  # type:ignore
+            nx_multigraph,
+            start_nd_key,
+            end_nd_key,
+            line_geom.coords,  # type:ignore
         )
         line_geom: geometry.LineString = geometry.LineString(line_geom_coords)
         # see how many segments are necessary so as not to exceed decomposition max distance
@@ -1278,7 +1547,7 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
         prior_node_id = start_nd_key
         sub_node_counter = 0
         # everything inside this loop is a new node - i.e. this loop is effectively skipped if cuts = 1
-        for _ in range(cuts - 1):
+        for sub_node_counter in range(cuts - 1):
             # create the split LineString geom for measuring the new length
             # switch back to shapely once bug resolved
             line_segment: geometry.LineString = ops.substring(line_geom, step, step + step_size)  # type: ignore
@@ -1286,7 +1555,10 @@ def nx_decompose(nx_multigraph: MultiGraph, decompose_max: float) -> MultiGraph:
             x, y = line_segment.coords[-1]
             # add the new node and edge
             new_nd_name, is_dupe = util.add_node(
-                g_multi_copy, [start_nd_key, sub_node_counter, end_nd_key], x=x, y=y  # type:ignore
+                g_multi_copy,
+                [start_nd_key, sub_node_counter, end_nd_key],  # type: ignore
+                x=x,
+                y=y,  # type:ignore
             )
             if is_dupe:
                 raise ValueError(
@@ -1356,9 +1628,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     G = mock.mock_graph()
     G_simple = graphs.nx_simple_geoms(G)
     G_dual = graphs.nx_to_dual(G_simple)
-    plot.plot_nx_primal_or_dual(G_simple,
-                                G_dual,
-                                plot_geoms=False)
+    plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
     ```
 
     ![Example dual graph](/images/graph_dual.png)
@@ -1449,7 +1719,8 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     # add dual nodes
     logger.info("Preparing dual nodes")
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multigraph.edges(data=True, keys=True), disable=config.QUIET_MODE  # type: ignore
+        nx_multigraph.edges(data=True, keys=True),  # type: ignore
+        disable=config.QUIET_MODE,  # type: ignore
     ):
         primal_geom = edge_data["geom"]
         mid_point = primal_geom.interpolate(0.5, normalized=True)  # type: ignore
@@ -1469,14 +1740,18 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     # add dual edges
     logger.info("Preparing dual edges (splitting and welding geoms)")
     for start_nd_key, end_nd_key, edge_idx in tqdm(  # type: ignore
-        nx_multigraph.edges(data=False, keys=True), disable=config.QUIET_MODE  # type: ignore
+        nx_multigraph.edges(data=False, keys=True),  # type: ignore
+        disable=config.QUIET_MODE,  # type: ignore
     ):
         hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # get the first and second half geoms
         s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
         # process either side
         for n_side, m_side, half_geom in zip(
-            [start_nd_key, end_nd_key], [end_nd_key, start_nd_key], [s_half_geom, e_half_geom]
+            [start_nd_key, end_nd_key],
+            [end_nd_key, start_nd_key],
+            [s_half_geom, e_half_geom],
+            strict=False,
         ):
             # add the spoke edges on the dual
             nb_nd_key: NodeKey
@@ -1566,7 +1841,10 @@ def nx_weight_by_dissolved_edges(
             # don't add edges which share common nodes (directly adjacent)
             # this is an important line because otherwise the measure becomes indiscriminate i.e. would apply to regular
             # intersections without duplicitous edges - working against intention of this method
-            if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [start_nd_key, end_nd_key]:
+            if nearby_start_nd_key in [start_nd_key, end_nd_key] or nearby_end_nd_key in [
+                start_nd_key,
+                end_nd_key,
+            ]:
                 continue
             # get linestring
             edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]

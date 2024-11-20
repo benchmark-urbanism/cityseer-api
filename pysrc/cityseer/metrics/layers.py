@@ -86,7 +86,7 @@ def assign_gdf_to_network(
     for data_key, data_row in data_gdf.iterrows():  # type: ignore
         if not isinstance(data_key, str):
             raise ValueError("Data keys must be string instances.")
-        data_id: str | None = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
+        data_id = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
         data_map.insert(
             data_key,
             # get key from GDF in case of different geom column name
@@ -98,7 +98,7 @@ def assign_gdf_to_network(
         )
     # only compute if not already computed
     if calculate_assigned is True:
-        for data_key in data_map.entry_keys():  # pylint: disable=not-an-iterable
+        for data_key in data_map.entry_keys():
             data_coord = data_map.get_data_coord(data_key)
             nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
             if nearest_idx is not None:
@@ -253,7 +253,7 @@ def compute_accessibilities(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack accessibility data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
@@ -459,7 +459,7 @@ def compute_mixed_uses(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack mixed-uses data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
@@ -620,7 +620,7 @@ def compute_stats(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack the numerical arrays
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)  # pylint: disable=unpacking-non-sequence
+    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
         k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
         nodes_gdf[k] = result.sum[dist_key]  # type: ignore

@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "tamasfe.even-better-toml",
+    "ms-toolsai.jupyter",
+    "ms-toolsai.vscode-jupyter-cell-tags",
+    "ms-toolsai.jupyter-keymap",
+    "ms-toolsai.vscode-jupyter-slideshow",
+    "ms-toolsai.jupyter-renderers",
+    "davidanson.vscode-markdownlint",
+    "bierner.markdown-mermaid",
+    "ms-python.vscode-pylance",
+    "ms-python.python",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+    "mhutchie.git-graph"
+  ]
+}

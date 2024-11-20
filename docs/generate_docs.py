@@ -41,10 +41,7 @@ def weld_candidate(text_a: str, text_b: str) -> bool:
     for char in ["|", ">"]:
         if text_a.strip().endswith(char):
             return False
-    for char in ["|", "!", "<", "-", "*"]:
-        if text_b.strip().startswith(char):
-            return False
-    return True
+    return all(not text_b.strip().startswith(char) for char in ["|", "!", "<", "-", "*"])
 
 
 def strip_markdown(text: str) -> str:
@@ -81,10 +78,7 @@ def strip_markdown(text: str) -> str:
             else:
                 other_block = False
                 cleaned_text += f"\n{next_line.strip()}"
-        elif other_block:
-            cleaned_text += f"\n{next_line.strip()}"
-        # tables
-        elif next_line.strip().startswith("|") and next_line.strip().endswith("|"):
+        elif other_block or next_line.strip().startswith("|") and next_line.strip().endswith("|"):
             cleaned_text += f"\n{next_line.strip()}"
         # otherwise weld if possible
         elif weld_candidate(cleaned_text, next_line):
@@ -110,9 +104,10 @@ def custom_process_docstring(doc_str: str) -> str:
         doc_str_frag += "\n### Parameters"
         for param in parsed_doc_str.params:
             param_name = param.arg_name
-            if "kwargs" in param_name:
-                param_name = param_name.lstrip("**")
-                param_name = f"**{param_name}"
+        if "kwargs" in param_name:
+            if param_name.startswith("**"):
+                param_name = param_name[2:]
+            param_name = f"**{param_name}"
             doc_str_frag += gen_param_set(
                 param_name=param_name,
                 param_type=param.type_name,
@@ -148,12 +143,10 @@ def custom_process_docstring(doc_str: str) -> str:
     for met in parsed_doc_str.meta:
         if not isinstance(
             met,
-            (
-                docstring_parser.common.DocstringParam,
-                docstring_parser.common.DocstringDeprecated,
-                docstring_parser.common.DocstringRaises,
-                docstring_parser.common.DocstringReturns,
-            ),
+            docstring_parser.common.DocstringParam
+            | docstring_parser.common.DocstringDeprecated
+            | docstring_parser.common.DocstringRaises
+            | docstring_parser.common.DocstringReturns,
         ):
             metas.append(met)
     if metas:
@@ -192,9 +185,7 @@ def custom_format_signature(sig: inspect.Signature, colon: bool = True) -> str:
         param_fragment = tags.div(cls="param")
         if ":" in param:
             param_text, annot = param.split(":")
-            if "any" in annot.strip().lower():
-                annot = None
-            elif annot.strip().lower().startswith("union"):
+            if "any" in annot.strip().lower() or annot.strip().lower().startswith("union"):
                 annot = None
         else:
             param_text = param

@@ -1,8 +1,6 @@
 # pyright: basic
 from __future__ import annotations
 
-import pytest
-
 from cityseer.metrics import networks
 from cityseer.tools import io, util
 

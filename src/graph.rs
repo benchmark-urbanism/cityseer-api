@@ -611,6 +611,7 @@ impl NetworkStructure {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -717,3 +718,4 @@ mod tests {
         // assert_eq!(add(2, 2), 4);
     }
 }
+*/

@@ -11,15 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pdm-project/setup-pdm@v3
-        name: Setup PDM
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          python-version: "3.11"
-          cache: true
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install
       - name: Build docs
         run: |
-          pdm install --dev
-          pdm run generate_docs
+          uv sync --dev
+          uv run poe generate_docs
       - run: cd docs && npm install && npm run build && cd ..
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

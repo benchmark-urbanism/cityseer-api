@@ -10,7 +10,6 @@
   "scss.validate": false,
   "stylelint.enable": true,
   "stylelint.validate": ["css", "postcss", "vue"],
-  "stylelint.packageManager": "pnpm",
   "stylelint.reportInvalidScopeDisables": true,
   "stylelint.reportNeedlessDisables": true,
   "prettier.documentSelectors": ["**/*.astro"],
@@ -21,16 +20,15 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
   },
-  "notebook.lineNumbers": "on",
-  "python.testing.pytestEnabled": true,
-  "python.analysis.completeFunctionParens": true,
-  "python.analysis.indexing": true,
-  "python.analysis.autoImportCompletions": true,
-  "python.languageServer": "Pylance",
-  "python.analysis.autoSearchPaths": true,
-  "python.analysis.stubPath": "stubs",
-  "python.testing.pytestArgs": ["."],
-  "python.testing.unittestEnabled": false
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
 }
