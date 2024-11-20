@@ -310,7 +310,7 @@ def osm_graph_from_poly(
     [out:json];
     (way["highway"]
         ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|
-            emergency_bay|rest_area|disused|path|corridor|ladder|bus_stop|elevator|services"]
+            emergency_bay|rest_area|disused|corridor|ladder|bus_stop|elevator|services"]
         ["area"!="yes"]
         ["footway"!="sidewalk"]
         ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
@@ -348,7 +348,7 @@ def osm_graph_from_poly(
         [out:json];
         (way["highway"]
             ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|emergency_bay|
-                rest_area|disused|path|corridor|ladder|bus_stop|elevator|services"]
+                rest_area|disused|corridor|ladder|bus_stop|elevator|services"]
             ["area"!="yes"]
             ["footway"!="sidewalk"]
             ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
