@@ -659,7 +659,8 @@ def nx_from_osm_nx(
         if "y" not in nx_multidigraph.nodes[nd_key]:
             raise KeyError(f'Encountered node missing "y" coordinate attribute for node {nd_key}.')
         y: float = nx_multidigraph.nodes[nd_key]["y"]
-        # add attributes if necessary
+        # add node and attributes if necessary
+        nd_key = str(nd_key)
         if nd_key not in g_multi:
             g_multi.add_node(nd_key, x=x, y=y)
             if node_attributes is not None:
@@ -706,6 +707,10 @@ def nx_from_osm_nx(
         # snap starting and ending coords to avoid rounding error issues
         geom_coords = util.snap_linestring_startpoint(geom_coords, (s_x, s_y))
         geom_coords = util.snap_linestring_endpoint(geom_coords, (e_x, e_y))
+        # convert keys to str
+        start_nd_key = str(start_nd_key)
+        end_nd_key = str(end_nd_key)
+        # new graph expects str
         g_multi.add_edge(start_nd_key, end_nd_key, key=edge_idx, geom=geometry.LineString(geom_coords))
         if edge_attributes is not None:
             for edge_att in edge_attributes:
