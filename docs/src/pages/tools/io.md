@@ -352,26 +352,6 @@ builds a graph automatically.
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
-    <span class="pn">crawl_consolidate_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 12</span>
-  </div>
-  <div class="param">
-    <span class="pn">parallel_consolidate_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 15</span>
-  </div>
-  <div class="param">
-    <span class="pn">contains_buffer_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 50</span>
-  </div>
-  <div class="param">
-    <span class="pn">iron_edges</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
     <span class="pn">remove_disconnected</span>
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
@@ -452,47 +432,7 @@ builds a graph automatically.
   </div>
   <div class="desc">
 
- Whether to automatically simplify the OSM graph. Set to False for manual cleaning.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">crawl_consolidate_dist</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The buffer distance to use when doing the initial round of node consolidation. This consolidation step crawls neighbouring nodes to find groups of adjacent nodes within the buffer distance of each other.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">parallel_consolidate_dist</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The buffer distance to use when looking for adjacent parallel roadways.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">contains_buffer_dist</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">iron_edges</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Whether to iron the edges.</div>
+ Whether to automatically simplify the OSM graph.</div>
 </div>
 
 <div class="param-set">
@@ -538,25 +478,28 @@ builds a graph automatically.
 
 ### Notes
 
- The default OSM request will attempt to find all walkable routes. It will ignore motorways and will try to work with pedestrianised routes and walkways.
+ If you wish to provide your own OSM request, then provide a valid OSM API request to the `custom_request` parameter. The string must contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the OSM API to be injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use street name and highway reference information for cleaning purposes. See [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
 
- If you wish to provide your own OSM request, then provide a valid OSM API request as a string. The string must contain a `geom_osm` f-string formatting key. This allows for the geometry parameter passed to the OSM API to be injected into the request. It is also recommended to not use the `skel` output option so that `cityseer` can use street name and highway reference information for cleaning purposes. See [OSM Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) for experimenting with custom queries.
-
- For example, to return only drivable roads, then use a request similar to the following. Notice the `geom_osm` f-string interpolation key and the use of `out qt;` instead of `out skel qt;`.
+ The following is the default query which you can adapt for your purposes. Notice the `geom_osm` f-string interpolation key (for injecting the geometry) and the use of `out qt;` instead of `out skel qt;`.
 
 ```python
-custom_request = f'''
+/* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
 [out:json];
-(
-way["highway"]
-["area"!="yes"]
-["highway"!~"footway|pedestrian|steps|bus_guideway|escape|raceway|proposed|planned|abandoned|platform|construction"]
-(poly:"{geom_osm}");
+(way["highway"]
+    ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|
+        emergency_bay|rest_area|disused|corridor|ladder|bus_stop|elevator|services"]
+    ["area"!="yes"]
+    ["footway"!="sidewalk"]
+    ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]
+    ["indoor"!="yes"]
+    ["level"!="-2"]
+    ["level"!="-3"]
+    ["level"!="-4"]
+    ["level"!="-5"](poly:"{geom_osm}");
 );
 out body;
 >;
 out qt;
-'''
 ```
 
 
@@ -731,6 +674,8 @@ out qt;
   </div>
   <div class="param">
     <span class="pn">target_bbox</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, int, int, int] | tuple[float, float, float, float] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -842,7 +787,7 @@ out qt;
   </div>
   <div class="desc">
 
- CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long</div>
+ CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).</div>
 </div>
 
 ### Returns
@@ -1050,7 +995,7 @@ out qt;
   </div>
   <div class="desc">
 
- CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).  # pylint: disable=line-too-long</div>
+ CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).</div>
 </div>
 
 ### Returns
@@ -1074,12 +1019,17 @@ out qt;
 
 
 <div class="content">
-<span class="name">nx_from_generic_geopandas</span><div class="signature">
+<span class="name">nx_from_generic_geopandas</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">gdf_network</span>
     <span class="pc">:</span>
     <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">drop_self_loops_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -1098,6 +1048,16 @@ out qt;
   <div class="desc">
 
  A LineString `gpd.GeoDataFrame`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">drop_self_loops_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Drop looping street segments shorter than specified distance. 20m by default.</div>
 </div>
 
 ### Returns

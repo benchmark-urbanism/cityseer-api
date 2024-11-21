@@ -1,6 +1,9 @@
 # mac
 .DS_Store
 
+# astro
+.astro
+
 # code profiling
 .prof
 

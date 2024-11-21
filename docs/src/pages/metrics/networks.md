@@ -267,6 +267,16 @@ manually specified.
     <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
+    <span class="pn">angular_scaling_unit</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 90</span>
+  </div>
+  <div class="param">
+    <span class="pn">farness_scaling_offset</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
     <span class="pn">jitter_scale</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.0</span>
@@ -352,6 +362,26 @@ manually specified.
   <div class="desc">
 
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">angular_scaling_unit</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The number by which to divide angular distances for scaling. 90 by default. For example, if the cumulative angular distance for a given route is 180 then this will be scaled per 180 / 90 = 2.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">farness_scaling_offset</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ A number by which to offset the scaled angular distance for computing farness. 1 by default. For example, if the scaled angular distance is 2, then an offset of 1 will be applied as 1 + 2 = 3. This offset is only applied when calculating farness. Harmonic closeness always uses an offset of 1 to prevent division by zero.</div>
 </div>
 
 <div class="param-set">
@@ -550,7 +580,7 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 | ------------------- | :-----: |------ |
 | seg_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
 | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
-| seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A  # pylint: disable=line-too-long continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
+| seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
 
 </div>

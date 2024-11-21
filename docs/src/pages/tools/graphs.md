@@ -123,11 +123,6 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
   </div>
-  <div class="param">
-    <span class="pn">cleanup_filler_nodes</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -165,16 +160,6 @@ side-effects as a function of varied node intensities when computing network cen
  Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to keep all disconnected components.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">cleanup_filler_nodes</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Whether to cleanup filler nodes. True by default.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -210,6 +195,16 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
     <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_hwy_target_tags</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_matched_tags_only</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -250,6 +245,26 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_hwy_target_tags</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_matched_tags_only</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
 </div>
 
 ### Returns
@@ -355,6 +370,27 @@ side-effects as a function of varied node intensities when computing network cen
 
 <div class="function">
 
+## simplify_line_by_angle
+
+
+<div class="content">
+<span class="name">simplify_line_by_angle</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">coords</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify_line_angles</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+
+<div class="function">
+
 ## nx_consolidate_nodes
 
 
@@ -385,6 +421,11 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
+    <span class="pn">prioritise_by_hwy_tag</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
     <span class="pn">merge_edges_by_midline</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
@@ -393,6 +434,21 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pn">contains_buffer_dist</span>
     <span class="pc">:</span>
     <span class="pa"> int = 25</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_hwy_target_tags</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_matched_tags_only</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify_line_angles</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -459,6 +515,16 @@ side-effects as a function of varied node intensities when computing network cen
 
 <div class="param-set">
   <div class="def">
+    <div class="name">prioritise_by_hwy_tag</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly). Defaults to False.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">merge_edges_by_midline</div>
     <div class="type">bool</div>
   </div>
@@ -475,6 +541,26 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged. This is run after node consolidation has completed.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_hwy_target_tags</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_matched_tags_only</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
 </div>
 
 ### Returns
@@ -501,6 +587,43 @@ side-effects as a function of varied node intensities when computing network cen
 
 <div class="function">
 
+## nx_snap_gapped_endings
+
+
+<div class="content">
+<span class="name">nx_snap_gapped_endings</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 12</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_hwy_target_tags</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_matched_tags_only</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+</div>
+
+
+<div class="function">
+
 ## nx_split_opposing_geoms
 
 
@@ -509,6 +632,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">buffer_dist</span>
@@ -525,16 +650,60 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 25</span>
   </div>
-  <span class="pt">)</span>
+  <div class="param">
+    <span class="pn">prioritise_by_hwy_tag</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_hwy_target_tags</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_matched_tags_only</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_node_degree</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 2</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_node_degree</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">squash_nodes</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">centroid_by_itx</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify_line_angles</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
 
- Split edges opposite nodes on parallel edge segments if within a buffer distance. This facilitates merging parallel roadways through subsequent use of [`nx_consolidate-nodes`](#nx-consolidate-nodes).
+ Split edges in near proximity to nodes, then weld the resultant node group together, updating edges in the process. This is primarily intended for merging parallel roadways when used with the default `min_node_degree=2`. When an edge geometry is within the specified `buffer_dist` of a node (with the specified `min_node_degree`) then the edge geom is split and a new node is inserted. The new node is then merged with the node which triggered the split, with edge geometries updated accordingly.
+
+ Dead-end segments can be projected to nearby edge geometries if lowering `min_node_degree` to `1`. This is useful for connecting disjointed OSM pedestrian segments to nearby roadway geometries. Consider using with `max_node_degree=1` and `osm_hwy_target_tags` set to `['footway']` to restrict the behaviour to dead-end pedestrian routes.
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded; See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+- Else, the shortest edge, with longer edges discarded. See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -576,6 +745,66 @@ side-effects as a function of varied node intensities when computing network cen
  The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are sufficiently adjacent to be merged.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">prioritise_by_hwy_tag</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly). Defaults to False.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_hwy_target_tags</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_matched_tags_only</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_node_degree</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Only project nodes with at least node degree of `min_node_degree`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_node_degree</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Only project nodes with at most node degree of `max_node_degree`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">squash_nodes</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then a line will be added instead. Defaults to `True`.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -606,6 +835,11 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pn">decompose_max</span>
     <span class="pc">:</span>
     <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">osm_hwy_target_tags</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -638,6 +872,16 @@ unnecessarily for subsequent analysis. For larger-scale urban analysis, it is ge
   <div class="desc">
 
  The maximum length threshold for decomposed edges.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_hwy_target_tags</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
 </div>
 
 ### Returns
@@ -723,9 +967,7 @@ from cityseer.tools import graphs, mock, plot
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple,
-                            G_dual,
-                            plot_geoms=False)
+plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
 ```
 
 

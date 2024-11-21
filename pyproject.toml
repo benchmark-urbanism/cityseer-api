@@ -65,9 +65,9 @@ features = ["pyo3/extension-module"]
 # https://github.com/astral-sh/uv/issues/5903#issuecomment-2360856896
 [tool.poe.tasks]
 generate_docs = "python docs/generate_docs.py"
-docs_dev = { shell = "uv run generate_docs && npm run dev --prefix docs" }
-docs_build = { shell = "uv run generate_docs && npm run build --prefix docs" }
-docs_preview = { shell = "uv run generate_docs && npm run preview --prefix docs" }
+docs_dev = { shell = "uv run poe generate_docs && npm run dev --prefix docs" }
+docs_build = { shell = "uv run poe generate_docs && npm run build --prefix docs" }
+docs_preview = { shell = "uv run poe generate_docs && npm run preview --prefix docs" }
 verify_project = { shell = "ruff format && ruff check && pyright . && pytest ./tests" }
 
 [tool.uv]
@@ -78,7 +78,6 @@ dev-dependencies = [
   "types-requests>=2.28.11.7",
   "jupyterlab>=3.5.2",
   "jupyter>=1.0.0",
-  "yapper>=0.4.0",
   "maturin>=1.1.0",
   "pip>=23.2",
   "pdoc>=14.1.0",
