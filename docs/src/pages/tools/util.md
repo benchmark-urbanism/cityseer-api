@@ -149,13 +149,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">x_y</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[list[Union[tuple[float</span>
-  <span class="pr">float]</span>
-  <span class="pr">tuple[float</span>
+  <span class="pr">list[tuple[float</span>
+  <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">float]</span>
-  <span class="pr">ndarray[Any</span>
-  <span class="pr">float64]]]]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -214,13 +210,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">x_y</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[list[Union[tuple[float</span>
-  <span class="pr">float]</span>
-  <span class="pr">tuple[float</span>
+  <span class="pr">list[tuple[float</span>
+  <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">float]</span>
-  <span class="pr">ndarray[Any</span>
-  <span class="pr">float64]]]]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -289,13 +281,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> float = 0.5</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[list[Union[tuple[float</span>
-  <span class="pr">float]</span>
-  <span class="pr">tuple[float</span>
+  <span class="pr">list[tuple[float</span>
+  <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">float]</span>
-  <span class="pr">ndarray[Any</span>
-  <span class="pr">float64]]]]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -391,13 +379,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> float = 0.5</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[list[Union[tuple[float</span>
-  <span class="pr">float]</span>
-  <span class="pr">tuple[float</span>
+  <span class="pr">list[tuple[float</span>
+  <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">float]</span>
-  <span class="pr">ndarray[Any</span>
-  <span class="pr">float64]]]]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -494,13 +478,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> float = 0.01</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[list[Union[tuple[float</span>
-  <span class="pr">float]</span>
-  <span class="pr">tuple[float</span>
+  <span class="pr">list[tuple[float</span>
+  <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">float]</span>
-  <span class="pr">ndarray[Any</span>
-  <span class="pr">float64]]]]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>

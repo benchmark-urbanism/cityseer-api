@@ -181,7 +181,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -191,7 +191,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -211,7 +211,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -221,7 +221,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -300,12 +300,11 @@ layout: ../../layouts/PageLayout.astro
 
 ```py
 from cityseer.tools import mock, graphs, plot
+
 G = mock.mock_graph()
 G_simple = graphs.nx_simple_geoms(G)
 G_dual = graphs.nx_to_dual(G_simple)
-plot.plot_nx_primal_or_dual(G_simple,
-                            G_dual,
-                            plot_geoms=False)
+plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
 ```
 
 ![Example primal and dual graph plot.](/images/graph_dual.png) _A dual graph in blue overlaid on the source primal graph in red._
@@ -427,7 +426,7 @@ plot.plot_nx_primal_or_dual(G_simple,
   </div>
   <div class="desc">
 
- Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -512,11 +511,7 @@ G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
-networks.node_centrality_shortest(
-    network_structure=network_structure,
-    nodes_gdf=nodes_gdf,
-    distances=[800]
-)
+networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
@@ -637,7 +632,7 @@ This method is primarily intended for package testing and development.
   </div>
   <div class="desc">
 
- Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx)  # pylint: disable=line-too-long method and should be formatted accordingly. Defaults to None.</div>
+ Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">

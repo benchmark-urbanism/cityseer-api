@@ -332,7 +332,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -379,6 +379,7 @@ It is generally not necessary to utilise this function directly.
 
 ```python
 from cityseer.metrics import networks
+
 # a list of betas
 distances = [400, 200]
 # convert to betas
@@ -421,7 +422,7 @@ print(betas)  # prints: array([0.01, 0.02])
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[float</span>
+  <span class="pr">list[float]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -467,6 +468,7 @@ It is generally not necessary to utilise this function directly.
 
 ```python
 from cityseer import rustalgos
+
 # a list of betas
 betas = [0.01, 0.02]
 # convert to distance thresholds
@@ -532,7 +534,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int]</span>
+  <span class="pr">list[int]</span>
   <span class="pr">list[float</span>
   <span class="pt">]</span>
 </div>
@@ -624,7 +626,7 @@ when calculating shortest paths and landuse accessibilities.
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[float</span>
+  <span class="pr">list[float]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -670,14 +672,14 @@ from cityseer.metrics import networks
 import numpy as np
 
 distances = [100, 200, 400, 800, 1600]
-print('distances', distances)
+print("distances", distances)
 # distances [ 100  200  400  800 1600]
 
 betas = networks.beta_from_distance(distances)
-print('betas', betas)
+print("betas", betas)
 # betas [0.04   0.02   0.01   0.005  0.0025]
 
-print('avg', networks.avg_distance_for_beta(betas))
+print("avg", networks.avg_distance_for_beta(betas))
 # avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
 ```
 
@@ -709,7 +711,7 @@ print('avg', networks.avg_distance_for_beta(betas))
     <span class="pa"> int</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[float</span>
+  <span class="pr">list[float]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1009,7 +1011,7 @@ datapoints are not located with high spatial precision.
     <span class="pn">self</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[str</span>
+  <span class="pr">list[str]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1250,7 +1252,7 @@ datapoints are not located with high spatial precision.
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">dict[str</span>
-  <span class="pr">float</span>
+  <span class="pr">float]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1322,7 +1324,7 @@ datapoints are not located with high spatial precision.
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">dict[str</span>
-  <span class="pr">AccessibilityResult</span>
+  <span class="pr">AccessibilityResult]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1900,7 +1902,7 @@ datapoints are not located with high spatial precision.
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int]</span>
+  <span class="pr">list[int]</span>
   <span class="pr">NodeVisit</span>
   <span class="pt">]</span>
 </div>
@@ -1937,7 +1939,7 @@ datapoints are not located with high spatial precision.
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int]</span>
+  <span class="pr">list[int]</span>
   <span class="pr">NodeVisit</span>
   <span class="pt">]</span>
 </div>
@@ -1974,7 +1976,7 @@ datapoints are not located with high spatial precision.
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int]</span>
+  <span class="pr">list[int]</span>
   <span class="pr">list[int]</span>
   <span class="pr">NodeVisit]</span>
   <span class="pr">EdgeVisit</span>
@@ -2075,6 +2077,16 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular_scaling_unit</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">farness_scaling_offset</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -2395,7 +2407,7 @@ datapoints are not located with high spatial precision.
     <span class="pn">self</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[int</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -2591,9 +2603,9 @@ datapoints are not located with high spatial precision.
     <span class="pn">self</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">ist[tuple[int</span>
+  <span class="pr">list[tuple[int</span>
   <span class="pr">int</span>
-  <span class="pr">int</span>
+  <span class="pr">int]]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -2800,12 +2812,12 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_ys</span><span class="annotation">: list[float]</span>
+<span class="name">node_xs</span><span class="annotation">: list[float]</span>
 
 
  
 
-<span class="name">node_xs</span><span class="annotation">: list[float]</span>
+<span class="name">node_ys</span><span class="annotation">: list[float]</span>
 
 
  
@@ -2987,6 +2999,7 @@ datapoints are not located with high spatial precision.
     <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -2995,12 +3008,8 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -3009,12 +3018,8 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -3023,12 +3028,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -3072,6 +3072,7 @@ datapoints are not located with high spatial precision.
     <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)-&gt;[</span>
+  <span class="pr">Union[Buffer</span>
   <span class="pr">dtype[Any]]</span>
   <span class="pr">dtype[Any]]]</span>
   <span class="pr">bool</span>
@@ -3080,12 +3081,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
   <span class="pt">]</span>
 </div>
 </div>

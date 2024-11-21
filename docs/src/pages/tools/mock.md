@@ -54,6 +54,7 @@ layout: ../../layouts/PageLayout.astro
 
 ```python
 from cityseer.tools import mock, plot
+
 nx_multigraph = mock.mock_graph()
 plot.plot_nx(nx_multigraph)
 ```
@@ -462,6 +463,8 @@ plot.plot_nx(nx_multigraph)
   <span class="pt">)-&gt;[</span>
   <span class="pr">Generator[tuple[list[int]</span>
   <span class="pr">list[float]]</span>
+  <span class="pr">None</span>
+  <span class="pr">None]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -507,9 +510,9 @@ from cityseer.tools import mock
 
 for counts, probs in mock.mock_species_data():
     cs = [c for c in counts]
-    print(f'c = {cs}')
+    print(f"c = {cs}")
     ps = [round(p, 3) for p in probs]
-    print(f'p = {ps}')
+    print(f"p = {ps}")
 
 # c = [1]
 # p = [1.0]

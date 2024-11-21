@@ -104,10 +104,10 @@ def custom_process_docstring(doc_str: str) -> str:
         doc_str_frag += "\n### Parameters"
         for param in parsed_doc_str.params:
             param_name = param.arg_name
-        if "kwargs" in param_name:
-            if param_name.startswith("**"):
-                param_name = param_name[2:]
-            param_name = f"**{param_name}"
+            if "kwargs" in param_name:
+                if param_name.startswith("**"):
+                    param_name = param_name[2:]
+                param_name = f"**{param_name}"
             doc_str_frag += gen_param_set(
                 param_name=param_name,
                 param_type=param.type_name,
@@ -164,8 +164,11 @@ def custom_format_signature(sig: inspect.Signature, colon: bool = True) -> str:
     return_annot = doc._PrettySignature._return_annotation_str(sig)  # type: ignore
     parsed_return_annot: list[str] = []
     if return_annot not in ["", "None", None]:
-        ra = return_annot.lstrip("tuple[")
-        ra = ra.rstrip("]")
+        ra = return_annot
+        if ra.startswith("tuple["):
+            ra = ra[6:]
+            if ra.endswith("]"):
+                ra = ra[:-1]
         rs = ra.split(",")
         for r in rs:
             r = r.strip()
