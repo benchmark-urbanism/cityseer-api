@@ -222,15 +222,15 @@ def _extract_gdf(gdf):
     # extract ways and convert to polys
     # not interested in segments - which are captured separately from network query
     # but do want squares etc. described as ways - hence buffer and reverse buffer
-    if "element_type" in gdf.index.names and "way" in gdf.index.get_level_values("element_type"):
-        ways_gdf = gdf.xs("way", level="element_type", drop_level=True)
+    if "element" in gdf.index.names and "way" in gdf.index.get_level_values("element"):
+        ways_gdf = gdf.xs("way", level="element", drop_level=True)
         ways_gdf = ways_gdf.explode(index_parts=False).reset_index(drop=True)
         ways_gdf = ways_gdf[ways_gdf.geometry.type == "Polygon"]
     else:
         ways_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
     # extract relations
-    if "element_type" in gdf.index.names and "relation" in gdf.index.get_level_values("element_type"):
-        relations_gdf = gdf.xs("relation", level="element_type", drop_level=True)
+    if "f" in gdf.index.names and "relation" in gdf.index.get_level_values("element"):
+        relations_gdf = gdf.xs("relation", level="element", drop_level=True)
         relations_gdf = relations_gdf.explode(index_parts=False).reset_index(drop=True)
         relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
     else:
