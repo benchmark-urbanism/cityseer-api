@@ -449,8 +449,8 @@ def osm_graph_from_poly(
                 graph_crs,
                 buffer_dist=dist,
                 squash_nodes=True,
-                osm_hwy_target_tags=tags,
                 centroid_by_itx=True,
+                osm_hwy_target_tags=tags,
                 prioritise_by_hwy_tag=True,
                 simplify_line_angles=simplify_line_angles,
             )
@@ -463,22 +463,27 @@ def osm_graph_from_poly(
                 graph_crs,
                 buffer_dist=dist,
                 crawl=True,
-                osm_hwy_target_tags=tags,
                 centroid_by_itx=True,
+                osm_hwy_target_tags=tags,
                 prioritise_by_hwy_tag=True,
                 simplify_line_angles=simplify_line_angles,
             )
             graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         # do smaller scale cleaning
         tags = [
+            "primary",
+            "secondary",
+            "tertiary",
             "residential",
             "service",
             "cycleway",
+            "bridleway",
             "footway",
             "path",
             "living_street",
+            "unclassified",
         ]
-        dists = [5, 10]
+        dists = [6, 12]
         simplify_angles = 95
         #
         for dist in dists:
@@ -488,6 +493,7 @@ def osm_graph_from_poly(
                 squash_nodes=True,
                 centroid_by_itx=True,
                 osm_hwy_target_tags=tags,
+                prioritise_by_hwy_tag=True,
                 simplify_line_angles=simplify_angles,
             )
             graph_crs = graphs.nx_consolidate_nodes(
@@ -509,9 +515,11 @@ def osm_graph_from_poly(
                 "residential",
                 "service",
                 "cycleway",
-                "busway",
+                "bridleway",
                 "footway",
+                "path",
                 "living_street",
+                "unclassified",
             ],
         )
         # snap gapped endings / roaods - don't clean danglers before this
