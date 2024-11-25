@@ -331,10 +331,20 @@ side-effects as a function of varied node intensities when computing network cen
 
 
 <div class="content">
-<span class="name">nx_iron_edges</span><div class="signature">
+<span class="name">nx_iron_edges</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify_by_angle</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_self_loop_length</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -351,6 +361,26 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">simplify_by_angle</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The maximum angle to permit for a given edge. Angles greater than this will be reduced.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_self_loop_length</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Maximum self loop length to permit for a given edge.</div>
 </div>
 
 ### Returns
@@ -578,9 +608,9 @@ side-effects as a function of varied node intensities when computing network cen
 
  See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
 
-![Example raw graph from OSM](/images/graph_cleaning_1.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
+![Example raw graph from OSM](/images/graph_raw.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
-![Example cleaned graph](/images/graph_cleaning_5.png) _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
+![Example cleaned graph](/images/graph_clean.png) _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
 </div>
 

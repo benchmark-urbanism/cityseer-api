@@ -94,7 +94,7 @@ lng, lat = -0.13396079424572427, 51.51371088849723
 buffer = 1250
 poly_wgs, _ = io.buffered_point_poly(lng, lat, buffer)
 graph_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
-graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True, iron_edges=True)
+graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True)
 # plot buffer
 buffered_point, _ = io.buffered_point_poly(lng, lat, 750, projected=True)
 min_x, min_y, max_x, max_y = buffered_point.bounds
@@ -116,25 +116,8 @@ def simple_plot(_G, _path, plot_geoms=True):
     )
 
 
-simple_plot(graph_raw, f"{IMAGES_PATH}/graph_cleaning_1.{FORMAT}", plot_geoms=False)
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_1b.{FORMAT}")
-
-graph_utm = graphs.nx_simple_geoms(graph_raw)
-graph_utm = graphs.nx_remove_filler_nodes(graph_utm)
-graph_utm = graphs.nx_remove_dangling_nodes(graph_utm, despine=15, remove_disconnected=10)
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_2.{FORMAT}")
-# first pass of consolidation
-graph_utm = graphs.nx_consolidate_nodes(graph_utm, buffer_dist=15, crawl=True)
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_3.{FORMAT}")
-# split opposing line geoms to facilitate parallel merging
-graph_utm = graphs.nx_split_opposing_geoms(graph_utm, buffer_dist=15)
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_4.{FORMAT}")
-# second pass of consolidation
-graph_utm = graphs.nx_consolidate_nodes(graph_utm, buffer_dist=15, crawl=False, neighbour_policy="indirect")
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_5.{FORMAT}")
-# iron edges
-graph_utm = graphs.nx_iron_edges(graph_utm)
-simple_plot(graph_utm, f"{IMAGES_PATH}/graph_cleaning_6.{FORMAT}")
+simple_plot(graph_raw, f"{IMAGES_PATH}/graph_raw.{FORMAT}")
+simple_plot(graph_utm, f"{IMAGES_PATH}/graph_clean.{FORMAT}")
 # LAYERS MODULE
 # show assignment to network
 # random seed 25

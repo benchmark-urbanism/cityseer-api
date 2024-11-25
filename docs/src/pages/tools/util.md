@@ -664,6 +664,7 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)-&gt;[</span>
   <span class="pr">STRtree</span>
   <span class="pr">list[dict[str</span>
+  <span class="pr">Any]]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -688,6 +689,7 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)-&gt;[</span>
   <span class="pr">STRtree</span>
   <span class="pr">list[dict[str</span>
+  <span class="pr">Any]]</span>
   <span class="pt">]</span>
 </div>
 </div>
