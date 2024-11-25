@@ -222,15 +222,15 @@ def _extract_gdf(gdf):
     # extract ways and convert to polys
     # not interested in segments - which are captured separately from network query
     # but do want squares etc. described as ways - hence buffer and reverse buffer
-    if "element_type" in gdf.index.names and "way" in gdf.index.get_level_values("element_type"):
-        ways_gdf = gdf.xs("way", level="element_type", drop_level=True)
+    if "element" in gdf.index.names and "way" in gdf.index.get_level_values("element"):
+        ways_gdf = gdf.xs("way", level="element", drop_level=True)
         ways_gdf = ways_gdf.explode(index_parts=False).reset_index(drop=True)
         ways_gdf = ways_gdf[ways_gdf.geometry.type == "Polygon"]
     else:
         ways_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
     # extract relations
-    if "element_type" in gdf.index.names and "relation" in gdf.index.get_level_values("element_type"):
-        relations_gdf = gdf.xs("relation", level="element_type", drop_level=True)
+    if "f" in gdf.index.names and "relation" in gdf.index.get_level_values("element"):
+        relations_gdf = gdf.xs("relation", level="element", drop_level=True)
         relations_gdf = relations_gdf.explode(index_parts=False).reset_index(drop=True)
         relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
     else:
@@ -395,10 +395,21 @@ def osm_graph_from_poly(
         )
         plaza_area_gdf = _extract_gdf(plazas_gdf)
         plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
+        # parking
+        parking_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "amenity": ["parking"],
+            },
+        )
+        parking_area_gdf = _extract_gdf(parking_gdf)
+        parking_area_gdf = parking_area_gdf.to_crs(to_crs_code)
         # use STR Tree for performance
         parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
         plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
+        parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())
         # iter edges to find edges for marking
+        remove_edges = []
         for start_node_key, end_node_key, edge_key, edge_data in tqdm(
             graph_crs.edges(keys=True, data=True), total=graph_crs.number_of_edges()
         ):
@@ -421,7 +432,12 @@ def osm_graph_from_poly(
                 if len(itx):
                     idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("service")
                     graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
-        #
+                # remove parking service roads
+                itx = parking_str_tree.query(edge_geom, predicate="intersects")
+                if len(itx):
+                    remove_edges.append((start_node_key, end_node_key, edge_key))
+        graph_crs.remove_edges_from(remove_edges)
+        # remove disconnected components
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
         # clean by highway types - leave motorway and trunk as is
         for dist, tags, simplify_line_angles in (

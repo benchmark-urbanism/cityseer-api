@@ -538,6 +538,7 @@ def nx_iron_edges(
     edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
+    remove_edges = []
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
@@ -546,11 +547,12 @@ def nx_iron_edges(
             continue
         edge_geom: geometry.LineString = edge_data["geom"]
         hits = edges_tree.query(edge_geom, predicate="crosses")
-        if hits.size > 0:
-            g_multi_copy.remove_edge(start_nd_key, end_nd_key, edge_idx)
+        if len(hits):
+            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
             continue
         line_coords = simplify_line_by_angle(edge_geom.coords, 100)
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
+    g_multi_copy.remove_edges_from(remove_edges)
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
 

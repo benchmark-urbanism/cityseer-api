@@ -33,7 +33,7 @@ def _buildings_from_osmnx(bounds: tuple[float, float, float, float]) -> gpd.GeoD
     # clean up index
     bldgs_gdf = bldgs_gdf.reset_index(drop=True)
     # return minimal info
-    return bldgs_gdf[["geometry"]]
+    return bldgs_gdf[["geometry"]]  # type: ignore
 
 
 def _prepare_path(out_path: str | Path) -> Path:
