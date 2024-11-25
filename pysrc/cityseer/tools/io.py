@@ -229,7 +229,7 @@ def _extract_gdf(gdf):
     else:
         ways_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
     # extract relations
-    if "f" in gdf.index.names and "relation" in gdf.index.get_level_values("element"):
+    if "element" in gdf.index.names and "relation" in gdf.index.get_level_values("element"):
         relations_gdf = gdf.xs("relation", level="element", drop_level=True)
         relations_gdf = relations_gdf.explode(index_parts=False).reset_index(drop=True)
         relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
@@ -441,8 +441,8 @@ def osm_graph_from_poly(
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
         # clean by highway types - leave motorway and trunk as is
         for dist, tags, simplify_line_angles in (
-            (24, ["primary"], 45),  # , "primary_link"
-            (20, ["primary", "secondary"], 45),  # , "secondary_link"
+            (20, ["primary"], 45),  # , "primary_link"
+            (18, ["primary", "secondary"], 45),  # , "secondary_link"
             (16, ["primary", "secondary", "tertiary"], 45),  # , "tertiary_link"
         ):
             graph_crs = graphs.nx_split_opposing_geoms(
@@ -455,9 +455,9 @@ def osm_graph_from_poly(
                 simplify_line_angles=simplify_line_angles,
             )
         for dist, tags, simplify_line_angles in (
-            (18, ["primary"], 95),  # , "primary_link"
-            (16, ["primary", "secondary"], 95),  # , "secondary_link"
-            (14, ["primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
+            (20, ["primary"], 95),  # , "primary_link"
+            (18, ["primary", "secondary"], 95),  # , "secondary_link"
+            (16, ["primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
         ):
             graph_crs = graphs.nx_consolidate_nodes(
                 graph_crs,
@@ -471,17 +471,14 @@ def osm_graph_from_poly(
             graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         # do smaller scale cleaning
         tags = [
-            "primary",
-            "secondary",
-            "tertiary",
             "residential",
             "service",
             "cycleway",
-            "busway",
             "footway",
+            "path",
             "living_street",
         ]
-        dists = [6, 12]
+        dists = [5, 10]
         simplify_angles = 95
         #
         for dist in dists:
