@@ -439,12 +439,13 @@ def osm_graph_from_poly(
         graph_crs.remove_edges_from(remove_edges)
         # remove disconnected components
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
-        # clean by highway types - leave motorway and trunk as is
+        # clean by highway types - leave motorway as is
+        # split only for a given type at a time
         for dist, tags, simplify_line_angles in (
             (28, ["trunk"], 45),
-            (24, ["trunk", "primary"], 45),  # , "primary_link"
-            (20, ["trunk", "primary", "secondary"], 45),  # , "secondary_link"
-            (16, ["trunk", "primary", "secondary", "tertiary"], 45),  # , "tertiary_link"
+            (24, ["primary"], 45),
+            (20, ["secondary"], 45),
+            (16, ["tertiary"], 45),
         ):
             graph_crs = graphs.nx_split_opposing_geoms(
                 graph_crs,
@@ -458,9 +459,9 @@ def osm_graph_from_poly(
             )
         for dist, tags, simplify_line_angles in (
             (28, ["trunk"], 95),
-            (24, ["trunk", "primary"], 95),  # , "primary_link"
-            (20, ["trunk", "primary", "secondary"], 95),  # , "secondary_link"
-            (16, ["trunk", "primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
+            (24, ["trunk", "primary"], 95),
+            (20, ["trunk", "primary", "secondary"], 95),
+            (16, ["trunk", "primary", "secondary", "tertiary"], 95),
         ):
             graph_crs = graphs.nx_consolidate_nodes(
                 graph_crs,

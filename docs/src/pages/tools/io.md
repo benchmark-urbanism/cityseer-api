@@ -660,7 +660,7 @@ out qt;
   <div class="param">
     <span class="pn">open_roads_path</span>
     <span class="pc">:</span>
-    <span class="pa"> str | pathlib.Path</span>
+    <span class="pa"> str | pathlib._local.Path</span>
   </div>
   <div class="param">
     <span class="pn">road_node_layer_key</span>
