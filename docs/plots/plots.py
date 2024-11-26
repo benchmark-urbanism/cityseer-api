@@ -96,7 +96,7 @@ poly_wgs, _ = io.buffered_point_poly(lng, lat, buffer)
 graph_raw = io.osm_graph_from_poly(poly_wgs, simplify=False)
 graph_utm = io.osm_graph_from_poly(poly_wgs, simplify=True)
 # plot buffer
-buffered_point, _ = io.buffered_point_poly(lng, lat, 750, projected=True)
+buffered_point, _ = io.buffered_point_poly(lng, lat, 900, projected=True)
 min_x, min_y, max_x, max_y = buffered_point.bounds
 
 

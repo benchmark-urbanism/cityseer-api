@@ -248,7 +248,12 @@ def _extract_gdf(gdf):
 
 
 def _auto_clean_network(
-    G: nx.MultiGraph, geom_wgs: geometry.Polygon, to_crs_code: int, remove_disconnected: int
+    G: nx.MultiGraph,
+    geom_wgs: geometry.Polygon,
+    to_crs_code: int,
+    remove_disconnected: int,
+    green_footways: bool = False,
+    green_service_roads: bool = False,
 ) -> nx.MultiGraph:
     # parks
     parks_gdf = ox.features_from_polygon(
@@ -291,24 +296,30 @@ def _auto_clean_network(
         edge_geom = edge_data["geom"]
         if "footway" in edge_data["highways"]:
             # mark park footways
-            itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+            itx = parks_buff_str_tree.query(edge_geom, predicate="within")
             if len(itx):
-                idx = G[start_node_key][end_node_key][edge_key]["highways"].index("footway")
-                G[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_green"
+                if green_footways is False:
+                    remove_edges.append((start_node_key, end_node_key, edge_key))
+                else:
+                    idx = G[start_node_key][end_node_key][edge_key]["highways"].index("footway")
+                    G[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_green"
             # mark plaza footways
             else:
-                itx = plaza_str_tree.query(edge_geom, predicate="intersects")
+                itx = plaza_str_tree.query(edge_geom, predicate="within")
                 if len(itx):
                     idx = G[start_node_key][end_node_key][edge_key]["highways"].index("footway")
                     G[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_pedestrian"
         # mark green / cemetries etc. service roads
         if "service" in edge_data["highways"]:
-            itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+            itx = parks_buff_str_tree.query(edge_geom, predicate="within")
             if len(itx):
-                idx = G[start_node_key][end_node_key][edge_key]["highways"].index("service")
-                G[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
+                if green_service_roads is False:
+                    remove_edges.append((start_node_key, end_node_key, edge_key))
+                else:
+                    idx = G[start_node_key][end_node_key][edge_key]["highways"].index("service")
+                    G[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
             # remove parking service roads
-            itx = parking_str_tree.query(edge_geom, predicate="intersects")
+            itx = parking_str_tree.query(edge_geom, predicate="within")
             if len(itx):
                 remove_edges.append((start_node_key, end_node_key, edge_key))
     G.remove_edges_from(remove_edges)
@@ -349,51 +360,45 @@ def _auto_clean_network(
             contains_buffer_dist=50,
         )
         G = graphs.nx_remove_filler_nodes(G)
+    # snap gapped endings - don't clean danglers before this
+    G = graphs.nx_snap_gapped_endings(G, buffer_dist=20)
+    # snap gapped endings to roads - don't clean danglers before this
+    # look for degree 1 dead-ends and link to nearby edges
+    G = graphs.nx_split_opposing_geoms(
+        G,
+        buffer_dist=25,
+        min_node_degree=1,
+        max_node_degree=1,
+        squash_nodes=False,
+    )
+    # remove danglers
+    G = graphs.nx_remove_dangling_nodes(G, despine=50)
     # do smaller scale cleaning
-    split_tags = [
-        # "trunk",
-        # "primary",
-        # "secondary",
-        # "tertiary",
-        "residential",
-        "service",
-        "cycleway",
-        "bridleway",
-        "pedestrian",
-        # "steps",
-        "footway",
-        "footway_pedestrian",  # plazas
-        "path",
-        "living_street",
-        "unclassified",
-    ]
-    consolidate_tags = [
-        "trunk",
-        "primary",
-        "secondary",
-        "tertiary",
-        "residential",
-        "service",
-        "cycleway",
-        "bridleway",
-        "pedestrian",
-        "steps",
-        "footway",
-        "footway_pedestrian",  # plazas
-        "path",
-        "living_street",
-        "unclassified",
-    ]
     dists = [6, 12]
     simplify_angles = 95
-    #
     for dist in dists:
         G = graphs.nx_split_opposing_geoms(
             G,
             buffer_dist=dist,
             squash_nodes=True,
             centroid_by_itx=True,
-            osm_hwy_target_tags=split_tags,
+            osm_hwy_target_tags=[
+                # "trunk",
+                # "primary",
+                # "secondary",
+                # "tertiary",
+                "residential",
+                "service",
+                "cycleway",
+                "bridleway",
+                "pedestrian",
+                # "steps",
+                "footway",
+                "footway_pedestrian",  # plazas
+                "path",
+                "living_street",
+                "unclassified",
+            ],
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
             contains_buffer_dist=50,
@@ -403,42 +408,28 @@ def _auto_clean_network(
             buffer_dist=dist,
             crawl=True,
             centroid_by_itx=True,
-            osm_hwy_target_tags=consolidate_tags,
+            osm_hwy_target_tags=[
+                "trunk",
+                "primary",
+                "secondary",
+                "tertiary",
+                "residential",
+                "service",
+                "cycleway",
+                "bridleway",
+                "pedestrian",
+                "steps",
+                "footway",
+                "footway_pedestrian",  # plazas
+                "path",
+                "living_street",
+                "unclassified",
+            ],
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
             contains_buffer_dist=50,
         )
     G = graphs.nx_remove_filler_nodes(G)
-    # snap gapped endings - don't clean danglers before this
-    G = graphs.nx_snap_gapped_endings(
-        G,
-        buffer_dist=20,
-        # not main roads
-        osm_hwy_target_tags=[
-            "residential",
-            "service",
-            "cycleway",
-            "bridleway",
-            "pedestrian",
-            "steps",
-            "footway",
-            "footway_pedestrian",  # plazas
-            "path",
-            "living_street",
-            "unclassified",
-        ],
-    )
-    # snap gapped endings / roaods - don't clean danglers before this
-    # look for degree 1 dead-ends and link to nearby edges
-    G = graphs.nx_split_opposing_geoms(
-        G,
-        buffer_dist=25,
-        min_node_degree=1,
-        max_node_degree=1,
-        squash_nodes=False,
-    )
-    # remove longer danglers
-    G = graphs.nx_remove_dangling_nodes(G, despine=50)
     G = graphs.nx_iron_edges(G)
 
     return G
@@ -451,6 +442,10 @@ def osm_graph_from_poly(
     custom_request: str | None = None,
     simplify: bool = True,
     remove_disconnected: int = 100,
+    cycleways: bool = True,
+    busways: bool = False,
+    green_footways: bool = False,
+    green_service_roads: bool = False,
     timeout: int = 300,
     max_tries: int = 3,
 ) -> nx.MultiGraph:  # noqa
@@ -480,6 +475,16 @@ def osm_graph_from_poly(
         Whether to automatically simplify the OSM graph.
     remove_disconnected: int
         Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
+    cycleways: bool
+        Whether to include cycleways. True by default.
+    busways: bool
+        Whether to include busways. False by default.
+    green_footways: bool
+        Whether to include footways contained by green areas. When True, footways contained by green areas are kept
+        but are labelled as `footway_green` and can be removed manually if required. False by default.
+    green_service_roads: bool
+        Whether to include service roads contained by green areas. When True, service roads contained by green areas are
+        kept but are labelled as `service_green` and can be removed manually if required. False by default.
     timeout: int
         Timeout duration for API call in seconds.
     max_tries: int
@@ -540,11 +545,13 @@ def osm_graph_from_poly(
             )
         request = custom_request.format(geom_osm=geom_osm)
     else:
+        cw = "cycleway|" if cycleways is False else ""
+        bw = "busway|" if busways is False else ""
         request = f"""
         /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
         [out:json];
         (way["highway"]
-            ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|emergency_bay|
+            ["highway"!~"bus_guideway|{bw}{cw}escape|raceway|proposed|planned|abandoned|platform|emergency_bay|
                 rest_area|disused|corridor|ladder|bus_stop|elevator|services"]
             ["area"!="yes"]
             ["footway"!="sidewalk"]
@@ -573,7 +580,9 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        graph_crs = _auto_clean_network(graph_crs, geom_wgs, int(to_crs_code), remove_disconnected)
+        graph_crs = _auto_clean_network(
+            graph_crs, geom_wgs, int(to_crs_code), remove_disconnected, green_footways, green_service_roads
+        )
 
     return graph_crs
 
