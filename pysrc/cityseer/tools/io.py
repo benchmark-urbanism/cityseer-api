@@ -350,7 +350,7 @@ def _auto_clean_network(
         )
         G = graphs.nx_remove_filler_nodes(G)
     # do smaller scale cleaning
-    tags = [
+    split_tags = [
         # "trunk",
         # "primary",
         # "secondary",
@@ -367,6 +367,23 @@ def _auto_clean_network(
         "living_street",
         "unclassified",
     ]
+    consolidate_tags = [
+        "trunk",
+        "primary",
+        "secondary",
+        "tertiary",
+        "residential",
+        "service",
+        "cycleway",
+        "bridleway",
+        "pedestrian",
+        "steps",
+        "footway",
+        "footway_pedestrian",  # plazas
+        "path",
+        "living_street",
+        "unclassified",
+    ]
     dists = [6, 12]
     simplify_angles = 95
     #
@@ -376,7 +393,7 @@ def _auto_clean_network(
             buffer_dist=dist,
             squash_nodes=True,
             centroid_by_itx=True,
-            osm_hwy_target_tags=tags,
+            osm_hwy_target_tags=split_tags,
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
             contains_buffer_dist=50,
@@ -386,7 +403,7 @@ def _auto_clean_network(
             buffer_dist=dist,
             crawl=True,
             centroid_by_itx=True,
-            osm_hwy_target_tags=tags,
+            osm_hwy_target_tags=consolidate_tags,
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
             contains_buffer_dist=50,
