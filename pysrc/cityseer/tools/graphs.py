@@ -538,8 +538,6 @@ def nx_iron_edges(
     """
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    # create an edges STRtree (nodes and edges)
-    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     remove_edges = []
@@ -549,10 +547,6 @@ def nx_iron_edges(
         edge_geom: geometry.LineString = edge_data["geom"]
         # only apply to non looping geoms otherwise issues occur
         if start_nd_key == end_nd_key and edge_geom.length < min_self_loop_length:
-            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
-            continue
-        hits = edges_tree.query(edge_geom, predicate="crosses")
-        if len(hits):
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
             continue
         line_coords = simplify_line_by_angle(edge_geom.coords, simplify_by_angle)

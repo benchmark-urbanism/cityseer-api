@@ -441,9 +441,10 @@ def osm_graph_from_poly(
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
         # clean by highway types - leave motorway and trunk as is
         for dist, tags, simplify_line_angles in (
-            (24, ["primary"], 45),  # , "primary_link"
-            (20, ["primary", "secondary"], 45),  # , "secondary_link"
-            (16, ["primary", "secondary", "tertiary"], 45),  # , "tertiary_link"
+            (28, ["trunk"], 45),
+            (24, ["trunk", "primary"], 45),  # , "primary_link"
+            (20, ["trunk", "primary", "secondary"], 45),  # , "secondary_link"
+            (16, ["trunk", "primary", "secondary", "tertiary"], 45),  # , "tertiary_link"
         ):
             graph_crs = graphs.nx_split_opposing_geoms(
                 graph_crs,
@@ -456,9 +457,10 @@ def osm_graph_from_poly(
                 contains_buffer_dist=50,
             )
         for dist, tags, simplify_line_angles in (
-            (24, ["primary"], 95),  # , "primary_link"
-            (20, ["primary", "secondary"], 95),  # , "secondary_link"
-            (16, ["primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
+            (28, ["trunk"], 95),
+            (24, ["trunk", "primary"], 95),  # , "primary_link"
+            (20, ["trunk", "primary", "secondary"], 95),  # , "secondary_link"
+            (16, ["trunk", "primary", "secondary", "tertiary"], 95),  # , "tertiary_link"
         ):
             graph_crs = graphs.nx_consolidate_nodes(
                 graph_crs,
@@ -473,13 +475,16 @@ def osm_graph_from_poly(
             graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
         # do smaller scale cleaning
         tags = [
-            "primary",
-            "secondary",
-            "tertiary",
+            # "trunk",
+            # "primary",
+            # "secondary",
+            # "tertiary",
             "residential",
             "service",
             "cycleway",
             "bridleway",
+            "pedestrian",
+            # "steps",
             "footway",
             "footway_pedestrian",  # plazas
             "path",
@@ -521,6 +526,8 @@ def osm_graph_from_poly(
                 "service",
                 "cycleway",
                 "bridleway",
+                "pedestrian",
+                "steps",
                 "footway",
                 "footway_pedestrian",  # plazas
                 "path",
@@ -539,6 +546,7 @@ def osm_graph_from_poly(
         )
         # remove longer danglers
         graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=50)
+        graph_crs = graphs.nx_iron_edges(graph_crs)
 
     return graph_crs
 
