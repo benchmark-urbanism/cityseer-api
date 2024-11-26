@@ -247,6 +247,186 @@ def _extract_gdf(gdf):
     return area_gdf
 
 
+def _auto_clean_network(
+    G: nx.MultiGraph, geom_wgs: geometry.Polygon, to_crs_code: int, remove_disconnected: int
+) -> nx.MultiGraph:
+    # parks
+    parks_gdf = ox.features_from_polygon(
+        geom_wgs,
+        tags={
+            "landuse": ["cemetery", "forest"],
+            "leisure": ["park", "garden", "sports_centre"],
+        },
+    )
+    park_area_gdf = _extract_gdf(parks_gdf)
+    park_area_gdf = park_area_gdf.to_crs(to_crs_code)
+    # plazas
+    plazas_gdf = ox.features_from_polygon(
+        geom_wgs,
+        tags={
+            "highway": ["pedestrian"],
+        },
+    )
+    plaza_area_gdf = _extract_gdf(plazas_gdf)
+    plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
+    # parking
+    parking_gdf = ox.features_from_polygon(
+        geom_wgs,
+        tags={
+            "amenity": ["parking"],
+        },
+    )
+    parking_area_gdf = _extract_gdf(parking_gdf)
+    parking_area_gdf = parking_area_gdf.to_crs(to_crs_code)
+    # use STR Tree for performance
+    parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
+    plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
+    parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())
+    # iter edges to find edges for marking
+    remove_edges = []
+    for start_node_key, end_node_key, edge_key, edge_data in tqdm(  # type: ignore
+        G.edges(keys=True, data=True),  # type: ignore
+        total=G.number_of_edges(),
+    ):
+        edge_geom = edge_data["geom"]
+        if "footway" in edge_data["highways"]:
+            # mark park footways
+            itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+            if len(itx):
+                idx = G[start_node_key][end_node_key][edge_key]["highways"].index("footway")
+                G[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_green"
+            # mark plaza footways
+            else:
+                itx = plaza_str_tree.query(edge_geom, predicate="intersects")
+                if len(itx):
+                    idx = G[start_node_key][end_node_key][edge_key]["highways"].index("footway")
+                    G[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_pedestrian"
+        # mark green / cemetries etc. service roads
+        if "service" in edge_data["highways"]:
+            itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
+            if len(itx):
+                idx = G[start_node_key][end_node_key][edge_key]["highways"].index("service")
+                G[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
+            # remove parking service roads
+            itx = parking_str_tree.query(edge_geom, predicate="intersects")
+            if len(itx):
+                remove_edges.append((start_node_key, end_node_key, edge_key))
+    G.remove_edges_from(remove_edges)
+    # remove disconnected components
+    G = graphs.nx_remove_dangling_nodes(G, despine=0, remove_disconnected=remove_disconnected)
+    # clean by highway types - leave motorway as is
+    # split only for a given type at a time
+    for dist, tags, simplify_line_angles in (
+        (28, ["trunk"], 45),
+        (24, ["primary"], 45),
+        (20, ["secondary"], 45),
+        (16, ["tertiary"], 45),
+    ):
+        G = graphs.nx_split_opposing_geoms(
+            G,
+            buffer_dist=dist,
+            squash_nodes=True,
+            centroid_by_itx=True,
+            osm_hwy_target_tags=tags,
+            prioritise_by_hwy_tag=True,
+            simplify_line_angles=simplify_line_angles,
+            contains_buffer_dist=50,
+        )
+    for dist, tags, simplify_line_angles in (
+        (28, ["trunk"], 95),
+        (24, ["trunk", "primary"], 95),
+        (20, ["trunk", "primary", "secondary"], 95),
+        (16, ["trunk", "primary", "secondary", "tertiary"], 95),
+    ):
+        G = graphs.nx_consolidate_nodes(
+            G,
+            buffer_dist=dist,
+            crawl=False,
+            centroid_by_itx=True,
+            osm_hwy_target_tags=tags,
+            prioritise_by_hwy_tag=True,
+            simplify_line_angles=simplify_line_angles,
+            contains_buffer_dist=50,
+        )
+        G = graphs.nx_remove_filler_nodes(G)
+    # do smaller scale cleaning
+    tags = [
+        # "trunk",
+        # "primary",
+        # "secondary",
+        # "tertiary",
+        "residential",
+        "service",
+        "cycleway",
+        "bridleway",
+        "pedestrian",
+        # "steps",
+        "footway",
+        "footway_pedestrian",  # plazas
+        "path",
+        "living_street",
+        "unclassified",
+    ]
+    dists = [6, 12]
+    simplify_angles = 95
+    #
+    for dist in dists:
+        G = graphs.nx_split_opposing_geoms(
+            G,
+            buffer_dist=dist,
+            squash_nodes=True,
+            centroid_by_itx=True,
+            osm_hwy_target_tags=tags,
+            prioritise_by_hwy_tag=True,
+            simplify_line_angles=simplify_angles,
+            contains_buffer_dist=50,
+        )
+        G = graphs.nx_consolidate_nodes(
+            G,
+            buffer_dist=dist,
+            crawl=True,
+            centroid_by_itx=True,
+            osm_hwy_target_tags=tags,
+            prioritise_by_hwy_tag=True,
+            simplify_line_angles=simplify_angles,
+            contains_buffer_dist=50,
+        )
+    G = graphs.nx_remove_filler_nodes(G)
+    # snap gapped endings - don't clean danglers before this
+    G = graphs.nx_snap_gapped_endings(
+        G,
+        buffer_dist=20,
+        # not main roads
+        osm_hwy_target_tags=[
+            "residential",
+            "service",
+            "cycleway",
+            "bridleway",
+            "pedestrian",
+            "steps",
+            "footway",
+            "footway_pedestrian",  # plazas
+            "path",
+            "living_street",
+            "unclassified",
+        ],
+    )
+    # snap gapped endings / roaods - don't clean danglers before this
+    # look for degree 1 dead-ends and link to nearby edges
+    G = graphs.nx_split_opposing_geoms(
+        G,
+        buffer_dist=25,
+        min_node_degree=1,
+        max_node_degree=1,
+        squash_nodes=False,
+    )
+    # remove longer danglers
+    G = graphs.nx_remove_dangling_nodes(G, despine=50)
+    G = graphs.nx_iron_edges(G)
+
+    return G
+
+
 def osm_graph_from_poly(
     poly_geom: geometry.Polygon,
     poly_crs_code: int | str = 4326,
@@ -376,178 +556,7 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
-        # parks
-        parks_gdf = ox.features_from_polygon(
-            geom_wgs,
-            tags={
-                "landuse": ["cemetery", "forest"],
-                "leisure": ["park", "garden", "sports_centre"],
-            },
-        )
-        park_area_gdf = _extract_gdf(parks_gdf)
-        park_area_gdf = park_area_gdf.to_crs(to_crs_code)
-        # plazas
-        plazas_gdf = ox.features_from_polygon(
-            geom_wgs,
-            tags={
-                "highway": ["pedestrian"],
-            },
-        )
-        plaza_area_gdf = _extract_gdf(plazas_gdf)
-        plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
-        # parking
-        parking_gdf = ox.features_from_polygon(
-            geom_wgs,
-            tags={
-                "amenity": ["parking"],
-            },
-        )
-        parking_area_gdf = _extract_gdf(parking_gdf)
-        parking_area_gdf = parking_area_gdf.to_crs(to_crs_code)
-        # use STR Tree for performance
-        parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
-        plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
-        parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())
-        # iter edges to find edges for marking
-        remove_edges = []
-        for start_node_key, end_node_key, edge_key, edge_data in tqdm(
-            graph_crs.edges(keys=True, data=True), total=graph_crs.number_of_edges()
-        ):
-            edge_geom = edge_data["geom"]
-            if "footway" in edge_data["highways"]:
-                # mark park footways
-                itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
-                if len(itx):
-                    idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("footway")
-                    graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_green"
-                # mark plaza footways
-                else:
-                    itx = plaza_str_tree.query(edge_geom, predicate="intersects")
-                    if len(itx):
-                        idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("footway")
-                        graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "footway_pedestrian"
-            # mark green / cemetries etc. service roads
-            if "service" in edge_data["highways"]:
-                itx = parks_buff_str_tree.query(edge_geom, predicate="intersects")
-                if len(itx):
-                    idx = graph_crs[start_node_key][end_node_key][edge_key]["highways"].index("service")
-                    graph_crs[start_node_key][end_node_key][edge_key]["highways"][idx] = "service_green"
-                # remove parking service roads
-                itx = parking_str_tree.query(edge_geom, predicate="intersects")
-                if len(itx):
-                    remove_edges.append((start_node_key, end_node_key, edge_key))
-        graph_crs.remove_edges_from(remove_edges)
-        # remove disconnected components
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=0, remove_disconnected=remove_disconnected)
-        # clean by highway types - leave motorway as is
-        # split only for a given type at a time
-        for dist, tags, simplify_line_angles in (
-            (28, ["trunk"], 45),
-            (24, ["primary"], 45),
-            (20, ["secondary"], 45),
-            (16, ["tertiary"], 45),
-        ):
-            graph_crs = graphs.nx_split_opposing_geoms(
-                graph_crs,
-                buffer_dist=dist,
-                squash_nodes=True,
-                centroid_by_itx=True,
-                osm_hwy_target_tags=tags,
-                prioritise_by_hwy_tag=True,
-                simplify_line_angles=simplify_line_angles,
-                contains_buffer_dist=50,
-            )
-        for dist, tags, simplify_line_angles in (
-            (28, ["trunk"], 95),
-            (24, ["trunk", "primary"], 95),
-            (20, ["trunk", "primary", "secondary"], 95),
-            (16, ["trunk", "primary", "secondary", "tertiary"], 95),
-        ):
-            graph_crs = graphs.nx_consolidate_nodes(
-                graph_crs,
-                buffer_dist=dist,
-                crawl=False,
-                centroid_by_itx=True,
-                osm_hwy_target_tags=tags,
-                prioritise_by_hwy_tag=True,
-                simplify_line_angles=simplify_line_angles,
-                contains_buffer_dist=50,
-            )
-            graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        # do smaller scale cleaning
-        tags = [
-            # "trunk",
-            # "primary",
-            # "secondary",
-            # "tertiary",
-            "residential",
-            "service",
-            "cycleway",
-            "bridleway",
-            "pedestrian",
-            # "steps",
-            "footway",
-            "footway_pedestrian",  # plazas
-            "path",
-            "living_street",
-            "unclassified",
-        ]
-        dists = [6, 12]
-        simplify_angles = 95
-        #
-        for dist in dists:
-            graph_crs = graphs.nx_split_opposing_geoms(
-                graph_crs,
-                buffer_dist=dist,
-                squash_nodes=True,
-                centroid_by_itx=True,
-                osm_hwy_target_tags=tags,
-                prioritise_by_hwy_tag=True,
-                simplify_line_angles=simplify_angles,
-                contains_buffer_dist=50,
-            )
-            graph_crs = graphs.nx_consolidate_nodes(
-                graph_crs,
-                buffer_dist=dist,
-                crawl=True,
-                centroid_by_itx=True,
-                osm_hwy_target_tags=tags,
-                prioritise_by_hwy_tag=True,
-                simplify_line_angles=simplify_angles,
-                contains_buffer_dist=50,
-            )
-        graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
-        # snap gapped endings - don't clean danglers before this
-        graph_crs = graphs.nx_snap_gapped_endings(
-            graph_crs,
-            buffer_dist=20,
-            # not main roads
-            osm_hwy_target_tags=[
-                "residential",
-                "service",
-                "cycleway",
-                "bridleway",
-                "pedestrian",
-                "steps",
-                "footway",
-                "footway_pedestrian",  # plazas
-                "path",
-                "living_street",
-                "unclassified",
-            ],
-        )
-        # snap gapped endings / roaods - don't clean danglers before this
-        # look for degree 1 dead-ends and link to nearby edges
-        graph_crs = graphs.nx_split_opposing_geoms(
-            graph_crs,
-            buffer_dist=25,
-            min_node_degree=1,
-            max_node_degree=1,
-            squash_nodes=False,
-        )
-        # remove longer danglers
-        graph_crs = graphs.nx_remove_dangling_nodes(graph_crs, despine=50)
-        graph_crs = graphs.nx_iron_edges(graph_crs)
+        graph_crs = _auto_clean_network(graph_crs, geom_wgs, int(to_crs_code), remove_disconnected)
 
     return graph_crs
 
