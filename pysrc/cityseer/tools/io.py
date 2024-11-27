@@ -251,6 +251,7 @@ def _auto_clean_network(
     G: nx.MultiGraph,
     geom_wgs: geometry.Polygon,
     to_crs_code: int,
+    final_clean_distances: tuple[int, ...],
     remove_disconnected: int,
     green_footways: bool = False,
     green_service_roads: bool = False,
@@ -374,9 +375,8 @@ def _auto_clean_network(
     # remove danglers
     G = graphs.nx_remove_dangling_nodes(G, despine=50)
     # do smaller scale cleaning
-    dists = [6, 12]
     simplify_angles = 95
-    for dist in dists:
+    for dist in final_clean_distances:
         G = graphs.nx_split_opposing_geoms(
             G,
             buffer_dist=dist,
@@ -441,6 +441,7 @@ def osm_graph_from_poly(
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
+    final_clean_distances: tuple[int, ...] = (6, 12),
     remove_disconnected: int = 100,
     cycleways: bool = True,
     busways: bool = False,
@@ -473,6 +474,9 @@ def osm_graph_from_poly(
         the geometry passed to the OSM API query. See the discussion below.
     simplify: bool
         Whether to automatically simplify the OSM graph.
+    final_clean_distances: tuple[int]
+        A tuple of distances to use for the final cleaning step. These will be applied incrementally.
+        (6, 12) by default.
     remove_disconnected: int
         Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     cycleways: bool
@@ -581,7 +585,13 @@ def osm_graph_from_poly(
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = _auto_clean_network(
-            graph_crs, geom_wgs, int(to_crs_code), remove_disconnected, green_footways, green_service_roads
+            graph_crs,
+            geom_wgs,
+            int(to_crs_code),
+            final_clean_distances,
+            remove_disconnected,
+            green_footways,
+            green_service_roads,
         )
 
     return graph_crs

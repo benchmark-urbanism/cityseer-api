@@ -874,9 +874,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -925,9 +922,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -948,9 +942,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1025,9 +1016,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1053,9 +1041,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1083,9 +1068,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1106,9 +1088,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1131,9 +1110,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1155,9 +1131,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1178,9 +1151,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1211,9 +1181,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1242,9 +1209,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">)</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1292,9 +1256,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1367,9 +1328,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1457,9 +1415,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1525,9 +1480,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1846,9 +1798,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -1895,9 +1844,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -1962,9 +1908,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2001,9 +1944,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2043,9 +1983,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2102,9 +2039,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2172,9 +2106,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2231,9 +2162,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2256,9 +2184,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2279,9 +2204,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2397,9 +2319,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2424,9 +2343,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">)</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2454,9 +2370,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2478,9 +2391,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2501,9 +2411,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2703,9 +2610,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2741,9 +2645,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2800,9 +2701,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2838,9 +2736,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -2878,9 +2773,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -2911,15 +2803,7 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
-
- 
-
-<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
-
 
  
 
@@ -2934,6 +2818,11 @@ datapoints are not located with high spatial precision.
  
 
 <span class="name">node_ys</span><span class="annotation">: list[float]</span>
+
+
+ 
+
+<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
 
 
  
@@ -3060,9 +2949,6 @@ datapoints are not located with high spatial precision.
 </div>
 </div>
 
-
- The type of the None singleton.
-
 </div>
 
  
@@ -3083,9 +2969,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -3116,7 +2999,6 @@ datapoints are not located with high spatial precision.
     <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -3126,7 +3008,6 @@ datapoints are not located with high spatial precision.
   <span class="pr">str</span>
   <span class="pr">bytes</span>
   <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
-  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -3136,7 +3017,6 @@ datapoints are not located with high spatial precision.
   <span class="pr">str</span>
   <span class="pr">bytes</span>
   <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
-  <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
   <span class="pr">bool</span>
@@ -3149,9 +3029,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
@@ -3192,7 +3069,6 @@ datapoints are not located with high spatial precision.
     <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[Buffer</span>
   <span class="pr">dtype[Any]]</span>
   <span class="pr">dtype[Any]]]</span>
   <span class="pr">bool</span>
@@ -3205,9 +3081,6 @@ datapoints are not located with high spatial precision.
   <span class="pt">]</span>
 </div>
 </div>
-
-
- The type of the None singleton.
 
 </div>
 
