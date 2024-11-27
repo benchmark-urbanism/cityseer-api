@@ -352,9 +352,34 @@ builds a graph automatically.
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
+    <span class="pn">final_clean_distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, ...] = (6, 12)</span>
+  </div>
+  <div class="param">
     <span class="pn">remove_disconnected</span>
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">cycleways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">busways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">green_footways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">green_service_roads</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
   </div>
   <div class="param">
     <span class="pn">timeout</span>
@@ -437,12 +462,62 @@ builds a graph automatically.
 
 <div class="param-set">
   <div class="def">
+    <div class="name">final_clean_distances</div>
+    <div class="type">tuple[int]</div>
+  </div>
+  <div class="desc">
+
+ A tuple of distances to use for the final cleaning step. These will be applied incrementally. (6, 12) by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">remove_disconnected</div>
     <div class="type">int</div>
   </div>
   <div class="desc">
 
  Remove disconnected components containing fewer nodes than specified. 100 nodes by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">cycleways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to include cycleways. True by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">busways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to include busways. False by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">green_footways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to include footways contained by green areas. When True, footways contained by green areas are kept but are labelled as `footway_green` and can be removed manually if required. False by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">green_service_roads</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to include service roads contained by green areas. When True, service roads contained by green areas are kept but are labelled as `service_green` and can be removed manually if required. False by default.</div>
 </div>
 
 <div class="param-set">

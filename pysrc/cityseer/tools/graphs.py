@@ -515,7 +515,7 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_iron_edges(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: MultiGraph, simplify_by_angle: int = 100, min_self_loop_length: int = 100
 ) -> MultiGraph:
     """
     Simplifies edges.
@@ -525,6 +525,10 @@ def nx_iron_edges(
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
+    simplify_by_angle: int
+        The maximum angle to permit for a given edge. Angles greater than this will be reduced.
+    min_self_loop_length: int
+        Maximum self loop length to permit for a given edge.
 
     Returns
     -------
@@ -534,23 +538,18 @@ def nx_iron_edges(
     """
     logger.info("Ironing edges.")
     g_multi_copy: MultiGraph = nx_multigraph.copy()
-    # create an edges STRtree (nodes and edges)
-    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     remove_edges = []
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
-        # only apply to non looping geoms otherwise issues occur
-        if start_nd_key == end_nd_key:
-            continue
         edge_geom: geometry.LineString = edge_data["geom"]
-        hits = edges_tree.query(edge_geom, predicate="crosses")
-        if len(hits):
+        # only apply to non looping geoms otherwise issues occur
+        if start_nd_key == end_nd_key and edge_geom.length < min_self_loop_length:
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
             continue
-        line_coords = simplify_line_by_angle(edge_geom.coords, 100)
+        line_coords = simplify_line_by_angle(edge_geom.coords, simplify_by_angle)
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
     g_multi_copy.remove_edges_from(remove_edges)
     # straightening parallel edges can create duplicates
@@ -746,6 +745,9 @@ def _squash_adjacent(
                 new_edge_geom = geometry.LineString(line_coords)
                 if new_edge_geom.length == 0:
                     continue
+                # bail if short self loop
+                if new_nd_name == target_nd_key and new_edge_geom.length < 100:
+                    continue
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
@@ -856,10 +858,10 @@ def nx_consolidate_nodes(
     --------
     See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
 
-    ![Example raw graph from OSM](/images/graph_cleaning_1.png)
+    ![Example raw graph from OSM](/images/graph_raw.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
-    ![Example cleaned graph](/images/graph_cleaning_5.png)
+    ![Example cleaned graph](/images/graph_clean.png)
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
     """
