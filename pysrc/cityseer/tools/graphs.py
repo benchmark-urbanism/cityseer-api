@@ -296,6 +296,8 @@ def nx_remove_dangling_nodes(
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
+    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+
     return g_multi_copy
 
 
