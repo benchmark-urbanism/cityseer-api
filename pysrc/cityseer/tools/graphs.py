@@ -572,10 +572,16 @@ def nx_iron_edges(
             hwy_tags = _tags_from_edge_key(edge_data, "highways")
             if not hwy_tags.intersection(
                 [
+                    "motorway",
+                    "motorway_link",
                     "trunk",
+                    "trunk_link",
                     "primary",
+                    "primary_link",
                     "secondary",
+                    "secondary_link",
                     "tertiary",
+                    "tertiary_link",
                     "residential",
                     "service",
                 ]
