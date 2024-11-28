@@ -233,7 +233,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100, remove_deadend_tunnels: bool = True
+    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100
 ) -> MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
@@ -248,8 +248,6 @@ def nx_remove_dangling_nodes(
     remove_disconnected: int
         Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to
         keep all disconnected components.
-    remove_deadend_tunnels: bool
-        Remove dead-end tunnels. Default of True.
 
     Returns
     -------
@@ -291,8 +289,10 @@ def nx_remove_dangling_nodes(
                 nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
                 edge_data = g_multi_copy[nd_key][nb_nd_key][0]
                 if (
-                    remove_deadend_tunnels is True and "is_tunnel" in edge_data and edge_data["is_tunnel"] is True
-                ) or edge_data["geom"].length <= despine:
+                    edge_data["geom"].length <= despine
+                    or ("is_tunnel" in edge_data and edge_data["is_tunnel"] is True)
+                    or ("is_bridge" in edge_data and edge_data["is_bridge"] is True)
+                ):
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
@@ -1330,6 +1330,9 @@ def nx_split_opposing_geoms(
             edge_geom = edge_data["geom"]
             # don't split on tunnels
             if "is_tunnel" in edge_data and edge_data["is_tunnel"] is True:
+                continue
+            # don't split on bridges
+            if "is_bridge" in edge_data and edge_data["is_bridge"] is True:
                 continue
             # level tags
             if nb_levels_tags:
