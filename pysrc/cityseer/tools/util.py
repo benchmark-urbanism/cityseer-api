@@ -354,6 +354,7 @@ class EdgeInfo:
     _names: list[str]
     _refs: list[str]
     _highways: list[str]
+    _levels: list[int]
 
     @property
     def names(self):
@@ -370,11 +371,17 @@ class EdgeInfo:
         """Returns a list of highway types - e.g. footway."""
         return list(set(self._highways))
 
+    @property
+    def levels(self):
+        """Returns a list of levels."""
+        return list(set(self._levels))
+
     def __init__(self):
         """Initialises a network information structure."""
         self._names = []
         self._refs = []
         self._highways = []
+        self._levels = []
         self.props = {}
 
     def gather_edge_info(self, edge_data: dict[str, Any]):
@@ -389,6 +396,13 @@ class EdgeInfo:
                 self._refs += edge_data["routes"]
             elif k == "highways":
                 self._highways += edge_data["highways"]
+            elif k == "levels":
+                self._levels += edge_data["levels"]
+            elif k == "is_tunnel":
+                if edge_data["is_tunnel"] is True:
+                    self.props["is_tunnel"] = True
+                elif "is_tunnel" not in self.props:
+                    self.props["is_tunnel"] = False
             elif k not in self.props:
                 self.props[k] = v
 
@@ -403,6 +417,7 @@ class EdgeInfo:
         nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
         nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
         nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["levels"] = self.levels
         for k, v in self.props.items():
             nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v
 

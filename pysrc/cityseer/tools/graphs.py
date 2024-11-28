@@ -233,9 +233,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph,
-    despine: int = 15,
-    remove_disconnected: int = 100,
+    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100, remove_deadend_tunnels: bool = True
 ) -> MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
@@ -250,6 +248,8 @@ def nx_remove_dangling_nodes(
     remove_disconnected: int
         Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to
         keep all disconnected components.
+    remove_deadend_tunnels: bool
+        Remove dead-end tunnels. Default of True.
 
     Returns
     -------
@@ -289,7 +289,10 @@ def nx_remove_dangling_nodes(
             if nx.degree(g_multi_copy, nd_key) == 1:
                 # only a single neighbour, so index-in directly and update at key = 0
                 nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
-                if g_multi_copy[nd_key][nb_nd_key][0]["geom"].length <= despine:
+                edge_data = g_multi_copy[nd_key][nb_nd_key][0]
+                if (
+                    remove_deadend_tunnels is True and "is_tunnel" in edge_data and edge_data["is_tunnel"] is True
+                ) or edge_data["geom"].length <= despine:
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
@@ -300,25 +303,31 @@ def nx_remove_dangling_nodes(
 
 def _extract_tags_to_set(
     tags_list: list[str] | None = None,
-) -> set[str]:
+) -> set[str | int]:
     """Converts a `list` of `str` tags to a `set` of small caps `str`."""
     tags = set()
     if tags_list is not None:
         if not isinstance(tags_list, list | set | tuple):
             raise ValueError(f"Tags should be provided as a `list` of `str` instead of {type(tags_list)}.")
-        tags_list = [t.strip().lower() for t in tags_list if t not in ["", " ", None]]
+        cleaned_tags_list = []
+        for t in tags_list:
+            if isinstance(t, str):
+                if t not in ["", " ", None]:
+                    cleaned_tags_list.append(t.strip().lower())
+            else:
+                cleaned_tags_list.append(t)
         tags.update(tags_list)
     return tags
 
 
-def _tags_from_edge_key(edge_data: EdgeData, edge_key: str) -> set[str]:
+def _tags_from_edge_key(edge_data: EdgeData, edge_key: str) -> set[str | int]:
     """Fetches tags from a given edge key and returns as `set` of `str`."""
     if edge_key in edge_data:
         return _extract_tags_to_set(edge_data[edge_key])
     return set()
 
 
-def _gather_nb_tags(nx_multigraph: MultiGraph, nd_key: NodeKey, edge_key: str) -> set[str]:
+def _gather_nb_tags(nx_multigraph: MultiGraph, nd_key: NodeKey, edge_key: str) -> set[str | int]:
     """Fetches tags from edges neighbouring a node and returns as a `set` of `str`."""
     nb_tags = set()
     for nb_nd_key in nx_multigraph.neighbors(nd_key):
@@ -327,14 +336,14 @@ def _gather_nb_tags(nx_multigraph: MultiGraph, nd_key: NodeKey, edge_key: str) -
     return nb_tags
 
 
-def _gather_name_tags(edge_data: EdgeData) -> set[str]:
+def _gather_name_tags(edge_data: EdgeData) -> set[str | int]:
     """Fetches `names` and `routes` tags from the provided edge and returns as a `set` of `str`."""
     names_tags = _tags_from_edge_key(edge_data, "names")
     routes_tags = _tags_from_edge_key(edge_data, "routes")
     return names_tags.union(routes_tags)
 
 
-def _gather_nb_name_tags(nx_multigraph: MultiGraph, nd_key: NodeKey) -> set[str]:
+def _gather_nb_name_tags(nx_multigraph: MultiGraph, nd_key: NodeKey) -> set[str | int]:
     """Fetches `names` and `routes` tags from edges neighbouring a node and returns as a `set` of `str`."""
     names_tags = _gather_nb_tags(nx_multigraph, nd_key, "names")
     routes_tags = _gather_nb_tags(nx_multigraph, nd_key, "routes")
@@ -515,7 +524,10 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_iron_edges(
-    nx_multigraph: MultiGraph, simplify_by_angle: int = 100, min_self_loop_length: int = 100
+    nx_multigraph: MultiGraph,
+    simplify_by_angle: int = 100,
+    min_self_loop_length: int = 100,
+    max_foot_tunnel_length: int = 50,
 ) -> MultiGraph:
     """
     Simplifies edges.
@@ -529,6 +541,8 @@ def nx_iron_edges(
         The maximum angle to permit for a given edge. Angles greater than this will be reduced.
     min_self_loop_length: int
         Maximum self loop length to permit for a given edge.
+    max_foot_tunnel_length: int
+        Maximum tunnel length to permit for non motorised edges.
 
     Returns
     -------
@@ -549,6 +563,26 @@ def nx_iron_edges(
         if start_nd_key == end_nd_key and edge_geom.length < min_self_loop_length:
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
             continue
+        # drop long foot tunnels
+        if (
+            "is_tunnel" in edge_data
+            and edge_data["is_tunnel"] is True
+            and edge_data["geom"].length > max_foot_tunnel_length
+        ):
+            hwy_tags = _tags_from_edge_key(edge_data, "highways")
+            if not hwy_tags.intersection(
+                [
+                    "trunk",
+                    "primary",
+                    "secondary",
+                    "tertiary",
+                    "residential",
+                    "service",
+                ]
+            ):
+                remove_edges.append((start_nd_key, end_nd_key, edge_idx))
+                continue
+        # simplify
         line_coords = simplify_line_by_angle(edge_geom.coords, simplify_by_angle)
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
     g_multi_copy.remove_edges_from(remove_edges)
@@ -885,8 +919,9 @@ def nx_consolidate_nodes(
         y: float,
         node_group: set[NodeKey],
         processed_nodes: set[NodeKey],
-        _hwy_tags: set[str],
-        _name_tags: set[str],
+        _hwy_tags: set,
+        _name_tags: set,
+        _levels_tags: set,
         recursive: bool = False,
     ) -> set[NodeKey]:
         # keep track of which nodes have been processed as part of recursion
@@ -907,6 +942,11 @@ def nx_consolidate_nodes(
                 if neighbour_policy == "indirect" and j_nd_key in neighbours:
                     continue
                 if neighbour_policy == "direct" and j_nd_key not in neighbours:
+                    continue
+            # levels
+            if _levels_tags:
+                _nb_level_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "levels")
+                if not _levels_tags.intersection(_nb_level_tags):
                     continue
             # hwy tags
             if osm_hwy_target_tags:
@@ -931,6 +971,7 @@ def nx_consolidate_nodes(
                     processed_nodes,
                     _hwy_tags,
                     _name_tags,
+                    _levels_tags,
                     recursive=crawl,
                 )
         return node_group
@@ -948,6 +989,8 @@ def nx_consolidate_nodes(
         nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
         if osm_hwy_target_tags and not hwy_tags.intersection(nb_hwy_tags):
             continue
+        # get levels info for matching against potential nodes
+        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
         # get name tags for matching against potential matches
         nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
         # recurse
@@ -959,6 +1002,7 @@ def nx_consolidate_nodes(
             set(),  # processed nodes tracked through recursion
             hwy_tags,
             nb_name_tags,
+            nb_levels_tags,
             crawl,
         )  # whether to recursively probe neighbours per distance
         # update removed nodes
@@ -1011,6 +1055,7 @@ def nx_snap_gapped_endings(
             nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
             if not hwy_tags.intersection(nb_hwy_tags):
                 continue
+        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
         # get name tags for matching against potential gapped edges
         nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
         # get all other nodes within the buffer distance
@@ -1043,6 +1088,11 @@ def nx_snap_gapped_endings(
             if osm_hwy_target_tags:
                 edge_hwy_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "highways")
                 if not hwy_tags.intersection(edge_hwy_tags):
+                    continue
+            # levels
+            if nb_levels_tags:
+                edge_level_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "levels")
+                if not nb_levels_tags.intersection(edge_level_tags):
                     continue
             # names tags
             if osm_matched_tags_only is True:
@@ -1078,6 +1128,7 @@ def nx_snap_gapped_endings(
                     names=[],
                     routes=[],
                     highways=[],
+                    levels=[],
                     geom=new_geom,
                 )
 
@@ -1208,6 +1259,11 @@ def nx_split_opposing_geoms(
                 continue
         # get name tags for matching against potential gapped edges
         nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        # get levels info for matching against potential gapped edges
+        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
+        # only split from ground level nodes
+        if nb_levels_tags and 0 not in nb_levels_tags:
+            continue
         # neighbours for filtering out
         neighbours = list(nx.neighbors(nx_multigraph, nd_key))
         # get all other edges within the buffer distance
@@ -1266,6 +1322,15 @@ def nx_split_opposing_geoms(
         # iter gapped edges
         for start_nd_key, end_nd_key, edge_idx, edge_data in distinct_edges:
             edge_geom = edge_data["geom"]
+            # don't split on tunnels
+            if "is_tunnel" in edge_data and edge_data["is_tunnel"] is True:
+                continue
+            # level tags
+            if nb_levels_tags:
+                # only split on ground levels
+                edge_levels_tags = _tags_from_edge_key(edge_data, "levels")
+                if edge_levels_tags and 0 not in edge_levels_tags:
+                    continue
             # hwy tags
             if osm_hwy_target_tags:
                 edge_hwy_tags = _tags_from_edge_key(edge_data, "highways")
@@ -1431,6 +1496,7 @@ def nx_split_opposing_geoms(
                         names=[],
                         routes=[],
                         highways=[],
+                        levels=[],
                         geom=new_geom,
                     )
     # squashing nodes can result in edge duplicates

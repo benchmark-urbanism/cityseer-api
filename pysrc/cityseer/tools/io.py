@@ -340,9 +340,9 @@ def _auto_clean_network(
             squash_nodes=True,
             centroid_by_itx=True,
             osm_hwy_target_tags=tags,
+            osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_line_angles,
-            contains_buffer_dist=50,
         )
     for dist, tags, simplify_line_angles in (
         (28, ["trunk"], 95),
@@ -356,9 +356,9 @@ def _auto_clean_network(
             crawl=False,
             centroid_by_itx=True,
             osm_hwy_target_tags=tags,
+            osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_line_angles,
-            contains_buffer_dist=50,
         )
         G = graphs.nx_remove_filler_nodes(G)
     # snap gapped endings - don't clean danglers before this
@@ -373,7 +373,7 @@ def _auto_clean_network(
         squash_nodes=False,
     )
     # remove danglers
-    G = graphs.nx_remove_dangling_nodes(G, despine=50)
+    G = graphs.nx_remove_dangling_nodes(G, despine=40)
     # do smaller scale cleaning
     simplify_angles = 95
     for dist in final_clean_distances:
@@ -401,7 +401,6 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
-            contains_buffer_dist=50,
         )
         G = graphs.nx_consolidate_nodes(
             G,
@@ -427,10 +426,11 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_line_angles=simplify_angles,
-            contains_buffer_dist=50,
         )
     G = graphs.nx_remove_filler_nodes(G)
-    G = graphs.nx_iron_edges(G)
+    G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)
+    G = graphs.nx_remove_dangling_nodes(G, despine=25, remove_deadend_tunnels=True)
+    G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=50)
 
     return G
 
@@ -654,6 +654,22 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                 name = [tags["name"].lower()] if "name" in tags else []
                 ref = [tags["ref"].lower()] if "ref" in tags else []
                 highway = [tags["highway"].lower()] if "highway" in tags else []
+                levels = [0]
+                if "level" in tags:
+                    try:
+                        if ":" in tags["level"]:
+                            levels = tags["level"].split(":")
+                        elif ";" in tags["level"]:
+                            levels = tags["level"].split(";")
+                        else:
+                            levels = [tags["level"]]
+                        levels = [int(round(float(level))) for level in levels]
+                    except Exception:
+                        logger.warning(f'Unable to parse level info: {tags["level"]}')
+                is_tunnel = False
+                if "tunnel" in tags:
+                    # tends to be "yes" or "building_passage"
+                    is_tunnel = True
                 for idx in range(count - 1):
                     start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(
@@ -662,6 +678,8 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                         names=name,
                         routes=ref,
                         highways=highway,
+                        levels=levels,
+                        is_tunnel=is_tunnel,
                     )
             else:
                 for idx in range(count - 1):
@@ -1371,8 +1389,8 @@ def nx_from_generic_geopandas(
         for k in ["geom", "geometry"]:
             if k in props:
                 del props[k]
-        # names, routes, highways
-        for k in ["names", "routes", "highways"]:
+        # names, routes, highways, levels
+        for k in ["names", "routes", "highways", "levels"]:
             if k not in props:
                 props[k] = []  # type: ignore
             else:
