@@ -4,6 +4,9 @@
 # astro
 .astro
 
+# cache
+*cache*
+
 # code profiling
 .prof
 
