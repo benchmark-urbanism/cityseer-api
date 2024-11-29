@@ -403,6 +403,11 @@ class EdgeInfo:
                     self.props["is_tunnel"] = True
                 elif "is_tunnel" not in self.props:
                     self.props["is_tunnel"] = False
+            elif k == "is_bridge":
+                if edge_data["is_bridge"] is True:
+                    self.props["is_bridge"] = True
+                elif "is_bridge" not in self.props:
+                    self.props["is_bridge"] = False
             elif k not in self.props:
                 self.props[k] = v
 

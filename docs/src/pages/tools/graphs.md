@@ -123,11 +123,6 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
   </div>
-  <div class="param">
-    <span class="pn">remove_deadend_tunnels</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -163,16 +158,6 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to keep all disconnected components.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">remove_deadend_tunnels</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Remove dead-end tunnels. Default of True.</div>
 </div>
 
 ### Returns

@@ -4,6 +4,9 @@
 # astro
 .astro
 
+# cache
+*cache*
+
 # code profiling
 .prof
 
@@ -12,6 +15,10 @@ cityseer/_version.py
 
 # temporary working directories
 **/temp/**
+
+# geopackages
+*.gpkg
+*.gpkg*
 
 # uv
 uv.lock

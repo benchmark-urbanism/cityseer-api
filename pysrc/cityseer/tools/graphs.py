@@ -163,7 +163,8 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             agg_geom: ListCoordsType = []
             edge_info = util.EdgeInfo()
             while True:
-                edge_data: EdgeData = nx_multigraph[trailing_nd][next_link_nd][0]
+                # cast to list and take first in cases where key at index 0 may have been deleted
+                edge_data: EdgeData = list(nx_multigraph[trailing_nd][next_link_nd].values())[0]
                 edge_info.gather_edge_info(edge_data)
                 # aggregate the geom
                 try:
@@ -233,7 +234,7 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
 
 
 def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100, remove_deadend_tunnels: bool = True
+    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100
 ) -> MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
@@ -248,8 +249,6 @@ def nx_remove_dangling_nodes(
     remove_disconnected: int
         Remove disconnected components with fewer nodes than specified by this parameter. Defaults to 100. Set to 0 to
         keep all disconnected components.
-    remove_deadend_tunnels: bool
-        Remove dead-end tunnels. Default of True.
 
     Returns
     -------
@@ -265,21 +264,7 @@ def nx_remove_dangling_nodes(
             f"specified by the remove_disconnected parameter, which is currently set to: {remove_disconnected}. "
             "Decrease the remove_disconnected parameter or set to zero to retain graph components."
         )
-    # finds connected components - this behaviour changed with networkx v2.4
-    connected_components: list[list[NodeKey]] = list(nx.algorithms.components.connected_components(nx_multigraph))
-    # keep connected components greater than remove_disconnected param
-    large_components = [component for component in connected_components if len(component) >= remove_disconnected]
-    large_subgraphs = [nx.MultiGraph(nx_multigraph.subgraph(component)) for component in large_components]
-    if not large_subgraphs:
-        logger.warning(
-            f"An empty graph will be returned because all graph components had fewer than {remove_disconnected} nodes. "
-            "Decrease the remove_disconnected parameter or set to zero to retain graph components."
-        )
-    # make a copy of the graph using the largest component
-    g_multi_copy = nx.MultiGraph()
-    for subgraph in large_subgraphs:
-        g_multi_copy.add_nodes_from(subgraph.nodes(data=True))
-        g_multi_copy.add_edges_from(subgraph.edges(data=True))
+    g_multi_copy = nx_multigraph.copy()
 
     # remove danglers
     if despine > 0:
@@ -287,18 +272,39 @@ def nx_remove_dangling_nodes(
         nd_key: NodeKey
         for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
             if nx.degree(g_multi_copy, nd_key) == 1:
-                # only a single neighbour, so index-in directly and update at key = 0
+                # only a single neighbour, so index-in directly and update at first neighbour
                 nb_nd_key: NodeKey = list(nx.neighbors(g_multi_copy, nd_key))[0]
-                edge_data = g_multi_copy[nd_key][nb_nd_key][0]
+                # cast to list and take first in cases where key at index 0 may have been deleted
+                edge_data = list(g_multi_copy[nd_key][nb_nd_key].values())[0]
                 if (
-                    remove_deadend_tunnels is True and "is_tunnel" in edge_data and edge_data["is_tunnel"] is True
-                ) or edge_data["geom"].length <= despine:
+                    edge_data["geom"].length <= despine
+                    or ("is_tunnel" in edge_data and edge_data["is_tunnel"] is True)
+                    or ("is_bridge" in edge_data and edge_data["is_bridge"] is True)
+                ):
                     remove_nodes.append(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
+    # clean up nodes at ex-dangler intersections
     g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
 
-    return g_multi_copy
+    # finds connected components - this behaviour changed with networkx v2.4
+    # do this after to prevent creation of new isolated components after dropping tunnels
+    connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))
+    # keep connected components greater than remove_disconnected param
+    large_components = [component for component in connected_components if len(component) >= remove_disconnected]
+    large_subgraphs = [g_multi_copy.subgraph(component).copy() for component in large_components]
+    if not large_subgraphs:
+        logger.warning(
+            f"An empty graph will be returned because all graph components had fewer than {remove_disconnected} nodes. "
+            "Decrease the remove_disconnected parameter or set to zero to retain graph components."
+        )
+    # make a copy of the graph using the largest component
+    g_multi_large = nx.MultiGraph()
+    for subgraph in large_subgraphs:
+        g_multi_large.add_nodes_from(subgraph.nodes(data=True))
+        g_multi_large.add_edges_from(subgraph.edges(data=True))
+
+    return g_multi_large
 
 
 def _extract_tags_to_set(
@@ -572,10 +578,16 @@ def nx_iron_edges(
             hwy_tags = _tags_from_edge_key(edge_data, "highways")
             if not hwy_tags.intersection(
                 [
+                    "motorway",
+                    "motorway_link",
                     "trunk",
+                    "trunk_link",
                     "primary",
+                    "primary_link",
                     "secondary",
+                    "secondary_link",
                     "tertiary",
+                    "tertiary_link",
                     "residential",
                     "service",
                 ]
@@ -648,7 +660,19 @@ def _squash_adjacent(
     # find highest priority OSM highway tag
     if prioritise_by_hwy_tag:
         prioritise_tag = None
-        for osm_hwy_tag in ["motorway", "trunk", "primary", "secondary", "tertiary", "residential"]:
+        for osm_hwy_tag in [
+            "motorway",
+            "motorway_link",
+            "trunk",
+            "trunk_link",
+            "primary",
+            "primary_link",
+            "secondary",
+            "secondary_link",
+            "tertiary",
+            "tertiary_link",
+            "residential",
+        ]:
             for nd_key in node_group:
                 nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
                 if osm_hwy_tag in nb_hwy_tags:
@@ -1324,6 +1348,9 @@ def nx_split_opposing_geoms(
             edge_geom = edge_data["geom"]
             # don't split on tunnels
             if "is_tunnel" in edge_data and edge_data["is_tunnel"] is True:
+                continue
+            # don't split on bridges
+            if "is_bridge" in edge_data and edge_data["is_bridge"] is True:
                 continue
             # level tags
             if nb_levels_tags:
