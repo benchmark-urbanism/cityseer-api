@@ -429,8 +429,9 @@ def _auto_clean_network(
         )
     G = graphs.nx_remove_filler_nodes(G)
     G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)
-    G = graphs.nx_remove_dangling_nodes(G, despine=25)
     G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=50)
+    # do this last to clean up any orphaned sub components
+    G = graphs.nx_remove_dangling_nodes(G, despine=25)
 
     return G
 

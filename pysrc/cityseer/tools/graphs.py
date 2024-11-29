@@ -289,22 +289,22 @@ def nx_remove_dangling_nodes(
 
     # finds connected components - this behaviour changed with networkx v2.4
     # do this after to prevent creation of new isolated components after dropping tunnels
-    connected_components: list[list[NodeKey]] = list(nx.algorithms.components.connected_components(g_multi_copy))
+    connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))
     # keep connected components greater than remove_disconnected param
     large_components = [component for component in connected_components if len(component) >= remove_disconnected]
-    large_subgraphs = [nx.MultiGraph(g_multi_copy.subgraph(component)) for component in large_components]
+    large_subgraphs = [g_multi_copy.subgraph(component).copy() for component in large_components]
     if not large_subgraphs:
         logger.warning(
             f"An empty graph will be returned because all graph components had fewer than {remove_disconnected} nodes. "
             "Decrease the remove_disconnected parameter or set to zero to retain graph components."
         )
     # make a copy of the graph using the largest component
-    g_multi_copy = nx.MultiGraph()
+    g_multi_large = nx.MultiGraph()
     for subgraph in large_subgraphs:
-        g_multi_copy.add_nodes_from(subgraph.nodes(data=True))
-        g_multi_copy.add_edges_from(subgraph.edges(data=True))
+        g_multi_large.add_nodes_from(subgraph.nodes(data=True))
+        g_multi_large.add_edges_from(subgraph.edges(data=True))
 
-    return g_multi_copy
+    return g_multi_large
 
 
 def _extract_tags_to_set(

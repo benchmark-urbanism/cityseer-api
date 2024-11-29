@@ -16,6 +16,10 @@ cityseer/_version.py
 # temporary working directories
 **/temp/**
 
+# geopackages
+*.gpkg
+*.gpkg*
+
 # uv
 uv.lock
 
