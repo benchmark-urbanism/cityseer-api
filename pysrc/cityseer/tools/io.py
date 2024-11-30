@@ -256,6 +256,8 @@ def _auto_clean_network(
     green_footways: bool = False,
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
+    # deduplicate by hierarchy
+    G = graphs.nx_deduplicate_edges(G)
     # parks
     parks_gdf = ox.features_from_polygon(
         geom_wgs,
@@ -326,9 +328,9 @@ def _auto_clean_network(
     G.remove_edges_from(remove_edges)
     # remove disconnected components
     G = graphs.nx_remove_dangling_nodes(G, despine=0, remove_disconnected=remove_disconnected)
-    # clean by highway types - leave motorway as is
+    # clean by highway types - leave motorways alone
     # split only for a given type at a time
-    for dist, tags, simplify_line_angles in (
+    for dist, tags, max_angle in (
         (28, ["trunk"], 45),
         (24, ["primary"], 45),
         (20, ["secondary"], 45),
@@ -342,9 +344,10 @@ def _auto_clean_network(
             osm_hwy_target_tags=tags,
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
-            simplify_line_angles=simplify_line_angles,
+            simplify_by_max_angle=max_angle,
         )
-    for dist, tags, simplify_line_angles in (
+    # consolidate
+    for dist, tags, max_angle in (
         (28, ["trunk"], 95),
         (24, ["trunk", "primary"], 95),
         (20, ["trunk", "primary", "secondary"], 95),
@@ -358,16 +361,52 @@ def _auto_clean_network(
             osm_hwy_target_tags=tags,
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
-            simplify_line_angles=simplify_line_angles,
+            simplify_by_max_angle=max_angle,
         )
         G = graphs.nx_remove_filler_nodes(G)
     # snap gapped endings - don't clean danglers before this
-    G = graphs.nx_snap_gapped_endings(G, buffer_dist=20)
+    G = graphs.nx_snap_gapped_endings(
+        G,
+        osm_hwy_target_tags=[
+            "residential",
+            "living_street",
+            # "service", # intentionally omitted - e.g. parking lots
+            "cycleway",
+            "bridleway",
+            "pedestrian",
+            "steps",
+            "footway",
+            "footway_green",
+            "footway_pedestrian",  # plazas
+            "path",
+        ],
+        buffer_dist=20,
+    )
     # snap gapped endings to roads - don't clean danglers before this
     # look for degree 1 dead-ends and link to nearby edges
     G = graphs.nx_split_opposing_geoms(
         G,
-        buffer_dist=25,
+        buffer_dist=20,
+        osm_hwy_target_tags=[
+            # "trunk",  # intentionally omitted
+            "primary",
+            "primary_link",
+            "secondary",
+            "secondary_link",
+            "tertiary",
+            "tertiary_link",
+            "residential",
+            "living_street",
+            # "service", # intentionally omitted - e.g. parking lots
+            "cycleway",
+            "bridleway",
+            "pedestrian",
+            "steps",
+            "footway",
+            "footway_green",
+            "footway_pedestrian",  # plazas
+            "path",
+        ],
         min_node_degree=1,
         max_node_degree=1,
         squash_nodes=False,
@@ -375,7 +414,7 @@ def _auto_clean_network(
     # remove danglers
     G = graphs.nx_remove_dangling_nodes(G, despine=40)
     # do smaller scale cleaning
-    simplify_angles = 95
+    max_angle = 120  # rue de nevers in Paris
     for dist in final_clean_distances:
         G = graphs.nx_split_opposing_geoms(
             G,
@@ -383,11 +422,15 @@ def _auto_clean_network(
             squash_nodes=True,
             centroid_by_itx=True,
             osm_hwy_target_tags=[
-                # "trunk",
-                # "primary",
-                # "secondary",
-                # "tertiary",
+                # "trunk",  # intentionally omitted
+                "primary",
+                "primary_link",
+                "secondary",
+                "secondary_link",
+                "tertiary",
+                "tertiary_link",
                 "residential",
+                "living_street",
                 "service",
                 "cycleway",
                 "bridleway",
@@ -396,11 +439,10 @@ def _auto_clean_network(
                 "footway",
                 "footway_pedestrian",  # plazas
                 "path",
-                "living_street",
                 "unclassified",
             ],
             prioritise_by_hwy_tag=True,
-            simplify_line_angles=simplify_angles,
+            simplify_by_max_angle=max_angle,
         )
         G = graphs.nx_consolidate_nodes(
             G,
@@ -409,10 +451,15 @@ def _auto_clean_network(
             centroid_by_itx=True,
             osm_hwy_target_tags=[
                 "trunk",
+                "trunk_link",
                 "primary",
+                "primary_link",
                 "secondary",
+                "secondary_link",
                 "tertiary",
+                "tertiary_link",
                 "residential",
+                "living_street",
                 "service",
                 "cycleway",
                 "bridleway",
@@ -421,11 +468,10 @@ def _auto_clean_network(
                 "footway",
                 "footway_pedestrian",  # plazas
                 "path",
-                "living_street",
                 "unclassified",
             ],
             prioritise_by_hwy_tag=True,
-            simplify_line_angles=simplify_angles,
+            simplify_by_max_angle=max_angle,
         )
     G = graphs.nx_remove_filler_nodes(G)
     G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)
@@ -442,7 +488,7 @@ def osm_graph_from_poly(
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
-    final_clean_distances: tuple[int, ...] = (6, 12),
+    final_clean_distances: tuple[int, ...] = (5, 10),
     remove_disconnected: int = 100,
     cycleways: bool = True,
     busways: bool = False,

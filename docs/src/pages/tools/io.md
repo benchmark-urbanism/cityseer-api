@@ -354,7 +354,7 @@ builds a graph automatically.
   <div class="param">
     <span class="pn">final_clean_distances</span>
     <span class="pc">:</span>
-    <span class="pa"> tuple[int, ...] = (6, 12)</span>
+    <span class="pa"> tuple[int, ...] = (5, 10)</span>
   </div>
   <div class="param">
     <span class="pn">remove_disconnected</span>

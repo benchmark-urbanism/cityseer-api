@@ -462,7 +462,7 @@ def test_nx_iron_edges():
     out_geom = nx_out[0][1][0]["geom"]
     assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 50.0), (50.0, 50.0), (50.0, 100.0)]
     # 2 sharply jogged line should be simplified
-    line_geom = geometry.LineString([[0, 0], [50, 0], [75, 5], [75, 0]])
+    line_geom = geometry.LineString([[0, 0], [50, 0], [75, 20], [75, 0]])
     nx_multi[0][1][0]["geom"] = line_geom
     nx_out = graphs.nx_iron_edges(nx_multi)
     out_geom = nx_out[0][1][0]["geom"]

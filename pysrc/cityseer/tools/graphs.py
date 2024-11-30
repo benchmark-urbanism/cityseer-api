@@ -529,9 +529,38 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
     return g_multi_copy
 
 
+def _simplify_line_by_max_angle(coords, max_angle):
+    # continue simplifying until no angles exceed the threshold
+    while True:
+        angles_exceeding_threshold = False
+        # start with the first point
+        new_coords = [coords[0]]
+        # iterate through the points
+        for i in range(1, len(coords) - 1):
+            p1, p2, p3 = coords[i - 1], coords[i], coords[i + 1]
+            angle = util.measure_coords_angle(p1, p2, p3)
+            # if angle exceeds the threshold
+            if angle > max_angle:
+                angles_exceeding_threshold = True
+                # skip adding this point
+                continue
+            # otherwise, keep the point
+            new_coords.append(p2)
+        # always keep the last point
+        new_coords.append(coords[-1])
+        # exit loop if no angles exceeded the threshold
+        if not angles_exceeding_threshold:
+            break
+        # update coords with modified list
+        coords = new_coords
+
+    # Return a new LineString with simplified coordinates
+    return new_coords
+
+
 def nx_iron_edges(
     nx_multigraph: MultiGraph,
-    simplify_by_angle: int = 100,
+    simplify_by_max_angle: int = 120,
     min_self_loop_length: int = 100,
     max_foot_tunnel_length: int = 50,
 ) -> MultiGraph:
@@ -543,7 +572,7 @@ def nx_iron_edges(
     nx_multigraph: MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    simplify_by_angle: int
+    simplify_by_max_angle: int
         The maximum angle to permit for a given edge. Angles greater than this will be reduced.
     min_self_loop_length: int
         Maximum self loop length to permit for a given edge.
@@ -595,7 +624,7 @@ def nx_iron_edges(
                 remove_edges.append((start_nd_key, end_nd_key, edge_idx))
                 continue
         # simplify
-        line_coords = simplify_line_by_angle(edge_geom.coords, simplify_by_angle)
+        line_coords = _simplify_line_by_max_angle(edge_geom.coords, simplify_by_max_angle)
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(line_coords)
     g_multi_copy.remove_edges_from(remove_edges)
     # straightening parallel edges can create duplicates
@@ -604,32 +633,123 @@ def nx_iron_edges(
     return g_multi_copy
 
 
-def simplify_line_by_angle(coords, simplify_line_angles):
-    # Continue simplifying until no angles exceed the threshold
-    while True:
-        angles_exceeding_threshold = False
-        new_coords = [coords[0]]  # Start with the first point
+_MOTORISED_HWYS = set(
+    [
+        "motorway",
+        "motorway_link",
+        "trunk",
+        "trunk_link",
+        "primary",
+        "primary_link",
+        "secondary",
+        "secondary_link",
+        "tertiary",
+        "tertiary_link",
+        "residential",
+        "living_street",
+        # "service",  # intentional
+    ]
+)
 
-        # Iterate through the points to calculate angles
-        for i in range(1, len(coords) - 1):
-            p1, p2, p3 = coords[i - 1], coords[i], coords[i + 1]
-            angle = util.measure_coords_angle(p1, p2, p3)
 
-            # If angle exceeds the threshold, mark the middle point for deletion
-            if angle > simplify_line_angles:
-                angles_exceeding_threshold = True
-                continue  # Skip adding this point
-            new_coords.append(p2)  # Otherwise, keep the point
+def nx_deduplicate_edges(
+    nx_multigraph: MultiGraph,
+    dissolve_distance: int = 12,
+    max_ang_diff: int = 20,
+) -> MultiGraph:
+    """
+    Deduplicates non-motorised edges where parallel to nearby motorised edges.
 
-        new_coords.append(coords[-1])  # Always keep the last point
+    Remove non-motorised edges where adjacent to motorised edges. This helps to simplify complex network representations
+    for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the
+    specified dissolve distance will also be removed.
 
-        # Check if we made any modifications
-        if not angles_exceeding_threshold:
-            break  # Exit loop if no angles exceeded the threshold
-        coords = new_coords  # Update coords with modified list
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
+        edge attributes containing `LineString` geoms.
+    dissolve_distance: int
+        A distance to use when searching for adjacent edges. 12m by default.
+    max_ang_diff: int
+         Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
+         `max_ang_diff`. 20 degrees by default.
 
-    # Return a new LineString with simplified coordinates
-    return new_coords
+    Returns
+    -------
+    MultiGraph
+        A `networkX` graph with non-motorised edges removed if parallel to motorised edges.
+
+    """
+    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    # generate STR tree
+    edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
+    # edges to remove
+    edges_to_remove = set()
+    # first iterate edges to save number of iters
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(data=True, keys=True), disable=config.QUIET_MODE
+    ):
+        # find nearby edges
+        edge_geom = edge_data["geom"]
+        # edge_hierarchy = len(_ROAD_HIERARCHY)
+        candidate = False
+        for hwy_key in edge_data["highways"]:
+            if hwy_key in _MOTORISED_HWYS:
+                candidate = True
+                break
+        if candidate is False:
+            continue
+        edges_hits: list[int] = edges_tree.query(
+            edge_geom,
+            predicate="dwithin",
+            distance=dissolve_distance,
+        )  # type: ignore
+        # buffer once outside of loop
+        edge_geom_buff = edge_geom.buffer(dissolve_distance, cap_style=geometry.CAP_STYLE.flat)
+        # review hits
+        for edge_hit_idx in edges_hits:
+            edge_lookup = edge_lookups[edge_hit_idx]
+            nearby_start_nd_key = edge_lookup["start_nd_key"]
+            nearby_end_nd_key = edge_lookup["end_nd_key"]
+            nearby_edge_idx = edge_lookup["edge_idx"]
+            # continue if already removed
+            if (nearby_start_nd_key, nearby_end_nd_key, nearby_edge_idx) in edges_to_remove:
+                continue
+            # or current edge
+            if nearby_start_nd_key == start_nd_key and nearby_end_nd_key == end_nd_key and edge_idx == nearby_edge_idx:
+                continue
+            # get edge data
+            nearby_edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
+            # only remove if non motorised
+            bail = False
+            for nearby_hwy_key in nearby_edge_data["highways"]:
+                if nearby_hwy_key in _MOTORISED_HWYS:
+                    bail = True
+                    break
+            if bail is True:
+                continue
+            # fetch geom and check for intersection
+            nearby_edge_geom: geometry.LineString = nearby_edge_data["geom"]
+            # remove contained geoms but only if dead-ends
+            if edge_geom_buff.contains(nearby_edge_geom) and (
+                nx.degree(nx_multigraph, nearby_start_nd_key) == 1 or nx.degree(nx_multigraph, nearby_end_nd_key) == 1
+            ):
+                edges_to_remove.add((nearby_start_nd_key, nearby_end_nd_key, nearby_edge_idx))
+            else:
+                edge_itx = nearby_edge_geom.intersection(edge_geom_buff)
+                if edge_itx and edge_itx.geom_type == "LineString" and edge_itx.length > 5:
+                    # check for angle
+                    ang_diff = util.measure_angle_diff_betw_linestrings(edge_geom.coords, edge_itx.coords)
+                    if ang_diff < max_ang_diff:
+                        # remove if duplicitous
+                        edges_to_remove.add((nearby_start_nd_key, nearby_end_nd_key, nearby_edge_idx))
+    # remove edges from graph
+    g_multi_copy.remove_edges_from(edges_to_remove)
+    # remove orphaned nodes
+    g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
+
+    return g_multi_copy
 
 
 def _squash_adjacent(
@@ -637,7 +757,7 @@ def _squash_adjacent(
     node_group: set[NodeKey],
     centroid_by_itx: bool,
     prioritise_by_hwy_tag: bool,
-    simplify_line_angles: int | None = None,
+    simplify_by_max_angle: int | None = None,
 ) -> MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -797,8 +917,8 @@ def _squash_adjacent(
                 else:
                     target_nd_key = nb_nd_key
                 # simplify to handle new kinks
-                if simplify_line_angles is not None:
-                    line_coords = simplify_line_by_angle(line_coords, simplify_line_angles)
+                if simplify_by_max_angle is not None:
+                    line_coords = _simplify_line_by_max_angle(line_coords, simplify_by_max_angle)
                 # build the new geom
                 new_edge_geom = geometry.LineString(line_coords)
                 if new_edge_geom.length == 0:
@@ -854,7 +974,7 @@ def nx_consolidate_nodes(
     contains_buffer_dist: int = 25,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
-    simplify_line_angles: int | None = None,
+    simplify_by_max_angle: int | None = None,
 ) -> MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -906,6 +1026,8 @@ def nx_consolidate_nodes(
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
         via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+    simplify_by_max_angle: int
+        The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.
 
     Returns
     -------
@@ -1038,7 +1160,7 @@ def nx_consolidate_nodes(
                 node_group,
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
-                simplify_line_angles=simplify_line_angles,
+                simplify_by_max_angle=simplify_by_max_angle,
             )
     # remove parallel edges resulting from squashing nodes
     _multi_graph = nx_merge_parallel_edges(
@@ -1171,7 +1293,7 @@ def nx_split_opposing_geoms(
     max_node_degree: int | None = None,
     squash_nodes: bool = True,
     centroid_by_itx: bool = False,
-    simplify_line_angles: int | None = None,
+    simplify_by_max_angle: int | None = None,
 ) -> nx.MultiGraph:
     """
     Split edges in near proximity to nodes, then weld the resultant node group together, updating edges in the process.
@@ -1223,6 +1345,8 @@ def nx_split_opposing_geoms(
     squash_nodes: bool
         Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then
         a line will be added instead. Defaults to `True`.
+    simplify_by_max_angle: int
+        The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.
 
     Returns
     -------
@@ -1349,9 +1473,6 @@ def nx_split_opposing_geoms(
             # don't split on tunnels
             if "is_tunnel" in edge_data and edge_data["is_tunnel"] is True:
                 continue
-            # don't split on bridges
-            if "is_bridge" in edge_data and edge_data["is_bridge"] is True:
-                continue
             # level tags
             if nb_levels_tags:
                 # only split on ground levels
@@ -1477,7 +1598,7 @@ def nx_split_opposing_geoms(
                 node_group,
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
-                simplify_line_angles=simplify_line_angles,
+                simplify_by_max_angle=simplify_by_max_angle,
             )
     else:
         for node_group in node_groups:
@@ -1944,8 +2065,8 @@ def nx_weight_by_dissolved_edges(
             ]:
                 continue
             # get linestring
-            edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
-            nearby_edge_geom: geometry.LineString = edge_data["geom"]
+            nearby_edge_data = g_multi_copy[nearby_start_nd_key][nearby_end_nd_key][nearby_edge_idx]
+            nearby_edge_geom: geometry.LineString = nearby_edge_data["geom"]
             # get angular difference
             ang_diff = util.measure_angle_diff_betw_linestrings(edge_geom.coords, nearby_edge_geom.coords)
             if ang_diff > max_ang_diff:
