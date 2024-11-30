@@ -257,7 +257,7 @@ def _auto_clean_network(
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
     # deduplicate by hierarchy
-    G = graphs.nx_deduplicate_edges(G)
+    G = graphs.nx_deduplicate_edges(G, dissolve_distance=20, max_ang_diff=20)
     # parks
     parks_gdf = ox.features_from_polygon(
         geom_wgs,
@@ -295,6 +295,7 @@ def _auto_clean_network(
     for start_node_key, end_node_key, edge_key, edge_data in tqdm(  # type: ignore
         G.edges(keys=True, data=True),  # type: ignore
         total=G.number_of_edges(),
+        disable=config.QUIET_MODE,
     ):
         edge_geom = edge_data["geom"]
         if "footway" in edge_data["highways"]:
@@ -475,7 +476,7 @@ def _auto_clean_network(
         )
     G = graphs.nx_remove_filler_nodes(G)
     G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)
-    G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=50)
+    G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=100)
     # do this last to clean up any orphaned sub components
     G = graphs.nx_remove_dangling_nodes(G, despine=25)
 
@@ -708,6 +709,8 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                             levels = tags["level"].split(":")
                         elif ";" in tags["level"]:
                             levels = tags["level"].split(";")
+                        elif "," in tags["level"]:
+                            levels = tags["level"].split(",")
                         else:
                             levels = [tags["level"]]
                         levels = [int(round(float(level))) for level in levels]

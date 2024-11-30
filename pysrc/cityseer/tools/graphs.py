@@ -562,7 +562,7 @@ def nx_iron_edges(
     nx_multigraph: MultiGraph,
     simplify_by_max_angle: int = 120,
     min_self_loop_length: int = 100,
-    max_foot_tunnel_length: int = 50,
+    max_foot_tunnel_length: int = 100,
 ) -> MultiGraph:
     """
     Simplifies edges.
@@ -577,7 +577,7 @@ def nx_iron_edges(
     min_self_loop_length: int
         Maximum self loop length to permit for a given edge.
     max_foot_tunnel_length: int
-        Maximum tunnel length to permit for non motorised edges.
+        Maximum tunnel length to permit for non motorised edges. Default of 100m.
 
     Returns
     -------
@@ -646,7 +646,7 @@ _MOTORISED_HWYS = set(
         "tertiary",
         "tertiary_link",
         "residential",
-        "living_street",
+        # "living_street",  # intentional - e.g. barcelona
         # "service",  # intentional
     ]
 )
@@ -654,7 +654,7 @@ _MOTORISED_HWYS = set(
 
 def nx_deduplicate_edges(
     nx_multigraph: MultiGraph,
-    dissolve_distance: int = 12,
+    dissolve_distance: int = 20,
     max_ang_diff: int = 20,
 ) -> MultiGraph:
     """
@@ -670,7 +670,7 @@ def nx_deduplicate_edges(
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
     dissolve_distance: int
-        A distance to use when searching for adjacent edges. 12m by default.
+        A distance to use when searching for adjacent edges. 20m by default.
     max_ang_diff: int
          Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than
          `max_ang_diff`. 20 degrees by default.
