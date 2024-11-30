@@ -337,9 +337,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pn">nx_multigraph</span>
   </div>
   <div class="param">
-    <span class="pn">simplify_by_angle</span>
+    <span class="pn">simplify_by_max_angle</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 100</span>
+    <span class="pa"> int = 120</span>
   </div>
   <div class="param">
     <span class="pn">min_self_loop_length</span>
@@ -370,7 +370,7 @@ side-effects as a function of varied node intensities when computing network cen
 
 <div class="param-set">
   <div class="def">
-    <div class="name">simplify_by_angle</div>
+    <div class="name">simplify_by_max_angle</div>
     <div class="type">int</div>
   </div>
   <div class="desc">
@@ -415,21 +415,73 @@ side-effects as a function of varied node intensities when computing network cen
 
 <div class="function">
 
-## simplify_line_by_angle
+## nx_deduplicate_edges
 
 
 <div class="content">
-<span class="name">simplify_line_by_angle</span><div class="signature multiline">
+<span class="name">nx_deduplicate_edges</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
-    <span class="pn">coords</span>
+    <span class="pn">nx_multigraph</span>
   </div>
   <div class="param">
-    <span class="pn">simplify_line_angles</span>
+    <span class="pn">dissolve_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 12</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_ang_diff</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Deduplicates non-motorised edges where parallel to nearby motorised edges.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">dissolve_distance</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ A distance to use when searching for adjacent edges. 12m by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_ang_diff</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Only count a nearby adjacent edge as duplicitous if the angular difference between edges is less than `max_ang_diff`. 20 degrees by default.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the locally 'dissolved' context.</div>
+</div>
+
 
 </div>
 
@@ -491,7 +543,7 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pa"> bool = False</span>
   </div>
   <div class="param">
-    <span class="pn">simplify_line_angles</span>
+    <span class="pn">simplify_by_max_angle</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
   </div>
@@ -606,6 +658,16 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">simplify_by_max_angle</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.</div>
 </div>
 
 ### Returns
@@ -731,7 +793,7 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pa"> bool = False</span>
   </div>
   <div class="param">
-    <span class="pn">simplify_line_angles</span>
+    <span class="pn">simplify_by_max_angle</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
   </div>
@@ -848,6 +910,16 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="desc">
 
  Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then a line will be added instead. Defaults to `True`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">simplify_by_max_angle</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.</div>
 </div>
 
 ### Returns
