@@ -660,6 +660,10 @@ def nx_deduplicate_edges(
     """
     Deduplicates non-motorised edges where parallel to nearby motorised edges.
 
+    Remove non-motorised edges where adjacent to motorised edges. This helps to simplify complex network representations
+    for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the
+    specified dissolve distance will also be removed.
+
     Parameters
     ----------
     nx_multigraph: MultiGraph
@@ -674,8 +678,7 @@ def nx_deduplicate_edges(
     Returns
     -------
     MultiGraph
-        A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the
-        locally 'dissolved' context.
+        A `networkX` graph with non-motorised edges removed if parallel to motorised edges.
 
     """
     g_multi_copy: MultiGraph = nx_multigraph.copy()
