@@ -1069,7 +1069,8 @@ def network_structure_from_nx(
                         f"Expecting LineString geometry but found {line_geom.geom_type} geom for edge "
                         f"{start_node_key}-{end_node_key}."
                     )
-                # cannot have zero or negative length - division by zero
+                if line_geom.is_empty:
+                    raise TypeError(f"Found empty geom for edge {start_node_key}-{end_node_key}.")
                 line_len = line_geom.length
                 if not np.isfinite(line_len) or line_len <= 0:
                     raise ValueError(
@@ -1419,6 +1420,14 @@ def nx_from_generic_geopandas(
     for edge_idx, edge_row in tqdm(gdf_network.iterrows(), total=len(gdf_network), disable=config.QUIET_MODE):
         # generate start and ending nodes
         edge_geom = edge_row[geom_key]
+        # drop empty edges
+        if edge_geom.is_empty:
+            logger.warning(f"Dropping empty edge at row index {edge_idx}")
+            continue
+        # drop zero length edges
+        if edge_geom.length == 0:
+            logger.warning(f"Dropping zero length edge at row index {edge_idx}")
+            continue
         # round to 1cm - assumes 1m units
         if len(edge_geom.coords[0]) == 3:
             edge_geom = geometry.LineString(
