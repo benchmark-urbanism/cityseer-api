@@ -463,4 +463,4 @@ def mock_species_data(
             counts[idx] = (data == uniq).sum()
         probs = counts / len(data)
 
-        yield counts.tolist(), probs.tolist()
+        yield counts.tolist(), probs.tolist()  # type: ignore

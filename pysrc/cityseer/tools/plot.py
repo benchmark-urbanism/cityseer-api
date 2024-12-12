@@ -173,7 +173,8 @@ def plot_nx_primal_or_dual(  # noqa
         _edge_width: int | float | None,
     ) -> None:
         if not len(_graph):
-            raise ValueError("Graph contains no nodes to plot.")
+            logger.warning("Graph contains no nodes to plot.")
+            return
         if not isinstance(_node_size, int) or _node_size < 1:
             raise ValueError("Node sizes should be a positive integer.")
         if _node_colour is not None:
