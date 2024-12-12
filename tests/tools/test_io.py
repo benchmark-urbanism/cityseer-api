@@ -675,6 +675,13 @@ def test_network_structure_from_gpd(primal_graph):
         assert edge_data.imp_factor == edge_data_round.imp_factor
         assert edge_data.in_bearing == edge_data_round.in_bearing
         assert edge_data.out_bearing == edge_data_round.out_bearing
+    # check that edges aren't added for missing nodes
+    nodes_pruned_gdf = nodes_gdf.iloc[1:]
+    network_structure_round = io.network_structure_from_gpd(nodes_pruned_gdf, edges_gdf)
+    assert network_structure.node_count() == 57
+    assert network_structure.edge_count == 158
+    assert network_structure_round.node_count() == 56
+    assert network_structure_round.edge_count == 152
 
 
 def test_nx_from_cityseer_geopandas(primal_graph):

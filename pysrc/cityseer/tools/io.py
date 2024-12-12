@@ -1251,13 +1251,8 @@ def network_structure_from_gpd(
     for col in edges_cols:
         if col not in edges_gdf.columns:
             raise ValueError(f"Missing expected column in edges GDF: {col}")
-    # sort by network structure nodes and check for continuity
-    nodes_gdf_sorted = nodes_gdf.sort_values(by="ns_node_idx")
-    expected_range = list(range(len(nodes_gdf_sorted)))
-    actual_range = list(nodes_gdf_sorted["ns_node_idx"])
-    if actual_range != expected_range:
-        raise ValueError("ns_node_idx column should be continuous but seems to be missing rows.")
-    for nd_key, node_data in tqdm(nodes_gdf_sorted.iterrows(), disable=config.QUIET_MODE):
+    nodes_gdf["node_idx_mapping"] = -1
+    for nd_key, node_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
         ns_node_idx = network_structure.add_node(
             str(nd_key),
             float(node_data["x"]),
@@ -1265,11 +1260,26 @@ def network_structure_from_gpd(
             bool(node_data["live"]),
             float(node_data["weight"]),
         )
-        assert ns_node_idx == node_data["ns_node_idx"]
+        nodes_gdf.loc[nd_key, "node_idx_mapping"] = ns_node_idx  # type: ignore
     for _edge_key, edge_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
+        # start node network structure idx
+        start_nx_nd_key = edge_data["nx_start_node_key"]
+        if start_nx_nd_key not in nodes_gdf.index.values:
+            logger.info(f"Skipping edge as start node nx key not found {start_nx_nd_key}")
+            continue
+        start_nd_data = nodes_gdf.loc[nodes_gdf.index == start_nx_nd_key]
+        start_ns_nd_key: int = start_nd_data["node_idx_mapping"].values[0]
+        # end node network structure idx
+        end_nx_nd_key = edge_data["nx_end_node_key"]
+        if end_nx_nd_key not in nodes_gdf.index.values:
+            logger.info(f"Skipping edge as end node nx key not found {end_nx_nd_key}")
+            continue
+        end_nd_data = nodes_gdf.loc[nodes_gdf.index == end_nx_nd_key]
+        end_ns_nd_key: int = end_nd_data["node_idx_mapping"].values[0]
+        # add edge
         network_structure.add_edge(
-            int(edge_data["start_ns_node_idx"]),
-            int(edge_data["end_ns_node_idx"]),
+            start_ns_nd_key,
+            end_ns_nd_key,
             int(edge_data["edge_idx"]),
             str(edge_data["nx_start_node_key"]),
             str(edge_data["nx_end_node_key"]),
