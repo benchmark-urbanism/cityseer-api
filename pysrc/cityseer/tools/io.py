@@ -19,6 +19,7 @@ import numpy.typing as npt
 import osmnx as ox
 import pandas as pd
 import requests
+from osmnx._errors import InsufficientResponseError
 from pyproj import CRS, Transformer
 from shapely import geometry
 from shapely.strtree import STRtree
@@ -259,37 +260,46 @@ def _auto_clean_network(
     # deduplicate by hierarchy
     G = graphs.nx_deduplicate_edges(G, dissolve_distance=20, max_ang_diff=20)
     # parks
-    parks_gdf = ox.features_from_polygon(
-        geom_wgs,
-        tags={
-            "landuse": ["cemetery", "forest"],
-            "leisure": ["park", "garden", "sports_centre"],
-        },
-    )
-    park_area_gdf = _extract_gdf(parks_gdf)
-    park_area_gdf = park_area_gdf.to_crs(to_crs_code)
+    try:
+        parks_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "landuse": ["cemetery", "forest"],
+                "leisure": ["park", "garden", "sports_centre"],
+            },
+        )
+        park_area_gdf = _extract_gdf(parks_gdf)
+        park_area_gdf = park_area_gdf.to_crs(to_crs_code)
+    except InsufficientResponseError:
+        park_area_gdf = gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=to_crs_code)  # type: ignore
     # plazas
-    plazas_gdf = ox.features_from_polygon(
-        geom_wgs,
-        tags={
-            "highway": ["pedestrian"],
-        },
-    )
-    plaza_area_gdf = _extract_gdf(plazas_gdf)
-    plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
+    try:
+        plazas_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "highway": ["pedestrian"],
+            },
+        )
+        plaza_area_gdf = _extract_gdf(plazas_gdf)
+        plaza_area_gdf = plaza_area_gdf.to_crs(to_crs_code)
+    except InsufficientResponseError:
+        plaza_area_gdf = gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=to_crs_code)  # type: ignore
     # parking
-    parking_gdf = ox.features_from_polygon(
-        geom_wgs,
-        tags={
-            "amenity": ["parking"],
-        },
-    )
-    parking_area_gdf = _extract_gdf(parking_gdf)
-    parking_area_gdf = parking_area_gdf.to_crs(to_crs_code)
+    try:
+        parking_gdf = ox.features_from_polygon(
+            geom_wgs,
+            tags={
+                "amenity": ["parking"],
+            },
+        )
+        parking_area_gdf = _extract_gdf(parking_gdf)
+        parking_area_gdf = parking_area_gdf.to_crs(to_crs_code)
+    except InsufficientResponseError:
+        parking_area_gdf = gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=to_crs_code)  # type: ignore
     # use STR Tree for performance
-    parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
-    plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
-    parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())
+    parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())  # type: ignore
+    plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())  # type: ignore
+    parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())  # type: ignore
     # iter edges to find edges for marking
     remove_edges = []
     for start_node_key, end_node_key, edge_key, edge_data in tqdm(  # type: ignore
@@ -1069,7 +1079,8 @@ def network_structure_from_nx(
                         f"Expecting LineString geometry but found {line_geom.geom_type} geom for edge "
                         f"{start_node_key}-{end_node_key}."
                     )
-                # cannot have zero or negative length - division by zero
+                if line_geom.is_empty:
+                    raise TypeError(f"Found empty geom for edge {start_node_key}-{end_node_key}.")
                 line_len = line_geom.length
                 if not np.isfinite(line_len) or line_len <= 0:
                     raise ValueError(
@@ -1419,6 +1430,14 @@ def nx_from_generic_geopandas(
     for edge_idx, edge_row in tqdm(gdf_network.iterrows(), total=len(gdf_network), disable=config.QUIET_MODE):
         # generate start and ending nodes
         edge_geom = edge_row[geom_key]
+        # drop empty edges
+        if edge_geom.is_empty:
+            logger.warning(f"Dropping empty edge at row index {edge_idx}")
+            continue
+        # drop zero length edges
+        if edge_geom.length == 0:
+            logger.warning(f"Dropping zero length edge at row index {edge_idx}")
+            continue
         # round to 1cm - assumes 1m units
         if len(edge_geom.coords[0]) == 3:
             edge_geom = geometry.LineString(
