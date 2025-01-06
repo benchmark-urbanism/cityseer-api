@@ -675,6 +675,42 @@ def test_network_structure_from_gpd(primal_graph):
         assert edge_data.imp_factor == edge_data_round.imp_factor
         assert edge_data.in_bearing == edge_data_round.in_bearing
         assert edge_data.out_bearing == edge_data_round.out_bearing
+    # check that edges aren't added for missing nodes
+    nodes_pruned_gdf = nodes_gdf.iloc[1:]
+    network_structure_pruned = io.network_structure_from_gpd(nodes_pruned_gdf, edges_gdf)
+    assert network_structure_round.node_count() == 57
+    assert network_structure_round.edge_count == 158
+    assert network_structure_pruned.node_count() == 56
+    assert network_structure_pruned.edge_count == 152
+    # test robustness of centralities for pruned
+    for netw_struct, nd_gdf in [(network_structure_round, nodes_gdf), (network_structure_pruned, nodes_pruned_gdf)]:
+        nd_gdf = networks.node_centrality_shortest(
+            network_structure=netw_struct,
+            nodes_gdf=nd_gdf,
+            distances=[400],
+            compute_closeness=True,
+            compute_betweenness=True,
+        )
+        # test against underlying method
+        node_result = netw_struct.local_node_centrality_shortest(
+            distances=[400], compute_closeness=True, compute_betweenness=True
+        )
+        for measure_key, attr_key in [
+            ("beta", "node_beta"),
+            ("cycles", "node_cycles"),
+            ("density", "node_density"),
+            ("farness", "node_farness"),
+            ("harmonic", "node_harmonic"),
+            ("betweenness", "node_betweenness"),
+            ("betweenness_beta", "node_betweenness_beta"),
+        ]:
+            data_key = config.prep_gdf_key(measure_key, 400)
+            assert np.allclose(
+                nd_gdf[data_key],
+                getattr(node_result, attr_key)[400],
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
 
 
 def test_nx_from_cityseer_geopandas(primal_graph):
