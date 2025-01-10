@@ -234,7 +234,7 @@ def compute_accessibilities(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
-        logger.info(f'Computing land-use accessibility for: {", ".join(accessibility_keys)}')
+        logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # extract landuses
     landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
     # call the underlying function
