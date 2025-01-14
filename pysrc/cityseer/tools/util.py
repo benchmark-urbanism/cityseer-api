@@ -473,8 +473,7 @@ def add_node(
         else:
             if dupe:
                 logger.debug(
-                    f"A node of the same name already exists in the graph, "
-                    f"adding this node as {new_nd_name} instead."
+                    f"A node of the same name already exists in the graph, adding this node as {new_nd_name} instead."
                 )
             break
     # add

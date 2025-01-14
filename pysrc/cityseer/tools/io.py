@@ -687,7 +687,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
             nd_x_y = f"{x}-{y}"
             # when deduplicating, sometimes overlapping stairways / underpasses might share an x, y space...
             if "tags" in elem and "level" in elem["tags"]:
-                nd_x_y = f'{nd_x_y}-{elem["tags"]["level"]}'
+                nd_x_y = f"{nd_x_y}-{elem['tags']['level']}"
             # only add if non-duplicate
             if nd_x_y not in xy_nd_map:
                 xy_nd_map[nd_x_y] = nd_idx
@@ -725,7 +725,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                             levels = [tags["level"]]
                         levels = [int(round(float(level))) for level in levels]
                     except Exception:
-                        logger.warning(f'Unable to parse level info: {tags["level"]}')
+                        logger.warning(f"Unable to parse level info: {tags['level']}")
                 is_tunnel = False
                 if "tunnel" in tags:
                     # tends to be "yes" or "building_passage"
@@ -1251,8 +1251,11 @@ def network_structure_from_gpd(
     for col in edges_cols:
         if col not in edges_gdf.columns:
             raise ValueError(f"Missing expected column in edges GDF: {col}")
-    nodes_gdf["node_idx_mapping"] = -1
-    for nd_key, node_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
+    # pre-compute node index values and create mapping dictionary for faster lookups
+    node_indices = nodes_gdf.index.values
+    node_mapping = {}
+    # process nodes and build mapping
+    for nd_key, node_data in tqdm(nodes_gdf.iterrows(), total=len(nodes_gdf), disable=config.QUIET_MODE):
         ns_node_idx = network_structure.add_node(
             str(nd_key),
             float(node_data["x"]),
@@ -1260,22 +1263,22 @@ def network_structure_from_gpd(
             bool(node_data["live"]),
             float(node_data["weight"]),
         )
-        nodes_gdf.loc[nd_key, "node_idx_mapping"] = ns_node_idx  # type: ignore
-    for _edge_key, edge_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
-        # start node network structure idx
+        # store mapping in dictionary instead of writing back to GeoDataFrame
+        node_mapping[nd_key] = ns_node_idx
+    # process edges using the mapping dictionary
+    for _edge_key, edge_data in tqdm(edges_gdf.iterrows(), total=len(edges_gdf), disable=config.QUIET_MODE):
         start_nx_nd_key = edge_data["nx_start_node_key"]
-        if start_nx_nd_key not in nodes_gdf.index.values:
-            logger.info(f"Skipping edge as start node nx key not found {start_nx_nd_key}")
-            continue
-        start_nd_data = nodes_gdf.loc[nodes_gdf.index == start_nx_nd_key]
-        start_ns_nd_key: int = start_nd_data["node_idx_mapping"].values[0]
-        # end node network structure idx
         end_nx_nd_key = edge_data["nx_end_node_key"]
-        if end_nx_nd_key not in nodes_gdf.index.values:
-            logger.info(f"Skipping edge as end node nx key not found {end_nx_nd_key}")
+        # fast lookup using dict and set membership
+        if start_nx_nd_key not in node_indices or end_nx_nd_key not in node_indices:
+            if start_nx_nd_key not in node_indices:
+                logger.info(f"Skipping edge as start node nx key not found {start_nx_nd_key}")
+            if end_nx_nd_key not in node_indices:
+                logger.info(f"Skipping edge as end node nx key not found {end_nx_nd_key}")
             continue
-        end_nd_data = nodes_gdf.loc[nodes_gdf.index == end_nx_nd_key]
-        end_ns_nd_key: int = end_nd_data["node_idx_mapping"].values[0]
+        # get node indices from mapping dictionary - much faster than DataFrame lookups
+        start_ns_nd_key = node_mapping[start_nx_nd_key]
+        end_ns_nd_key = node_mapping[end_nx_nd_key]
         # add edge
         network_structure.add_edge(
             start_ns_nd_key,
