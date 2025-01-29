@@ -91,6 +91,7 @@ impl NetworkStructure {
     impedance heuristic - which can be different from metres. Distance map in metres is used for defining max
     distances and computing equivalent distance measures.
     */
+    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
     pub fn dijkstra_tree_shortest(
         &self,
         src_idx: usize,
@@ -114,7 +115,7 @@ impl NetworkStructure {
             distance: 0.0,
         });
         // random number generator
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -173,7 +174,7 @@ impl NetworkStructure {
                 // inject jitter
                 let mut jitter: f32 = 0.0;
                 if jitter_scale > 0.0 {
-                    jitter = rng.gen::<f32>() * jitter_scale;
+                    jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
                 if impedance less than prior distances for this node then update shortest path
@@ -186,6 +187,7 @@ impl NetworkStructure {
         }
         (visited_nodes, tree_map)
     }
+    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
     pub fn dijkstra_tree_simplest(
         &self,
         src_idx: usize,
@@ -210,7 +212,7 @@ impl NetworkStructure {
             distance: 0.0,
         });
         // random number generator
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -269,7 +271,7 @@ impl NetworkStructure {
                 // inject jitter
                 let mut jitter: f32 = 0.0;
                 if jitter_scale > 0.0 {
-                    jitter = rng.gen::<f32>() * jitter_scale;
+                    jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
                 if impedance less than prior distances for this node then update shortest path
@@ -284,6 +286,7 @@ impl NetworkStructure {
         }
         (visited_nodes, tree_map)
     }
+    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
     pub fn dijkstra_tree_segment(
         &self,
         src_idx: usize,
@@ -309,7 +312,7 @@ impl NetworkStructure {
             distance: 0.0,
         });
         // random number generator
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -363,7 +366,7 @@ impl NetworkStructure {
                 // inject jitter
                 let mut jitter: f32 = 0.0;
                 if jitter_scale > 0.0 {
-                    jitter = rng.gen::<f32>() * jitter_scale;
+                    jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
                 if impedance less than prior distances for this node then update shortest path
@@ -384,6 +387,15 @@ impl NetworkStructure {
         }
         (visited_nodes, visited_edges, tree_map, edge_map)
     }
+    #[pyo3(signature = (
+        distances=None,
+        betas=None,
+        compute_closeness=None,
+        compute_betweenness=None,
+        min_threshold_wt=None,
+        jitter_scale=None,
+        pbar_disabled=None
+    ))]
     pub fn local_node_centrality_shortest(
         &self,
         distances: Option<Vec<u32>>,
@@ -532,7 +544,17 @@ impl NetworkStructure {
         });
         Ok(result)
     }
-
+    #[pyo3(signature = (
+        distances=None,
+        betas=None,
+        compute_closeness=None,
+        compute_betweenness=None,
+        min_threshold_wt=None,
+        angular_scaling_unit=None,
+        farness_scaling_offset=None,
+        jitter_scale=None,
+        pbar_disabled=None
+    ))]
     pub fn local_node_centrality_simplest(
         &self,
         distances: Option<Vec<u32>>,
@@ -658,7 +680,15 @@ impl NetworkStructure {
         });
         Ok(result)
     }
-
+    #[pyo3(signature = (
+        distances=None,
+        betas=None,
+        compute_closeness=None,
+        compute_betweenness=None,
+        min_threshold_wt=None,
+        jitter_scale=None,
+        pbar_disabled=None
+    ))]
     pub fn local_segment_centrality(
         &self,
         distances: Option<Vec<u32>>,

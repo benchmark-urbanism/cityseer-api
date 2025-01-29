@@ -9,6 +9,7 @@ use std::sync::Arc;
 pub struct Viewshed {
     pub progress: Arc<AtomicUsize>,
 }
+
 fn line_of_sight(
     raster: ArrayView2<u8>,
     start_x: usize,
@@ -49,6 +50,7 @@ fn line_of_sight(
     }
     true
 }
+
 fn calculate_visible_cells(
     raster: ArrayView2<u8>,
     start_x: usize,
@@ -86,6 +88,7 @@ fn calculate_visible_cells(
 
     (density, farness, harmonic)
 }
+
 fn calculate_viewshed(
     raster: ArrayView2<u8>,
     start_x: usize,
@@ -132,6 +135,7 @@ impl Viewshed {
     fn progress(&self) -> usize {
         self.progress.as_ref().load(Ordering::Relaxed)
     }
+    #[pyo3(signature = (bldgs_rast, view_distance, pbar_disabled=None))]
     pub fn visibility_graph(
         &self,
         bldgs_rast: PyReadonlyArray2<u8>,
@@ -186,8 +190,9 @@ impl Viewshed {
             .into_pyarray(py)
             .to_owned();
 
-        Ok((array_u32, array_f32_a, array_f32_b))
+        Ok((array_u32.into(), array_f32_a.into(), array_f32_b.into()))
     }
+
     pub fn viewshed(
         &self,
         bldgs_rast: PyReadonlyArray2<u8>,
@@ -203,6 +208,6 @@ impl Viewshed {
             .unwrap()
             .into_pyarray(py)
             .to_owned();
-        Ok(numpy_array)
+        Ok(numpy_array.into())
     }
 }

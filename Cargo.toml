@@ -16,11 +16,11 @@ name = "cityseer"
 crate-type = ["cdylib"]
 
 [dependencies]
-atomic_float = "0.1.0"
-ndarray = "0.15.6"
-numpy = "0.18.0"
-petgraph = "0.6.3"
-pyo3 = { version="0.18.3", features=["multiple-pymethods"]}
-rand = "0.8.5"
-rand_distr = "0.4.3"
+atomic_float = "1.1.0"
+ndarray = "0.16.1"
+numpy = "0.23.0"
+petgraph = "0.7.1"
+pyo3 = { version = "0.23.4", features = ["multiple-pymethods"] }
+rand = "0.9.0"
+rand_distr = "0.5.0"
 rayon = "1.7.0"

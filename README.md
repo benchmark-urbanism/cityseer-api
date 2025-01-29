@@ -36,5 +36,5 @@ The `cityseer-api` `Python` package addresses a range of issues specific to comp
 
 ## Development
 
-`brew install pdm rust rust-analyzer rustfmt`
-`pdm install`
+`brew install uv rust rust-analyzer rustfmt`
+`uv sync`

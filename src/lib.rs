@@ -7,9 +7,7 @@ mod graph;
 mod viewshed;
 
 #[pymodule]
-fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
-    // let rustalgos = PyModule::new(py, "rustalgos")?;
-    // m.add_submodule(rustalgos)?;
+fn rustalgos(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<common::Coord>()?;
     m.add_function(wrap_pyfunction!(common::calculate_rotation, m)?)?;
     m.add_function(wrap_pyfunction!(common::calculate_rotation_smallest, m)?)?;
@@ -47,7 +45,5 @@ fn rustalgos(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<centrality::CentralitySegmentResult>()?;
     // VIEWSHED
     m.add_class::<viewshed::Viewshed>()?;
-    // let sys = PyModule::import(py, "sys")?;
-    // sys.getattr("modules")?.set_item("rustalgos", rustalgos)?;
     Ok(())
 }

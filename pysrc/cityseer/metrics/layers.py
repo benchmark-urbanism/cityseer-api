@@ -480,7 +480,7 @@ def compute_mixed_uses(
 
 def compute_stats(
     data_gdf: gpd.GeoDataFrame,
-    stats_column_label: str,
+    stats_column_labels: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
     max_netw_assign_dist: int = 400,
@@ -507,8 +507,8 @@ def compute_stats(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    stats_column_label: str
-        The column label corresponding to the column in `data_gdf` from which to take numerical information.
+    stats_column_labels: list[str]
+        The column labels corresponding to the columns in `data_gdf` from which to take numerical information.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
@@ -598,18 +598,20 @@ def compute_stats(
     :::
 
     """
-    if stats_column_label not in data_gdf.columns:
-        raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     if not config.QUIET_MODE:
         logger.info("Computing statistics.")
     # extract landuses
-    stats_map: dict[str, float] = data_gdf[stats_column_label].to_dict()  # type: ignore
+    stats_maps = []
+    for stats_column_label in stats_column_labels:
+        if stats_column_label not in data_gdf.columns:
+            raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
+        stats_maps.append(data_gdf[stats_column_label].to_dict())  # type: ignore)
     # stats
     partial_func = partial(
         data_map.stats,
         network_structure=network_structure,
-        numerical_map=stats_map,
+        numerical_maps=stats_maps,
         distances=distances,
         betas=betas,
         angular=angular,
@@ -621,26 +623,27 @@ def compute_stats(
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack the numerical arrays
     distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
-    for dist_key in distances:
-        k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
-        nodes_gdf[k] = result.sum[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
-        nodes_gdf[k] = result.sum_wt[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
-        nodes_gdf[k] = result.mean[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
-        nodes_gdf[k] = result.mean_wt[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
-        nodes_gdf[k] = result.count[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
-        nodes_gdf[k] = result.count_wt[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
-        nodes_gdf[k] = result.variance[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
-        nodes_gdf[k] = result.variance_wt[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
-        nodes_gdf[k] = result.max[dist_key]  # type: ignore
-        k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
-        nodes_gdf[k] = result.min[dist_key]  # type: ignore
+    for idx, stats_column_label in enumerate(stats_column_labels):
+        for dist_key in distances:
+            k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
+            nodes_gdf[k] = result[idx].sum[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
+            nodes_gdf[k] = result[idx].sum_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
+            nodes_gdf[k] = result[idx].mean[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
+            nodes_gdf[k] = result[idx].mean_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
+            nodes_gdf[k] = result[idx].count[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
+            nodes_gdf[k] = result[idx].count_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
+            nodes_gdf[k] = result[idx].variance[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
+            nodes_gdf[k] = result[idx].variance_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
+            nodes_gdf[k] = result[idx].max[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
+            nodes_gdf[k] = result[idx].min[dist_key]  # type: ignore
 
     return nodes_gdf, data_gdf
