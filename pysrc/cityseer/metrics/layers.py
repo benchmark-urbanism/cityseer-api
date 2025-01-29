@@ -606,7 +606,7 @@ def compute_stats(
     for stats_column_label in stats_column_labels:
         if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(data_gdf[stats_column_label].to_dict())  # type: ignore)
+        stats_maps.append(data_gdf[stats_column_label].to_dict())  # type: ignore
     # stats
     partial_func = partial(
         data_map.stats,
