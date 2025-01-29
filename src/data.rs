@@ -724,6 +724,7 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<Vec<StatsResult>> {
+        // TODO: any benefit to returning hashmap instead?
         // Return a vector of StatsResult
         let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
