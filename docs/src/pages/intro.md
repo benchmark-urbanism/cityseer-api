@@ -14,7 +14,7 @@ The use of `python` facilitates interaction with popular computational tools for
 
 The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api). Please cite the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827) when using this package. Associated papers introducing the package and demonstrating the forms of analysis that can be done with it are [available at `arXiv`](https://arxiv.org/a/simons_g_1.html).
 
-Code tests are run against Python versions `3.10` - `3.12`.
+Code tests are run against Python versions `3.11` - `3.13`.
 
 ## Old versions
 

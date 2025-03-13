@@ -1,9 +1,9 @@
 [project]
 name = "cityseer"
-version = '4.18.2b8'
+version = '4.19.0b1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.10, <3.14"
+requires-python = ">=3.11, <3.14"
 license = { text = "AGPL-3.0" }
 keywords = [
   "network-topology",
@@ -30,7 +30,6 @@ keywords = [
 authors = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
 maintainers = [{ name = "Gareth Simons", email = "info@benchmarkurbanism.com" }]
 classifiers = [
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -125,7 +124,7 @@ docstring-code-format = true
 docstring-code-line-length = "dynamic"
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 include = ["pysrc/cityseer"]
 exclude = [
   "**/node_modules",
