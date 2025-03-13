@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.18.2b3'
+version = '4.18.2b4'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.14"
@@ -89,7 +89,7 @@ dev-dependencies = [
 ]
 
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1.8.3,<2.0"]
 build-backend = "maturin"
 
 [tool.setuptools]
