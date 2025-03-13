@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.18.1'
+version = '4.18.2b1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.14"
@@ -41,7 +41,6 @@ dependencies = [
   "networkx>=3.0.0",
   "pyproj>=3.3.0",
   "requests>=2.27.1",
-  "scikit-learn>=1.0.2",
   "tqdm>=4.63.1",
   "shapely>=2.0.6",
   "numpy>=2.2.2",

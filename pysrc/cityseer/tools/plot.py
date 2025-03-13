@@ -23,7 +23,6 @@ from matplotlib import axes, colors
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Patch
 from shapely import geometry
-from sklearn.preprocessing import LabelEncoder, minmax_scale
 from tqdm import tqdm
 
 from cityseer import config, rustalgos
@@ -408,6 +407,24 @@ def plot_nx(
     )
 
 
+class SimpleLabelEncoder:
+    def __init__(self):
+        self.classes_ = {}
+
+    def fit(self, labels):
+        """Assigns an integer to each unique label."""
+        self.classes_ = {label: idx for idx, label in enumerate(set(labels))}
+
+    def transform(self, labels):
+        """Converts labels to their corresponding integer values."""
+        return [self.classes_[label] for label in labels]
+
+    def fit_transform(self, labels):
+        """Fits and transforms in one step."""
+        self.fit(labels)
+        return self.transform(labels)
+
+
 def plot_assignment(
     network_structure: rustalgos.NetworkStructure,
     nx_multigraph: MultiGraph,
@@ -495,8 +512,7 @@ def plot_assignment(
         data_cmap = None
     else:
         # generate categorical colormap
-        # use sklearn's label encoder
-        lab_enc = LabelEncoder()
+        lab_enc = SimpleLabelEncoder()
         lab_enc.fit(data_labels)
         # map the int encodings to the respective classes
         classes_int: npt.ArrayLike = lab_enc.transform(data_labels)
@@ -653,6 +669,18 @@ def plot_network_structure(
     plt.show()
 
 
+def minmax_scale_manual(data, feature_range=(0, 1)):
+    """Manually scales data to a given range (default 0 to 1)."""
+    data = np.asarray(data, dtype=float)  # Ensure numeric array
+    min_val, max_val = np.min(data), np.max(data)
+    scale_min, scale_max = feature_range
+
+    if min_val == max_val:
+        return np.full_like(data, scale_min)  # Avoid division by zero
+
+    return scale_min + (data - min_val) * (scale_max - scale_min) / (max_val - min_val)
+
+
 def plot_scatter(
     ax: axes.Axes,
     xs: list[float] | npt.ArrayLike,
@@ -718,7 +746,7 @@ def plot_scatter(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale(colours, (s_min, s_max))  # type: ignore
+    sizes: npt.ArrayLike = minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
     # plot
     img: Any = ax.scatter(
         xs[select_idx],
@@ -839,7 +867,7 @@ def plot_nx_edges(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale(colours, (lw_min, lw_max))  # type: ignore
+    sizes: npt.ArrayLike = minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.ArrayLike = np.argsort(colours)
     if invert_plot_order:
