@@ -179,15 +179,15 @@ impl Viewshed {
         // Convert the results back to NumPy arrays
         let array_u32 = Array2::from_shape_vec((height, width), results_u32)
             .unwrap()
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
             .to_owned();
         let array_f32_a = Array2::from_shape_vec((height, width), results_f32_a)
             .unwrap()
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
             .to_owned();
         let array_f32_b = Array2::from_shape_vec((height, width), results_f32_b)
             .unwrap()
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
             .to_owned();
 
         Ok((array_u32.into(), array_f32_a.into(), array_f32_b.into()))
@@ -206,7 +206,7 @@ impl Viewshed {
         let visibility = calculate_viewshed(raster_array, origin_x, origin_y, view_distance);
         let numpy_array = Array2::from_shape_vec((height, width), visibility)
             .unwrap()
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
             .to_owned();
         Ok(numpy_array.into())
     }
