@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.19.0b3'
+version = '4.19.0b4'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -54,11 +54,6 @@ homepage = "https://cityseer.benchmarkurbanism.com/"
 documentation = "https://cityseer.benchmarkurbanism.com/"
 repository = "https://github.com/benchmark-urbanism/cityseer-api"
 
-[tool.maturin]
-python-source = "pysrc"
-module-name = 'cityseer.rustalgos'
-features = ["pyo3/extension-module"]
-
 # ruff pending script support
 # https://github.com/astral-sh/uv/issues/5903#issuecomment-2360856896
 [tool.poe.tasks]
@@ -88,8 +83,13 @@ dev-dependencies = [
 ]
 
 [build-system]
-requires = ["maturin>=1.8.3,<2.0"]
+requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
+
+[tool.maturin]
+python-source = "pysrc"
+module-name = 'cityseer.rustalgos'
+features = ["pyo3/extension-module"]
 
 [tool.setuptools]
 packages = ["cityseer"]
