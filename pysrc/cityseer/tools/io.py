@@ -1351,7 +1351,7 @@ def nx_from_cityseer_geopandas(
                 in_bearing=row_data.in_bearing,
                 out_bearing=row_data.out_bearing,
                 total_bearing=row_data.total_bearing,
-                geom=row_data[geom_key],
+                geom=row_data[geom_key],  # type: ignore
             )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_")]
@@ -1428,7 +1428,7 @@ def nx_from_generic_geopandas(
 
     """
     gdf_network: gpd.GeoDataFrame = gdf_network.copy()  # type: ignore
-    if not gdf_network.crs.is_projected:
+    if not gdf_network.crs.is_projected:  # type: ignore
         raise ValueError("The GeoDataframe CRS must be projected, i.e. not geographic.")
     g_multi = nx.MultiGraph()
 
@@ -1439,7 +1439,7 @@ def nx_from_generic_geopandas(
         x, y = node_coords
         return f"x{x}-y{y}"
 
-    geom_key = gdf_network.geometry.name
+    geom_key: str = str(gdf_network.geometry.name)
     for edge_idx, edge_row in tqdm(gdf_network.iterrows(), total=len(gdf_network), disable=config.QUIET_MODE):
         # generate start and ending nodes
         edge_geom = edge_row[geom_key]
