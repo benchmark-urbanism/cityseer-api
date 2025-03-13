@@ -81,7 +81,7 @@ impl MetricResult {
                     .collect();
                 let array = Python::with_gil(|py| {
                     vec_f32
-                        .into_pyarray_bound(py)
+                        .into_pyarray(py)
                         .to_owned() // This gives us a PyArray, but wrapped in pyo3::Bound
                         .into() // Convert to the required Py<PyArray> type
                 });
