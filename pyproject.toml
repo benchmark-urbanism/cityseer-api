@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.18.2b2'
+version = '4.18.2b3'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.10, <3.14"
@@ -77,7 +77,7 @@ dev-dependencies = [
   "types-requests>=2.28.11.7",
   "jupyterlab>=3.5.2",
   "jupyter>=1.0.0",
-  "maturin>=1.1.0",
+  "maturin>=1.8.3",
   "pip>=23.2",
   "pdoc>=14.1.0",
   "docstring-parser>=0.15",
