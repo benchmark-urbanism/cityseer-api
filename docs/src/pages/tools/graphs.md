@@ -349,7 +349,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">max_foot_tunnel_length</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 50</span>
+    <span class="pa"> int = 100</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -395,7 +395,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Maximum tunnel length to permit for non motorised edges.</div>
+ Maximum tunnel length to permit for non motorised edges. Default of 100m.</div>
 </div>
 
 ### Returns
@@ -427,7 +427,7 @@ side-effects as a function of varied node intensities when computing network cen
   <div class="param">
     <span class="pn">dissolve_distance</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 12</span>
+    <span class="pa"> int = 20</span>
   </div>
   <div class="param">
     <span class="pn">max_ang_diff</span>
@@ -439,7 +439,7 @@ side-effects as a function of varied node intensities when computing network cen
 </div>
 
 
- Deduplicates non-motorised edges where parallel to nearby motorised edges.
+ Deduplicates non-motorised edges where parallel to nearby motorised edges. Remove non-motorised edges where adjacent to motorised edges. This helps to simplify complex network representations for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the specified dissolve distance will also be removed.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -458,7 +458,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A distance to use when searching for adjacent edges. 12m by default.</div>
+ A distance to use when searching for adjacent edges. 20m by default.</div>
 </div>
 
 <div class="param-set">
@@ -479,7 +479,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the locally 'dissolved' context.</div>
+ A `networkX` graph with non-motorised edges removed if parallel to motorised edges.</div>
 </div>
 
 

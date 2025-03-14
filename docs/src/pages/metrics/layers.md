@@ -744,9 +744,9 @@ been applied.
     <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
   </div>
   <div class="param">
-    <span class="pn">stats_column_label</span>
+    <span class="pn">stats_column_labels</span>
     <span class="pc">:</span>
-    <span class="pa"> str</span>
+    <span class="pa"> list[str]</span>
   </div>
   <div class="param">
     <span class="pn">nodes_gdf</span>
@@ -820,12 +820,12 @@ been applied.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">stats_column_label</div>
-    <div class="type">str</div>
+    <div class="name">stats_column_labels</div>
+    <div class="type">list[str]</div>
   </div>
   <div class="desc">
 
- The column label corresponding to the column in `data_gdf` from which to take numerical information.</div>
+ The column labels corresponding to the columns in `data_gdf` from which to take numerical information.</div>
 </div>
 
 <div class="param-set">
