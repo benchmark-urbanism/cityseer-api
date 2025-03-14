@@ -308,12 +308,12 @@ def test_stats(primal_graph):
     # generate node and edge maps
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
-    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1, random_seed=13)
+    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2, random_seed=13)
     # use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    numerical_map = data_gdf["mock_numerical_1"].to_dict()
+    numerical_maps = [data_gdf["mock_numerical_1"].to_dict(), data_gdf["mock_numerical_2"].to_dict()]
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_gdf)
@@ -328,165 +328,170 @@ def test_stats(primal_graph):
     # isolated loop = 52, 53, 54, 55 -> assigned data points = 1, 16, 24, 31, 36, 37
     isolated_nodes_idx = [52, 53, 54, 55]
     isolated_data_idx = [1, 16, 24, 31, 36, 37]
-    # numeric precision - keep fairly relaxed
-    mock_num_arr = data_gdf["mock_numerical_1"].values
     # compute - first do with no deduplication so that direct comparisons can be made to numpy methods
     # have to use a single large distance, otherwise distance cutoffs will result in limited agg
     distances = [10000]
-    stats_result = data_map.stats(
+    stats_results = data_map.stats(
         network_structure,
-        numerical_map=numerical_map,
+        numerical_maps=numerical_maps,
         distances=distances,
     )
-    for dist_key in distances:
-        # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
-        # max
-        assert np.isnan(stats_result.max[dist_key][49])
-        assert np.allclose(
-            stats_result.max[dist_key][[50, 51]],
-            mock_num_arr[[33, 44]].max(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.max[dist_key][isolated_nodes_idx],
-            mock_num_arr[isolated_data_idx].max(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.max[dist_key][connected_nodes_idx],
-            mock_num_arr[connected_data_idx].max(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        # min
-        assert np.isnan(stats_result.max[dist_key][49])
-        assert np.allclose(
-            stats_result.min[dist_key][[50, 51]],
-            mock_num_arr[[33, 44]].min(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.min[dist_key][isolated_nodes_idx],
-            mock_num_arr[isolated_data_idx].min(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.min[dist_key][connected_nodes_idx],
-            mock_num_arr[connected_data_idx].min(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        # sum
-        assert np.isnan(stats_result.max[dist_key][49])
-        assert np.allclose(
-            stats_result.sum[dist_key][[50, 51]],
-            mock_num_arr[[33, 44]].sum(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.sum[dist_key][isolated_nodes_idx],
-            mock_num_arr[isolated_data_idx].sum(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.sum[dist_key][connected_nodes_idx],
-            mock_num_arr[connected_data_idx].sum(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        # mean
-        assert np.isnan(stats_result.max[dist_key][49])
-        assert np.allclose(
-            stats_result.mean[dist_key][[50, 51]],
-            mock_num_arr[[33, 44]].mean(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.mean[dist_key][isolated_nodes_idx],
-            mock_num_arr[isolated_data_idx].mean(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.mean[dist_key][connected_nodes_idx],
-            mock_num_arr[connected_data_idx].mean(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        # variance
-        assert np.isnan(stats_result.max[dist_key][49])
-        assert np.allclose(
-            stats_result.variance[dist_key][[50, 51]],
-            mock_num_arr[[33, 44]].var(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.variance[dist_key][isolated_nodes_idx],
-            mock_num_arr[isolated_data_idx].var(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
-        assert np.allclose(
-            stats_result.variance[dist_key][connected_nodes_idx],
-            mock_num_arr[connected_data_idx].var(),
-            atol=config.ATOL,
-            rtol=config.RTOL,
-        )
+    stats_result = stats_results[0]
+    for stats_result, mock_num_arr in zip(
+        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=False
+    ):
+        for dist_key in distances:
+            # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
+            # max
+            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.allclose(
+                stats_result.max[dist_key][[50, 51]],
+                mock_num_arr[[33, 44]].max(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.max[dist_key][isolated_nodes_idx],
+                mock_num_arr[isolated_data_idx].max(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.max[dist_key][connected_nodes_idx],
+                mock_num_arr[connected_data_idx].max(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            # min
+            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.allclose(
+                stats_result.min[dist_key][[50, 51]],
+                mock_num_arr[[33, 44]].min(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.min[dist_key][isolated_nodes_idx],
+                mock_num_arr[isolated_data_idx].min(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.min[dist_key][connected_nodes_idx],
+                mock_num_arr[connected_data_idx].min(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            # sum
+            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.allclose(
+                stats_result.sum[dist_key][[50, 51]],
+                mock_num_arr[[33, 44]].sum(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.sum[dist_key][isolated_nodes_idx],
+                mock_num_arr[isolated_data_idx].sum(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.sum[dist_key][connected_nodes_idx],
+                mock_num_arr[connected_data_idx].sum(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            # mean
+            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.allclose(
+                stats_result.mean[dist_key][[50, 51]],
+                mock_num_arr[[33, 44]].mean(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mean[dist_key][isolated_nodes_idx],
+                mock_num_arr[isolated_data_idx].mean(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mean[dist_key][connected_nodes_idx],
+                mock_num_arr[connected_data_idx].mean(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            # variance
+            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.allclose(
+                stats_result.variance[dist_key][[50, 51]],
+                mock_num_arr[[33, 44]].var(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.variance[dist_key][isolated_nodes_idx],
+                mock_num_arr[isolated_data_idx].var(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.variance[dist_key][connected_nodes_idx],
+                mock_num_arr[connected_data_idx].var(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
     data_map_dedupe, data_gdf_dedupe = layers.assign_gdf_to_network(
         data_gdf, network_structure, max_assign_dist, data_id_col="data_id"
     )
-    stats_result_dedupe = data_map_dedupe.stats(
+    stats_results_dedupe = data_map_dedupe.stats(
         network_structure,
-        numerical_map=numerical_map,
+        numerical_maps=numerical_maps,
         distances=distances,
     )
-    for dist_key in distances:
-        # min and max are be the same
-        assert np.allclose(
-            stats_result.min[dist_key],
-            stats_result_dedupe.min[dist_key],
-            rtol=config.RTOL,
-            atol=config.ATOL,
-            equal_nan=True,
-        )
-        assert np.allclose(
-            stats_result.max[dist_key],
-            stats_result_dedupe.max[dist_key],
-            rtol=config.RTOL,
-            atol=config.ATOL,
-            equal_nan=True,
-        )
-        # sum should be lower when deduplicated
-        assert np.all(
-            stats_result.sum[dist_key][connected_nodes_idx] >= stats_result_dedupe.sum[dist_key][connected_nodes_idx]
-        )
-        assert np.all(
-            stats_result.sum_wt[dist_key][connected_nodes_idx]
-            >= stats_result_dedupe.sum_wt[dist_key][connected_nodes_idx]
-        )
-        # mean and variance should also be diminished
-        assert np.all(
-            stats_result.mean[dist_key][connected_nodes_idx] >= stats_result_dedupe.mean[dist_key][connected_nodes_idx]
-        )
-        assert np.all(
-            stats_result.mean_wt[dist_key][connected_nodes_idx]
-            >= stats_result_dedupe.mean_wt[dist_key][connected_nodes_idx]
-        )
-        assert np.all(
-            stats_result.variance[dist_key][connected_nodes_idx]
-            >= stats_result_dedupe.variance[dist_key][connected_nodes_idx]
-        )
-        assert np.all(
-            stats_result.variance_wt[dist_key][connected_nodes_idx]
-            >= stats_result_dedupe.variance_wt[dist_key][connected_nodes_idx]
-        )
+    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=False):
+        for dist_key in distances:
+            # min and max are be the same
+            assert np.allclose(
+                stats_result.min[dist_key],
+                stats_result_dedupe.min[dist_key],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+                equal_nan=True,
+            )
+            assert np.allclose(
+                stats_result.max[dist_key],
+                stats_result_dedupe.max[dist_key],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+                equal_nan=True,
+            )
+            # sum should be lower when deduplicated
+            assert np.all(
+                stats_result.sum[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.sum[dist_key][connected_nodes_idx]
+            )
+            assert np.all(
+                stats_result.sum_wt[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.sum_wt[dist_key][connected_nodes_idx]
+            )
+            # mean and variance should also be diminished
+            assert np.all(
+                stats_result.mean[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.mean[dist_key][connected_nodes_idx]
+            )
+            assert np.all(
+                stats_result.mean_wt[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.mean_wt[dist_key][connected_nodes_idx]
+            )
+            assert np.all(
+                stats_result.variance[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.variance[dist_key][connected_nodes_idx]
+            )
+            assert np.all(
+                stats_result.variance_wt[dist_key][connected_nodes_idx]
+                >= stats_result_dedupe.variance_wt[dist_key][connected_nodes_idx]
+            )

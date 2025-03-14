@@ -72,7 +72,7 @@ def _prepare_bldgs_rast(
     Convert a buildings GeoDataFrame into a raster with accompanying Transform object.
     """
     bldgs_gdf = bldgs_gdf.to_crs(to_crs_code)  # type: ignore
-    if not bldgs_gdf.crs.is_projected:
+    if not bldgs_gdf.crs.is_projected:  # type: ignore
         raise ValueError("Buildings GeoDataFrame must be in a projected coordinate reference system.")
     # prepare extents from original bounds
     # i.e. don't use bldgs GDF because this will overshoot per building polys
@@ -85,7 +85,7 @@ def _prepare_bldgs_rast(
     transform = from_bounds(w, s, e, n, width, height)
     # rasterize building polygons
     unioned_gdf = gpd.GeoDataFrame(geometry=[bldgs_gdf.unary_union])  # type: ignore
-    unioned_gdf.set_crs(bldgs_gdf.crs)
+    unioned_gdf.set_crs(bldgs_gdf.crs)  # type: ignore
     bldgs_rast = rasterize([(geom, 1) for geom in unioned_gdf.geometry], out_shape=(height, width), transform=transform)
 
     return bldgs_rast, transform

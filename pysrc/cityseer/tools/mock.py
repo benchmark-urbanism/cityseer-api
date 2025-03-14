@@ -301,7 +301,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     for idx, loc_idx in enumerate(range(length - 5, length)):
         data_gpd.loc[str(loc_idx), "data_id"] = length - 5
         data_gpd.loc[str(loc_idx), "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
-    data_gpd = cast(gpd.GeoDataFrame, data_gpd)
+    data_gpd = cast(gpd.GeoDataFrame, data_gpd)  # type: ignore
     return data_gpd
 
 

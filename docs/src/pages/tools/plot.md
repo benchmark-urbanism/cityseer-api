@@ -535,6 +535,107 @@ plot.plot_nx(G_after, node_colour=cols)
 </div>
 
 
+<div class="class">
+
+
+## SimpleLabelEncoder
+
+
+
+
+<div class="function">
+
+## SimpleLabelEncoder
+
+
+<div class="content">
+<span class="name">SimpleLabelEncoder</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## fit
+
+
+<div class="content">
+<span class="name">fit</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">labels</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Assigns an integer to each unique label.
+
+</div>
+
+ 
+
+<div class="function">
+
+## transform
+
+
+<div class="content">
+<span class="name">transform</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">labels</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Converts labels to their corresponding integer values.
+
+</div>
+
+ 
+
+<div class="function">
+
+## fit_transform
+
+
+<div class="content">
+<span class="name">fit_transform</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">labels</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Fits and transforms in one step.
+
+</div>
+
+ 
+</div>
+
+
 <div class="function">
 
 ## plot_assignment
@@ -736,6 +837,30 @@ mainly to visually confirm the correct behaviour of particular algorithms during
  An optional polygon. Defaults to None.</div>
 </div>
 
+
+</div>
+
+
+<div class="function">
+
+## minmax_scale_manual
+
+
+<div class="content">
+<span class="name">minmax_scale_manual</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data</span>
+  </div>
+  <div class="param">
+    <span class="pn">feature_range=(0, 1)</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Manually scales data to a given range (default 0 to 1).
 
 </div>
 

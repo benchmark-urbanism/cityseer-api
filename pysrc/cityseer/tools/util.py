@@ -569,7 +569,7 @@ def blend_metrics(
         # suffix is only applied for overlapping column names
         merged_edges_gdf = pd.merge(
             merged_edges_gdf,
-            nodes_gdf[[node_column]],
+            nodes_gdf[[node_column]],  # type: ignore
             left_on="nx_start_node_key",
             right_index=True,  # type: ignore
         )

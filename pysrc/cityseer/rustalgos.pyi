@@ -690,7 +690,7 @@ class DataMap:
     def stats(
         self,
         network_structure: NetworkStructure,
-        numerical_map: dict[str, float],
+        numerical_maps: list[dict[str, float]],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         angular: bool | None = None,
@@ -698,7 +698,7 @@ class DataMap:
         min_threshold_wt: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> StatsResult: ...
+    ) -> list[StatsResult]: ...
 
 class Viewshed:
     @classmethod

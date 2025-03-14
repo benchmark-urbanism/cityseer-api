@@ -57,11 +57,11 @@ def test_local_centrality_time(primal_graph):
     segment_cent_wrapper: 5.882331402972341 for 10000 iterations
 
     Split functions
-    dijkstra_tree_shortest_wrapper: 0.08737008203752339 for 10000 iterations
-    dijkstra_tree_simplest_wrapper: 0.09354790102224797 for 10000 iterations
-    dijkstra_tree_segment_wrapper: 0.2544154430506751 for 10000 iterations
-    node_cent_wrapper: 2.757581104990095 for 10000 iterations
-    segment_cent_wrapper: 5.390009218011983 for 10000 iterations
+    dijkstra_tree_shortest_wrapper: 0.04688391700619832 for 10000 iterations
+    dijkstra_tree_simplest_wrapper: 0.04833241600135807 for 10000 iterations
+    dijkstra_tree_segment_wrapper: 0.12999495898839086 for 10000 iterations
+    node_cent_wrapper: 2.6186295949996747 for 10000 iterations
+    segment_cent_wrapper: 5.181460560999767 for 10000 iterations
     """
 
     if "GITHUB_ACTIONS" in os.environ:
@@ -158,3 +158,5 @@ if __name__ == "__main__":
     G_primal = mock_graph()
     G_primal = graphs.nx_simple_geoms(G_primal)
     test_local_centrality_time(G_primal)
+
+# %%
