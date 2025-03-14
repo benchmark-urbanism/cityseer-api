@@ -60,8 +60,8 @@ def test_local_centrality_time(primal_graph):
     dijkstra_tree_shortest_wrapper: 0.04688391700619832 for 10000 iterations
     dijkstra_tree_simplest_wrapper: 0.04833241600135807 for 10000 iterations
     dijkstra_tree_segment_wrapper: 0.12999495898839086 for 10000 iterations
-    node_cent_wrapper: 3.6011423749878304 for 10000 iterations
-    segment_cent_wrapper: 4.1460652090027 for 10000 iterations
+    node_cent_wrapper: 2.6186295949996747 for 10000 iterations
+    segment_cent_wrapper: 5.181460560999767 for 10000 iterations
     """
 
     if "GITHUB_ACTIONS" in os.environ:
