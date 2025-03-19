@@ -72,12 +72,13 @@ def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
-        if start_nd_key == end_nd_key and seg.length == 0:
+        if seg.length == 0:
+            if start_nd_key != end_nd_key:
+                logger.warning(f"Found zero length edge between {start_nd_key} and {end_nd_key}, removing from graph.")
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
         else:
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg
     for start_nd_key, end_nd_key, edge_idx in remove_edges:
-        logger.warning(f"Found zero length looped edge for node {start_nd_key}, removing from graph.")
         g_multi_copy.remove_edge(start_nd_key, end_nd_key, key=edge_idx)
 
     return g_multi_copy
@@ -595,8 +596,10 @@ def nx_iron_edges(
     ):
         edge_geom: geometry.LineString = edge_data["geom"]
         # only apply to non looping geoms otherwise issues occur
-        if start_nd_key == end_nd_key and edge_geom.length < min_self_loop_length:
-            remove_edges.append((start_nd_key, end_nd_key, edge_idx))
+        if start_nd_key == end_nd_key:
+            # drop long self loops
+            if edge_geom.length < min_self_loop_length:
+                remove_edges.append((start_nd_key, end_nd_key, edge_idx))
             continue
         # drop long foot tunnels
         if (
