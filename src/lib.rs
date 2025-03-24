@@ -14,7 +14,12 @@ fn rustalgos(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(common::check_numerical_data, m)?)?;
     m.add_function(wrap_pyfunction!(common::distances_from_betas, m)?)?;
     m.add_function(wrap_pyfunction!(common::betas_from_distances, m)?)?;
-    m.add_function(wrap_pyfunction!(common::pair_distances_and_betas, m)?)?;
+    m.add_function(wrap_pyfunction!(common::distances_from_walking_times, m)?)?;
+    m.add_function(wrap_pyfunction!(common::walking_times_from_distances, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        common::pair_distances_betas_walking_times,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(common::avg_distances_for_betas, m)?)?;
     m.add_function(wrap_pyfunction!(common::clip_wts_curve, m)?)?;
     m.add_function(wrap_pyfunction!(common::clipped_beta_wt, m)?)?;

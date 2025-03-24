@@ -49,7 +49,7 @@ def make_messy_graph(G):
         if i % 3 == 0:
             flipped_coords = np.fliplr(d["geom"].coords.xy)
             G_messy[s][e][k]["geom"] = geometry.LineString(
-                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
             )
         # split each second geom
         if i % 2 == 0:
@@ -58,7 +58,7 @@ def make_messy_graph(G):
             if (G.nodes[s]["x"], G.nodes[s]["y"]) != line_geom.coords[0][:2]:
                 flipped_coords = np.fliplr(line_geom.coords.xy)
                 line_geom = geometry.LineString(
-                    [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                    [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
                 )
             # remove old edge
             G_messy.remove_edge(s, e)
@@ -712,7 +712,7 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         if i % 3 == 0:
             flipped_coords = np.fliplr(d["geom"].coords.xy)
             G[s][e][k]["geom"] = geometry.LineString(
-                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
             )
     G_dual = graphs.nx_to_dual(G)
     # from cityseer.tools import plot

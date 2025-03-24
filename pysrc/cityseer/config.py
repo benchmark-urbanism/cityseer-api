@@ -54,6 +54,7 @@ DEBUG_MODE: bool = check_debug()
 
 # for calculating default betas vs. distances
 MIN_THRESH_WT: float = 0.01831563888873418
+WALKING_SPEED = 1.33333
 # for all_close equality checks
 ATOL: float = 0.001
 RTOL: float = 0.0001

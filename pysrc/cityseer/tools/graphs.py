@@ -437,7 +437,7 @@ def nx_merge_parallel_edges(
             edge_info.gather_edge_info(shortest_data)
             # process longer geoms
             longer_geoms: list[geometry.LineString] = []
-            for edge_geom, edge_data in zip(edge_geoms, edges_data, strict=False):
+            for edge_geom, edge_data in zip(edge_geoms, edges_data, strict=True):
                 # where the buffer of the shorter contains the longer
                 is_contained = shortest_geom.buffer(contains_buffer_dist).contains(edge_geom)
                 # hwy tags
@@ -1972,7 +1972,7 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
             [start_nd_key, end_nd_key],
             [end_nd_key, start_nd_key],
             [s_half_geom, e_half_geom],
-            strict=False,
+            strict=True,
         ):
             # add the spoke edges on the dual
             nb_nd_key: NodeKey

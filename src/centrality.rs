@@ -390,9 +390,11 @@ impl NetworkStructure {
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        walking_times=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -400,17 +402,24 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
         // setup
         self.validate()?;
-        let (distances, betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, betas, _walking_times) = common::pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
@@ -547,9 +556,11 @@ impl NetworkStructure {
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        walking_times=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         angular_scaling_unit=None,
         farness_scaling_offset=None,
         jitter_scale=None,
@@ -559,9 +570,11 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
         jitter_scale: Option<f32>,
@@ -570,8 +583,13 @@ impl NetworkStructure {
     ) -> PyResult<CentralitySimplestResult> {
         // setup
         self.validate()?;
-        let (distances, _betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, _betas, _walking_times) = common::pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
@@ -683,9 +701,11 @@ impl NetworkStructure {
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        walking_times=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -693,9 +713,11 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
@@ -708,8 +730,13 @@ impl NetworkStructure {
         2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
         */
         self.validate()?;
-        let (distances, betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, betas, _walking_times) = common::pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);

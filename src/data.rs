@@ -1,5 +1,5 @@
 use crate::common::MetricResult;
-use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_and_betas, Coord};
+use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_walking_times, Coord};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use numpy::PyArray1;
@@ -294,9 +294,11 @@ impl DataMap {
         accessibility_keys,
         distances=None,
         betas=None,
+        walking_times=None,
         angular=None,
         spatial_tolerance=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -307,14 +309,22 @@ impl DataMap {
         accessibility_keys: Vec<String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
-        let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, betas, _walking_times) = pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -447,6 +457,7 @@ impl DataMap {
         landuses_map,
         distances=None,
         betas=None,
+        walking_times=None,
         compute_hill=None,
         compute_hill_weighted=None,
         compute_shannon=None,
@@ -454,6 +465,7 @@ impl DataMap {
         angular=None,
         spatial_tolerance=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -463,6 +475,7 @@ impl DataMap {
         landuses_map: HashMap<String, Option<String>>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         compute_hill: Option<bool>,
         compute_hill_weighted: Option<bool>,
         compute_shannon: Option<bool>,
@@ -470,11 +483,18 @@ impl DataMap {
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
-        let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, betas, _walking_times) = pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
@@ -705,9 +725,11 @@ impl DataMap {
         numerical_maps,
         distances=None,
         betas=None,
+        walking_times=None,
         angular=None,
         spatial_tolerance=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -717,16 +739,24 @@ impl DataMap {
         numerical_maps: Vec<HashMap<String, f32>>, // vector of numerical maps
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        walking_times: Option<Vec<f32>>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<Vec<StatsResult>> {
         // TODO: any benefit to returning hashmap instead?
         // Return a vector of StatsResult
-        let (distances, betas) = pair_distances_and_betas(distances, betas, min_threshold_wt)?;
+        let (distances, betas, _walking_times) = pair_distances_betas_walking_times(
+            distances,
+            betas,
+            walking_times,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
         let max_dist: u32 = distances.iter().max().unwrap().clone();
         // Iterate through each map in the numerical_maps
         for (index, numerical_map) in numerical_maps.iter().enumerate() {

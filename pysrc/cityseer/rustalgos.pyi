@@ -97,14 +97,14 @@ def distances_from_betas(betas: list[float], min_threshold_wt: float | None = No
 
     Parameters
     ----------
-    distance: int | tuple[int]
+    distance: list[int]
         $d_{max}$ value/s to convert to decay parameters $\beta$.
     min_threshold_wt: float
         The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
-    tuple[float]
+    list[float]
         A numpy array of decay parameters $\beta$.
 
     Examples
@@ -202,50 +202,124 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     | 0.005 | 800m |
     | 0.0025 | 1600m |
 
-    Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
-
-    | $\beta$ | $w_{min}$ | $d_{max}$ |
-    |:-------:|:---------:|:---------:|
-    | 0.02 | 0.01 | 230m |
-    | 0.01 | 0.01 | 461m |
-    | 0.005 | 0.01 | 921m |
-    | 0.0025 | 0.01 | 1842m |
+    Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
 
     """
     ...
 
-def pair_distances_and_betas(
+def distances_from_walking_times(
+    walking_times: list[float],
+    speed_m_s: float | None = None,
+) -> list[int]:
+    r"""
+    Map walking times to equivalent distance thresholds $d_{max}$.
+
+    :::note
+    It is generally not necessary to utilise this function directly.
+    :::
+
+    The default `speed_m_s` of $1.333$ yields the following $d_{max}$ walking thresholds:
+
+    | $minutes$ | $d_{max}$ |
+    |:-------:|:---------:|
+    | 5 | 400m |
+    | 10 | 800m |
+    | 20 | 1600m |
+
+    Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.
+
+    Parameters
+    ----------
+    walking_times: list[float]
+        Walking times to convert to distance thresholds $d_{max}$.
+    speed_m_s: float
+        The walking speed in metres per second.
+
+    Returns
+    -------
+    list[int]
+        A numpy array of distance thresholds $d_{max}$.
+
+    """
+
+def walking_times_from_distances(
+    distances: list[int],
+    speed_m_s: float | None = None,
+) -> list[float]:
+    r"""
+    Map distances to equivalent walking times in minutes.
+
+    :::note
+    It is generally not necessary to utilise this function directly.
+    :::
+
+    The default `speed_m_s` of $1.33333$ yields the following walking times:
+
+    | $d_{max}$ | $minutes$ |
+    |:-------:|:---------:|
+    | 400m | 5 |
+    | 800m | 10 |
+    | 1600m | 20 |
+
+    Setting the `speed_m_s` to a higher or lower number will affect the walking times accordingly.
+
+    Parameters
+    ----------
+    distances: list[int]
+        Distances to convert to walking times.
+    speed_m_s: float
+        The walking speed in metres per second.
+
+    Returns
+    -------
+    list[float]
+        A numpy array of walking times.
+
+    """
+
+def pair_distances_betas_walking_times(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     min_threshold_wt: float | None = None,
-) -> tuple[list[int], list[float]]:
+    speed_m_s: float | None = None,
+) -> tuple[list[int], list[float], list[float]]:
     r"""
     Pair distances and betas, where one or the other parameter is provided.
 
     Parameters
     ----------
-    distances: list[int] | tuple[int]
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        then the `betas` or `walking_times` parameter must be provided instead.
     betas: tuple[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        provided, then the `distances` or `walking_times` parameter must be provided instead.
+    walking_times: list[float]
+        Walking times in minutes to be used for calculations. The `distance` and `beta` parameters will be determined
+        implicitly. If the `walking_times` parameter is not provided, then the `distances` or `betas` parameters must be
+        provided instead.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+    speed_m_s: float
+        The default walking speed in meters per second can optionally be overridden to configure the distances covered
+        by the respective walking times.
 
     Returns
     -------
-    distances: tuple[int]
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
         then the `beta` parameter must be provided instead.
-    betas: tuple[float]
+    betas: list[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
+    walking_times: list[float]
+        Walking times in minutes corresponding to the distances used for calculations.
 
     Examples
     --------
@@ -266,14 +340,14 @@ def avg_distances_for_betas(betas: list[float], min_threshold_wt: float | None =
 
     Parameters
     ----------
-    beta: tuple[float]
+    beta: list[float]
         $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
     min_threshold_wt: float
         The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
-    tuple[float]
+    list[float]
         The average walking distance for a given $\beta$.
 
     Examples
@@ -315,16 +389,16 @@ def clip_wts_curve(distances: list[int], betas: list[float], spatial_tolerance: 
 
     Parameters
     ----------
-    distances: tuple[int]
+    distances: list[int]
         An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: tuple[float]
+    betas: list[float]
         An array of $\beta$ to be used for the exponential decay function for weighted metrics.
     spatial_tolerance: int
         The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
 
     Returns
     -------
-    max_curve_wts: tuple[float]
+    max_curve_wts: list[float]
         An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
 
     """

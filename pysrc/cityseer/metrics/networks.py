@@ -71,6 +71,7 @@ MultiGraph = Any
 
 # separate out so that ast parser can parse function def
 MIN_THRESH_WT = config.MIN_THRESH_WT
+WALKING_SPEED = config.WALKING_SPEED
 
 
 def node_centrality_shortest(
@@ -78,9 +79,11 @@ def node_centrality_shortest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    walking_speed: float = WALKING_SPEED,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -201,9 +204,11 @@ def node_centrality_simplest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    walking_speed: float = WALKING_SPEED,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
@@ -323,9 +328,11 @@ def segment_centrality(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    walking_speed: float = WALKING_SPEED,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""

@@ -103,7 +103,7 @@ def test_accessibility(primal_graph):
     )
     # test manual metrics against all nodes
     betas = rustalgos.betas_from_distances(distances)
-    for dist, beta in zip(distances, betas, strict=False):
+    for dist, beta in zip(distances, betas, strict=True):
         for src_idx in network_structure.node_indices():  # type: ignore
             # aggregate
             a_nw = 0
@@ -235,7 +235,7 @@ def test_mixed_uses(primal_graph):
             reachable_entries = data_map.aggregate_to_src_idx(
                 netw_src_idx, network_structure, max_dist, angular=angular
             )
-            for dist_cutoff, beta in zip(distances, betas, strict=False):
+            for dist_cutoff, beta in zip(distances, betas, strict=True):
                 class_agg = dict()
                 # iterate reachable
                 for data_key, data_dist in reachable_entries.items():
@@ -338,7 +338,7 @@ def test_stats(primal_graph):
     )
     stats_result = stats_results[0]
     for stats_result, mock_num_arr in zip(
-        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=False
+        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
     ):
         for dist_key in distances:
             # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
@@ -452,7 +452,7 @@ def test_stats(primal_graph):
         numerical_maps=numerical_maps,
         distances=distances,
     )
-    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=False):
+    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=True):
         for dist_key in distances:
             # min and max are be the same
             assert np.allclose(

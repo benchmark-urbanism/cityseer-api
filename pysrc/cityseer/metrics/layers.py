@@ -47,7 +47,7 @@ def assign_gdf_to_network(
     data_map: rustalgos.DataMap
         A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -121,6 +121,7 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -197,7 +198,7 @@ def compute_accessibilities(
         columns will be returned for each input landuse class and distance combination; a simple count of reachable
         locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -253,7 +254,7 @@ def compute_accessibilities(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack accessibility data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas, walking_times = rustalgos.pair_distances_betas_walking_times(distances, betas)
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
@@ -279,6 +280,7 @@ def compute_mixed_uses(
     compute_gini: bool | None = False,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -459,7 +461,7 @@ def compute_mixed_uses(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack mixed-uses data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas = rustalgos.pair_distances_betas_walking_times(distances, betas)
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
@@ -486,6 +488,7 @@ def compute_stats(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -557,7 +560,7 @@ def compute_stats(
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -622,7 +625,7 @@ def compute_stats(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack the numerical arrays
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
+    distances, betas = rustalgos.pair_distances_betas_walking_times(distances, betas)
     for idx, stats_column_label in enumerate(stats_column_labels):
         for dist_key in distances:
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)

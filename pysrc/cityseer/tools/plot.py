@@ -241,7 +241,7 @@ def plot_nx_primal_or_dual(  # noqa
                         f"Can't plot geoms because a 'geom' key can't be found for edge {start_node_key} to "
                         f"{end_node_key}. Use the nx_simple_geoms() method if you need to create geoms for a graph."
                     ) from err
-                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=False)))  # type: ignore
+                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=True)))  # type: ignore
             else:
                 edge_list.append((start_node_key, end_node_key))
         # plot geoms manually if required
@@ -449,7 +449,7 @@ def plot_assignment(
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -583,7 +583,7 @@ def plot_network_structure(
     network_structure: rustalgos.NetworkStructure
         A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 
@@ -886,7 +886,7 @@ def plot_nx_edges(
                 continue
             if np.any(ys < min_y) or np.any(ys > max_y):
                 continue
-            plot_geoms.append(tuple(zip(xs, ys, strict=False)))
+            plot_geoms.append(tuple(zip(xs, ys, strict=True)))
             plot_colours.append(cmap(colours[idx]))  # type: ignore
             plot_lws.append(sizes[idx])  # type: ignore
         lines = LineCollection(
@@ -937,7 +937,7 @@ def plot_nx_edges(
                     continue
                 if np.any(ys < min_y) or np.any(ys > max_y):
                     continue
-                plot_geoms.append(tuple(zip(xs, ys, strict=False)))
+                plot_geoms.append(tuple(zip(xs, ys, strict=True)))
                 plot_colours.append(item_c)
                 plot_lws.append(item_lw)
         lines = LineCollection(

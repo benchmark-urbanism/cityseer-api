@@ -225,7 +225,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     primal_targets = ("15", "20", "37")
     dual_sources = ("0_1_k0", "0_16_k0", "0_31_k0")
     dual_targets = ("13_15_k0", "17_20_k0", "36_37_k0")
-    for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets, strict=False):
+    for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets, strict=True):
         p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
         d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
         d_target_idx = nodes_gdf_d.index.tolist().index(d_target)

@@ -208,7 +208,7 @@ def test_network_structure_from_nx(diamond_graph):
     G_test_dual.nodes["1_2_k0"]["live"] = True
     G_test_dual.nodes["1_3_k0"]["live"] = True
     G_test_dual.nodes["2_3_k0"]["live"] = False
-    for G, is_dual in zip((G_test, G_test_dual), (False, True), strict=False):
+    for G, is_dual in zip((G_test, G_test_dual), (False, True), strict=True):
         # generate test maps
         nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, 3395)
         network_structure.validate()
