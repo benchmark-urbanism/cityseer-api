@@ -522,11 +522,12 @@ class NetworkStructure:
         edge_idx: int,
         start_nd_key: str,
         end_nd_key: str,
-        length: float,
-        angle_sum: float,
-        imp_factor: float,
-        in_bearing: float,
-        out_bearing: float,
+        length: float | None = None,
+        angle_sum: float | None = None,
+        imp_factor: float | None = None,
+        in_bearing: float | None = None,
+        out_bearing: float | None = None,
+        minutes: float | None = None,
     ) -> int:
         """
         Add an edge to the `NetworkStructure`.
@@ -583,13 +584,13 @@ class NetworkStructure:
     ) -> tuple[float, int | None, int | None]: ...
     def assign_to_network(self, data_coord: Any, max_dist: float) -> tuple[int | None, int | None]: ...
     def dijkstra_tree_shortest(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_minutes: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_simplest(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_minutes: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_segment(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_minutes: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]: ...
     def local_node_centrality_shortest(
         self,
@@ -734,7 +735,8 @@ class DataMap:
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
-        max_dist: int,
+        max_minutes: float,
+        speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
     ) -> dict[str, float]: ...

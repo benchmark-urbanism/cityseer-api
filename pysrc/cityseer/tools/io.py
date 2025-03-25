@@ -1127,6 +1127,7 @@ def network_structure_from_nx(
                     imp_factor,
                     in_bearing,
                     out_bearing,
+                    None,  # minutes
                 )
                 # add to edge data
                 agg_edge_data[f"{start_node_key}-{end_node_key}"] = (
@@ -1291,6 +1292,7 @@ def network_structure_from_gpd(
             float(edge_data["imp_factor"]),
             float(edge_data["in_bearing"]),
             float(edge_data["out_bearing"]),
+            None,  # minutes
         )
     network_structure.validate()
     return network_structure
@@ -1347,10 +1349,10 @@ def add_transport_gtfs(
         )
         # add edges between stops and pedestrian network
         for near_node_idx in [nearest_idx, next_nearest_idx]:
-            for start_edge_idx, end_edge_idx in [(new_stop_idx, near_node_idx), (near_node_idx, new_stop_idx)]:
+            if near_node_idx is not None:
                 network_structure.add_edge(
-                    start_edge_idx,
-                    end_edge_idx,
+                    new_stop_idx,
+                    near_node_idx,
                     0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
@@ -1359,6 +1361,7 @@ def add_transport_gtfs(
                     0,  # imp_factor
                     0,  # in_bearing
                     0,  # out_bearing
+                    None,  # minutes
                 )
     # add edges between stops
     for _, trip_df in stop_times.groupby("trip_id"):

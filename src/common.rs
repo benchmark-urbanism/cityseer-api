@@ -10,7 +10,7 @@ use std::sync::atomic::Ordering;
 /// Minimum threshold weight for distance and beta calculations.
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 /// Walking speed in meters per second.
-static WALKING_SPEED: f32 = 1.33333;
+pub static WALKING_SPEED: f32 = 1.33333;
 
 /// Represents a 2D coordinate with `x` and `y` values.
 #[pyclass]
