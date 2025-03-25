@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -10,6 +11,9 @@ import numpy as np
 from tqdm import tqdm
 
 from cityseer import rustalgos
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 np.seterr(invalid="ignore")
 
@@ -54,10 +58,29 @@ DEBUG_MODE: bool = check_debug()
 
 # for calculating default betas vs. distances
 MIN_THRESH_WT: float = 0.01831563888873418
-WALKING_SPEED = 1.33333
+SPEED_M_S = 1.33333
 # for all_close equality checks
 ATOL: float = 0.001
 RTOL: float = 0.0001
+
+
+def plot_thresholds(
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    walking_times: list[float] | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+):
+    # pair distances, betas, and walking times for logging - DO AFTER PARTIAL FUNC
+    distances, betas, walking_times = rustalgos.pair_distances_betas_walking_times(
+        distances, betas, walking_times, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
+    )
+    # log distances, betas, walking times
+    if not QUIET_MODE:
+        logger.info("Metrics computed for:")
+        for distance, beta, walking_time in zip(distances, betas, walking_times, strict=True):
+            logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time} minutes.")
+    return distances
 
 
 RustResults = (

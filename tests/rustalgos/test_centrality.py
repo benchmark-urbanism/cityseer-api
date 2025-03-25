@@ -719,19 +719,19 @@ def test_local_centrality_all(diamond_graph):
     # beta = 0 resolves to b - a and avoids division through zero
     assert np.allclose(
         segment_result.segment_beta[50],
-        [24.542109, 36.813164, 36.813164, 24.542109],
+        [24.54211, 36.813164, 36.813164, 24.54211],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
         segment_result.segment_beta[150],
-        [77.46391, 112.358284, 112.358284, 77.46391],
+        [77.45388, 112.34476, 112.34476, 77.45388],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     assert np.allclose(
         segment_result.segment_beta[250],
-        [133.80205, 177.43903, 177.43904, 133.80205],
+        [133.80203, 177.439, 177.439, 133.80203],
         atol=config.ATOL,
         rtol=config.RTOL,
     )

@@ -1321,7 +1321,7 @@ def add_transport_gtfs(
     # Compute gaps between consecutive arrivals
     stop_times["wait_time"] = stop_times.groupby("stop_id")["arrival_seconds"].diff()
     # Average wait time per stop
-    avg_wait_time = stop_times.groupby("stop_id")["wait_time"].mean().fillna(0)
+    # avg_wait_time = stop_times.groupby("stop_id")["wait_time"].mean().fillna(0)
     # Sort stop_times for proper sequencing
     stop_times.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
     # Compute travel time between consecutive stops
@@ -1334,7 +1334,7 @@ def add_transport_gtfs(
     transformer = Transformer.from_crs(4326, graph_crs, always_xy=True)
     # add nodes for stops
     for _, row in stops.iterrows():
-        wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
+        # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
         nearest_idx, next_nearest_idx = network_structure.assign_to_network((e, n), max_netw_assign_dist)
         new_stop_key = str(row["stop_id"])
@@ -1366,6 +1366,7 @@ def add_transport_gtfs(
         for _, row in trip_df.iterrows():
             if prev_stop:
                 segment_time = avg_segment_time.get(row["stop_id"], 0)  # Default to 0 if missing
+                print(segment_time)
                 # G.add_edge(prev_stop, row["stop_id"], segment_time=segment_time)
             prev_stop = row["stop_id"]
     return network_structure
