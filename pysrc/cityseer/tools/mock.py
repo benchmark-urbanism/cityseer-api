@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import string
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any, cast
 
 import geopandas as gpd
@@ -464,3 +465,62 @@ def mock_species_data(
         probs = counts / len(data)
 
         yield counts.tolist(), probs.tolist()  # type: ignore
+
+
+def mock_gtfs_stops_txt(path: str):
+    """
+    Generate stops and stop times CSVs containing mock GTFS stops data for testing purposes.
+    """
+    output_path = Path(path)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    stops = {
+        "stop_id": ["1", "2", "3", "4", "5"],
+        "stop_name": ["Stop A", "Stop B", "Stop C", "Stop D", "Stop E"],
+        "stop_lat": [51.593, 51.594, 51.595, 51.596, 51.597],
+        "stop_lon": [-0.103, -0.104, -0.105, -0.106, -0.107],
+    }
+    stops_gdf = gpd.GeoDataFrame(stops, geometry=gpd.points_from_xy(stops["stop_lon"], stops["stop_lat"]))
+    stops_gdf.to_csv(output_path / "stops.txt", index=False)
+
+    stop_times = {
+        "trip_id": ["1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "3", "3", "3", "3", "3"],
+        "arrival_time": [
+            "08:00:00",
+            "08:11:00",
+            "08:20:00",
+            "08:31:00",
+            "08:40:00",
+            "09:01:00",
+            "09:10:00",
+            "09:21:00",
+            "09:30:00",
+            "09:41:00",
+            "10:00:00",
+            "10:11:00",
+            "10:20:00",
+            "10:31:00",
+            "10:40:00",
+        ],
+        "departure_time": [
+            "08:01:00",
+            "08:12:00",
+            "08:21:00",
+            "08:32:00",
+            "08:41:00",
+            "09:02:00",
+            "09:11:00",
+            "09:22:00",
+            "09:31:00",
+            "09:42:00",
+            "10:01:00",
+            "10:12:00",
+            "10:21:00",
+            "10:32:00",
+            "10:41:00",
+        ],
+        "stop_id": ["1", "2", "3", "4", "5", "1", "2", "3", "4", "5", "1", "2", "3", "4", "5"],
+        "stop_sequence": [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5],
+    }
+    stop_times_gdf = gpd.GeoDataFrame(stop_times)
+    stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
