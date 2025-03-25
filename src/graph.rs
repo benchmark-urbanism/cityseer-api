@@ -54,7 +54,7 @@ impl EdgePayload {
             && self.imp_factor.is_finite()
             && self.in_bearing.is_finite()
             && self.out_bearing.is_finite()
-            && self.minutes.is_finite()
+            && (self.minutes.is_finite() || self.minutes.is_nan())
     }
 }
 #[pyclass]

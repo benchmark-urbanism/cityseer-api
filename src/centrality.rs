@@ -57,12 +57,12 @@ pub struct CentralitySegmentResult {
 // NodeDistance for heap
 struct NodeDistance {
     node_idx: usize,
-    minutes: f32,
+    metric: f32,
 }
 // Implement PartialOrd and Ord focusing on distance for comparison
 impl PartialOrd for NodeDistance {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.minutes.partial_cmp(&self.minutes)
+        other.metric.partial_cmp(&self.metric)
     }
 }
 impl Ord for NodeDistance {
@@ -74,7 +74,7 @@ impl Ord for NodeDistance {
 // can't derive PartialEq for f32, so use a custom approach
 impl PartialEq for NodeDistance {
     fn eq(&self, other: &Self) -> bool {
-        self.node_idx == other.node_idx && (self.minutes - other.minutes).abs() < f32::EPSILON
+        self.node_idx == other.node_idx && (self.metric - other.metric).abs() < f32::EPSILON
     }
 }
 // Implement Eq since we've provided a custom PartialEq
@@ -116,7 +116,7 @@ impl NetworkStructure {
         // prime the min heap with the src node
         active.push(NodeDistance {
             node_idx: src_idx,
-            minutes: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -163,7 +163,7 @@ impl NetworkStructure {
                 // impedance and distance is previous plus new
                 let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
                 let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
-                let edge_minutes = if edge_payload.minutes == 0.0 {
+                let edge_minutes = if edge_payload.minutes.is_nan() {
                     (edge_payload.length / speed_m_s) / 60.0
                 } else {
                     edge_payload.minutes
@@ -177,7 +177,7 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        minutes: short_total_minutes,
+                        metric: short_total_minutes,
                     });
                 }
                 // inject jitter
@@ -222,7 +222,7 @@ impl NetworkStructure {
         let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
-            minutes: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -270,7 +270,7 @@ impl NetworkStructure {
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
                 // time
-                let edge_minutes = if edge_payload.minutes == 0.0 {
+                let edge_minutes = if edge_payload.minutes.is_nan() {
                     (edge_payload.length / speed_m_s) / 60.0
                 } else {
                     edge_payload.minutes
@@ -284,7 +284,7 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        minutes: short_total_minutes,
+                        metric: simpl_total_dist,
                     });
                 }
                 // inject jitter
@@ -295,10 +295,10 @@ impl NetworkStructure {
                 /*
                 if impedance less than prior for this node then update shortest path
                 */
-                if short_total_minutes + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
-                    tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist;
+                if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
+                    tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
                     tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
-                    tree_map[nb_nd_idx.index()].agg_minutes = short_total_minutes + jitter;
+                    tree_map[nb_nd_idx.index()].agg_minutes = short_total_minutes;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                 }
@@ -332,7 +332,7 @@ impl NetworkStructure {
         let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
-            minutes: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -374,22 +374,20 @@ impl NetworkStructure {
                 // impedance and distance is previous plus new
                 let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
                 let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
-                let edge_minutes = if edge_payload.minutes == 0.0 {
+                let edge_minutes = if edge_payload.minutes.is_nan() {
                     (edge_payload.length / speed_m_s) / 60.0
                 } else {
                     edge_payload.minutes
                 };
                 let short_total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
                 // bail if time is greater than threshold
-                // otherwise, add the next node to the heap
-                // use unjittered distance for this step
                 if short_total_minutes > max_minutes as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        minutes: short_total_minutes,
+                        metric: short_total_minutes,
                     });
                 }
                 // inject jitter

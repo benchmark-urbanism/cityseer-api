@@ -184,7 +184,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     for max_dist in [2000]:
         max_minutes = (max_dist / config.SPEED_M_S) / 60
         # use aggressive jitter and check that at least one shortest path is different to non-jitter
-        for jitter in [200]:
+        for jitter in [2]:
             diffs = False
             for src_idx in range(len(primal_graph)):
                 # don't calculate for isolated nodes

@@ -422,10 +422,12 @@ class EdgePayload:
     imp_factor: float
     in_bearing: float
     out_bearing: float
+    minutes: float
     def validate(self) -> bool: ...
 
 class NodeVisit:
     visited: bool
+    discovered: bool
     pred: int | None
     short_dist: float
     simpl_dist: float
@@ -433,6 +435,7 @@ class NodeVisit:
     origin_seg: int | None
     last_seg: int | None
     out_bearing: float
+    agg_minutes: float
     @classmethod
     def new(cls) -> NodeVisit: ...
 
