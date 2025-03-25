@@ -168,16 +168,16 @@ impl NetworkStructure {
                 } else {
                     edge_payload.minutes
                 };
-                let short_total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
+                let total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
                 // bail if time is greater than threshold
                 // otherwise, add the next node to the heap
-                if short_total_minutes > max_minutes as f32 {
+                if total_minutes > max_minutes as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        metric: short_total_minutes,
+                        metric: total_minutes,
                     });
                 }
                 // inject jitter
@@ -188,9 +188,9 @@ impl NetworkStructure {
                 /*
                 if impedance less than prior for this node then update shortest path
                 */
-                if short_total_minutes + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
+                if total_minutes + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
                     tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
-                    tree_map[nb_nd_idx.index()].agg_minutes = short_total_minutes + jitter;
+                    tree_map[nb_nd_idx.index()].agg_minutes = total_minutes + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                 }
             }
@@ -275,10 +275,10 @@ impl NetworkStructure {
                 } else {
                     edge_payload.minutes
                 };
-                let short_total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
+                let total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
                 // bail if time is greater than threshold
                 // otherwise, add the next node to the heap
-                if short_total_minutes > max_minutes as f32 {
+                if total_minutes > max_minutes as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
@@ -295,10 +295,10 @@ impl NetworkStructure {
                 /*
                 if impedance less than prior for this node then update shortest path
                 */
-                if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
+                if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist {
                     tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
                     tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
-                    tree_map[nb_nd_idx.index()].agg_minutes = short_total_minutes;
+                    tree_map[nb_nd_idx.index()].agg_minutes = total_minutes;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                 }
@@ -379,15 +379,15 @@ impl NetworkStructure {
                 } else {
                     edge_payload.minutes
                 };
-                let short_total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
+                let total_minutes = tree_map[node_idx].agg_minutes + edge_minutes;
                 // bail if time is greater than threshold
-                if short_total_minutes > max_minutes as f32 {
+                if total_minutes > max_minutes as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        metric: short_total_minutes,
+                        metric: total_minutes,
                     });
                 }
                 // inject jitter
@@ -398,14 +398,14 @@ impl NetworkStructure {
                 /*
                 if impedance less than prior for this node then update shortest path
                 */
-                if short_total_minutes + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
+                if total_minutes + jitter < tree_map[nb_nd_idx.index()].agg_minutes {
                     let origin_seg = if node_idx == src_idx {
                         edge_idx.index()
                     } else {
                         tree_map[node_idx].origin_seg.unwrap()
                     };
                     tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
-                    tree_map[nb_nd_idx.index()].agg_minutes = short_total_minutes + jitter;
+                    tree_map[nb_nd_idx.index()].agg_minutes = total_minutes + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                     tree_map[nb_nd_idx.index()].origin_seg = Some(origin_seg);

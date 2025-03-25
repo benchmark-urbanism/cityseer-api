@@ -9,6 +9,7 @@ from cityseer.tools import io, mock
 
 def test_aggregate_to_src_idx(primal_graph):
     for max_dist in [400, 750]:
+        max_minutes = (max_dist / config.SPEED_M_S) / 60
         for deduplicate in [False, True]:
             # generate data
             _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
@@ -29,14 +30,18 @@ def test_aggregate_to_src_idx(primal_graph):
                 for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
-                        netw_src_idx, network_structure, max_dist, angular=angular
+                        netw_src_idx, network_structure, max_minutes, config.SPEED_M_S, angular=angular
                     )
                     # compare to manual checks on distances:
                     # get the network distances
                     if angular is False:
-                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(netw_src_idx, max_dist)
+                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(
+                            netw_src_idx, max_minutes, config.SPEED_M_S
+                        )
                     else:
-                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(netw_src_idx, max_dist)
+                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(
+                            netw_src_idx, max_minutes, config.SPEED_M_S
+                        )
                     # verify distances vs. the max
                     for data_key, data_entry in data_map.entries.items():
                         # nearest
@@ -90,6 +95,7 @@ def test_accessibility(primal_graph):
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
+    max_minutes = (max_dist / config.SPEED_M_S) / 60
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
     landuses_map = data_gdf["categorical_landuses"].to_dict()
     # all datapoints and types are completely unique except for the last five - which all point to the same source
@@ -119,7 +125,7 @@ def test_accessibility(primal_graph):
             c_dist = np.nan
             z_dist = np.nan
             # iterate reachable
-            reachable_entries = data_map.aggregate_to_src_idx(src_idx, network_structure, max_dist)
+            reachable_entries = data_map.aggregate_to_src_idx(src_idx, network_structure, max_minutes, config.SPEED_M_S)
             for data_key, data_dist in reachable_entries.items():
                 # double check distance is within threshold
                 assert data_dist <= max_dist
@@ -215,6 +221,7 @@ def test_mixed_uses(primal_graph):
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
+    max_minutes = (max_dist / config.SPEED_M_S) / 60
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
     landuses_map = data_gdf["categorical_landuses"].to_dict()
     # test against various distances
@@ -233,7 +240,7 @@ def test_mixed_uses(primal_graph):
         )
         for netw_src_idx in network_structure.node_indices():
             reachable_entries = data_map.aggregate_to_src_idx(
-                netw_src_idx, network_structure, max_dist, angular=angular
+                netw_src_idx, network_structure, max_minutes, config.SPEED_M_S, angular=angular
             )
             for dist_cutoff, beta in zip(distances, betas, strict=True):
                 class_agg = dict()

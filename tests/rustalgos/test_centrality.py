@@ -227,7 +227,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
-    # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80)
+    # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80, dpi=300)
     p_source_idx = nodes_gdf_p.index.tolist().index("0")
     primal_targets = ("15", "20", "37")
     dual_sources = ("0_1_k0", "0_16_k0", "0_31_k0")
@@ -400,7 +400,9 @@ def test_local_node_centrality_shortest(primal_graph):
     max_minutes_5000 = (5000 / config.SPEED_M_S) / 60
     for src_idx in range(n_nodes):
         # get shortest path maps
-        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(src_idx, max_minutes_5000)
+        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
+            src_idx, max_minutes_5000, speed_m_s=config.SPEED_M_S
+        )
         for to_idx in visited_nodes:
             # skip self nodes
             if to_idx == src_idx:
