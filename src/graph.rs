@@ -237,8 +237,8 @@ impl NetworkStructure {
                 length: length.unwrap_or(0.0),
                 angle_sum: angle_sum.unwrap_or(0.0),
                 imp_factor: imp_factor.unwrap_or(1.0),
-                in_bearing: in_bearing.unwrap_or(0.0),
-                out_bearing: out_bearing.unwrap_or(0.0),
+                in_bearing: in_bearing.unwrap_or(f32::NAN),
+                out_bearing: out_bearing.unwrap_or(f32::NAN),
                 seconds: seconds.unwrap_or(f32::NAN),
             },
         );

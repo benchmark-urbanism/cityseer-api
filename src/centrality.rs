@@ -161,10 +161,8 @@ impl NetworkStructure {
                     }
                 }
                 // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    edge_payload.length / speed_m_s
+                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -189,7 +187,7 @@ impl NetworkStructure {
                 if impedance less than prior for this node then update shortest path
                 */
                 if total_seconds + jitter < tree_map[nb_nd_idx.index()].agg_seconds {
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
+                    tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                 }
@@ -214,7 +212,6 @@ impl NetworkStructure {
         let mut visited_nodes: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
         // tracks shortest path distance for search cut-off
-        tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].simpl_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
@@ -252,16 +249,16 @@ impl NetworkStructure {
                 {
                     continue;
                 }
-                // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
                 /*
                 angular impedance includes two parts:
                 A - turn from prior simplest-path route segment
                 B - angular change across current segment
                 */
                 let mut turn: f32 = 0.0;
-                if node_idx != src_idx {
+                if node_idx != src_idx
+                    && edge_payload.in_bearing.is_finite()
+                    && tree_map[node_idx].out_bearing.is_finite()
+                {
                     turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing + 180.0)
                         % 360.0
                         - 180.0)
@@ -297,7 +294,6 @@ impl NetworkStructure {
                 */
                 if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist {
                     tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
@@ -372,10 +368,8 @@ impl NetworkStructure {
                     edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
                 }
                 // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    edge_payload.length / speed_m_s
+                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -404,7 +398,7 @@ impl NetworkStructure {
                     } else {
                         tree_map[node_idx].origin_seg.unwrap()
                     };
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
+                    tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
@@ -495,7 +489,7 @@ impl NetworkStructure {
                     if to_idx == src_idx {
                         continue;
                     }
-                    if !node_visit.short_dist.is_finite() {
+                    if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
                     let wt = self.get_node_weight(*to_idx).unwrap();
@@ -670,14 +664,14 @@ impl NetworkStructure {
                     if to_idx == src_idx {
                         continue;
                     }
-                    if !node_visit.short_dist.is_finite() {
+                    if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
                     let wt = self.get_node_weight(*to_idx).unwrap();
                     if compute_closeness {
-                        for i in 0..distances.len() {
-                            let distance = distances[i];
-                            if node_visit.short_dist <= distance as f32 {
+                        for i in 0..seconds.len() {
+                            let sec = seconds[i];
+                            if node_visit.agg_seconds <= sec as f32 {
                                 node_density.metric[i][*src_idx]
                                     .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
                                 let far_ang = farness_scaling_offset
@@ -700,9 +694,9 @@ impl NetworkStructure {
                             if inter_idx == *src_idx {
                                 break;
                             }
-                            for i in 0..distances.len() {
-                                let distance = distances[i];
-                                if node_visit.short_dist <= distance as f32 {
+                            for i in 0..seconds.len() {
+                                let sec = seconds[i];
+                                if node_visit.agg_seconds <= sec as f32 {
                                     node_betweenness.metric[i][inter_idx]
                                         .fetch_add(1.0 * wt, AtomicOrdering::Acquire);
                                 }

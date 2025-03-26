@@ -715,6 +715,35 @@ def test_network_structure_from_gpd(primal_graph):
             )
 
 
+def test_add_transport_gtfs(primal_graph):
+    """ """
+    # prepare GTFS data
+    G: nx.MultiGraph = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    gtfs_data_path = "temp"
+    mock.mock_gtfs_stops_txt(gtfs_data_path)
+    graph_crs = 3395
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, graph_crs)
+    distances = [500, 1000]
+    #
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+    )
+    nodes_gdf_w_trans = nodes_gdf.copy()
+    #
+    nodes_gdf_w_trans, edges_gdf, network_structure = io.add_transport_gtfs(
+        gtfs_data_path, nodes_gdf_w_trans, edges_gdf, network_structure, graph_crs
+    )
+    nodes_gdf_w_trans = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf_w_trans,
+        distances=distances,
+    )
+    print("here")
+
+
 def test_nx_from_cityseer_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
