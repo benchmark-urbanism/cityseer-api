@@ -70,7 +70,7 @@ def test_local_centrality_time(primal_graph):
     # load the test graph
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances, _betas, _times = rustalgos.pair_distances_betas_walking_times(distances=[5000])
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(distances=[5000])
 
     def dijkstra_tree_shortest_wrapper():
         network_structure.dijkstra_tree_shortest(

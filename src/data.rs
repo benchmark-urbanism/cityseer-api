@@ -1,6 +1,6 @@
 use crate::common::MetricResult;
 use crate::common::WALKING_SPEED;
-use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_walking_times, Coord};
+use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_time, Coord};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use numpy::PyArray1;
@@ -185,7 +185,7 @@ impl DataMap {
     #[pyo3(signature = (
         netw_src_idx,
         network_structure,
-        max_walking_time,
+        max_walk_seconds,
         speed_m_s,
         jitter_scale=None,
         angular=None
@@ -194,7 +194,7 @@ impl DataMap {
         &self,
         netw_src_idx: usize,
         network_structure: &NetworkStructure,
-        max_walking_time: f32,
+        max_walk_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
@@ -222,14 +222,14 @@ impl DataMap {
         let (_visited_nodes, tree_map) = if !angular {
             network_structure.dijkstra_tree_shortest(
                 netw_src_idx,
-                max_walking_time,
+                max_walk_seconds,
                 speed_m_s,
                 Some(jitter_scale),
             )
         } else {
             network_structure.dijkstra_tree_simplest(
                 netw_src_idx,
-                max_walking_time,
+                max_walk_seconds,
                 speed_m_s,
                 Some(jitter_scale),
             )
@@ -245,32 +245,32 @@ impl DataMap {
                 // find the corresponding network node
                 let node_visit = tree_map[data_val.nearest_assign.unwrap()];
                 // proceed if this node is within max dist
-                if node_visit.agg_minutes < max_walking_time as f32 {
+                if node_visit.agg_seconds < max_walk_seconds as f32 {
                     // get the node's payload
                     let node_payload = network_structure
                         .get_node_payload(data_val.nearest_assign.unwrap())
                         .unwrap();
                     // calculate the distance more precisely
                     let d_d = data_val.coord.hypot(node_payload.coord);
-                    nearest_total_time = node_visit.agg_minutes + (d_d / speed_m_s) / 60.0;
+                    nearest_total_time = node_visit.agg_seconds + d_d / speed_m_s;
                     nearest_total_dist = node_visit.short_dist + d_d;
                 }
             };
             // the next-nearest may offer a closer route depending on the direction of shortest path approach
             if !data_val.next_nearest_assign.is_none() {
                 let node_visit = tree_map[data_val.next_nearest_assign.unwrap()];
-                if node_visit.agg_minutes < max_walking_time as f32 {
+                if node_visit.agg_seconds < max_walk_seconds as f32 {
                     let node_payload = network_structure
                         .get_node_payload(data_val.next_nearest_assign.unwrap())
                         .unwrap();
                     let d_d = data_val.coord.hypot(node_payload.coord);
-                    next_nearest_total_time = node_visit.agg_minutes + (d_d / speed_m_s) / 60.0;
+                    next_nearest_total_time = node_visit.agg_seconds + d_d / speed_m_s;
                     next_nearest_total_dist = node_visit.short_dist + d_d;
                 }
             };
             // if still within max
-            if nearest_total_time <= max_walking_time as f32
-                || next_nearest_total_time <= max_walking_time as f32
+            if nearest_total_time <= max_walk_seconds as f32
+                || next_nearest_total_time <= max_walk_seconds as f32
             {
                 // select from less of two
                 let total_dist = if nearest_total_time <= next_nearest_total_time {
@@ -314,7 +314,7 @@ impl DataMap {
         accessibility_keys,
         distances=None,
         betas=None,
-        walking_times=None,
+        minutes=None,
         angular=None,
         spatial_tolerance=None,
         min_threshold_wt=None,
@@ -329,7 +329,7 @@ impl DataMap {
         accessibility_keys: Vec<String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        walking_times: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
@@ -338,19 +338,10 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
-        let (distances, betas, walking_times) = pair_distances_betas_walking_times(
-            distances,
-            betas,
-            walking_times,
-            min_threshold_wt,
-            speed_m_s,
-        )?;
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let max_walking_time: f32 =
-            walking_times.iter().fold(
-                0.0,
-                |max_val, &val| if val > max_val { val } else { max_val },
-            );
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -426,7 +417,7 @@ impl DataMap {
                 let reachable_entries = self.aggregate_to_src_idx(
                     *netw_src_idx,
                     network_structure,
-                    max_walking_time,
+                    max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
                     angular,
@@ -485,7 +476,7 @@ impl DataMap {
         landuses_map,
         distances=None,
         betas=None,
-        walking_times=None,
+        minutes=None,
         compute_hill=None,
         compute_hill_weighted=None,
         compute_shannon=None,
@@ -503,7 +494,7 @@ impl DataMap {
         landuses_map: HashMap<String, Option<String>>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        walking_times: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         compute_hill: Option<bool>,
         compute_hill_weighted: Option<bool>,
         compute_shannon: Option<bool>,
@@ -516,19 +507,10 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
-        let (distances, betas, walking_times) = pair_distances_betas_walking_times(
-            distances,
-            betas,
-            walking_times,
-            min_threshold_wt,
-            speed_m_s,
-        )?;
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let max_walking_time: f32 =
-            walking_times.iter().fold(
-                0.0,
-                |max_val, &val| if val > max_val { val } else { max_val },
-            );
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -596,7 +578,7 @@ impl DataMap {
                 let reachable_entries = self.aggregate_to_src_idx(
                     *netw_src_idx,
                     network_structure,
-                    max_walking_time,
+                    max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
                     angular,
@@ -760,7 +742,7 @@ impl DataMap {
         numerical_maps,
         distances=None,
         betas=None,
-        walking_times=None,
+        minutes=None,
         angular=None,
         spatial_tolerance=None,
         min_threshold_wt=None,
@@ -774,7 +756,7 @@ impl DataMap {
         numerical_maps: Vec<HashMap<String, f32>>, // vector of numerical maps
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
-        walking_times: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         angular: Option<bool>,
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
@@ -785,19 +767,10 @@ impl DataMap {
     ) -> PyResult<Vec<StatsResult>> {
         // TODO: any benefit to returning hashmap instead?
         // Return a vector of StatsResult
-        let (distances, betas, walking_times) = pair_distances_betas_walking_times(
-            distances,
-            betas,
-            walking_times,
-            min_threshold_wt,
-            speed_m_s,
-        )?;
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let max_walking_time: f32 =
-            walking_times.iter().fold(
-                0.0,
-                |max_val, &val| if val > max_val { val } else { max_val },
-            ); // Iterate through each map in the numerical_maps
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         for (index, numerical_map) in numerical_maps.iter().enumerate() {
             if numerical_map.len() != self.count() {
                 return Err(exceptions::PyValueError::new_err(
@@ -897,7 +870,7 @@ impl DataMap {
                 let reachable_entries = self.aggregate_to_src_idx(
                     *netw_src_idx,
                     network_structure,
-                    max_walking_time,
+                    max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
                     angular,

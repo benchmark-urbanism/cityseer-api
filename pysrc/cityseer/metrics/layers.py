@@ -125,7 +125,7 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    walking_times: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -166,15 +166,15 @@ def compute_accessibilities(
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
         for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `walking_times` parameters must be provided instead.
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
         A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
         for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `walking_times` parameter must be provided instead.
-    walking_times: list[float]
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
         A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
         and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `walking_times` parameter is not provided, then the `distances` or `betas`
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
         parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
@@ -194,8 +194,8 @@ def compute_accessibilities(
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings from walking times to distance
-        thresholds $d_{max}$.
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -258,7 +258,7 @@ def compute_accessibilities(
         accessibility_keys=accessibility_keys,
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
@@ -268,10 +268,10 @@ def compute_accessibilities(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack
-    distances = config.plot_thresholds(
+    distances = config.log_thresholds(
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
@@ -301,7 +301,7 @@ def compute_mixed_uses(
     compute_gini: bool | None = False,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    walking_times: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -358,15 +358,15 @@ def compute_mixed_uses(
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
         for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `walking_times` parameters must be provided instead.
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
         A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
         for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `walking_times` parameter must be provided instead.
-    walking_times: list[float]
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
         A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
         and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `walking_times` parameter is not provided, then the `distances` or `betas`
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
         parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
@@ -386,8 +386,8 @@ def compute_mixed_uses(
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings from walking times to distance
-        thresholds $d_{max}$.
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -478,7 +478,7 @@ def compute_mixed_uses(
         landuses_map=landuses_map,
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         compute_hill=compute_hill,
         compute_hill_weighted=compute_hill_weighted,
         compute_shannon=compute_shannon,
@@ -492,10 +492,10 @@ def compute_mixed_uses(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack
-    distances = config.plot_thresholds(
+    distances = config.log_thresholds(
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
@@ -526,7 +526,7 @@ def compute_stats(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    walking_times: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -564,15 +564,15 @@ def compute_stats(
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
         for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `walking_times` parameters must be provided instead.
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
         A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
         for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `walking_times` parameter must be provided instead.
-    walking_times: list[float]
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
         A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
         and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `walking_times` parameter is not provided, then the `distances` or `betas`
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
         parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
@@ -592,8 +592,8 @@ def compute_stats(
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings from walking times to distance
-        thresholds $d_{max}$.
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -663,7 +663,7 @@ def compute_stats(
         numerical_maps=stats_maps,
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
@@ -673,10 +673,10 @@ def compute_stats(
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
     # unpack
-    distances = config.plot_thresholds(
+    distances = config.log_thresholds(
         distances=distances,
         betas=betas,
-        walking_times=walking_times,
+        minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )

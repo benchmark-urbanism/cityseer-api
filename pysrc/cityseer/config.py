@@ -64,22 +64,22 @@ ATOL: float = 0.001
 RTOL: float = 0.0001
 
 
-def plot_thresholds(
+def log_thresholds(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
-    walking_times: list[float] | None = None,
+    minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
 ):
-    # pair distances, betas, and walking times for logging - DO AFTER PARTIAL FUNC
-    distances, betas, walking_times = rustalgos.pair_distances_betas_walking_times(
-        distances, betas, walking_times, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
+    # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
+    distances, betas, seconds = rustalgos.pair_distances_betas_time(
+        distances, betas, minutes, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
     )
-    # log distances, betas, walking times
+    # log distances, betas, minutes
     if not QUIET_MODE:
         logger.info("Metrics computed for:")
-        for distance, beta, walking_time in zip(distances, betas, walking_times, strict=True):
-            logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time} minutes.")
+        for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
+            logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
     return distances
 
 

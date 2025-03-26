@@ -136,82 +136,85 @@ def test_betas_from_distances():
             rustalgos.betas_from_distances(d)
 
 
-def test_distances_from_walking_times():
+def test_distances_from_seconds():
     distances = [400, 600, 800, 1600, 2000, 2400]
-    times = [5, 7.5, 10, 20, 25, 30]
-    for dist, time in zip(distances, times, strict=True):
+    minutes = [5, 7.5, 10, 20, 25, 30]
+    seconds = [round(t * 60) for t in minutes]
+    for dist, time in zip(distances, seconds, strict=True):
         assert np.allclose(
-            rustalgos.distances_from_walking_times([time]),
+            rustalgos.distances_from_seconds([time]),
             dist,
             atol=config.ATOL,
             rtol=config.RTOL,
         )
     # array form check
-    ds = rustalgos.distances_from_walking_times(times)
+    ds = rustalgos.distances_from_seconds(seconds)
     assert np.allclose(distances, ds, atol=config.ATOL, rtol=config.RTOL)
     # round trip check
-    ts = rustalgos.walking_times_from_distances(ds)
-    assert np.allclose(times, ts, atol=config.ATOL, rtol=config.RTOL)
+    ts = rustalgos.seconds_from_distances(ds)
+    assert np.allclose(seconds, ts, atol=config.ATOL, rtol=config.RTOL)
     # check that duplicates or decreasing ordering is caught
     with pytest.raises(ValueError):
-        rustalgos.distances_from_walking_times([10, 10])
+        rustalgos.distances_from_seconds([10, 10])
     with pytest.raises(ValueError):
-        rustalgos.distances_from_walking_times([10, 5])
+        rustalgos.distances_from_seconds([10, 5])
 
 
-def test_walking_times_from_distances():
+def test_seconds_from_distances():
     distances = [400, 600, 800, 1600, 2000, 2400]
-    times = [5, 7.5, 10, 20, 25, 30]
-    for dist, time in zip(distances, times, strict=True):
+    minutes = [5, 7.5, 10, 20, 25, 30]
+    seconds = [round(t * 60) for t in minutes]
+    for dist, time in zip(distances, seconds, strict=True):
         assert np.allclose(
-            rustalgos.walking_times_from_distances([dist]),
+            rustalgos.seconds_from_distances([dist]),
             time,
             atol=config.ATOL,
             rtol=config.RTOL,
         )
     # array form check
-    ts = rustalgos.walking_times_from_distances(distances)
-    assert np.allclose(times, ts, atol=config.ATOL, rtol=config.RTOL)
+    ts = rustalgos.seconds_from_distances(distances)
+    assert np.allclose(seconds, ts, atol=config.ATOL, rtol=config.RTOL)
     # round trip check
-    ds = rustalgos.distances_from_walking_times(ts)
+    ds = rustalgos.distances_from_seconds(ts)
     assert np.allclose(distances, ds, atol=config.ATOL, rtol=config.RTOL)
     # check that duplicates or decreasing ordering is caught
     with pytest.raises(ValueError):
-        rustalgos.walking_times_from_distances([100, 100])
+        rustalgos.seconds_from_distances([100, 100])
     with pytest.raises(ValueError):
-        rustalgos.walking_times_from_distances([100, 50])
+        rustalgos.seconds_from_distances([100, 50])
 
 
-def test_pair_distances_betas_walking_times():
+def test_pair_distances_betas_time():
     distances = [400, 600, 800, 1600, 2000, 10000, 20000]
-    times = [5.0, 7.5, 10.0, 20.0, 25.0, 125.0, 250.0]
+    minutes = [5.0, 7.5, 10.0, 20.0, 25.0, 125.0, 250.0]
+    seconds = [round(t * 60) for t in minutes]
     betas = [0.01, 0.00667, 0.005, 0.0025, 0.002, 0.0004, 0.0002]
     # should raise
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_walking_times(None, None, None)
+        rustalgos.pair_distances_betas_time(None, None, None)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_walking_times(distances, betas, None)
+        rustalgos.pair_distances_betas_time(distances, betas, None)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_walking_times(distances, None, times)
+        rustalgos.pair_distances_betas_time(distances, None, minutes)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_walking_times(None, betas, times)
+        rustalgos.pair_distances_betas_time(None, betas, minutes)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_walking_times(distances, betas, times)
+        rustalgos.pair_distances_betas_time(distances, betas, minutes)
     # should match
-    ds, bs, ts = rustalgos.pair_distances_betas_walking_times(distances, None, None)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(distances, None, None)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(ts, times, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
     #
-    ds, bs, ts = rustalgos.pair_distances_betas_walking_times(None, betas, None)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(None, betas, None)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(ts, times, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
     #
-    ds, bs, ts = rustalgos.pair_distances_betas_walking_times(None, None, times)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(None, None, minutes)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(ts, times, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
 
 
 def test_avg_distances_for_betas():

@@ -101,7 +101,7 @@ for _, row in stops.iterrows():
                 0,  # imp_factor
                 0,  # in_bearing
                 0,  # out_bearing
-                None,  # minutes
+                None,  # seconds
             )
 # add edges between stops
 for _, trip_df in stop_times.groupby("trip_id"):

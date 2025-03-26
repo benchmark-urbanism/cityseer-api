@@ -247,7 +247,7 @@ def test_network_structure_from_nx(diamond_graph):
             imp_factor = edge_payload.imp_factor
             in_bearing = edge_payload.in_bearing
             out_bearing = edge_payload.out_bearing
-            minutes = edge_payload.minutes
+            seconds = edge_payload.seconds
             # check against edges_gdf
             gdf_edge_key = f"{start_nd_key}-{end_nd_key}"
             assert edges_gdf.loc[gdf_edge_key, "start_ns_node_idx"] == start_ns_node_idx
@@ -260,7 +260,7 @@ def test_network_structure_from_nx(diamond_graph):
             assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
             assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
             assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
-            assert np.isnan(minutes)
+            assert np.isnan(seconds)
             # manual checks
             if not is_dual:
                 if (start_nd_key, end_nd_key) == ("0", "1"):
