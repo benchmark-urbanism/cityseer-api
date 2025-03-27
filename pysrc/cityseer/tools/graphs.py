@@ -935,7 +935,7 @@ def _squash_adjacent(
                     # only add parallel edges if substantially different from any existing edges
                     n_edges: int = nx_multigraph.number_of_edges(new_nd_name, target_nd_key)
                     for edge_idx in range(n_edges):
-                        exist_geom: geometry.LineString = nx_multigraph[new_nd_name][target_nd_key][edge_idx]["geom"]
+                        exist_geom: geometry.LineString = nx_multigraph[new_nd_name][target_nd_key][edge_idx]["geom"]  # type: ignore
                         # don't add if the edges have the same number of coords and the coords are similar
                         # 5m x and y tolerance across all coordinates
                         if len(new_edge_geom.coords) == len(exist_geom.coords) and np.allclose(
@@ -1570,8 +1570,8 @@ def nx_split_opposing_geoms(
                     raise ValueError(f"Number of edges between {end_nd_key} and {new_nd_name} does not equal 1.")
                 s_k = e_k = 0
             # write the new edges
-            _multi_graph[start_nd_key][new_nd_name][s_k]["geom"] = s_new_geom
-            _multi_graph[end_nd_key][new_nd_name][e_k]["geom"] = e_new_geom
+            _multi_graph[start_nd_key][new_nd_name][s_k]["geom"] = s_new_geom  # type: ignore
+            _multi_graph[end_nd_key][new_nd_name][e_k]["geom"] = e_new_geom  # type: ignore
             # add the new edges to the edge_children dictionary
             edge_key = make_edge_key(start_nd_key, end_nd_key, edge_idx)
             edge_children[edge_key] = [
@@ -1579,13 +1579,13 @@ def nx_split_opposing_geoms(
                     start_nd_key,
                     new_nd_name,
                     s_k,
-                    _multi_graph[start_nd_key][new_nd_name][s_k],
+                    _multi_graph[start_nd_key][new_nd_name][s_k],  # type: ignore
                 ),
                 (
                     end_nd_key,
                     new_nd_name,
                     e_k,
-                    _multi_graph[end_nd_key][new_nd_name][e_k],
+                    _multi_graph[end_nd_key][new_nd_name][e_k],  # type: ignore
                 ),
             ]
             # drop the old edge from _multi_graph
@@ -1982,12 +1982,12 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                     continue
                 # add the neighbouring primal edges as dual nodes
                 for edge_idx in nx_multigraph[n_side][nb_nd_key]:
-                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, edge_idx)
+                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, edge_idx)  # type: ignore
                     # skip if the edge has already been processed from another direction
                     if g_dual.has_edge(hub_node_dual, spoke_node_dual):
                         continue
                     # get the near and far half geoms
-                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)
+                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)  # type: ignore
                     # weld the lines
                     merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])  # type: ignore
                     if merged_line.geom_type != "LineString":

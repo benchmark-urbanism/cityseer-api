@@ -417,12 +417,12 @@ class EdgeInfo:
         edge_idx: int,
     ):
         """Set accumulated edge data to specified graph and edge."""
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["levels"] = self.levels
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["levels"] = self.levels  # type: ignore
         for k, v in self.props.items():
-            nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v
+            nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v  # type: ignore
 
 
 def add_node(

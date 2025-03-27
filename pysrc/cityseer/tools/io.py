@@ -106,7 +106,7 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
             # snap ends
             edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)  # type: ignore
 
     return g_multi_copy
 
@@ -883,7 +883,7 @@ def nx_from_osm_nx(
             for edge_att in edge_attributes:
                 if edge_att not in edge_data:
                     raise ValueError(f"Attribute {edge_att} is not available for edge {start_nd_key}-{end_nd_key}.")
-                g_multi[start_nd_key][end_nd_key][edge_idx][edge_att] = edge_data[edge_att]
+                g_multi[start_nd_key][end_nd_key][edge_idx][edge_att] = edge_data[edge_att]  # type: ignore
 
     return g_multi
 
@@ -1122,7 +1122,7 @@ def network_structure_from_nx(
                 ns_edge_idx = network_structure.add_edge(
                     start_ns_node_idx,
                     end_ns_node_idx,
-                    edge_idx,
+                    edge_idx,  # type: ignore
                     start_node_key,
                     end_node_key,
                     line_len,
