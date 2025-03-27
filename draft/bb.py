@@ -175,6 +175,13 @@ from cityseer.tools import graphs, io, mock
 from cityseer.metrics import networks
 from cityseer import rustalgos
 from pyproj import Transformer
+import pathlib
+
+import matplotlib.pyplot as plt
+import numpy as np
+from cityseer.metrics import layers, networks
+from cityseer.tools import graphs, io, mock, plot
+from matplotlib import colors
 
 
 # %%
@@ -193,9 +200,10 @@ nodes_gdf = networks.node_centrality_shortest(
     distances=distances,
 )
 nodes_gdf_w_trans = nodes_gdf.copy()
+edges_gdf_w_trans = edges_gdf.copy()
 #
-nodes_gdf_w_trans, edges_gdf, network_structure = io.add_transport_gtfs(
-    gtfs_data_path, nodes_gdf_w_trans, edges_gdf, network_structure, graph_crs
+nodes_gdf_w_trans, edges_gdf_w_trans, network_structure = io.add_transport_gtfs(
+    gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure, graph_crs
 )
 nodes_gdf_w_trans = networks.node_centrality_shortest(
     network_structure=network_structure,
@@ -205,3 +213,9 @@ nodes_gdf_w_trans = networks.node_centrality_shortest(
 nodes_gdf_w_trans
 
 # %%
+for nodes, edges in [(nodes_gdf, edges_gdf), (nodes_gdf_w_trans, edges_gdf_w_trans)]:
+    fig, ax = plt.subplots()
+    nodes.plot(cmap='magma', ax=ax)
+    edges.plot(ax=ax)
+
+    # %%

@@ -1370,7 +1370,7 @@ def add_transport_gtfs(
                 netw_node = network_structure.get_node_payload(near_node_idx)
                 dist = netw_node.coord.hypot(station_coord)
                 # to direction
-                network_structure.add_edge(
+                edge_idx_a = network_structure.add_edge(
                     near_node_idx,
                     new_stop_idx,
                     0,  # edge_idx
@@ -1385,7 +1385,7 @@ def add_transport_gtfs(
                 )
                 # add to edges_gdf
                 edges_gdf.loc[f"{near_node_idx}-{new_stop_idx}", :] = [
-                    0,  # ns_edge_idx
+                    edge_idx_a,  # ns_edge_idx
                     near_node_idx,
                     new_stop_idx,
                     "na-gtfs",  # edge_idx
@@ -1400,7 +1400,7 @@ def add_transport_gtfs(
                     geometry.LineString([netw_node.coord.xy(), station_coord.xy()]),  # geom
                 ]
                 # from direction
-                network_structure.add_edge(
+                edge_idx_b = network_structure.add_edge(
                     new_stop_idx,
                     near_node_idx,
                     1,  # edge_idx
@@ -1415,7 +1415,7 @@ def add_transport_gtfs(
                 )
                 # add to edges_gdf
                 edges_gdf.loc[f"{new_stop_idx}-{near_node_idx}", :] = [
-                    1,  # ns_edge_idx
+                    edge_idx_b,  # ns_edge_idx
                     new_stop_idx,
                     near_node_idx,
                     "na-gtfs",  # edge_idx
@@ -1453,7 +1453,7 @@ def add_transport_gtfs(
         # segment time
         avg_seg_time = row["avg_segment_time"]
         # add edge
-        network_structure.add_edge(
+        edge_idx = network_structure.add_edge(
             prev_stop_idx,
             next_stop_idx,
             0,  # edge_idx
@@ -1468,7 +1468,7 @@ def add_transport_gtfs(
         )
         # add to edges_gdf
         edges_gdf.loc[f"{prev_stop_idx}-{next_stop_idx}", :] = [
-            0,  # ns_edge_idx
+            edge_idx,  # ns_edge_idx
             prev_stop_idx,
             next_stop_idx,
             "na-gtfs",  # edge_idx

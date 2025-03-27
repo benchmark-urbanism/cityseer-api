@@ -52,8 +52,8 @@ impl EdgePayload {
         self.length.is_finite()
             && self.angle_sum.is_finite()
             && self.imp_factor.is_finite()
-            && self.in_bearing.is_finite()
-            && self.out_bearing.is_finite()
+            && (self.in_bearing.is_finite() || self.in_bearing.is_nan())
+            && (self.out_bearing.is_finite() || self.out_bearing.is_nan())
             && (self.seconds.is_finite() || self.seconds.is_nan())
     }
 }

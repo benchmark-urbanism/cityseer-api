@@ -477,8 +477,8 @@ def mock_gtfs_stops_txt(path: str):
     stops = {
         "stop_id": ["1", "2", "3", "4", "5"],
         "stop_name": ["Stop A", "Stop B", "Stop C", "Stop D", "Stop E"],
-        "stop_lat": [51.593, 51.594, 51.595, 51.596, 51.597],
-        "stop_lon": [-0.103, -0.104, -0.105, -0.106, -0.107],
+        "stop_lat": [51.590, 51.592, 51.594, 51.596, 51.598],
+        "stop_lon": [-0.099, -0.101, -0.103, -0.105, -0.107],
     }
     stops_gdf = gpd.GeoDataFrame(stops, geometry=gpd.points_from_xy(stops["stop_lon"], stops["stop_lat"]))
     stops_gdf.to_csv(output_path / "stops.txt", index=False)
