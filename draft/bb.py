@@ -15,7 +15,7 @@ G = graphs.nx_simple_geoms(G)
 gtfs_data_path = "temp"
 mock.mock_gtfs_stops_txt(gtfs_data_path)
 
-graph_crs = 3395
+graph_crs = 32630
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, graph_crs)
 
 # %%
@@ -183,7 +183,7 @@ G: nx.MultiGraph = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 gtfs_data_path = "temp"
 mock.mock_gtfs_stops_txt(gtfs_data_path)
-graph_crs = 3395
+graph_crs = 32630
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, graph_crs)
 distances = [500, 1000]
 #
@@ -203,4 +203,5 @@ nodes_gdf_w_trans = networks.node_centrality_shortest(
     distances=distances,
 )
 nodes_gdf_w_trans
+
 # %%

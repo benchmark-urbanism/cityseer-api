@@ -12,7 +12,7 @@ def test_aggregate_to_src_idx(primal_graph):
         max_seconds = max_dist / config.SPEED_M_S
         for deduplicate in [False, True]:
             # generate data
-            _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+            _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
             data_gdf = mock.mock_data_gdf(primal_graph)
             if deduplicate is False:
                 data_map, data_gdf = layers.assign_gdf_to_network(
@@ -91,7 +91,7 @@ def test_aggregate_to_src_idx(primal_graph):
 
 def test_accessibility(primal_graph):
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
@@ -219,7 +219,7 @@ def test_accessibility(primal_graph):
 
 def test_mixed_uses(primal_graph):
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
@@ -316,7 +316,7 @@ def test_mixed_uses(primal_graph):
 def test_stats(primal_graph):
     # generate node and edge maps
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2, random_seed=13)
     # use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     max_assign_dist = 3200

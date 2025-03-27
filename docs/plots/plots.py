@@ -23,7 +23,7 @@ plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}",
 # INTRO EXAMPLE PLOTS
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 20)
-nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
 nodes_gdf = networks.segment_centrality(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800])
 data_gdf = mock.mock_landuse_categorical_data(G, random_seed=25)
 nodes_gdf, data_gdf = layers.compute_mixed_uses(
@@ -123,7 +123,7 @@ simple_plot(graph_utm, f"{IMAGES_PATH}/graph_clean.{FORMAT}")
 # random seed 25
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
@@ -135,7 +135,7 @@ plot.plot_assignment(
     figsize=(5, 5),
 )
 G_decomposed = graphs.nx_decompose(G, 50)
-nodes_gdf_decomp, _edges_gdf, network_structure_decomp = io.network_structure_from_nx(G_decomposed, crs=3395)
+nodes_gdf_decomp, _edges_gdf, network_structure_decomp = io.network_structure_from_nx(G_decomposed, crs=32630)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
 plot.plot_assignment(
@@ -154,7 +154,7 @@ G_simple = graphs.nx_simple_geoms(G)
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
 networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
@@ -181,7 +181,7 @@ plot.plot_nx(
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G_decomp = graphs.nx_decompose(G, 50)
-nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_decomp, crs=3395)
+nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_decomp, crs=32630)
 data_gdf = mock.mock_landuse_categorical_data(G_decomp, random_seed=25)
 data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
