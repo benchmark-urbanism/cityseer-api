@@ -1341,6 +1341,8 @@ def add_transport_gtfs(
     stops = stops.merge(avg_wait_time.rename("avg_wait_time"), on="stop_id", how="left")
     # transformer to convert lat/lon to graph crs
     transformer = Transformer.from_crs(4326, graph_crs, always_xy=True)
+    # dual flag
+    is_dual = "primal_edge" in nodes_gdf.columns
     # add nodes for stops
     for _, row in stops.iterrows():
         # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
@@ -1355,16 +1357,55 @@ def add_transport_gtfs(
             float(1),  # weight
         )
         # add to nodes_gdf
-        # TODO: dual
-        nodes_gdf.loc[row["stop_id"], ["ns_node_idx", "x", "y", "live", "weight", "geom"]] = [
-            new_stop_idx,
-            e,
-            n,
-            True,
-            1,
-            geometry.Point(e, n),
-        ]
+        if not is_dual:
+            nodes_gdf.loc[row["stop_id"], ["ns_node_idx", "x", "y", "live", "weight", "geom"]] = [
+                new_stop_idx,
+                e,
+                n,
+                True,
+                1,
+                geometry.Point(e, n),
+            ]
+        else:
+            nodes_gdf.loc[
+                row["stop_id"],
+                [
+                    "ns_node_idx",
+                    "x",
+                    "y",
+                    "live",
+                    "weight",
+                    # "primal_edge",
+                    # "primal_edge_node_a",
+                    # "primal_edge_node_b",
+                    # "primal_edge_idx",
+                    "dual_node",
+                ],
+            ] = [
+                new_stop_idx,
+                e,
+                n,
+                True,
+                1,
+                geometry.Point(e, n),
+            ]
         # add edges between stops and pedestrian network
+        edge_cols = [
+            "ns_edge_idx",
+            "start_ns_node_idx",
+            "end_ns_node_idx",
+            "edge_idx",
+            "nx_start_node_key",
+            "nx_end_node_key",
+            "length",
+            "angle_sum",
+            "imp_factor",
+            "in_bearing",
+            "out_bearing",
+            "total_bearing",
+            "geom",
+            # "primal_node_id",
+        ]
         for near_node_idx in [nearest_idx, next_nearest_idx]:
             if near_node_idx is not None:
                 netw_node = network_structure.get_node_payload(near_node_idx)
@@ -1385,7 +1426,7 @@ def add_transport_gtfs(
                     max(1, seconds + float(row["avg_wait_time"])),  # walk and wait time - minimum 1 second
                 )
                 # add to edges_gdf
-                edges_gdf.loc[f"{near_node_idx}-{new_stop_idx}", :] = [
+                edges_gdf.loc[f"{near_node_idx}-{new_stop_idx}", edge_cols] = [
                     edge_idx_a,  # ns_edge_idx
                     near_node_idx,
                     new_stop_idx,
@@ -1415,7 +1456,7 @@ def add_transport_gtfs(
                     max(1, seconds),  # seconds
                 )
                 # add to edges_gdf
-                edges_gdf.loc[f"{new_stop_idx}-{near_node_idx}", :] = [
+                edges_gdf.loc[f"{new_stop_idx}-{near_node_idx}", edge_cols] = [
                     edge_idx_b,  # ns_edge_idx
                     new_stop_idx,
                     near_node_idx,
@@ -1451,11 +1492,11 @@ def add_transport_gtfs(
         next_stop = row["next_stop_id"]
         next_stop_row = nodes_gdf.loc[next_stop]
         next_stop_idx = int(next_stop_row["ns_node_idx"])
-        next_stop_geom = next_stop_row["geom"]
+        next_stop_geom = next_stop_row["dual_node" if is_dual else "geom"]
         prev_stop = row["prev_stop_id"]
         prev_stop_row = nodes_gdf.loc[prev_stop]
         prev_stop_idx = int(prev_stop_row["ns_node_idx"])
-        prev_stop_geom = prev_stop_row["geom"]
+        prev_stop_geom = prev_stop_row["dual_node" if is_dual else "geom"]
         # segment time
         avg_seg_time = row["avg_segment_time"]
         # add edge
@@ -1473,7 +1514,7 @@ def add_transport_gtfs(
             float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
-        edges_gdf.loc[f"{prev_stop_idx}-{next_stop_idx}", :] = [
+        edges_gdf.loc[f"{prev_stop_idx}-{next_stop_idx}", edge_cols] = [
             edge_idx,  # ns_edge_idx
             prev_stop_idx,
             next_stop_idx,
@@ -1503,7 +1544,7 @@ def add_transport_gtfs(
             float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
-        edges_gdf.loc[f"{next_stop_idx}-{prev_stop_idx}", :] = [
+        edges_gdf.loc[f"{next_stop_idx}-{prev_stop_idx}", edge_cols] = [
             edge_idx,  # ns_edge_idx
             next_stop_idx,
             prev_stop_idx,

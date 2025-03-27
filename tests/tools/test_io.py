@@ -736,15 +736,15 @@ def test_add_transport_gtfs(primal_graph):
     gtfs_data_path = "temp"
     mock.mock_gtfs_stops_txt(gtfs_data_path)
     graph_crs = 32630
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, graph_crs)
-    distances = [500, 1000]
+    distances = [1000]
     #
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, graph_crs)
     nodes_gdf = networks.node_centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
     )
-    #
+    # clean copy for transport
     nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(
         primal_graph, graph_crs
     )
@@ -756,6 +756,8 @@ def test_add_transport_gtfs(primal_graph):
         nodes_gdf=nodes_gdf_w_trans,
         distances=distances,
     )
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure_w_trans, stops)
     #
     expected_path = [11, 12, 8, 9, 4, 1, 0, 31, 33, 38, 45, 56]
     expected_path_w_trans = [11, 61, 60, 59, 58, 57, 56]
@@ -767,6 +769,60 @@ def test_add_transport_gtfs(primal_graph):
         else:
             src_idx = list_idx.index("56")
             target_idx = list_idx.index("11")
+        max_seconds_5000 = 5000 / config.SPEED_M_S
+        # path without transport
+        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path = find_path(target_idx, src_idx, tree_map)
+        # path with transport
+        visited_nodes_w_trans, tree_map_w_trans = network_structure_w_trans.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path_w_trans = find_path(target_idx, src_idx, tree_map_w_trans)
+        if reverse is False:
+            assert path == expected_path
+            assert path_w_trans == expected_path_w_trans
+        else:
+            assert path == list(reversed(expected_path))
+            assert path_w_trans == list(reversed(expected_path_w_trans))
+    # dual
+    dual_graph = graphs.nx_to_dual(primal_graph)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(dual_graph, graph_crs)
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+    )
+    # clean copy for transport
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(
+        dual_graph, graph_crs
+    )
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, graph_crs
+    )
+    nodes_gdf_w_trans = networks.node_centrality_shortest(
+        network_structure=network_structure_w_trans,
+        nodes_gdf=nodes_gdf_w_trans,
+        distances=distances,
+    )
+    #
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure_w_trans, stops)
+    expected_path = [20, 16, 15, 9, 4, 0, 2, 51, 55, 63, 71]
+    expected_path_w_trans = [20, 83, 82, 81, 80, 79, 71]
+    for reverse in [False, True]:
+        list_idx = nodes_gdf_w_trans.index.tolist()
+        if reverse is False:
+            src_idx = list_idx.index("11_12_k0")
+            target_idx = list_idx.index("45_56_k0")
+        else:
+            src_idx = list_idx.index("45_56_k0")
+            target_idx = list_idx.index("11_12_k0")
         max_seconds_5000 = 5000 / config.SPEED_M_S
         # path without transport
         visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
