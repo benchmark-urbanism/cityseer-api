@@ -119,9 +119,9 @@ def _continuity_report_to_nx(
         route_key: str = route_keys[arg_idx]
         continuity_entry: ContinuityEntry = continuity_report.entries[route_key]
         for hb_start_nd_key, hb_end_nd_key, hb_edge_idx in continuity_entry.edges.values():
-            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][label_edge_key] = route_key
-            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][count_edge_key] = continuity_entry.count
-            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][length_edge_key] = continuity_entry.length
+            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][label_edge_key] = route_key  # type: ignore
+            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][count_edge_key] = continuity_entry.count  # type: ignore
+            nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][length_edge_key] = continuity_entry.length  # type: ignore
     # write zeros to empties
     edge_data: graphs.EdgeData
     for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
@@ -152,7 +152,7 @@ def _recurse_edges(
         return
     _visited_edges.add(edge_key)
     # extract edge data for the current target key
-    nested_edge_data: graphs.EdgeData = _nx_multigraph[_a_nd_key][_b_nd_key][_edge_idx]
+    nested_edge_data: graphs.EdgeData = _nx_multigraph[_a_nd_key][_b_nd_key][_edge_idx]  # type: ignore
     if _method not in nested_edge_data:
         raise ValueError(f"Missing target key of {_method}")
     nested_match_targets: list[str | None] = nested_edge_data[_method]
@@ -173,7 +173,7 @@ def _recurse_edges(
     # recurse into neighbours
     for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
         nested_edge_idx: int
-        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:
+        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:  # type: ignore
             _recurse_edges(
                 _nx_multigraph,
                 _method,
@@ -327,7 +327,7 @@ def hybrid_street_continuity(
         # iterate the edges associated with an entry
         for rt_start_nd_key, rt_end_nd_key, rt_edge_idx in routes_continuity_entry.edges.values():
             # get associated street names
-            rt_edge_data: graphs.EdgeData = nx_multi_copy[rt_start_nd_key][rt_end_nd_key][rt_edge_idx]
+            rt_edge_data: graphs.EdgeData = nx_multi_copy[rt_start_nd_key][rt_end_nd_key][rt_edge_idx]  # type: ignore
             rt_edge_names = rt_edge_data["names"]
             rt_edge_names = [name.lower() for name in rt_edge_names if name is not None]
             # find corresponding street name related continuity entries from names continuity report
