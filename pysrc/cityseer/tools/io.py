@@ -33,6 +33,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+SPEED_M_S = config.SPEED_M_S
+
+
 def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, to_crs_code: int | str) -> nx.MultiGraph:
     """
     Convert a graph from the `from_crs_code` EPSG CRS to the `to_crs_code` EPSG CRS.
@@ -1307,7 +1310,8 @@ def add_transport_gtfs(
     network_structure: rustalgos.NetworkStructure,
     graph_crs: str | int,
     max_netw_assign_dist: int = 400,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
+    speed_m_s: float = SPEED_M_S,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure, pd.DataFrame, pd.DataFrame]:
     """
     Add GTFS data to network structure.
     """
@@ -1318,12 +1322,12 @@ def add_transport_gtfs(
         raise FileNotFoundError(f"GTFS stops.txt not found at {gtfs_data_path}")
     if not (gtfs_path / "stop_times.txt").exists():
         raise FileNotFoundError(f"GTFS stop_times.txt not found at {gtfs_data_path}")
-    # load GTFS stops data
+    # load GTFS stops data - rename stop_id to include gtfs_data_path
     stops = pd.read_csv(gtfs_path / "stops.txt")
-    stops["stop_id"] = stops["stop_id"].astype(str)
-    # load GTFS stop times data
+    stops["stop_id"] = stops["stop_id"].apply(lambda sid: f"gtfs-{gtfs_data_path}-{sid}")
+    # load GTFS stop times data - rename stop_id to include gtfs_data_path
     stop_times = pd.read_csv(gtfs_path / "stop_times.txt")
-    stop_times["stop_id"] = stop_times["stop_id"].astype(str)
+    stop_times["stop_id"] = stop_times["stop_id"].apply(lambda sid: f"gtfs-{gtfs_data_path}-{sid}")
     # prepare arrival time
     stop_times["arrival_time"] = pd.to_datetime(stop_times["arrival_time"], format="%H:%M:%S").dt.time
     stop_times["arrival_seconds"] = stop_times["arrival_time"].apply(lambda t: t.hour * 3600 + t.minute * 60 + t.second)
@@ -1335,8 +1339,6 @@ def add_transport_gtfs(
     avg_wait_time = avg_wait_time / 2
     # merge avg_wait_time into stop times data
     stops = stops.merge(avg_wait_time.rename("avg_wait_time"), on="stop_id", how="left")
-    # add stops to network structure
-    stop_lookups = {}
     # transformer to convert lat/lon to graph crs
     transformer = Transformer.from_crs(4326, graph_crs, always_xy=True)
     # add nodes for stops
@@ -1345,16 +1347,16 @@ def add_transport_gtfs(
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
         station_coord = rustalgos.Coord(e, n)
         nearest_idx, next_nearest_idx = network_structure.assign_to_network(station_coord, max_netw_assign_dist)
-        new_stop_key = "gtfs-" + str(row["stop_id"])
         new_stop_idx = network_structure.add_node(
-            new_stop_key,
+            row["stop_id"],
             float(e),
             float(n),
             True,  # live
             float(1),  # weight
         )
         # add to nodes_gdf
-        nodes_gdf.loc[new_stop_key, ["ns_node_idx", "x", "y", "live", "weight", "geom"]] = [
+        # TODO: dual
+        nodes_gdf.loc[row["stop_id"], ["ns_node_idx", "x", "y", "live", "weight", "geom"]] = [
             new_stop_idx,
             e,
             n,
@@ -1362,13 +1364,12 @@ def add_transport_gtfs(
             1,
             geometry.Point(e, n),
         ]
-        # add to lookups
-        stop_lookups[new_stop_key] = new_stop_idx
         # add edges between stops and pedestrian network
         for near_node_idx in [nearest_idx, next_nearest_idx]:
             if near_node_idx is not None:
                 netw_node = network_structure.get_node_payload(near_node_idx)
                 dist = netw_node.coord.hypot(station_coord)
+                seconds = dist / speed_m_s
                 # to direction
                 edge_idx_a = network_structure.add_edge(
                     near_node_idx,
@@ -1381,14 +1382,14 @@ def add_transport_gtfs(
                     1,  # imp_factor
                     None,  # in_bearing
                     None,  # out_bearing
-                    float(row["avg_wait_time"]),  # seconds
+                    max(1, seconds + float(row["avg_wait_time"])),  # walk and wait time - minimum 1 second
                 )
                 # add to edges_gdf
                 edges_gdf.loc[f"{near_node_idx}-{new_stop_idx}", :] = [
                     edge_idx_a,  # ns_edge_idx
                     near_node_idx,
                     new_stop_idx,
-                    "na-gtfs",  # edge_idx
+                    0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
                     dist,  # length
@@ -1403,7 +1404,7 @@ def add_transport_gtfs(
                 edge_idx_b = network_structure.add_edge(
                     new_stop_idx,
                     near_node_idx,
-                    1,  # edge_idx
+                    0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
                     dist,  # length - don't use zero otherwise short-cutting will occur
@@ -1411,14 +1412,14 @@ def add_transport_gtfs(
                     1,  # imp_factor
                     None,  # in_bearing
                     None,  # out_bearing
-                    float(0),  # seconds
+                    max(1, seconds),  # seconds
                 )
                 # add to edges_gdf
                 edges_gdf.loc[f"{new_stop_idx}-{near_node_idx}", :] = [
                     edge_idx_b,  # ns_edge_idx
                     new_stop_idx,
                     near_node_idx,
-                    "na-gtfs",  # edge_idx
+                    0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
                     dist,  # length
@@ -1435,21 +1436,26 @@ def add_transport_gtfs(
     stop_times.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
     # compute travel time between consecutive stops
     stop_times["segment_time"] = stop_times.groupby("trip_id")["arrival_seconds"].diff()
+    # rename stop_id to next_stop_id
+    stop_times.rename(columns={"stop_id": "next_stop_id"}, inplace=True)
     # average segment time between consecutive stops
     avg_stop_pairs = (
         stop_times.dropna(subset=["prev_stop_id"])  # remove rows where prev_stop_id is NaN
-        .groupby(["prev_stop_id", "stop_id"])["segment_time"]
+        .groupby(["prev_stop_id", "next_stop_id"])["segment_time"]
         .mean()
         .reset_index(name="avg_segment_time")
     )
     # add edges between stops
     for _, row in avg_stop_pairs.iterrows():
-        # prev stop
-        prev_stop = row["prev_stop_id"]
-        prev_stop_idx = stop_lookups.get("gtfs-" + str(prev_stop), None)
         # next stop
-        next_stop = row["stop_id"]
-        next_stop_idx = stop_lookups.get("gtfs-" + str(next_stop), None)
+        next_stop = row["next_stop_id"]
+        next_stop_row = nodes_gdf.loc[next_stop]
+        next_stop_idx = int(next_stop_row["ns_node_idx"])
+        next_stop_geom = next_stop_row["geom"]
+        prev_stop = row["prev_stop_id"]
+        prev_stop_row = nodes_gdf.loc[prev_stop]
+        prev_stop_idx = int(prev_stop_row["ns_node_idx"])
+        prev_stop_geom = prev_stop_row["geom"]
         # segment time
         avg_seg_time = row["avg_segment_time"]
         # add edge
@@ -1459,9 +1465,9 @@ def add_transport_gtfs(
             0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            0,  # length - don't use zero otherwise short-cutting will occur
-            0,  # angle_sum - don't use zero otherwise short-cutting will occur
-            1,  # imp_factor
+            None,  # length - don't use zero otherwise short-cutting will occur
+            None,  # angle_sum - don't use zero otherwise short-cutting will occur
+            None,  # imp_factor
             None,  # in_bearing
             None,  # out_bearing
             float(avg_seg_time),  # seconds
@@ -1471,19 +1477,49 @@ def add_transport_gtfs(
             edge_idx,  # ns_edge_idx
             prev_stop_idx,
             next_stop_idx,
-            "na-gtfs",  # edge_idx
+            0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            0,  # length
-            0,  # angle_sum
-            1,  # imp_factor
+            None,  # length
+            None,  # angle_sum
+            None,  # imp_factor
             None,  # in_bearing
             None,  # out_bearing
             None,  # total_bearing
-            geometry.LineString([nodes_gdf.loc[str(prev_stop), "geom"], nodes_gdf.loc[str(next_stop), "geom"]]),  # type: ignore
+            geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
+        ]
+        # other direction!
+        edge_idx = network_structure.add_edge(
+            next_stop_idx,
+            prev_stop_idx,
+            0,  # edge_idx
+            "na-gtfs",  # nx_start_node_key
+            "na-gtfs",  # nx_end_node_key
+            None,  # length - don't use zero otherwise short-cutting will occur
+            None,  # angle_sum - don't use zero otherwise short-cutting will occur
+            None,  # imp_factor
+            None,  # in_bearing
+            None,  # out_bearing
+            float(avg_seg_time),  # seconds
+        )
+        # add to edges_gdf
+        edges_gdf.loc[f"{next_stop_idx}-{prev_stop_idx}", :] = [
+            edge_idx,  # ns_edge_idx
+            next_stop_idx,
+            prev_stop_idx,
+            0,  # edge_idx
+            "na-gtfs",  # nx_start_node_key
+            "na-gtfs",  # nx_end_node_key
+            None,  # length
+            None,  # angle_sum
+            None,  # imp_factor
+            None,  # in_bearing
+            None,  # out_bearing
+            None,  # total_bearing
+            geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
         ]
 
-    return nodes_gdf, edges_gdf, network_structure
+    return nodes_gdf, edges_gdf, network_structure, stops, avg_stop_pairs
 
 
 def nx_from_cityseer_geopandas(

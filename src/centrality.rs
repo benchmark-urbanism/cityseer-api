@@ -401,7 +401,6 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
-                    tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                     tree_map[nb_nd_idx.index()].origin_seg = Some(origin_seg);
                     tree_map[nb_nd_idx.index()].last_seg = Some(edge_idx.index());
                 }

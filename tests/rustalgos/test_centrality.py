@@ -163,6 +163,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph, 32630)
     # prepare round-trip graph for checks
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
+    # from cityseer.tools import plot
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
     for max_dist in [0, 500, 2000, 5000]:

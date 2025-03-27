@@ -237,23 +237,20 @@ impl DataMap {
         // iterate data entries
         for (data_key, data_val) in &self.entries {
             let mut nearest_total_time = f32::INFINITY;
-            let mut nearest_total_dist = f32::INFINITY;
             let mut next_nearest_total_time = f32::INFINITY;
-            let mut next_nearest_total_dist = f32::INFINITY;
             // see if it has been assigned or not
             if !data_val.nearest_assign.is_none() {
                 // find the corresponding network node
                 let node_visit = tree_map[data_val.nearest_assign.unwrap()];
-                // proceed if this node is within max dist
+                // proceed if this node is within max time
                 if node_visit.agg_seconds < max_walk_seconds as f32 {
                     // get the node's payload
                     let node_payload = network_structure
                         .get_node_payload(data_val.nearest_assign.unwrap())
                         .unwrap();
-                    // calculate the distance more precisely
+                    // calculate the time more precisely
                     let d_d = data_val.coord.hypot(node_payload.coord);
                     nearest_total_time = node_visit.agg_seconds + d_d / speed_m_s;
-                    nearest_total_dist = node_visit.short_dist + d_d;
                 }
             };
             // the next-nearest may offer a closer route depending on the direction of shortest path approach
@@ -265,7 +262,6 @@ impl DataMap {
                         .unwrap();
                     let d_d = data_val.coord.hypot(node_payload.coord);
                     next_nearest_total_time = node_visit.agg_seconds + d_d / speed_m_s;
-                    next_nearest_total_dist = node_visit.short_dist + d_d;
                 }
             };
             // if still within max
@@ -274,9 +270,9 @@ impl DataMap {
             {
                 // select from less of two
                 let total_dist = if nearest_total_time <= next_nearest_total_time {
-                    nearest_total_dist
+                    nearest_total_time * speed_m_s
                 } else {
-                    next_nearest_total_dist
+                    next_nearest_total_time * speed_m_s
                 };
                 // check if the data has an identifier
                 // if so, deduplicate, keeping only the shortest path to the data identifier

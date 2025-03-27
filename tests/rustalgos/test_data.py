@@ -25,8 +25,8 @@ def test_aggregate_to_src_idx(primal_graph):
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
-            # plot.plot_network_structure(network_structure, data_map)
-            for angular in [True, False]:
+            # plot.plot_network_structure(network_structure, data_gdf)
+            for angular in [False, True]:
                 for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
@@ -47,7 +47,7 @@ def test_aggregate_to_src_idx(primal_graph):
                         # nearest
                         if data_entry.nearest_assign is not None:
                             nearest_netw_node = network_structure.get_node_payload(data_entry.nearest_assign)
-                            nearest_assign_dist = tree_map[data_entry.nearest_assign].short_dist
+                            nearest_assign_dist = tree_map[data_entry.nearest_assign].agg_seconds * config.SPEED_M_S
                             # add tail
                             if not np.isposinf(nearest_assign_dist):
                                 nearest_assign_dist += nearest_netw_node.coord.hypot(data_entry.coord)
@@ -56,7 +56,9 @@ def test_aggregate_to_src_idx(primal_graph):
                         # next nearest
                         if data_entry.next_nearest_assign is not None:
                             next_nearest_netw_node = network_structure.get_node_payload(data_entry.next_nearest_assign)
-                            next_nearest_assign_dist = tree_map[data_entry.next_nearest_assign].short_dist
+                            next_nearest_assign_dist = (
+                                tree_map[data_entry.next_nearest_assign].agg_seconds * config.SPEED_M_S
+                            )
                             # add tail
                             if not np.isposinf(next_nearest_assign_dist):
                                 next_nearest_assign_dist += next_nearest_netw_node.coord.hypot(data_entry.coord)

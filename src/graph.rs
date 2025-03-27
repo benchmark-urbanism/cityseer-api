@@ -49,12 +49,21 @@ pub struct EdgePayload {
 #[pymethods]
 impl EdgePayload {
     fn validate(&self) -> bool {
-        self.length.is_finite()
+        // if seconds is NaN, then all other values must be finite
+        if self.seconds.is_nan() {
+            return (self.length.is_finite())
+                && (self.angle_sum.is_finite())
+                && (self.imp_factor.is_finite())
+                && (self.in_bearing.is_finite())
+                && (self.out_bearing.is_finite());
+        }
+        // if seconds is finite, then other values are optional
+        self.seconds.is_finite()
+            && self.length.is_finite()
             && self.angle_sum.is_finite()
             && self.imp_factor.is_finite()
             && (self.in_bearing.is_finite() || self.in_bearing.is_nan())
             && (self.out_bearing.is_finite() || self.out_bearing.is_nan())
-            && (self.seconds.is_finite() || self.seconds.is_nan())
     }
 }
 #[pyclass]
@@ -234,8 +243,8 @@ impl NetworkStructure {
                 start_nd_key,
                 end_nd_key,
                 edge_idx,
-                length: length.unwrap_or(0.0),
-                angle_sum: angle_sum.unwrap_or(0.0),
+                length: length.unwrap_or(1.0),
+                angle_sum: angle_sum.unwrap_or(1.0),
                 imp_factor: imp_factor.unwrap_or(1.0),
                 in_bearing: in_bearing.unwrap_or(f32::NAN),
                 out_bearing: out_bearing.unwrap_or(f32::NAN),
