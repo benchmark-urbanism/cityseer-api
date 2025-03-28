@@ -1316,6 +1316,7 @@ def add_transport_gtfs(
     Add GTFS data to network structure.
     """
     gtfs_path = Path(gtfs_data_path)
+    logger.info(f"Loading GTFS data from {gtfs_data_path}")
     if not gtfs_path.exists():
         raise FileNotFoundError(f"GTFS data not found at {gtfs_data_path}")
     if not (gtfs_path / "stops.txt").exists():
@@ -1328,6 +1329,8 @@ def add_transport_gtfs(
     # load GTFS stop times data - rename stop_id to include gtfs_data_path
     stop_times = pd.read_csv(gtfs_path / "stop_times.txt")
     stop_times["stop_id"] = stop_times["stop_id"].apply(lambda sid: f"gtfs-{gtfs_data_path}-{sid}")
+    logger.info(f"Loaded {len(stops)} stops and {len(stop_times)} stop times")
+
     # prepare arrival time
     stop_times["arrival_time"] = pd.to_datetime(stop_times["arrival_time"], format="%H:%M:%S").dt.time
     stop_times["arrival_seconds"] = stop_times["arrival_time"].apply(lambda t: t.hour * 3600 + t.minute * 60 + t.second)
@@ -1343,8 +1346,10 @@ def add_transport_gtfs(
     transformer = Transformer.from_crs(4326, graph_crs, always_xy=True)
     # dual flag
     is_dual = "primal_edge" in nodes_gdf.columns
+
     # add nodes for stops
-    for _, row in stops.iterrows():
+    logger.info("Adding GTFS stops to network nodes.")
+    for _, row in tqdm(stops.iterrows(), disable=config.QUIET_MODE):
         # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
         station_coord = rustalgos.Coord(e, n)
@@ -1471,6 +1476,7 @@ def add_transport_gtfs(
                     None,  # total_bearing
                     geometry.LineString([netw_node.coord.xy(), station_coord.xy()]),  # geom
                 ]
+    logger.info("Generating segment durations between stops.")
     # create a column for the previous stop in each trip
     stop_times["prev_stop_id"] = stop_times.groupby("trip_id")["stop_id"].shift()
     # sort stop_times for proper sequencing
@@ -1486,8 +1492,9 @@ def add_transport_gtfs(
         .mean()
         .reset_index(name="avg_segment_time")
     )
+    logger.info("Adding GTFS segments to network edges.")
     # add edges between stops
-    for _, row in avg_stop_pairs.iterrows():
+    for _, row in tqdm(avg_stop_pairs.iterrows(), disable=config.QUIET_MODE):
         # next stop
         next_stop = row["next_stop_id"]
         next_stop_row = nodes_gdf.loc[next_stop]
