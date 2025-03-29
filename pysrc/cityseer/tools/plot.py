@@ -227,7 +227,10 @@ def plot_nx_primal_or_dual(  # noqa
         start_node_key: NodeKey
         end_node_key: NodeKey
         node_data: NodeData
-        for start_node_key, end_node_key, node_data in tqdm(_graph.edges(data=True)):  # type: ignore
+        for start_node_key, end_node_key, node_data in tqdm(
+            _graph.edges(data=True),
+            disable=config.QUIET_MODE,
+        ):  # type: ignore
             # filter out if start and end nodes are not in the active node list
             if start_node_key not in node_list or end_node_key not in node_list:
                 continue

@@ -106,7 +106,10 @@ def wrap_progress(
 
     result_queue: Queue[RustResults] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
-    pbar = tqdm(total=total)
+    pbar = tqdm(
+        total=total,
+        disable=QUIET_MODE,
+    )
     thread.start()
     while thread.is_alive():
         time.sleep(1)
