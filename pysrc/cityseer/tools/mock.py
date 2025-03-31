@@ -17,6 +17,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+from pyproj import CRS
 from shapely import geometry
 
 from cityseer.tools import util
@@ -222,6 +223,9 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
             wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)  # type: ignore
             nx_multigraph.nodes[node_idx]["x"] = wgs_pnt.x
             nx_multigraph.nodes[node_idx]["y"] = wgs_pnt.y
+        nx_multigraph.graph["crs"] = CRS(4326)
+    else:
+        nx_multigraph.graph["crs"] = CRS(32630)  # UTM zone 30N
 
     return nx_multigraph
 

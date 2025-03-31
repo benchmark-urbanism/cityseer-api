@@ -4,6 +4,13 @@ from __future__ import annotations
 from cityseer.tools import util
 
 
+def test_validate_cityseer_networkx_graph():
+    """
+    Test the validation of a `NetworkX` graph.
+    """
+    pass
+
+
 def test_measure_bearing():
     """
     right is zero, left is 180

@@ -19,8 +19,12 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -62,8 +66,12 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -112,6 +120,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">despine</span>
@@ -123,7 +133,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -185,6 +197,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">merge_edges_by_midline</span>
@@ -206,7 +220,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -214,7 +230,7 @@ side-effects as a function of varied node intensities when computing network cen
  Check a MultiGraph for duplicate edges; which, if found, will be merged. The shortest of these parallel edges is selected and buffered by `contains_buffer_dist`. If this buffer contains an adjacent edge, then the adjacent edge is merged. Edges falling outside this buffer are retained.
 
  When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from either:
-- An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+- An imaginary centre-line of the combined edges if `merge_edges_by_midline` is set to `True`;
 - Else, the shortest edge is retained, with longer edges discarded.
 ### Parameters
 <div class="param-set">
@@ -234,7 +250,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be retained as the new geometry and the longer edges will be discarded. Defaults to True.</div>
+ Whether to merge parallel edges by an imaginary centre-line. If set to False, then the shortest edge will be retained as the new geometry and the longer edges will be discarded. Defaults to True.</div>
 </div>
 
 <div class="param-set">
@@ -292,8 +308,12 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -335,6 +355,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">simplify_by_max_angle</span>
@@ -351,7 +373,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 100</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -423,6 +447,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">dissolve_distance</span>
@@ -434,7 +460,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int = 20</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -496,6 +524,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">buffer_dist</span>
@@ -547,7 +577,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -947,6 +979,8 @@ side-effects as a function of varied node intensities when computing network cen
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">decompose_max</span>
@@ -958,7 +992,9 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> list[str] | None = None</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -1041,8 +1077,12 @@ plot.plot_nx(G_decomposed)
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -1103,6 +1143,8 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">dissolve_distance</span>
@@ -1114,7 +1156,9 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
     <span class="pc">:</span>
     <span class="pa"> int = 45</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 
@@ -1178,8 +1222,12 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
-  <span class="pt">)</span>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
 </div>
 </div>
 

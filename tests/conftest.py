@@ -5,6 +5,7 @@ import networkx as nx
 import pytest
 from cityseer.tools import graphs
 from cityseer.tools.mock import mock_graph
+from pyproj import CRS
 
 
 @pytest.fixture
@@ -72,6 +73,7 @@ def diamond_graph() -> nx.MultiGraph:
 
     """
     G_diamond = nx.MultiGraph()
+    G_diamond.graph["crs"] = CRS(32630)
     G_diamond.add_nodes_from(
         [
             ("0", {"x": 0, "y": -86.60254}),
@@ -88,6 +90,7 @@ def diamond_graph() -> nx.MultiGraph:
 @pytest.fixture
 def box_graph() -> nx.MultiGraph:
     G_box = nx.MultiGraph()
+    G_box.graph["crs"] = CRS(32630)
     G_box.add_nodes_from(
         [
             ("0", {"x": 0, "y": 0}),
@@ -141,6 +144,7 @@ def parallel_segments_graph() -> nx.MultiGraph:
         (13, 14),
     ]
     G_parallel = nx.MultiGraph()
+    G_parallel.graph["crs"] = CRS(32630)
     G_parallel.add_nodes_from(nodes)
     G_parallel.add_edges_from(edges)
     G_parallel = graphs.nx_simple_geoms(G_parallel)

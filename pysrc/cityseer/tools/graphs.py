@@ -15,18 +15,19 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+from pyproj import CRS
 from shapely import BufferCapStyle, geometry, ops
 from tqdm import tqdm
 
 from cityseer import config
 from cityseer.tools import util
-from cityseer.tools.util import EdgeData, ListCoordsType, MultiGraph, NodeData, NodeKey
+from cityseer.tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
+def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Inferring geometries from node to node.
 
@@ -46,22 +47,11 @@ def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
         `geom` attributes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Generating interpolated edge geometries.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, check_edges=False)
 
-    def _process_node(nd_key: NodeKey):
-        # x coordinate
-        if "x" not in g_multi_copy.nodes[nd_key]:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x: float = g_multi_copy.nodes[nd_key]["x"]
-        # y coordinate
-        if "y" not in g_multi_copy.nodes[nd_key]:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y: float = g_multi_copy.nodes[nd_key]["y"]
-
-        return x, y
+    def _process_node(nd_key: NodeKey) -> tuple[float, float]:
+        return g_multi_copy.nodes[nd_key]["x"], g_multi_copy.nodes[nd_key]["y"]
 
     # unpack coordinates and build simple edge geoms
     remove_edges: list[tuple[NodeKey, NodeKey, int]] = []
@@ -77,14 +67,14 @@ def nx_simple_geoms(nx_multigraph: MultiGraph) -> MultiGraph:
                 logger.warning(f"Found zero length edge between {start_nd_key} and {end_nd_key}, removing from graph.")
             remove_edges.append((start_nd_key, end_nd_key, edge_idx))
         else:
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = seg  # type: ignore
     for start_nd_key, end_nd_key, edge_idx in remove_edges:
         g_multi_copy.remove_edge(start_nd_key, end_nd_key, key=edge_idx)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
-def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
+def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Remove nodes of degree=2.
 
@@ -113,10 +103,8 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
         edge with associated `geom` attributes spliced together.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Removing filler nodes.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     removed_nodes: set[NodeKey] = set()
     # iterates the original graph, but changes are written to the copied version (to avoid in-place snafus)
     nd_key: NodeKey
@@ -176,8 +164,6 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
                     geom: geometry.LineString = edge_data["geom"]
                 except KeyError as err:
                     raise KeyError(f'Missing "geom" attribute for edge {trailing_nd}-{next_link_nd}') from err
-                if geom.geom_type != "LineString":
-                    raise TypeError(f"Expecting LineString geometry but found {geom.geom_type} geometry.")
                 # welds can be done automatically, but there are edge cases, e.g.:
                 # looped roadways or overlapping edges such as stairways don't know which sides of two segments to join
                 # i.e. in these cases the edges can sometimes be matched from one of two possible configurations
@@ -231,12 +217,12 @@ def nx_remove_filler_nodes(nx_multigraph: MultiGraph) -> MultiGraph:
             g_multi_copy.remove_nodes_from(drop_nodes)
             removed_nodes.update(drop_nodes)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
 def nx_remove_dangling_nodes(
-    nx_multigraph: MultiGraph, despine: int = 15, remove_disconnected: int = 100
-) -> MultiGraph:
+    nx_multigraph: nx.MultiGraph, despine: int = 15, remove_disconnected: int = 100
+) -> nx.MultiGraph:
     """
     Remove disconnected components and optionally removes short dead-end street stubs.
 
@@ -265,7 +251,7 @@ def nx_remove_dangling_nodes(
             f"specified by the remove_disconnected parameter, which is currently set to: {remove_disconnected}. "
             "Decrease the remove_disconnected parameter or set to zero to retain graph components."
         )
-    g_multi_copy = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
 
     # remove danglers
     if despine > 0:
@@ -301,11 +287,15 @@ def nx_remove_dangling_nodes(
         )
     # make a copy of the graph using the largest component
     g_multi_large = nx.MultiGraph()
+    if "crs" in g_multi_copy.graph:
+        g_multi_large.graph["crs"] = CRS(g_multi_copy.graph["crs"])
+    if "is_dual" in g_multi_copy.graph:
+        g_multi_large.graph["is_dual"] = CRS(g_multi_copy.graph["is_dual"])
     for subgraph in large_subgraphs:
         g_multi_large.add_nodes_from(subgraph.nodes(data=True))
         g_multi_large.add_edges_from(subgraph.edges(data=True))
 
-    return g_multi_large
+    return util.validate_cityseer_networkx_graph(g_multi_large)
 
 
 def _extract_tags_to_set(
@@ -334,7 +324,7 @@ def _tags_from_edge_key(edge_data: EdgeData, edge_key: str) -> set[str | int]:
     return set()
 
 
-def _gather_nb_tags(nx_multigraph: MultiGraph, nd_key: NodeKey, edge_key: str) -> set[str | int]:
+def _gather_nb_tags(nx_multigraph: nx.MultiGraph, nd_key: NodeKey, edge_key: str) -> set[str | int]:
     """Fetches tags from edges neighbouring a node and returns as a `set` of `str`."""
     nb_tags = set()
     for nb_nd_key in nx_multigraph.neighbors(nd_key):
@@ -350,7 +340,7 @@ def _gather_name_tags(edge_data: EdgeData) -> set[str | int]:
     return names_tags.union(routes_tags)
 
 
-def _gather_nb_name_tags(nx_multigraph: MultiGraph, nd_key: NodeKey) -> set[str | int]:
+def _gather_nb_name_tags(nx_multigraph: nx.MultiGraph, nd_key: NodeKey) -> set[str | int]:
     """Fetches `names` and `routes` tags from edges neighbouring a node and returns as a `set` of `str`."""
     names_tags = _gather_nb_tags(nx_multigraph, nd_key, "names")
     routes_tags = _gather_nb_tags(nx_multigraph, nd_key, "routes")
@@ -358,12 +348,12 @@ def _gather_nb_name_tags(nx_multigraph: MultiGraph, nd_key: NodeKey) -> set[str 
 
 
 def nx_merge_parallel_edges(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     merge_edges_by_midline: bool,
     contains_buffer_dist: int,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Check a MultiGraph for duplicate edges; which, if found, will be merged.
 
@@ -372,7 +362,7 @@ def nx_merge_parallel_edges(
 
     When candidate edges are found for merging, they are replaced by a single new edge. The new geometry selected from
     either:
-    - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
+    - An imaginary centre-line of the combined edges if `merge_edges_by_midline` is set to `True`;
     - Else, the shortest edge is retained, with longer edges discarded.
 
     Parameters
@@ -381,7 +371,7 @@ def nx_merge_parallel_edges(
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
     merge_edges_by_midline: bool
-        Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
+        Whether to merge parallel edges by an imaginary centre-line. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
     contains_buffer_dist: int
         The buffer distance to consider when checking if parallel edges sharing the same start and end nodes are
@@ -400,13 +390,16 @@ def nx_merge_parallel_edges(
         A `networkX` `MultiGraph` with consolidated nodes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
     if contains_buffer_dist < 1:
         raise TypeError("contains_buffer_dist should be greater or equal to 1. ")
     logger.info(f"Merging parallel edges within buffer of {contains_buffer_dist}.")
+    _ = util.validate_cityseer_networkx_graph(nx_multigraph)
     # don't use copy() - add nodes only
-    deduped_graph: MultiGraph = nx.MultiGraph()
+    deduped_graph = nx.MultiGraph()
+    if "crs" in nx_multigraph.graph:
+        deduped_graph.graph["crs"] = CRS(nx_multigraph.graph["crs"])
+    if "is_dual" in nx_multigraph.graph:
+        deduped_graph.graph["is_dual"] = CRS(nx_multigraph.graph["is_dual"])
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
@@ -496,10 +489,10 @@ def nx_merge_parallel_edges(
                 edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
                 edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
 
-    return deduped_graph
+    return util.validate_cityseer_networkx_graph(deduped_graph)
 
 
-def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
+def nx_snap_endpoints(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Snaps geom endpoints to adjacent node coordinates.
 
@@ -516,9 +509,7 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
 
     """
     logger.info("Snapping edge endpoints.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
-    start_nd_key: NodeKey
-    end_nd_key: NodeKey
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
         g_multi_copy.edges(keys=True, data=True), disable=config.QUIET_MODE
     ):
@@ -527,7 +518,8 @@ def nx_snap_endpoints(nx_multigraph: MultiGraph) -> MultiGraph:
             util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_geom.coords)
         )
         g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = edge_geom
-    return g_multi_copy
+
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
 def _simplify_line_by_max_angle(coords, max_angle):
@@ -560,11 +552,11 @@ def _simplify_line_by_max_angle(coords, max_angle):
 
 
 def nx_iron_edges(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     simplify_by_max_angle: int = 120,
     min_self_loop_length: int = 100,
     max_foot_tunnel_length: int = 100,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Simplifies edges.
 
@@ -587,7 +579,7 @@ def nx_iron_edges(
 
     """
     logger.info("Ironing edges.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     remove_edges = []
@@ -633,7 +625,7 @@ def nx_iron_edges(
     # straightening parallel edges can create duplicates
     g_multi_copy = nx_merge_parallel_edges(g_multi_copy, False, 1)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
 _MOTORISED_HWYS = set(
@@ -656,10 +648,10 @@ _MOTORISED_HWYS = set(
 
 
 def nx_deduplicate_edges(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     dissolve_distance: int = 20,
     max_ang_diff: int = 20,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Deduplicates non-motorised edges where parallel to nearby motorised edges.
 
@@ -684,7 +676,7 @@ def nx_deduplicate_edges(
         A `networkX` graph with non-motorised edges removed if parallel to motorised edges.
 
     """
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # generate STR tree
     edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     # edges to remove
@@ -752,16 +744,16 @@ def nx_deduplicate_edges(
     # remove orphaned nodes
     g_multi_copy = nx_remove_filler_nodes(g_multi_copy)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
 def _squash_adjacent(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     node_group: set[NodeKey],
     centroid_by_itx: bool,
     prioritise_by_hwy_tag: bool,
     simplify_by_max_angle: int | None = None,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
 
@@ -773,8 +765,6 @@ def _squash_adjacent(
     the node with the greatest overall aggregate lengths. Edges are adjusted from the old nodes to the new combined
     node.
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph (for multiple edges).")
     # nothing to do for single node group
     if len(node_group) < 2:
         return nx_multigraph
@@ -904,11 +894,6 @@ def _squash_adjacent(
                 if "geom" not in edge_data:
                     raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
                 line_geom: geometry.LineString = edge_data["geom"]
-                if line_geom.geom_type != "LineString":
-                    raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.geom_type} geometry "
-                        f"for edge {nd_key}-{nb_nd_key}."
-                    )
                 # orient the LineString so that the geom starts from the node's x_y
                 line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
                 # update geom starting point to new parent node's coordinates
@@ -963,11 +948,11 @@ def _squash_adjacent(
         # drop the node, this will also implicitly drop the old edges
         nx_multigraph.remove_node(nd_key)
 
-    return nx_multigraph
+    return util.validate_cityseer_networkx_graph(nx_multigraph)
 
 
 def nx_consolidate_nodes(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     buffer_dist: float = 12,
     neighbour_policy: str | None = None,
     crawl: bool = False,
@@ -978,7 +963,7 @@ def nx_consolidate_nodes(
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
     simplify_by_max_angle: int | None = None,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
 
@@ -1048,13 +1033,11 @@ def nx_consolidate_nodes(
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     if neighbour_policy is not None and neighbour_policy not in ("direct", "indirect"):
         raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
     if crawl and buffer_dist >= 20:
         logger.warning("Be cautious with large buffer distances when using crawl!")
-    _multi_graph: MultiGraph = nx_multigraph.copy()
+    _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # create a nodes STRtree
     nodes_tree, node_lookups = util.create_nodes_strtree(_multi_graph)
     # iter
@@ -1172,7 +1155,7 @@ def nx_consolidate_nodes(
         contains_buffer_dist,
     )
 
-    return _multi_graph
+    return util.validate_cityseer_networkx_graph(_multi_graph)
 
 
 def nx_snap_gapped_endings(
@@ -1181,10 +1164,8 @@ def nx_snap_gapped_endings(
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
 ) -> nx.MultiGraph:
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
-    _multi_graph: nx.MultiGraph
-    _multi_graph = nx_multigraph.copy()  # type: ignore
+    """ """
+    _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
@@ -1281,7 +1262,7 @@ def nx_snap_gapped_endings(
                     geom=new_geom,
                 )
 
-    return _multi_graph
+    return util.validate_cityseer_networkx_graph(_multi_graph)
 
 
 def nx_split_opposing_geoms(
@@ -1384,9 +1365,7 @@ def nx_split_opposing_geoms(
             for child_s, child_e, child_k, child_data in edge_children[edge_key]:
                 recurse_child_keys(child_s, child_e, child_k, child_data, current_edges)
 
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
-    _multi_graph = nx_multigraph.copy()
+    _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # create an edges STRtree (nodes and edges)
@@ -1657,14 +1636,14 @@ def nx_split_opposing_geoms(
         contains_buffer_dist,
     )
 
-    return deduped_graph
+    return util.validate_cityseer_networkx_graph(deduped_graph)
 
 
 def nx_decompose(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     decompose_max: float,
     osm_hwy_target_tags: list[str] | None = None,
-) -> MultiGraph:
+) -> nx.MultiGraph:
     """
     Decomposes a graph so that no edge is longer than a set maximum.
 
@@ -1715,10 +1694,8 @@ def nx_decompose(
     _Example graph after decomposition._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
     # note -> write to a duplicated graph to avoid in-place errors
@@ -1731,24 +1708,8 @@ def nx_decompose(
             edge_hwy_tags = _tags_from_edge_key(edge_data, "highways")
             if not hwy_tags.intersection(edge_hwy_tags):
                 continue
-        # test for x, y in start coordinates
-        if "x" not in nx_multigraph.nodes[start_nd_key] or "y" not in nx_multigraph.nodes[start_nd_key]:
-            raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {start_nd_key}.')
-        # test for x, y in end coordinates
-        if "x" not in nx_multigraph.nodes[end_nd_key] or "y" not in nx_multigraph.nodes[end_nd_key]:
-            raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {end_nd_key}.')
-        # test for geom
-        if "geom" not in edge_data:
-            raise KeyError(
-                f"No edge geom found for edge {start_nd_key}-{end_nd_key}: "
-                f'Please add an edge "geom" attribute consisting of a shapely LineString.'
-            )
         # get edge geometry
         line_geom: geometry.LineString = edge_data["geom"]
-        if line_geom.geom_type != "LineString":
-            raise TypeError(
-                f"Expected LineString geometry but found {line_geom.geom_type} for edge {start_nd_key}-{end_nd_key}."
-            )
         # check geom coordinates directionality - flip if facing backwards direction
         line_geom_coords = util.snap_linestring_endpoints(
             nx_multigraph,
@@ -1807,10 +1768,10 @@ def nx_decompose(
         edge_data_copy = {k: v for k, v in edge_data.items() if k != "geom"}
         g_multi_copy.add_edge(prior_node_id, end_nd_key, geom=line_segment, **edge_data_copy)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
-def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
+def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Convert a primal graph representation to the dual representation.
 
@@ -1856,40 +1817,28 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Converting graph to dual.")
-    g_dual: MultiGraph = nx.MultiGraph()
+    _ = util.validate_cityseer_networkx_graph(nx_multigraph)
+    if "is_dual" in nx_multigraph.graph:
+        raise ValueError("Graph is already a dual graph.")
+    g_dual = nx.MultiGraph()
     g_dual.graph["is_dual"] = True
+    if "crs" in nx_multigraph.graph:
+        g_dual.graph["crs"] = CRS(nx_multigraph.graph["crs"])
 
-    def get_half_geoms(nx_multigraph_ref: MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):  # type: ignore
+    def get_half_geoms(nx_multigraph_ref: nx.MultiGraph, a_node: NodeKey, b_node: NodeKey, edge_idx: int):  # type: ignore
         """
         Split geom and orient half-geoms.
         """
         # get edge data
-        edge_data: EdgeData = nx_multigraph_ref[a_node][b_node][edge_idx]
-        # test for x coordinates
-        if "x" not in nx_multigraph_ref.nodes[a_node] or "y" not in nx_multigraph_ref.nodes[a_node]:
-            raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {a_node}.')
-        # test for y coordinates
-        if "x" not in nx_multigraph_ref.nodes[b_node] or "y" not in nx_multigraph_ref.nodes[b_node]:
-            raise KeyError(f'Encountered node missing "x" or "y" coordinate attributes at node {b_node}.')
+        edge_data: EdgeData = nx_multigraph_ref[a_node][b_node][edge_idx]  # type: ignore
+        # get node data
         a_node_data: NodeData = nx_multigraph_ref.nodes[a_node]
         a_xy = (a_node_data["x"], a_node_data["y"])
         b_node_data: NodeData = nx_multigraph_ref.nodes[b_node]
         b_xy = (b_node_data["x"], b_node_data["y"])
-        # test for geom
-        if "geom" not in edge_data:
-            raise KeyError(
-                f"No edge geom found for edge {a_node}-{b_node}: "
-                f'Please add an edge "geom" attribute consisting of a shapely LineString.'
-            )
         # get edge geometry
         line_geom = edge_data["geom"]
-        if line_geom.geom_type != "LineString":
-            raise TypeError(
-                f"Expecting LineString geometry but found {line_geom.geom_type} geometry for edge {a_node}-{b_node}."
-            )
         # align geom coordinates to start from A side
         line_geom_coords = util.align_linestring_coords(line_geom.coords, a_xy)
         line_geom = geometry.LineString(line_geom_coords)
@@ -2003,12 +1952,12 @@ def nx_to_dual(nx_multigraph: MultiGraph) -> MultiGraph:
                         geom=merged_line,
                     )
 
-    return g_dual
+    return util.validate_cityseer_networkx_graph(g_dual)
 
 
 def nx_weight_by_dissolved_edges(
-    nx_multigraph: MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 45
-) -> MultiGraph:
+    nx_multigraph: nx.MultiGraph, dissolve_distance: int = 20, max_ang_diff: int = 45
+) -> nx.MultiGraph:
     """
     Generates graph node weightings based on the ratio of directly adjacent edges to total nearby edges.
 
@@ -2038,10 +1987,8 @@ def nx_weight_by_dissolved_edges(
     """
     # note it is better to weight via edges than via nodes this is because offset / staggered nodes
     # (intersections on one side of parallel road) might not otherwise trigger de-duplication via weights
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Generating node weights based on locally dissolved edges using a buffer of {dissolve_distance}m.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # generate STR tree
     edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
     # first iterate edges to save number of iters
@@ -2094,10 +2041,10 @@ def nx_weight_by_dissolved_edges(
             weight = adjacent_lens / total_lens
         g_multi_copy.nodes[nd_key]["weight"] = weight
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
-def nx_generate_vis_lines(nx_multigraph: MultiGraph) -> MultiGraph:
+def nx_generate_vis_lines(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
     Generates a `line_geom` property for nodes consisting `MultiLineString` geoms for visualisation purposes.
 
@@ -2117,10 +2064,8 @@ def nx_generate_vis_lines(nx_multigraph: MultiGraph) -> MultiGraph:
         geoms.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing LineStrings for node visualisation.")
-    g_multi_copy: MultiGraph = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # gather out edges
     for nd_key, nd_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
         line_geoms: list[geometry.LineString] = []
@@ -2136,4 +2081,4 @@ def nx_generate_vis_lines(nx_multigraph: MultiGraph) -> MultiGraph:
         # build line geom
         g_multi_copy.nodes[nd_key]["line_geom"] = geometry.MultiLineString(line_geoms)
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)

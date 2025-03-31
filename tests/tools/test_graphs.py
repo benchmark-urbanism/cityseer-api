@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from cityseer import config
 from cityseer.tools import graphs, mock
+from pyproj import CRS
 from shapely import geometry, ops
 
 
@@ -157,6 +158,7 @@ def test_nx_remove_filler_nodes(primal_graph):
     G_lollipop.add_nodes_from(nodes)
     edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
     G_lollipop.add_edges_from(edges)
+    G_lollipop.graph["crs"] = CRS(32630)
     # add edge geoms
     G_lollipop = graphs.nx_simple_geoms(G_lollipop)
     # flip some geometry
@@ -215,6 +217,7 @@ def test_nx_remove_filler_nodes(primal_graph):
         ("2-up", "1-up"),
     ]
     G_stairway.add_edges_from(edges)
+    G_stairway.graph["crs"] = CRS(32630)
     # add edge geoms
     G_stairway = graphs.nx_simple_geoms(G_stairway)
     # flip some geometry
@@ -453,6 +456,7 @@ def test_nx_merge_parallel_edges():
 def test_nx_iron_edges():
     """ """
     nx_multi = nx.MultiGraph()
+    nx_multi.graph["crs"] = CRS(32630)
     nx_multi.add_node(0, x=0, y=0)
     nx_multi.add_node(1, x=0, y=2)
     # 1 - jogged line should be preserved
@@ -475,6 +479,7 @@ def test_nx_iron_edges():
     assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 50.0)]
     # 5 loops should be left alone
     nx_multi = nx.MultiGraph()
+    nx_multi.graph["crs"] = CRS(32630)
     nx_multi.add_node(0, x=0, y=0)
     line_geom = geometry.LineString([[0, 0], [0, 100], [100, 100], [100, 0], [0, 0]])
     nx_multi.add_edge(0, 0, geom=line_geom)

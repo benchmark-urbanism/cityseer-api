@@ -1,22 +1,29 @@
 ---
 layout: ../../layouts/PageLayout.astro
 ---
-
 <section class="module">
 
 # plot
 
-Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
+
+ Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
+
 
 <div class="class">
 
+
 ## ColourMap
 
-Specifies global colour presets.
+
+
+ Specifies global colour presets.
+
+
 
 <div class="function">
 
 ## ColourMap
+
 
 <div class="content">
 <span class="name">ColourMap</span><div class="signature">
@@ -27,11 +34,14 @@ Specifies global colour presets.
 
 </div>
 
+ 
 </div>
+
 
 <div class="function">
 
 ## plot_nx_primal_or_dual
+
 
 <div class="content">
 <span class="name">plot_nx_primal_or_dual</span><div class="signature multiline">
@@ -111,10 +121,9 @@ Specifies global colour presets.
 </div>
 </div>
 
-Plot a primal or dual cityseer graph.
 
+ Plot a primal or dual cityseer graph.
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">primal_graph</div>
@@ -122,8 +131,7 @@ Plot a primal or dual cityseer graph.
   </div>
   <div class="desc">
 
-An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.</div>
-
+ An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -133,8 +141,7 @@ An optional `NetworkX` MultiGraph to plot in the primal representation. Defaults
   </div>
   <div class="desc">
 
-An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.</div>
-
+ An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -144,8 +151,7 @@ An optional `NetworkX` MultiGraph to plot in the dual representation. Defaults t
   </div>
   <div class="desc">
 
-An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
-
+ An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -155,8 +161,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
   </div>
   <div class="desc">
 
-Whether to display node labels. Defaults to False.</div>
-
+ Whether to display node labels. Defaults to False.</div>
 </div>
 
 <div class="param-set">
@@ -166,8 +171,7 @@ Whether to display node labels. Defaults to False.</div>
   </div>
   <div class="desc">
 
-The diameter for the primal graph's nodes.</div>
-
+ The diameter for the primal graph's nodes.</div>
 </div>
 
 <div class="param-set">
@@ -177,8 +181,7 @@ The diameter for the primal graph's nodes.</div>
   </div>
   <div class="desc">
 
-Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -188,8 +191,7 @@ Primal node colour or colours. When passing an iterable of colours, the number o
   </div>
   <div class="desc">
 
-Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -199,8 +201,7 @@ Primal edge colour or colours. When passing an iterable of colours, the number o
   </div>
   <div class="desc">
 
-The diameter for the dual graph's nodes.</div>
-
+ The diameter for the dual graph's nodes.</div>
 </div>
 
 <div class="param-set">
@@ -210,8 +211,7 @@ The diameter for the dual graph's nodes.</div>
   </div>
   <div class="desc">
 
-Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -221,8 +221,7 @@ Dual node colour or colours. When passing a list of colours, the number of colou
   </div>
   <div class="desc">
 
-Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -232,8 +231,7 @@ Dual edge colour or colours. When passing an iterable of colours, the number of 
   </div>
   <div class="desc">
 
-Linewidths for the primal edge. Defaults to None.</div>
-
+ Linewidths for the primal edge. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -243,8 +241,7 @@ Linewidths for the primal edge. Defaults to None.</div>
   </div>
   <div class="desc">
 
-Linewidths for the dual edge. Defaults to None.</div>
-
+ Linewidths for the dual edge. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -254,8 +251,7 @@ Linewidths for the dual edge. Defaults to None.</div>
   </div>
   <div class="desc">
 
-Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</div>
-
+ Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</div>
 </div>
 
 <div class="param-set">
@@ -265,8 +261,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
   </div>
   <div class="desc">
 
-A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.</div>
-
+ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -276,8 +271,7 @@ A tuple or list with the minimum and maxium `x` extents to be plotted. Defaults 
   </div>
   <div class="desc">
 
-A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.</div>
-
+ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -287,8 +281,7 @@ A tuple or list with the minimum and maxium `y` extents to be plotted. Defaults 
   </div>
   <div class="desc">
 
-An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.</div>
-
+ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.</div>
 </div>
 
 <div class="param-set">
@@ -298,13 +291,12 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
   </div>
   <div class="desc">
 
-`kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
-
+ `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
 </div>
 
 ### Notes
 
-Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot-nx) method instead.
+ Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot-nx) method instead.
 
 ```py
 from cityseer.tools import mock, graphs, plot
@@ -319,9 +311,11 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
 
 </div>
 
+
 <div class="function">
 
 ## plot_nx
+
 
 <div class="content">
 <span class="name">plot_nx</span><div class="signature multiline">
@@ -382,10 +376,9 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
 </div>
 </div>
 
-Plot a `networkX` MultiGraph.
 
+ Plot a `networkX` MultiGraph.
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">nx_multigraph</div>
@@ -393,8 +386,7 @@ Plot a `networkX` MultiGraph.
   </div>
   <div class="desc">
 
-A `NetworkX` MultiGraph.</div>
-
+ A `NetworkX` MultiGraph.</div>
 </div>
 
 <div class="param-set">
@@ -404,8 +396,7 @@ A `NetworkX` MultiGraph.</div>
   </div>
   <div class="desc">
 
-An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
-
+ An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -415,8 +406,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
   </div>
   <div class="desc">
 
-Whether to display node labels. Defaults to False.</div>
-
+ Whether to display node labels. Defaults to False.</div>
 </div>
 
 <div class="param-set">
@@ -426,8 +416,7 @@ Whether to display node labels. Defaults to False.</div>
   </div>
   <div class="desc">
 
-The diameter for the graph's nodes.</div>
-
+ The diameter for the graph's nodes.</div>
 </div>
 
 <div class="param-set">
@@ -437,8 +426,7 @@ The diameter for the graph's nodes.</div>
   </div>
   <div class="desc">
 
-Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -448,8 +436,7 @@ Node colour or colours. When passing an iterable of colours, the number of colou
   </div>
   <div class="desc">
 
-Edges colour as a `matplotlib` compatible colour string. Defaults to None.</div>
-
+ Edges colour as a `matplotlib` compatible colour string. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -459,8 +446,7 @@ Edges colour as a `matplotlib` compatible colour string. Defaults to None.</div>
   </div>
   <div class="desc">
 
-Linewidths for edges. Defaults to None.</div>
-
+ Linewidths for edges. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -470,8 +456,7 @@ Linewidths for edges. Defaults to None.</div>
   </div>
   <div class="desc">
 
-Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</div>
-
+ Whether to plot the edge geometries. If set to `False`, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</div>
 </div>
 
 <div class="param-set">
@@ -481,8 +466,7 @@ Whether to plot the edge geometries. If set to `False`, straight lines will be d
   </div>
   <div class="desc">
 
-A tuple or list with the minimum and maximum `x` extents to be plotted. Defaults to None.</div>
-
+ A tuple or list with the minimum and maximum `x` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -492,8 +476,7 @@ A tuple or list with the minimum and maximum `x` extents to be plotted. Defaults
   </div>
   <div class="desc">
 
-A tuple or list with the minimum and maximum `y` extents to be plotted. Defaults to None.</div>
-
+ A tuple or list with the minimum and maximum `y` extents to be plotted. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -503,8 +486,7 @@ A tuple or list with the minimum and maximum `y` extents to be plotted. Defaults
   </div>
   <div class="desc">
 
-An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.</div>
-
+ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax will be generated.</div>
 </div>
 
 <div class="param-set">
@@ -514,8 +496,7 @@ An optional `matplotlib` `ax` to which to plot. If not provided, a figure and ax
   </div>
   <div class="desc">
 
-`kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
-
+ `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
 </div>
 
 ### Notes
@@ -548,17 +529,24 @@ cols = cmap(vals)
 plot.plot_nx(G_after, node_colour=cols)
 ```
 
+
 ![Example Colour Plot.](/images/graph_colour.png) _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
 
 </div>
 
+
 <div class="class">
 
+
 ## SimpleLabelEncoder
+
+
+
 
 <div class="function">
 
 ## SimpleLabelEncoder
+
 
 <div class="content">
 <span class="name">SimpleLabelEncoder</span><div class="signature">
@@ -569,9 +557,12 @@ plot.plot_nx(G_after, node_colour=cols)
 
 </div>
 
+ 
+
 <div class="function">
 
 ## fit
+
 
 <div class="content">
 <span class="name">fit</span><div class="signature multiline">
@@ -586,13 +577,17 @@ plot.plot_nx(G_after, node_colour=cols)
 </div>
 </div>
 
-Assigns an integer to each unique label.
+
+ Assigns an integer to each unique label.
 
 </div>
+
+ 
 
 <div class="function">
 
 ## transform
+
 
 <div class="content">
 <span class="name">transform</span><div class="signature multiline">
@@ -607,13 +602,17 @@ Assigns an integer to each unique label.
 </div>
 </div>
 
-Converts labels to their corresponding integer values.
+
+ Converts labels to their corresponding integer values.
 
 </div>
+
+ 
 
 <div class="function">
 
 ## fit_transform
+
 
 <div class="content">
 <span class="name">fit_transform</span><div class="signature multiline">
@@ -628,15 +627,19 @@ Converts labels to their corresponding integer values.
 </div>
 </div>
 
-Fits and transforms in one step.
+
+ Fits and transforms in one step.
 
 </div>
 
+ 
 </div>
+
 
 <div class="function">
 
 ## plot_assignment
+
 
 <div class="content">
 <span class="name">plot_assignment</span><div class="signature multiline">
@@ -677,13 +680,12 @@ Fits and transforms in one step.
 </div>
 </div>
 
-Plot a `network_structure` and `data_gdf` for visualising assignment of data points to respective nodes.
+
+ Plot a `network_structure` and `data_gdf` for visualising assignment of data points to respective nodes.
 :::warning
 This method is primarily intended for package testing and development.
 :::
-
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">network_structure</div>
@@ -691,8 +693,7 @@ This method is primarily intended for package testing and development.
   </div>
   <div class="desc">
 
-A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
-
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
@@ -702,8 +703,7 @@ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance
   </div>
   <div class="desc">
 
-A `NetworkX` MultiGraph.</div>
-
+ A `NetworkX` MultiGraph.</div>
 </div>
 
 <div class="param-set">
@@ -713,8 +713,7 @@ A `NetworkX` MultiGraph.</div>
   </div>
   <div class="desc">
 
-A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
-
+ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
 </div>
 
 <div class="param-set">
@@ -724,8 +723,7 @@ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` co
   </div>
   <div class="desc">
 
-An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
-
+ An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -735,8 +733,7 @@ An optional filepath: if provided, the image will be saved to the path instead o
   </div>
   <div class="desc">
 
-Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
-
+ Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying [`draw_networkx`](https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx) method and should be formatted accordingly. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -746,8 +743,7 @@ Node colour or colours. When passing a list of colours, the number of colours sh
   </div>
   <div class="desc">
 
-Whether to plot the node labels. Defaults to False.</div>
-
+ Whether to plot the node labels. Defaults to False.</div>
 </div>
 
 <div class="param-set">
@@ -757,8 +753,7 @@ Whether to plot the node labels. Defaults to False.</div>
   </div>
   <div class="desc">
 
-An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `data_layer`. Defaults to None.</div>
-
+ An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in `data_layer`. Defaults to None.</div>
 </div>
 
 <div class="param-set">
@@ -768,8 +763,7 @@ An optional iterable of categorical data labels which will be mapped to colours.
   </div>
   <div class="desc">
 
-`kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
-
+ `kwargs` which will be passed to the `matplotlib` figure parameters. If provided, these will override the default figure size or dpi parameters.</div>
 </div>
 
 ### Notes
@@ -778,9 +772,11 @@ An optional iterable of categorical data labels which will be mapped to colours.
 
 </div>
 
+
 <div class="function">
 
 ## plot_network_structure
+
 
 <div class="content">
 <span class="name">plot_network_structure</span><div class="signature multiline">
@@ -804,14 +800,13 @@ An optional iterable of categorical data labels which will be mapped to colours.
 </div>
 </div>
 
-Plot a graph from raw `cityseer` network structure.
+
+ Plot a graph from raw `cityseer` network structure.
 :::note
 Note that this function is subject to frequent revision pending short-term development requirements. It is used
 mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.
 :::
-
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">network_structure</div>
@@ -819,8 +814,7 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="desc">
 
-A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
-
+ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
@@ -830,8 +824,7 @@ A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance
   </div>
   <div class="desc">
 
-A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
-
+ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
 </div>
 
 <div class="param-set">
@@ -841,15 +834,17 @@ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` co
   </div>
   <div class="desc">
 
-An optional polygon. Defaults to None.</div>
+ An optional polygon. Defaults to None.</div>
+</div>
+
 
 </div>
 
-</div>
 
 <div class="function">
 
 ## minmax_scale_manual
+
 
 <div class="content">
 <span class="name">minmax_scale_manual</span><div class="signature multiline">
@@ -864,13 +859,16 @@ An optional polygon. Defaults to None.</div>
 </div>
 </div>
 
-Manually scales data to a given range (default 0 to 1).
+
+ Manually scales data to a given range (default 0 to 1).
 
 </div>
+
 
 <div class="function">
 
 ## plot_scatter
+
 
 <div class="content">
 <span class="name">plot_scatter</span><div class="signature multiline">
@@ -933,10 +931,9 @@ Manually scales data to a given range (default 0 to 1).
 </div>
 </div>
 
-Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 
+ Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">ax</div>
@@ -944,8 +941,7 @@ Convenience plotting function for plotting outputs from examples in the Cityseer
   </div>
   <div class="desc">
 
-A 'matplotlib' `Ax` to which to plot.</div>
-
+ A 'matplotlib' `Ax` to which to plot.</div>
 </div>
 
 <div class="param-set">
@@ -955,8 +951,7 @@ A 'matplotlib' `Ax` to which to plot.</div>
   </div>
   <div class="desc">
 
-A numpy array of floats representing the `x` coordinates for points to plot.</div>
-
+ A numpy array of floats representing the `x` coordinates for points to plot.</div>
 </div>
 
 <div class="param-set">
@@ -966,8 +961,7 @@ A numpy array of floats representing the `x` coordinates for points to plot.</di
   </div>
   <div class="desc">
 
-A numpy array of floats representing the `y` coordinates for points to plot.</div>
-
+ A numpy array of floats representing the `y` coordinates for points to plot.</div>
 </div>
 
 <div class="param-set">
@@ -977,8 +971,7 @@ A numpy array of floats representing the `y` coordinates for points to plot.</di
   </div>
   <div class="desc">
 
-A numpy array of floats representing the data values for the provided points.</div>
-
+ A numpy array of floats representing the data values for the provided points.</div>
 </div>
 
 <div class="param-set">
@@ -988,8 +981,7 @@ A numpy array of floats representing the data values for the provided points.</d
   </div>
   <div class="desc">
 
-A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.</div>
-
+ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.</div>
 </div>
 
 <div class="param-set">
@@ -999,8 +991,7 @@ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping 
   </div>
   <div class="desc">
 
-A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</div>
-
+ A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</div>
 </div>
 
 <div class="param-set">
@@ -1010,8 +1001,7 @@ A tuple of two floats, representing the minimum and maximum percentiles at which
   </div>
   <div class="desc">
 
-A `matplotlib` colour map key.</div>
-
+ A `matplotlib` colour map key.</div>
 </div>
 
 <div class="param-set">
@@ -1021,8 +1011,7 @@ A `matplotlib` colour map key.</div>
   </div>
   <div class="desc">
 
-A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</div>
-
+ A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</div>
 </div>
 
 <div class="param-set">
@@ -1032,8 +1021,7 @@ A float representing an exponential for reshaping the values distribution. Defau
   </div>
   <div class="desc">
 
-A float representing the minimum size for a plotted point.</div>
-
+ A float representing the minimum size for a plotted point.</div>
 </div>
 
 <div class="param-set">
@@ -1043,8 +1031,7 @@ A float representing the minimum size for a plotted point.</div>
   </div>
   <div class="desc">
 
-A float representing the maximum size for a plotted point.</div>
-
+ A float representing the maximum size for a plotted point.</div>
 </div>
 
 <div class="param-set">
@@ -1054,8 +1041,7 @@ A float representing the maximum size for a plotted point.</div>
   </div>
   <div class="desc">
 
-Whether or not to rasterise the output. Recommended for plots with a large number of points.</div>
-
+ Whether or not to rasterise the output. Recommended for plots with a large number of points.</div>
 </div>
 
 <div class="param-set">
@@ -1065,15 +1051,17 @@ Whether or not to rasterise the output. Recommended for plots with a large numbe
   </div>
   <div class="desc">
 
-A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).</div>
+ A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).</div>
+</div>
+
 
 </div>
 
-</div>
 
 <div class="function">
 
 ## plot_nx_edges
+
 
 <div class="content">
 <span class="name">plot_nx_edges</span><div class="signature multiline">
@@ -1157,10 +1145,9 @@ A hex or other valid `matplotlib` colour value for the ax and figure faces (back
 </div>
 </div>
 
-Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 
+ Convenience plotting function for plotting outputs from examples in the Cityseer Guide.
 ### Parameters
-
 <div class="param-set">
   <div class="def">
     <div class="name">ax</div>
@@ -1168,8 +1155,7 @@ Convenience plotting function for plotting outputs from examples in the Cityseer
   </div>
   <div class="desc">
 
-A 'matplotlib' `Ax` to which to plot.</div>
-
+ A 'matplotlib' `Ax` to which to plot.</div>
 </div>
 
 <div class="param-set">
@@ -1179,8 +1165,7 @@ A 'matplotlib' `Ax` to which to plot.</div>
   </div>
   <div class="desc">
 
-A `NetworkX` MultiGraph.</div>
-
+ A `NetworkX` MultiGraph.</div>
 </div>
 
 <div class="param-set">
@@ -1190,8 +1175,7 @@ A `NetworkX` MultiGraph.</div>
   </div>
   <div class="desc">
 
-An edge key for the provided `nx_multigraph`. Plotted values will be retrieved from this edge key.</div>
-
+ An edge key for the provided `nx_multigraph`. Plotted values will be retrieved from this edge key.</div>
 </div>
 
 <div class="param-set">
@@ -1201,8 +1185,7 @@ An edge key for the provided `nx_multigraph`. Plotted values will be retrieved f
   </div>
   <div class="desc">
 
-A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.</div>
-
+ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping the plot.</div>
 </div>
 
 <div class="param-set">
@@ -1212,8 +1195,7 @@ A tuple or list containing the `[s, w, n, e]` bounding box extents for clipping 
   </div>
   <div class="desc">
 
-A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</div>
-
+ A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</div>
 </div>
 
 <div class="param-set">
@@ -1223,8 +1205,7 @@ A tuple of two floats, representing the minimum and maximum percentiles at which
   </div>
   <div class="desc">
 
-A `matplotlib` colour map key.</div>
-
+ A `matplotlib` colour map key.</div>
 </div>
 
 <div class="param-set">
@@ -1234,8 +1215,7 @@ A `matplotlib` colour map key.</div>
   </div>
   <div class="desc">
 
-A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</div>
-
+ A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</div>
 </div>
 
 <div class="param-set">
@@ -1245,8 +1225,7 @@ A float representing an exponential for reshaping the values distribution. Defau
   </div>
   <div class="desc">
 
-A float representing the minimum line width for a plotted edge.</div>
-
+ A float representing the minimum line width for a plotted edge.</div>
 </div>
 
 <div class="param-set">
@@ -1256,8 +1235,7 @@ A float representing the minimum line width for a plotted edge.</div>
   </div>
   <div class="desc">
 
-A float representing the maximum line width for a plotted edge.</div>
-
+ A float representing the maximum line width for a plotted edge.</div>
 </div>
 
 <div class="param-set">
@@ -1267,8 +1245,7 @@ A float representing the maximum line width for a plotted edge.</div>
   </div>
   <div class="desc">
 
-A key for retrieving categorical labels from edges.</div>
-
+ A key for retrieving categorical labels from edges.</div>
 </div>
 
 <div class="param-set">
@@ -1278,8 +1255,7 @@ A key for retrieving categorical labels from edges.</div>
   </div>
   <div class="desc">
 
-Whether to plot colours by categorical. This requires an `edge_label_key` parameter.</div>
-
+ Whether to plot colours by categorical. This requires an `edge_label_key` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -1289,8 +1265,7 @@ Whether to plot colours by categorical. This requires an `edge_label_key` parame
   </div>
   <div class="desc">
 
-The number of categorical values (sorted in decreasing order) to plot.</div>
-
+ The number of categorical values (sorted in decreasing order) to plot.</div>
 </div>
 
 <div class="param-set">
@@ -1300,8 +1275,7 @@ The number of categorical values (sorted in decreasing order) to plot.</div>
   </div>
   <div class="desc">
 
-Whether or not to rasterise the output. Recommended for plots with a large number of edges.</div>
-
+ Whether or not to rasterise the output. Recommended for plots with a large number of edges.</div>
 </div>
 
 <div class="param-set">
@@ -1311,8 +1285,7 @@ Whether or not to rasterise the output. Recommended for plots with a large numbe
   </div>
   <div class="desc">
 
-A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).</div>
-
+ A hex or other valid `matplotlib` colour value for the ax and figure faces (backgrounds).</div>
 </div>
 
 <div class="param-set">
@@ -1322,10 +1295,12 @@ A hex or other valid `matplotlib` colour value for the ax and figure faces (back
   </div>
   <div class="desc">
 
-Whether to invert the plot order, e.g. if using an inverse colour map.</div>
+ Whether to invert the plot order, e.g. if using an inverse colour map.</div>
+</div>
+
 
 </div>
 
-</div>
+
 
 </section>

@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Any
 
 import geopandas as gpd
 
@@ -64,10 +63,6 @@ from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# type hack until networkx supports type-hinting
-MultiGraph = Any
 
 # separate out so that ast parser can parse function def
 MIN_THRESH_WT = config.MIN_THRESH_WT

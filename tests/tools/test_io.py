@@ -4,7 +4,7 @@ import pytest
 from cityseer import config
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, io, mock, util
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from shapely import geometry, wkt
 
 LNG = -0.1270
@@ -18,20 +18,31 @@ BUFF_POLY_UTM = "POLYGON ((699518.8923665844 5711511.241661096, 699517.929311918
 
 def test_nx_epsg_conversion():
     G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = graphs.nx_simple_geoms(G_wgs)
     nd_data = G_wgs.nodes["0"]
     utm_code = util.extract_utm_epsg_code(nd_data["x"], nd_data["y"])
+    #
     G_utm = mock.mock_graph()
+    G_utm = graphs.nx_simple_geoms(G_utm)
+    #
     G_27700 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code=27700)
+    assert G_27700.graph["crs"].to_epsg() == 27700
     G_27700_2 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="27700")
+    assert G_27700_2.graph["crs"].to_epsg() == 27700
     G_27700_3 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="EPSG:27700")
+    assert G_27700_3.graph["crs"].to_epsg() == 27700
+    #
     for node_key in G_27700.nodes():
         nd_1 = G_27700.nodes[node_key]
         nd_2 = G_27700_2.nodes[node_key]
         nd_3 = G_27700_3.nodes[node_key]
         assert nd_1["x"] == nd_2["x"] == nd_3["x"]
         assert nd_1["y"] == nd_2["y"] == nd_3["y"]
+    #
     G_moll = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="ESRI:54009")
+    assert G_moll.graph["crs"] == CRS("ESRI:54009")
     G_round = io.nx_epsg_conversion(G_moll, from_crs_code="ESRI:54009", to_crs_code=utm_code)
+    assert G_round.graph["crs"].to_epsg() == utm_code
     for node_key in G_utm.nodes():
         nd_1 = G_utm.nodes[node_key]
         nd_2 = G_round.nodes[node_key]
@@ -42,50 +53,52 @@ def test_nx_epsg_conversion():
 def test_nx_wgs_to_utm():
     # check that node coordinates are correctly converted
     G_utm = mock.mock_graph()
+    G_utm = graphs.nx_simple_geoms(G_utm)
+    G_utm.graph["crs"] = CRS(32630)
+    #
     G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = graphs.nx_simple_geoms(G_wgs)
+    G_utm.graph["crs"] = CRS(4326)
+    #
     G_converted = io.nx_wgs_to_utm(G_wgs)
+    assert G_converted.graph["crs"].to_epsg() == 32630
+    #
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
         assert np.allclose(d["x"], G_converted.nodes[n]["x"], atol=0.1, rtol=0)
         assert np.allclose(d["y"], G_converted.nodes[n]["y"], atol=0.1, rtol=0)
 
     # check that edge coordinates are correctly converted
-    G_utm = mock.mock_graph()
-    G_utm = graphs.nx_simple_geoms(G_utm)
-
-    G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_wgs = graphs.nx_simple_geoms(G_wgs)
-
-    G_converted = io.nx_wgs_to_utm(G_wgs)
     for s, e, k, d in G_utm.edges(data=True, keys=True):
         assert round(d["geom"].length, 1) == round(G_converted[s][e][k]["geom"].length, 1)
 
     # check that non-LineString geoms throw an error
-    G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs_copy = G_wgs.copy()
     for s, e, k in G_wgs.edges(keys=True):
-        G_wgs[s][e][k]["geom"] = geometry.Point([G_wgs.nodes[s]["x"], G_wgs.nodes[s]["y"]])
+        G_wgs_copy[s][e][k]["geom"] = geometry.Point([G_wgs_copy.nodes[s]["x"], G_wgs_copy.nodes[s]["y"]])
     with pytest.raises(TypeError):
-        io.nx_wgs_to_utm(G_wgs)
+        io.nx_wgs_to_utm(G_wgs_copy)
 
     # check that missing node keys throw an error
+    G_wgs_copy = G_wgs.copy()
     for k in ["x", "y"]:
-        G_wgs = mock.mock_graph(wgs84_coords=True)
-        for n in G_wgs.nodes():
+        G_wgs_copy = mock.mock_graph(wgs84_coords=True)
+        for n in G_wgs_copy.nodes():
             # delete key from first node and break
-            del G_wgs.nodes[n][k]
+            del G_wgs_copy.nodes[n][k]
             break
         # check that missing key throws an error
         with pytest.raises(KeyError):
-            io.nx_wgs_to_utm(G_wgs)
+            io.nx_wgs_to_utm(G_wgs_copy)
 
     # check that non WGS coordinates throw error
-    G_utm = mock.mock_graph()
     with pytest.raises(ValueError):
         io.nx_wgs_to_utm(G_utm)
 
     # check that non-matching UTM zones are coerced to the same zone
     # this scenario spans two UTM zones
     G_wgs_b = nx.MultiGraph()
+    G_wgs_b.graph["crs"] = CRS(4326)
     nodes = [
         (1, {"x": -0.0005, "y": 51.572}),
         (2, {"x": -0.0005, "y": 51.571}),
@@ -96,6 +109,7 @@ def test_nx_wgs_to_utm():
     G_wgs_b.add_nodes_from(nodes)
     edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
     G_wgs_b.add_edges_from(edges)
+    G_wgs_b = graphs.nx_simple_geoms(G_wgs_b)
     G_utm_30 = io.nx_wgs_to_utm(G_wgs_b)
     G_utm_30 = graphs.nx_simple_geoms(G_utm_30)
 
@@ -150,11 +164,13 @@ def test_osm_graph_from_poly():
     assert isinstance(network_from_wgs, nx.MultiGraph)
     assert len(network_from_wgs.nodes) > 0
     assert len(network_from_wgs.edges) > 0
+    assert network_from_wgs.graph["crs"].to_epsg() == 32630
     # check that from CRS conversions are working
     # 32630 corresponds to UTM 30N
     poly_utm, utm_epsg = io.buffered_point_poly(LNG, LAT, BUFFER, projected=True)
     assert utm_epsg == 32630
     network_from_utm = io.osm_graph_from_poly(poly_utm, poly_crs_code=utm_epsg, simplify=False)
+    assert network_from_utm.graph["crs"].to_epsg() == 32630
     # visual check for debugging
     # plot.plot_nx(network_from_utm)
     assert isinstance(network_from_utm, nx.MultiGraph)
@@ -166,6 +182,7 @@ def test_osm_graph_from_poly():
     # check that to CRS conversions are working
     # this will convert out graph to BNG - EPSG 27700
     network_to_bng = io.osm_graph_from_poly(poly_wgs, to_crs_code=27700, simplify=False)
+    assert network_to_bng.graph["crs"].to_epsg() == 27700
     # networks should still match
     assert list(network_to_bng.nodes) == list(network_from_wgs.nodes)
     assert list(network_to_bng.edges) == list(network_from_wgs.edges)
@@ -210,7 +227,11 @@ def test_network_structure_from_nx(diamond_graph):
     G_test_dual.nodes["2_3_k0"]["live"] = False
     for G, is_dual in zip((G_test, G_test_dual), (False, True), strict=True):
         # generate test maps
-        nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, 32630)
+        nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
+        network_structure.validate()
+        # check CRS
+        assert nodes_gdf.crs.to_epsg() == 32630
+        assert edges_gdf.crs.to_epsg() == 32630
         network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
@@ -607,11 +628,15 @@ def test_network_structure_from_nx(diamond_graph):
     # check that non string indices throw an error
     G_test = diamond_graph.copy()
     G_test.add_node(0)
-    G_test.add_node(1)
-    G_test.add_edge(0, 1)
+    G_test.nodes[0]["x"] = 0
+    G_test.nodes[0]["y"] = 0
     with pytest.raises(TypeError):
         io.network_structure_from_nx(G_test, 32630)
     # check that missing geoms throw an error
+    G_test = diamond_graph.copy()
+    G_test.add_node(0)
+    G_test.add_node(1)
+    G_test.add_edge(0, 1)
     G_test = diamond_graph.copy()
     for start_nd, end_nd, edge_key in G_test.edges(keys=True):
         # delete key from first node and break

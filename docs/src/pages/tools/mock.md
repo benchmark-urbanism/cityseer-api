@@ -533,5 +533,28 @@ for counts, probs in mock.mock_species_data():
 </div>
 
 
+<div class="function">
+
+## mock_gtfs_stops_txt
+
+
+<div class="content">
+<span class="name">mock_gtfs_stops_txt</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Generate stops and stop times CSVs containing mock GTFS stops data for testing purposes.
+
+</div>
+
+
 
 </section>

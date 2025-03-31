@@ -350,7 +350,7 @@ It is generally not necessary to utilise this function directly.
 <div class="param-set">
   <div class="def">
     <div class="name">distance</div>
-    <div class="type">int | tuple[int]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
@@ -371,7 +371,7 @@ It is generally not necessary to utilise this function directly.
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
@@ -501,25 +501,168 @@ print(d_max)
 | 0.005 | 800m |
 | 0.0025 | 1600m |
 
-Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
-
-| $\beta$ | $w_{min}$ | $d_{max}$ |
-|:-------:|:---------:|:---------:|
-| 0.02 | 0.01 | 230m |
-| 0.01 | 0.01 | 461m |
-| 0.005 | 0.01 | 921m |
-| 0.0025 | 0.01 | 1842m |
+Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
 
 </div>
 
 
 <div class="function">
 
-## pair_distances_and_betas
+## distances_from_seconds
 
 
 <div class="content">
-<span class="name">pair_distances_and_betas</span><div class="signature multiline">
+<span class="name">distances_from_seconds</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">seconds</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Map seconds to equivalent distance thresholds $d_{max}$.
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+ The default `speed_m_s` of $1.333$ yields the following $d_{max}$ walking thresholds:
+
+| $seconds$ | $d_{max}$ |
+|:-------:|:---------:|
+| 300 | 400m |
+| 600 | 800m |
+| 1200 | 1600m |
+
+Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">seconds</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Seconds to convert to distance thresholds $d_{max}$.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The walking speed in metres per second.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ A numpy array of distance thresholds $d_{max}$.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## seconds_from_distances
+
+
+<div class="content">
+<span class="name">seconds_from_distances</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[float]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Map distances into equivalent walking time in seconds.
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+ The default `speed_m_s` of $1.33333$ yields the following walking times:
+
+| $d_{max}$ | $seconds$ |
+|:-------:|:---------:|
+| 400m | 300 |
+| 800m | 600 |
+| 1600m | 1200 |
+
+Setting the `speed_m_s` to a higher or lower number will affect the walking time accordingly.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Distances to convert to seconds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The walking speed in metres per second.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ A numpy array of walking time in seconds.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## pair_distances_betas_time
+
+
+<div class="content">
+<span class="name">pair_distances_betas_time</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">distances</span>
@@ -532,28 +675,39 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
   <span class="pr">list[float]</span>
+  <span class="pr">list[float]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Pair distances and betas, where one or the other parameter is provided.
+ Pair distances, betas, and time, where only one parameter is provided.
 ### Parameters
 <div class="param-set">
   <div class="def">
     <div class="name">distances</div>
-    <div class="type">list[int] | tuple[int]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `betas` or `minutes` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -563,7 +717,17 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ Walking times in minutes to be used for calculations. The `distance` and `beta` parameters will be determined implicitly. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -576,11 +740,21 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default walking speed in meters per second can optionally be overridden to configure the distances covered by the respective walking times.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name">distances</div>
-    <div class="type">tuple[int]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
@@ -590,11 +764,21 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for exam
 <div class="param-set">
   <div class="def">
     <div class="name">betas</div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
  A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">seconds</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Walking times in seconds corresponding to the distances used for calculations.</div>
 </div>
 
 ### Notes
@@ -640,7 +824,7 @@ when calculating shortest paths and landuse accessibilities.
 <div class="param-set">
   <div class="def">
     <div class="name">beta</div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
@@ -661,7 +845,7 @@ when calculating shortest paths and landuse accessibilities.
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
@@ -732,7 +916,7 @@ datapoints are not located with high spatial precision.
 <div class="param-set">
   <div class="def">
     <div class="name">distances</div>
-    <div class="type">tuple[int]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
@@ -742,7 +926,7 @@ datapoints are not located with high spatial precision.
 <div class="param-set">
   <div class="def">
     <div class="name">betas</div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
@@ -763,7 +947,7 @@ datapoints are not located with high spatial precision.
 <div class="param-set">
   <div class="def">
     <div class="name">max_curve_wts</div>
-    <div class="type">tuple[float]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
@@ -1242,9 +1426,14 @@ datapoints are not located with high spatial precision.
     <span class="pa"> cityseer.rustalgos.NetworkStructure</span>
   </div>
   <div class="param">
-    <span class="pn">max_dist</span>
+    <span class="pn">max_seconds</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -1304,6 +1493,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = None</span>
@@ -1315,6 +1509,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -1391,6 +1590,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = None</span>
@@ -1402,6 +1606,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -1457,6 +1666,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = None</span>
@@ -1468,6 +1682,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -1898,9 +2117,14 @@ datapoints are not located with high spatial precision.
     <span class="pa"> int</span>
   </div>
   <div class="param">
-    <span class="pn">max_dist</span>
+    <span class="pn">max_seconds</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -1935,9 +2159,14 @@ datapoints are not located with high spatial precision.
     <span class="pa"> int</span>
   </div>
   <div class="param">
-    <span class="pn">max_dist</span>
+    <span class="pn">max_seconds</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -1972,9 +2201,14 @@ datapoints are not located with high spatial precision.
     <span class="pa"> int</span>
   </div>
   <div class="param">
-    <span class="pn">max_dist</span>
+    <span class="pn">max_seconds</span>
     <span class="pc">:</span>
-    <span class="pa"> int</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -2016,6 +2250,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -2027,6 +2266,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -2072,6 +2316,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -2083,6 +2332,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -2138,6 +2392,11 @@ datapoints are not located with high spatial precision.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -2149,6 +2408,11 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
@@ -2461,27 +2725,32 @@ datapoints are not located with high spatial precision.
   <div class="param">
     <span class="pn">length</span>
     <span class="pc">:</span>
-    <span class="pa"> float</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">angle_sum</span>
     <span class="pc">:</span>
-    <span class="pa"> float</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">imp_factor</span>
     <span class="pc">:</span>
-    <span class="pa"> float</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">in_bearing</span>
     <span class="pc">:</span>
-    <span class="pa"> float</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">out_bearing</span>
     <span class="pc">:</span>
-    <span class="pa"> float</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">seconds</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">int</span>
@@ -2590,6 +2859,16 @@ datapoints are not located with high spatial precision.
   <div class="desc">
 
  The edge's outwards angular bearing.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">seconds</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The edge's traversal time in seconds.</div>
 </div>
 
 
@@ -3014,12 +3293,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
   <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
@@ -3029,12 +3303,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
   <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
@@ -3044,12 +3313,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -3102,12 +3366,7 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
+  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
   <span class="pt">]</span>
 </div>
 </div>

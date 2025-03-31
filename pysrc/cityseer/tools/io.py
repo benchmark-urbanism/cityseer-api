@@ -27,7 +27,7 @@ from tqdm import tqdm
 
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, util
-from cityseer.tools.util import EdgeData, ListCoordsType, MultiDiGraph, NodeData, NodeKey
+from cityseer.tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,10 +49,10 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
         A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_crs_code` coordinate system. Optional
         `geom` edge attributes containing `LineString` geoms to be converted.
     from_crs_code: int | str
-        An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For
+        A `pyproj` compatible `str` or `int` representing a valid CRS from which the graph must be converted. For
         example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
     to_crs_code: int | str
-        An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For
+        A `pyproj` compatible `str` or `int` representing a valid CRS into which the graph must be projected. For
         example, [27700](https://epsg.io/27700) if converting to British National Grid.
 
     Returns
@@ -62,27 +62,15 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
         system. Edge `geom` attributes will also be converted if found.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info(f"Converting networkX graph from EPSG code {from_crs_code} to EPSG code {to_crs_code}.")
-    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
-    if not CRS(to_crs_code).is_projected:
-        raise ValueError("The to_crs_code parameter must be for a projected CRS")
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=from_crs_code)
     transformer = Transformer.from_crs(from_crs_code, to_crs_code, always_xy=True)
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
     for nd_key, node_data in tqdm(g_multi_copy.nodes(data=True), disable=config.QUIET_MODE):
-        # x coordinate
-        if "x" not in node_data:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-        x: float = node_data["x"]
-        # y coordinate
-        if "y" not in node_data:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
-        y: float = node_data["y"]
         # be cognisant of parameter and return order, using always_xy for transformer
-        easting, northing = transformer.transform(x, y)
+        easting, northing = transformer.transform(node_data["x"], node_data["y"])
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
@@ -99,14 +87,15 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
         # check if geom present - optional step
         if "geom" in edge_data:
             line_geom: geometry.LineString = edge_data["geom"]
-            if line_geom.geom_type != "LineString":
-                raise TypeError(f"Expecting LineString geometry but found {line_geom.geom_type} geometry.")
             # convert
             edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
             # snap ends
             edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
             g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)  # type: ignore
+
+    # update CRS to new CRS
+    g_multi_copy.graph["crs"] = CRS(to_crs_code)
 
     return g_multi_copy
 
@@ -254,12 +243,13 @@ def _extract_gdf(gdf):
 def _auto_clean_network(
     G: nx.MultiGraph,
     geom_wgs: geometry.Polygon,
-    to_crs_code: int,
+    to_crs_code: int | str,
     final_clean_distances: tuple[int, ...],
     remove_disconnected: int,
     green_footways: bool = False,
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
+    """ """
     # deduplicate by hierarchy
     G = graphs.nx_deduplicate_edges(G, dissolve_distance=20, max_ang_diff=20)
     # parks
@@ -525,9 +515,9 @@ def osm_graph_from_poly(
         An integer representing a valid EPSG code for the provided polygon. For example, [4326](https://epsg.io/4326) if
         using WGS lng / lat, or [27700](https://epsg.io/27700) if using the British National Grid.
     to_crs_code: int | str
-        An optional integer representing a valid EPSG code for the generated network returned from this function. If
-        this parameter is provided, then the network will be converted to the specified EPSG coordinate reference
-        system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.
+        An optional `pyproj` compatible `str` or `int` representing a valid CRS for the generated network returned from
+        this function. If this parameter is provided, then the network will be converted to the specified CRS. If not
+        provided, then the OSM network will be projected into a local UTM coordinate reference system.
     buffer_dist: int
         A distance to use for buffering and cleaning operations. 15m by default.
     custom_request: str
@@ -593,10 +583,6 @@ def osm_graph_from_poly(
     ```
 
     """
-    if poly_crs_code is not None and not isinstance(poly_crs_code, int | str):  # type: ignore
-        raise TypeError('Please provide "poly_crs_code" parameter as int or str')
-    if to_crs_code is not None and not isinstance(to_crs_code, int | str):
-        raise TypeError('Please provide "to_crs_code" parameter as int or str')
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
     coords = [in_transformer.transform(lng, lat) for lng, lat in poly_geom.exterior.coords]
@@ -635,6 +621,7 @@ def osm_graph_from_poly(
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
+    graph_wgs = graphs.nx_simple_geoms(graph_wgs)
     # extract CRS code if necessary
     if to_crs_code is None:
         # need CRS code so do this manually
@@ -642,7 +629,6 @@ def osm_graph_from_poly(
         to_crs_code = util.extract_utm_epsg_code(graph_wgs.nodes[nd_key]["x"], graph_wgs.nodes[nd_key]["y"])
     # project
     graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_crs_code)
-    graph_crs = graphs.nx_simple_geoms(graph_crs)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = _auto_clean_network(
@@ -655,7 +641,7 @@ def osm_graph_from_poly(
             green_service_roads,
         )
 
-    return graph_crs
+    return util.validate_cityseer_networkx_graph(graph_crs)
 
 
 def nx_from_osm(osm_json: str) -> nx.MultiGraph:
@@ -677,6 +663,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
     """
     osm_network_data = json.loads(osm_json)
     nx_multigraph = nx.MultiGraph()
+    nx_multigraph.graph["crs"] = CRS(4326)
     # deduplicate nodes based on x, y matches
     xy_nd_map: dict[str, str] = {}  # from x y to original node index
     nd_merge_map: dict[str, str] = {}  # from original node index to deduplicated node index
@@ -754,11 +741,12 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                     start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(start_nd_key, end_nd_key)
 
-    return nx_multigraph
+    # geoms not created yet
+    return util.validate_cityseer_networkx_graph(nx_multigraph, check_edges=False)
 
 
 def nx_from_osm_nx(
-    nx_multidigraph: MultiDiGraph,
+    nx_multidigraph: nx.MultiDiGraph,
     node_attributes: list[str] | None = None,
     edge_attributes: list[str] | None = None,
     tolerance: float = config.ATOL,
@@ -816,6 +804,7 @@ def nx_from_osm_nx(
     logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
     # target MultiGraph
     g_multi = nx.MultiGraph()
+    g_multi.graph["crs"] = CRS(nx_multidigraph.graph["crs"])
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
         # x
@@ -885,7 +874,7 @@ def nx_from_osm_nx(
                     raise ValueError(f"Attribute {edge_att} is not available for edge {start_nd_key}-{end_nd_key}.")
                 g_multi[start_nd_key][end_nd_key][edge_idx][edge_att] = edge_data[edge_att]  # type: ignore
 
-    return g_multi
+    return util.validate_cityseer_networkx_graph(g_multi)
 
 
 BboxType = tuple[int, int, int, int] | tuple[float, float, float, float]
@@ -920,6 +909,7 @@ def nx_from_open_roads(
     """
     # create a networkX multigraph
     g_multi = nx.MultiGraph()
+    g_multi.graph["crs"] = CRS(27700)
     # load the nodes
     with fiona.open(open_roads_path, layer=road_node_layer_key) as nodes:
         for node_data in nodes.values(bbox=target_bbox):
@@ -983,12 +973,12 @@ def nx_from_open_roads(
     g_multi = graphs.nx_remove_filler_nodes(g_multi)
     g_multi = graphs.nx_merge_parallel_edges(g_multi, True, 10)
 
-    return g_multi
+    return util.validate_cityseer_networkx_graph(g_multi)
 
 
 def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph,
-    crs: str | int,
+    crs: str | int | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
@@ -1001,9 +991,9 @@ def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    crs: str | int
-        CRS for initialising the returned structures. This is used for initialising the GeoPandas
-        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).
+    crs: int | str | None
+        A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a
+        `crs` attribute, otherwise required to set the CRS of the derivative data structures.
 
     Returns
     -------
@@ -1021,10 +1011,8 @@ def network_structure_from_nx(
         A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
-    g_multi_copy = nx_multigraph.copy()
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=crs)
     # prepare the network structure
     network_structure = rustalgos.NetworkStructure()
     # generate the network information
@@ -1038,11 +1026,7 @@ def network_structure_from_nx(
         # node_key must be string
         if not isinstance(node_key, str):
             raise TypeError(f"Node key must be of type string but encountered {type(node_key)}")
-        if "x" not in node_data:
-            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {node_key}.')
         node_x: float = node_data["x"]
-        if "y" not in node_data:
-            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {node_key}.')
         node_y: float = node_data["y"]
         is_live: bool = True
         if "live" in node_data:
@@ -1070,25 +1054,8 @@ def network_structure_from_nx(
             # add the new edge index to the node's out edges
             nx_edge_data: EdgeData
             for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
-                if "geom" not in nx_edge_data:
-                    raise KeyError(
-                        f"No edge geom found for edge {start_node_key}-{end_node_key}: Please add an edge 'geom' "
-                        "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
-                        "automatically through the nx_simple_geoms() method."
-                    )
                 line_geom = nx_edge_data["geom"]
-                if line_geom.geom_type != "LineString":
-                    raise TypeError(
-                        f"Expecting LineString geometry but found {line_geom.geom_type} geom for edge "
-                        f"{start_node_key}-{end_node_key}."
-                    )
-                if line_geom.is_empty:
-                    raise TypeError(f"Found empty geom for edge {start_node_key}-{end_node_key}.")
                 line_len = line_geom.length
-                if not np.isfinite(line_len) or line_len <= 0:
-                    raise ValueError(
-                        f"Length {line_len} for edge {start_node_key}-{end_node_key} must be finite and positive."
-                    )
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
                 line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
@@ -1156,7 +1123,7 @@ def network_structure_from_nx(
         orient="index",
         columns=["ns_node_idx", "x", "y", "live", "weight", "geom"],
         geometry="geom",
-        crs=crs,
+        crs=g_multi_copy.graph["crs"],
     )
     # enforce float type for x, y
     nodes_gdf[["x", "y"]] = nodes_gdf[["x", "y"]].astype(float)
@@ -1179,7 +1146,7 @@ def network_structure_from_nx(
             "geom",
         ],
         geometry="geom",
-        crs=crs,
+        crs=g_multi_copy.graph["crs"],
     )
     if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
         nodes_dual_gdf = pd.DataFrame.from_dict(
@@ -1195,7 +1162,7 @@ def network_structure_from_nx(
         edges_gdf["primal_node_id"] = agg_edge_dual_data
         nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
         nodes_gdf.set_geometry("primal_edge", inplace=True)
-        nodes_gdf.set_crs(crs, inplace=True)
+        nodes_gdf.set_crs(crs=g_multi_copy.graph["crs"], inplace=True)  # type: ignore
         nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()  # type: ignore
         nodes_gdf.drop(columns=["geom"], inplace=True)
 
@@ -1300,6 +1267,7 @@ def network_structure_from_gpd(
             None,  # seconds
         )
     network_structure.validate()
+
     return network_structure
 
 
@@ -1308,7 +1276,6 @@ def add_transport_gtfs(
     nodes_gdf: gpd.GeoDataFrame,
     edges_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.NetworkStructure,
-    graph_crs: str | int,
     max_netw_assign_dist: int = 400,
     speed_m_s: float = SPEED_M_S,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure, pd.DataFrame, pd.DataFrame]:
@@ -1343,7 +1310,7 @@ def add_transport_gtfs(
     # merge avg_wait_time into stop times data
     stops = stops.merge(avg_wait_time.rename("avg_wait_time"), on="stop_id", how="left")
     # transformer to convert lat/lon to graph crs
-    transformer = Transformer.from_crs(4326, graph_crs, always_xy=True)
+    transformer = Transformer.from_crs(4326, nodes_gdf.crs, always_xy=True)
     # dual flag
     is_dual = "primal_edge" in nodes_gdf.columns
 
@@ -1466,7 +1433,7 @@ def add_transport_gtfs(
     )
 
     # Create a new GeoDataFrame from the gathered stop nodes
-    new_nodes_gdf = gpd.GeoDataFrame(new_nodes, geometry="geom", crs=graph_crs).set_index("stop_id")
+    new_nodes_gdf = gpd.GeoDataFrame(new_nodes, geometry="geom", crs=nodes_gdf.crs).set_index("stop_id")
     # rename geom if dual
     if is_dual:
         new_nodes_gdf.rename(columns={"geom": "dual_node"}, inplace=True)
@@ -1574,7 +1541,7 @@ def add_transport_gtfs(
             "geom",
         ],
     )
-    new_edges_gdf = gpd.GeoDataFrame(new_edges_df, geometry="geom", crs=graph_crs).set_index("edge_key")
+    new_edges_gdf = gpd.GeoDataFrame(new_edges_df, geometry="geom", crs=nodes_gdf.crs).set_index("edge_key")
     edges_gdf = pd.concat([edges_gdf, new_edges_gdf], axis=0, ignore_index=False)  # type: ignore
 
     return nodes_gdf, edges_gdf, network_structure, stops, avg_stop_pairs
@@ -1612,6 +1579,7 @@ def nx_from_cityseer_geopandas(
     """
     logger.info("Populating node and edge map data to a networkX graph.")
     g_multi_copy = nx.MultiGraph()
+    g_multi_copy.graph["crs"] = CRS(nodes_gdf.crs)
     # after above so that errors caught first
     logger.info("Unpacking node data.")
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
@@ -1645,12 +1613,12 @@ def nx_from_cityseer_geopandas(
             for nd_key, node_row in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
                 g_multi_copy.nodes[nd_key][metrics_column_label] = node_row[metrics_column_label]
 
-    return g_multi_copy
+    return util.validate_cityseer_networkx_graph(g_multi_copy)
 
 
 def geopandas_from_nx(
     nx_multigraph: nx.MultiGraph,
-    crs: str | int,
+    crs: str | int | None = None,
 ) -> gpd.GeoDataFrame:
     """
     Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges.
@@ -1664,22 +1632,20 @@ def geopandas_from_nx(
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    crs: str | int
-        CRS for initialising the returned structures. This is used for initialising the GeoPandas
-        [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).
-
+    crs: int | str | None
+        A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a
+        `crs` attribute, otherwise required to set the CRS of the derivative data structures.
     Returns
     -------
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `edge_idx` and `geom` attributes.
 
     """
-    if not isinstance(nx_multigraph, nx.MultiGraph):
-        raise TypeError("This method requires an undirected networkX MultiGraph.")
     logger.info("Preparing node and edge arrays from networkX graph.")
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=crs)
     agg_edge_data = []
     # set edges
-    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in g_multi_copy.edges(keys=True, data=True):  # type: ignore
         edge_data["start_nd_key"] = start_nd_key
         edge_data["end_nd_key"] = end_nd_key
         edge_data["edge_idx"] = edge_idx
@@ -1715,6 +1681,7 @@ def nx_from_generic_geopandas(
     if not gdf_network.crs.is_projected:  # type: ignore
         raise ValueError("The GeoDataframe CRS must be projected, i.e. not geographic.")
     g_multi = nx.MultiGraph()
+    g_multi.graph["crs"] = CRS(gdf_network.crs)
 
     def _node_key(node_coords):
         if len(node_coords) == 3:
@@ -1779,4 +1746,4 @@ def nx_from_generic_geopandas(
     # deduplicate
     g_multi = graphs.nx_merge_parallel_edges(g_multi, merge_edges_by_midline=True, contains_buffer_dist=1)
 
-    return g_multi
+    return util.validate_cityseer_networkx_graph(g_multi)
