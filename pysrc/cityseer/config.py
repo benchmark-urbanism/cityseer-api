@@ -76,10 +76,9 @@ def log_thresholds(
         distances, betas, minutes, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
     )
     # log distances, betas, minutes
-    if not QUIET_MODE:
-        logger.info("Metrics computed for:")
-        for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
-            logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
+    logger.info("Metrics computed for:")
+    for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
+        logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
     return distances
 
 
