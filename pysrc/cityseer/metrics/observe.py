@@ -201,9 +201,9 @@ def street_continuity(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms. Edges should contain "names", "routes", or "highways" keys
-        corresponding to the specified `method` parameter.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain "names",
+        "routes", or "highways" keys corresponding to the specified `method` parameter.
     method: str
         The type of continuity metric to compute, where available options are "names", "routes", or "highways".
 
@@ -294,9 +294,9 @@ def hybrid_street_continuity(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms. Edges should contain "names", "routes", or "highways" keys
-        corresponding to the specified `method` parameter.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain "names",
+        "routes", or "highways" keys corresponding to the specified `method` parameter.
 
     Returns
     -------

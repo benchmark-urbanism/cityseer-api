@@ -54,8 +54,8 @@ def check_debug() -> bool:
 
 
 DEBUG_MODE: bool = check_debug()
-
-
+# for turning off validation
+SKIP_VALIDATION: bool = False
 # for calculating default betas vs. distances
 MIN_THRESH_WT: float = 0.01831563888873418
 SPEED_M_S = 1.33333

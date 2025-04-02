@@ -11,7 +11,7 @@ from shapely import geometry
 
 
 def test_find_nearest(primal_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_data_gdf(primal_graph)
     # test the filter - iterating each point in data map
     for geom in data_gdf["geometry"]:
@@ -30,7 +30,7 @@ def test_find_nearest(primal_graph):
 
 
 def test_road_distance(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph, 32630)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph)
     d1 = rustalgos.Coord(4, 2)
     d2 = rustalgos.Coord(4, 4)
     d3 = rustalgos.Coord(4, 6)
@@ -42,7 +42,7 @@ def test_road_distance(box_graph):
 
 
 def test_closest_intersections(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph, 32630)
+    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph)
     d1 = rustalgos.Coord(2.5, 1)  # should pick 0 - 1
     d2 = rustalgos.Coord(4, 2.5)  # should pick 1 - 2
     d3 = rustalgos.Coord(2.5, 4)  # should pick 2 - 3
@@ -125,7 +125,7 @@ def test_assign_to_network(primal_graph):
         ]
     )
     # generate data
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G, 32630)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
     data_gdf = override_coords(G)
     for target_idx, geom in enumerate(data_gdf["geometry"]):
         # find the closest point on the network
@@ -160,7 +160,7 @@ def find_path(start_idx, target_idx, tree_map):
 
 
 def test_shortest_path_trees(primal_graph, dual_graph):
-    nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
     # from cityseer.tools import plot
@@ -181,7 +181,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
                 assert find_path(int(j_node_key), src_idx, tree_map) == [int(j) for j in j_nx_path]
                 assert tree_map[int(j_node_key)].short_dist - nx_dist[j_node_key] < config.ATOL
     # check with jitter
-    nodes_gdf_j, edges_gdf_j, network_structure_j = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf_j, edges_gdf_j, network_structure_j = io.network_structure_from_nx(primal_graph)
     for max_dist in [2000]:
         max_seconds = max_dist / config.SPEED_M_S
         # use aggressive jitter and check that at least one shortest path is different to non-jitter
@@ -222,7 +222,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
                 continue
             assert shortest_dists[str(target_idx)] - tree_map[target_idx].short_dist <= config.ATOL
     # prepare dual graph
-    nodes_gdf_d, edges_gdf_d, network_structure_d = io.network_structure_from_nx(dual_graph, 32630)
+    nodes_gdf_d, edges_gdf_d, network_structure_d = io.network_structure_from_nx(dual_graph)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
     # compare angular simplest paths for a selection of targets on primal vs. dual
     # remember, this is angular change not distance travelled
@@ -351,7 +351,7 @@ def test_local_node_centrality_shortest(primal_graph):
     NetworkX doesn't have a maximum distance cutoff, so run on the whole graph (low beta / high distance)
     """
     # generate node and edge maps
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = [0.02, 0.01, 0.005, 0.0008]
@@ -465,7 +465,7 @@ def test_local_node_centrality_shortest(primal_graph):
         for nd_idx in primal_graph_wt:
             primal_graph_wt.nodes[nd_idx]["weight"] = wt
         # compute weighted measures
-        nodes_gdf_wt, edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(primal_graph_wt, 32630)
+        nodes_gdf_wt, edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(primal_graph_wt)
         # weights should persists to the nodes GDF
         assert np.all(nodes_gdf_wt.weight == wt)
         node_result_short_wt = network_structure_wt.local_node_centrality_shortest(
@@ -525,10 +525,10 @@ def test_local_centrality_all(diamond_graph):
     measures_data is multidimensional in the form of measure_keys x distances x nodes
     """
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(diamond_graph, 32630)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(diamond_graph)
     # generate dual
     diamond_graph_dual = graphs.nx_to_dual(diamond_graph)
-    _nodes_gdf_d, _edges_gdf_d, network_structure_dual = io.network_structure_from_nx(diamond_graph_dual, 32630)
+    _nodes_gdf_d, _edges_gdf_d, network_structure_dual = io.network_structure_from_nx(diamond_graph_dual)
     # setup distances and betas
     distances = [50, 150, 250]
     rustalgos.betas_from_distances(distances)
@@ -656,7 +656,7 @@ def test_local_centrality_all(diamond_graph):
         diamond_graph_wt = diamond_graph.copy()
         for nd_idx in diamond_graph_wt.nodes():
             diamond_graph_wt.nodes[nd_idx]["weight"] = wt
-        _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt, 32630)
+        _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt)
         node_result_simplest_wt = network_structure_wt.local_node_centrality_simplest(
             distances,
             compute_closeness=True,
@@ -790,10 +790,8 @@ def test_decomposed_local_centrality(primal_graph):
     # test a decomposed graph
     G_decomposed = graphs.nx_decompose(primal_graph, 20)
     # graph maps
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(
-        primal_graph, 32630
-    )  # generate node and edge maps
-    _node_keys_decomp, _edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed, 32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)  # generate node and edge maps
+    _node_keys_decomp, _edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed)
     # with increasing decomposition:
     # - node based measures will not match
     # - closeness segment measures will match - these measure to the cut endpoints per thresholds

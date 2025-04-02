@@ -37,7 +37,8 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` with `x` and `y` node attributes.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes.
 
     Returns
     -------
@@ -48,7 +49,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     """
     logger.info("Generating interpolated edge geometries.")
-    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, check_edges=False)
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, validate_edges=False)
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
         return g_multi_copy.nodes[nd_key]["x"], g_multi_copy.nodes[nd_key]["y"]
@@ -93,8 +94,8 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
 
     Returns
     -------
@@ -229,8 +230,8 @@ def nx_remove_dangling_nodes(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     despine: int
         The maximum cutoff distance for removal of dead-ends. Use `0` where no despining should occur.
     remove_disconnected: int
@@ -368,8 +369,8 @@ def nx_merge_parallel_edges(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centre-line. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
@@ -499,8 +500,8 @@ def nx_snap_endpoints(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
 
     Returns
     -------
@@ -563,8 +564,8 @@ def nx_iron_edges(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     simplify_by_max_angle: int
         The maximum angle to permit for a given edge. Angles greater than this will be reduced.
     min_self_loop_length: int
@@ -662,8 +663,8 @@ def nx_deduplicate_edges(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     dissolve_distance: int
         A distance to use when searching for adjacent edges. 20m by default.
     max_ang_diff: int
@@ -983,8 +984,8 @@ def nx_consolidate_nodes(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     buffer_dist: float
         The buffer distance to be used for consolidating nearby nodes. Defaults to 5.
     neighbour_policy: str
@@ -1301,8 +1302,8 @@ def nx_split_opposing_geoms(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     buffer_dist: int
         The buffer distance to be used for splitting nearby nodes. Defaults to 5.
     merge_edges_by_midline: bool
@@ -1659,8 +1660,8 @@ def nx_decompose(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     decompose_max: float
         The maximum length threshold for decomposed edges.
     osm_hwy_target_tags: list[str]
@@ -1788,8 +1789,8 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
 
     Returns
     -------
@@ -1970,8 +1971,8 @@ def nx_weight_by_dissolved_edges(
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
     dissolve_distance: int
         A distance to use when buffering edges to calculate the weighting. 20m by default.
     max_ang_diff: int
@@ -2054,8 +2055,8 @@ def nx_generate_vis_lines(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     Parameters
     ----------
     nx_multigraph: MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
 
     Returns
     -------

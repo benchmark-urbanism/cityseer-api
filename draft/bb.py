@@ -24,7 +24,7 @@ G = io.nx_from_generic_geopandas(streets_gpd)
 G_dual = graphs.nx_to_dual(G)
 
 #%%
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, streets_gpd.crs.to_epsg())
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 max_netw_assign_dist = 400
 speed_m_s = 1.3333
 distances = [500, 1000]

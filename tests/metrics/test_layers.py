@@ -9,7 +9,7 @@ from cityseer.tools import io, mock
 
 
 def test_assign_gdf_to_network(primal_graph):
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
     # check assignments
@@ -31,7 +31,7 @@ def test_assign_gdf_to_network(primal_graph):
 
 
 def test_compute_accessibilities(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
@@ -108,7 +108,7 @@ def test_compute_accessibilities(primal_graph):
 
 
 def test_compute_mixed_uses(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
@@ -181,7 +181,7 @@ def test_compute_stats(primal_graph):
     """
     Test stats component
     """
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 32630)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)

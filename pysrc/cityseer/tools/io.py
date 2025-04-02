@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 SPEED_M_S = config.SPEED_M_S
 
 
-def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, to_crs_code: int | str) -> nx.MultiGraph:
+def nx_epsg_conversion(
+    nx_multigraph: nx.MultiGraph, to_crs_code: int | str, from_crs_code: None = None
+) -> nx.MultiGraph:
     """
     Convert a graph from the `from_crs_code` EPSG CRS to the `to_crs_code` EPSG CRS.
 
@@ -48,12 +50,12 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` with `x` and `y` node attributes in the `from_crs_code` coordinate system. Optional
         `geom` edge attributes containing `LineString` geoms to be converted.
-    from_crs_code: int | str
-        A `pyproj` compatible `str` or `int` representing a valid CRS from which the graph must be converted. For
-        example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.
     to_crs_code: int | str
         A `pyproj` compatible `str` or `int` representing a valid CRS into which the graph must be projected. For
         example, [27700](https://epsg.io/27700) if converting to British National Grid.
+    from_crs_code: None
+        The "from_crs_code" parameter is deprecated and will be removed in a future release. The CRS can be set directly
+        in the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
 
     Returns
     -------
@@ -62,9 +64,16 @@ def nx_epsg_conversion(nx_multigraph: nx.MultiGraph, from_crs_code: int | str, t
         system. Edge `geom` attributes will also be converted if found.
 
     """
-    logger.info(f"Converting networkX graph from EPSG code {from_crs_code} to EPSG code {to_crs_code}.")
-    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=from_crs_code)
-    transformer = Transformer.from_crs(from_crs_code, to_crs_code, always_xy=True)
+    if from_crs_code is not None:
+        logger.warning(
+            """
+            The "crs" parameter is deprecated and will be removed in a future release. The CRS can be set directly in
+            the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
+            """
+        )
+    logger.info(f"Converting networkX graph to CRS code {to_crs_code}.")
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
+    transformer = Transformer.from_crs(g_multi_copy.graph["crs"], to_crs_code, always_xy=True)
     logger.info("Processing node x, y coordinates.")
     nd_key: NodeKey
     node_data: NodeData
@@ -126,7 +135,7 @@ def nx_wgs_to_utm(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     # sample the first node for UTM
     nd_key = list(nx_multigraph.nodes())[0]
     to_crs_code = util.extract_utm_epsg_code(nx_multigraph.nodes[nd_key]["x"], nx_multigraph.nodes[nd_key]["y"])
-    return nx_epsg_conversion(nx_multigraph, 4326, to_crs_code)
+    return nx_epsg_conversion(nx_multigraph, to_crs_code)
 
 
 def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = False) -> tuple[geometry.Polygon, int]:
@@ -619,6 +628,8 @@ def osm_graph_from_poly(
         """
     # generate the query
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
+    # set config to skip validation
+    config.SKIP_VALIDATION = True
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
     graph_wgs = graphs.nx_simple_geoms(graph_wgs)
@@ -628,7 +639,7 @@ def osm_graph_from_poly(
         nd_key = list(graph_wgs.nodes())[0]
         to_crs_code = util.extract_utm_epsg_code(graph_wgs.nodes[nd_key]["x"], graph_wgs.nodes[nd_key]["y"])
     # project
-    graph_crs = nx_epsg_conversion(graph_wgs, 4326, to_crs_code)
+    graph_crs = nx_epsg_conversion(graph_wgs, to_crs_code)
     graph_crs = graphs.nx_remove_filler_nodes(graph_crs)
     if simplify:
         graph_crs = _auto_clean_network(
@@ -640,6 +651,8 @@ def osm_graph_from_poly(
             green_footways,
             green_service_roads,
         )
+    # reset validation flag
+    config.SKIP_VALIDATION = False
 
     return util.validate_cityseer_networkx_graph(graph_crs)
 
@@ -742,7 +755,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                     nx_multigraph.add_edge(start_nd_key, end_nd_key)
 
     # geoms not created yet
-    return util.validate_cityseer_networkx_graph(nx_multigraph, check_edges=False)
+    return util.validate_cityseer_networkx_graph(nx_multigraph, validate_edges=False)
 
 
 def nx_from_osm_nx(
@@ -978,7 +991,7 @@ def nx_from_open_roads(
 
 def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph,
-    crs: str | int | None = None,
+    crs: None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
@@ -991,9 +1004,9 @@ def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    crs: int | str | None
-        A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a
-        `crs` attribute, otherwise required to set the CRS of the derivative data structures.
+    crs: None
+        The "crs" parameter is deprecated and will be removed in a future release. The CRS can be set directly in
+        the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
 
     Returns
     -------
@@ -1011,8 +1024,15 @@ def network_structure_from_nx(
         A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
+    if crs is not None:
+        logger.warning(
+            """
+            The "crs" parameter is deprecated and will be removed in a future release. The CRS can be set directly in
+            the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
+            """
+        )
     logger.info("Preparing node and edge arrays from networkX graph.")
-    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=crs)
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # prepare the network structure
     network_structure = rustalgos.NetworkStructure()
     # generate the network information
@@ -1618,7 +1638,7 @@ def nx_from_cityseer_geopandas(
 
 def geopandas_from_nx(
     nx_multigraph: nx.MultiGraph,
-    crs: str | int | None = None,
+    crs: None = None,
 ) -> gpd.GeoDataFrame:
     """
     Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges.
@@ -1632,17 +1652,25 @@ def geopandas_from_nx(
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
         edge attributes containing `LineString` geoms.
-    crs: int | str | None
-        A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a
-        `crs` attribute, otherwise required to set the CRS of the derivative data structures.
+    crs: None
+        The "crs" parameter is deprecated and will be removed in a future release. The CRS can be set directly in
+        the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
+
     Returns
     -------
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `edge_idx` and `geom` attributes.
 
     """
+    if crs is not None:
+        logger.warning(
+            """
+            The "crs" parameter is deprecated and will be removed in a future release. The CRS can be set directly in
+            the graph if not already present at G.graph["crs"]; for example, G.graph["crs"] = pyproj.CRS(27700)'
+            """
+        )
     logger.info("Preparing node and edge arrays from networkX graph.")
-    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, crs_code=crs)
+    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     agg_edge_data = []
     # set edges
     for start_nd_key, end_nd_key, edge_idx, edge_data in g_multi_copy.edges(keys=True, data=True):  # type: ignore
@@ -1650,7 +1678,7 @@ def geopandas_from_nx(
         edge_data["end_nd_key"] = end_nd_key
         edge_data["edge_idx"] = edge_idx
         agg_edge_data.append(edge_data)
-    edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=crs, geometry="geom")  # type: ignore
+    edges_gdf = gpd.GeoDataFrame(agg_edge_data, crs=g_multi_copy.graph["crs"], geometry="geom")  # type: ignore
 
     return edges_gdf
 
@@ -1678,6 +1706,8 @@ def nx_from_generic_geopandas(
 
     """
     gdf_network: gpd.GeoDataFrame = gdf_network.copy()  # type: ignore
+    if gdf_network.crs is None:
+        raise ValueError("The GeoDataframe must have a CRS set.")
     if not gdf_network.crs.is_projected:  # type: ignore
         raise ValueError("The GeoDataframe CRS must be projected, i.e. not geographic.")
     g_multi = nx.MultiGraph()

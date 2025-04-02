@@ -372,7 +372,7 @@ def plot_nx(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
     G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # let's extract and normalise the values

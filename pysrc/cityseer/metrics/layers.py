@@ -222,7 +222,7 @@ def compute_accessibilities(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -443,7 +443,7 @@ def compute_mixed_uses(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -620,7 +620,7 @@ def compute_stats(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=32630)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())

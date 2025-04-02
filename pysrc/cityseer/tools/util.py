@@ -37,39 +37,47 @@ ListCoordsType = list[CoordsType] | coords.CoordinateSequence
 
 def validate_cityseer_networkx_graph(
     nx_multigraph: nx.MultiGraph,
-    crs_code: str | int | None = None,
-    check_nodes: bool = True,
-    check_edges: bool = True,
+    validate_edges: bool = True,
 ) -> nx.MultiGraph:
     """
     Validates a `networkX` `MultiGraph` for use with `cityseer`.
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
+    validate_edges: bool
+
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new
+        edge with associated `geom` attributes spliced together.
+
     """
     logger.info("Validating networkX graph for use with cityseer.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
+    if config.SKIP_VALIDATION is True:
+        return g_multi_copy
     # check graph type
     if not isinstance(g_multi_copy, nx.MultiGraph):
         raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
     # check CRS
-    if crs_code is None:
-        if "crs" in g_multi_copy.graph:
-            crs_code = g_multi_copy.graph["crs"]
-        else:
-            raise KeyError("No CRS code found in graph. Please specify a CRS code via the crs_code parameter.")
     if "crs" not in g_multi_copy.graph:
-        g_multi_copy.graph["crs"] = crs_code
-    if CRS(crs_code) != CRS(g_multi_copy.graph["crs"]):
-        raise ValueError(f"crs_code {crs_code} does not match the graph CRS code {g_multi_copy.graph['crs']}.")
-    if not CRS(crs_code).is_projected:
-        logger.warning(f"The to_crs_code parameter {crs_code} is not a projected CRS")
+        raise KeyError("No CRS code found in graph. Please specify a CRS code via the crs_code parameter.")
+    g_multi_copy.graph["crs"] = CRS(g_multi_copy.graph["crs"])
+    if not g_multi_copy.graph["crs"].is_projected:
+        logger.warning(f"The to_crs_code parameter {g_multi_copy.graph['crs'].to_epsg()} is not a projected CRS")
     #
-    if check_nodes is True:
-        for nd_key, node_data in g_multi_copy.nodes(data=True):
-            if "x" not in node_data:
-                raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
-            if "y" not in node_data:
-                raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
     #
-    if check_edges is True:
+    for nd_key, node_data in g_multi_copy.nodes(data=True):
+        if "x" not in node_data:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
+        if "y" not in node_data:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
+    #
+    if validate_edges is True:
         for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
             # check if geom present
             if "geom" not in edge_data:
