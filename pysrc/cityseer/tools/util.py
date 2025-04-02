@@ -56,7 +56,6 @@ def validate_cityseer_networkx_graph(
         edge with associated `geom` attributes spliced together.
 
     """
-    logger.info("Validating networkX graph for use with cityseer.")
     g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
     if config.SKIP_VALIDATION is True:
         return g_multi_copy
