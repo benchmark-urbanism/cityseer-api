@@ -446,6 +446,11 @@ def test_nx_remove_dangling_nodes(primal_graph):
     G_biggest_component = nx.MultiGraph(G_messy_no_fillers.subgraph(biggest_component))
     assert G_biggest_component.nodes == G_post.nodes
     assert G_biggest_component.edges == G_post.edges
+    # check paramter types
+    with pytest.raises(ValueError):
+        graphs.nx_remove_dangling_nodes(G_messy, remove_disconnected=True)
+    with pytest.raises(ValueError):
+        graphs.nx_remove_dangling_nodes(G_messy, despine=True)
 
 
 def test_nx_merge_parallel_edges():

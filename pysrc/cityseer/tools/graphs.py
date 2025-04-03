@@ -253,7 +253,11 @@ def nx_remove_dangling_nodes(
             "Decrease the remove_disconnected parameter or set to zero to retain graph components."
         )
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
-
+    # check parameters
+    if remove_disconnected is True or not isinstance(remove_disconnected, int):
+        raise ValueError(f"remove_disconnected parameter should be an integer, not {type(remove_disconnected)}.")
+    if despine is True or not isinstance(despine, int):
+        raise ValueError(f"despine parameter should be an integer, not {type(despine)}.")
     # remove danglers
     if despine > 0:
         remove_nodes = []
