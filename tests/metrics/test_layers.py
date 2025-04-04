@@ -15,24 +15,31 @@ def test_assign_gdf_to_network(primal_graph):
     for typ in [int, float, str]:
         data_gdf = mock.mock_data_gdf(primal_graph)
         data_gdf.index = data_gdf.index.astype(typ)
-        # check initial and recompute - second iter doesn't not recompute
+        # check initial and cached - second iter uses cached
         for _ in range(2):
-            data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-            # check assignments
-            for row_idx, data_row in data_gdf.iterrows():
-                assert str(row_idx) == data_row["datamap_key"]
-                data_map_key = data_row["datamap_key"]
-                data_entry = data_map.get_entry(data_map_key)
-                # compute manually
-                nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-                assert nearest_idx == data_entry.nearest_assign
-                assert next_nearest_idx == data_entry.next_nearest_assign
-                assert data_row["nearest_assign"] == data_entry.nearest_assign
-                assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
-                # data_id_col
-                assert str(data_row["data_id"]) == data_entry.data_id
-            # check all points are assigned
-            assert data_map.all_assigned()
+            for to_poly in [False, True]:
+                # handle both points and polys
+                if to_poly is True:
+                    data_gdf.geometry = data_gdf.geometry.buffer(10)
+                #
+                data_map, data_gdf = layers.assign_gdf_to_network(
+                    data_gdf, network_structure, 400, data_id_col="data_id"
+                )
+                # check assignments
+                for row_idx, data_row in data_gdf.iterrows():
+                    assert str(row_idx) == data_row["datamap_key"]
+                    data_map_key = data_row["datamap_key"]
+                    data_entry = data_map.get_entry(data_map_key)
+                    # compute manually
+                    nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
+                    assert nearest_idx == data_entry.nearest_assign
+                    assert next_nearest_idx == data_entry.next_nearest_assign
+                    assert data_row["nearest_assign"] == data_entry.nearest_assign
+                    assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
+                    # data_id_col
+                    assert str(data_row["data_id"]) == data_entry.data_id
+                # check all points are assigned
+                assert data_map.all_assigned()
     # check recompute triggered when columns are dropped
     for col in ["nearest_assign", "next_nearest_assign", "datamap_key", "dedupe_key"]:
         data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
@@ -77,6 +84,11 @@ def test_assign_gdf_to_network(primal_graph):
         crs="EPSG:3857",
     )
     data_gdf.set_index("data_id", inplace=True)
+    with pytest.raises(ValueError):
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+    # catch duplicate geom types
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    data_gdf.geometry[0] = data_gdf.geometry[0].buffer(10)
     with pytest.raises(ValueError):
         data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
 

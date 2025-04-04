@@ -80,11 +80,15 @@ def assign_gdf_to_network(
     _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
 
     """
-    data_map = rustalgos.DataMap()
-    calculate_assigned = False
     # check for unique index
     if data_gdf.index.duplicated().any():
-        raise ValueError("The index of the data_gdf must contain unique entries.")
+        raise ValueError("The data GeoDataFrame index must contain unique entries.")
+    # check single data geom type
+    if data_gdf.geometry.geom_type.nunique() != 1:
+        raise ValueError("The data GeoDataFrame must contain a single geometry type.")
+    # check data type
+    data_map = rustalgos.DataMap()
+    calculate_assigned = False
     # add column to data_gdf
     if (
         "datamap_key" not in data_gdf.columns
@@ -103,9 +107,8 @@ def assign_gdf_to_network(
         data_id: str | None = None if data_id_col is None else data_row["dedupe_key"]  # type: ignore
         data_map.insert(
             data_row["datamap_key"],  # type: ignore
-            # get key from GDF in case of different geom column name
-            data_row[data_gdf.geometry.name].x,  # type: ignore
-            data_row[data_gdf.geometry.name].y,  # type: ignore
+            data_row[data_gdf.geometry.name].centroid.x,  # type: ignore
+            data_row[data_gdf.geometry.name].centroid.y,  # type: ignore
             data_id,  # type: ignore
             data_row["nearest_assign"],  # type: ignore
             data_row["next_nearest_assign"],  # type: ignore
