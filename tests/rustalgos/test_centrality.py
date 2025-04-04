@@ -56,9 +56,9 @@ def test_closest_intersections(box_graph):
 def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
     """Some tweaks for visual checks."""
     data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
-    data_gdf.loc["18", "geometry"] = geometry.Point(701200, 5719400)
-    data_gdf.loc["39", "geometry"] = geometry.Point(700750, 5720025)
-    data_gdf.loc["26", "geometry"] = geometry.Point(700400, 5719525)
+    data_gdf.loc[18, "geometry"] = geometry.Point(701200, 5719400)
+    data_gdf.loc[39, "geometry"] = geometry.Point(700750, 5720025)
+    data_gdf.loc[26, "geometry"] = geometry.Point(700400, 5719525)
 
     return data_gdf
 
@@ -137,8 +137,8 @@ def test_assign_to_network(primal_graph):
         n, n_n = network_structure.assign_to_network(data_coord, 0)
         assert n is None and n_n is None
 
-    # from cityseer.tools import plot
     # from cityseer.metrics import layers
+    # from cityseer.tools import plot
     # data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 1600)
     # plot.plot_network_structure(network_structure, data_gdf)
     # plot.plot_assignment(network_structure, G, data_gdf)
