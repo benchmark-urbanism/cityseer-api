@@ -4,6 +4,7 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+from tqdm import tqdm
 
 from cityseer import config, rustalgos
 
@@ -81,38 +82,51 @@ def assign_gdf_to_network(
     """
     data_map = rustalgos.DataMap()
     calculate_assigned = False
+    # check for unique index
+    if data_gdf.index.duplicated().any():
+        raise ValueError("The index of the data_gdf must contain unique entries.")
     # add column to data_gdf
-    if not ("nearest_assign" in data_gdf.columns and "next_nearest_assign" in data_gdf.columns):
+    if (
+        "datamap_key" not in data_gdf.columns
+        or "nearest_assign" not in data_gdf.columns
+        or "next_nearest_assign" not in data_gdf.columns
+        or (data_id_col is not None and "dedupe_key" not in data_gdf.columns)
+    ):
         calculate_assigned = True
+        data_gdf["datamap_key"] = data_gdf.index.astype(str)
+        if data_id_col is not None:
+            data_gdf["dedupe_key"] = data_gdf[data_id_col].astype(str)
         data_gdf["nearest_assign"] = None
         data_gdf["next_nearest_assign"] = None
     # prepare the data_map
-    for data_key, data_row in data_gdf.iterrows():  # type: ignore
-        if not isinstance(data_key, str):
-            raise ValueError("Data keys must be string instances.")
-        data_id = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
+    for _data_key, data_row in data_gdf.iterrows():  # type: ignore
+        data_id: str | None = None if data_id_col is None else data_row["dedupe_key"]  # type: ignore
         data_map.insert(
-            data_key,
+            data_row["datamap_key"],  # type: ignore
             # get key from GDF in case of different geom column name
             data_row[data_gdf.geometry.name].x,  # type: ignore
             data_row[data_gdf.geometry.name].y,  # type: ignore
-            data_id,
+            data_id,  # type: ignore
             data_row["nearest_assign"],  # type: ignore
             data_row["next_nearest_assign"],  # type: ignore
         )
     # only compute if not already computed
     if calculate_assigned is True:
-        for data_key in data_map.entry_keys():
+        logger.info("Assigning data to network.")
+        gdf_idx_mapping = {v: i for i, v in data_gdf["datamap_key"].to_dict().items()}  # type: ignore
+        for data_key in tqdm(data_map.entry_keys(), total=data_map.count(), disable=config.QUIET_MODE):
             data_coord = data_map.get_data_coord(data_key)
             nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
+            gdf_idx = gdf_idx_mapping[data_key]
             if nearest_idx is not None:
                 data_map.set_nearest_assign(data_key, nearest_idx)
-                data_gdf.at[data_key, "nearest_assign"] = nearest_idx
+                data_gdf.at[gdf_idx, "nearest_assign"] = nearest_idx
             if next_nearest_idx is not None:
                 data_map.set_next_nearest_assign(data_key, next_nearest_idx)
-                data_gdf.at[data_key, "next_nearest_assign"] = next_nearest_idx
+                data_gdf.at[gdf_idx, "next_nearest_assign"] = next_nearest_idx
     if data_map.none_assigned():
         logger.warning("No assignments for nearest assigned direction.")
+
     return data_map, data_gdf
 
 
@@ -249,7 +263,9 @@ def compute_accessibilities(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     # extract landuses
-    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
@@ -471,7 +487,9 @@ def compute_mixed_uses(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
     # extract landuses
-    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
@@ -650,12 +668,14 @@ def compute_stats(
     """
     logger.info("Computing statistics.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    # extract landuses
+    # extract stats columns
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
     stats_maps = []
     for stats_column_label in stats_column_labels:
         if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(data_gdf[stats_column_label].to_dict())  # type: ignore
+        stats: list[str] = data_gdf[stats_column_label]  # type: ignore
+        stats_maps.append(dict(zip(data_keys, stats, strict=True)))
     # stats
     partial_func = partial(
         data_map.stats,

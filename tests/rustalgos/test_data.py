@@ -99,7 +99,9 @@ def test_accessibility(primal_graph):
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    landuses_map = data_gdf["categorical_landuses"].to_dict()
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # all datapoints and types are completely unique except for the last five - which all point to the same source
     accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
     # generate
@@ -227,7 +229,9 @@ def test_mixed_uses(primal_graph):
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    landuses_map = data_gdf["categorical_landuses"].to_dict()
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # test against various distances
     betas = rustalgos.betas_from_distances(distances)
     for angular in [False, True]:
@@ -324,7 +328,12 @@ def test_stats(primal_graph):
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    numerical_maps = [data_gdf["mock_numerical_1"].to_dict(), data_gdf["mock_numerical_2"].to_dict()]
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    numerical_maps = []
+    for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
+        stats: list[str] = data_gdf[stats_col]  # type: ignore
+        stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
+        numerical_maps.append(stats_map)
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_gdf)

@@ -117,4 +117,5 @@ def wrap_progress(
     pbar.close()
     result = result_queue.get()
     thread.join()
+
     return result

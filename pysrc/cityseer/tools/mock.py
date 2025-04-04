@@ -11,7 +11,7 @@ import logging
 import string
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import geopandas as gpd
 import networkx as nx
@@ -296,7 +296,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     ys = np.random.uniform(min_y, max_y, length)
     data_gpd = gpd.GeoDataFrame(
         {
-            "uid": [str(i) for i in np.arange(length)],
+            "uid": [i for i in np.arange(length)],
             "geometry": gpd.points_from_xy(xs, ys),
             "data_id": np.arange(length),
         }
@@ -304,9 +304,9 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     data_gpd = data_gpd.set_index("uid")
     # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
-        data_gpd.loc[str(loc_idx), "data_id"] = length - 5
-        data_gpd.loc[str(loc_idx), "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
-    data_gpd = cast(gpd.GeoDataFrame, data_gpd)  # type: ignore
+        data_gpd.loc[loc_idx, "data_id"] = length - 5
+        data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
+
     return data_gpd
 
 
