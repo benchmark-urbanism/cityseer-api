@@ -56,7 +56,7 @@ def nx_epsg_conversion(
     from_crs_code: None
         The `from_crs_code` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-        directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+        directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
 
     Returns
     -------
@@ -70,7 +70,7 @@ def nx_epsg_conversion(
             """
             The `from_crs_code` parameter is deprecated and will be removed in a future release. If your network is
             generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-            directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+            directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
             """
         )
     logger.info(f"Converting networkX graph to CRS code {to_crs_code}.")
@@ -1009,7 +1009,7 @@ def network_structure_from_nx(
     crs: None
         The `crs` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-        directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+        directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
 
     Returns
     -------
@@ -1032,7 +1032,7 @@ def network_structure_from_nx(
             """
             The `crs` parameter is deprecated and will be removed in a future release. If your network is
             generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-            directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+            directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
             """
         )
     logger.info("Preparing node and edge arrays from networkX graph.")
@@ -1661,7 +1661,7 @@ def geopandas_from_nx(
     crs: None
         The `crs` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-        directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+        directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
 
     Returns
     -------
@@ -1674,7 +1674,7 @@ def geopandas_from_nx(
             """
             The `crs` parameter is deprecated and will be removed in a future release. If your network is
             generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
-            directly in the graph if necessary at G.graph["crs"]; for example: `G.graph["crs"] = 4326`
+            directly in the graph if necessary at G.graph["crs"]; for example: G.graph["crs"] = 4326
             """
         )
     logger.info("Preparing node and edge arrays from networkX graph.")
