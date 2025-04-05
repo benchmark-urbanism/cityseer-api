@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 MultiGraph = Any
 
 
-class ColourMap:
+class _ColourMap:
     """Specifies global colour presets."""
 
     primary: str = "#0091ea"
@@ -47,7 +47,7 @@ class ColourMap:
     background: str = "#19181B"
 
 
-COLOUR_MAP = ColourMap()
+COLOUR_MAP = _ColourMap()
 
 ColourType = str | npt.ArrayLike
 
